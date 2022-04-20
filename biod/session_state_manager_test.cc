@@ -25,11 +25,13 @@ using testing::ByMove;
 using testing::DoAll;
 using testing::Invoke;
 using testing::Return;
+using testing::SaveArg;
 
 constexpr char kUsername[] = "user@user.com";
 constexpr char kSanitizedUsername[] =
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 static_assert(sizeof(kSanitizedUsername) == 41);
+constexpr char kExampleConnectionName[] = ":1.33";
 
 MATCHER_P(IsMember, name, "") {
   if (arg->GetMember() != name) {
@@ -68,6 +70,10 @@ class SessionStateManagerTest : public ::testing::Test {
         .WillRepeatedly(
             Invoke(this, &SessionStateManagerTest::ConnectToSignal));
 
+    // Save NameOwnerChanged callback
+    EXPECT_CALL(*proxy_, SetNameOwnerChangedCallback)
+        .WillRepeatedly(SaveArg<0>(&on_name_owner_changed_));
+
     manager_.emplace(bus_.get());
   }
 
@@ -78,6 +84,7 @@ class SessionStateManagerTest : public ::testing::Test {
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> proxy_;
+  dbus::MockObjectProxy::NameOwnerChangedCallback on_name_owner_changed_;
   MockSessionStateObserver observer_;
   std::optional<SessionStateManager> manager_;
 
@@ -529,6 +536,60 @@ TEST_F(SessionStateManagerTest, TestAddRemoveObserver) {
   // method won't be called..
   EXPECT_CALL(observer_, OnUserLoggedIn).Times(0);
   manager_->RefreshPrimaryUser();
+}
+
+TEST_F(SessionStateManagerTest, TestOnNameOwnerChangedNewOwnerEmpty) {
+  manager_->AddObserver(&observer_);
+
+  // Prepare response with information about primary user.
+  std::unique_ptr<dbus::Response> response =
+      RetrievePrimarySessionResponse(kUsername, kSanitizedUsername);
+
+  // Load primary user.
+  EXPECT_CALL(
+      *proxy_,
+      CallMethodAndBlockWithErrorDetails(
+          IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
+      .WillOnce(Return(ByMove(std::move(response))));
+  manager_->RefreshPrimaryUser();
+  EXPECT_EQ(manager_->GetPrimaryUser(), kSanitizedUsername);
+
+  // Expect that OnUserLoggedOut will be called when new name owner is empty.
+  EXPECT_CALL(observer_, OnUserLoggedOut).Times(1);
+
+  // Inform session manager that new owner is empty.
+  const auto& old_owner = kExampleConnectionName;
+  const auto& new_owner = "";
+  on_name_owner_changed_.Run(old_owner, new_owner);
+  EXPECT_TRUE(manager_->GetPrimaryUser().empty());
+}
+
+TEST_F(SessionStateManagerTest, TestOnNameOwnerChangedNewOwnerEmptyNoUser) {
+  manager_->AddObserver(&observer_);
+
+  // Expect that neither OnUserLoggedOut nor OnUserLoggedIn will be called when
+  // new name owner is empty but user is not logged in.
+  EXPECT_CALL(observer_, OnUserLoggedOut).Times(0);
+  EXPECT_CALL(observer_, OnUserLoggedIn).Times(0);
+
+  // Inform session manager that new owner is empty.
+  const auto& old_owner = kExampleConnectionName;
+  const auto& new_owner = "";
+  on_name_owner_changed_.Run(old_owner, new_owner);
+}
+
+TEST_F(SessionStateManagerTest, TestOnNameOwnerChangedNewOwnerNotEmpty) {
+  manager_->AddObserver(&observer_);
+
+  // Expect that neither OnUserLoggedOut nor OnUserLoggedIn will be called when
+  // new name owner is not empty.
+  EXPECT_CALL(observer_, OnUserLoggedOut).Times(0);
+  EXPECT_CALL(observer_, OnUserLoggedIn).Times(0);
+
+  // Inform session manager that name has new owner.
+  const auto& old_owner = "";
+  const auto& new_owner = kExampleConnectionName;
+  on_name_owner_changed_.Run(old_owner, new_owner);
 }
 
 }  // namespace

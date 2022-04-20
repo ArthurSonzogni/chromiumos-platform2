@@ -74,6 +74,10 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Read or delete records in memory when users log in or out.
   void OnSessionStateChanged(dbus::Signal* signal);
 
+  // Called when org.chromium.SessionManager name changes owner.
+  void OnSessionManagerNameOwnerChanged(const std::string& old_owner,
+                                        const std::string& new_owner);
+
   // Proxy for dbus communication with session manager / login.
   scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
 

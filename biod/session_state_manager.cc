@@ -30,6 +30,11 @@ SessionStateManager::SessionStateManager(dbus::Bus* bus) {
       base::BindRepeating(&SessionStateManager::OnSessionStateChanged,
                           base::Unretained(this)),
       base::BindOnce(&LogOnSignalConnected));
+
+  // Track org.chromium.SessionManager name owner changes.
+  session_manager_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
+      &SessionStateManager::OnSessionManagerNameOwnerChanged,
+      base::Unretained(this)));
 }
 
 std::string SessionStateManager::GetPrimaryUser() const {
@@ -145,6 +150,36 @@ void SessionStateManager::OnSessionStateChanged(dbus::Signal* signal) {
     for (auto& observer : observers_) {
       observer.OnUserLoggedOut();
     }
+  }
+}
+
+void SessionStateManager::OnSessionManagerNameOwnerChanged(
+    const std::string& old_owner, const std::string& new_owner) {
+  LOG(INFO) << login_manager::kSessionManagerServiceName << " name owner was "
+            << "changed from " << (old_owner.empty() ? "(empty)" : old_owner)
+            << " to " << (new_owner.empty() ? "(empty)" : new_owner);
+
+  // Do nothing when org.chromium.SessionManager service name is acquired.
+  // When session_manager has started user is always logged out.
+  // When user logs in, OnSessionStateChanged() callback will be called
+  // accordingly.
+  if (!new_owner.empty())
+    return;
+
+  // When primary user is empty, it means that user was not logged in or
+  // session_manager notified us that session state was changed to stopped
+  // before dying. In either case there is nothing to do.
+  if (primary_user_.empty())
+    return;
+
+  LOG(WARNING)
+      << "Name " << login_manager::kSessionManagerServiceName
+      << " was released while user was logged in (primary user is set)."
+      << " Clear primary user and perform user logout action.";
+
+  primary_user_.clear();
+  for (auto& observer : observers_) {
+    observer.OnUserLoggedOut();
   }
 }
 
