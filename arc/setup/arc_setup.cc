@@ -118,7 +118,6 @@ constexpr char kFakeMmapRndBits[] = "/run/arc/fake_mmap_rnd_bits";
 constexpr char kFakeMmapRndCompatBits[] = "/run/arc/fake_mmap_rnd_compat_bits";
 constexpr char kHostSideDalvikCacheDirectoryInContainer[] =
     "/var/run/arc/dalvik-cache";
-constexpr char kHostDownloadsDirectory[] = "/home/chronos/user/Downloads";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
 constexpr char kMediaMyFilesDirectory[] = "/run/arc/media/MyFiles";
 constexpr char kMediaMyFilesDefaultDirectory[] =
@@ -411,12 +410,13 @@ std::string CreateEsdfsMountOpts(uid_t fsuid,
                                  mode_t mask,
                                  uid_t userid,
                                  gid_t gid,
+                                 const base::FilePath& host_downloads_directory,
                                  int container_userns_fd) {
   std::string opts = base::StringPrintf(
       "fsuid=%d,fsgid=%d,derive_gid,default_normal,mask=%d,multiuser,"
       "gid=%d,dl_loc=%s,dl_uid=%d,dl_gid=%d,ns_fd=%d",
-      fsuid, fsgid, mask, gid, kHostDownloadsDirectory, kHostChronosUid,
-      kHostChronosGid, container_userns_fd);
+      fsuid, fsgid, mask, gid, host_downloads_directory.value().c_str(),
+      kHostChronosUid, kHostChronosGid, container_userns_fd);
   LOG(INFO) << "Esdfs mount options: " << opts;
   return opts;
 }
@@ -476,6 +476,7 @@ bool IsChromeOSUserAvailable(Mode mode) {
     case Mode::CREATE_DATA:
     case Mode::REMOVE_DATA:
     case Mode::REMOVE_STALE_DATA:
+    case Mode::MOUNT_SDCARD:
     case Mode::HANDLE_UPGRADE:
       return true;
     case Mode::PREPARE_HOST_GENERATED_DIR:
@@ -485,7 +486,6 @@ bool IsChromeOSUserAvailable(Mode mode) {
     case Mode::ONETIME_SETUP:
     case Mode::ONETIME_STOP:
     case Mode::PRE_CHROOT:
-    case Mode::MOUNT_SDCARD:
     case Mode::UNMOUNT_SDCARD:
     case Mode::UPDATE_RESTORECON_LAST:
     case Mode::UNKNOWN:
@@ -552,21 +552,24 @@ bool AllowContainerToWriteSensorAttribute(const base::FilePath& path) {
 struct ArcPaths {
   static std::unique_ptr<ArcPaths> Create(Mode mode, const Config& config) {
     base::FilePath root_path;
+    base::FilePath user_path;
     base::FilePath android_data;
     base::FilePath android_data_old;
 
     if (IsChromeOSUserAvailable(mode)) {
       std::string chromeos_user = config.GetStringOrDie("CHROMEOS_USER");
       root_path = brillo::cryptohome::home::GetRootPath(chromeos_user);
+      user_path = brillo::cryptohome::home::GetUserPath(chromeos_user);
 
-      // Ensure the user directory exists.
+      // Ensure the root directory and the user directory exist.
       EXIT_IF(root_path.empty() || !base::DirectoryExists(root_path));
+      EXIT_IF(user_path.empty() || !base::DirectoryExists(user_path));
 
       android_data = root_path.Append("android-data");
       android_data_old = root_path.Append("android-data-old");
     }
     return base::WrapUnique(
-        new ArcPaths(root_path, android_data, android_data_old));
+        new ArcPaths(root_path, user_path, android_data, android_data_old));
   }
 
   // Lexicographically sorted.
@@ -626,14 +629,17 @@ struct ArcPaths {
   const base::FilePath restorecon_allowlist_sync{kRestoreconAllowlistSync};
 
   const base::FilePath root_directory;
+  const base::FilePath user_directory;
   const base::FilePath android_data_directory;
   const base::FilePath android_data_old_directory;
 
  private:
   ArcPaths(const base::FilePath& root_directory,
+           const base::FilePath& user_directory,
            const base::FilePath& android_data_directory,
            const base::FilePath& android_data_old_directory)
       : root_directory(root_directory),
+        user_directory(user_directory),
         android_data_directory(android_data_directory),
         android_data_old_directory(android_data_old_directory) {}
   ArcPaths(const ArcPaths&) = delete;
@@ -965,6 +971,8 @@ void ArcSetup::SetUpSdcard() {
       MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_NOATIME;
   const base::FilePath source_directory =
       arc_paths_->android_mutable_source.Append("data/media");
+  const base::FilePath host_downloads_directory =
+      arc_paths_->user_directory.Append("MyFiles").Append("Downloads");
 
   const bool is_esdfs_supported = config_.GetBoolOrDie("USE_ESDFS");
 
@@ -982,6 +990,9 @@ void ArcSetup::SetUpSdcard() {
   EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source,
                                GetSdkVersion()));
 
+  // Ensure the Downloads directory exists.
+  EXIT_IF(!base::DirectoryExists(host_downloads_directory));
+
   for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath dest_directory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
@@ -994,7 +1005,8 @@ void ArcSetup::SetUpSdcard() {
     EXIT_IF(!arc_mounter_->Mount(
         source_directory.value(), dest_directory, "esdfs", mount_flags,
         CreateEsdfsMountOpts(kMediaUid, kMediaGid, mount.mode, kRootUid,
-                             mount.gid, container_userns_fd.get())
+                             mount.gid, host_downloads_directory,
+                             container_userns_fd.get())
             .c_str()));
   }
 
@@ -2347,10 +2359,12 @@ void ArcSetup::OnBootContinue() {
   // this point.
   UnmountSharedAndroidDirectories();
 
-  const std::string env_to_pass = base::StringPrintf(
+  const std::string env_chromeos_user = base::StringPrintf(
+      "CHROMEOS_USER=%s", config_.GetStringOrDie("CHROMEOS_USER").c_str());
+  const std::string env_container_pid = base::StringPrintf(
       "CONTAINER_PID=%d", config_.GetIntOrDie("CONTAINER_PID"));
-  EXIT_IF(!LaunchAndWait(
-      {"/sbin/initctl", "start", "--no-wait", "arc-sdcard", env_to_pass}));
+  EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait", "arc-sdcard",
+                          env_chromeos_user, env_container_pid}));
 }
 
 void ArcSetup::OnStop() {
