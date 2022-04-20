@@ -43,12 +43,12 @@ namespace {
 // Wait up to three seconds for the ephemeral mount to be performed.
 //
 // Normally, setting up a full ephemeral mount takes about 300 ms, so
-// give ourselves a healthy 10x margin.
+// give ourselves a healthy 40x margin.
 //
 // Certain boards can be very slow on mount operations. Extend the timeout in
 // this case to 120s.
 constexpr base::TimeDelta kOutOfProcessHelperMountTimeout =
-    base::Seconds(USE_SLOW_MOUNT ? 120 : 3);
+    base::Seconds(USE_SLOW_MOUNT ? 120 : 12);
 
 // How long to wait for the out-of-process helper to exit and be reaped.
 //
