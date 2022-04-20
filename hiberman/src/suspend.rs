@@ -250,7 +250,7 @@ impl SuspendConductor {
 
         assert!(self.metadata.data_tag != [0u8; META_TAG_SIZE]);
 
-        self.metadata.image_size = image_size as u64;
+        self.metadata.image_size = image_size;
         self.metadata.flags |= META_FLAG_VALID;
         Ok(())
     }

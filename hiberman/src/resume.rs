@@ -213,23 +213,19 @@ impl ResumeConductor {
             // kernel attempts its giant resume image allocation, the kernel
             // tends to crash the system by asking for too much memory too
             // quickly.
-            let header_pages = self.metadata.pagemap_pages;
-            let header_size = header_pages as usize * page_size;
-            debug!(
-                "Loading {} header pages ({} bytes)",
-                header_pages, header_size
-            );
+            let header_size = self.metadata.image_meta_size;
+            debug!("Loading {} header bytes", header_size);
             ImageMover::new(
                 &mut preloader,
                 &mut snap_dev.file,
-                header_size as i64,
+                header_size,
                 page_size * BUFFER_PAGES,
                 page_size,
             )?
             .move_all()
             .context("Failed to load in header file")?;
             debug!("Done loading header pages");
-            image_size -= header_size as u64;
+            image_size -= header_size;
 
             // Also write the first data byte, which is what actually triggers
             // the kernel to do its big allocation.
@@ -289,7 +285,7 @@ impl ResumeConductor {
         if !self.options.no_preloader {
             debug!("Sending in partial page");
             self.read_first_partial_page(&mut decryptor, page_size, snap_dev)?;
-            image_size -= page_size as u64;
+            image_size -= page_size as i64;
         }
 
         // Fire up the big image pump into the kernel.
@@ -317,12 +313,12 @@ impl ResumeConductor {
         // jump into anything but the original header.
         debug!("Validating header content");
         let mut header_hash = [0u8; META_HASH_SIZE];
-        let header_pages = joiner.get_header_hash(&mut header_hash)?;
+        let header_size = (joiner.get_header_hash(&mut header_hash)? as i64) * (page_size as i64);
         let metadata = &mut self.metadata;
-        if (metadata.pagemap_pages as usize) != header_pages {
+        if metadata.image_meta_size != header_size {
             error!(
-                "Metadata had {} pages, but {} were loaded",
-                metadata.pagemap_pages, header_pages
+                "Metadata image_meta_size was {}, but {} bytes were loaded",
+                metadata.image_meta_size, header_size
             );
             return Err(HibernateError::HeaderContentLengthMismatch())
                 .context("Failed to load verify header pages");

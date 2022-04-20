@@ -18,7 +18,6 @@
 //! essentially just a page list. The kernel validates its contents, and we also
 //! verify its hash to detect tampering.
 
-use std::convert::TryInto;
 use std::io::{Error as IoError, ErrorKind, Read, Write};
 
 use anyhow::{Context, Result};
@@ -101,8 +100,7 @@ impl<'a> ImageSplitter<'a> {
 
             self.meta_pages = get_meta_page_count(buf, page_size)?;
             // Save the non-data page count in the official metadata too.
-            self.metadata.pagemap_pages =
-                self.meta_pages.try_into().expect("Too many metadata pages");
+            self.metadata.image_meta_size = (self.meta_pages as i64) * (page_size as i64);
         }
 
         // Write out to the header if that's not done yet.

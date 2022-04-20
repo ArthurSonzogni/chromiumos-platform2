@@ -79,11 +79,11 @@ pub const META_ASYMMETRIC_KEY_SIZE: usize = 32;
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct HibernateMetadata {
     /// The size of the hibernate image data.
-    pub image_size: u64,
+    pub image_size: i64,
     /// Flags. See META_FLAG_* definitions.
     pub flags: u32,
-    /// Number of pages in the image's header and pagemap.
-    pub pagemap_pages: u32,
+    /// Number of bytes in the image's header and pagemap.
+    pub image_meta_size: i64,
     /// Hash of the header pages.
     pub header_hash: [u8; META_HASH_SIZE],
     /// Hibernate symmetric encryption key.
@@ -118,10 +118,10 @@ pub struct PublicHibernateMetadata {
     magic: u64,
     /// This must be set to META_VERSION.
     version: u32,
-    /// Number of pages in the image's header and pagemap.
-    pagemap_pages: u32,
+    /// Number of bytes in the image's header and pagemap.
+    image_meta_size: i64,
     /// The size of the hibernate image data.
-    image_size: u64,
+    image_size: i64,
     /// Flags. See META_FLAG_* definitions.
     flags: u32,
     /// The first byte of data, needed to coerce the kernel into doing its big
@@ -141,9 +141,9 @@ pub struct PrivateHibernateMetadata {
     /// This must be set to META_VERSION.
     version: u32,
     /// Number of pages in the image's header and pagemap.
-    pagemap_pages: u32,
+    image_meta_size: i64,
     /// The size of the hibernate image data.
-    image_size: u64,
+    image_size: i64,
     /// Flags. See META_FLAG_* definitions.
     flags: u32,
     /// Hibernate symmetric encryption key.
@@ -174,7 +174,7 @@ impl HibernateMetadata {
         Ok(Self {
             image_size: 0,
             flags: 0,
-            pagemap_pages: 0,
+            image_meta_size: 0,
             header_hash: [0u8; META_HASH_SIZE],
             data_key: *data_key,
             data_iv: *data_iv,
@@ -290,10 +290,10 @@ impl HibernateMetadata {
             .context("Cannot apply private metadata");
         }
 
-        if self.pagemap_pages != privdata.pagemap_pages {
+        if self.image_meta_size != privdata.image_meta_size {
             return Err(HibernateError::MetadataError(format!(
-                "Mismatch in pagemap count: {:x?} vs {:x?}",
-                privdata.pagemap_pages, self.pagemap_pages
+                "Mismatch in image meta size: {:x?} vs {:x?}",
+                privdata.image_meta_size, self.image_meta_size
             )))
             .context("Cannot apply private metadata");
         }
@@ -377,7 +377,7 @@ impl HibernateMetadata {
         Ok(PublicHibernateMetadata {
             magic: META_MAGIC,
             version: META_VERSION,
-            pagemap_pages: self.pagemap_pages,
+            image_meta_size: self.image_meta_size,
             image_size: self.image_size,
             flags: self.flags,
             first_data_byte: self.first_data_byte,
@@ -390,7 +390,7 @@ impl HibernateMetadata {
     fn build_private_buffer(&self) -> Result<[u8; META_PRIVATE_SIZE]> {
         let private_data = PrivateHibernateMetadata {
             version: META_VERSION,
-            pagemap_pages: self.pagemap_pages,
+            image_meta_size: self.image_meta_size,
             image_size: self.image_size,
             flags: self.flags,
             data_key: self.data_key,
@@ -497,7 +497,7 @@ impl TryFrom<PublicHibernateMetadata> for HibernateMetadata {
         Ok(Self {
             image_size: pubdata.image_size,
             flags: pubdata.flags,
-            pagemap_pages: pubdata.pagemap_pages,
+            image_meta_size: pubdata.image_meta_size,
             header_hash: [0u8; META_HASH_SIZE],
             data_key: [0u8; META_SYMMETRIC_KEY_SIZE],
             data_iv: [0u8; META_OCB_IV_SIZE],
