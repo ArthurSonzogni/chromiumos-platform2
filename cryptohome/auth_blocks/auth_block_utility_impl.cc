@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <chromeos/constants/cryptohome.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/auth_block.h"
@@ -35,10 +36,21 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
+
+using cryptohome::error::ContainsActionInStack;
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
+using hwsec_foundation::status::StatusChainOr;
 
 namespace cryptohome {
 
@@ -80,17 +92,19 @@ bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
   return platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
 }
 
-CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
+CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const Credentials& credentials,
     const std::optional<brillo::SecureBlob>& reset_secret,
     AuthBlockState& out_state,
     KeyBlobs& out_key_blobs) const {
-  std::unique_ptr<SyncAuthBlock> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  if (!auth_block) {
+  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
+      auth_block = GetAuthBlockWithType(auth_block_type);
+  if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobs))
+        .Wrap(std::move(auth_block).status());
   }
   ReportCreateAuthBlock(auth_block_type);
 
@@ -103,69 +117,77 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
       brillo::cryptohome::home::SanitizeUserName(credentials.username()),
       reset_secret};
 
-  CryptoError error =
-      auth_block->Create(user_input, &out_state, &out_key_blobs);
-  if (error != CryptoError::CE_NONE) {
+  CryptoStatus error =
+      auth_block.value()->Create(user_input, &out_state, &out_key_blobs);
+  if (!error.ok()) {
     LOG(ERROR) << "Failed to create per credential secret: " << error;
-    return error;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthBlockUtilCreateFailedInCreateKeyBlobs))
+        .Wrap(std::move(error));
   }
 
-  ReportWrappingKeyDerivationType(auth_block->derivation_type(),
+  ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
                                   CryptohomePhase::kCreated);
 
-  return error;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
-  std::unique_ptr<AuthBlock> auth_block =
+  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type);
-  if (!auth_block) {
+  if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     std::move(create_callback)
-        .Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+        .Run(MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobsAsync))
+                 .Wrap(std::move(auth_block).status()),
+             nullptr, nullptr);
     return false;
   }
   ReportCreateAuthBlock(auth_block_type);
 
-  auth_block->Create(auth_input, std::move(create_callback));
+  auth_block.value()->Create(auth_input, std::move(create_callback));
 
   // TODO(b/225001347): Move this report to the caller. Here this is always
   // reported independent of the error status.
-  ReportWrappingKeyDerivationType(auth_block->derivation_type(),
+  ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
                                   CryptohomePhase::kCreated);
   return true;
 }
 
-CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
+CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const Credentials& credentials,
     const AuthBlockState& auth_state,
     KeyBlobs& out_key_blobs) const {
   DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
 
-  CryptoError error = CryptoError::CE_NONE;
-
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt};
 
   auth_input.locked_to_single_user = GetLockedToSingleUser();
 
-  std::unique_ptr<SyncAuthBlock> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  if (!auth_block) {
+  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
+      auth_block = GetAuthBlockWithType(auth_block_type);
+  if (!auth_block.ok()) {
     LOG(ERROR) << "Keyset wrapped with unknown method.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobs))
+        .Wrap(std::move(auth_block).status());
   }
   ReportDeriveAuthBlock(auth_block_type);
 
-  error = auth_block->Derive(auth_input, auth_state, &out_key_blobs);
-  if (error == CryptoError::CE_NONE) {
-    ReportWrappingKeyDerivationType(auth_block->derivation_type(),
+  CryptoStatus error =
+      auth_block.value()->Derive(auth_input, auth_state, &out_key_blobs);
+  if (error.ok()) {
+    ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
                                     CryptohomePhase::kMounted);
-    return CryptoError::CE_NONE;
+    return OkStatus<CryptohomeCryptoError>();
   }
   LOG(ERROR) << "Failed to derive per credential secret: " << error;
 
@@ -176,7 +198,7 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
   // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
   // be set here.
   if (auth_block_type == AuthBlockType::kPinWeaver &&
-      error == CryptoError::CE_TPM_DEFEND_LOCK) {
+      ContainsActionInStack(error, ErrorAction::kTpmLockout)) {
     // Get the corresponding encrypted vault keyset for the user and the label
     // to set the auth_locked.
     std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
@@ -187,12 +209,17 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
       LOG(ERROR)
           << "No vault keyset is found on disk for the given label. Cannot "
              "decide on the AuthBlock type without vault keyset metadata.";
-      return CryptoError::CE_OTHER_CRYPTO;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoVaultKeysetInDeriveKeyBlobs),
+          ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot}),
+          CryptoError::CE_OTHER_CRYPTO);
     }
     vk->SetAuthLocked(true);
     vk->Save(vk->GetSourceFile());
   }
-  return error;
+  return MakeStatus<CryptohomeCryptoError>(
+             CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilDeriveFailedInDeriveKeyBlobs))
+      .Wrap(std::move(error));
 }
 
 bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
@@ -202,16 +229,22 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
     AuthBlock::DeriveCallback derive_callback) {
   DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
 
-  std::unique_ptr<AuthBlock> auth_block =
+  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type);
-  if (!auth_block) {
+  if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
-    std::move(derive_callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    std::move(derive_callback)
+        .Run(MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobsAsync))
+                 .Wrap(std::move(auth_block).status()),
+             nullptr);
     return false;
   }
   ReportCreateAuthBlock(auth_block_type);
 
-  auth_block->Derive(auth_input, auth_state, std::move(derive_callback));
+  auth_block.value()->Derive(auth_input, auth_state,
+                             std::move(derive_callback));
 
   return true;
 }
@@ -268,7 +301,8 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
   return auth_block_type;
 }
 
-std::unique_ptr<SyncAuthBlock> AuthBlockUtilityImpl::GetAuthBlockWithType(
+StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
+AuthBlockUtilityImpl::GetAuthBlockWithType(
     const AuthBlockType& auth_block_type) const {
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
@@ -300,17 +334,33 @@ std::unique_ptr<SyncAuthBlock> AuthBlockUtilityImpl::GetAuthBlockWithType(
     case AuthBlockType::kCryptohomeRecovery:
       LOG(ERROR)
           << "CryptohomeRecovery is not a supported AuthBlockType for now.";
-      return nullptr;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilCHRecoveryUnsupportedInGetAuthBlockWithType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          CryptoError::CE_OTHER_CRYPTO);
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
 
-      return nullptr;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilMaxValueUnsupportedInGetAuthBlockWithType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          CryptoError::CE_OTHER_CRYPTO);
   }
-  return nullptr;
+  return MakeStatus<CryptohomeCryptoError>(
+      CRYPTOHOME_ERR_LOC(
+          kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType),
+      ErrorActionSet(
+          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+      CryptoError::CE_OTHER_CRYPTO);
 }
 
-std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
+StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError>
+AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     const AuthBlockType& auth_block_type) {
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
@@ -327,7 +377,12 @@ std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       }
       LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
                     "KeyChallengeService, or account id in AuthBlockUtility";
-      return nullptr;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          CryptoError::CE_OTHER_CRYPTO);
 
     case AuthBlockType::kDoubleWrappedCompat:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
@@ -356,13 +411,28 @@ std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     case AuthBlockType::kCryptohomeRecovery:
       LOG(ERROR)
           << "CryptohomeRecovery is not a supported AuthBlockType for now.";
-      return nullptr;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilCHUnsupportedInGetAsyncAuthBlockWithType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          CryptoError::CE_OTHER_CRYPTO);
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
-      return nullptr;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilMaxValueUnsupportedInGetAsyncAuthBlockWithType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          CryptoError::CE_OTHER_CRYPTO);
   }
-  return nullptr;
+  return MakeStatus<CryptohomeCryptoError>(
+      CRYPTOHOME_ERR_LOC(
+          kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType),
+      ErrorActionSet(
+          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+      CryptoError::CE_OTHER_CRYPTO);
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
@@ -409,7 +479,7 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
   }
 }
 
-CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
+CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
     AuthFactorType auth_factor_type,
     const AuthInput& auth_input,
     AuthBlockState& out_auth_block_state,
@@ -420,12 +490,17 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
                                   /*is_challenge_credential =*/false);
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthBlockUtilChalCredUnsupportedInCreateKeyBlobsAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   // TODO(b/216804305): Stop hardcoding the auth block.
-  std::unique_ptr<SyncAuthBlock> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  return auth_block->Create(auth_input, &out_auth_block_state, &out_key_blobs);
+  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
+      auth_block = GetAuthBlockWithType(auth_block_type);
+  return auth_block.value()->Create(auth_input, &out_auth_block_state,
+                                    &out_key_blobs);
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerive(
@@ -454,7 +529,7 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerive(
   return auth_block_type;
 }
 
-CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
+CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
     const AuthInput& auth_input,
     const AuthBlockState& auth_block_state,
     KeyBlobs& out_key_blobs) const {
@@ -462,11 +537,15 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
   if (auth_block_type == AuthBlockType::kMaxValue ||
       auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilUnsupportedInDeriveKeyBlobs),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
-  std::unique_ptr<SyncAuthBlock> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  return auth_block->Derive(auth_input, auth_block_state, &out_key_blobs);
+  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
+      auth_block = GetAuthBlockWithType(auth_block_type);
+  return auth_block.value()->Derive(auth_input, auth_block_state,
+                                    &out_key_blobs);
 }
 
 }  // namespace cryptohome

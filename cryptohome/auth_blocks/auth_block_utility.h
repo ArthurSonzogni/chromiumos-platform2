@@ -43,7 +43,7 @@ class AuthBlockUtility {
   // user credentials when the credentials are entered first time. Thus,
   // CreateKeyBlobsWithAuthBlock() should be called to generate the KeyBlobs for
   // adding initial key, adding key and migrating a key.
-  virtual CryptoError CreateKeyBlobsWithAuthBlock(
+  virtual CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const Credentials& credentials,
       const std::optional<brillo::SecureBlob>& reset_secret,
@@ -63,7 +63,7 @@ class AuthBlockUtility {
   // key. Thus DeriveKeyBlobsWithAuthBlock() should be called to generate the
   // KeyBlob for loading an existing wrapped key from the disk for user
   // authentication.
-  virtual CryptoError DeriveKeyBlobsWithAuthBlock(
+  virtual CryptoStatus DeriveKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const Credentials& credentials,
       const AuthBlockState& state,
@@ -108,16 +108,16 @@ class AuthBlockUtility {
 
   // Creates a new auth block state and key blobs using an auth block. On error,
   // returns the error code.
-  virtual CryptoError CreateKeyBlobsWithAuthFactorType(
+  virtual CryptoStatus CreateKeyBlobsWithAuthFactorType(
       AuthFactorType auth_factor_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
       KeyBlobs& out_key_blobs) const WARN_UNUSED_RESULT = 0;
 
   // Derives key blobs using the given auth block state and input.
-  virtual CryptoError DeriveKeyBlobs(const AuthInput& auth_input,
-                                     const AuthBlockState& auth_block_state,
-                                     KeyBlobs& out_key_blobs) const
+  virtual CryptoStatus DeriveKeyBlobs(const AuthInput& auth_input,
+                                      const AuthBlockState& auth_block_state,
+                                      KeyBlobs& out_key_blobs) const
       WARN_UNUSED_RESULT = 0;
 };
 

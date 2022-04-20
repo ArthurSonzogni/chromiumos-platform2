@@ -29,22 +29,22 @@ class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
   TpmBoundToPcrAuthBlock(const TpmBoundToPcrAuthBlock&) = delete;
   TpmBoundToPcrAuthBlock& operator=(const TpmBoundToPcrAuthBlock&) = delete;
 
-  CryptoError Create(const AuthInput& user_input,
-                     AuthBlockState* auth_block_state,
-                     KeyBlobs* key_blobs) override;
+  CryptoStatus Create(const AuthInput& user_input,
+                      AuthBlockState* auth_block_state,
+                      KeyBlobs* key_blobs) override;
 
-  CryptoError Derive(const AuthInput& auth_input,
-                     const AuthBlockState& state,
-                     KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(const AuthInput& auth_input,
+                      const AuthBlockState& state,
+                      KeyBlobs* key_blobs) override;
 
  private:
   // Decrypt the |vault_key| that is bound to PCR, returning the |vkk_iv|
   // and |vkk_key|.
-  CryptoError DecryptTpmBoundToPcr(const brillo::SecureBlob& vault_key,
-                                   const brillo::SecureBlob& tpm_key,
-                                   const brillo::SecureBlob& salt,
-                                   brillo::SecureBlob* vkk_iv,
-                                   brillo::SecureBlob* vkk_key) const;
+  CryptoStatus DecryptTpmBoundToPcr(const brillo::SecureBlob& vault_key,
+                                    const brillo::SecureBlob& tpm_key,
+                                    const brillo::SecureBlob& salt,
+                                    brillo::SecureBlob* vkk_iv,
+                                    brillo::SecureBlob* vkk_key) const;
 
   Tpm* tpm_;
   CryptohomeKeyLoader* cryptohome_key_loader_;

@@ -13,6 +13,8 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/error/tpm_retry_action.h>
 
+#include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
+
 namespace cryptohome {
 
 namespace error {
@@ -95,7 +97,8 @@ CryptohomeTPMError::CryptohomeTPMError(
     std::optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>
         tpm_error,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
-    : CryptohomeError(loc, actions, ec),
+    : CryptohomeCryptoError(
+          loc, actions, TpmAuthBlockUtils::TPMRetryActionToCrypto(retry), ec),
       retry_(retry),
       tpm_error_(std::move(tpm_error)) {}
 

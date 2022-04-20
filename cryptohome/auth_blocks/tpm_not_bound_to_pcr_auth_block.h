@@ -28,18 +28,18 @@ class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
   TpmNotBoundToPcrAuthBlock& operator=(const TpmNotBoundToPcrAuthBlock&) =
       delete;
 
-  CryptoError Create(const AuthInput& user_input,
-                     AuthBlockState* auth_block_state,
-                     KeyBlobs* key_blobs) override;
+  CryptoStatus Create(const AuthInput& user_input,
+                      AuthBlockState* auth_block_state,
+                      KeyBlobs* key_blobs) override;
 
-  CryptoError Derive(const AuthInput& auth_input,
-                     const AuthBlockState& state,
-                     KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(const AuthInput& auth_input,
+                      const AuthBlockState& state,
+                      KeyBlobs* key_blobs) override;
 
  private:
   // Decrypt the |vault_key| that is not bound to PCR, returning the |vkk_iv|
   // and |vkk_key|.
-  CryptoError DecryptTpmNotBoundToPcr(
+  CryptoStatus DecryptTpmNotBoundToPcr(
       const TpmNotBoundToPcrAuthBlockState& tpm_state,
       const brillo::SecureBlob& vault_key,
       const brillo::SecureBlob& tpm_key,

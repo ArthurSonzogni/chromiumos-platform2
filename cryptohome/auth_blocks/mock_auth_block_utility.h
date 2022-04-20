@@ -29,7 +29,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   ~MockAuthBlockUtility() = default;
 
   MOCK_METHOD(bool, GetLockedToSingleUser, (), (const, override));
-  MOCK_METHOD(CryptoError,
+  MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,
                const Credentials& credentials,
@@ -43,7 +43,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const AuthInput& auth_input,
                AuthBlock::CreateCallback create_callback),
               (override));
-  MOCK_METHOD(CryptoError,
+  MOCK_METHOD(CryptoStatus,
               DeriveKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,
                const Credentials& credentials,
@@ -79,14 +79,14 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               AssignAuthBlockStateToVaultKeyset,
               (const AuthBlockState& state, VaultKeyset& vault_keyset),
               (const, override));
-  MOCK_METHOD(CryptoError,
+  MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthFactorType,
               (AuthFactorType auth_factor_type,
                const AuthInput& auth_input,
                AuthBlockState& out_auth_block_state,
                KeyBlobs& out_key_blobs),
               (const, override));
-  MOCK_METHOD(CryptoError,
+  MOCK_METHOD(CryptoStatus,
               DeriveKeyBlobs,
               (const AuthInput& auth_input,
                const AuthBlockState& auth_block_state,

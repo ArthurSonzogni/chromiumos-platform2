@@ -47,9 +47,11 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/vault_keyset.h"
 
+using ::cryptohome::error::CryptohomeCryptoError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::status::StatusChainOr;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
@@ -115,10 +117,11 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   // Test
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kPinWeaver, credentials, reset_secret, out_state,
-                out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver,
+                                                credentials, reset_secret,
+                                                out_state, out_key_blobs)
+                  .ok());
 
   // Verify that a PinWeaver AuthBlock is generated.
   EXPECT_TRUE(std::holds_alternative<PinWeaverAuthBlockState>(out_state.state));
@@ -161,10 +164,11 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   // No need to check for the KeyBlobs value, it is already being tested in
   // AuthBlock unittest.
   KeyBlobs out_key_blobs;
-  EXPECT_EQ(
-      CryptoError::CE_NONE,
-      auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-          AuthBlockType::kPinWeaver, credentials, auth_state, out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver,
+                                                credentials, auth_state,
+                                                out_key_blobs)
+                  .ok());
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState and KeyBlobs
@@ -194,10 +198,11 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   // Test
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kTpmBoundToPcr, credentials, std::nullopt,
-                out_state, out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr,
+                                                credentials, std::nullopt,
+                                                out_state, out_key_blobs)
+                  .ok());
 
   // Verify that tpm backed pcr bound auth block is created.
   EXPECT_TRUE(
@@ -236,10 +241,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-                AuthBlockType::kTpmBoundToPcr, credentials, auth_state,
-                out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr,
+                                                credentials, auth_state,
+                                                out_key_blobs)
+                  .ok());
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState and KeyBlobs
@@ -260,10 +266,11 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
       keyset_management_.get(), &crypto_, &platform_);
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kTpmNotBoundToPcr, credentials, std::nullopt,
-                out_state, out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->CreateKeyBlobsWithAuthBlock(
+                      AuthBlockType::kTpmNotBoundToPcr, credentials,
+                      std::nullopt, out_state, out_key_blobs)
+                  .ok());
 
   // Verify that Tpm backed not pcr bound Authblock is created.
   EXPECT_TRUE(
@@ -298,10 +305,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-                AuthBlockType::kTpmNotBoundToPcr, credentials, auth_state,
-                out_key_blobs));
+  EXPECT_TRUE(
+      auth_block_utility_impl_
+          ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmNotBoundToPcr,
+                                        credentials, auth_state, out_key_blobs)
+          .ok());
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState and KeyBlobs
@@ -335,10 +343,11 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   // Test
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kTpmEcc, credentials, std::nullopt, out_state,
-                out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmEcc,
+                                                credentials, std::nullopt,
+                                                out_state, out_key_blobs)
+                  .ok());
 
   // Verify that Tpm Ecc AuthBlock is created.
   EXPECT_TRUE(std::holds_alternative<TpmEccAuthBlockState>(out_state.state));
@@ -385,10 +394,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  EXPECT_EQ(
-      CryptoError::CE_NONE,
-      auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-          AuthBlockType::kTpmEcc, credentials, auth_state, out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmEcc,
+                                                credentials, auth_state,
+                                                out_key_blobs)
+                  .ok());
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState with
@@ -405,10 +415,11 @@ TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
   // Test
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kLibScryptCompat, credentials, std::nullopt,
-                out_state, out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kLibScryptCompat,
+                                                credentials, std::nullopt,
+                                                out_state, out_key_blobs)
+                  .ok());
 
   // Verify that a script wrapped AuthBlock is generated.
   EXPECT_TRUE(
@@ -499,10 +510,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-                AuthBlockType::kLibScryptCompat, credentials, auth_state,
-                out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kLibScryptCompat,
+                                                credentials, auth_state,
+                                                out_key_blobs)
+                  .ok());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives AuthBlocks with
@@ -594,10 +606,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-                AuthBlockType::kDoubleWrappedCompat, credentials, auth_state,
-                out_key_blobs));
+  EXPECT_TRUE(
+      auth_block_utility_impl_
+          ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kDoubleWrappedCompat,
+                                        credentials, auth_state, out_key_blobs)
+          .ok());
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState with
@@ -614,10 +627,11 @@ TEST_F(AuthBlockUtilityImplTest, CreateChallengeCredentialAuthBlock) {
   // Test
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kChallengeCredential, credentials, std::nullopt,
-                out_state, out_key_blobs));
+  EXPECT_TRUE(auth_block_utility_impl_
+                  ->CreateKeyBlobsWithAuthBlock(
+                      AuthBlockType::kChallengeCredential, credentials,
+                      std::nullopt, out_state, out_key_blobs)
+                  .ok());
 
   // Verify that a script wrapped AuthBlock is generated.
   // TODO(betuls): Update verifications after the integration of the
@@ -709,10 +723,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveChallengeCredentialAuthBlock) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  EXPECT_EQ(CryptoError::CE_NONE,
-            auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-                AuthBlockType::kChallengeCredential, credentials, auth_state,
-                out_key_blobs));
+  EXPECT_TRUE(
+      auth_block_utility_impl_
+          ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kChallengeCredential,
+                                        credentials, auth_state, out_key_blobs)
+          .ok());
 }
 
 // Test that CreateKeyBlobsWithAuthBlockAsync creates AuthBlockState
@@ -740,10 +755,10 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
       keyset_management_.get(), &crypto_, &platform_);
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
-        EXPECT_EQ(error, CryptoError::CE_NONE);
+        EXPECT_TRUE(error.ok());
         EXPECT_TRUE(std::holds_alternative<TpmBoundToPcrAuthBlockState>(
             auth_state->state));
         EXPECT_NE(blobs->vkk_key, std::nullopt);
@@ -794,9 +809,9 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
 
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
         // Evaluate results of KeyBlobs returned by callback.
-        EXPECT_EQ(error, CryptoError::CE_NONE);
+        EXPECT_TRUE(error.ok());
         EXPECT_NE(blobs->vkk_key, std::nullopt);
         EXPECT_NE(blobs->vkk_iv, std::nullopt);
         EXPECT_NE(blobs->chaps_iv, std::nullopt);
@@ -834,10 +849,10 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       credentials.username());
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
-        EXPECT_EQ(error, CryptoError::CE_NONE);
+        EXPECT_TRUE(error.ok());
 
         // Because the salt is generated randomly inside the auth block, this
         // test cannot check the exact values returned. The salt() could be
@@ -1045,8 +1060,8 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       });
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
-        ASSERT_EQ(error, CryptoError::CE_NONE);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        ASSERT_TRUE(error.ok());
         EXPECT_EQ(derived_key, blobs->scrypt_key->derived_key());
         EXPECT_EQ(derived_chaps_key, blobs->chaps_scrypt_key->derived_key());
         EXPECT_EQ(derived_reset_seed_key,
@@ -1079,10 +1094,10 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
       credentials.GetObfuscatedUsername(), std::nullopt /*reset_secret*/};
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         EXPECT_EQ(blobs, nullptr);
         EXPECT_EQ(auth_state, nullptr);
       });
@@ -1104,10 +1119,12 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockWrongTypeFails) {
   // Test
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-                AuthBlockType::kMaxValue, credentials, std::nullopt, out_state,
-                out_key_blobs));
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block_utility_impl_
+          ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kMaxValue, credentials,
+                                        std::nullopt, out_state, out_key_blobs)
+          ->local_crypto_error());
 }
 
 // Test that GetAuthBlockStateFromVaultKeyset() gives correct AuthblockState
@@ -1559,10 +1576,11 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
       &challenge_credentials_helper_, std::move(mock_key_challenge_service),
       credentials.username());
   // Test. All fields are valid to get an AsyncChallengeCredentialAuthBlock.
-  std::unique_ptr<AuthBlock> auth_block =
+  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
           AuthBlockType::kChallengeCredential);
-  EXPECT_NE(auth_block, nullptr);
+  EXPECT_TRUE(auth_block.ok());
+  EXPECT_NE(auth_block.value(), nullptr);
 }
 
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
@@ -1574,10 +1592,10 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  std::unique_ptr<AuthBlock> auth_block =
+  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
           AuthBlockType::kChallengeCredential);
-  EXPECT_EQ(auth_block, nullptr);
+  EXPECT_FALSE(auth_block.ok());
 }
 
 }  // namespace cryptohome

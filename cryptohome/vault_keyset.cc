@@ -37,6 +37,7 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/converter.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/platform.h"
@@ -47,6 +48,10 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::AesDecryptDeprecated;
 using hwsec_foundation::AesEncryptDeprecated;
 using hwsec_foundation::CreateSecureRandomBlob;
@@ -55,6 +60,9 @@ using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::kDefaultScryptParams;
 using hwsec_foundation::LibScryptCompat;
 using hwsec_foundation::Sha1;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace {
 const mode_t kVaultFilePermissions = 0600;
@@ -386,8 +394,10 @@ bool VaultKeyset::DecryptVaultKeyset(const SecureBlob& vault_key,
 
   AuthInput auth_input = {vault_key, locked_to_single_user};
   KeyBlobs vkk_data;
-  *error = auth_block->Derive(auth_input, auth_state, &vkk_data);
-  if (*error != CryptoError::CE_NONE) {
+  CryptoStatus cryptohome_error =
+      auth_block->Derive(auth_input, auth_state, &vkk_data);
+  if (!cryptohome_error.ok()) {
+    *error = cryptohome_error->local_crypto_error();
     return false;
   }
 
@@ -1001,8 +1011,8 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
                           obfuscated_username, reset_secret};
 
   KeyBlobs key_blobs;
-  CryptoError error = auth_block->Create(user_input, auth_state, &key_blobs);
-  if (error != CryptoError::CE_NONE) {
+  CryptoStatus error = auth_block->Create(user_input, auth_state, &key_blobs);
+  if (!error.ok()) {
     LOG(ERROR) << "Failed to create the credential: " << error;
     return false;
   }

@@ -34,7 +34,6 @@ using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
-using cryptohome::error::NoErrorAction;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;

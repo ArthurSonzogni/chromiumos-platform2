@@ -15,22 +15,29 @@
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/key_objects.h"
 
+using ::cryptohome::error::CryptohomeCryptoError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::kDefaultScryptParams;
 using ::hwsec_foundation::kLibScryptDerivedKeySize;
 using ::hwsec_foundation::kLibScryptSaltSize;
 using ::hwsec_foundation::LibScryptCompat;
 using ::hwsec_foundation::Scrypt;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
 namespace {
 
-CryptoError CreateScryptHelper(const brillo::SecureBlob& input_key,
-                               brillo::SecureBlob* salt,
-                               brillo::SecureBlob* derived_key) {
+CryptoStatus CreateScryptHelper(const brillo::SecureBlob& input_key,
+                                brillo::SecureBlob* salt,
+                                brillo::SecureBlob* derived_key) {
   // Because of the implementation peculiarity of libscrypt, the salt MUST be
   // unique for each key, and the same key can never be repurposed.
   *salt = CreateSecureRandomBlob(kLibScryptSaltSize);
@@ -40,20 +47,27 @@ CryptoError CreateScryptHelper(const brillo::SecureBlob& input_key,
               kDefaultScryptParams.r_factor, kDefaultScryptParams.p_factor,
               derived_key)) {
     LOG(ERROR) << "scrypt failed";
-    return CryptoError::CE_SCRYPT_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockScryptFailedInCreateHelper),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_SCRYPT_CRYPTO);
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
-                                 const brillo::SecureBlob& input_key,
-                                 brillo::SecureBlob* derived_key) {
+CryptoStatus ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
+                                  const brillo::SecureBlob& input_key,
+                                  brillo::SecureBlob* derived_key) {
   hwsec_foundation::ScryptParameters params;
   brillo::SecureBlob salt;
   if (!LibScryptCompat::ParseHeader(wrapped_blob, &params, &salt)) {
     LOG(ERROR) << "Failed to parse header.";
-    return CryptoError::CE_SCRYPT_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockParseFailedInParseHeader),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        CryptoError::CE_SCRYPT_CRYPTO);
   }
 
   // Generate the derived key.
@@ -61,10 +75,13 @@ CryptoError ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
   if (!Scrypt(input_key, salt, params.n_factor, params.r_factor,
               params.p_factor, derived_key)) {
     LOG(ERROR) << "scrypt failed";
-    return CryptoError::CE_SCRYPT_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockScryptFailedInParseHeader),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_SCRYPT_CRYPTO);
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace
@@ -76,16 +93,20 @@ LibScryptCompatAuthBlock::LibScryptCompatAuthBlock(
     DerivationType derivation_type)
     : SyncAuthBlock(derivation_type) {}
 
-CryptoError LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
-                                             AuthBlockState* auth_block_state,
-                                             KeyBlobs* key_blobs) {
+CryptoStatus LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
+                                              AuthBlockState* auth_block_state,
+                                              KeyBlobs* key_blobs) {
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 
   brillo::SecureBlob derived_key;
   brillo::SecureBlob salt;
-  CryptoError error = CreateScryptHelper(input_key, &salt, &derived_key);
-  if (error != CryptoError::CE_NONE) {
-    return error;
+  CryptoStatus error = CreateScryptHelper(input_key, &salt, &derived_key);
+  if (!error.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocScryptCompatAuthBlockInputKeyFailedInCreate),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(std::move(error));
   }
 
   key_blobs->scrypt_key =
@@ -94,8 +115,12 @@ CryptoError LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
   brillo::SecureBlob derived_chaps_key;
   brillo::SecureBlob chaps_salt;
   error = CreateScryptHelper(input_key, &chaps_salt, &derived_chaps_key);
-  if (error != CryptoError::CE_NONE) {
-    return error;
+  if (!error.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocScryptCompatAuthBlockChapsKeyFailedInCreate),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(std::move(error));
   }
 
   key_blobs->chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
@@ -105,8 +130,12 @@ CryptoError LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
   brillo::SecureBlob reset_seed_salt;
   error =
       CreateScryptHelper(input_key, &reset_seed_salt, &derived_reset_seed_key);
-  if (error != CryptoError::CE_NONE) {
-    return error;
+  if (!error.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocScryptCompatAuthBlockResetKeyFailedInCreate),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(std::move(error));
   }
 
   key_blobs->scrypt_wrapped_reset_seed_key =
@@ -121,31 +150,42 @@ CryptoError LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
   scrypt_state.salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
   *auth_block_state = AuthBlockState{.state = std::move(scrypt_state)};
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
-                                             const AuthBlockState& auth_state,
-                                             KeyBlobs* key_blobs) {
+CryptoStatus LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
+                                              const AuthBlockState& auth_state,
+                                              KeyBlobs* key_blobs) {
   const LibScryptCompatAuthBlockState* state;
   if (!(state =
             std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockInvalidBlockStateInDerive),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   if (!state->wrapped_keyset.has_value()) {
     LOG(ERROR)
         << "Invalid LibScryptCompatAuthBlockState: missing wrapped_keyset";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockNoWrappedKeysetInDerive),
+        ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot,
+                        ErrorAction::kDeleteVault}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   const brillo::SecureBlob input_key = auth_input.user_input.value();
   brillo::SecureBlob wrapped_keyset = state->wrapped_keyset.value();
   brillo::SecureBlob derived_scrypt_key;
-  CryptoError error =
+  CryptoStatus error =
       ParseHeaderAndDerive(wrapped_keyset, input_key, &derived_scrypt_key);
-  if (error != CryptoError::CE_NONE) {
-    return error;
+  if (!error.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockInputKeyInDerive))
+        .Wrap(std::move(error));
   }
   key_blobs->scrypt_key =
       std::make_unique<LibScryptCompatKeyObjects>(derived_scrypt_key);
@@ -159,8 +199,10 @@ CryptoError LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
     brillo::SecureBlob derived_chaps_key;
     error =
         ParseHeaderAndDerive(wrapped_chaps_key, input_key, &derived_chaps_key);
-    if (error != CryptoError::CE_NONE) {
-      return error;
+    if (!error.ok()) {
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockChapsKeyInDerive))
+          .Wrap(std::move(error));
     }
     key_blobs->chaps_scrypt_key =
         std::make_unique<LibScryptCompatKeyObjects>(derived_chaps_key);
@@ -171,14 +213,16 @@ CryptoError LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
     brillo::SecureBlob derived_reset_seed_key;
     error = ParseHeaderAndDerive(wrapped_reset_seed, input_key,
                                  &derived_reset_seed_key);
-    if (error != CryptoError::CE_NONE) {
-      return error;
+    if (!error.ok()) {
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockResetKeyInDerive))
+          .Wrap(std::move(error));
     }
     key_blobs->scrypt_wrapped_reset_seed_key =
         std::make_unique<LibScryptCompatKeyObjects>(derived_reset_seed_key);
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome

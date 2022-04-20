@@ -39,6 +39,8 @@
 #include "cryptohome/user_secret_stash_storage.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::CryptohomeCryptoError;
+using hwsec_foundation::status::OkStatus;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::ElementsAre;
@@ -645,7 +647,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
         // An arbitrary auth block state type can be used in this test.
         out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
         out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return CryptoError::CE_NONE;
+        return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
@@ -721,7 +723,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
         // An arbitrary auth block state type can be used in this test.
         out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
         out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return CryptoError::CE_NONE;
+        return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
@@ -747,7 +749,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
         // An arbitrary auth block state type can be used in this test.
         out_auth_block_state.state = PinWeaverAuthBlockState();
         out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return CryptoError::CE_NONE;
+        return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest add_pin_request;
@@ -817,7 +819,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
                     const AuthBlockState& auth_block_state,
                     KeyBlobs& out_key_blobs) {
         out_key_blobs.vkk_key = kFakePerCredentialSecret;
-        return CryptoError::CE_NONE;
+        return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AuthenticateAuthFactor.
   user_data_auth::AuthenticateAuthFactorRequest request;
@@ -892,7 +894,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
                     const AuthBlockState& auth_block_state,
                     KeyBlobs& out_key_blobs) {
         out_key_blobs.vkk_key = kFakePerCredentialSecret;
-        return CryptoError::CE_NONE;
+        return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AuthenticateAuthFactor.
   user_data_auth::AuthenticateAuthFactorRequest request;

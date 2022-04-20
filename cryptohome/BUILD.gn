@@ -367,6 +367,7 @@ if (use.test) {
       "cryptorecovery/recovery_crypto_unittest.cc",
       "dircrypto_data_migrator/migration_helper_unittest.cc",
       "error/converter_test.cc",
+      "error/cryptohome_crypto_error_test.cc",
       "error/cryptohome_error_test.cc",
       "error/cryptohome_mount_error_test.cc",
       "error/cryptohome_tpm_error_test.cc",

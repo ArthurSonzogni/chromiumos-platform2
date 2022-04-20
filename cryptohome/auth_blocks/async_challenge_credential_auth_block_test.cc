@@ -27,10 +27,10 @@ namespace cryptohome {
 namespace {
 void VerifyCreateCallback(base::RunLoop* run_loop,
                           AuthInput* auth_input,
-                          CryptoError error,
+                          CryptoStatus error,
                           std::unique_ptr<KeyBlobs> blobs,
                           std::unique_ptr<AuthBlockState> auth_state) {
-  ASSERT_EQ(error, CryptoError::CE_NONE);
+  ASSERT_TRUE(error.ok());
 
   // Because the salt is generated randomly inside the auth block, this
   // test cannot check the exact values returned. The salt() could be
@@ -135,9 +135,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
 
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 
@@ -194,10 +194,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
 
   base::RunLoop run_loop2;
   AuthBlock::CreateCallback create_callback2 = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // The second create would failed.
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop2.Quit();
       });
 
@@ -211,9 +211,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 
@@ -237,9 +237,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest,
        CreateMissingChallengeCredentialAuthInput) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 
@@ -255,9 +255,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest,
 TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 
@@ -417,8 +417,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
-        ASSERT_EQ(error, CryptoError::CE_NONE);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        ASSERT_TRUE(error.ok());
         EXPECT_EQ(derived_key, blobs->scrypt_key->derived_key());
         EXPECT_EQ(derived_chaps_key, blobs->chaps_scrypt_key->derived_key());
         EXPECT_EQ(derived_reset_seed_key,
@@ -457,8 +457,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 
@@ -471,8 +471,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_FATAL);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_FATAL);
         run_loop.Quit();
       });
 
@@ -489,8 +489,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 
@@ -510,8 +510,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error, CryptoError::CE_OTHER_CRYPTO);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
         run_loop.Quit();
       });
 

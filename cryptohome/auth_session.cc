@@ -22,6 +22,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/error/converter.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -30,6 +31,13 @@
 #include "cryptohome/vault_keyset.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -331,14 +339,13 @@ void AuthSession::AddVaultKeyset(
         challenge_credentials_keyset_info,
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
         on_done,
-    CryptoError callback_error,
+    CryptoStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   user_data_auth::AddCredentialsReply reply;
   // callback_error, key_blobs and auth_state are returned by
   // AuthBlock::CreateCallback.
-  if (callback_error != CryptoError::CE_NONE || key_blobs == nullptr ||
-      auth_state == nullptr) {
+  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
     LOG(ERROR) << "KeyBlobs derivation failed before adding initial keyset.";
     reply.set_error(user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     std::move(on_done).Run(reply);
@@ -477,15 +484,14 @@ void AuthSession::UpdateVaultKeyset(
     const KeyData& key_data,
     base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
         on_done,
-    CryptoError callback_error,
+    CryptoStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   user_data_auth::UpdateCredentialReply reply;
-  if (callback_error != CryptoError::CE_NONE || key_blobs == nullptr ||
-      auth_state == nullptr) {
+  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
     LOG(ERROR) << "KeyBlobs derivation failed before updating keyset.";
-    reply.set_error(
-        static_cast<user_data_auth::CryptohomeErrorCode>(callback_error));
+    StatusChain<CryptohomeError> cryptohome_error = std::move(callback_error);
+    reply.set_error(error::LegacyErrorCodeFromStack(cryptohome_error));
     std::move(on_done).Run(reply);
     return;
   }
@@ -655,7 +661,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
 void AuthSession::LoadVaultKeysetAndFsKeys(
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done,
-    CryptoError error,
+    CryptoStatus error,
     std::unique_ptr<KeyBlobs> key_blobs) {
   user_data_auth::AuthenticateAuthFactorReply reply;
 
@@ -667,12 +673,13 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   if (!key_blobs) {
     LOG(ERROR) << "Failed to load VaultKeyset since key blobs has not been "
                   "derived.";
-    if (error == CryptoError::CE_NONE) {
+    CryptoError crypto_error = error->local_crypto_error();
+    if (error.ok()) {
       // Maps to the default value of MountError which is
       // MOUNT_ERROR_KEY_FAILURE
-      error = CryptoError::CE_OTHER_CRYPTO;
+      crypto_error = CryptoError::CE_OTHER_CRYPTO;
     }
-    reply.set_error(CryptoErrorToCryptohomeError(error));
+    reply.set_error(CryptoErrorToCryptohomeError(crypto_error));
     std::move(on_done).Run(reply);
     return;
   }

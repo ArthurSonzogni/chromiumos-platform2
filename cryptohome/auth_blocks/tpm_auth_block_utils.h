@@ -11,6 +11,7 @@
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -22,9 +23,15 @@ class TpmAuthBlockUtils {
   TpmAuthBlockUtils(const TpmAuthBlockUtils&) = delete;
   TpmAuthBlockUtils& operator=(const TpmAuthBlockUtils&) = delete;
 
-  // A static method which converts an error object.
+  // A static method that converts a TPMRetryAction into CryptoError.
+  static CryptoError TPMRetryActionToCrypto(const hwsec::TPMRetryAction retry);
+
+  // A static method that converts an error object.
   // |err| shouldn't be a nullptr.
   static CryptoError TPMErrorToCrypto(const hwsec::Status& err);
+
+  // A static method that converts a TPM error into CryptohomeCryptoError.
+  static CryptoStatus TPMErrorToCryptohomeCryptoError(hwsec::Status err);
 
   // A static method to report which errors can be recovered from with a retry.
   // |err| shouldn't be a nullptr.
@@ -32,13 +39,13 @@ class TpmAuthBlockUtils {
 
   // Checks if the specified |hash| is the same as the hash for the |tpm_| used
   // by the class.
-  CryptoError IsTPMPubkeyHash(const brillo::SecureBlob& hash) const;
+  CryptoStatus IsTPMPubkeyHash(const brillo::SecureBlob& hash) const;
 
   // This checks that the TPM is ready and that the vault keyset was encrypted
   // with this machine's TPM.
-  CryptoError CheckTPMReadiness(bool has_tpm_key,
-                                bool has_tpm_public_key_hash,
-                                const brillo::SecureBlob& tpm_public_key_hash);
+  CryptoStatus CheckTPMReadiness(bool has_tpm_key,
+                                 bool has_tpm_public_key_hash,
+                                 const brillo::SecureBlob& tpm_public_key_hash);
 
  private:
   Tpm* tpm_;

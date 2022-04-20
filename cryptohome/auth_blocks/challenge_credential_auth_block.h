@@ -15,15 +15,15 @@ class ChallengeCredentialAuthBlock : public LibScryptCompatAuthBlock {
   ChallengeCredentialAuthBlock();
   ~ChallengeCredentialAuthBlock() = default;
 
-  CryptoError Create(const AuthInput& user_input,
-                     AuthBlockState* auth_block_state,
-                     KeyBlobs* key_blobs) override;
+  CryptoStatus Create(const AuthInput& user_input,
+                      AuthBlockState* auth_block_state,
+                      KeyBlobs* key_blobs) override;
 
   // This derives a high entropy secret from the input secret provided by the
   // challenge credential.
-  CryptoError Derive(const AuthInput& user_input,
-                     const AuthBlockState& state,
-                     KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(const AuthInput& user_input,
+                      const AuthBlockState& state,
+                      KeyBlobs* key_blobs) override;
 };
 
 }  // namespace cryptohome

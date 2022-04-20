@@ -64,9 +64,9 @@ TEST_F(AsyncLibScryptCompatAuthBlockTest, CreateTest) {
 
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error, CryptoError::CE_NONE);
+        EXPECT_TRUE(error.ok());
 
         // Because the salt is generated randomly inside the auth block, this
         // test cannot check the exact values returned. The salt() could be
@@ -200,8 +200,8 @@ TEST_F(AsyncLibScryptCompatAuthBlockTest, DeriveTest) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoError error, std::unique_ptr<KeyBlobs> key_out_data) {
-        EXPECT_EQ(error, CryptoError::CE_NONE);
+      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_out_data) {
+        EXPECT_TRUE(error.ok());
         EXPECT_EQ(derived_key, key_out_data->scrypt_key->derived_key());
         EXPECT_EQ(derived_chaps_key,
                   key_out_data->chaps_scrypt_key->derived_key());

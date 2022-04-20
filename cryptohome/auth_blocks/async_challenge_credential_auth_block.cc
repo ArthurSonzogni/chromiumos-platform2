@@ -16,7 +16,15 @@
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/key_objects.h"
+
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -39,26 +47,48 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
                                                CreateCallback callback) {
   if (!key_challenge_service_) {
     LOG(ERROR) << __func__ << ": No valid key challenge service.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoKeyServiceInCreate),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
     return;
   }
 
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << __func__ << ": No valid obfuscated username.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputUserInCreate),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
     return;
   }
 
   if (!auth_input.challenge_credential_auth_input.has_value()) {
     LOG(ERROR) << __func__ << ": No valid challenge credential auth input.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputAuthInCreate),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
     return;
   }
 
   if (auth_input.challenge_credential_auth_input.value()
           .challenge_signature_algorithms.empty()) {
     LOG(ERROR) << __func__ << ": No valid challenge signature algorithms.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputAlgInCreate),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
     return;
   }
 
@@ -84,8 +114,16 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
     std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
     std::unique_ptr<brillo::SecureBlob> passkey) {
   if (!passkey) {
+    // TODO(b/229569484): Make ChallengeCredentialHelper pass the error in.
     LOG(ERROR) << __func__ << ": Failed to obtain challenge-response passkey.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockServiceGenerateFailedInCreate),
+            ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
+                            ErrorAction::kReboot}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
     return;
   }
 
@@ -96,13 +134,18 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
   auto scrypt_auth_state = std::make_unique<AuthBlockState>();
 
   LibScryptCompatAuthBlock scrypt_auth_block;
-  CryptoError error = scrypt_auth_block.Create(
+  CryptoStatus error = scrypt_auth_block.Create(
       auth_input, scrypt_auth_state.get(), key_blobs.get());
 
-  if (error != CryptoError::CE_NONE) {
+  if (!error.ok()) {
     LOG(ERROR) << __func__
                << "scrypt creation failed for challenge credential.";
-    std::move(callback).Run(error, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockCannotCreateScryptInCreate))
+            .Wrap(std::move(error)),
+        nullptr, nullptr);
     return;
   }
 
@@ -116,12 +159,18 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
     auto auth_block_state = std::make_unique<AuthBlockState>(
         AuthBlockState{.state = std::move(cc_state)});
 
-    std::move(callback).Run(CryptoError::CE_NONE, std::move(key_blobs),
-                            std::move(auth_block_state));
+    std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                            std::move(key_blobs), std::move(auth_block_state));
   } else {
     // This should never happen, but handling it anyway on the safe side.
     NOTREACHED() << "scrypt derivation failed for challenge credential.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockScryptDerivationFailedInCreate),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
   }
 }
 
@@ -130,7 +179,12 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
                                                DeriveCallback callback) {
   if (!key_challenge_service_) {
     LOG(ERROR) << __func__ << ": No valid key challenge service.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoKeyServiceInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
     return;
   }
 
@@ -139,7 +193,13 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
   if (cc_state == nullptr) {
     LOG(ERROR) << __func__
                << "Invalid state for challenge credential AuthBlock.";
-    std::move(callback).Run(CryptoError::CE_OTHER_FATAL, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockInvalidBlockStateInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_FATAL),
+        nullptr);
     return;
   }
 
@@ -147,7 +207,13 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR)
         << __func__
         << "No signature challenge info in challenge credential AuthBlock.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockNoChallengeInfoInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
     return;
   }
 
@@ -157,7 +223,13 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR)
         << __func__
         << "No signature algorithm info in challenge credential AuthBlock.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockNoAlgorithmInfoInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
     return;
   }
 
@@ -186,7 +258,14 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
     std::unique_ptr<brillo::SecureBlob> passkey) {
   if (!passkey) {
     LOG(ERROR) << __func__ << ": Failed to obtain challenge-response passkey.";
-    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockServiceDeriveFailedInDerive),
+            ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
+                            ErrorAction::kReboot, ErrorAction::kIncorrectAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
     return;
   }
 
@@ -195,17 +274,23 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
 
   LibScryptCompatAuthBlock scrypt_auth_block;
   auto key_blobs = std::make_unique<KeyBlobs>();
-  CryptoError error =
+  CryptoStatus error =
       scrypt_auth_block.Derive(auth_input, scrypt_state, key_blobs.get());
 
-  if (error != CryptoError::CE_NONE) {
+  if (!error.ok()) {
     LOG(ERROR) << __func__
                << "scrypt derivation failed for challenge credential.";
-    std::move(callback).Run(error, nullptr);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAsyncChalCredAuthBlockScryptDeriveFailedInDerive))
+            .Wrap(std::move(error)),
+        nullptr);
     return;
   }
 
-  std::move(callback).Run(CryptoError::CE_NONE, std::move(key_blobs));
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs));
   return;
 }
 

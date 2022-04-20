@@ -10,6 +10,7 @@
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
@@ -52,7 +53,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   bool GetLockedToSingleUser() const override;
 
-  CryptoError CreateKeyBlobsWithAuthBlock(
+  CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const Credentials& credentials,
       const std::optional<brillo::SecureBlob>& reset_secret,
@@ -66,7 +67,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) override;
 
-  CryptoError DeriveKeyBlobsWithAuthBlock(
+  CryptoStatus DeriveKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const Credentials& credentials,
       const AuthBlockState& state,
@@ -101,26 +102,28 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   void AssignAuthBlockStateToVaultKeyset(
       const AuthBlockState& state, VaultKeyset& vault_keyset) const override;
 
-  CryptoError CreateKeyBlobsWithAuthFactorType(
+  CryptoStatus CreateKeyBlobsWithAuthFactorType(
       AuthFactorType auth_factor_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
       KeyBlobs& out_key_blobs) const override;
 
-  CryptoError DeriveKeyBlobs(const AuthInput& auth_input,
-                             const AuthBlockState& auth_block_state,
-                             KeyBlobs& out_key_blobs) const override;
+  CryptoStatus DeriveKeyBlobs(const AuthInput& auth_input,
+                              const AuthBlockState& auth_block_state,
+                              KeyBlobs& out_key_blobs) const override;
 
  private:
   // This helper function serves as a factory method to return the authblock
   // used in authentication.
-  std::unique_ptr<SyncAuthBlock> GetAuthBlockWithType(
-      const AuthBlockType& auth_block_type) const;
+  hwsec_foundation::status::StatusChainOr<std::unique_ptr<SyncAuthBlock>,
+                                          error::CryptohomeCryptoError>
+  GetAuthBlockWithType(const AuthBlockType& auth_block_type) const;
 
   // This helper function returns an authblock with asynchronous create and
   // derive.
-  std::unique_ptr<AuthBlock> GetAsyncAuthBlockWithType(
-      const AuthBlockType& auth_block_type);
+  hwsec_foundation::status::StatusChainOr<std::unique_ptr<AuthBlock>,
+                                          error::CryptohomeCryptoError>
+  GetAsyncAuthBlockWithType(const AuthBlockType& auth_block_type);
 
   // Non-owned object used for the keyset management operations. Must be alive
   // for the entire lifecycle of the class.

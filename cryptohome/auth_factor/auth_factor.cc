@@ -13,28 +13,19 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/error/converter.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/scrypt_verifier.h"
 
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
+
 namespace cryptohome {
-
-namespace {
-
-user_data_auth::CryptohomeErrorCode CryptoErrorToCryptohomeError(
-    CryptoError crypto_error) {
-  switch (crypto_error) {
-    case CryptoError::CE_TPM_COMM_ERROR:
-      return user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR;
-    case CryptoError::CE_TPM_DEFEND_LOCK:
-      return user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK;
-    case CryptoError::CE_TPM_REBOOT:
-      return user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT;
-    default:
-      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
-  }
-}
-
-}  // namespace
 
 // static
 std::unique_ptr<AuthFactor> AuthFactor::CreateNew(
@@ -45,9 +36,9 @@ std::unique_ptr<AuthFactor> AuthFactor::CreateNew(
     AuthBlockUtility* auth_block_utility,
     KeyBlobs& out_key_blobs) {
   AuthBlockState auth_block_state;
-  CryptoError error = auth_block_utility->CreateKeyBlobsWithAuthFactorType(
+  CryptoStatus error = auth_block_utility->CreateKeyBlobsWithAuthFactorType(
       type, auth_input, auth_block_state, out_key_blobs);
-  if (error != CryptoError::CE_NONE) {
+  if (!error.ok()) {
     LOG(ERROR) << "Auth block creation failed for new auth factor";
     return nullptr;
   }
@@ -67,13 +58,14 @@ user_data_auth::CryptohomeErrorCode AuthFactor::Authenticate(
     const AuthInput& auth_input,
     AuthBlockUtility* auth_block_utility,
     KeyBlobs& out_key_blobs) {
-  CryptoError crypto_error = auth_block_utility->DeriveKeyBlobs(
+  CryptoStatus crypto_error = auth_block_utility->DeriveKeyBlobs(
       auth_input, auth_block_state_, out_key_blobs);
-  if (crypto_error != CryptoError::CE_NONE) {
+  if (!crypto_error.ok()) {
+    StatusChain<CryptohomeError> cryptohome_error = std::move(crypto_error);
     user_data_auth::CryptohomeErrorCode error =
-        CryptoErrorToCryptohomeError(crypto_error);
+        error::LegacyErrorCodeFromStack(cryptohome_error);
     LOG(ERROR) << "Auth factor authentication failed: error " << error
-               << ", crypto error " << error;
+               << ", crypto error " << cryptohome_error;
     return error;
   }
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

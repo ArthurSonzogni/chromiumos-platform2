@@ -68,6 +68,7 @@ using base::FilePath;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::NoErrorAction;
 
@@ -2176,7 +2177,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillRepeatedly(Return(CryptoError::CE_NONE));
+      .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
       .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
@@ -2284,7 +2285,7 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillRepeatedly(Return(CryptoError::CE_NONE));
+      .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
       .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
@@ -2857,7 +2858,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
     EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-        .WillRepeatedly(Return(CryptoError::CE_NONE));
+        .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
         .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
     EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
@@ -2900,7 +2901,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _))
       .WillOnce(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
-      .WillOnce(Return(CryptoError::CE_NONE));
+      .WillOnce(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_,
               AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
@@ -2915,7 +2916,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillRepeatedly(Return(CryptoError::CE_NONE));
+      .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
       .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))

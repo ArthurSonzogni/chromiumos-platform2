@@ -14,7 +14,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <libhwsec/error/tpm_error.h>
 
-#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 
 namespace cryptohome {
 
@@ -24,7 +24,7 @@ namespace error {
 // it's converted straight from TPMError. This class is needed because TPMError
 // is not a derived class of CryptohomeError, but we need TPMError's information
 // in the chain.
-class CryptohomeTPMError : public CryptohomeError {
+class CryptohomeTPMError : public CryptohomeCryptoError {
  public:
   struct MakeStatusTrait {
     // |Unactioned| represents an intermediate state, when we create an error

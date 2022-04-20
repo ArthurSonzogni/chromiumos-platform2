@@ -41,11 +41,13 @@
 namespace cryptohome {
 using base::FilePath;
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeCryptoError;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::GetSecureRandom;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::SecureBlobToHex;
+using hwsec_foundation::status::OkStatus;
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -990,7 +992,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
                           "unused", reset_secret.value()};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
-  auth_block->Create(auth_input, &auth_state, &key_blobs);
+  CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
+  ASSERT_TRUE(status.ok());
 
   EXPECT_TRUE(
       std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
@@ -1015,7 +1018,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
                           reset_secret};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
-  auth_block->Create(auth_input, &auth_state, &key_blobs);
+  CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
+  ASSERT_FALSE(status.ok());
 
   EXPECT_FALSE(
       std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
@@ -1043,7 +1047,8 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetPinWeaverState(&auth_state));
-  auth_block->Derive(auth_input, auth_state, &key_blobs);
+  CryptoStatus status = auth_block->Derive(auth_input, auth_state, &key_blobs);
+  ASSERT_TRUE(status.ok());
 
   CryptoError crypto_error = CryptoError::CE_NONE;
   EXPECT_TRUE(vk.DecryptVaultKeysetEx(key_blobs, &crypto_error));

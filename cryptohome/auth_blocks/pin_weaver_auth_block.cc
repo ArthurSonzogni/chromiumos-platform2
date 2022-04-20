@@ -24,14 +24,21 @@
 #include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using ::cryptohome::error::CryptohomeCryptoError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::HmacSha256;
 using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::Sha256;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -132,9 +139,9 @@ PinWeaverAuthBlock::PinWeaverAuthBlock(
   CHECK_NE(cryptohome_key_loader_, nullptr);
 }
 
-CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
-                                       AuthBlockState* auth_block_state,
-                                       KeyBlobs* key_blobs) {
+CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
+                                        AuthBlockState* auth_block_state,
+                                        KeyBlobs* key_blobs) {
   DCHECK(key_blobs);
 
   brillo::SecureBlob salt =
@@ -149,7 +156,10 @@ CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockScryptDeriveFailedInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // Create a randomly generated high entropy secret, derive VKKSeed from it,
@@ -187,7 +197,10 @@ CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   ValidPcrCriteria valid_pcr_criteria;
   if (!GetValidPCRValues(auth_input.obfuscated_username.value(),
                          &valid_pcr_criteria)) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockPCRComputationFailedInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   uint64_t label;
@@ -196,39 +209,59 @@ CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
                                     delay_sched, valid_pcr_criteria, &label);
   if (ret != LE_CRED_SUCCESS) {
     LogLERetCode(ret);
-    return LECredErrorToCryptoError(ret);
+    // TODO(b/229569661): Convert LeCredential related stuff to use
+    // CryptohomeError.
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocPinWeaverAuthBlockInsertCredentialFailedInCreate),
+        ErrorActionSet({ErrorAction::kReboot}), LECredErrorToCryptoError(ret));
   }
 
   PinWeaverAuthBlockState pin_auth_state;
   pin_auth_state.le_label = label;
   pin_auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(pin_auth_state)};
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
-                                       const AuthBlockState& state,
-                                       KeyBlobs* key_blobs) {
+CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
+                                        const AuthBlockState& state,
+                                        KeyBlobs* key_blobs) {
   const PinWeaverAuthBlockState* auth_state;
   if (!(auth_state = std::get_if<PinWeaverAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockInvalidBlockStateInDerive),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   if (!auth_state->le_label.has_value()) {
     LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing le_label";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoLabelInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   if (!auth_state->salt.has_value()) {
     LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing salt";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoSaltInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob salt = auth_state->salt.value();
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
-    return CryptoError::CE_OTHER_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockDeriveScryptFailedInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_FATAL);
   }
 
   key_blobs->reset_secret = brillo::SecureBlob();
@@ -251,14 +284,19 @@ CryptoError PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
       &key_blobs->reset_secret.value());
 
   if (ret != LE_CRED_SUCCESS) {
-    return LECredErrorToCryptoError(ret);
+    // TODO(b/229569664): Be more specific about the incorrect auth error. i.e.
+    // Exclude false positives.
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockCheckCredFailedInDerive),
+        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        LECredErrorToCryptoError(ret));
   }
 
   brillo::SecureBlob vkk_seed =
       HmacSha256(he_secret, brillo::BlobFromString(kHESecretHmacData));
   key_blobs->vkk_key = HmacSha256(kdf_skey, vkk_seed);
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome

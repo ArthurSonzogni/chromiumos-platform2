@@ -128,7 +128,8 @@ void ActionsFromStack(
   return;
 }
 
-// Retrieves the legacy CryptohomeErrorCode from the stack of errors.
+}  // namespace
+
 user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& stack) {
   // Traverse down the stack for the first error
@@ -142,8 +143,6 @@ user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
   // nullptr, therefore, we should leave an unknown error here.
   return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_UNKNOWN_LEGACY;
 }
-
-}  // namespace
 
 user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,

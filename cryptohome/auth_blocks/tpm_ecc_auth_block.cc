@@ -28,9 +28,13 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec::EllipticCurveError;
 using hwsec::EllipticCurveErrorCode;
 using hwsec::TPMError;
@@ -44,6 +48,9 @@ using hwsec_foundation::kDefaultPassBlobSize;
 using hwsec_foundation::kTpmDecryptMaxRetries;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace {
 
@@ -117,12 +124,16 @@ TpmEccAuthBlock::TpmEccAuthBlock(Tpm* tpm,
   scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 
-CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
-                                       AuthBlockState* auth_block_state,
-                                       KeyBlobs* key_blobs,
-                                       int retry_limit) {
+CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
+                                        AuthBlockState* auth_block_state,
+                                        KeyBlobs* key_blobs,
+                                        int retry_limit) {
   if (retry_limit == 0) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockRetryLimitExceededInCreate),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   const brillo::SecureBlob& user_input = auth_input.user_input.value();
   const std::string& obfuscated_username =
@@ -139,7 +150,9 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     LOG(ERROR) << __func__ << ": Failed to load cryptohome key.";
     // Tell user to reboot the device may resolve this issue.
-    return CryptoError::CE_TPM_REBOOT;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockCryptohomeKeyLoadFailedInCreate),
+        ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_TPM_REBOOT);
   }
 
   // Encrypt the HVKKM using the TPM and the user's passkey. The output is two
@@ -151,7 +164,10 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
 
   if (auth_state.salt.value().size() != CRYPTOHOME_DEFAULT_KEY_SALT_SIZE) {
     LOG(ERROR) << __func__ << ": Wrong salt size.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockSaltWrongSizeInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // SVKKM: Software Vault Keyset Key Material.
@@ -160,7 +176,10 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   if (!DeriveSecretsScrypt(user_input, auth_state.salt.value(),
                            {&pass_blob, &svkkm})) {
     LOG(ERROR) << __func__ << ": Failed to derive pass_blob and SVKKM.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockSVKKMDerivedFailedInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   auth_state.auth_value_rounds = CalcEccAuthValueRounds(tpm_);
@@ -189,7 +208,12 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
       }
 
       if (err->ToTPMRetryAction() != TPMRetryAction::kLater) {
-        return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+        return MakeStatus<CryptohomeCryptoError>(
+                   CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockGetAuthFailedInCreate),
+                   ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                   ErrorAction::kReboot}))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(err)));
       }
 
       // Reload the cryptohome key may resolve this issue.
@@ -199,14 +223,24 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
         LOG(ERROR) << "Unable to reload Cryptohome key while creating "
                       "TpmEccAuthBlock.";
         // Tell user to reboot the device may resolve this issue.
-        return CryptoError::CE_TPM_REBOOT;
+        return MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmEccAuthBlockCryptohomeKeyReloadFailedInCreate),
+            ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_TPM_REBOOT);
       }
     }
 
     if (err != nullptr) {
       LOG(ERROR) << "Failed to get ECC auth value: " << err;
       // Tell user to reboot the device may resolve this issue.
-      return CryptoError::CE_TPM_REBOOT;
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocTpmEccAuthBlockPersistentGetAuthFailedInCreate),
+                 ErrorActionSet({ErrorAction::kReboot,
+                                 ErrorAction::kDevCheckUnexpectedState}),
+                 CryptoError::CE_TPM_REBOOT)
+          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+              std::move(err)));
     }
 
     auth_value = std::move(tmp_value);
@@ -218,11 +252,17 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   // Check the size of materials size before deriving the VKK.
   if (svkkm.size() != kDefaultAesKeySize) {
     LOG(ERROR) << __func__ << ": Wrong SVKKM size.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockSVKKMWrongSizeInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   if (hvkkm.size() != kDefaultAesKeySize) {
     LOG(ERROR) << __func__ << ": Wrong HVKKM size.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockHVKKMWrongSizeInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // Use the Software & Hardware Vault Keyset Key Material to derive the VKK.
@@ -231,7 +271,10 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   // Make sure the size of VKK is correct.
   if (vkk.size() != kDefaultAesKeySize) {
     LOG(ERROR) << __func__ << ": Wrong VKK size.";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockVKKWrongSizeInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   std::map<uint32_t, brillo::Blob> default_pcr_map =
@@ -244,7 +287,12 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
       hvkkm, auth_value, default_pcr_map, &sealed_hvkkm));
   if (err != nullptr) {
     LOG(ERROR) << "Failed to wrap HVKKM with creds: " << err;
-    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockHVKKMSealFailedInCreate),
+               ErrorActionSet({ErrorAction::kReboot,
+                               ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(
+            TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(std::move(err)));
   }
 
   brillo::SecureBlob extended_sealed_hvkkm;
@@ -253,7 +301,13 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   if (err != nullptr) {
     LOG(ERROR) << "Failed to wrap hvkkm with creds for extended user state: "
                << err;
-    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmEccAuthBlockHVKKMExtendedSealFailedInCreate),
+               ErrorActionSet({ErrorAction::kReboot,
+                               ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(
+            TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(std::move(err)));
   }
 
   auth_state.sealed_hvkkm = std::move(sealed_hvkkm);
@@ -264,7 +318,13 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
       tpm_->GetPublicKeyHash(cryptohome_key, &pub_key_hash));
   if (err != nullptr) {
     LOG(ERROR) << "Failed to get the TPM public key hash: " << err;
-    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmEccAuthBlockGetPubkeyHashFailedInCreate),
+               ErrorActionSet({ErrorAction::kReboot,
+                               ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(
+            TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(std::move(err)));
   } else {
     auth_state.tpm_public_key_hash = std::move(pub_key_hash);
   }
@@ -276,23 +336,27 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   key_blobs->vkk_iv = auth_state.vkk_iv.value();
   key_blobs->chaps_iv = auth_state.vkk_iv.value();
   *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError TpmEccAuthBlock::Create(const AuthInput& auth_input,
-                                    AuthBlockState* auth_block_state,
-                                    KeyBlobs* key_blobs) {
+CryptoStatus TpmEccAuthBlock::Create(const AuthInput& auth_input,
+                                     AuthBlockState* auth_block_state,
+                                     KeyBlobs* key_blobs) {
   return TryCreate(auth_input, auth_block_state, key_blobs,
                    kTryCreateMaxRetryCount);
 }
 
-CryptoError TpmEccAuthBlock::Derive(const AuthInput& auth_input,
-                                    const AuthBlockState& state,
-                                    KeyBlobs* key_out_data) {
+CryptoStatus TpmEccAuthBlock::Derive(const AuthInput& auth_input,
+                                     const AuthBlockState& state,
+                                     KeyBlobs* key_out_data) {
   const TpmEccAuthBlockState* auth_state;
   if (!(auth_state = std::get_if<TpmEccAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockInvalidBlockStateInDerive),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // If the cryptohome key isn't loaded, try to load it.
@@ -304,17 +368,21 @@ CryptoError TpmEccAuthBlock::Derive(const AuthInput& auth_input,
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     LOG(ERROR) << __func__ << ": Failed to load cryptohome key.";
     // Tell user to reboot the device may resolve this issue.
-    return CryptoError::CE_TPM_REBOOT;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockLoadKeyFailedInDerive),
+        ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_TPM_REBOOT);
   }
 
   brillo::SecureBlob tpm_public_key_hash =
       auth_state->tpm_public_key_hash.value_or(brillo::SecureBlob());
 
-  CryptoError error = utils_.CheckTPMReadiness(
+  CryptoStatus error = utils_.CheckTPMReadiness(
       auth_state->sealed_hvkkm.has_value(),
       auth_state->tpm_public_key_hash.has_value(), tpm_public_key_hash);
-  if (error != CryptoError::CE_NONE) {
-    return error;
+  if (!error.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockTpmNotReadyInDerive))
+        .Wrap(std::move(error));
   }
 
   bool locked_to_single_user = auth_input.locked_to_single_user.value_or(false);
@@ -323,22 +391,24 @@ CryptoError TpmEccAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob vkk;
   error = DeriveVkk(locked_to_single_user, user_input, *auth_state, &vkk);
 
-  if (error != CryptoError::CE_NONE) {
+  if (!error.ok()) {
     LOG(ERROR) << "Failed to derive VKK.";
-    return error;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockCantDeriveVKKInDerive))
+        .Wrap(std::move(error));
   }
 
   key_out_data->vkk_key = std::move(vkk);
   key_out_data->vkk_iv = auth_state->vkk_iv.value();
   key_out_data->chaps_iv = key_out_data->vkk_iv;
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
-                                       const brillo::SecureBlob& user_input,
-                                       const TpmEccAuthBlockState& auth_state,
-                                       brillo::SecureBlob* vkk) {
+CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
+                                        const brillo::SecureBlob& user_input,
+                                        const TpmEccAuthBlockState& auth_state,
+                                        brillo::SecureBlob* vkk) {
   const brillo::SecureBlob& salt = auth_state.salt.value();
 
   // HVKKM: Hardware Vault Keyset Key Material.
@@ -385,50 +455,72 @@ CryptoError TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
 
     if (err != nullptr) {
       LOG(ERROR) << "Failed to preload the sealed data: " << err;
-      return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocTpmEccAuthBlockPreloadFailedInDeriveVKK),
+                 ErrorActionSet({ErrorAction::kReboot,
+                                 ErrorAction::kDevCheckUnexpectedState}))
+          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+              std::move(err)));
     }
   }
 
   if (!derive_result) {
     LOG(ERROR) << "scrypt derivation failed";
-    return CryptoError::CE_TPM_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockScryptDeriveFailedInDeriveVKK),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_TPM_CRYPTO);
   }
 
   if (svkkm.size() != kDefaultAesKeySize) {
     LOG(ERROR) << __func__ << ": Wrong SVKKM size.";
-    return CryptoError::CE_TPM_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockWrongSVKKMSizeInDeriveVKK),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_TPM_CRYPTO);
   }
 
   brillo::SecureBlob hvkkm;
-  CryptoError error = DeriveHvkkm(locked_to_single_user, std::move(pass_blob),
-                                  sealed_hvkkm, &preload_handle,
-                                  auth_state.auth_value_rounds.value(), &hvkkm);
-  if (error != CryptoError::CE_NONE) {
+  CryptoStatus error = DeriveHvkkm(
+      locked_to_single_user, std::move(pass_blob), sealed_hvkkm,
+      &preload_handle, auth_state.auth_value_rounds.value(), &hvkkm);
+  if (!error.ok()) {
     LOG(ERROR) << "Failed to derive HVKKM.";
-    return error;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmEccAuthBlockDeriveHVKKMFailedInDeriveVKK))
+        .Wrap(std::move(error));
   }
 
   if (hvkkm.size() != kDefaultAesKeySize) {
     LOG(ERROR) << __func__ << ": Wrong HVKKM size.";
-    return CryptoError::CE_TPM_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockWrongHVKKMSizeInDeriveVKK),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_TPM_CRYPTO);
   }
 
   // Use the Software & Hardware Vault Keyset Key Material to derive the VKK.
   *vkk = Sha256(brillo::SecureBlob::Combine(svkkm, hvkkm));
   if (vkk->size() != kDefaultAesKeySize) {
     LOG(ERROR) << __func__ << ": Wrong VKK size.";
-    return CryptoError::CE_TPM_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockWrongVKKSizeInDeriveVKK),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_TPM_CRYPTO);
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
-                                         brillo::SecureBlob pass_blob,
-                                         const brillo::SecureBlob& sealed_hvkkm,
-                                         ScopedKeyHandle* preload_handle,
-                                         uint32_t auth_value_rounds,
-                                         brillo::SecureBlob* hvkkm) {
+CryptoStatus TpmEccAuthBlock::DeriveHvkkm(
+    bool locked_to_single_user,
+    brillo::SecureBlob pass_blob,
+    const brillo::SecureBlob& sealed_hvkkm,
+    ScopedKeyHandle* preload_handle,
+    uint32_t auth_value_rounds,
+    brillo::SecureBlob* hvkkm) {
   std::optional<TpmKeyHandle> sealed_hvkkm_handle;
   // The preload handle may be an invalid handle, we should only use it when
   // it's a valid handle.
@@ -455,7 +547,14 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
       LOG(ERROR) << "Failed to get ECC auth value: " << err;
 
       if (err->ToTPMRetryAction() != TPMRetryAction::kLater) {
-        return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+        return MakeStatus<CryptohomeCryptoError>(
+                   CRYPTOHOME_ERR_LOC(
+                       kLocTpmEccAuthBlockGetAuthFailedInDeriveHVKKM),
+                   ErrorActionSet({ErrorAction::kReboot,
+                                   ErrorAction::kDevCheckUnexpectedState,
+                                   ErrorAction::kAuth}))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(err)));
       }
 
       // Reload the cryptohome key may resolve this issue.
@@ -465,14 +564,24 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
         LOG(ERROR) << "Unable to reload Cryptohome key while decrypting "
                       "TpmEccAuthBlock.";
         // Tell the user to reboot the device may resolve this issue.
-        return CryptoError::CE_TPM_REBOOT;
+        return MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockReloadKeyFailedInDeriveHVKKM),
+            ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_TPM_REBOOT);
       }
     }
 
     if (err != nullptr) {
       LOG(ERROR) << "Failed to get ECC auth value: " << err;
       // Tell the user to reboot the device may resolve this issue.
-      return CryptoError::CE_TPM_REBOOT;
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocTpmEccAuthBlockPersistentGetAuthFailedInDeriveHVKKM),
+                 ErrorActionSet({ErrorAction::kReboot,
+                                 ErrorAction::kDevCheckUnexpectedState,
+                                 ErrorAction::kAuth}),
+                 CryptoError::CE_TPM_REBOOT)
+          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+              std::move(err)));
     }
 
     auth_value = std::move(tmp_value);
@@ -486,10 +595,14 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
       sealed_hvkkm_handle, sealed_hvkkm, auth_value, pcr_map, hvkkm));
   if (err != nullptr) {
     LOG(ERROR) << "Failed to unwrap VKK with creds: " << err;
-    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockUnsealFailedInDeriveHVKKM),
+               ErrorActionSet({ErrorAction::kIncorrectAuth}))
+        .Wrap(
+            TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(std::move(err)));
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome

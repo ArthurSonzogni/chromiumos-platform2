@@ -23,16 +23,23 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/tpm.h"
 
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
 using cryptohome::cryptorecovery::OnboardingMetadata;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::DeriveSecretsScrypt;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::kDefaultAesKeySize;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 namespace {
@@ -61,7 +68,7 @@ CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
   DCHECK(tpm_);
 }
 
-CryptoError CryptohomeRecoveryAuthBlock::Create(
+CryptoStatus CryptohomeRecoveryAuthBlock::Create(
     const AuthInput& auth_input,
     AuthBlockState* auth_block_state,
     KeyBlobs* key_blobs) {
@@ -79,7 +86,12 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
   std::unique_ptr<RecoveryCryptoImpl> recovery =
       RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(tpm_));
   if (!recovery) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockCantCreateRecoveryInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // Generates HSM payload that would be persisted on a chromebook.
@@ -95,7 +107,12 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
                                     &hsm_payload, &rsa_pub_key,
                                     &destination_share, &recovery_key,
                                     &channel_pub_key, &channel_priv_key)) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockGenerateHSMPayloadFailedInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // Generate wrapped keys from the recovery key.
@@ -103,7 +120,12 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsScrypt(recovery_key, salt, {&aes_skey, &vkk_iv})) {
-    return CryptoError::CE_OTHER_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_FATAL);
   }
   key_blobs->vkk_key = aes_skey;
   key_blobs->vkk_iv = vkk_iv;
@@ -114,7 +136,12 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
 
   brillo::SecureBlob hsm_payload_cbor;
   if (!SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_cbor)) {
-    return CryptoError::CE_OTHER_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockCborConvFailedInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_FATAL);
   }
   auth_state.hsm_payload = hsm_payload_cbor;
 
@@ -132,23 +159,33 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
     CryptoError err =
         revocation::Create(le_manager_, &revocation_state, key_blobs);
     if (err != CryptoError::CE_NONE) {
-      return err;
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocCryptohomeRecoveryAuthBlockRevocationCreateFailedInCreate),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          err);
     }
     auth_block_state->revocation_state = revocation_state;
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
-                                                const AuthBlockState& state,
-                                                KeyBlobs* key_blobs) {
+CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
+                                                 const AuthBlockState& state,
+                                                 KeyBlobs* key_blobs) {
   DCHECK(key_blobs);
   const CryptohomeRecoveryAuthBlockState* auth_state;
   if (!(auth_state =
             std::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockInvalidBlockStateInDerive),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
@@ -171,13 +208,23 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   std::unique_ptr<RecoveryCryptoImpl> recovery =
       RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(tpm_));
   if (!recovery) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockCantCreateRecoveryInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   HsmResponsePlainText response_plain_text;
   if (!recovery->DecryptResponsePayload(channel_priv_key, epoch_response,
                                         response_proto, &response_plain_text)) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockDecryptFailedInDerive),
+        ErrorActionSet({ErrorAction::kIncorrectAuth, ErrorAction::kReboot,
+                        ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   brillo::SecureBlob recovery_key;
@@ -186,7 +233,12 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
           response_plain_text.key_auth_value, plaintext_destination_share,
           ephemeral_pub_key, response_plain_text.mediated_point,
           &recovery_key)) {
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockRecoveryFailedInDerive),
+        ErrorActionSet({ErrorAction::kIncorrectAuth, ErrorAction::kReboot,
+                        ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   // Generate wrapped keys from the recovery key.
@@ -194,7 +246,12 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsScrypt(recovery_key, salt, {&aes_skey, &vkk_iv})) {
-    return CryptoError::CE_OTHER_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_FATAL);
   }
   key_blobs->vkk_key = aes_skey;
   key_blobs->vkk_iv = vkk_iv;
@@ -203,11 +260,19 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   if (state.revocation_state.has_value()) {
     DCHECK(revocation::IsRevocationSupported(tpm_));
     DCHECK(le_manager_);
-    return revocation::Derive(le_manager_, state.revocation_state.value(),
-                              key_blobs);
+    CryptoError crypto_err = revocation::Derive(
+        le_manager_, state.revocation_state.value(), key_blobs);
+    if (crypto_err != CryptoError::CE_NONE) {
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocCryptohomeRecoveryAuthBlockRevocationDeriveFailedInDerive),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          crypto_err);
+    }
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome

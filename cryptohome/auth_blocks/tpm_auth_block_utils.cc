@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -13,10 +14,19 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -26,6 +36,11 @@ TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
 
 CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(const hwsec::Status& err) {
   hwsec::TPMRetryAction action = err->ToTPMRetryAction();
+  return TPMRetryActionToCrypto(action);
+}
+
+CryptoError TpmAuthBlockUtils::TPMRetryActionToCrypto(
+    const hwsec::TPMRetryAction action) {
   switch (action) {
     case hwsec::TPMRetryAction::kCommunication:
     case hwsec::TPMRetryAction::kLater:
@@ -41,13 +56,18 @@ CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(const hwsec::Status& err) {
   }
 }
 
+CryptoStatus TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+    hwsec::Status err) {
+  return MakeStatus<CryptohomeTPMError>(std::move(err));
+}
+
 bool TpmAuthBlockUtils::TPMErrorIsRetriable(const hwsec::Status& err) {
   hwsec::TPMRetryAction action = err->ToTPMRetryAction();
   return action == hwsec::TPMRetryAction::kLater ||
          action == hwsec::TPMRetryAction::kCommunication;
 }
 
-CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
+CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
     const brillo::SecureBlob& hash) const {
   brillo::SecureBlob pub_key_hash;
   if (hwsec::Status err = tpm_->GetPublicKeyHash(
@@ -56,7 +76,12 @@ CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
       if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
         LOG(ERROR) << "Unable to reload key.";
         ReportCryptohomeError(kCannotReadTpmPublicKey);
-        return CryptoError::CE_NO_PUBLIC_KEY_HASH;
+        return MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmAuthBlockUtilsCryptohomeKeyLoadFailedInPubkeyHash),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            CryptoError::CE_NO_PUBLIC_KEY_HASH);
       } else {
         err = tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
                                      &pub_key_hash);
@@ -66,26 +91,40 @@ CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
       LOG(ERROR) << "Unable to get the cryptohome public key from the TPM: "
                  << err;
       ReportCryptohomeError(kCannotReadTpmPublicKey);
-      return TPMErrorToCrypto(err);
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocTpmAuthBlockUtilsGetPubkeyFailedInPubkeyHash),
+                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                 ErrorAction::kReboot,
+                                 ErrorAction::kPowerwash}))
+          .Wrap(TPMErrorToCryptohomeCryptoError(std::move(err)));
     }
   }
 
   if ((hash.size() != pub_key_hash.size()) ||
       (brillo::SecureMemcmp(hash.data(), pub_key_hash.data(),
                             pub_key_hash.size()))) {
-    return CryptoError::CE_TPM_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsHashIncorrectInPubkeyHash),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        CryptoError::CE_TPM_FATAL);
   }
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoError TpmAuthBlockUtils::CheckTPMReadiness(
+CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
     bool has_tpm_key,
     bool has_tpm_public_key_hash,
     const brillo::SecureBlob& tpm_public_key_hash) {
   if (!has_tpm_key) {
     LOG(ERROR) << "Decrypting with TPM, but no TPM key present.";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
-    return CryptoError::CE_TPM_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsNoTpmKeyInCheckReadiness),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        CryptoError::CE_TPM_FATAL);
   }
 
   // If the TPM is enabled but not owned, and the keyset is TPM wrapped, then
@@ -97,7 +136,11 @@ CryptoError TpmAuthBlockUtils::CheckTPMReadiness(
                << "keyset was wrapped by the TPM.  It is impossible to "
                << "recover this keyset.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotOwned);
-    return CryptoError::CE_TPM_FATAL;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsTpmNotOwnedInCheckReadiness),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        CryptoError::CE_TPM_FATAL);
   }
 
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
@@ -108,20 +151,31 @@ CryptoError TpmAuthBlockUtils::CheckTPMReadiness(
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotAvailable);
-    return CryptoError::CE_TPM_COMM_ERROR;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocTpmAuthBlockUtilsNoCryptohomeKeyInCheckReadiness),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        CryptoError::CE_TPM_COMM_ERROR);
   }
 
   // This is a validity check that the keys still match.
   if (has_tpm_public_key_hash) {
-    CryptoError error = IsTPMPubkeyHash(tpm_public_key_hash);
-    if (error != CryptoError::CE_NONE) {
+    CryptoStatus error = IsTPMPubkeyHash(tpm_public_key_hash);
+    if (!error.ok()) {
       LOG(ERROR) << "TPM public key hash mismatch.";
       ReportCryptohomeError(kDecryptAttemptButTpmKeyMismatch);
-      return error;
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocTpmAuthBlockUtilsCHKeyMismatchInCheckReadiness),
+                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                 ErrorAction::kReboot,
+                                 ErrorAction::kPowerwash}))
+          .Wrap(std::move(error));
     }
   }
 
-  return CryptoError::CE_NONE;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome

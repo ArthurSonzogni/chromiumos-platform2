@@ -15,7 +15,15 @@
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/tpm.h"
+
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -25,33 +33,46 @@ DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
       tpm_auth_block_(tpm, cryptohome_keys_manager),
       lib_scrypt_compat_auth_block_() {}
 
-CryptoError DoubleWrappedCompatAuthBlock::Create(
+CryptoStatus DoubleWrappedCompatAuthBlock::Create(
     const AuthInput& user_input,
     AuthBlockState* auth_block_state,
     KeyBlobs* key_blobs) {
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
-  return CryptoError::CE_OTHER_CRYPTO;
+  return MakeStatus<CryptohomeCryptoError>(
+      CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockUnsupportedInCreate),
+      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      CryptoError::CE_OTHER_CRYPTO);
 }
 
-CryptoError DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
-                                                 const AuthBlockState& state,
-                                                 KeyBlobs* key_blobs) {
+CryptoStatus DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
+                                                  const AuthBlockState& state,
+                                                  KeyBlobs* key_blobs) {
   const DoubleWrappedCompatAuthBlockState* auth_state;
   if (!(auth_state =
             std::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
-    return CryptoError::CE_OTHER_CRYPTO;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
-  CryptoError error =
+  CryptoStatus error =
       lib_scrypt_compat_auth_block_.Derive(auth_input, scrypt_state, key_blobs);
-  if (error == CryptoError::CE_NONE) {
-    return CryptoError::CE_NONE;
+  if (error.ok()) {
+    return OkStatus<CryptohomeCryptoError>();
   }
 
   AuthBlockState tpm_state = {.state = auth_state->tpm_state};
-  return tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs);
+  error = tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs);
+  if (error.ok())
+    return OkStatus<CryptohomeCryptoError>();
+  return MakeStatus<CryptohomeCryptoError>(
+             CRYPTOHOME_ERR_LOC(
+                 kLocDoubleWrappedAuthBlockTpmDeriveFailedInDerive))
+      .Wrap(std::move(error));
 }
 
 }  // namespace cryptohome

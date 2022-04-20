@@ -10,6 +10,8 @@
 #include <base/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/crypto_error.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome {
@@ -18,6 +20,10 @@ namespace error {
 
 // This file hosts utilities that converts the CryptohomeError class into the
 // error format on the dbus.
+
+// Retrieves the legacy CryptohomeErrorCode from the stack of errors.
+user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& stack);
 
 // CryptohomeErrorToUserDataAuthError converts the CryptohomeError class into
 // the error protobuf that is used by the dbus API (userdataauth).

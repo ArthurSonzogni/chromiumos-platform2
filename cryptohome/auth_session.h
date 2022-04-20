@@ -25,6 +25,7 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -230,7 +231,7 @@ class AuthSession final {
           challenge_credentials_keyset_info,
       base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
           on_done,
-      CryptoError callback_error,
+      CryptoStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state);
 
@@ -243,7 +244,7 @@ class AuthSession final {
       const KeyData& key_data,
       base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
           on_done,
-      CryptoError callback_error,
+      CryptoStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state);
 
@@ -281,7 +282,7 @@ class AuthSession final {
   void LoadVaultKeysetAndFsKeys(
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
-      CryptoError error,
+      CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs);
 
   const std::string username_;

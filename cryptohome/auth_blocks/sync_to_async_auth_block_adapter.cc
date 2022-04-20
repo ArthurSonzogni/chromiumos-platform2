@@ -7,6 +7,10 @@
 #include <memory>
 #include <utility>
 
+using cryptohome::error::CryptohomeCryptoError;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
+
 namespace cryptohome {
 
 SyncToAsyncAuthBlockAdapter::SyncToAsyncAuthBlockAdapter(
@@ -19,26 +23,27 @@ void SyncToAsyncAuthBlockAdapter::Create(const AuthInput& user_input,
                                          CreateCallback callback) {
   auto state = std::make_unique<AuthBlockState>();
   auto key_blobs = std::make_unique<KeyBlobs>();
-  CryptoError error =
+  CryptoStatus error =
       delegate_->Create(user_input, state.get(), key_blobs.get());
-  if (error != CryptoError::CE_NONE) {
-    std::move(callback).Run(error, nullptr, nullptr);
+  if (!error.ok()) {
+    std::move(callback).Run(std::move(error), nullptr, nullptr);
     return;
   }
-  std::move(callback).Run(CryptoError::CE_NONE, std::move(key_blobs),
-                          std::move(state));
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs), std::move(state));
 }
 
 void SyncToAsyncAuthBlockAdapter::Derive(const AuthInput& user_input,
                                          const AuthBlockState& state,
                                          DeriveCallback callback) {
   auto key_blobs = std::make_unique<KeyBlobs>();
-  CryptoError error = delegate_->Derive(user_input, state, key_blobs.get());
-  if (error != CryptoError::CE_NONE) {
-    std::move(callback).Run(error, nullptr);
+  CryptoStatus error = delegate_->Derive(user_input, state, key_blobs.get());
+  if (!error.ok()) {
+    std::move(callback).Run(std::move(error), nullptr);
     return;
   }
-  std::move(callback).Run(CryptoError::CE_NONE, std::move(key_blobs));
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs));
 }
 
 }  // namespace cryptohome

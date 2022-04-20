@@ -10,7 +10,7 @@
 #include <base/callback.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
-#include "cryptohome/crypto_error.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -28,11 +28,10 @@ class AuthBlock {
 
   // If the operation succeeds, |key_blobs| will contain the constructed
   // KeyBlobs, AuthBlockState will be populated in |auth_block_state| and
-  // |error| will be CryptoError::CE_NONE. On failure, error will be
-  // populated, and should not rely on the value of key_blobs and
-  // auth_block_state.
+  // |error| will be an ok status. On failure, error will be populated,
+  // and should not rely on the value of key_blobs and auth_block_state.
   using CreateCallback = base::OnceCallback<void(
-      CryptoError error,
+      CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state)>;
 
@@ -40,25 +39,24 @@ class AuthBlock {
   // user input.
   // This asynchronous API receives a callback to construct the KeyBlobs with
   // the released TPM secrets in an unblocking way. Once the callback is done,
-  // on success, CryptoError will be CryptoError::CE_NONE, KeyBlobs and
-  // AuthBlockState will be populated. On Failure, CryptoError is assigned the
-  // related error value, the value of KeyBlobs and AuthBlockState are not valid
-  // to use.
+  // on success, error will be an ok status, KeyBlobs and AuthBlockState will be
+  // populated. On Failure, the error is assigned the related error value, the
+  // value of KeyBlobs and AuthBlockState are not valid to use.
   virtual void Create(const AuthInput& user_input, CreateCallback callback) = 0;
 
   // If the operation succeeds, |key_blobs| will contain the constructed
-  // KeyBlobs and |error| will be CryptoError::CE_NONE. On failure, error will
-  // be populated, and should not rely on the value of key_blobs.
+  // KeyBlobs and |error| will be an ok status. On failure, error will be
+  // populated, and should not rely on the value of key_blobs.
   using DeriveCallback = base::OnceCallback<void(
-      CryptoError error, std::unique_ptr<KeyBlobs> key_blobs)>;
+      CryptoStatus error, std::unique_ptr<KeyBlobs> key_blobs)>;
 
   // This is implemented by concrete auth methods to map the user secret
   // input/credentials into a key.
   // This asynchronous API receives a callback to construct the KeyBlobs with
   // the released TPM secrets in an unblocking way. Once the callback is done,
-  // on success, CryptoError will be CryptoError::CE_NONE, KeyBlobs  will be
-  // populated. On Failure, CryptoError is assigned the related error value, the
-  // value of KeyBlobs are not valid to use.
+  // on success, error will be an ok status, KeyBlobs will be populated. On
+  // Failure, error is assigned the related error value, the value of KeyBlobs
+  // are not valid to use.
   virtual void Derive(const AuthInput& auth_input,
                       const AuthBlockState& state,
                       DeriveCallback callback) = 0;
@@ -84,17 +82,16 @@ class SyncAuthBlock {
 
   // This is implemented by concrete auth methods to create a fresh key from
   // user input. The key will then be used to wrap the keyset.
-  // On success, it returns CryptoError::CE_NONE, or the specific error on
-  // failure.
-  virtual CryptoError Create(const AuthInput& user_input,
-                             AuthBlockState* auth_block_state,
-                             KeyBlobs* key_blobs) = 0;
+  // On success, it returns an ok status, or the specific error on failure.
+  virtual CryptoStatus Create(const AuthInput& user_input,
+                              AuthBlockState* auth_block_state,
+                              KeyBlobs* key_blobs) = 0;
 
   // This is implemented by concrete auth methods to map the user secret
   // input into a key. This method should successfully authenticate the user.
-  virtual CryptoError Derive(const AuthInput& auth_input,
-                             const AuthBlockState& state,
-                             KeyBlobs* key_blobs) = 0;
+  virtual CryptoStatus Derive(const AuthInput& auth_input,
+                              const AuthBlockState& state,
+                              KeyBlobs* key_blobs) = 0;
 
   DerivationType derivation_type() const { return derivation_type_; }
 
