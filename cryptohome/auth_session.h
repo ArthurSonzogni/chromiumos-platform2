@@ -16,6 +16,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -26,6 +27,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -84,7 +86,7 @@ class AuthSession final {
 
   // OnUserCreated is called when the user and their homedir are newly created.
   // Must be called no more than once.
-  user_data_auth::CryptohomeErrorCode OnUserCreated();
+  CryptohomeStatus OnUserCreated();
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
@@ -103,13 +105,13 @@ class AuthSession final {
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
   // Note: only USS users are supported currently.
-  user_data_auth::CryptohomeErrorCode AddAuthFactor(
+  CryptohomeStatus AddAuthFactor(
       const user_data_auth::AddAuthFactorRequest& request);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
   // steps involved in multi-factor authentication.
-  user_data_auth::CryptohomeErrorCode Authenticate(
+  CryptohomeStatus Authenticate(
       const cryptohome::AuthorizationRequest& authorization_request);
 
   // Authenticate is called when the user wants to authenticate the current
@@ -191,8 +193,7 @@ class AuthSession final {
       const std::string& serialized_token);
 
   // Extends the timer for the AuthSession by kAuthSessionExtensionInMinutes.
-  user_data_auth::CryptohomeErrorCode ExtendTimer(
-      const base::TimeDelta kAuthSessionExtension);
+  CryptohomeStatus ExtendTimer(const base::TimeDelta kAuthSessionExtension);
 
   // Set status for testing only.
   void SetStatus(const AuthStatus status) { status_ = status; }
@@ -210,9 +211,8 @@ class AuthSession final {
 
   // This function returns credentials based on the state of the current
   // |AuthSession|.
-  std::unique_ptr<Credentials> GetCredentials(
-      const cryptohome::AuthorizationRequest& authorization_request,
-      MountError* error);
+  MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
+      const cryptohome::AuthorizationRequest& authorization_request);
 
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
@@ -260,7 +260,7 @@ class AuthSession final {
 
   // Creates a new per-credential secret, adds the key block for the new secret
   // to the USS and persist to the disk.
-  user_data_auth::CryptohomeErrorCode AddAuthFactorViaUserSecretStash(
+  CryptohomeStatus AddAuthFactorViaUserSecretStash(
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
@@ -268,7 +268,7 @@ class AuthSession final {
 
   // Loads and decrypts the USS payload with |auth_factor_label| using the given
   // KeyBlobs.
-  user_data_auth::CryptohomeErrorCode LoadUSSMainKeyAndFsKeyset(
+  CryptohomeStatus LoadUSSMainKeyAndFsKeyset(
       const std::string& auth_factor_label, const KeyBlobs& key_blobs);
 
   // This function is used to reset the attempt count for a low entropy
@@ -277,7 +277,7 @@ class AuthSession final {
 
   // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
   // and the |auth_factor|.
-  user_data_auth::CryptohomeErrorCode AuthenticateViaUserSecretStash(
+  CryptohomeStatus AuthenticateViaUserSecretStash(
       const std::string& auth_factor_label,
       const AuthInput auth_input,
       AuthFactor& auth_factor);

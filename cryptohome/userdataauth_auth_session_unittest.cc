@@ -181,15 +181,13 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   // ... ephemeral, ...
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-  ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
   ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 
   // ... or regular.
   auth_session = auth_session_manager_->CreateAuthSession(kUsername2, 0);
-  ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword2)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword2)).ok());
   ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 }
@@ -261,8 +259,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
-  ASSERT_THAT(auth_session3->Authenticate(CreateAuthorization(kPassword3)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(
+      auth_session3->Authenticate(CreateAuthorization(kPassword3)).ok());
   ASSERT_THAT(PreparePersistentVaultImpl(auth_session3->serialized_token(), {}),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 }
@@ -295,8 +293,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
-  ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
 
   // If no shadow homedir - we do not have a user.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
@@ -330,8 +327,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-  ASSERT_THAT(auth_session2->Authenticate(CreateAuthorization(kPassword2)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(
+      auth_session2->Authenticate(CreateAuthorization(kPassword2)).ok());
   ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session2->serialized_token()),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
@@ -350,8 +347,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
-  ASSERT_THAT(auth_session3->Authenticate(CreateAuthorization(kPassword3)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(
+      auth_session3->Authenticate(CreateAuthorization(kPassword3)).ok());
   ASSERT_THAT(PreparePersistentVaultImpl(auth_session3->serialized_token(), {}),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 }
@@ -365,8 +362,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-  ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
-              Eq(MOUNT_ERROR_NONE));
+  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
 
   // Vault already exists.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))

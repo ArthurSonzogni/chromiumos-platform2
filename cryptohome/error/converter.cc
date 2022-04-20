@@ -254,6 +254,18 @@ template void ReplyWithError(
     const user_data_auth::AuthenticateAuthFactorReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
 
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+        on_done,
+    const user_data_auth::AddCredentialsReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+        on_done,
+    const user_data_auth::UpdateCredentialReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+
 }  // namespace error
 
 }  // namespace cryptohome

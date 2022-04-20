@@ -3802,16 +3802,13 @@ bool UserDataAuth::AuthenticateAuthSession(
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
   // TODO(crbug.com/1157622) : Complete the API with actual authentication.
-  user_data_auth::CryptohomeErrorCode ret =
-      auth_session->Authenticate(request.authorization());
+  CryptohomeStatus ret = auth_session->Authenticate(request.authorization());
 
-  StatusChain<CryptohomeError> err = OkStatus<CryptohomeError>();
-  if (ret != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    // TODO(b/229688435): Wrap the error after AuthSession is migrated to use
-    // CryptohomeError.
+  CryptohomeStatus err = OkStatus<CryptohomeError>();
+  if (!ret.ok()) {
     err = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthFailedInAuthAuthSession),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}), ret);
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthFailedInAuthAuthSession))
+              .Wrap(std::move(ret));
   }
   reply.set_authenticated(auth_session->GetStatus() ==
                           AuthStatus::kAuthStatusAuthenticated);
@@ -3856,16 +3853,16 @@ bool UserDataAuth::ExtendAuthSession(
 
   // Extend specified AuthSession.
   auto timer_extension = base::Seconds(request.extension_duration());
-  user_data_auth::CryptohomeErrorCode ret =
-      auth_session->ExtendTimer(timer_extension);
+  CryptohomeStatus ret = auth_session->ExtendTimer(timer_extension);
 
-  StatusChain<CryptohomeError> err = OkStatus<CryptohomeError>();
-  if (ret != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+  CryptohomeStatus err = OkStatus<CryptohomeError>();
+  if (!ret.ok()) {
     // TODO(b/229688435): Wrap the error after AuthSession is migrated to use
     // CryptohomeError.
-    err = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthExtendFailedInExtendAuthSession),
-        ErrorActionSet({ErrorAction::kReboot}), ret);
+    err =
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthExtendFailedInExtendAuthSession))
+            .Wrap(std::move(ret));
   }
   ReplyWithError(std::move(on_done), reply, std::move(err));
   return true;
@@ -4225,12 +4222,12 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
 
   // Let the auth session perform any finalization operations for a newly
   // created user.
-  user_data_auth::CryptohomeErrorCode ret = auth_session->OnUserCreated();
-  if (ret != user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+  CryptohomeStatus ret = auth_session->OnUserCreated();
+  if (!ret.ok()) {
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocUserDataAuthFinalizeFailedInCreatePersistentUser),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), ret);
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthFinalizeFailedInCreatePersistentUser))
+        .Wrap(std::move(ret));
   }
   return OkStatus<CryptohomeError>();
 }
@@ -4251,9 +4248,18 @@ bool UserDataAuth::AddAuthFactor(
     std::move(on_done).Run(reply);
     return false;
   }
-  error = auth_session->AddAuthFactor(request);
+  // TODO(b/229708597): Migrate and wrap the returned status.
+  CryptohomeStatus status = auth_session->AddAuthFactor(request);
+  if (!status.ok()) {
+    if (status->local_legacy_error().has_value()) {
+      error = status->local_legacy_error().value();
+    } else {
+      error =
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_UNKNOWN_LEGACY;
+    }
+    reply.set_error(error);
+  }
 
-  reply.set_error(error);
   std::move(on_done).Run(reply);
   return true;
 }

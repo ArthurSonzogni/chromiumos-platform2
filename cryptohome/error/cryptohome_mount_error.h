@@ -36,6 +36,11 @@ class CryptohomeMountError : public CryptohomeError {
       const MountError mount_err,
       const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
+  // If the legacy error code is not supplied, it is automatically converted.
+  CryptohomeMountError(const ErrorLocationPair& loc,
+                       const std::set<Action>& actions,
+                       const MountError mount_err);
+
   MountError mount_error() const { return mount_error_; }
 
  private:

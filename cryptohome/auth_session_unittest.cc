@@ -40,7 +40,10 @@
 
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::CryptohomeMountError;
 using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::ElementsAre;
@@ -147,7 +150,6 @@ TEST_F(AuthSessionTest, TokenFromString) {
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialRegularUser) {
   // SETUP
-  MountError error;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool* called, const base::UnguessableToken&) { *called = true; },
@@ -164,15 +166,16 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
   cryptohome::AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
-  std::unique_ptr<Credentials> test_creds =
-      auth_session.GetCredentials(authorization_request, &error);
+  MountStatusOr<std::unique_ptr<Credentials>> test_creds =
+      auth_session.GetCredentials(authorization_request);
+  ASSERT_TRUE(test_creds.ok());
 
   // VERIFY
   // SerializeToString is used in the absence of a comparator for KeyData
   // protobuf.
   std::string key_data_serialized1 = "1";
   std::string key_data_serialized2 = "2";
-  test_creds->key_data().SerializeToString(&key_data_serialized1);
+  test_creds.value()->key_data().SerializeToString(&key_data_serialized1);
   authorization_request.mutable_key()->data().SerializeToString(
       &key_data_serialized2);
   EXPECT_EQ(key_data_serialized1, key_data_serialized2);
@@ -182,7 +185,6 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   // SETUP
-  MountError error;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool* called, const base::UnguessableToken&) { *called = true; },
@@ -205,19 +207,20 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
   authorization_request.mutable_key()->mutable_data()->set_type(
       KeyData::KEY_TYPE_KIOSK);
-  std::unique_ptr<Credentials> test_creds =
-      auth_session.GetCredentials(authorization_request, &error);
+  MountStatusOr<std::unique_ptr<Credentials>> test_creds =
+      auth_session.GetCredentials(authorization_request);
+  ASSERT_TRUE(test_creds.ok());
 
   // VERIFY
   // SerializeToString is used in the absence of a comparator for KeyData
   // protobuf.
   std::string key_data_serialized1 = "1";
   std::string key_data_serialized2 = "2";
-  test_creds->key_data().SerializeToString(&key_data_serialized1);
+  test_creds.value()->key_data().SerializeToString(&key_data_serialized1);
   authorization_request.mutable_key()->data().SerializeToString(
       &key_data_serialized2);
   EXPECT_EQ(key_data_serialized1, key_data_serialized2);
-  EXPECT_EQ(test_creds->passkey(), fake_pass_blob);
+  EXPECT_EQ(test_creds.value()->passkey(), fake_pass_blob);
 }
 
 // Test if AuthSession correctly adds new credentials for a new user.
@@ -264,9 +267,9 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
           });
 
   // Verify.
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.OnUserCreated());
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
   ASSERT_TRUE(auth_session.timer_.IsRunning());
+
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -312,9 +315,9 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
               AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.OnUserCreated());
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
   ASSERT_TRUE(auth_session.timer_.IsRunning());
+
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -372,9 +375,9 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
       .WillOnce(Return(true));
 
   // Verify.
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.Authenticate(authorization_request));
+  EXPECT_TRUE(auth_session.Authenticate(authorization_request).ok());
   ASSERT_TRUE(auth_session.timer_.IsRunning());
+
   EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
   EXPECT_TRUE(auth_session.TakeCredentialVerifier()->Verify(
       brillo::SecureBlob(kFakePass)));
@@ -546,7 +549,7 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
-  auth_session.OnUserCreated();
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
 
   // Verify.
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -584,7 +587,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
-  auth_session.OnUserCreated();
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
 
   // Verify.
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -605,7 +608,7 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
                            &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
-  auth_session.OnUserCreated();
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
 
   // Verify.
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -625,7 +628,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
                            &keyset_management_, &auth_block_utility_,
                            &auth_factor_manager_, &user_secret_stash_storage_);
   // Creating the user.
-  auth_session.OnUserCreated();
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
@@ -653,8 +656,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   request.mutable_auth_factor()->set_label(kFakeLabel);
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  EXPECT_EQ(auth_session.AddAuthFactor(request),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_session.AddAuthFactor(request).ok());
 
   // Verify.
   std::map<std::string, AuthFactorType> stored_factors =
@@ -686,7 +688,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   // Test and Verify.
-  EXPECT_EQ(auth_session.AddAuthFactor(request),
+  CryptohomeStatus status = auth_session.AddAuthFactor(request);
+  ASSERT_FALSE(status.ok());
+  EXPECT_EQ(status->local_legacy_error().value(),
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
 
@@ -702,7 +706,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
                            &keyset_management_, &auth_block_utility_,
                            &auth_factor_manager_, &user_secret_stash_storage_);
   // Creating the user.
-  auth_session.OnUserCreated();
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
@@ -729,8 +733,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   request.mutable_auth_factor()->set_label(kFakeLabel);
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  EXPECT_EQ(auth_session.AddAuthFactor(request),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_session.AddAuthFactor(request).ok());
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
@@ -756,8 +759,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
   add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(
       kFakePin);
-  EXPECT_EQ(auth_session.AddAuthFactor(add_pin_request),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_session.AddAuthFactor(add_pin_request).ok());
 
   // Verify.
   std::map<std::string, AuthFactorType> stored_factors =
