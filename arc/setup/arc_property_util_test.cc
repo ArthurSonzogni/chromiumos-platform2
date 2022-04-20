@@ -785,6 +785,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=3015Ce\n"},
 
+        // For a Zork board (morphius).
+        {"model name\t: AMD Athlon Gold 3150C with Radeon Graphics\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=3150C\n"},
+
         // For a Grunt board.
         {"model name\t: AMD A4-9120C RADEON R4, 5 COMPUTE CORES 2C+3G\n",
          "ro.soc.manufacturer=AMD\n"

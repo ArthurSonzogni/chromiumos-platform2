@@ -597,6 +597,10 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
           model_field, R"(AMD ([0-9A-Za-z]+) with Radeon Graphics)", &model) ||
 
       re2::RE2::PartialMatch(model_field, R"(AMD ([-0-9A-Za-z]+) RADEON R4,)",
+                             &model) ||
+
+      re2::RE2::PartialMatch(model_field,
+                             R"(AMD Athlon Gold ([^ ]+) with Radeon Graphics$)",
                              &model)
 
   ) {
