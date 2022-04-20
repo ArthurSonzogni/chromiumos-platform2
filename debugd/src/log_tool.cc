@@ -167,6 +167,7 @@ const std::array kCommandLogs {
   // a timeout to prevent this command from blocking log fetching. This command
   // is expected to take O(100ms) in the normal case.
   Log{kCommand, "blkid", "timeout -s KILL 5s /sbin/blkid", kRoot, kRoot},
+  Log{kFile, "bluetooth.log", "/var/log/bluetooth.log"},
   Log{kCommand, "bootstat_summary", "/usr/bin/bootstat_summary",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
