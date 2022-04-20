@@ -4,6 +4,7 @@
 
 //! Implement snapshot device functionality.
 
+use std::convert::TryInto;
 use std::fs::{metadata, File, OpenOptions};
 use std::os::unix::fs::FileTypeExt;
 use std::path::Path;
@@ -11,11 +12,79 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use libc::{self, c_int, c_ulong, c_void, loff_t};
 use log::{error, info};
-use sys_util::{ioctl_io_nr, ioctl_ior_nr, ioctl_iow_nr};
+use sys_util::{ioctl_io_nr, ioctl_ior_nr, ioctl_iow_nr, ioctl_iowr_nr};
 
 use crate::hiberutil::HibernateError;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
+
+#[repr(C)]
+#[repr(packed)]
+#[derive(Copy, Clone)]
+pub struct UswsuspKeyBlob {
+    blob_len: u32,
+    blob: [u8; 512],
+    nonce: [u8; 16],
+}
+
+impl UswsuspKeyBlob {
+    pub fn deserialize(bytes: &[u8]) -> Self {
+        // This is safe because the structure is repr(C), packed, and made only
+        // of primitives.
+        unsafe {
+            let result: UswsuspKeyBlob = std::ptr::read_unaligned(
+                bytes[0..::std::mem::size_of::<UswsuspKeyBlob>()].as_ptr() as *const _,
+            );
+            result
+        }
+    }
+
+    pub fn serialize(&self) -> &[u8] {
+        // This is safe because the structure is repr(C), packed, and made only
+        // of primitives.
+        unsafe {
+            ::std::slice::from_raw_parts(
+                (self as *const UswsuspKeyBlob) as *const u8,
+                ::std::mem::size_of::<UswsuspKeyBlob>(),
+            )
+        }
+    }
+}
+
+// Ideally we'd be able to just derive Default for vectors with >32 elements,
+// but alas, here we are.
+impl Default for UswsuspKeyBlob {
+    fn default() -> Self {
+        Self {
+            blob_len: Default::default(),
+            blob: [0u8; 512],
+            nonce: Default::default(),
+        }
+    }
+}
+
+#[repr(C)]
+#[repr(packed)]
+#[derive(Copy, Clone, Default)]
+pub struct UswsuspUserKey {
+    meta_size: i64,
+    key_len: u32,
+    key: [u8; 16],
+    pad: u32,
+}
+
+impl UswsuspUserKey {
+    pub fn new_from_u8_slice(key: &[u8]) -> Self {
+        UswsuspUserKey {
+            meta_size: 0,
+            key_len: 16,
+            key: key
+                .try_into()
+                .expect("UswsuspUserKey with incorrect length"),
+            pad: 0,
+        }
+    }
+}
 
 // Define snapshot device ioctl numbers.
 const SNAPSHOT_IOC_MAGIC: u32 = '3' as u32;
@@ -27,6 +96,18 @@ ioctl_ior_nr!(SNAPSHOT_GET_IMAGE_SIZE, SNAPSHOT_IOC_MAGIC, 14, u64);
 ioctl_io_nr!(SNAPSHOT_PLATFORM_SUPPORT, SNAPSHOT_IOC_MAGIC, 15);
 ioctl_io_nr!(SNAPSHOT_POWER_OFF, SNAPSHOT_IOC_MAGIC, 16);
 ioctl_iow_nr!(SNAPSHOT_CREATE_IMAGE, SNAPSHOT_IOC_MAGIC, 17, u32);
+ioctl_iowr_nr!(
+    SNAPSHOT_ENABLE_ENCRYPTION,
+    SNAPSHOT_IOC_MAGIC,
+    21,
+    UswsuspKeyBlob
+);
+ioctl_iowr_nr!(
+    SNAPSHOT_SET_USER_KEY,
+    SNAPSHOT_IOC_MAGIC,
+    22,
+    UswsuspUserKey
+);
 
 const FREEZE: u64 = SNAPSHOT_FREEZE();
 const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
@@ -35,6 +116,8 @@ const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
 const PLATFORM_SUPPORT: u64 = SNAPSHOT_PLATFORM_SUPPORT();
 const POWER_OFF: u64 = SNAPSHOT_POWER_OFF();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
+const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
+const SET_USER_KEY: u64 = SNAPSHOT_SET_USER_KEY();
 
 /// The SnapshotDevice is mostly a group of method functions that send ioctls to
 /// an open snapshot device file descriptor.
@@ -159,6 +242,49 @@ impl SnapshotDevice {
         unsafe { self.simple_ioctl(POWER_OFF, "POWER_OFF") }
     }
 
+    /// Get the encryption key from the kernel.
+    pub fn get_key_blob(&mut self) -> Result<UswsuspKeyBlob> {
+        let mut blob = UswsuspKeyBlob::default();
+        // The parameter may be either read or written to based on whether the
+        // snap device was opened with read or write. The API assumes both.
+        unsafe {
+            self.ioctl_with_mut_ptr(
+                ENABLE_ENCRYPTION,
+                "ENABLE_ENCRYPTION",
+                &mut blob as *mut UswsuspKeyBlob as *mut c_void,
+            )?;
+        }
+        Ok(blob)
+    }
+
+    /// Hand the encryption key to the kernel. This is actually the same ioctl
+    /// as the get call, but only one is successful depending on if the snapdev
+    /// was opened with read or write permission.
+    pub fn set_key_blob(&mut self, blob: &UswsuspKeyBlob) -> Result<()> {
+        unsafe {
+            self.ioctl_with_ptr(
+                ENABLE_ENCRYPTION,
+                "ENABLE_ENCRYPTION",
+                blob as *const UswsuspKeyBlob as *const c_void,
+            )
+        }
+    }
+
+    /// Set the user key for hibernate data. Returns the metadata size
+    /// from the kernel on success.
+    pub fn set_user_key(&mut self, key: &UswsuspUserKey) -> Result<i64> {
+        let mut key_copy = *key;
+        unsafe {
+            self.ioctl_with_mut_ptr(
+                SET_USER_KEY,
+                "SET_USER_KEY",
+                &mut key_copy as *mut UswsuspUserKey as *mut c_void,
+            )?;
+        }
+
+        Ok(key_copy.meta_size)
+    }
+
     /// Helper function to send an ioctl with no parameter and return a result.
     /// # Safety
     ///
@@ -168,6 +294,21 @@ impl SnapshotDevice {
     /// address space layout or memory model side effects.
     unsafe fn simple_ioctl(&mut self, ioctl: c_ulong, name: &str) -> Result<()> {
         let rc = sys_util::ioctl(&self.file, ioctl);
+        self.evaluate_ioctl_return(name, rc)
+    }
+
+    /// Helper function to send an ioctl and return a Result
+    /// # Safety
+    ///
+    /// The caller must ensure that the actions the ioctl performs uphold
+    /// Rust's memory safety guarantees. Specifically
+    unsafe fn ioctl_with_ptr(
+        &mut self,
+        ioctl: c_ulong,
+        name: &str,
+        param: *const c_void,
+    ) -> Result<()> {
+        let rc = sys_util::ioctl_with_ptr(&self.file, ioctl, param);
         self.evaluate_ioctl_return(name, rc)
     }
 

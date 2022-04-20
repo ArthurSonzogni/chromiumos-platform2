@@ -36,6 +36,10 @@ const RESUME_LOG_FILE_NAME: &str = "resume_log";
 const SUSPEND_LOG_FILE_NAME: &str = "suspend_log";
 /// Define the size of the preallocated log files.
 const HIBER_LOG_SIZE: i64 = 1024 * 1024 * 4;
+/// Define the name of the kernel key blob file.
+const HIBER_KERNEL_KEY_FILE_NAME: &str = "kernel_keyblob";
+/// Define the maximum size of the kernel key blob file.
+const HIBER_KERNEL_KEY_SIZE: i64 = 8192;
 
 /// Create the hibernate directory if it does not exist.
 pub fn create_hibernate_dir() -> Result<()> {
@@ -90,6 +94,12 @@ pub fn preallocate_hiberfile(zero_out: bool) -> Result<DiskFile> {
     Ok(hiber_file)
 }
 
+/// Preallocate the kernel key blob file.
+pub fn preallocate_kernel_key_file(zero_out: bool) -> Result<BouncedDiskFile> {
+    let path = Path::new(HIBERNATE_DIR).join(HIBER_KERNEL_KEY_FILE_NAME);
+    preallocate_bounced_disk_file(path, HIBER_KERNEL_KEY_SIZE, zero_out)
+}
+
 /// Open a pre-existing disk file with bounce buffer,
 /// still with read and write permissions.
 pub fn open_bounced_disk_file<P: AsRef<Path>>(path: P) -> Result<BouncedDiskFile> {
@@ -117,6 +127,12 @@ pub fn open_hiberfile() -> Result<DiskFile> {
 pub fn does_hiberfile_exist() -> bool {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
     fs::metadata(hiberfile_path).is_ok()
+}
+
+/// Open a pre-existing kernel key file with read and write permissions.
+pub fn open_kernel_key_file() -> Result<BouncedDiskFile> {
+    let path = Path::new(HIBERNATE_DIR).join(HIBER_KERNEL_KEY_FILE_NAME);
+    open_bounced_disk_file(&path)
 }
 
 /// Open a pre-existing hiberfile, still with read and write permissions.

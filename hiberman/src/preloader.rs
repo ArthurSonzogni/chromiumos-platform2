@@ -15,7 +15,8 @@ use log::{debug, info, warn};
 use crate::hiberutil::{get_available_pages, get_page_size, get_total_memory_pages};
 use crate::mmapbuf::MmapBuffer;
 
-/// Allocate buffers in chunks to keep things large but manageable.
+/// Allocate buffers in chunks to keep things large but manageable. This must be
+/// page aligned.
 const PRELOADER_CHUNK_SIZE: usize = 1024 * 1024 * 2;
 /// The minimum percent of memory to keep free.
 const RESERVE_MEMORY_PERCENT: usize = 6;
@@ -29,6 +30,7 @@ pub struct ImagePreloader<'a> {
     total_size: usize,
     size_loaded: usize,
     chunk_offset: usize,
+    page_size: usize,
 }
 
 impl<'a> ImagePreloader<'a> {
@@ -41,6 +43,7 @@ impl<'a> ImagePreloader<'a> {
             total_size,
             size_loaded: 0,
             chunk_offset: 0,
+            page_size: get_page_size(),
         }
     }
 
@@ -53,7 +56,7 @@ impl<'a> ImagePreloader<'a> {
         }
 
         let chunk_size = std::cmp::min(PRELOADER_CHUNK_SIZE, self.total_size - self.size_loaded);
-        let chunk = ImageChunk::new(self.source, chunk_size)?;
+        let chunk = ImageChunk::new(self.source, chunk_size, self.page_size)?;
         self.size_loaded += chunk.size;
         if chunk.size == 0 {
             return Ok(true);
@@ -87,7 +90,7 @@ impl<'a> ImagePreloader<'a> {
                 info!(
                     "Preloaded {}MB, leaving {}MB free memory",
                     self.size_loaded / 1024 / 1024,
-                    get_available_pages() * get_page_size() / 1024 / 1024
+                    get_available_pages() * self.page_size / 1024 / 1024
                 );
                 break;
             }
@@ -153,13 +156,19 @@ struct ImageChunk {
 impl ImageChunk {
     /// Create and initialize from the given source a new buffer of the
     /// specified size.
-    pub fn new(source: &mut dyn Read, size: usize) -> Result<Self> {
-        let mut buffer = MmapBuffer::new(size)?;
+    pub fn new(source: &mut dyn Read, size: usize, page_size: usize) -> Result<Self> {
+        // Potentially overread at the end to keep the size aligned for files
+        // opened with O_DIRECT.
+        let aligned_size = (size + page_size - 1) & !(page_size - 1);
+        let mut buffer = MmapBuffer::new(aligned_size)?;
         let buffer_slice = buffer.u8_slice_mut();
-        let mut slice_mut = [IoSliceMut::new(&mut buffer_slice[..size])];
-        let bytes_read = source
-            .read_vectored(&mut slice_mut)
-            .context("Failed to read image chunk")?;
+        let mut slice_mut = [IoSliceMut::new(&mut buffer_slice[..aligned_size])];
+        let bytes_read = std::cmp::min(
+            size,
+            source
+                .read_vectored(&mut slice_mut)
+                .context("Failed to read image chunk")?,
+        );
         if bytes_read < size {
             warn!("Only Read {}/{}", bytes_read, size);
         }

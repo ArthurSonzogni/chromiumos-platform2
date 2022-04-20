@@ -43,12 +43,16 @@ pub const META_FLAG_RESUME_FAILED: u32 = 0x00000008;
 /// This flag is set if the image is encrypted.
 pub const META_FLAG_ENCRYPTED: u32 = 0x00000010;
 
+/// This flag is set if the kernel encrypted the image.
+pub const META_FLAG_KERNEL_ENCRYPTED: u32 = 0x00000020;
+
 /// Define the mask of all valid flags.
 pub const META_VALID_FLAGS: u32 = META_FLAG_VALID
     | META_FLAG_RESUME_STARTED
     | META_FLAG_RESUME_LAUNCHED
     | META_FLAG_RESUME_FAILED
-    | META_FLAG_ENCRYPTED;
+    | META_FLAG_ENCRYPTED
+    | META_FLAG_KERNEL_ENCRYPTED;
 
 /// Define the size of the hash field in the metadata.
 pub const META_HASH_SIZE: usize = 32;

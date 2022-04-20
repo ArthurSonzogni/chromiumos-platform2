@@ -177,4 +177,12 @@ impl<'a> ImageMover<'a> {
         debug!("Finished moving image");
         Ok(())
     }
+
+    pub fn pad_input_length(&mut self) {
+        self.pad_input_length = true;
+    }
+
+    pub fn pad_output_length(&mut self) {
+        self.pad_output_length = true;
+    }
 }

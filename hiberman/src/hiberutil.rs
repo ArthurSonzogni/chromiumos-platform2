@@ -97,6 +97,7 @@ pub struct HibernateOptions {
     pub unencrypted: bool,
     pub test_keys: bool,
     pub force_platform_mode: bool,
+    pub no_kernel_encryption: bool,
 }
 
 /// Options taken from the command line affecting resume.

@@ -26,7 +26,7 @@ use libc::utsname;
 use log::debug;
 use openssl::hash::{Hasher, MessageDigest};
 
-use crate::hibermeta::{HibernateMetadata, META_HASH_SIZE};
+use crate::hibermeta::{HibernateMetadata, META_FLAG_KERNEL_ENCRYPTED, META_HASH_SIZE};
 use crate::hiberutil::{get_page_size, HibernateError};
 use crate::mmapbuf::MmapBuffer;
 
@@ -75,12 +75,21 @@ impl<'a> ImageSplitter<'a> {
         metadata: &'a mut HibernateMetadata,
         compute_header_hash: bool,
     ) -> ImageSplitter<'a> {
+        // If the kernel is handling encryption, then it also hands back the
+        // metadata size. Otherwise, it will have to be read out of the header
+        // while the data comes through.
+        let meta_size = if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
+            metadata.image_meta_size
+        } else {
+            0
+        };
+
         Self {
             header_file,
             data_file,
             metadata,
             page_size: get_page_size(),
-            meta_size: 0,
+            meta_size,
             bytes_done: 0,
             hasher: Hasher::new(MessageDigest::sha256()).unwrap(),
             compute_header_hash,
@@ -93,9 +102,10 @@ impl<'a> ImageSplitter<'a> {
     fn write_header(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let length = buf.len();
 
-        // If this is the first page, snarf the header out of the buffer to
-        // figure out the number of metadata pages.
-        if self.bytes_done == 0 {
+        // If this is the first page, and the number of meta pages is not
+        // already known, snarf the header out of the buffer to figure out the
+        // number of metadata pages.
+        if (self.bytes_done == 0) && (self.meta_size == 0) {
             self.meta_size = get_image_meta_size(buf)?;
             self.metadata.image_meta_size = self.meta_size;
         }

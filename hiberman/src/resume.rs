@@ -16,11 +16,13 @@ use crate::cookie::set_hibernate_cookie;
 use crate::crypto::{CryptoMode, CryptoReader};
 use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
-use crate::files::{open_header_file, open_hiberfile, open_log_file, open_metafile};
+use crate::files::{
+    open_header_file, open_hiberfile, open_kernel_key_file, open_log_file, open_metafile,
+};
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
-    HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_RESUME_FAILED, META_FLAG_RESUME_LAUNCHED,
-    META_FLAG_RESUME_STARTED, META_FLAG_VALID, META_HASH_SIZE,
+    HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_KERNEL_ENCRYPTED, META_FLAG_RESUME_FAILED,
+    META_FLAG_RESUME_LAUNCHED, META_FLAG_RESUME_STARTED, META_FLAG_VALID, META_HASH_SIZE,
 };
 use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::{
@@ -32,7 +34,9 @@ use crate::keyman::HibernateKeyManager;
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
 use crate::preloader::ImagePreloader;
-use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode};
+use crate::snapdev::{
+    FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspKeyBlob, UswsuspUserKey,
+};
 use crate::splitter::ImageJoiner;
 
 /// The ResumeConductor orchestrates the various individual instruments that
@@ -122,8 +126,32 @@ impl ResumeConductor {
         let hiber_file = open_hiberfile()?;
         let _locked_memory = lock_process_memory()?;
         let header_file = open_header_file()?;
+        let kernel_key_file = open_kernel_key_file()?;
         self.metadata = metadata;
-        self.resume_system(header_file, hiber_file, meta_file, dbus_connection)
+        self.resume_system(
+            header_file,
+            hiber_file,
+            meta_file,
+            kernel_key_file,
+            dbus_connection,
+        )
+    }
+
+    fn load_kernel_key_blob(
+        &mut self,
+        snap_dev: &mut SnapshotDevice,
+        key_file: &mut BouncedDiskFile,
+    ) -> Result<()> {
+        let mut blob_buf = [0u8; 4096];
+        key_file
+            .read_exact(&mut blob_buf)
+            .context("Could not read kernel key blob")?;
+        let kernel_key_blob = UswsuspKeyBlob::deserialize(&blob_buf);
+        snap_dev
+            .set_key_blob(&kernel_key_blob)
+            .context("Failed to set kernel key blob")?;
+
+        Ok(())
     }
 
     /// Inner helper function to read the resume image and launch it.
@@ -132,6 +160,7 @@ impl ResumeConductor {
         header_file: DiskFile,
         hiber_file: DiskFile,
         meta_file: BouncedDiskFile,
+        mut kernel_key_file: BouncedDiskFile,
         dbus_connection: &mut HiberDbusConnection,
     ) -> Result<()> {
         let mut log_file = open_log_file(HiberlogFile::Resume)?;
@@ -141,6 +170,12 @@ impl ResumeConductor {
         redirect_log(HiberlogOut::File(Box::new(log_file)));
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
         snap_dev.set_platform_mode(false)?;
+        if (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
+            debug!("Loading kernel key blob");
+            self.load_kernel_key_blob(&mut snap_dev, &mut kernel_key_file)
+                .context("Failed to load kernel key blob")?;
+        }
+
         // The pending resume call represents the object blocking the
         // ResumeFromHibernate dbus call from completing and letting the rest of
         // boot continue. This gets dropped at the end of the function, when
@@ -188,11 +223,12 @@ impl ResumeConductor {
         debug!("Resume image is {} bytes", image_size);
         // Create the image joiner, which combines the header file and the data
         // file into one contiguous read stream.
+        let should_hash_header = (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) == 0;
         let mut joiner = ImageJoiner::new(
             &mut header_file,
             &mut hiber_file,
             self.metadata.image_meta_size,
-            true,
+            should_hash_header,
         );
         self.load_header(&mut joiner, snap_dev)?;
         image_size -= self.metadata.image_meta_size;
@@ -249,6 +285,15 @@ impl ResumeConductor {
         let metadata = &mut self.metadata;
         self.key_manager.install_saved_metadata_key(metadata)?;
         metadata.load_private_data()?;
+
+        // Let the kernel fold in the user key now that it's finally available.
+        if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
+            let user_key = UswsuspUserKey::new_from_u8_slice(&metadata.data_key);
+            snap_dev
+                .set_user_key(&user_key)
+                .context("Failed to set user key")?;
+        }
+
         let mode = if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
             CryptoMode::Decrypt
         } else {
@@ -263,6 +308,8 @@ impl ResumeConductor {
         )?;
         if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
             debug!("Image is encrypted");
+        } else if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
+            debug!("Kernel is handling encryption");
         } else if !self.options.unencrypted {
             error!("Unencrypted images are not permitted without --unencrypted");
             return Err(HibernateError::ImageUnencryptedError())
@@ -277,15 +324,18 @@ impl ResumeConductor {
         image_size -= page_size as i64;
         let main_move_start = Instant::now();
         // Fire up the big image pump into the kernel.
-        ImageMover::new(
+        let mut mover = ImageMover::new(
             &mut decryptor,
             &mut snap_dev.file,
             image_size as i64,
             page_size * BUFFER_PAGES,
             page_size,
-        )?
-        .move_all()
-        .context("Failed to move in hibernate image")?;
+        )?;
+
+        mover.pad_input_length();
+        mover
+            .move_all()
+            .context("Failed to move in hibernate image")?;
         let main_move_duration = main_move_start.elapsed();
         log_io_duration("Read main image", image_size, main_move_duration);
         let total_io_duration = preload_duration + main_move_duration;
@@ -296,21 +346,23 @@ impl ResumeConductor {
             .check_tag(&self.metadata.data_tag)
             .context("Failed to verify image authentication tag")?;
 
-        // Check the header pages hash. Ideally this would be done just after
-        // the private data was loaded, but by then we've handed a mutable
-        // borrow out to the mover source. This is fine too, as the kernel will
-        // reject writes if the page list size is different. The worst an
-        // attacker can do is move pages around to other RAM locations (the
-        // kernel ensures the pages are RAM). The check here ensures we'll never
-        // jump into anything but the original header.
-        debug!("Validating header content");
-        let mut header_hash = [0u8; META_HASH_SIZE];
-        joiner.get_header_hash(&mut header_hash)?;
-        let metadata = &mut self.metadata;
-        if metadata.header_hash != header_hash {
-            error!("Metadata header hash mismatch");
-            return Err(HibernateError::HeaderContentHashMismatch())
-                .context("Failed to load verify resume header pages");
+        if should_hash_header {
+            // Check the header pages hash. Ideally this would be done just
+            // after the private data was loaded, but by then we've handed a
+            // mutable borrow out to the mover source. This is fine too, as the
+            // kernel will reject writes if the page list size is different. The
+            // worst an attacker can do is move pages around to other RAM
+            // locations (the kernel ensures the pages are RAM). The check here
+            // ensures we'll never jump into anything but the original header.
+            debug!("Validating header content");
+            let mut header_hash = [0u8; META_HASH_SIZE];
+            joiner.get_header_hash(&mut header_hash)?;
+            let metadata = &mut self.metadata;
+            if metadata.header_hash != header_hash {
+                error!("Metadata header hash mismatch");
+                return Err(HibernateError::HeaderContentHashMismatch())
+                    .context("Failed to load verify resume header pages");
+            }
         }
 
         Ok(pending_resume_call)
