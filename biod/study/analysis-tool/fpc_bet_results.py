@@ -25,7 +25,7 @@ class FPCBETResults:
 
         TUDisabled = 'TC-01'
         TUSpecificSamples_Disabled = 'TC-02-TU/EnableTemplateUpdating-0'
-        TUSpecificSamples_Enabled = 'TC-02-TU/EnableTemplateUpdating-0'
+        TUSpecificSamples_Enabled = 'TC-02-TU/EnableTemplateUpdating-1'
         # The normal operating mode for production.
         TUContinuous_Disabled = 'TC-03-TU-Continuous/EnableTemplateUpdating-0'
         TUContinuous_Enabled = 'TC-03-TU-Continuous/EnableTemplateUpdating-1'
