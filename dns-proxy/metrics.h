@@ -109,8 +109,11 @@ class Metrics {
     kReceiveError = 15,
     kOtherClientError = 16,
     kOtherServerError = 17,
+    kEmptyNameServers = 18,
+    kEmptyDoHProviders = 19,
+    kClientInitializationError = 20,
 
-    kMaxValue = kOtherServerError,
+    kMaxValue = kClientInitializationError,
   };
 
   // These values are persisted to logs. Entries should not be renumbered and
@@ -186,6 +189,7 @@ class Metrics {
   void RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6);
   void RecordDnsOverHttpsMode(DnsOverHttpsMode mode);
   void RecordQueryResult(QueryType type, QueryError error, int http_code = -1);
+  void RecordQueryResultWithRetries(QueryType type, bool success);
   void RecordQueryDuration(const char* stage, int64_t ms, bool success = true);
   void RecordQueryResolveDuration(QueryType type,
                                   int64_t ms,

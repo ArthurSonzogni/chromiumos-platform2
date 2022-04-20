@@ -23,10 +23,12 @@ AresClient::State::State(AresClient* client,
 
 AresClient::AresClient(base::TimeDelta timeout,
                        int max_num_retries,
-                       int max_concurrent_queries)
+                       int max_concurrent_queries,
+                       Metrics* metrics)
     : timeout_(timeout),
       max_num_retries_(max_num_retries),
-      max_concurrent_queries_(max_concurrent_queries) {
+      max_concurrent_queries_(max_concurrent_queries),
+      metrics_(metrics) {
   if (ares_library_init(ARES_LIB_INIT_ALL) != ARES_SUCCESS) {
     LOG(DFATAL) << "Failed to initialize ares library";
   }
@@ -215,10 +217,19 @@ bool AresClient::Resolve(const unsigned char* msg,
                          void* ctx) {
   if (name_servers_.empty()) {
     LOG(ERROR) << "Name servers must not be empty";
+    if (metrics_) {
+      metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
+                                  Metrics::QueryError::kEmptyNameServers);
+    }
     return false;
   }
   ares_channel channel = InitChannel();
   if (!channel) {
+    if (metrics_) {
+      metrics_->RecordQueryResult(
+          Metrics::QueryType::kPlainText,
+          Metrics::QueryError::kClientInitializationError);
+    }
     return false;
   }
   // Query multiple name servers concurrently. Selection of name servers is

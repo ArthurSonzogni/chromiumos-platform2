@@ -16,6 +16,8 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/time/time.h>
 
+#include "dns-proxy/metrics.h"
+
 namespace dns_proxy {
 
 // AresClient resolves DNS queries by forwarding wire-format DNS queries to the
@@ -40,7 +42,8 @@ class AresClient {
 
   AresClient(base::TimeDelta timeout,
              int max_num_retries,
-             int max_concurrent_queries);
+             int max_concurrent_queries,
+             Metrics* metrics = nullptr);
   virtual ~AresClient();
 
   // Resolve DNS address using wire-format data |data| of size |len|.
@@ -159,6 +162,8 @@ class AresClient {
 
   // Number of stored name servers.
   int num_name_servers_;
+
+  Metrics* metrics_;
 
   base::WeakPtrFactory<AresClient> weak_factory_{this};
 };

@@ -16,6 +16,8 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/time/time.h>
 
+#include "dns-proxy/metrics.h"
+
 namespace dns_proxy {
 
 // List of HTTP status codes.
@@ -72,7 +74,9 @@ class DoHCurlClientInterface {
 // response OR the last failing response.
 class DoHCurlClient : public DoHCurlClientInterface {
  public:
-  DoHCurlClient(base::TimeDelta timeout, int max_concurrent_queries);
+  DoHCurlClient(base::TimeDelta timeout,
+                int max_concurrent_queries,
+                Metrics* metrics = nullptr);
   explicit DoHCurlClient(base::TimeDelta timeout);
   DoHCurlClient(const DoHCurlClient&) = delete;
   DoHCurlClient& operator=(const DoHCurlClient&) = delete;
@@ -259,6 +263,8 @@ class DoHCurlClient : public DoHCurlClientInterface {
 
   // CURL multi handle to do asynchronous requests.
   CURLM* curlm_;
+
+  Metrics* metrics_;
 
   base::WeakPtrFactory<DoHCurlClient> weak_factory_{this};
 };

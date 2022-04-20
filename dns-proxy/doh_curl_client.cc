@@ -59,9 +59,11 @@ void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
 }
 
 DoHCurlClient::DoHCurlClient(base::TimeDelta timeout,
-                             int max_concurrent_queries)
+                             int max_concurrent_queries,
+                             Metrics* metrics)
     : timeout_seconds_(timeout.InSeconds()),
-      max_concurrent_queries_(max_concurrent_queries) {
+      max_concurrent_queries_(max_concurrent_queries),
+      metrics_(metrics) {
   // Initialize CURL.
   curl_global_init(CURL_GLOBAL_DEFAULT);
   curlm_ = curl_multi_init();
@@ -331,8 +333,21 @@ bool DoHCurlClient::Resolve(const char* msg,
                             int len,
                             const QueryCallback& callback,
                             void* ctx) {
-  if (name_servers_.empty() || doh_providers_.empty()) {
-    LOG(DFATAL) << "DNS and DoH server must not be empty";
+  if (name_servers_.empty()) {
+    LOG(ERROR) << "Name server list must not be empty";
+    if (metrics_) {
+      metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
+                                  Metrics::QueryError::kEmptyNameServers);
+    }
+    return false;
+  }
+
+  if (doh_providers_.empty()) {
+    LOG(ERROR) << "DoH provider list must not be empty";
+    if (metrics_) {
+      metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
+                                  Metrics::QueryError::kEmptyDoHProviders);
+    }
     return false;
   }
 
@@ -362,6 +377,11 @@ bool DoHCurlClient::Resolve(const char* msg,
 
   if (requests.empty()) {
     LOG(ERROR) << "No requests for query";
+    if (metrics_) {
+      metrics_->RecordQueryResult(
+          Metrics::QueryType::kDnsOverHttps,
+          Metrics::QueryError::kClientInitializationError);
+    }
     return false;
   }
 

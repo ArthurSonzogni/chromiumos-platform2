@@ -26,6 +26,8 @@ constexpr char kNameserverTypes[] = "Network.DnsProxy.NameserverTypes";
 constexpr char kDnsOverHttpsMode[] = "Network.DnsProxy.DnsOverHttpsMode";
 
 constexpr char kQueryResultsTemplate[] = "Network.DnsProxy.$1Query.Results";
+constexpr char kQueryResultsWithRetriesTemplate[] =
+    "Network.DnsProxy.$1Query.ResultsWithRetries";
 constexpr char kQueryErrorsTemplate[] = "Network.DnsProxy.$1Query.Errors";
 constexpr char kHttpErrors[] = "Network.DnsProxy.DnsOverHttpsQuery.HttpErrors";
 
@@ -162,6 +164,20 @@ void Metrics::RecordQueryResult(Metrics::QueryType type,
   }
 }
 
+void Metrics::RecordQueryResultWithRetries(Metrics::QueryType type,
+                                           bool success) {
+  const char* qs = QueryTypeString(type);
+  if (!qs)
+    return;
+
+  auto name = base::ReplaceStringPlaceholders(kQueryResultsWithRetriesTemplate,
+                                              {qs}, nullptr);
+
+  auto result =
+      success ? Metrics::QueryResult::kSuccess : Metrics::QueryResult::kFailure;
+  metrics_.SendEnumToUMA(name, result);
+}
+
 void Metrics::RecordQueryDuration(const char* stage, int64_t ms, bool success) {
   const char* prefix = !success ? kQueryDurationFailed : "";
   auto name = base::ReplaceStringPlaceholders(kQueryDurationTemplate,
@@ -258,6 +274,10 @@ void Metrics::QueryTimer::Record(Metrics* metrics) {
     overall |= r.success;
     metrics->RecordQueryResolveDuration(r.type, r.elapsed.InMilliseconds(),
                                         r.success);
+  }
+  if (!elapsed_resolve_.empty()) {
+    metrics->RecordQueryResultWithRetries(elapsed_resolve_.front().type,
+                                          overall);
   }
 
   metrics->RecordQueryDuration(kQueryDurationReply,

@@ -179,13 +179,13 @@ class Resolver {
   // Maximum number of retries before giving up.
   int max_num_retries_;
 
+  std::unique_ptr<Metrics> metrics_;
+
   // Ares client to resolve DNS through standard plain-text DNS.
   std::unique_ptr<AresClient> ares_client_;
 
   // Curl client to resolve DNS through secure DNS.
   std::unique_ptr<DoHCurlClientInterface> curl_client_;
-
-  std::unique_ptr<Metrics> metrics_;
 
   base::WeakPtrFactory<Resolver> weak_factory_{this};
 };

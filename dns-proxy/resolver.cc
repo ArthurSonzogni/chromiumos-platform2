@@ -125,19 +125,21 @@ Resolver::Resolver(base::TimeDelta timeout,
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
-      ares_client_(
-          new AresClient(timeout, max_num_retries, max_concurrent_queries)),
-      curl_client_(new DoHCurlClient(timeout, max_concurrent_queries)),
-      metrics_(new Metrics) {}
+      metrics_(new Metrics) {
+  ares_client_ = std::make_unique<AresClient>(
+      timeout, max_num_retries, max_concurrent_queries, metrics_.get());
+  curl_client_ = std::make_unique<DoHCurlClient>(
+      timeout, max_concurrent_queries, metrics_.get());
+}
 
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<DoHCurlClientInterface> curl_client,
                    std::unique_ptr<Metrics> metrics)
     : always_on_doh_(false),
       doh_enabled_(false),
+      metrics_(std::move(metrics)),
       ares_client_(std::move(ares_client)),
-      curl_client_(std::move(curl_client)),
-      metrics_(std::move(metrics)) {}
+      curl_client_(std::move(curl_client)) {}
 
 bool Resolver::ListenTCP(struct sockaddr* addr) {
   auto tcp_src = std::make_unique<patchpanel::Socket>(
