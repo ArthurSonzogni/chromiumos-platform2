@@ -1223,4 +1223,11 @@ void AuthSession::ResetLECredentials() {
   }
 }
 
+base::TimeDelta AuthSession::GetRemainingTime() {
+  DCHECK(timer_.IsRunning());
+  auto time_passed = base::TimeTicks::Now() - start_time_;
+  auto time_left = timer_.GetCurrentDelay() - time_passed;
+  return time_left;
+}
+
 }  // namespace cryptohome

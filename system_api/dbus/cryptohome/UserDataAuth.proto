@@ -879,6 +879,29 @@ message PrepareEphemeralVaultReply {
   CryptohomeErrorInfo error_info = 3;
 }
 
+message GetAuthSessionStatusRequest {
+  // Id of the auth session associated with the user we aim to prepare vault
+  // for.
+  bytes auth_session_id = 1;
+}
+
+enum AuthSessionStatus {
+  AUTH_SESSION_STATUS_NOT_SET = 0;
+  AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED = 1;
+  AUTH_SESSION_STATUS_AUTHENTICATED = 2;
+  AUTH_SESSION_STATUS_INVALID_AUTH_SESSION = 3;
+}
+
+message GetAuthSessionStatusReply {
+  // Error if any to start the Auth Session
+  CryptohomeErrorCode error = 1;
+  // Status for the valid AuthSession.
+  AuthSessionStatus status = 2;
+  // The time left (in sec) in the current AuthSession. This is only set if
+  // AuthSession is authenticated.
+  uint32 time_left = 3;
+}
+
 enum VaultEncryptionType {
   CRYPTOHOME_VAULT_ENCRYPTION_ANY = 0;
   CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS = 1;

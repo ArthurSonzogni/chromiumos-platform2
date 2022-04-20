@@ -58,6 +58,7 @@ const char kAddAuthFactor[] = "AddAuthFactor";
 const char kAuthenticateAuthFactor[] = "AuthenticateAuthFactor";
 const char kUpdateAuthFactor[] = "UpdateAuthFactor";
 const char kRemoveAuthFactor[] = "RemoveAuthFactor";
+const char kGetAuthSessionStatus[] = "GetAuthSessionStatus";
 
 // Methods of the |kArcQuotaInterface| interface:
 const char kGetArcDiskFeatures[] = "GetArcDiskFeatures";

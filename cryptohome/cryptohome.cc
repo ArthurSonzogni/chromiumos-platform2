@@ -203,6 +203,7 @@ static const char* kActions[] = {"mount_ex",
                                  "authenticate_auth_factor",
                                  "update_auth_factor",
                                  "remove_auth_factor",
+                                 "get_auth_session_status",
                                  NULL};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -297,7 +298,8 @@ enum ActionEnum {
   ACTION_ADD_AUTH_FACTOR,
   ACTION_AUTHENTICATE_AUTH_FACTOR,
   ACTION_UPDATE_AUTH_FACTOR,
-  ACTION_REMOVE_AUTH_FACTOR
+  ACTION_REMOVE_AUTH_FACTOR,
+  ACTION_GET_AUTH_SESSION_STATUS
 };
 static const char kUserSwitch[] = "user";
 static const char kPasswordSwitch[] = "password";
@@ -3236,6 +3238,34 @@ int main(int argc, char** argv) {
     }
 
     printf("AuthFactor removed.\n");
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_GET_AUTH_SESSION_STATUS],
+                 action.c_str())) {
+    user_data_auth::GetAuthSessionStatusRequest req;
+    user_data_auth::GetAuthSessionStatusReply reply;
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(cl, &auth_session_id_hex)) {
+      return 1;
+    }
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to GetAuthSessionStatus";
+    if (!userdataauth_proxy.GetAuthSessionStatus(req, &reply, &error,
+                                                 timeout_ms) ||
+        error) {
+      printf("GetAuthSessionStatus call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    puts(GetProtoDebugString(reply).c_str());
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to get auth session status.\n");
+      return static_cast<int>(reply.error());
+    }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

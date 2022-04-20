@@ -398,6 +398,24 @@ do.
       </arg>
     </method>
 
+    <!--This API will be used to call for get status of an AuthSession.
+         May be called asynchronously.  All arguments are protobufs:
+         request: GetAuthSessionStatusRequest
+         reply: GetAuthSessionStatusReply
+    -->
+    <method name="GetAuthSessionStatus">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetAuthSessionStatusRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetAuthSessionStatusReply" />
+      </arg>
+    </method>
+
     <!-- Creates an on-disk representation of a persistent user. -->
     <method name="CreatePersistentUser">
       <annotation name="org.chromium.DBus.Method.Kind"

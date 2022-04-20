@@ -352,6 +352,16 @@ class UserDataAuthAdaptor
           user_data_auth::AuthenticateAuthFactorReply>> response,
       const user_data_auth::AuthenticateAuthFactorRequest& in_request);
 
+  void GetAuthSessionStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetAuthSessionStatusReply>> response,
+      const user_data_auth::GetAuthSessionStatusRequest& in_request) override;
+
+  void DoGetAuthSessionStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetAuthSessionStatusReply>> response,
+      const user_data_auth::GetAuthSessionStatusRequest& in_request);
+
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);

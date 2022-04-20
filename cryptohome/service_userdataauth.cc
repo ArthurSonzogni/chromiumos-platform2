@@ -1375,4 +1375,32 @@ void CryptohomeMiscAdaptor::CheckHealth(
   response->Return(reply);
 }
 
+void UserDataAuthAdaptor::GetAuthSessionStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetAuthSessionStatusReply>> response,
+    const user_data_auth::GetAuthSessionStatusRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetAuthSessionStatus,
+                                base::Unretained(this),
+                                ThreadSafeDBusMethodResponse<
+                                    user_data_auth::GetAuthSessionStatusReply>::
+                                    MakeThreadSafe(std::move(response)),
+                                in_request));
+}
+
+void UserDataAuthAdaptor::DoGetAuthSessionStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetAuthSessionStatusReply>> response,
+    const user_data_auth::GetAuthSessionStatusRequest& in_request) {
+  service_->GetAuthSessionStatus(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::GetAuthSessionStatusReply>> local_response,
+             const user_data_auth::GetAuthSessionStatusReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 }  // namespace cryptohome

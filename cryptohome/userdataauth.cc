@@ -4330,4 +4330,39 @@ bool UserDataAuth::RemoveAuthFactor(
   return true;
 }
 
+void UserDataAuth::GetAuthSessionStatus(
+    user_data_auth::GetAuthSessionStatusRequest request,
+    base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
+        on_done) {
+  AssertOnMountThread();
+  user_data_auth::GetAuthSessionStatusReply reply;
+
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
+    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+    LOG(ERROR) << "GetAuthSessionStatus: AuthSession not found.";
+    return;
+  }
+  GetAuthSessionStatusImpl(auth_session, reply);
+}
+
+void UserDataAuth::GetAuthSessionStatusImpl(
+    AuthSession* auth_session,
+    user_data_auth::GetAuthSessionStatusReply& reply) {
+  DCHECK(auth_session);
+  // Default is invalid unless there is evidence otherwise.
+  reply.set_status(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION);
+
+  if (auth_session->GetStatus() ==
+      AuthStatus::kAuthStatusFurtherFactorRequired) {
+    reply.set_status(
+        user_data_auth::AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED);
+  } else if (auth_session->GetStatus() ==
+             AuthStatus::kAuthStatusAuthenticated) {
+    reply.set_time_left(auth_session->GetRemainingTime().InSeconds());
+    reply.set_status(user_data_auth::AUTH_SESSION_STATUS_AUTHENTICATED);
+  }
+}
+
 }  // namespace cryptohome

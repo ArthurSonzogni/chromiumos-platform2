@@ -137,6 +137,12 @@ class AuthSessionInterfaceTest : public ::testing::Test {
                                                               auth_session);
   }
 
+  void GetAuthSessionStatusImpl(
+      AuthSession* auth_session,
+      user_data_auth::GetAuthSessionStatusReply& reply) {
+    userdataauth_.GetAuthSessionStatusImpl(auth_session, reply);
+  }
+
   AuthorizationRequest CreateAuthorization(const std::string& secret) {
     AuthorizationRequest req;
     req.mutable_key()->set_secret(secret);
@@ -397,6 +403,24 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
+}
+
+TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
+  user_data_auth::GetAuthSessionStatusReply reply;
+  AuthSession* auth_session =
+      auth_session_manager_->CreateAuthSession(kUsername, 0);
+
+  // Test 1.
+  auth_session->SetStatus(AuthStatus::kAuthStatusFurtherFactorRequired);
+  GetAuthSessionStatusImpl(auth_session, reply);
+  ASSERT_THAT(reply.status(),
+              Eq(user_data_auth::AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED));
+
+  // Test 2.
+  auth_session->SetStatus(AuthStatus::kAuthStatusTimedOut);
+  GetAuthSessionStatusImpl(auth_session, reply);
+  ASSERT_THAT(reply.status(),
+              Eq(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION));
 }
 
 }  // namespace

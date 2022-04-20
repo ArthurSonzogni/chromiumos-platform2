@@ -753,6 +753,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
           on_done);
 
+  void GetAuthSessionStatus(
+      user_data_auth::GetAuthSessionStatusRequest request,
+      base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
+          on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {
@@ -917,6 +922,10 @@ class UserDataAuth {
       const user_data_auth::CheckKeyRequest& request,
       base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
       std::unique_ptr<brillo::SecureBlob> passkey);
+
+  void GetAuthSessionStatusImpl(
+      AuthSession* auth_session,
+      user_data_auth::GetAuthSessionStatusReply& reply);
 
   // ================= Key Management Related Helper Methods ============
 

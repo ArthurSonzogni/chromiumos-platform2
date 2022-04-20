@@ -82,7 +82,7 @@ class AuthSession final {
   const std::string& serialized_token() const { return serialized_token_; }
 
   // This function return the current status of this AuthSession.
-  AuthStatus GetStatus() const { return status_; }
+  const AuthStatus GetStatus() const { return status_; }
 
   // OnUserCreated is called when the user and their homedir are newly created.
   // Must be called no more than once.
@@ -197,6 +197,9 @@ class AuthSession final {
 
   // Set status for testing only.
   void SetStatus(const AuthStatus status) { status_ = status; }
+
+  // Get the time remaining for this AuthSession's life.
+  base::TimeDelta GetRemainingTime();
 
  private:
   AuthSession() = delete;
