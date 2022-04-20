@@ -383,7 +383,61 @@ void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   // handled in WiFiSecurity::Combine() function.  Note that we do nothing in
   // RemoveEndpoint() - that is intentional, until we connect we want to have
   // the largest possible set of endpoints belonging to given network.
-  security_ = security_.Combine(endpoint->security_mode());
+  auto new_security = security_.Combine(endpoint->security_mode());
+  if (security_.IsFrozen() && new_security.mode() != security_.mode()) {
+    auto mode = Metrics::kWirelessSecurityChangeMax;
+    // In the initial phase we allow all security changes after initial
+    // connection just to have some information about how disruptive it would
+    // be to block them.
+    switch (new_security.mode()) {
+      case WiFiSecurity::kWpaWpa2:
+        if (security_ == WiFiSecurity::kWpa2) {
+          mode = Metrics::kWirelessSecurityChangeWpa2ToWpa12;
+        }
+        break;
+      case WiFiSecurity::kWpaAll:
+        if (security_ == WiFiSecurity::kWpa3) {
+          mode = Metrics::kWirelessSecurityChangeWpa3ToWpa123;
+        } else if (security_ == WiFiSecurity::kWpa2Wpa3) {
+          mode = Metrics::kWirelessSecurityChangeWpa23ToWpa123;
+        } else if (security_ == WiFiSecurity::kWpaWpa2) {
+          mode = Metrics::kWirelessSecurityChangeWpa12ToWpa123;
+        }
+        break;
+      case WiFiSecurity::kWpa2Wpa3:
+        if (security_ == WiFiSecurity::kWpa3) {
+          mode = Metrics::kWirelessSecurityChangeWpa3ToWpa23;
+        }
+        break;
+      case WiFiSecurity::kWpaWpa2Enterprise:
+        if (security_ == WiFiSecurity::kWpa2Enterprise) {
+          mode = Metrics::kWirelessSecurityChangeEAPWpa2ToWpa12;
+        }
+        break;
+      case WiFiSecurity::kWpaAllEnterprise:
+        if (security_ == WiFiSecurity::kWpa3Enterprise) {
+          mode = Metrics::kWirelessSecurityChangeEAPWpa3ToWpa123;
+        } else if (security_ == WiFiSecurity::kWpa2Wpa3Enterprise) {
+          mode = Metrics::kWirelessSecurityChangeEAPWpa23ToWpa123;
+        } else if (security_ == WiFiSecurity::kWpaWpa2Enterprise) {
+          mode = Metrics::kWirelessSecurityChangeEAPWpa12ToWpa123;
+        }
+        break;
+      case WiFiSecurity::kWpa2Wpa3Enterprise:
+        if (security_ == WiFiSecurity::kWpa3Enterprise) {
+          mode = Metrics::kWirelessSecurityChangeEAPWpa3ToWpa23;
+        }
+        break;
+      default:
+        break;
+    }
+    if (mode != Metrics::kWirelessSecurityChangeMax) {
+      metrics()->SendEnumToUMA(Metrics::kMetricWirelessSecurityChange, mode,
+                               Metrics::kWirelessSecurityChangeMax);
+    }
+  }
+  security_ = new_security;
+
   UpdateFromEndpoints();
 }
 
@@ -783,13 +837,19 @@ void WiFiService::SendPostReadyStateMetrics(
       static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode_),
       Metrics::kWiFiNetworkPhyModeMax);
 
-  Metrics::WiFiSecurity security_uma;
+  Metrics::WirelessSecurity security_uma;
   if (security_.IsValid()) {
-    security_uma = Metrics::WiFiSecurityStringToEnum(security_.ToString());
+    security_uma = Metrics::WiFiSecurityToEnum(security_);
   } else {
-    security_uma = Metrics::WiFiSecurityStringToEnum(security_class_);
+    LOG(WARNING) << "Invalid Security property in ready state.";
+    security_uma = Metrics::WiFiSecurityClassToEnum(security_class_);
   }
-  DCHECK(security_uma != Metrics::kWiFiSecurityUnknown);
+  DCHECK(security_uma != Metrics::kWirelessSecurityUnknown);
+  // Special case for Dynamic WEP, let's report it separately for the initial
+  // phase of FGSec deployment. TODO(b/226138492): Remove this afterwards.
+  if (security_ == WiFiSecurity::kWep && Is8021x()) {
+    security_uma = Metrics::kWirelessSecurityWepEnterprise;
+  }
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSecuritySuffix,
                                    technology()),
@@ -924,7 +984,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   Metrics::WiFiConnectionAttemptInfo info;
   info.type = Metrics::kAttemptTypeUnknown;  // TODO(b/203692510)
   info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode());
-  info.security = Metrics::WiFiSecurityStringToEnum(security().ToString());
+  info.security = Metrics::WiFiSecurityToEnum(security());
   info.eap_inner = Metrics::EapInnerProtocolStringToEnum(eap()->inner_method());
   info.eap_outer = Metrics::EapOuterProtocolStringToEnum(eap()->method());
   info.band = Metrics::WiFiChannelToFrequencyRange(

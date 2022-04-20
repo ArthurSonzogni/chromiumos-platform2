@@ -44,21 +44,21 @@ class MetricsTest : public Test {
                                                ssid_,
                                                kModeManaged,
                                                kSecurityNone,
-                                               WiFiSecurity(),
+                                               WiFiSecurity::kNone,
                                                false)),
         wep_wifi_service_(new MockWiFiService(&manager_,
                                               manager_.wifi_provider(),
                                               ssid_,
                                               kModeManaged,
                                               kSecurityWep,
-                                              WiFiSecurity(),
+                                              WiFiSecurity::kWep,
                                               false)),
         eap_wifi_service_(new MockWiFiService(&manager_,
                                               manager_.wifi_provider(),
                                               ssid_,
                                               kModeManaged,
                                               kSecurityClass8021x,
-                                              WiFiSecurity(),
+                                              WiFiSecurity::kWpa2Enterprise,
                                               false)),
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI
@@ -77,14 +77,14 @@ class MetricsTest : public Test {
  protected:
   void ExpectCommonPostReady(Metrics::WiFiChannel channel,
                              Metrics::WiFiNetworkPhyMode mode,
-                             Metrics::WiFiSecurity security,
+                             Metrics::WirelessSecurity security,
                              int signal_strength) {
     EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel", channel,
                                         Metrics::kMetricNetworkChannelMax));
     EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.PhyMode", mode,
                                         Metrics::kWiFiNetworkPhyModeMax));
     EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Security", security,
-                                        Metrics::kWiFiSecurityMax));
+                                        Metrics::kWirelessSecurityMax));
     EXPECT_CALL(library_,
                 SendToUMA("Network.Shill.Wifi.SignalStrength", signal_strength,
                           Metrics::kMetricNetworkSignalStrengthMin,
@@ -215,7 +215,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   const int kStrength = -42;
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
       .Times(0);
@@ -235,7 +235,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   // Simulate a system suspend, resume and an AP reconnect.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
@@ -251,7 +251,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   // Make sure subsequent connects do not count towards TimeResumeToReady.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
       .Times(0);
@@ -263,11 +263,10 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   const int kStrength = -42;
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurity8021x, -kStrength);
+                        Metrics::kWirelessSecurityWpa2Enterprise, -kStrength);
   eap_wifi_service_->frequency_ = 2412;
   eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
-  eap_wifi_service_->security_ = WiFiSecurity::kWpa2Enterprise;
   EXPECT_CALL(
       *eap_, OutputConnectionMetrics(&metrics_, Technology(Technology::kWiFi)));
   metrics_.NotifyServiceStateChanged(*eap_wifi_service_,

@@ -25,6 +25,7 @@
 #if !defined(DISABLE_WIFI)
 #include "shill/net/ieee80211.h"
 #include "shill/wifi/wake_on_wifi.h"
+#include "shill/wifi/wifi_security.h"
 #endif  // DISABLE_WIFI
 
 namespace shill {
@@ -263,17 +264,43 @@ class Metrics : public DefaultServiceObserver {
           .max = kEapInnerProtocolMax,
       };
 
-  enum WiFiSecurity {
-    kWiFiSecurityUnknown = 0,
-    kWiFiSecurityNone = 1,
-    kWiFiSecurityWep = 2,
-    kWiFiSecurityWpa = 3,
-    kWiFiSecurityRsn = 4,
-    kWiFiSecurity8021x = 5,
-    kWiFiSecurityPsk = 6,
-    kWiFiSecurityWpa3 = 7,
+  enum WirelessSecurity {
+    kWirelessSecurityUnknown = 0,
+    kWirelessSecurityNone = 1,
+    kWirelessSecurityWep = 2,
+    kWirelessSecurityWpa = 3,
+    // Value "802.11i/RSN" (4) is not used anymore.
+    kWirelessSecurity8021x = 5,
+    kWirelessSecurityPsk = 6,
+    kWirelessSecurityWpa3 = 7,
+    kWirelessSecurityWpaWpa2 = 8,
+    kWirelessSecurityWpa2 = 9,
+    kWirelessSecurityWpa2Wpa3 = 10,
+    kWirelessSecurityWpaEnterprise = 11,
+    kWirelessSecurityWpaWpa2Enterprise = 12,
+    kWirelessSecurityWpa2Enterprise = 13,
+    kWirelessSecurityWpa2Wpa3Enterprise = 14,
+    kWirelessSecurityWpa3Enterprise = 15,
+    kWirelessSecurityWpaAll = 16,
+    kWirelessSecurityWpaAllEnterprise = 17,
+    kWirelessSecurityWepEnterprise = 18,
 
-    kWiFiSecurityMax
+    kWirelessSecurityMax
+  };
+
+  enum WirelessSecurityChange {
+    kWirelessSecurityChangeWpa3ToWpa23 = 0,
+    kWirelessSecurityChangeWpa3ToWpa123 = 1,
+    kWirelessSecurityChangeWpa23ToWpa123 = 2,
+    kWirelessSecurityChangeWpa2ToWpa12 = 3,
+    kWirelessSecurityChangeEAPWpa3ToWpa23 = 4,
+    kWirelessSecurityChangeEAPWpa3ToWpa123 = 5,
+    kWirelessSecurityChangeEAPWpa23ToWpa123 = 6,
+    kWirelessSecurityChangeEAPWpa2ToWpa12 = 7,
+    kWirelessSecurityChangeWpa12ToWpa123 = 8,
+    kWirelessSecurityChangeEAPWpa12ToWpa123 = 9,
+
+    kWirelessSecurityChangeMax
   };
 
   // The result of the portal detection.
@@ -953,7 +980,9 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricNetworkPhyModeSuffix[] = "PhyMode";
   static constexpr int kMetricNetworkPhyModeMax = kWiFiNetworkPhyModeMax;
   static constexpr char kMetricNetworkSecuritySuffix[] = "Security";
-  static constexpr int kMetricNetworkSecurityMax = kWiFiSecurityMax;
+  static constexpr int kMetricNetworkSecurityMax = kWirelessSecurityMax;
+  static constexpr char kMetricWirelessSecurityChange[] =
+      "Network.Shill.WiFi.SecurityChange";
   static constexpr char kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
   static constexpr int kMetricNetworkSignalStrengthMin = 1;
   static constexpr int kMetricNetworkSignalStrengthMax = 200;
@@ -1252,8 +1281,10 @@ class Metrics : public DefaultServiceObserver {
   // Converts WiFi Channel to the associated frequency range.
   static WiFiFrequencyRange WiFiChannelToFrequencyRange(WiFiChannel channel);
 
-  // Converts a flimflam security string into its UMA security enumerator.
-  static WiFiSecurity WiFiSecurityStringToEnum(const std::string& security);
+  // Converts a flimflam Security/SecurityClass into its UMA security
+  // enumerator.
+  static WirelessSecurity WiFiSecurityToEnum(const WiFiSecurity& security);
+  static WirelessSecurity WiFiSecurityClassToEnum(const std::string& security);
 
   // Converts a flimflam EAP outer protocol string into its UMA enumerator.
   static EapOuterProtocol EapOuterProtocolStringToEnum(
@@ -1482,7 +1513,7 @@ class Metrics : public DefaultServiceObserver {
   struct WiFiConnectionAttemptInfo {
     ConnectionAttemptType type;
     WiFiNetworkPhyMode mode;
-    WiFiSecurity security;
+    WirelessSecurity security;
     EapInnerProtocol eap_inner;
     EapOuterProtocol eap_outer;
     WiFiFrequencyRange band;
