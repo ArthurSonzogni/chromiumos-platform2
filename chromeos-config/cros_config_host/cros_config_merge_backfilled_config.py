@@ -89,7 +89,7 @@ def merge_config_bundles(
     _merge_sequences_by_key(
         config_bundle.design_list,
         backfilled_config_bundle.design_list,
-        lambda d: d.id.value,
+        lambda d: d.id.value.lower(),
     )
     _merge_sequences_by_key(
         config_bundle.device_brand_list,

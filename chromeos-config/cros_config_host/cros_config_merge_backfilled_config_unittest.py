@@ -36,6 +36,12 @@ class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):
                     name='partnerNameCOrig',
                 ),
             ],
+            design_list=[
+                design_pb2.Design(
+                    id=design_id_pb2.DesignId(value='designB'),
+                    name='designBName',
+                )
+            ],
             components=[
                 component_pb2.Component(
                     id=component_id_pb2.ComponentId(value='compA'),
@@ -69,7 +75,7 @@ class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):
             ],
             design_list=[
                 design_pb2.Design(
-                    id=design_id_pb2.DesignId(value='designB'),
+                    id=design_id_pb2.DesignId(value='DesignB'),
                     name='designBName',
                 )
             ],
