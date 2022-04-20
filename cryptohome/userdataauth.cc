@@ -1272,8 +1272,9 @@ void UserDataAuth::DetectEnterpriseOwnership() {
 void UserDataAuth::InitializeInstallAttributes() {
   AssertOnMountThread();
 
-  // Don't reinitialize when install attributes are valid.
-  if (install_attrs_->status() == InstallAttributes::Status::kValid) {
+  // Don't reinitialize when install attributes are valid or first install.
+  if (install_attrs_->status() == InstallAttributes::Status::kValid ||
+      install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
     return;
   }
 
