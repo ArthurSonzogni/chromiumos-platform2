@@ -55,8 +55,8 @@ MODEL_9="LITEON_CS1-SP16-11_M.2_2242_16GB"
 VERSION_9="LS4110B"
 RESULT_9="MATCH"
 
-get_is_ssd_blacklist_result() {
-  if is_ssd_blacklist $1 $2; then
+get_is_ssd_ignorelist_result() {
+  if is_ssd_ignorelist $1 $2; then
     echo "MATCH"
   else
     echo "NOT_MATCH"
@@ -69,7 +69,7 @@ for i in $(seq 1 $TEST_COUNT); do
   eval MODEL=\$MODEL_$i
   eval VERSION=\$VERSION_$i
   eval RESULT=\$RESULT_$i
-  if [ ! "$(get_is_ssd_blacklist_result $MODEL $VERSION)" = "$RESULT" ]; then
+  if [ ! "$(get_is_ssd_ignorelist_result $MODEL $VERSION)" = "$RESULT" ]; then
     printf '\033[31m[FAILED]\033[0m'
     echo " result for $MODEL $VERSION is not $RESULT"
     exit 1

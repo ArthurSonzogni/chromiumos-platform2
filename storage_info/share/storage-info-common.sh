@@ -17,15 +17,15 @@ SSD_CMD_MAX=1
 
 # This match SanDisk SSD U100/i100 with any size with version *.xx.* when x < 54
 # Seen Error with U100 10.52.01 / i100 CS.51.00 / U100 10.01.04.
-MODEL_BLACKLIST_0="SanDisk_SSD_[iU]100.*"
-VERSION_BLACKLIST_0="(CS|10)\.([01234].|5[0123])\..*"
-MODEL_BLACKLIST_1="SanDisk_SDSA5GK-.*"
-VERSION_BLACKLIST_1="CS.54.06"
-MODEL_BLACKLIST_2="LITEON_LST-.*"
-VERSION_BLACKLIST_2=".*"
-MODEL_BLACKLIST_3="LITEON_CS1-SP.*"
-VERSION_BLACKLIST_3=".*"
-BLACKLIST_MAX=3
+MODEL_IGNORELIST_0="SanDisk_SSD_[iU]100.*"
+VERSION_IGNORELIST_0="(CS|10)\.([01234].|5[0123])\..*"
+MODEL_IGNORELIST_1="SanDisk_SDSA5GK-.*"
+VERSION_IGNORELIST_1="CS.54.06"
+MODEL_IGNORELIST_2="LITEON_LST-.*"
+VERSION_IGNORELIST_2=".*"
+MODEL_IGNORELIST_3="LITEON_CS1-SP.*"
+VERSION_IGNORELIST_3=".*"
+IGNORELIST_MAX=3
 
 MMC_NAME_0="cid"
 MMC_NAME_1="csd"
@@ -81,37 +81,37 @@ get_ssd_version() {
   echo "$1" | sed -e "s/^.*FwRev=//g" -e "s/,.*//g" -e "s/ /_/g"
 }
 
-# is_blacklist - helper function for is_ssd_blacklist.
+# is_ignorelist - helper function for is_ssd_ignorelist.
 #
 # inputs:
 #   the information from the device.
-#   the blacklist element to match against.
-is_blacklist() {
+#   the ignorelist element to match against.
+is_ignorelist() {
   echo "$1" | grep -Eq "$2"
 }
 
-# is_ssd_blacklist - Return true is the device is blacklisted.
+# is_ssd_ignorelist - Return true is the device is ignorelisted.
 #
 # inputs:
 #   model : model of the ATA device.
 #   version : ATA device firmware version.
 #
 # outputs:
-#   True if the device belongs into the script blacklist.
-#   When an ATA device is in the blacklist, only a subset of the ATA SMART
+#   True if the device belongs into the script ignorelist.
+#   When an ATA device is in the ignorelist, only a subset of the ATA SMART
 #   output is displayed.
-is_ssd_blacklist() {
+is_ssd_ignorelist() {
   local model="$1"
   local version="$2"
-  local model_blacklist
-  local version_blacklist
+  local model_ignorelist
+  local version_ignorelist
   local i
 
-  for i in $(seq 0 ${BLACKLIST_MAX}); do
-    eval model_blacklist=\${MODEL_BLACKLIST_${i}}
-    if is_blacklist "${model}" "${model_blacklist}"; then
-      eval version_blacklist=\${VERSION_BLACKLIST_${i}}
-      if is_blacklist "${version}" "${version_blacklist}"; then
+  for i in $(seq 0 ${IGNORELIST_MAX}); do
+    eval model_ignorelist=\${MODEL_IGNORELIST_${i}}
+    if is_ignorelist "${model}" "${model_ignorelist}"; then
+      eval version_ignorelist=\${VERSION_IGNORELIST_${i}}
+      if is_ignorelist "${version}" "${version_ignorelist}"; then
         return 0
       fi
     fi
@@ -134,7 +134,7 @@ print_ssd_info() {
   local ssd_cmd
   local i
 
-  if is_ssd_blacklist "${model}" "${version}"; then
+  if is_ssd_ignorelist "${model}" "${version}"; then
     SSD_CMD_1=${SSD_CMD_1_ALTERNATE}
   else
     SSD_CMD_1=${SSD_CMD_1_NORMAL}
