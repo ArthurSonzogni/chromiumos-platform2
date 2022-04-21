@@ -24,15 +24,17 @@ std::unique_ptr<MountPoint> MountPoint::CreateLeaking(
   return mount_point;
 }
 
-// static
 std::unique_ptr<MountPoint> MountPoint::Mount(MountPointData data,
-                                              const Platform* platform,
-                                              MountErrorType* error) {
+                                              const Platform* const platform,
+                                              MountErrorType* const error) {
+  DCHECK(error);
   *error = platform->Mount(data.source, data.mount_path.value(),
                            data.filesystem_type, data.flags, data.data);
+
   if (*error != MOUNT_ERROR_NONE) {
     return nullptr;
   }
+
   return std::make_unique<MountPoint>(std::move(data), platform);
 }
 

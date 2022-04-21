@@ -62,15 +62,12 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     return nullptr;
   }
 
-  return MountPoint::Mount(
-      {
-          .mount_path = target_path,
-          .source = source,
-          .filesystem_type = filesystem_type_,
-          .flags = flags,
-          .data = option_string,
-      },
-      platform_, error);
+  return MountPoint::Mount({.mount_path = target_path,
+                            .source = source,
+                            .filesystem_type = filesystem_type_,
+                            .flags = flags,
+                            .data = option_string},
+                           platform_, error);
 }
 
 bool SystemMounter::CanMount(const std::string& source,

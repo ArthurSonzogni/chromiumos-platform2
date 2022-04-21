@@ -302,23 +302,18 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   if (config_.nosymfollow)
     mount_flags |= MS_NOSYMFOLLOW;
 
-  *error = platform_->Mount(source_descr, target_path.value(), fuse_type,
-                            mount_flags, fuse_mount_options);
-  if (*error) {
-    LOG(ERROR) << "Cannot mount " << redact(source) << " at mount point "
-               << redact(target_path) << ": " << *error;
+  std::unique_ptr<MountPoint> mount_point =
+      MountPoint::Mount({.mount_path = target_path,
+                         .source = source_descr,
+                         .filesystem_type = fuse_type,
+                         .flags = mount_flags,
+                         .data = fuse_mount_options},
+                        platform_, error);
+
+  if (!mount_point) {
+    DCHECK_NE(*error, MOUNT_ERROR_NONE);
     return nullptr;
   }
-
-  std::unique_ptr<MountPoint> mount_point = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = target_path,
-          .source = source_descr,
-          .filesystem_type = fuse_type,
-          .flags = mount_flags,
-          .data = fuse_mount_options,
-      },
-      platform_);
 
   // Start FUSE daemon.
   std::unique_ptr<SandboxedProcess> process =
