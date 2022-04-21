@@ -11,6 +11,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::process::Command;
 use std::str;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
@@ -420,4 +421,28 @@ fn unlock_process_memory() {
     unsafe {
         libc::munlockall();
     };
+}
+
+/// Log a duration with level info in the form: <action> in X.YYY seconds.
+pub fn log_duration(action: &str, duration: Duration) {
+    info!(
+        "{} in {}.{:03} seconds",
+        action,
+        duration.as_secs(),
+        duration.subsec_millis()
+    );
+}
+
+/// Log a duration with an I/O rate at level info in the form:
+/// <action> in X.YYY seconds, N bytes, A.BB MB/s.
+pub fn log_io_duration(action: &str, io_bytes: i64, duration: Duration) {
+    let rate = ((io_bytes as f64) / duration.as_secs_f64()) / 1048576.0;
+    info!(
+        "{} in {}.{:03} seconds, {} bytes, {:.3} MB/s",
+        action,
+        duration.as_secs(),
+        duration.subsec_millis(),
+        io_bytes,
+        rate
+    );
 }

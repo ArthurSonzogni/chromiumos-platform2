@@ -13,6 +13,8 @@ use log::{debug, error, info};
 use sync::Mutex;
 use system_api::client::OrgChromiumPowerManager;
 
+use crate::hiberutil::log_duration;
+
 /// Define the default maximum duration the powerd proxy will wait for method
 /// call responses.
 const POWERD_DBUS_PROXY_TIMEOUT: Duration = Duration::from_secs(60);
@@ -96,13 +98,14 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
     )?;
 
     info!("Waiting for HibernateResumeReady signal");
+    let start = Instant::now();
     loop {
         let end_time = Instant::now() + POWERD_REPRINT_PERIOD;
         while Instant::now() < end_time {
             // Wait for signals.
             conn.process(POWERD_PROCESS_PERIOD).unwrap();
             if signals.lock().len() != 0 {
-                debug!("Got HibernateResumeReady signal");
+                log_duration("Got powerd HibernateResumeReady signal", start.elapsed());
                 return Ok(());
             }
         }

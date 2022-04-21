@@ -64,7 +64,8 @@ impl<'a> ImagePreloader<'a> {
     }
 
     /// Load as many image chunks as possible without exhausting system memory.
-    pub fn load_into_available_memory(&mut self) -> Result<()> {
+    /// Returns the number of bytes preloaded.
+    pub fn load_into_available_memory(&mut self) -> Result<usize> {
         let total_pages = get_total_memory_pages();
         let minimum_pages = total_pages * RESERVE_MEMORY_PERCENT / 100;
         debug!(
@@ -92,7 +93,7 @@ impl<'a> ImagePreloader<'a> {
             }
         }
 
-        Ok(())
+        Ok(self.size_loaded)
     }
 }
 

@@ -6,6 +6,7 @@
 
 use std::convert::TryInto;
 use std::io::{Read, Write};
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
@@ -23,8 +24,8 @@ use crate::hibermeta::{
 };
 use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::{
-    activate_physical_vg, get_page_size, lock_process_memory, path_to_stateful_block,
-    HibernateError, BUFFER_PAGES,
+    activate_physical_vg, get_page_size, lock_process_memory, log_duration, log_io_duration,
+    path_to_stateful_block, HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -182,6 +183,7 @@ impl ResumeConductor {
     ) -> Result<Option<PendingResumeCall>> {
         let page_size = get_page_size();
         let mut image_size = self.metadata.image_size;
+        let total_size = image_size;
         debug!("Resume image is {} bytes", image_size);
         // Create the image joiner, which combines the header file and the data
         // file into one contiguous read stream.
@@ -200,9 +202,11 @@ impl ResumeConductor {
         // that disk latency while the user is still authenticating (eg typing
         // in their password).
         let mut preloader;
+        let preload_duration;
         if self.options.no_preloader {
             info!("Not using preloader");
             mover_source = &mut joiner;
+            preload_duration = Duration::ZERO;
         } else {
             preloader = ImagePreloader::new(
                 &mut joiner,
@@ -242,7 +246,10 @@ impl ResumeConductor {
             // By now the kernel has done its own allocation for hibernate image
             // space. We can use the remaining memory to preload from disk.
             debug!("Preloading hibernate image");
-            preloader.load_into_available_memory()?;
+            let start = Instant::now();
+            let preloaded = preloader.load_into_available_memory()?;
+            preload_duration = start.elapsed();
+            log_io_duration("Preloaded image", preloaded as i64, preload_duration);
             mover_source = &mut preloader;
         }
 
@@ -255,7 +262,10 @@ impl ResumeConductor {
             pending_resume_call = None;
         } else {
             // This is what blocks waiting for seed material.
+            let wait_start = Instant::now();
             pending_resume_call = Some(self.populate_seed(dbus_connection, true)?);
+            let wait_duration = wait_start.elapsed();
+            log_duration("Got seed", wait_duration);
         }
 
         // With the seed material in hand, decrypt the private data, and fire up
@@ -293,6 +303,7 @@ impl ResumeConductor {
             image_size -= page_size as i64;
         }
 
+        let main_move_start = Instant::now();
         // Fire up the big image pump into the kernel.
         ImageMover::new(
             &mut decryptor,
@@ -303,7 +314,11 @@ impl ResumeConductor {
         )?
         .move_all()
         .context("Failed to move in hibernate image")?;
-        info!("Moved {} MB", image_size / 1024 / 1024);
+        let main_move_duration = main_move_start.elapsed();
+        log_io_duration("Read main image", image_size, main_move_duration);
+        let total_io_duration = preload_duration + main_move_duration;
+        log_io_duration("Read all data", total_size, total_io_duration);
+
         // Validate the image data tag.
         decryptor
             .check_tag(&self.metadata.data_tag)

@@ -24,8 +24,8 @@ use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogF
 use crate::hibermeta::{HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_VALID, META_TAG_SIZE};
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::{
-    get_page_size, is_lvm_system, lock_process_memory, path_to_stateful_block, prealloc_mem,
-    HibernateError, BUFFER_PAGES,
+    get_page_size, is_lvm_system, lock_process_memory, log_duration, log_io_duration,
+    path_to_stateful_block, prealloc_mem, HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -73,14 +73,12 @@ impl SuspendConductor {
         // snapshot is taken, though it's not used here.
         preallocate_log_file(HiberlogFile::Resume, should_zero)?;
         let mut log_file = preallocate_log_file(HiberlogFile::Suspend, should_zero)?;
-        let duration = start.elapsed();
-        info!(
-            "Set up {}hibernate files on {}LVM system in {}.{:03} seconds",
+        let action_string = format!(
+            "Set up {}hibernate files on {}LVM system",
             if files_exist { "" } else { "new " },
-            if is_lvm { "" } else { "non-" },
-            duration.as_secs(),
-            duration.subsec_millis()
+            if is_lvm { "" } else { "non-" }
         );
+        log_duration(&action_string, start.elapsed());
 
         self.options = options;
         // Don't allow the logfile to log as it creates a deadlock.
@@ -232,6 +230,7 @@ impl SuspendConductor {
         }
 
         debug!("Hibernate image is {} bytes", image_size);
+        let start = Instant::now();
         let mut splitter =
             ImageSplitter::new(&mut header_file, &mut encryptor, &mut self.metadata, true);
         let mut writer = ImageMover::new(
@@ -245,8 +244,7 @@ impl SuspendConductor {
             .move_all()
             .context("Failed to write out main image")?;
 
-        info!("Wrote {} MB", image_size / 1024 / 1024);
-
+        log_io_duration("Wrote hibernate image", image_size, start.elapsed());
         self.metadata.data_tag = encryptor.get_tag()?;
 
         assert!(self.metadata.data_tag != [0u8; META_TAG_SIZE]);
