@@ -789,7 +789,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
       AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor));
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor)
+          .ok());
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
   std::optional<brillo::SecureBlob> wrapping_key =
@@ -864,7 +865,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
       AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor));
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor)
+          .ok());
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
   std::optional<brillo::SecureBlob> wrapping_key =

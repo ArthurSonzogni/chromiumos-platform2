@@ -18,6 +18,8 @@
 #include "cryptohome/mock_platform.h"
 
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeError;
+using hwsec_foundation::status::StatusChain;
 using testing::ElementsAre;
 using testing::IsEmpty;
 using testing::Pair;
@@ -63,20 +65,22 @@ TEST_F(AuthFactorManagerTest, Save) {
 
   // Persist the auth factor.
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor));
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+          .ok());
   EXPECT_TRUE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
 
   // Load the auth factor and verify it's the same.
-  std::unique_ptr<AuthFactor> loaded_auth_factor =
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
-  ASSERT_TRUE(loaded_auth_factor);
-  EXPECT_EQ(loaded_auth_factor->type(), AuthFactorType::kPassword);
-  EXPECT_EQ(loaded_auth_factor->label(), kSomeIdpLabel);
+  ASSERT_TRUE(loaded_auth_factor.ok());
+  ASSERT_TRUE(loaded_auth_factor.value());
+  EXPECT_EQ(loaded_auth_factor.value()->type(), AuthFactorType::kPassword);
+  EXPECT_EQ(loaded_auth_factor.value()->label(), kSomeIdpLabel);
   EXPECT_TRUE(absl::holds_alternative<PasswordAuthFactorMetadata>(
-      loaded_auth_factor->metadata().metadata));
+      loaded_auth_factor.value()->metadata().metadata));
   // TODO(b/204441443): Check other fields too. Consider using a GTest matcher.
 }
 
@@ -91,8 +95,9 @@ TEST_F(AuthFactorManagerTest, SaveBadEmptyLabel) {
                              good_auth_factor->auth_block_state());
 
   // Verify the manager refuses to save this auth factor.
-  EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,
-                                                   bad_auth_factor));
+  EXPECT_FALSE(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, bad_auth_factor)
+          .ok());
 }
 
 // Test the `SaveAuthFactor()` method fails when the label contains forbidden
@@ -107,8 +112,9 @@ TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
                              good_auth_factor->auth_block_state());
 
   // Verify the manager refuses to save this auth factor.
-  EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,
-                                                   bad_auth_factor));
+  EXPECT_FALSE(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, bad_auth_factor)
+          .ok());
 }
 
 // Test that `ListAuthFactors()` returns an empty map when there's no auth
@@ -124,7 +130,8 @@ TEST_F(AuthFactorManagerTest, ListSingle) {
   // Create the auth factor file.
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor));
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+          .ok());
 
   // Verify the factor is listed.
   AuthFactorManager::LabelToTypeMap factor_map =

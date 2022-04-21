@@ -9,8 +9,11 @@
 #include <memory>
 #include <string>
 
+#include <libhwsec-foundation/status/status_chain_or.h>
+
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -34,12 +37,12 @@ class AuthFactorManager final {
 
   // Serializes and persists as a file the given auth factor in the user's data
   // vault.
-  bool SaveAuthFactor(const std::string& obfuscated_username,
-                      const AuthFactor& auth_factor);
+  CryptohomeStatus SaveAuthFactor(const std::string& obfuscated_username,
+                                  const AuthFactor& auth_factor);
 
   // Loads from the auth factor with the given type and label from the file in
   // the user's data vault.
-  std::unique_ptr<AuthFactor> LoadAuthFactor(
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> LoadAuthFactor(
       const std::string& obfuscated_username,
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label);

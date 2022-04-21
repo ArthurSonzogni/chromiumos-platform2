@@ -24,12 +24,19 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_generated.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h"
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
 #include "cryptohome/platform.h"
 
 using brillo::Blob;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -205,20 +212,26 @@ AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
 
 AuthFactorManager::~AuthFactorManager() = default;
 
-bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
-                                       const AuthFactor& auth_factor) {
+CryptohomeStatus AuthFactorManager::SaveAuthFactor(
+    const std::string& obfuscated_username, const AuthFactor& auth_factor) {
   // Validate input parameters.
   const std::string type_string = GetAuthFactorTypeString(auth_factor.type());
   if (type_string.empty()) {
     LOG(ERROR) << "Failed to convert auth factor type "
                << static_cast<int>(auth_factor.type()) << " for factor called "
                << auth_factor.label();
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerWrongTypeStringInSave),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   if (!IsValidAuthFactorLabel(auth_factor.label())) {
     LOG(ERROR) << "Invalid auth factor label " << auth_factor.label()
                << " of type " << type_string;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerInvalidLabelInSave),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
   // Create a flatbuffer to be persisted.
@@ -226,7 +239,10 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
   if (!flatbuffer.has_value()) {
     LOG(ERROR) << "Failed to serialize auth factor " << auth_factor.label()
                << " of type " << type_string;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSerializeFailedInSave),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   // Write the file.
@@ -236,16 +252,19 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
                                          kAuthFactorFilePermissions)) {
     LOG(ERROR) << "Failed to persist auth factor " << auth_factor.label()
                << " of type " << type_string << " for " << obfuscated_username;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerWriteFailedInSave),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  return true;
+  return OkStatus<CryptohomeError>();
 }
 
-std::unique_ptr<AuthFactor> AuthFactorManager::LoadAuthFactor(
-    const std::string& obfuscated_username,
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label) {
+CryptohomeStatusOr<std::unique_ptr<AuthFactor>>
+AuthFactorManager::LoadAuthFactor(const std::string& obfuscated_username,
+                                  AuthFactorType auth_factor_type,
+                                  const std::string& auth_factor_label) {
   // TODO(b:208351356): Verify the `auth_factor_label` validity.
 
   const std::string type_string = GetAuthFactorTypeString(auth_factor_type);
@@ -253,7 +272,10 @@ std::unique_ptr<AuthFactor> AuthFactorManager::LoadAuthFactor(
     LOG(ERROR) << "Failed to convert auth factor type "
                << static_cast<int>(auth_factor_type) << " for factor called "
                << auth_factor_label;
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerWrongTypeStringInLoad),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
   const base::FilePath file_path =
@@ -262,7 +284,10 @@ std::unique_ptr<AuthFactor> AuthFactorManager::LoadAuthFactor(
   if (!platform_->ReadFile(file_path, &file_contents)) {
     LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
                << " of type " << type_string << " for " << obfuscated_username;
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerReadFailedInLoad),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   AuthBlockState auth_block_state;
@@ -271,7 +296,10 @@ std::unique_ptr<AuthFactor> AuthFactorManager::LoadAuthFactor(
                                  &auth_factor_metadata)) {
     LOG(ERROR) << "Failed to parse persisted auth factor " << auth_factor_label
                << " of type " << type_string << " for " << obfuscated_username;
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerParseFailedInLoad),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   return std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,

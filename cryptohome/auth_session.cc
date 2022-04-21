@@ -66,14 +66,14 @@ std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
   std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
   for (const auto& [label, auth_factor_type] :
        auth_factor_manager->ListAuthFactors(obfuscated_username)) {
-    std::unique_ptr<AuthFactor> auth_factor =
+    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
         auth_factor_manager->LoadAuthFactor(obfuscated_username,
                                             auth_factor_type, label);
-    if (!auth_factor) {
+    if (!auth_factor.ok()) {
       LOG(WARNING) << "Skipping malformed auth factor " << label;
       continue;
     }
-    label_to_auth_factor.emplace(label, std::move(auth_factor));
+    label_to_auth_factor.emplace(label, std::move(auth_factor).value());
   }
   return label_to_auth_factor;
 }
@@ -1019,17 +1019,17 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
 
   // 1. Create a new auth factor in-memory, by executing auth block's Create().
   KeyBlobs key_blobs;
-  std::unique_ptr<AuthFactor> auth_factor = AuthFactor::CreateNew(
-      auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      auth_block_utility_, key_blobs);
-  if (!auth_factor) {
-    // TODO(b/229860255): Migrate AuthFactor and wrap the error.
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_or_status =
+      AuthFactor::CreateNew(auth_factor_type, auth_factor_label,
+                            auth_factor_metadata, auth_input,
+                            auth_block_utility_, key_blobs);
+  if (!auth_factor_or_status.ok()) {
     LOG(ERROR) << "Failed to create new auth factor";
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateAuthFactorFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionCreateAuthFactorFailedInAddViaUSS),
+               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+        .Wrap(std::move(auth_factor_or_status).status());
   }
 
   // 2. Derive the credential secret for the USS from the key blobs.
@@ -1078,15 +1078,17 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   // 5. Persist the factor.
   // It's important to do this after all steps ##1-4, so that we only start
   // writing files after all validity checks (like the label duplication check).
-  if (!auth_factor_manager_->SaveAuthFactor(obfuscated_username_,
-                                            *auth_factor)) {
+  std::unique_ptr<AuthFactor> auth_factor =
+      std::move(auth_factor_or_status).value();
+  CryptohomeStatus status =
+      auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
+  if (!status.ok()) {
     LOG(ERROR) << "Failed to persist created auth factor";
-    // TODO(b/229860255): Migrate AuthFactor and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionPersistFactorFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionPersistFactorFailedInAddViaUSS),
+               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+        .Wrap(std::move(status));
   }
 
   // 6. Persist the USS.
@@ -1120,16 +1122,14 @@ CryptohomeStatus AuthSession::AuthenticateViaUserSecretStash(
   // VaultKeyset other than how the AuthBlock state is obtained. Make the
   // derivation for USS asynchronous and merge these two.
   KeyBlobs key_blobs;
-  user_data_auth::CryptohomeErrorCode error =
+  CryptoStatus crypto_status =
       auth_factor.Authenticate(auth_input, auth_block_utility_, key_blobs);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+  if (!crypto_status.ok()) {
     LOG(ERROR) << "Failed to authenticate auth session via factor "
                << auth_factor_label;
-    // TODO(b/229860255): Migrate AuthFactor and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionAuthFactorAuthFailedInAuthUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
-        user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+               CRYPTOHOME_ERR_LOC(kLocAuthSessionAuthFactorAuthFailedInAuthUSS))
+        .Wrap(std::move(crypto_status));
   }
 
   // Use USS to finish the authentication.

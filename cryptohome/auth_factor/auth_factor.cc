@@ -14,6 +14,7 @@
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/converter.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/scrypt_verifier.h"
 
@@ -28,7 +29,7 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 // static
-std::unique_ptr<AuthFactor> AuthFactor::CreateNew(
+CryptohomeStatusOr<std::unique_ptr<AuthFactor>> AuthFactor::CreateNew(
     AuthFactorType type,
     const std::string& label,
     const AuthFactorMetadata& metadata,
@@ -40,7 +41,9 @@ std::unique_ptr<AuthFactor> AuthFactor::CreateNew(
       type, auth_input, auth_block_state, out_key_blobs);
   if (!error.ok()) {
     LOG(ERROR) << "Auth block creation failed for new auth factor";
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthFactorCreateKeyBlobsFailedInCreate))
+        .Wrap(std::move(error));
   }
   return std::make_unique<AuthFactor>(type, label, metadata, auth_block_state);
 }
@@ -54,21 +57,18 @@ AuthFactor::AuthFactor(AuthFactorType type,
       metadata_(metadata),
       auth_block_state_(auth_block_state) {}
 
-user_data_auth::CryptohomeErrorCode AuthFactor::Authenticate(
-    const AuthInput& auth_input,
-    AuthBlockUtility* auth_block_utility,
-    KeyBlobs& out_key_blobs) {
+CryptoStatus AuthFactor::Authenticate(const AuthInput& auth_input,
+                                      AuthBlockUtility* auth_block_utility,
+                                      KeyBlobs& out_key_blobs) {
   CryptoStatus crypto_error = auth_block_utility->DeriveKeyBlobs(
       auth_input, auth_block_state_, out_key_blobs);
   if (!crypto_error.ok()) {
-    CryptohomeStatus cryptohome_error = std::move(crypto_error);
-    user_data_auth::CryptohomeErrorCode error =
-        error::LegacyErrorCodeFromStack(cryptohome_error);
-    LOG(ERROR) << "Auth factor authentication failed: error " << error
-               << ", crypto error " << cryptohome_error;
-    return error;
+    LOG(ERROR) << "Auth factor authentication failed: error " << crypto_error;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthFactorDeriveFailedInAuth))
+        .Wrap(std::move(crypto_error));
   }
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome
