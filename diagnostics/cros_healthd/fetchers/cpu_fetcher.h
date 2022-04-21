@@ -38,6 +38,9 @@ inline constexpr char kRelativeCryptoFilePath[] = "proc/crypto";
 // Relative path from root of the CPU directory.
 inline constexpr char kRelativeCpuDir[] = "sys/devices/system/cpu";
 
+// Path from relative cpu dir to the vulnerabilities directory.
+inline constexpr char kVulnerabilityDirName[] = "vulnerabilities";
+
 // Returns an absolute path to the C-state directory for the logical CPU with ID
 // |logical_id|. On a real device, this will be
 // /sys/devices/system/cpu/cpu|logical_id|/cpuidle.

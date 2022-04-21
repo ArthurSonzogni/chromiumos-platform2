@@ -36,6 +36,8 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::UnorderedElementsAreArray;
+using VulnerabilityInfoMap =
+    base::flat_map<std::string, mojo_ipc::VulnerabilityInfoPtr>;
 
 // POD struct for ParseCpuArchitectureTest.
 struct ParseCpuArchitectureTestParams {
@@ -292,6 +294,17 @@ class CpuFetcherTest : public testing::Test {
     // Wait for all task to be done.
     task_environment_.RunUntilIdle();
   }
+
+  // Write the fake vulnerability files for unit testing
+  void SetVulnerabiility(const std::string& filename,
+                         const std::string& content) {
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                                 .Append(kRelativeCpuDir)
+                                                 .Append(kVulnerabilityDirName)
+                                                 .Append(filename),
+                                             content));
+  }
+
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
@@ -805,6 +818,52 @@ TEST_F(CpuFetcherTest, UnameFailure) {
   ASSERT_TRUE(cpu_result->is_cpu_info());
   EXPECT_EQ(cpu_result->get_cpu_info()->architecture,
             mojo_ipc::CpuArchitectureEnum::kUnknown);
+}
+
+// Test that we handle normal vulnerability files.
+TEST_F(CpuFetcherTest, NormalVulnerabilityFile) {
+  VulnerabilityInfoMap expected;
+  SetVulnerabiility("Vulnerability1", "Not affected");
+  expected["Vulnerability1"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kNotAffected, "Not affected");
+  SetVulnerabiility("Vulnerability2", "Vulnerable");
+  expected["Vulnerability2"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kVulnerable, "Vulnerable");
+  SetVulnerabiility("Vulnerability3", "Mitigation: Fake Mitigation Effect");
+  expected["Vulnerability3"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kMitigation,
+      "Mitigation: Fake Mitigation Effect");
+  SetVulnerabiility("Vulnerability4", "Vulnerable: Vulnerable with message");
+  expected["Vulnerability4"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kVulnerable,
+      "Vulnerable: Vulnerable with message");
+  SetVulnerabiility("Vulnerability5", "Unknown: Unknown status");
+  expected["Vulnerability5"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kUnknown, "Unknown: Unknown status");
+  SetVulnerabiility("Vulnerability6", "KVM: Vulnerable: KVM vulnerability");
+  expected["Vulnerability6"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kVulnerable,
+      "KVM: Vulnerable: KVM vulnerability");
+  SetVulnerabiility("Vulnerability7", "KVM: Mitigation: KVM mitigation");
+  expected["Vulnerability7"] = mojo_ipc::VulnerabilityInfo::New(
+      mojo_ipc::VulnerabilityInfo::Status::kMitigation,
+      "KVM: Mitigation: KVM mitigation");
+
+  auto cpu_result = FetchCpuInfo();
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  ASSERT_TRUE(cpu_info->vulnerabilities.has_value());
+  EXPECT_EQ(cpu_info->vulnerabilities, expected);
+}
+
+// Test that we handle incorrectly formatted vulnerability content.
+TEST_F(CpuFetcherTest, IncorrectlyFormattedVulnerabilityFile) {
+  SetVulnerabiility("BadVulnerability", "wrong format");
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
 }
 
 // Tests that CpuFetcher can correctly parse each known architecture.

@@ -36,6 +36,9 @@ namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
+using VulnerabilityInfoMap =
+    base::flat_map<std::string, mojo_ipc::VulnerabilityInfoPtr>;
+
 // Regex used to parse kPresentFileName.
 constexpr char kPresentFileRegex[] = R"((\d+)-(\d+))";
 
@@ -61,6 +64,15 @@ const char kHwmonDirectoryPattern[] = "hwmon*";
 const char kCPUTempFilePattern[] = "temp*_input";
 // String "aeskl" indicates keylocker support.
 const char kKeylockerAeskl[] = "aeskl";
+
+// Patterns used to match the status of CPU vulnerability.
+// The possible output formats can be found here:
+// https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln
+constexpr char kKvmPrefix[] = "KVM: ";
+constexpr char kNotAffectedPattern[] = "Not affected";
+constexpr char kVulnerablePattern[] = "Vulnerable";
+constexpr char kMitigationPattern[] = "Mitigation";
+constexpr char kUnknownPattern[] = "Unknown";
 
 // Contains the values parsed from /proc/stat for a single logical CPU.
 struct ParsedStatContents {
@@ -395,6 +407,58 @@ std::optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
   return std::nullopt;
 }
 
+std::optional<VulnerabilityInfoMap> GetVulnerabilities(
+    const base::FilePath& root_dir) {
+  base::FilePath vulnerability_dir =
+      root_dir.Append(kRelativeCpuDir).Append(kVulnerabilityDirName);
+  // If vulnerabilities directory does not exist, this means the linux kernel
+  // version does not support vulnerability detection yet and we will return an
+  // empty map.
+  std::vector<VulnerabilityInfoMap::value_type> vulnerabilities_vec;
+  base::FileEnumerator it(vulnerability_dir,
+                          /*recursive=*/false, base::FileEnumerator::FILES);
+  for (base::FilePath vulnerability_file = it.Next();
+       !vulnerability_file.empty(); vulnerability_file = it.Next()) {
+    auto vulnerability = mojo_ipc::VulnerabilityInfo::New();
+
+    if (!ReadAndTrimString(vulnerability_file, &vulnerability->message)) {
+      return std::nullopt;
+    }
+
+    // Messages in the |iTLB multihit| vulnerability takes a different form with
+    // |KVM: Vulberable| and |KVM: Mitigation: $msg|. We remove prefix to
+    // convert the data to common form in order to parse the status correctly.
+    //
+    // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/multihit.html
+    std::string vulnerability_status_no_prefix = vulnerability->message;
+    if (base::StartsWith(vulnerability->message, kKvmPrefix)) {
+      vulnerability_status_no_prefix =
+          vulnerability->message.substr(sizeof(kKvmPrefix) - 1);
+    }
+
+    if (vulnerability_status_no_prefix == kNotAffectedPattern) {
+      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kNotAffected;
+    } else if (base::StartsWith(vulnerability_status_no_prefix,
+                                kVulnerablePattern)) {
+      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kVulnerable;
+    } else if (base::StartsWith(vulnerability_status_no_prefix,
+                                kMitigationPattern)) {
+      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kMitigation;
+    } else if (base::StartsWith(vulnerability_status_no_prefix,
+                                kUnknownPattern)) {
+      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kUnknown;
+    } else {
+      LOG(ERROR) << "Unrecognized vulnerability: " << vulnerability_file.value()
+                 << " with content " << vulnerability->message;
+      return std::nullopt;
+    }
+
+    vulnerabilities_vec.push_back(
+        {vulnerability_file.BaseName().value(), std::move(vulnerability)});
+  }
+  return VulnerabilityInfoMap(std::move(vulnerabilities_vec));
+}
+
 // Aggregates data from |processor_info| and |logical_ids_to_stat_contents| to
 // form the final CpuResultPtr. It's assumed that all CPUs on the device share
 // the same |architecture|.
@@ -506,6 +570,13 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     cpu_info.physical_cpus.push_back(mojo_ipc::PhysicalCpuInfo::New(
         std::move(key_value.second->model_name),
         std::move(key_value.second->logical_cpus)));
+  }
+
+  cpu_info.vulnerabilities = GetVulnerabilities(root_dir);
+  if (!cpu_info.vulnerabilities.has_value()) {
+    return mojo_ipc::CpuResult::NewError(
+        CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+                               "Unable to read vulnerabilities."));
   }
 
   return mojo_ipc::CpuResult::NewCpuInfo(cpu_info.Clone());

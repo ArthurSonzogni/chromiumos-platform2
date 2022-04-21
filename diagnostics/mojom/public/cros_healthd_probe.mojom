@@ -386,12 +386,13 @@ struct VulnerabilityInfo {
     kVulnerable,
     // Vulnerability is mitigated.
     kMitigation,
+    // Vulnerability is unknown.
+    kUnknown,
   };
 
   Status status@0;
-  // The description of the mitigation. It is omitted if the status is not
-  // kMitigation.
-  string? mitigation@1;
+  // The description of the vulnerability.
+  string message@1;
 };
 
 // Information related to Keylocker.
