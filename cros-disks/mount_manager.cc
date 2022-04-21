@@ -76,7 +76,7 @@ bool MountManager::StopSession() {
   return UnmountAll();
 }
 
-void MountManager::Mount(const std::string& source_path,
+void MountManager::Mount(const std::string& source,
                          const std::string& filesystem_type,
                          std::vector<std::string> options,
                          MountCallback callback) {
@@ -85,12 +85,12 @@ void MountManager::Mount(const std::string& source_path,
   // Source is not necessary a path, but if it is let's resolve it to
   // some real underlying object.
   std::string real_path;
-  if (Uri::IsUri(source_path) || !ResolvePath(source_path, &real_path)) {
-    real_path = source_path;
+  if (Uri::IsUri(source) || !ResolvePath(source, &real_path)) {
+    real_path = source;
   }
 
   if (real_path.empty()) {
-    LOG(ERROR) << "Cannot mount an invalid path: " << redact(source_path);
+    LOG(ERROR) << "Cannot mount an invalid path: " << redact(source);
     std::move(callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT);
     return;
   }
@@ -108,13 +108,13 @@ void MountManager::Mount(const std::string& source_path,
                  std::move(callback));
 }
 
-MountErrorType MountManager::Remount(const std::string& source_path,
+MountErrorType MountManager::Remount(const std::string& source,
                                      const std::string& /*filesystem_type*/,
                                      std::vector<std::string> options,
                                      std::string* mount_path) {
-  MountPoint* const mount_point = FindMountBySource(source_path);
+  MountPoint* const mount_point = FindMountBySource(source);
   if (!mount_point) {
-    LOG(WARNING) << "Not currently mounted: " << quote(source_path);
+    LOG(WARNING) << "Not currently mounted: " << quote(source);
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
 
@@ -122,24 +122,23 @@ MountErrorType MountManager::Remount(const std::string& source_path,
 
   // Perform the underlying mount operation.
   if (const MountErrorType error = mount_point->Remount(read_only)) {
-    LOG(ERROR) << "Cannot remount " << quote(source_path) << ": " << error;
+    LOG(ERROR) << "Cannot remount " << quote(source) << ": " << error;
     return error;
   }
 
   *mount_path = mount_point->path().value();
-  LOG(INFO) << "Remounted " << quote(source_path) << " on "
-            << quote(*mount_path);
+  LOG(INFO) << "Remounted " << quote(source) << " on " << quote(*mount_path);
   return MOUNT_ERROR_NONE;
 }
 
-void MountManager::MountNewSource(const std::string& source_path,
+void MountManager::MountNewSource(const std::string& source,
                                   const std::string& filesystem_type,
                                   std::vector<std::string> options,
                                   MountCallback callback) {
   DCHECK(callback);
 
-  if (const MountPoint* const mp = FindMountBySource(source_path)) {
-    LOG(ERROR) << redact(source_path) << " is already mounted on "
+  if (const MountPoint* const mp = FindMountBySource(source)) {
+    LOG(ERROR) << redact(source) << " is already mounted on "
                << redact(mp->path());
     return std::move(callback).Run(
         mp->path().value(), GetMountErrorOfReservedMountPath(mp->path()));
@@ -157,27 +156,27 @@ void MountManager::MountNewSource(const std::string& source_path,
   // requires a proper mount directory.
   base::FilePath mount_path;
   if (const MountErrorType error =
-          CreateMountPathForSource(source_path, label, &mount_path))
+          CreateMountPathForSource(source, label, &mount_path))
     return std::move(callback).Run("", error);
 
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  std::unique_ptr<MountPoint> mount_point = DoMount(
-      source_path, filesystem_type, std::move(options), mount_path, &error);
+  std::unique_ptr<MountPoint> mount_point =
+      DoMount(source, filesystem_type, std::move(options), mount_path, &error);
 
   // Check for both mount_point and error here, since there might be (incorrect)
   // mounters that return no MountPoint and no error (crbug.com/1317877 and
   // crbug.com/1317878).
   if (!mount_point || error) {
     if (!error) {
-      LOG(ERROR) << "Mounter for " << redact(source_path) << " of type "
+      LOG(ERROR) << "Mounter for " << redact(source) << " of type "
                  << quote(filesystem_type)
                  << " returned no MountPoint and no error";
       error = MOUNT_ERROR_UNKNOWN;
     } else if (mount_point) {
-      LOG(ERROR) << "Mounter for " << redact(source_path) << " of type "
+      LOG(ERROR) << "Mounter for " << redact(source) << " of type "
                  << quote(filesystem_type)
                  << " returned both a mount point and " << error;
       mount_point.reset();
@@ -189,7 +188,7 @@ void MountManager::MountNewSource(const std::string& source_path,
     }
 
     LOG(INFO) << "Reserving mount path " << quote(mount_path) << " for "
-              << quote(source_path);
+              << quote(source);
     DCHECK(!mount_point);
     ReserveMountPath(mount_path, error);
     // Create dummy mount point to associate with the mount path.
@@ -198,7 +197,7 @@ void MountManager::MountNewSource(const std::string& source_path,
 
   DCHECK(mount_point);
   const auto [it, ok] =
-      mount_states_.try_emplace(source_path, std::move(mount_point));
+      mount_states_.try_emplace(source, std::move(mount_point));
   DCHECK(ok);
   return std::move(callback).Run(mount_path.value(), error);
 }
@@ -240,12 +239,12 @@ bool MountManager::UnmountAll() {
 
   std::vector<std::string> paths;
   paths.reserve(mount_states_.size());
-  for (const auto& entry : mount_states_) {
-    paths.push_back(entry.second->path().value());
+  for (const auto& [source, mount_point] : mount_states_) {
+    paths.push_back(source);
   }
 
-  for (const auto& source_path : paths) {
-    if (Unmount(source_path) != MOUNT_ERROR_NONE) {
+  for (const auto& source : paths) {
+    if (Unmount(source) != MOUNT_ERROR_NONE) {
       all_umounted = false;
     }
   }
@@ -266,9 +265,10 @@ MountPoint* MountManager::FindMountBySource(const std::string& source) {
 }
 
 MountPoint* MountManager::FindMountByMountPath(const base::FilePath& path) {
-  for (auto& entry : mount_states_) {
-    if (entry.second->path() == path)
-      return entry.second.get();
+  for (const auto& [source, mount_point] : mount_states_) {
+    DCHECK(mount_point);
+    if (mount_point->path() == path)
+      return mount_point.get();
   }
   return nullptr;
 }
@@ -344,14 +344,12 @@ void MountManager::UnreserveMountPath(const base::FilePath& mount_path) {
 std::vector<MountEntry> MountManager::GetMountEntries() const {
   std::vector<MountEntry> mount_entries;
   mount_entries.reserve(mount_states_.size());
-  for (const auto& entry : mount_states_) {
-    const std::string& source_path = entry.first;
-    const MountPoint& mount_point = *entry.second;
-
+  for (const auto& [source, mount_point] : mount_states_) {
+    DCHECK(mount_point);
     mount_entries.push_back(
-        {GetMountErrorOfReservedMountPath(mount_point.path()), source_path,
-         GetMountSourceType(), mount_point.path().value(),
-         mount_point.is_read_only()});
+        {GetMountErrorOfReservedMountPath(mount_point->path()), source,
+         GetMountSourceType(), mount_point->path().value(),
+         mount_point->is_read_only()});
   }
   return mount_entries;
 }

@@ -83,8 +83,8 @@ class MountManager {
   virtual bool StopSession();
 
   // Implemented by a derived class to return true if it supports mounting
-  // |source_path|.
-  virtual bool CanMount(const std::string& source_path) const = 0;
+  // |source|.
+  virtual bool CanMount(const std::string& source) const = 0;
 
   // Implemented by a derived class to return the type of mount sources
   // it supports.
@@ -94,15 +94,15 @@ class MountManager {
   using MountCallback = base::OnceCallback<void(const std::string& mount_path,
                                                 MountErrorType error)>;
 
-  // Mounts |source_path| as |filesystem_type| with |options|. If "remount"
-  // option exists in |options|, attempts to remount |source_path| to the mount
+  // Mounts |source| as |filesystem_type| with |options|. If "remount"
+  // option exists in |options|, attempts to remount |source| to the mount
   // path which it's currently mounted to. Otherwise, attempts to mount a new
   // source. When mounting a new source, |SuggestMountPath()| is called to
   // obtain a suggested mount path. If an error occurs and
   // |ShouldReserveMountPathOnError()| returns true for that type of error, the
   // mount path is reserved and |mount_path| is set to the reserved mount path.
   // On completion or on error, |callback| is called.
-  void Mount(const std::string& source_path,
+  void Mount(const std::string& source,
              const std::string& filesystem_type,
              std::vector<std::string> options,
              MountCallback callback);
@@ -137,33 +137,32 @@ class MountManager {
   // it.
   virtual bool ResolvePath(const std::string& path, std::string* real_path);
 
-  // Mounts |source_path| as |filesystem_type| with |options|.
-  void MountNewSource(const std::string& source_path,
+  // Mounts |source| as |filesystem_type| with |options|.
+  void MountNewSource(const std::string& source,
                       const std::string& filesystem_type,
                       std::vector<std::string> options,
                       MountCallback callback);
 
-  // Remounts |source_path| on |mount_path| as |filesystem_type| with |options|.
-  MountErrorType Remount(const std::string& source_path,
+  // Remounts |source| on |mount_path| as |filesystem_type| with |options|.
+  MountErrorType Remount(const std::string& source,
                          const std::string& filesystem_type,
                          std::vector<std::string> options,
                          std::string* mount_path);
 
-  // Implemented by a derived class to mount |source_path| to |mount_path| as
+  // Implemented by a derived class to mount |source| to |mount_path| as
   // |filesystem_type| with |options|. An implementation may append their own
   // mount options to |options|. On success, an implementation MUST set |error|
   // to MOUNT_ERROR_NONE and return a non-null MountPoint. On failure, |error|
   // must be set to an appropriate error code and nullptr is returned.
   virtual std::unique_ptr<MountPoint> DoMount(
-      const std::string& source_path,
+      const std::string& source,
       const std::string& filesystem_type,
       const std::vector<std::string>& options,
       const base::FilePath& mount_path,
       MountErrorType* error) = 0;
 
-  // Returns a suggested mount path for |source_path|.
-  virtual std::string SuggestMountPath(
-      const std::string& source_path) const = 0;
+  // Returns a suggested mount path for |source|.
+  virtual std::string SuggestMountPath(const std::string& source) const = 0;
 
   // Returns true if the manager should reserve a mount path if the mount
   // operation returns a particular type of error. The default implementation

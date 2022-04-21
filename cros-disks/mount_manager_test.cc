@@ -80,12 +80,12 @@ class MountManagerUnderTest : public MountManager {
               (const std::string&),
               (const, override));
 
-  // Adds or updates a mapping |source_path| to its mount state in the cache.
-  void AddMount(const std::string& source_path,
+  // Adds or updates a mapping |source| to its mount state in the cache.
+  void AddMount(const std::string& source,
                 std::unique_ptr<MountPoint> mount_point) {
     DCHECK(mount_point);
-    DCHECK(!FindMountBySource(source_path));
-    mount_states_.insert({source_path, std::move(mount_point)});
+    DCHECK(!FindMountBySource(source));
+    mount_states_.insert({source, std::move(mount_point)});
   }
 
   using MountManager::GetMountErrorOfReservedMountPath;
@@ -1156,7 +1156,7 @@ TEST_F(MountManagerTest, RemountFailedNotMounted) {
 
   EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
 
-  // source_path = kSourcePath has not been mounted yet.
+  // source = kSourcePath has not been mounted yet.
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_error_);
