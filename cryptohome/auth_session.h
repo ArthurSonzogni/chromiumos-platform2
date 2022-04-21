@@ -140,6 +140,12 @@ class AuthSession final {
     return user_has_configured_credential_;
   }
 
+  // This function returns if the user has any auth factors configured. When an
+  // auth factor is added, this value changes from false to true.
+  bool user_has_configured_auth_factor() const {
+    return user_has_configured_auth_factor_;
+  }
+
   // This function returns if the AuthSession is being setup for an ephemeral
   // user.
   bool ephemeral_user() const { return is_ephemeral_user_; }
@@ -336,6 +342,8 @@ class AuthSession final {
   bool user_exists_ = false;
   // Whether the user has any credential configured so far.
   bool user_has_configured_credential_ = false;
+  // Whether the user has any authfactor/uss configured so far.
+  bool user_has_configured_auth_factor_ = false;
   // Map to store the label and public KeyData.
   // TODO(crbug.com/1171024): Change this to AuthFactor
   std::map<std::string, cryptohome::KeyData> key_label_data_;

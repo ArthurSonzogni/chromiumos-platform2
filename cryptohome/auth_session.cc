@@ -133,6 +133,7 @@ AuthSession::AuthSession(
       !user_has_configured_credential_) {
     label_to_auth_factor_ =
         LoadAllAuthFactors(obfuscated_username_, auth_factor_manager_);
+    user_has_configured_auth_factor_ = !label_to_auth_factor_.empty();
   } else {
     converter_->VaultKeysetsToAuthFactors(username_, label_to_auth_factor_);
   }
@@ -589,7 +590,7 @@ bool AuthSession::AuthenticateAuthFactor(
   // If the USS experiment is enabled and there is no VaultKeyset for the
   // user continue authentication with USS.
   if (IsUserSecretStashExperimentEnabled() &&
-      !user_has_configured_credential_) {
+      user_has_configured_auth_factor_) {
     AuthFactor auth_factor = *label_to_auth_factor_iter->second;
 
     error = AuthenticateViaUserSecretStash(request.auth_factor_label(),
@@ -893,6 +894,7 @@ AuthSession::AddAuthFactorViaUserSecretStash(
   }
 
   label_to_auth_factor_.emplace(auth_factor_label, std::move(auth_factor));
+  user_has_configured_auth_factor_ = true;
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
