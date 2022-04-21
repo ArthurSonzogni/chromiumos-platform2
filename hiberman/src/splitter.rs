@@ -18,6 +18,7 @@
 //! essentially just a page list. The kernel validates its contents, and we also
 //! verify its hash to detect tampering.
 
+use std::convert::TryInto;
 use std::io::{Error as IoError, ErrorKind, Read, Write};
 
 use anyhow::{Context, Result};
@@ -27,6 +28,7 @@ use openssl::hash::{Hasher, MessageDigest};
 
 use crate::hibermeta::{HibernateMetadata, META_HASH_SIZE};
 use crate::hiberutil::{get_page_size, HibernateError};
+use crate::mmapbuf::MmapBuffer;
 
 /// A machine with 32GB RAM has 8M PFNs. Half of that times 8 bytes per PFN is
 /// 32MB.
@@ -52,15 +54,17 @@ pub struct ImageSplitter<'a> {
     data_file: &'a mut dyn Write,
     metadata: &'a mut HibernateMetadata,
     page_size: usize,
-    meta_pages: usize,
-    pages_done: usize,
+    pub meta_size: i64,
+    bytes_done: i64,
     hasher: Hasher,
+    compute_header_hash: bool,
 }
 
 /// The ImageSplitter routes an initial set of writes to a header file, then
-/// routes the main data to the data file. It uses the first sector's write to
-/// determine where to make the split. It also computes the hash of the header
-/// portion as it goes by, and saves that hash into the metadata.
+/// routes the main data to the data file. If the metadata size is unknown, it
+/// uses the first sector's write to determine where to make the split by
+/// parsing the header from the kernel. It also optionally computes the hash of
+/// the header portion as it goes by, and saves that hash into the metadata.
 impl<'a> ImageSplitter<'a> {
     /// Create a new image splitter, given pointers to the header destination
     /// and data file destination. The metadata is also received as a place to
@@ -69,61 +73,78 @@ impl<'a> ImageSplitter<'a> {
         header_file: &'a mut dyn Write,
         data_file: &'a mut dyn Write,
         metadata: &'a mut HibernateMetadata,
+        compute_header_hash: bool,
     ) -> ImageSplitter<'a> {
         Self {
             header_file,
             data_file,
             metadata,
             page_size: get_page_size(),
-            meta_pages: 0,
-            pages_done: 0,
+            meta_size: 0,
+            bytes_done: 0,
             hasher: Hasher::new(MessageDigest::sha256()).unwrap(),
+            compute_header_hash,
         }
     }
 
     /// Helper function to write contents to the header file, snarfing out the
-    /// header data size on the way down. Any remainder is passed to the data
-    /// file.
+    /// header data size on the way down (if needed). Any remainder is passed to
+    /// the data file.
     fn write_header(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let page_size = self.page_size;
         let length = buf.len();
-
-        // The write is always expected to be at least a page, and an even
-        // multiple of a page.
-        assert!(length >= page_size);
-        assert!((length & (page_size - 1)) == 0);
 
         // If this is the first page, snarf the header out of the buffer to
         // figure out the number of metadata pages.
-        if self.pages_done == 0 {
-            assert!(self.meta_pages == 0);
-
-            self.meta_pages = get_meta_page_count(buf, page_size)?;
-            // Save the non-data page count in the official metadata too.
-            self.metadata.image_meta_size = (self.meta_pages as i64) * (page_size as i64);
+        if self.bytes_done == 0 {
+            self.meta_size = get_image_meta_size(buf)?;
+            self.metadata.image_meta_size = self.meta_size;
         }
 
         // Write out to the header if that's not done yet.
         let mut offset = 0;
-        if self.pages_done < self.meta_pages {
+        if self.bytes_done < self.meta_size {
             // Send either the rest of the metadata or the rest of this buffer.
-            let mut meta_size = (self.meta_pages - self.pages_done) * self.page_size;
-            if meta_size > length {
-                meta_size = length;
+            let meta_size = std::cmp::min(self.meta_size - self.bytes_done, length as i64);
+            let meta_size: usize = meta_size.try_into().unwrap();
+            if self.compute_header_hash {
+                self.hasher.update(&buf[..meta_size]).unwrap();
             }
 
-            self.hasher.update(&buf[..meta_size]).unwrap();
-            let bytes_written = self.header_file.write(&buf[..meta_size])?;
+            // If this is a final partial page, pad it out to a page, since the
+            // underlying DiskFile needs page aligned writes.
+            let bytes_written;
+            if (meta_size & (self.page_size - 1)) != 0 {
+                assert!(
+                    (length >= meta_size)
+                        && ((self.bytes_done + (meta_size as i64)) == self.meta_size)
+                );
+
+                // Allocate a buffer aligned up to a page.
+                let copy_size = (length + (self.page_size - 1)) & !(self.page_size - 1);
+                let mut copy = match MmapBuffer::new(copy_size) {
+                    Err(_) => {
+                        return Err(IoError::new(
+                            ErrorKind::OutOfMemory,
+                            "Failed to allocate temporary buffer",
+                        ))
+                    }
+                    Ok(c) => c,
+                };
+                let copybuf = copy.u8_slice_mut();
+                copybuf[..meta_size].copy_from_slice(&buf[..meta_size]);
+                bytes_written = std::cmp::min(meta_size, self.header_file.write(copybuf)?);
+            } else {
+                bytes_written = self.header_file.write(&buf[..meta_size])?;
+            }
 
             // Assert that the write did not cross into data territory, only sidled
             // up to it.
-            assert!((self.pages_done + (bytes_written / page_size)) <= self.meta_pages);
-            assert!((bytes_written & (page_size - 1)) == 0);
+            assert!((self.bytes_done + (bytes_written as i64)) <= self.meta_size);
 
-            self.pages_done += bytes_written / page_size;
+            self.bytes_done += bytes_written as i64;
             // If the header just finished, finalize the hash of it and save it into
             // the metadata.
-            if self.pages_done == self.meta_pages {
+            if (self.bytes_done == self.meta_size) && self.compute_header_hash {
                 self.metadata
                     .header_hash
                     .copy_from_slice(&self.hasher.finish().unwrap());
@@ -138,16 +159,13 @@ impl<'a> ImageSplitter<'a> {
 
         // Write down to the data file. If this is the first byte of data, save
         // it off to the metadata too.
-        if self.pages_done == self.meta_pages {
+        if self.bytes_done == self.meta_size {
             self.metadata.first_data_byte = buf[offset];
         }
 
         // Send the rest of the write down to the data file.
         let bytes_written = self.data_file.write(&buf[offset..])?;
-
-        assert!((bytes_written & (page_size - 1)) == 0);
-
-        self.pages_done += bytes_written / page_size;
+        self.bytes_done += bytes_written as i64;
         offset += bytes_written;
         Ok(offset)
     }
@@ -159,7 +177,7 @@ impl Write for ImageSplitter<'_> {
         // off. This will be the hot path. The comparison is strictly greater
         // than because we also need to slurp the first data byte from the first
         // data page.
-        if (self.meta_pages != 0) && (self.pages_done > self.meta_pages) {
+        if self.bytes_done > self.meta_size {
             return self.data_file.write(buf);
         }
 
@@ -178,97 +196,106 @@ pub struct ImageJoiner<'a> {
     header_file: &'a mut dyn Read,
     data_file: &'a mut dyn Read,
     page_size: usize,
-    meta_pages: usize,
-    pages_done: usize,
+    meta_size: i64,
+    bytes_done: i64,
     hasher: Hasher,
     header_hash: Vec<u8>,
+    compute_header_hash: bool,
 }
 
 impl<'a> ImageJoiner<'a> {
     /// Create a new ImageJoiner, a single object implementing the Read trait
     /// that will stitch together the header, followed by the data portion.
-    pub fn new(header_file: &'a mut dyn Read, data_file: &'a mut dyn Read) -> ImageJoiner<'a> {
+    pub fn new(
+        header_file: &'a mut dyn Read,
+        data_file: &'a mut dyn Read,
+        meta_size: i64,
+        compute_header_hash: bool,
+    ) -> ImageJoiner<'a> {
         Self {
             header_file,
             data_file,
             page_size: get_page_size(),
-            meta_pages: 0,
-            pages_done: 0,
+            meta_size,
+            bytes_done: 0,
             hasher: Hasher::new(MessageDigest::sha256()).unwrap(),
             header_hash: vec![],
+            compute_header_hash,
         }
     }
 
     /// Returns the computed hash of the header region, which the caller will
     /// compare to what's in the private metadata (once that's decrypted and
     /// available).
-    pub fn get_header_hash(&self, hash: &mut [u8; META_HASH_SIZE]) -> Result<usize> {
+    pub fn get_header_hash(&self, hash: &mut [u8; META_HASH_SIZE]) -> Result<()> {
         if self.header_hash.len() != META_HASH_SIZE {
             return Err(HibernateError::HeaderIncomplete())
                 .context("The header is invalid or has not yet been read");
         }
 
         hash.copy_from_slice(&self.header_hash[..]);
-        Ok(self.meta_pages)
+        Ok(())
     }
 
     /// Helper function to read contents from the header file, snarfing out the
     /// header data size on the way. Any remaining reads are fed from the data
     /// file.
     fn read_header(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let page_size = self.page_size;
-        let mut offset = 0usize;
         let length = buf.len();
 
-        // The read better be at least a page, and an even multiple of a page.
-        assert!(length >= page_size);
-        assert!((length & (page_size - 1)) == 0);
-
-        // If this is the first read, do a single page read to snarf out the
-        // header. This also ensures the header isn't over-read.
-        if self.pages_done == 0 {
-            assert!(self.meta_pages == 0);
-
-            let bytes_read = self.header_file.read(&mut buf[..page_size])?;
-
-            assert!(bytes_read == page_size);
-
-            self.hasher.update(&buf[..bytes_read]).unwrap();
-            offset += bytes_read;
-            self.pages_done += bytes_read / page_size;
-            self.meta_pages = get_meta_page_count(buf, page_size)?;
-        }
-
         // Read the rest of the header file (or at least the rest of the buffer).
-        let mut meta_size = (self.meta_pages - self.pages_done) * page_size;
-        if meta_size > (length - offset) {
-            meta_size = length - offset;
+        let meta_size = std::cmp::min(self.meta_size - self.bytes_done, length as i64);
+        let meta_size: usize = meta_size.try_into().unwrap();
+        let bytes_read;
+        // If this is the last read of the header file, and it ends in a partial
+        // page, allocate and pad up to the next page, since the underlying
+        // DiskFile may need aligned reads.
+        if (meta_size & (self.page_size - 1)) != 0 {
+            assert!(
+                (length >= meta_size) && ((self.bytes_done + (meta_size as i64)) == self.meta_size)
+            );
+
+            // Allocate a buffer aligned up to a page.
+            let copy_size = (length + (self.page_size - 1)) & !(self.page_size - 1);
+            let mut copy = match MmapBuffer::new(copy_size) {
+                Err(_) => {
+                    return Err(IoError::new(
+                        ErrorKind::OutOfMemory,
+                        "Failed to allocate temporary buffer",
+                    ))
+                }
+                Ok(c) => c,
+            };
+            let copybuf = copy.u8_slice_mut();
+            // Read the page aligned region, then copy the smaller unaligned
+            // size back to the caller's buffer.
+            bytes_read = std::cmp::min(meta_size, self.header_file.read(copybuf)?);
+            buf[..bytes_read].copy_from_slice(&copybuf[..bytes_read])
+        } else {
+            bytes_read = self.header_file.read(&mut buf[..meta_size])?;
         }
 
-        let end = offset + meta_size;
-        let bytes_read = self.header_file.read(&mut buf[offset..end])?;
+        if self.compute_header_hash {
+            self.hasher.update(&buf[..bytes_read]).unwrap();
+        }
 
-        assert!((bytes_read & (page_size - 1)) == 0);
+        self.bytes_done += bytes_read as i64;
 
-        let read_end = offset + bytes_read;
-        self.hasher.update(&buf[offset..read_end]).unwrap();
-        self.pages_done += bytes_read / page_size;
-
-        assert!(self.pages_done <= self.meta_pages);
+        assert!(self.bytes_done <= self.meta_size);
 
         // Save the hash locally if this was the last header page. The caller
         // will eventually ask for it once the private metadata is unlocked.
-        if self.pages_done == self.meta_pages {
+        if self.bytes_done == self.meta_size {
             let hash_slice: &[u8] = &self.hasher.finish().unwrap();
             self.header_hash = hash_slice.to_vec();
         }
 
-        offset += bytes_read;
-        if offset == length {
-            return Ok(offset);
+        if bytes_read <= length {
+            return Ok(bytes_read);
         }
 
         // Send the remaining read down to the data file.
+        let offset = bytes_read;
         let bytes_read = self.data_file.read(&mut buf[offset..])?;
         Ok(offset + bytes_read)
     }
@@ -278,7 +305,7 @@ impl Read for ImageJoiner<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         // Just forward the read on down if the header's already been split off.
         // This will be the hot path.
-        if (self.meta_pages != 0) && (self.pages_done >= self.meta_pages) {
+        if self.bytes_done >= self.meta_size {
             return self.data_file.read(buf);
         }
 
@@ -287,8 +314,10 @@ impl Read for ImageJoiner<'_> {
 }
 
 /// Read the header out of the first page of the hibernate image. Returns the
-/// number of metadata pages on success.
-fn get_meta_page_count(buf: &[u8], page_size: usize) -> std::io::Result<usize> {
+/// number of bytes of metadata header on success.
+fn get_image_meta_size(buf: &[u8]) -> std::io::Result<i64> {
+    let page_size = get_page_size();
+
     assert!(buf.len() >= page_size);
 
     // Assert that libc didn't somehow change the size of the utsname header
@@ -302,25 +331,29 @@ fn get_meta_page_count(buf: &[u8], page_size: usize) -> std::io::Result<usize> {
         std::ptr::read_unaligned(buf[0..std::mem::size_of::<SwSuspInfo>()].as_ptr() as *const _)
     };
 
-    let meta_pages = header.pages - header.image_pages;
     debug!(
-        "Image has {:x?} image pages, {:x?} header pages",
-        header.image_pages, meta_pages
+        "Image has {:x?} pages, {:x?} image pages",
+        header.pages, header.image_pages
     );
 
-    if header.pages < header.image_pages {
+    // If the page counts are unreasonable, take that as a sign that something's
+    // wrong. 32-bits worth of pages would be 16TB of memory, probably not real.
+    if (header.pages > 0xFFFFFFFF)
+        || (header.image_pages > 0xFFFFFFFF)
+        || (header.image_pages >= header.pages)
+    {
         return Err(IoError::new(
             ErrorKind::InvalidInput,
             format!(
-                "Header pages {:x} < image_pages {:x}",
+                "Invalid uswsusp header page counts. Pages {:x}, image_pages {:x}",
                 header.pages, header.image_pages
             ),
         ));
     }
 
-    // TODO: Validate additional fields in the structure in case the kernel
-    // changes the format, like num_physpages.
-    if (meta_pages * page_size) as i64 > HIBER_HEADER_MAX_SIZE {
+    let meta_pages = header.pages - header.image_pages;
+    let meta_size = (meta_pages * page_size) as i64;
+    if meta_size > HIBER_HEADER_MAX_SIZE {
         return Err(IoError::new(
             ErrorKind::InvalidInput,
             format!(
@@ -340,5 +373,5 @@ fn get_meta_page_count(buf: &[u8], page_size: usize) -> std::io::Result<usize> {
         ));
     }
 
-    Ok(meta_pages)
+    Ok(meta_size)
 }

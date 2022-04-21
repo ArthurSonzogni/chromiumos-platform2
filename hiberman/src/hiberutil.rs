@@ -42,9 +42,6 @@ pub enum HibernateError {
     /// Header content hash mismatch
     #[error("Header content hash mismatch")]
     HeaderContentHashMismatch(),
-    /// Header content length mismatch
-    #[error("Header content length mismatch")]
-    HeaderContentLengthMismatch(),
     /// Header incomplete
     #[error("Header incomplete")]
     HeaderIncomplete(),

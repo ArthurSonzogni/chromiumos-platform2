@@ -232,7 +232,8 @@ impl SuspendConductor {
         }
 
         debug!("Hibernate image is {} bytes", image_size);
-        let mut splitter = ImageSplitter::new(&mut header_file, &mut encryptor, &mut self.metadata);
+        let mut splitter =
+            ImageSplitter::new(&mut header_file, &mut encryptor, &mut self.metadata, true);
         let mut writer = ImageMover::new(
             &mut snap_dev.file,
             &mut splitter,

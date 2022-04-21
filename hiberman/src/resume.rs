@@ -185,7 +185,12 @@ impl ResumeConductor {
         debug!("Resume image is {} bytes", image_size);
         // Create the image joiner, which combines the header file and the data
         // file into one contiguous read stream.
-        let mut joiner = ImageJoiner::new(&mut header_file, &mut hiber_file);
+        let mut joiner = ImageJoiner::new(
+            &mut header_file,
+            &mut hiber_file,
+            self.metadata.image_meta_size,
+            true,
+        );
         let mover_source: &mut dyn Read;
 
         // Fire up the preloader to start loading pages off of disk right away.
@@ -313,17 +318,8 @@ impl ResumeConductor {
         // jump into anything but the original header.
         debug!("Validating header content");
         let mut header_hash = [0u8; META_HASH_SIZE];
-        let header_size = (joiner.get_header_hash(&mut header_hash)? as i64) * (page_size as i64);
+        joiner.get_header_hash(&mut header_hash)?;
         let metadata = &mut self.metadata;
-        if metadata.image_meta_size != header_size {
-            error!(
-                "Metadata image_meta_size was {}, but {} bytes were loaded",
-                metadata.image_meta_size, header_size
-            );
-            return Err(HibernateError::HeaderContentLengthMismatch())
-                .context("Failed to load verify header pages");
-        }
-
         if metadata.header_hash != header_hash {
             error!("Metadata header hash mismatch");
             return Err(HibernateError::HeaderContentHashMismatch())
