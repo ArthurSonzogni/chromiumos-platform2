@@ -27,6 +27,14 @@ namespace hwsec {
 
 class BackendTpm2 : public Backend {
  public:
+  class StateTpm2 : public State, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<bool> IsEnabled() override;
+    StatusOr<bool> IsReady() override;
+    Status Prepare() override;
+  };
+
   BackendTpm2(Proxy& proxy, MiddlewareDerivative middleware_derivative);
 
   ~BackendTpm2() override;
@@ -45,7 +53,7 @@ class BackendTpm2 : public Backend {
     std::unique_ptr<trunks::TpmUtility> tpm_utility;
   };
 
-  State* GetState() override { return nullptr; }
+  State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return nullptr; }
   Storage* GetStorage() override { return nullptr; }
   RoData* GetRoData() override { return nullptr; }
@@ -64,6 +72,8 @@ class BackendTpm2 : public Backend {
   Proxy& proxy_;
 
   TrunksClientContext trunks_context_;
+
+  StateTpm2 state_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 };
