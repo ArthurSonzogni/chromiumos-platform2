@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/stringprintf.h>
+#include <brillo/errors/error.h>
 #include <libhwsec-foundation/error/error.h>
 
 #include "libhwsec/error/tpm_retry_action.h"
@@ -172,11 +174,37 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
       const std::string error_message_;
     };
 
+    class Unmessaged {
+     public:
+      explicit Unmessaged(TPMRetryAction action) : action_(action) {}
+
+      // Wrap will convert the stab into the appropriate Status type.
+      auto Wrap(brillo::ErrorPtr err) && {
+        using hwsec_foundation::status::NewStatus;
+        std::string result;
+        if (err) {
+          result = base::StringPrintf(
+              "BrilloError(%s, %s, %s)", err->GetDomain().c_str(),
+              err->GetCode().c_str(), err->GetMessage().c_str());
+        } else {
+          result = "BrilloError(null)";
+        }
+        return NewStatus<TPMError>(std::move(result), action_);
+      }
+
+     private:
+      const TPMRetryAction action_;
+    };
+
     // Returns a stub that doesn't convert to Status. The stub will wait for a
     // Wrap.
     auto operator()(std::string error_message) {
       return Unactioned(error_message);
     }
+
+    // Returns a stub that doesn't convert to Status. The stub will wait for a
+    // Wrap.
+    auto operator()(TPMRetryAction action) { return Unmessaged(action); }
 
     // If we get action as an argument - create the Status directly.
     auto operator()(std::string error_message, TPMRetryAction action) {
