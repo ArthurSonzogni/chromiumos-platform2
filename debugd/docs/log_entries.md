@@ -206,6 +206,10 @@ provide a complete folder contents listing.
 
 ## hostname
 
+## hypervisor.log
+
+The kernel log from the ManaTEE hypervisor.
+
 ## i915_error_state
 
 ## i915_gem_gtt

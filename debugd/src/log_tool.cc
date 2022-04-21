@@ -277,6 +277,7 @@ const std::array kCommandLogs {
   Log{kFile, "hardware_verification_report",
     "/var/cache/hardware_verifier.result"},
   Log{kCommand, "hostname", "/bin/hostname"},
+  Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
   Log{kCommand, "i915_error_state",
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
