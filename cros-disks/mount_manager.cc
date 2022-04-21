@@ -167,7 +167,22 @@ void MountManager::MountNewSource(const std::string& source_path,
   std::unique_ptr<MountPoint> mount_point = DoMount(
       source_path, filesystem_type, std::move(options), mount_path, &error);
 
-  if (error) {
+  // Check for both mount_point and error here, since there might be (incorrect)
+  // mounters that return no MountPoint and no error (crbug.com/1317877 and
+  // crbug.com/1317878).
+  if (!mount_point || error) {
+    if (!error) {
+      LOG(ERROR) << "Mounter for " << redact(source_path) << " of type "
+                 << quote(filesystem_type)
+                 << " returned no MountPoint and no error";
+      error = MOUNT_ERROR_UNKNOWN;
+    } else if (mount_point) {
+      LOG(ERROR) << "Mounter for " << redact(source_path) << " of type "
+                 << quote(filesystem_type)
+                 << " returned both a mount point and " << error;
+      mount_point.reset();
+    }
+
     if (!ShouldReserveMountPathOnError(error)) {
       platform_->RemoveEmptyDirectory(mount_path.value());
       return std::move(callback).Run("", error);

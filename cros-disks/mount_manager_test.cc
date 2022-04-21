@@ -306,6 +306,67 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
+// Verifies that MountManager::Mount() fails when DoMount returns no MountPoint
+// and no error (crbug.com/1317877 and crbug.com/1317878).
+TEST_F(MountManagerTest, MountFailsWithNoMountPointAndNoError) {
+  EXPECT_CALL(manager_, SuggestMountPath(kSourcePath))
+      .WillOnce(Return(kMountPath));
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(manager_, DoMount(kSourcePath, filesystem_type_, options_,
+                                base::FilePath(kMountPath), _))
+      .WillOnce(
+          DoAll(SetArgPointee<4>(MOUNT_ERROR_NONE), Return(ByMove(nullptr))));
+  EXPECT_CALL(manager_, ShouldReserveMountPathOnError(MOUNT_ERROR_UNKNOWN))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
+      .WillOnce(Return(true));
+
+  manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mount_error_);
+  EXPECT_EQ("", mount_path_);
+  EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
+  EXPECT_FALSE(manager_.IsMountPathReserved(kMountPath));
+}
+
+// Verifies that MountManager::Mount() fails when DoMount returns both a
+// MountPoint and an error.
+TEST_F(MountManagerTest, MountFailsWithMountPointAndError) {
+  EXPECT_CALL(manager_, SuggestMountPath(kSourcePath))
+      .WillOnce(Return(kMountPath));
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .WillOnce(Return(true));
+
+  const base::FilePath mount_path(kMountPath);
+  auto ptr = std::make_unique<MountPoint>(
+      MountPointData{
+          .mount_path = mount_path,
+          .source = kSourcePath,
+          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
+      },
+      &platform_);
+  EXPECT_CALL(manager_,
+              DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
+      .WillOnce(DoAll(SetArgPointee<4>(MOUNT_ERROR_INVALID_PATH),
+                      Return(ByMove(std::move(ptr)))));
+  EXPECT_CALL(manager_, ShouldReserveMountPathOnError(MOUNT_ERROR_INVALID_PATH))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, Unmount(kMountPath, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+
+  manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mount_error_);
+  EXPECT_EQ("", mount_path_);
+  EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
+  EXPECT_FALSE(manager_.IsMountPathReserved(kMountPath));
+}
+
 // Verifies that MountManager::Mount() returns no error when it successfully
 // mounts a source path in read-write mode.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
