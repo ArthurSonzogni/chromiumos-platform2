@@ -57,6 +57,7 @@
 
 #include "arc/setup/arc_property_util.h"
 #include "arc/setup/art_container.h"
+#include "arc/setup/xml/android_xml_util.h"
 
 #define EXIT_IF(f)                            \
   do {                                        \

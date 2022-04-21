@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_H_
-#define ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_H_
+#ifndef ARC_SETUP_XML_ANDROID_BINARY_XML_TOKENIZER_H_
+#define ARC_SETUP_XML_ANDROID_BINARY_XML_TOKENIZER_H_
 
 #include <optional>
 #include <string>
@@ -19,7 +19,7 @@ namespace arc {
 // The format is defined by the implementation of Android's
 // frameworks/base/core/java/com/android/internal/util/BinaryXmlSerializer.java
 // and BinaryXmlPullParser.java.
-class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
+class COMPONENT_EXPORT(LIBANDROIDXML) AndroidBinaryXmlTokenizer {
  public:
   // Token constants are defined in Android's
   // libcore/xml/src/main/java/org/xmlpull/v1/XmlPullParser.java
@@ -117,4 +117,4 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
 
 }  // namespace arc
 
-#endif  // ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_H_
+#endif  // ARC_SETUP_XML_ANDROID_BINARY_XML_TOKENIZER_H_

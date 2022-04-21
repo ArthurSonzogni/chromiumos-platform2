@@ -149,26 +149,6 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
 bool GetPropertiesFromFile(const base::FilePath& prop_file_path,
                            std::map<std::string, std::string>* out_properties);
 
-// Reads Android's packages.xml at |packages_xml_path|, fills
-// |out_fingerprint| and |out_sdk_version| with the OS fingerprint and the SDK
-// version for the internal storage found in the XML.
-// If the file does not exist or no fingerprint is found in the file, returns
-// false.
-bool GetFingerprintAndSdkVersionFromPackagesXml(
-    const base::FilePath& packages_xml_path,
-    std::string* out_fingerprint,
-    std::string* out_sdk_version);
-
-// Reads Android's binary-format packages.xml at |packages_xml_path|, fills
-// |out_fingerprint| and |out_sdk_version| with the OS fingerprint and the SDK
-// version for the internal storage found in the XML.
-// If the file does not exist or no fingerprint is found in the file, returns
-// false.
-bool GetFingerprintAndSdkVersionFromBinaryPackagesXml(
-    const base::FilePath& packages_xml_path,
-    std::string* out_fingerprint,
-    std::string* out_sdk_version);
-
 // Creates |file_path| with |mode|. If the file already exists, this function
 // sets the file size to 0 and mode to |mode|. Returns true on success.
 bool CreateOrTruncate(const base::FilePath& file_path, mode_t mode);
@@ -222,12 +202,6 @@ bool DeleteFilesInDir(const base::FilePath& directory);
 // Returns a mounter for production.
 std::unique_ptr<ArcMounter> GetDefaultMounter();
 
-// Reads |file_path| line by line and pass each line to the |callback| after
-// trimming it. If |callback| returns true, stops reading the file and returns
-// true.
-bool FindLine(const base::FilePath& file_path,
-              const base::Callback<bool(const std::string&)>& callback);
-
 // See OpenSafely() in arc_setup_util.cc.
 base::ScopedFD OpenSafelyForTesting(const base::FilePath& path,
                                     int flags,
@@ -268,17 +242,6 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
 // processing next lines.
 bool FindAllProperties(std::map<std::string, std::string>* out_properties,
                        const std::string& line);
-
-// A callback function for GetFingerprintAndSdkVersionFromPackagesXml.
-// This checks if the |line| is like
-//    <version sdkVersion="25" databaseVersion="3" fingerprint="..." />
-// and store the fingerprint part in |out_fingerprint| and the sdkVersion part
-// in |out_sdk_version| if it is. Ignore a line with a volumeUuid attribute
-// which means that the line is for an external storage.
-// What we need is a fingerprint and a sdk version for an internal storage.
-bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
-                                  std::string* out_sdk_version,
-                                  const std::string& line);
 
 // Returns the user and group ids for a user.
 bool GetUserId(const std::string& user, uid_t* user_id, gid_t* group_id);

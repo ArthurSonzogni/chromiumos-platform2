@@ -63,6 +63,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/arc-data-snapshotd     u:object_r:cros_arc_data_snapshotd_exec:s0
 /usr/bin/arc-host-clock-service u:object_r:cros_arc_host_clock_service_exec:s0
 /usr/bin/arc-obb-mounter        u:object_r:cros_arc_obb_mounter_exec:s0
+/usr/bin/arc-packages-xml-reader u:object_r:cros_arc_packages_xml_reader_exec:s0
 /usr/bin/arc_camera_service     u:object_r:cros_arc_camera_service_exec:s0
 /usr/bin/arc_sensor_service     u:object_r:cros_arc_sensor_service_exec:s0
 /usr/bin/arcvm_server_proxy     u:object_r:cros_arcvm_server_proxy_exec:s0

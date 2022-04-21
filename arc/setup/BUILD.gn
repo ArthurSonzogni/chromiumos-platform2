@@ -15,6 +15,8 @@ group("all") {
     ":arc-setup",
     ":generate_squashfs",
     ":libarc_setup",
+    "xml:arc-packages-xml-reader",
+    "xml:libandroidxml",
   ]
   if (use.test) {
     deps += [ ":arc-setup_testrunner" ]
@@ -67,7 +69,6 @@ config("target_defaults") {
 }
 
 libarc_setup_sources = [
-  "android_binary_xml_tokenizer.cc",
   "arc_property_util.cc",
   "arc_setup.cc",
   "arc_setup_metrics.cc",
@@ -80,6 +81,7 @@ static_library("libarc_setup_static") {
   sources = libarc_setup_sources
   configs += [ ":target_defaults" ]
   libs = [ "bootstat" ]
+  deps = [ "xml:libandroidxml" ]
 }
 
 shared_library("libarc_setup") {
@@ -91,6 +93,7 @@ shared_library("libarc_setup") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "bootstat" ]
+  deps = [ "xml:libandroidxml" ]
 }
 
 executable("arc-setup") {
@@ -187,14 +190,15 @@ if (use.test) {
   }
   executable("arc-setup_testrunner") {
     sources = [
-      "android_binary_xml_tokenizer_test.cc",
-      "android_binary_xml_tokenizer_test_util.cc",
       "arc_property_util_test.cc",
       "arc_setup_metrics_test.cc",
       "arc_setup_test.cc",
       "arc_setup_util_test.cc",
       "art_container_test.cc",
       "config_test.cc",
+      "xml/android_binary_xml_tokenizer_test.cc",
+      "xml/android_binary_xml_tokenizer_test_util.cc",
+      "xml/android_xml_util_test.cc",
     ]
     configs += [
       "//common-mk:test",

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/setup/android_binary_xml_tokenizer_test_util.h"
+#include "arc/setup/xml/android_binary_xml_tokenizer_test_util.h"
 
 #include "base/logging.h"
 

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_TEST_UTIL_H_
-#define ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_TEST_UTIL_H_
+#ifndef ARC_SETUP_XML_ANDROID_BINARY_XML_TOKENIZER_TEST_UTIL_H_
+#define ARC_SETUP_XML_ANDROID_BINARY_XML_TOKENIZER_TEST_UTIL_H_
 
 #include <map>
 #include <string>
 
-#include "arc/setup/android_binary_xml_tokenizer.h"
+#include "arc/setup/xml/android_binary_xml_tokenizer.h"
 #include "base/files/file.h"
 
 namespace arc {
@@ -57,4 +57,4 @@ class AndroidBinaryXmlWriter {
 
 }  // namespace arc
 
-#endif  // ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_TEST_UTIL_H_
+#endif  // ARC_SETUP_XML_ANDROID_BINARY_XML_TOKENIZER_TEST_UTIL_H_
