@@ -85,6 +85,9 @@ pub enum HibernateError {
     /// Failed to shut down
     #[error("Failed to shut down: {0}")]
     ShutdownError(sys_util::Error),
+    /// End of file
+    #[error("End of file")]
+    EndOfFile(),
 }
 
 /// Options taken from the command line affecting hibernate.

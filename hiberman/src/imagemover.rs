@@ -12,6 +12,7 @@ use anyhow::{Context, Result};
 use libc::{self, off64_t};
 use log::{debug, info, warn};
 
+use crate::hiberutil::{get_page_size, HibernateError};
 use crate::mmapbuf::MmapBuffer;
 
 /// An ImageMover represents an engine used to move data from a source to a
@@ -30,6 +31,9 @@ pub struct ImageMover<'a> {
     buffer: MmapBuffer,
     buffer_offset: usize,
     percent_reported: u32,
+    pad_input_length: bool,
+    pad_output_length: bool,
+    page_size: usize,
 }
 
 impl<'a> ImageMover<'a> {
@@ -62,6 +66,9 @@ impl<'a> ImageMover<'a> {
             buffer,
             buffer_offset: 0,
             percent_reported: 0,
+            pad_input_length: false,
+            pad_output_length: false,
+            page_size: get_page_size(),
         })
     }
 
@@ -111,18 +118,35 @@ impl<'a> ImageMover<'a> {
         );
         let length = std::cmp::min(length as usize, self.buffer_size - self.buffer_offset);
         let start = self.buffer_offset;
-        let end = start + length;
+        // Raw disk files always need aligned sizes, so pad up to a page if
+        // requested (capped to the buffer size).
+        let end = if self.pad_input_length {
+            std::cmp::min(
+                self.buffer_size,
+                ((start + length) + (self.page_size - 1)) & !(self.page_size - 1),
+            )
+        } else {
+            start + length
+        };
+
         let buffer_slice = self.buffer.u8_slice_mut();
         let mut slice_mut = [IoSliceMut::new(&mut buffer_slice[start..end])];
-        let bytes_read = self
-            .source_file
-            .read_vectored(&mut slice_mut)
-            .context("Failed to move image chunk")?;
+        // Do the read, capping the returned size to the original source size.
+        let bytes_read = std::cmp::min(
+            length,
+            self.source_file
+                .read_vectored(&mut slice_mut)
+                .context("Failed to move image chunk")?,
+        );
         if bytes_read < length {
             warn!(
                 "Only Read {}/{}, {}/{}",
                 bytes_read, length, self.bytes_done, self.source_size
             );
+
+            if bytes_read == 0 {
+                return Err(HibernateError::EndOfFile()).context("End of file hit early");
+            }
         }
 
         self.buffer_offset += bytes_read;
@@ -138,6 +162,15 @@ impl<'a> ImageMover<'a> {
         debug!("Moving image");
         while self.bytes_done + (self.buffer_offset as i64) < self.source_size {
             self.move_chunk().context("Failed to move a chunk")?;
+        }
+
+        // Pad to align the buffer up to a page (capped to the buffer size) if
+        // the caller requested.
+        if self.pad_output_length && self.buffer_offset < self.buffer_size {
+            self.buffer_offset = std::cmp::min(
+                self.buffer_size,
+                (self.buffer_offset + self.page_size - 1) & !(self.page_size - 1),
+            )
         }
 
         self.flush_buffer().context("Failed final flush")?;
