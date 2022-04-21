@@ -144,8 +144,14 @@ class InterfaceProxyInterface {
  public:
   virtual ~InterfaceProxyInterface() = default;
 
+  static const char* CapabilitiesName() { return "Capabilities"; }
+  virtual const brillo::VariantDictionary& capabilities() const = 0;
+
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+
+  virtual void SetPropertyChangedCallback(
+      const base::RepeatingCallback<void(InterfaceProxyInterface*, const std::string&)>& callback) = 0;
 };
 
 }  // namespace wpa_supplicant1
@@ -160,11 +166,27 @@ namespace wpa_supplicant1 {
 // interface doc
 class InterfaceProxy final : public InterfaceProxyInterface {
  public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "fi.w1.wpa_supplicant1.Interface",
+                            callback} {
+      RegisterProperty(CapabilitiesName(), &capabilities);
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+
+    brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
+
+  };
   InterfaceProxy(const InterfaceProxy&) = delete;
   InterfaceProxy& operator=(const InterfaceProxy&) = delete;
 
   ~InterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -177,7 +199,24 @@ class InterfaceProxy final : public InterfaceProxyInterface {
     return dbus_object_proxy_;
   }
 
+  void SetPropertyChangedCallback(
+      const base::RepeatingCallback<void(InterfaceProxyInterface*, const std::string&)>& callback) override {
+    on_property_changed_ = callback;
+  }
+
+  const PropertySet* GetProperties() const { return &(*property_set_); }
+  PropertySet* GetProperties() { return &(*property_set_); }
+
+  const brillo::VariantDictionary& capabilities() const override {
+    return property_set_->capabilities.value();
+  }
+
  private:
+  void OnPropertyChanged(const std::string& property_name) {
+    if (!on_property_changed_.is_null())
+      on_property_changed_.Run(this, property_name);
+  }
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   const dbus::ObjectPath object_path_{"/org/chromium/Test"};
@@ -212,6 +251,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -305,6 +345,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -401,6 +442,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -496,6 +538,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -531,9 +574,15 @@ func TestGenerateProxiesWithProperties(t *testing.T) {
 		Name: "test.EmptyInterface",
 		Properties: []introspect.Property{
 			{
-				Name:      "Capabilities",
+				Name:      "ReadonlyProperty",
 				Type:      "a{sv}",
 				Access:    "read",
+				DocString: "\n        property doc\n      ",
+			},
+			{
+				Name:      "WritableProperty",
+				Type:      "a{sv}",
+				Access:    "readwrite",
 				DocString: "\n        property doc\n      ",
 			},
 		},
@@ -582,8 +631,18 @@ class EmptyInterfaceProxyInterface {
  public:
   virtual ~EmptyInterfaceProxyInterface() = default;
 
+  static const char* ReadonlyPropertyName() { return "ReadonlyProperty"; }
+  virtual const brillo::VariantDictionary& readonly_property() const = 0;
+  static const char* WritablePropertyName() { return "WritableProperty"; }
+  virtual const brillo::VariantDictionary& writable_property() const = 0;
+  virtual void set_writable_property(const brillo::VariantDictionary& value,
+                                     base::OnceCallback<void(bool)> callback) = 0;
+
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+
+  virtual void InitializeProperties(
+      const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>& callback) = 0;
 };
 
 }  // namespace test
@@ -593,11 +652,29 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "test.EmptyInterface",
+                            callback} {
+      RegisterProperty(ReadonlyPropertyName(), &readonly_property);
+      RegisterProperty(WritablePropertyName(), &writable_property);
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+
+    brillo::dbus_utils::Property<brillo::VariantDictionary> readonly_property;
+    brillo::dbus_utils::Property<brillo::VariantDictionary> writable_property;
+
+  };
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -608,6 +685,30 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   dbus::ObjectProxy* GetObjectProxy() const override {
     return dbus_object_proxy_;
+  }
+
+  void InitializeProperties(
+      const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>& callback) override {
+    property_set_.reset(
+        new PropertySet(dbus_object_proxy_, base::BindRepeating(callback, this)));
+    property_set_->ConnectSignals();
+    property_set_->GetAll();
+  }
+
+  const PropertySet* GetProperties() const { return &(*property_set_); }
+  PropertySet* GetProperties() { return &(*property_set_); }
+
+  const brillo::VariantDictionary& readonly_property() const override {
+    return property_set_->readonly_property.value();
+  }
+
+  const brillo::VariantDictionary& writable_property() const override {
+    return property_set_->writable_property.value();
+  }
+
+  void set_writable_property(const brillo::VariantDictionary& value,
+                             base::OnceCallback<void(bool)> callback) override {
+    property_set_->writable_property.Set(value, std::move(callback));
   }
 
  private:
@@ -701,6 +802,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -795,8 +897,14 @@ class EmptyInterfaceProxyInterface {
  public:
   virtual ~EmptyInterfaceProxyInterface() = default;
 
+  static const char* CapabilitiesName() { return "Capabilities"; }
+  virtual const brillo::VariantDictionary& capabilities() const = 0;
+
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+
+  virtual void SetPropertyChangedCallback(
+      const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>& callback) = 0;
 };
 
 }  // namespace test
@@ -806,11 +914,27 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "test.EmptyInterface",
+                            callback} {
+      RegisterProperty(CapabilitiesName(), &capabilities);
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+
+    brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
+
+  };
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
   ~EmptyInterfaceProxy() override {
   }
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -823,7 +947,24 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     return dbus_object_proxy_;
   }
 
+  void SetPropertyChangedCallback(
+      const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>& callback) override {
+    on_property_changed_ = callback;
+  }
+
+  const PropertySet* GetProperties() const { return &(*property_set_); }
+  PropertySet* GetProperties() { return &(*property_set_); }
+
+  const brillo::VariantDictionary& capabilities() const override {
+    return property_set_->capabilities.value();
+  }
+
  private:
+  void OnPropertyChanged(const std::string& property_name) {
+    if (!on_property_changed_.is_null())
+      on_property_changed_.Run(this, property_name);
+  }
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;

@@ -7,9 +7,10 @@
 package introspect
 
 import (
-	"chromiumos/dbusbindings/dbustype"
 	"encoding/xml"
 	"fmt"
+
+	"chromiumos/dbusbindings/dbustype"
 )
 
 // TODO(chromium:983008): Add checks for the presence of unexpected elements in XML files.

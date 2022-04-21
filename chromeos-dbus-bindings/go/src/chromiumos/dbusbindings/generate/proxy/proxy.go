@@ -7,8 +7,10 @@ package proxy
 
 import (
 	"io"
+	"strings"
 	"text/template"
 
+	"chromiumos/dbusbindings/dbustype"
 	"chromiumos/dbusbindings/generate/genutil"
 	"chromiumos/dbusbindings/introspect"
 	"chromiumos/dbusbindings/serviceconfig"
@@ -20,7 +22,15 @@ var funcMap = template.FuncMap{
 	"makeFullItfName":   genutil.MakeFullItfName,
 	"makeFullProxyName": genutil.MakeFullProxyName,
 	"makeProxyName":     genutil.MakeProxyName,
-	"reverse":           genutil.Reverse,
+	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
+		return p.BaseType(dbustype.DirectionExtract)
+	},
+	"makeProxyInArgTypeProxy": func(p *introspect.Property) (string, error) {
+		return p.InArgType(dbustype.ReceiverProxy)
+	},
+	"makeVariableName": genutil.MakeVariableName,
+	"repeat":           strings.Repeat,
+	"reverse":          genutil.Reverse,
 }
 
 const (
@@ -73,17 +83,36 @@ namespace {{.}} {
 class {{$itfName}} {
  public:
   virtual ~{{$itfName}}() = default;
-{{range .Methods -}}
+{{- range .Methods}}
 {{- /* TODO(crbug.com/983008): Add method proxies */ -}}
 {{- /* TODO(crbug.com/983008): Add asyn method proxies */ -}}
-{{end -}}
-{{range .Signals -}}
+{{- end}}
+{{- range .Signals}}
 {{- /* TODO(crbug.com/983008): Add signal handler registration */ -}}
-{{end -}}
-{{- /* TODO(crbug.com/983008): Add properties */}}
+{{- end}}
+{{- if .Properties}}{{"\n"}}{{end}}
+{{- range .Properties}}
+{{- $name := makeVariableName .Name -}}
+{{- $type := makeProxyInArgTypeProxy . }}
+  static const char* {{.Name}}Name() { return "{{.Name}}"; }
+  virtual {{$type}} {{$name}}() const = 0;
+{{- if eq .Access "readwrite"}}
+  virtual void set_{{$name}}({{$type}} value,
+                   {{repeat " " (len $name)}} base::OnceCallback<void(bool)> callback) = 0;
+{{- end}}
+{{- end}}
+
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
-{{- /* TODO(crbug.com/983008): Add initialization of properties */}}
+{{- if .Properties}}
+{{if $.ObjectManagerName}}
+  virtual void SetPropertyChangedCallback(
+      const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) = 0;
+{{- else}}
+  virtual void InitializeProperties(
+      const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) = 0;
+{{- end}}
+{{- end}}
 };
 
 {{range extractNameSpaces .Name | reverse -}}
@@ -97,17 +126,36 @@ namespace {{.}} {
 {{- $proxyName := makeProxyName .Name -}}
 class {{$proxyName}} final : public {{$itfName}} {
  public:
-{{- /* TODO(crbug.com/983008): Add property set */ -}}
+{{- if .Properties }}
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "{{.Name}}",
+                            callback} {
+{{- range .Properties}}
+      RegisterProperty({{.Name}}Name(), &{{makeVariableName .Name}});
+{{- end}}
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+{{range .Properties}}
+    brillo::dbus_utils::Property<{{makePropertyBaseTypeExtract .}}> {{makeVariableName .Name}};
+{{- end}}
+
+  };
+{{- end}}
 {{- /* TODO(crbug.com/983008): Add constructor */}}
   {{$proxyName}}(const {{$proxyName}}&) = delete;
   {{$proxyName}}& operator=(const {{$proxyName}}&) = delete;
 
   ~{{$proxyName}}() override {
   }
-
 {{- range .Signals}}
 {{- /* TODO(crbug.com/983008): Add signal andler registration. */ -}}
 {{- end}}
+
   void ReleaseObjectProxy(base::OnceClosure callback) {
     bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
@@ -120,18 +168,55 @@ class {{$proxyName}} final : public {{$itfName}} {
     return dbus_object_proxy_;
   }
 
-{{- /* TODO(crbug.com/983008): Add initialization of properties */ -}}
+{{- if .Properties}}
+{{if $.ObjectManagerName}}
+  void SetPropertyChangedCallback(
+      const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) override {
+    on_property_changed_ = callback;
+  }
+{{- else}}
+  void InitializeProperties(
+      const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) override {
+{{- /* TODO(crbug.com/983008): Use std::make_unique. */}}
+    property_set_.reset(
+        new PropertySet(dbus_object_proxy_, base::BindRepeating(callback, this)));
+    property_set_->ConnectSignals();
+    property_set_->GetAll();
+  }
+{{- end}}
 
-{{range .Methods}}
+  const PropertySet* GetProperties() const { return &(*property_set_); }
+  PropertySet* GetProperties() { return &(*property_set_); }
+{{- end}}
+
+{{- range .Methods}}
 {{- /* TODO(crbug.com/983008): Add method proxy. */ -}}
 {{- /* TODO(crbug.com/983008): Add async method proxy. */ -}}
-{{end}}
+{{- end}}
 
-{{- /* TODO(crbug.com/983008): Add properties. */}}
+{{- range .Properties}}
+{{- $name := makeVariableName .Name -}}
+{{- $type := makeProxyInArgTypeProxy . }}
+
+  {{$type}} {{$name}}() const override {
+    return property_set_->{{$name}}.value();
+  }
+{{- if eq .Access "readwrite"}}
+
+  void set_{{$name}}({{$type}} value,
+           {{repeat " " (len $name)}} base::OnceCallback<void(bool)> callback) override {
+    property_set_->{{$name}}.Set(value, std::move(callback));
+  }
+{{- end}}
+{{- end}}
 
  private:
 {{- if and $.ObjectManagerName .Properties}}
-{{- /* TODO(crbug.com/983008): Add OnPropertyChanged. */ -}}
+  void OnPropertyChanged(const std::string& property_name) {
+    if (!on_property_changed_.is_null())
+      on_property_changed_.Run(this, property_name);
+  }
+{{/* blank line separator */}}
 {{- end}}
   scoped_refptr<dbus::Bus> bus_;
 {{- if $.ServiceName}}
