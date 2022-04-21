@@ -227,12 +227,8 @@ MountErrorType MountManager::Unmount(const std::string& path) {
       return error;
   }
 
-  for (auto it = mount_states_.begin(); it != mount_states_.end(); ++it) {
-    if (it->second.get() == mount_point) {
-      mount_states_.erase(it);
-      break;
-    }
-  }
+  const bool removed = RemoveMount(mount_point);
+  DCHECK(removed);
 
   return error;
 }
@@ -265,9 +261,7 @@ bool MountManager::ResolvePath(const std::string& path,
 
 MountPoint* MountManager::FindMountBySource(const std::string& source) const {
   const auto it = mount_states_.find(source);
-  if (it == mount_states_.end())
-    return nullptr;
-  return it->second.get();
+  return it != mount_states_.cend() ? it->second.get() : nullptr;
 }
 
 MountPoint* MountManager::FindMountByMountPath(
@@ -280,8 +274,8 @@ MountPoint* MountManager::FindMountByMountPath(
   return nullptr;
 }
 
-bool MountManager::RemoveMount(MountPoint* mount_point) {
-  for (auto it = mount_states_.begin(); it != mount_states_.end(); ++it) {
+bool MountManager::RemoveMount(MountPoint* const mount_point) {
+  for (auto it = mount_states_.cbegin(); it != mount_states_.cend(); ++it) {
     if (it->second.get() == mount_point) {
       mount_states_.erase(it);
       return true;
