@@ -1032,6 +1032,48 @@ TEST_F(CellularCapability3gppTest, SignalPropertiesChanged) {
   EXPECT_CALL(*service_, SetStrength(expected_strength)).Times(1);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
                                    modem_signal_properties_);
+
+  KeyValueStore modem_signal_property_nr5g;
+  modem_signal_property_nr5g.Set<double>(
+      CellularCapability3gpp::kRssiProperty,
+      CellularCapability3gpp::kRssiBounds.max_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_NR5G,
+                                              modem_signal_property_nr5g);
+  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  modem_signal_property_nr5g.Set<double>(
+      CellularCapability3gpp::kRsrpProperty,
+      CellularCapability3gpp::kRsrpBounds.min_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_NR5G,
+                                              modem_signal_property_nr5g);
+  EXPECT_CALL(*service_, SetStrength(0)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  modem_signal_property_nr5g.Set<double>(
+      CellularCapability3gpp::kRsrpProperty,
+      CellularCapability3gpp::kRsrpBounds.max_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_NR5G,
+                                              modem_signal_property_nr5g);
+  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  double rsrp_midrange_nr5g =
+      (CellularCapability3gpp::kRsrpBounds.min_threshold +
+       CellularCapability3gpp::kRsrpBounds.max_threshold) /
+      2;
+  modem_signal_property_nr5g.Set<double>(CellularCapability3gpp::kRsrpProperty,
+                                         rsrp_midrange_nr5g);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_NR5G,
+                                              modem_signal_property_nr5g);
+  uint32_t expected_strength_nr5g =
+      CellularCapability3gpp::kRsrpBounds.GetAsPercentage(rsrp_midrange_nr5g);
+  EXPECT_CALL(*service_, SetStrength(expected_strength_nr5g)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
 }
 
 TEST_F(CellularCapability3gppTest, UpdateRegistrationState) {

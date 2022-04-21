@@ -2103,9 +2103,9 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
   uint32_t scaled_quality = 0;
   // Technologies whose signal strength will be probed, ordered by priority
   std::vector<std::string> signal_properties_list = {
-      MM_MODEM_SIGNAL_PROPERTY_LTE, MM_MODEM_SIGNAL_PROPERTY_UMTS,
-      MM_MODEM_SIGNAL_PROPERTY_GSM, MM_MODEM_SIGNAL_PROPERTY_CDMA,
-      MM_MODEM_SIGNAL_PROPERTY_EVDO};
+      MM_MODEM_SIGNAL_PROPERTY_NR5G, MM_MODEM_SIGNAL_PROPERTY_LTE,
+      MM_MODEM_SIGNAL_PROPERTY_UMTS, MM_MODEM_SIGNAL_PROPERTY_GSM,
+      MM_MODEM_SIGNAL_PROPERTY_CDMA, MM_MODEM_SIGNAL_PROPERTY_EVDO};
   for (auto signal_property : signal_properties_list) {
     if (props.ContainsVariant(signal_property)) {
       auto tech_props = props.GetVariant(signal_property).Get<KeyValueStore>();
