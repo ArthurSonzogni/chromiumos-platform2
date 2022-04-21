@@ -621,31 +621,6 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
   return true;
 }
 
-// Convert file path into fd path
-// This will open the file and append SafeFD into provided container
-std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
-                                 base::FilePath* in_out_path,
-                                 int flags,
-                                 std::vector<brillo::SafeFD>& fd_storage) {
-  static auto procSelfFd = base::FilePath("/proc/self/fd");
-  if (procSelfFd.IsParent(*in_out_path)) {
-    if (!base::PathExists(*in_out_path)) {
-      return "Path does not exist";
-    }
-  } else {
-    auto disk_fd = parent_fd.OpenExistingFile(*in_out_path, flags);
-    if (brillo::SafeFD::IsError(disk_fd.second)) {
-      LOG(ERROR) << "Could not open file: " << static_cast<int>(disk_fd.second);
-      return "Could not open file";
-    }
-    *in_out_path = base::FilePath(kProcFileDescriptorsPath)
-                       .Append(base::NumberToString(disk_fd.first.get()));
-    fd_storage.push_back(std::move(disk_fd.first));
-  }
-
-  return "";
-}
-
 CustomParametersForDev::CustomParametersForDev(const std::string& data) {
   std::vector<base::StringPiece> lines = base::SplitStringPiece(
       data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);

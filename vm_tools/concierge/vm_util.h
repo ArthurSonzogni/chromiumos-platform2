@@ -18,7 +18,6 @@
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <base/values.h>
-#include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
 #include <vm_tools/concierge/usb_control.h>
 #include <vm_tools/concierge/balloon_policy.h>
@@ -29,9 +28,6 @@ class FilePath;
 
 namespace vm_tools {
 namespace concierge {
-
-// Path to process file descriptors.
-constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
 class Disk {
  public:
@@ -156,13 +152,6 @@ bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares);
 // Updates |cpu_cgroup|'s cpu.cfs_quota_us and cpu.cfs_period_us
 // based on |percent|.
 bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent);
-
-// Convert file path into fd path
-// This will open the file and append SafeFD into provided container
-std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
-                                 base::FilePath* in_out_path,
-                                 int flags,
-                                 std::vector<brillo::SafeFD>& fd_storage);
 
 class CustomParametersForDev {
  public:

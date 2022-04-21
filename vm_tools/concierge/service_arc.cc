@@ -192,17 +192,6 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   }
 
   std::vector<Disk> disks;
-  // Exists just to keep FDs around for crosvm to inherit
-  std::vector<brillo::SafeFD> owned_fds;
-  auto root_fd = brillo::SafeFD::Root();
-
-  if (brillo::SafeFD::IsError(root_fd.second)) {
-    LOG(ERROR) << "Could not open root directory: "
-               << static_cast<int>(root_fd.second);
-    response.set_failure_reason("Could not open root directory");
-    return response;
-  }
-
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
   Disk::Config config{};
@@ -212,36 +201,19 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   if (rootfs_block_size) {
     config.block_size = rootfs_block_size;
   }
-
-  auto rootfsPath = base::FilePath(kRootfsPath);
-  auto failure_reason =
-      ConvertToFdBasedPath(root_fd.first, &rootfsPath,
-                           config.writable ? O_RDWR : O_RDONLY, owned_fds);
-  if (!failure_reason.empty()) {
-    LOG(ERROR) << "Could not open rootfs image" << rootfsPath;
-    response.set_failure_reason("Rootfs path does not exist");
-    return response;
-  }
-
-  disks.push_back(Disk(rootfsPath, config));
-
+  disks.push_back(Disk(base::FilePath(kRootfsPath), config));
   for (const auto& disk : request.disks()) {
+    if (!base::PathExists(base::FilePath(disk.path()))) {
+      LOG(ERROR) << "Missing disk path: " << disk.path();
+      response.set_failure_reason("One or more disk paths do not exist");
+      return response;
+    }
     config.writable = disk.writable();
     const size_t block_size = disk.block_size();
     if (block_size) {
       config.block_size = block_size;
     }
-    auto path = base::FilePath(disk.path());
-    failure_reason = ConvertToFdBasedPath(
-        root_fd.first, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Could not open disk file";
-      response.set_failure_reason(failure_reason);
-      return response;
-    }
-
-    disks.push_back(Disk(path, config));
+    disks.push_back(Disk(base::FilePath(disk.path()), config));
   }
 
   base::FilePath data_disk_path;

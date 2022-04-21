@@ -155,6 +155,9 @@ constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
 
+// Path to process file descriptors.
+constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
+
 constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 
@@ -640,6 +643,31 @@ string RemoveCloseOnExec(int raw_fd) {
   flags &= ~FD_CLOEXEC;
   if (fcntl(raw_fd, F_SETFD, flags) == -1) {
     return "Failed to clear close-on-exec flag for fd";
+  }
+
+  return "";
+}
+
+// Convert file path into fd path
+// This will open the file and append SafeFD into provided container
+string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
+                            base::FilePath* in_out_path,
+                            int flags,
+                            std::vector<brillo::SafeFD>& fd_storage) {
+  static auto procSelfFd = base::FilePath("/proc/self/fd");
+  if (procSelfFd.IsParent(*in_out_path)) {
+    if (!base::PathExists(*in_out_path)) {
+      return "Path does not exist";
+    }
+  } else {
+    auto disk_fd = parent_fd.OpenExistingFile(*in_out_path, flags);
+    if (brillo::SafeFD::IsError(disk_fd.second)) {
+      LOG(ERROR) << "Could not open file: " << static_cast<int>(disk_fd.second);
+      return "Could not open file";
+    }
+    *in_out_path = base::FilePath(kProcFileDescriptorsPath)
+                       .Append(base::NumberToString(disk_fd.first.get()));
+    fd_storage.push_back(std::move(disk_fd.first));
   }
 
   return "";
