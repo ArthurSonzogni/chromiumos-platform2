@@ -39,7 +39,7 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
-  virtual void IsEnabled(const Feature& feature,
+  virtual void IsEnabled(const VariationsFeature& feature,
                          IsEnabledCallback callback) = 0;
 
   // Like IsEnabled(), but blocks waiting for the dbus call to finish.
@@ -51,7 +51,7 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
-  virtual bool IsEnabledBlocking(const Feature& feature) = 0;
+  virtual bool IsEnabledBlocking(const VariationsFeature& feature) = 0;
 };
 
 class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
@@ -63,9 +63,10 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   // Returns |nullptr| on failure to create an ObjectProxy
   static std::unique_ptr<PlatformFeatures> New(scoped_refptr<dbus::Bus> bus);
 
-  void IsEnabled(const Feature& feature, IsEnabledCallback callback) override;
+  void IsEnabled(const VariationsFeature& feature,
+                 IsEnabledCallback callback) override;
 
-  bool IsEnabledBlocking(const Feature& feature) override;
+  bool IsEnabledBlocking(const VariationsFeature& feature) override;
 
   // Shutdown the system bus. Used for C API, or when destroying it and the bus
   // is no longer owned.
@@ -80,18 +81,19 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   FRIEND_TEST(FeatureLibraryTest, CheckFeatureIdentity);
 
   // Callback that is invoked when WaitForServiceToBeAvailable() finishes.
-  void OnWaitForService(const Feature& Feature,
+  void OnWaitForService(const VariationsFeature& feature,
                         IsEnabledCallback callback,
                         bool available);
 
   // Callback that is invoked when proxy_->CallMethod() finishes.
-  void HandleIsEnabledResponse(const Feature& Feature,
+  void HandleIsEnabledResponse(const VariationsFeature& feature,
                                IsEnabledCallback callback,
                                dbus::Response* response);
 
   // Verify that we have only ever seen |feature| with this same address.
   // Used to prevent defining the same feature with distinct default values.
-  bool CheckFeatureIdentity(const Feature& feature) LOCKS_EXCLUDED(lock_);
+  bool CheckFeatureIdentity(const VariationsFeature& feature)
+      LOCKS_EXCLUDED(lock_);
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* proxy_;
@@ -100,7 +102,7 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   // only defined once. This verification is only done in builds with DCHECKs
   // enabled.
   base::Lock lock_;
-  std::map<std::string, const Feature*> feature_identity_tracker_
+  std::map<std::string, const VariationsFeature*> feature_identity_tracker_
       GUARDED_BY(lock_);
 
   base::WeakPtrFactory<PlatformFeatures> weak_ptr_factory_{this};
@@ -115,13 +117,16 @@ class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
   FakePlatformFeatures(const FakePlatformFeatures&) = delete;
   FakePlatformFeatures& operator=(const FakePlatformFeatures&) = delete;
 
-  void IsEnabled(const Feature& feature, IsEnabledCallback callback) override {
+  void IsEnabled(const VariationsFeature& feature,
+                 IsEnabledCallback callback) override {
     bus_->AssertOnOriginThread();
     bus_->GetOriginTaskRunner()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback), enabled_));
   }
 
-  bool IsEnabledBlocking(const Feature& feature) override { return enabled_; }
+  bool IsEnabledBlocking(const VariationsFeature& feature) override {
+    return enabled_;
+  }
 
   void SetEnabled(bool enabled) { enabled_ = enabled; }
 

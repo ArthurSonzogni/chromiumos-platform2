@@ -201,11 +201,11 @@ constexpr const char kMDSFilePath[] =
 constexpr gid_t kCrosvmUGid = 299;
 
 // Needs to be const as libfeatures does pointers checking.
-const Feature kArcVmInitialThrottle30Feature{
+const VariationsFeature kArcVmInitialThrottle30Feature{
     "CrOSLateBootArcVmInitial30Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const Feature kArcVmInitialThrottle50Feature{
+const VariationsFeature kArcVmInitialThrottle50Feature{
     "CrOSLateBootArcVmInitial50Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const Feature kArcVmInitialThrottle70Feature{
+const VariationsFeature kArcVmInitialThrottle70Feature{
     "CrOSLateBootArcVmInitial70Throttle", FEATURE_DISABLED_BY_DEFAULT};
 
 // Used with the |IsUntrustedVMAllowed| function.

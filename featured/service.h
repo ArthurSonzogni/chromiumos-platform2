@@ -108,7 +108,7 @@ class PlatformFeature {
   const std::string& name() const { return *name_; }
 
   // Don't copy this because address must *not* change across lookups.
-  const Feature* const feature() const { return &feature_; }
+  const VariationsFeature* const feature() const { return &feature_; }
 
   // Check if feature is supported on the device
   bool IsSupported() const;
@@ -122,7 +122,7 @@ class PlatformFeature {
   // The string in this unique_ptr must not be modified since feature_ contains
   // a pointer to the underlying c_str().
   std::unique_ptr<const std::string> name_;
-  Feature feature_;
+  VariationsFeature feature_;
 };
 
 class FeatureParserBase {

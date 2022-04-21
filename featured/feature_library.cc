@@ -35,7 +35,7 @@ std::unique_ptr<PlatformFeatures> PlatformFeatures::New(
   return std::unique_ptr<PlatformFeatures>(new PlatformFeatures(bus, proxy));
 }
 
-void PlatformFeatures::IsEnabled(const Feature& feature,
+void PlatformFeatures::IsEnabled(const VariationsFeature& feature,
                                  IsEnabledCallback callback) {
   DCHECK(CheckFeatureIdentity(feature)) << feature.name;
 
@@ -44,7 +44,7 @@ void PlatformFeatures::IsEnabled(const Feature& feature,
       feature, std::move(callback)));
 }
 
-bool PlatformFeatures::IsEnabledBlocking(const Feature& feature) {
+bool PlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
   DCHECK(CheckFeatureIdentity(feature)) << feature.name;
 
   dbus::MethodCall call(chromeos::kChromeFeaturesServiceInterface,
@@ -67,7 +67,7 @@ bool PlatformFeatures::IsEnabledBlocking(const Feature& feature) {
   return feature_enabled;
 }
 
-void PlatformFeatures::OnWaitForService(const Feature& feature,
+void PlatformFeatures::OnWaitForService(const VariationsFeature& feature,
                                         IsEnabledCallback callback,
                                         bool available) {
   if (!available) {
@@ -86,7 +86,7 @@ void PlatformFeatures::OnWaitForService(const Feature& feature,
                                     std::move(callback)));
 }
 
-void PlatformFeatures::HandleIsEnabledResponse(const Feature& feature,
+void PlatformFeatures::HandleIsEnabledResponse(const VariationsFeature& feature,
                                                IsEnabledCallback callback,
                                                dbus::Response* response) {
   if (!response) {
@@ -108,7 +108,7 @@ void PlatformFeatures::HandleIsEnabledResponse(const Feature& feature,
   std::move(callback).Run(feature_enabled);
 }
 
-bool PlatformFeatures::CheckFeatureIdentity(const Feature& feature) {
+bool PlatformFeatures::CheckFeatureIdentity(const VariationsFeature& feature) {
   base::AutoLock auto_lock(lock_);
 
   auto it = feature_identity_tracker_.find(feature.name);

@@ -18,12 +18,12 @@ enum FEATURE_EXPORT FeatureState {
   FEATURE_ENABLED_BY_DEFAULT,
 };
 
-// The Feature struct is used to define the default state for a feature. See
-// comment below for more details. There must only ever be one struct instance
-// for a given feature name - generally defined as a constant global variable or
-// file static. It should never be used as a constexpr as it breaks
-// pointer-based identity lookup.
-struct FEATURE_EXPORT Feature {
+// The VariationsFeature struct is used to define the default state for a
+// feature. See comment below for more details. There must only ever be one
+// struct instance for a given feature name - generally defined as a constant
+// global variable or file static. It should never be used as a constexpr as it
+// breaks pointer-based identity lookup.
+struct FEATURE_EXPORT VariationsFeature {
   // The name of the feature. This should be unique to each feature and is used
   // for enabling/disabling features via command line flags and experiments.
   // It is strongly recommended to use CamelCase style for feature names, e.g.
@@ -52,7 +52,7 @@ void FEATURE_EXPORT CFeatureLibraryDelete(CFeatureLibrary handle);
 
 // C wrapper for PlatformFeatures::IsEnabledBlocking
 int FEATURE_EXPORT CFeatureLibraryIsEnabledBlocking(
-    CFeatureLibrary handle, const struct Feature* const feature);
+    CFeatureLibrary handle, const struct VariationsFeature* const feature);
 
 #if defined(__cplusplus)
 }  // extern "C"

@@ -14,9 +14,12 @@ class PlatformFeaturesMock : public PlatformFeaturesInterface {
  public:
   MOCK_METHOD(void,
               IsEnabled,
-              (const Feature& feature, IsEnabledCallback callback),
+              (const VariationsFeature& feature, IsEnabledCallback callback),
               (override));
-  MOCK_METHOD(bool, IsEnabledBlocking, (const Feature& feature), (override));
+  MOCK_METHOD(bool,
+              IsEnabledBlocking,
+              (const VariationsFeature& feature),
+              (override));
 };
 
 }  // namespace feature

@@ -10,7 +10,7 @@
 
 #include "featured/feature_library.h"
 
-const struct Feature kCrOSLateBootMyAwesomeFeature = {
+const struct VariationsFeature kCrOSLateBootMyAwesomeFeature = {
     .name = "CrOSLateBootMyAwesomeFeature",
     .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };

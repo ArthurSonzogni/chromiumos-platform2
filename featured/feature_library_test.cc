@@ -96,7 +96,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Success) {
 
   run_loop_ = std::make_unique<base::RunLoop>();
 
-  Feature f{"Feature", FEATURE_DISABLED_BY_DEFAULT};
+  VariationsFeature f{"Feature", FEATURE_DISABLED_BY_DEFAULT};
   features_->IsEnabled(f,
                        base::BindLambdaForTesting([this, enabled](bool actual) {
                          EXPECT_EQ(enabled, actual);
@@ -121,7 +121,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_WaitForService) {
   bool enabled = GetParam();
   FeatureState feature_state =
       GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
-  Feature f{"Feature", feature_state};
+  VariationsFeature f{"Feature", feature_state};
 
   features_->IsEnabled(f,
                        base::BindLambdaForTesting([this, enabled](bool actual) {
@@ -149,7 +149,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_NullResponse) {
   bool enabled = GetParam();
   FeatureState feature_state =
       GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
-  Feature f{"Feature", feature_state};
+  VariationsFeature f{"Feature", feature_state};
 
   features_->IsEnabled(f,
                        base::BindLambdaForTesting([this, enabled](bool actual) {
@@ -179,7 +179,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_EmptyResponse) {
   bool enabled = GetParam();
   FeatureState feature_state =
       GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
-  Feature f{"Feature", feature_state};
+  VariationsFeature f{"Feature", feature_state};
 
   features_->IsEnabled(f,
                        base::BindLambdaForTesting([this, enabled](bool actual) {
@@ -199,7 +199,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Success) {
         return CreateResponse(call, enabled);
       }));
 
-  Feature f{"Feature", FEATURE_DISABLED_BY_DEFAULT};
+  VariationsFeature f{"Feature", FEATURE_DISABLED_BY_DEFAULT};
   EXPECT_EQ(enabled, features_->IsEnabledBlocking(f));
 }
 
@@ -212,7 +212,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Failure_Null) {
   bool enabled = GetParam();
   FeatureState feature_state =
       GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
-  Feature f{"Feature", feature_state};
+  VariationsFeature f{"Feature", feature_state};
 
   EXPECT_EQ(enabled, features_->IsEnabledBlocking(f));
 }
@@ -227,23 +227,23 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Failure_Empty) {
   bool enabled = GetParam();
   FeatureState feature_state =
       GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
-  Feature f{"Feature", feature_state};
+  VariationsFeature f{"Feature", feature_state};
 
   EXPECT_EQ(enabled, features_->IsEnabledBlocking(f));
 }
 
 TEST_F(FeatureLibraryTest, CheckFeatureIdentity) {
-  Feature f1{"Feature", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f1{"Feature", FEATURE_ENABLED_BY_DEFAULT};
   // A new, unseen feature should pass the check.
   EXPECT_TRUE(features_->CheckFeatureIdentity(f1));
   // As should a feature seen a second time.
   EXPECT_TRUE(features_->CheckFeatureIdentity(f1));
 
-  Feature f2{"Feature", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f2{"Feature", FEATURE_ENABLED_BY_DEFAULT};
   // A separate feature with the same name should fail.
   EXPECT_FALSE(features_->CheckFeatureIdentity(f2));
 
-  Feature f3{"Feature3", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f3{"Feature3", FEATURE_ENABLED_BY_DEFAULT};
   // A distinct feature with a distinct name should pass.
   EXPECT_TRUE(features_->CheckFeatureIdentity(f3));
   EXPECT_TRUE(features_->CheckFeatureIdentity(f3));
@@ -263,14 +263,14 @@ TEST_F(FeatureLibraryDeathTest, IsEnabledDistinctFeatureDefs) {
 
   run_loop_ = std::make_unique<base::RunLoop>();
 
-  Feature f{"Feature", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f{"Feature", FEATURE_ENABLED_BY_DEFAULT};
   features_->IsEnabled(f, base::BindLambdaForTesting([this](bool enabled) {
                          EXPECT_TRUE(enabled);  // Default value
                          run_loop_->Quit();
                        }));
   run_loop_->Run();
 
-  Feature f2{"Feature", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f2{"Feature", FEATURE_ENABLED_BY_DEFAULT};
   EXPECT_DEATH(
       features_->IsEnabled(f2, base::BindLambdaForTesting([this](bool enabled) {
                              EXPECT_TRUE(enabled);  // Default value
@@ -284,10 +284,10 @@ TEST_F(FeatureLibraryDeathTest, IsEnabledBlockingDistinctFeatureDefs) {
               CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .Times(1);
 
-  Feature f{"Feature", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f{"Feature", FEATURE_ENABLED_BY_DEFAULT};
   features_->IsEnabledBlocking(f);
 
-  Feature f2{"Feature", FEATURE_ENABLED_BY_DEFAULT};
+  VariationsFeature f2{"Feature", FEATURE_ENABLED_BY_DEFAULT};
   EXPECT_DEATH(features_->IsEnabledBlocking(f2), "Feature");
 }
 #endif  // DCHECK_IS_ON()

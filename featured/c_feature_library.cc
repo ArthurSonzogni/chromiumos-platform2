@@ -23,7 +23,7 @@ void CFeatureLibraryDelete(CFeatureLibrary handle) {
 }
 
 extern "C" int CFeatureLibraryIsEnabledBlocking(
-    CFeatureLibrary handle, const struct Feature* const feature) {
+    CFeatureLibrary handle, const struct VariationsFeature* const feature) {
   auto* library = reinterpret_cast<feature::PlatformFeatures*>(handle);
   return library->IsEnabledBlocking(*feature);
 }
