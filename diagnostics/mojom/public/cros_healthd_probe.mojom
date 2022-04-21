@@ -350,7 +350,7 @@ struct VirtualizationInfo {
   [Extensible]
   enum SMTControl{
     // This is required for backwards compatibility, should not be used.
-    [Default] kUnknown,
+    [Default] kUnmappedEnumField,
     // SMT is enabled.
     kOn,
     // SMT is disabled.
@@ -379,7 +379,7 @@ struct VulnerabilityInfo {
   [Extensible]
   enum Status{
     // This is required for backwards compatibility, should not be used.
-    [Default] kUnknown,
+    [Default] kUnmappedEnumField,
     // Not affected by this vulnerability.
     kNotAffected,
     // Vulnerable by this vulnerability.
@@ -425,7 +425,7 @@ struct CpuVirtualizationInfo {
   [Extensible]
   enum Type{
     // This is required for backwards compatibility, should not be used.
-    [Default] kUnknown,
+    [Default] kUnmappedEnumField,
     // The cpu supports Intel virtualization (VT-x).
     kVMX,
     // The cpu supports AMD virtualization (AMD-V).
