@@ -296,6 +296,64 @@ std::vector<uint8_t> DlpAdaptor::GetFilesSources(
   return SerializeProto(response_proto);
 }
 
+void DlpAdaptor::CheckFilesTransfer(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    const std::vector<uint8_t>& request_blob) {
+  CheckFilesTransferRequest request;
+  CheckFilesTransferResponse response_proto;
+  const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse GetFilesSources request: " << parse_error;
+    response_proto.set_error_message(parse_error);
+    response->Return(SerializeProto(response_proto));
+    return;
+  }
+
+  if (!db_) {
+    response_proto.set_error_message("Database is not ready");
+    response->Return(SerializeProto(response_proto));
+    return;
+  }
+
+  IsFilesTransferRestrictedRequest matching_request;
+  base::flat_map<std::string, std::vector<std::string>> transferred_files;
+  for (const auto& file_path : request.files_paths()) {
+    const ino_t file_inode = GetInodeValue(file_path);
+    std::string serialized_proto;
+    const leveldb::Status get_status =
+        db_->Get(leveldb::ReadOptions(), base::NumberToString(file_inode),
+                 &serialized_proto);
+    if (!get_status.ok())
+      continue;
+
+    FileEntry file_entry;
+    file_entry.ParseFromString(serialized_proto);
+    transferred_files[file_entry.source_url()].push_back(file_path);
+  }
+
+  if (transferred_files.empty()) {
+    response->Return(SerializeProto(response_proto));
+    return;
+  }
+
+  for (const auto& [source_url, file_paths] : transferred_files) {
+    matching_request.add_files_sources(source_url);
+  }
+
+  auto callbacks = base::SplitOnceCallback(
+      base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
+                     base::Unretained(this), std::move(response)));
+
+  dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
+      SerializeProto(matching_request),
+      base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestricted,
+                     base::Unretained(this), std::move(transferred_files),
+                     std::move(callbacks.first)),
+      base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestrictedError,
+                     base::Unretained(this), std::move(callbacks.second)));
+}
+
 void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
@@ -441,6 +499,49 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
   if (!error.empty())
     response_proto.set_error_message(error);
   response->Return(SerializeProto(response_proto), std::move(remote_fd));
+}
+
+void DlpAdaptor::OnIsFilesTransferRestricted(
+    base::flat_map<std::string, std::vector<std::string>> transferred_files,
+    CheckFilesTransferCallback callback,
+    const std::vector<uint8_t>& response_blob) {
+  IsFilesTransferRestrictedResponse response;
+  std::string parse_error = ParseProto(FROM_HERE, &response, response_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse IsFilesTransferRestricted response: "
+               << parse_error;
+    std::move(callback).Run(std::vector<std::string>(), parse_error);
+    return;
+  }
+
+  std::vector<std::string> restricted_files;
+  for (const auto& file_source : *response.mutable_files_sources()) {
+    auto files_path = transferred_files[file_source];
+    restricted_files.insert(restricted_files.end(), files_path.begin(),
+                            files_path.end());
+  }
+
+  std::move(callback).Run(std::move(restricted_files),
+                          /*error_message=*/std::string());
+}
+
+void DlpAdaptor::OnIsFilesTransferRestrictedError(
+    CheckFilesTransferCallback callback, brillo::Error* error) {
+  LOG(ERROR) << "Failed to check which file should be restricted";
+  std::move(callback).Run(std::vector<std::string>(), error->GetMessage());
+}
+
+void DlpAdaptor::ReplyOnCheckFilesTransfer(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    std::vector<std::string> restricted_files_paths,
+    const std::string& error) {
+  CheckFilesTransferResponse response_proto;
+  *response_proto.mutable_files_paths() = {restricted_files_paths.begin(),
+                                           restricted_files_paths.end()};
+  if (!error.empty())
+    response_proto.set_error_message(error);
+  response->Return(SerializeProto(response_proto));
 }
 
 void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {

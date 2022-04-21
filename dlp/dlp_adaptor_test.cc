@@ -121,6 +121,17 @@ class DlpAdaptorTest : public ::testing::Test {
     return proto_blob;
   }
 
+  std::vector<uint8_t> CreateSerializedCheckFilesTransferRequest(
+      std::vector<std::string> files_paths, const std::string& destination) {
+    CheckFilesTransferRequest request;
+    *request.mutable_files_paths() = {files_paths.begin(), files_paths.end()};
+    request.set_destination_url(destination);
+
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+    return proto_blob;
+  }
+
   void StubIsDlpPolicyMatched(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
@@ -153,8 +164,26 @@ class DlpAdaptorTest : public ::testing::Test {
     std::move(*response_callback).Run(response.get());
   }
 
+  void StubIsFilesTransferRestricted(
+      dbus::MethodCall* method_call,
+      int /* timeout_ms */,
+      dbus::MockObjectProxy::ResponseCallback* response_callback,
+      dbus::MockObjectProxy::ErrorCallback* error_callback) {
+    method_call->SetSerial(kDBusSerial);
+    auto response = dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+
+    IsFilesTransferRestrictedResponse response_proto;
+    *response_proto.mutable_files_sources() = {restricted_files_srcs_.begin(),
+                                               restricted_files_srcs_.end()};
+
+    writer.AppendProtoAsArrayOfBytes(response_proto);
+    std::move(*response_callback).Run(response.get());
+  }
+
  protected:
   bool is_file_policy_restricted_;
+  std::vector<std::string> restricted_files_srcs_;
 
   DlpAdaptorTestHelper helper_;
 };
@@ -655,6 +684,58 @@ TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
   response.ParseFromArray(response_blob.data(), response_blob.size());
 
   EXPECT_FALSE(response.has_error_message());
+}
+
+TEST_F(DlpAdaptorTest, CheckFilesTransfer) {
+  // Create database.
+  base::FilePath database_directory;
+  ASSERT_TRUE(base::CreateNewTempDirectory("dlpdatabase", &database_directory));
+  GetDlpAdaptor()->InitDatabase(database_directory);
+
+  // Create files.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+
+  // Add the files to the database.
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path1.value(), source1, "referrer1"));
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path2.value(), source2, "referrer2"));
+
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
+  restricted_files_srcs_.clear();
+  restricted_files_srcs_.push_back(source1);
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
+
+  // Request access to the file.
+  auto response = std::make_unique<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+      nullptr);
+
+  std::vector<std::string> restricted_files_paths;
+  response->set_return_callback(base::BindRepeating(
+      [](std::vector<std::string>* restricted_files_paths,
+         const std::vector<uint8_t>& proto_blob) {
+        CheckFilesTransferResponse response;
+        response.ParseFromArray(proto_blob.data(), proto_blob.size());
+        restricted_files_paths->insert(restricted_files_paths->begin(),
+                                       response.files_paths().begin(),
+                                       response.files_paths().end());
+      },
+      &restricted_files_paths));
+  GetDlpAdaptor()->CheckFilesTransfer(
+      std::move(response),
+      CreateSerializedCheckFilesTransferRequest(
+          {file_path1.value(), file_path2.value()}, "destination"));
+
+  EXPECT_EQ(restricted_files_paths.size(), 1u);
 }
 
 }  // namespace dlp

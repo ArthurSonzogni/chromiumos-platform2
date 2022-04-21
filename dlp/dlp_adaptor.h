@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/containers/flat_map.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <brillo/dbus/async_event_sequencer.h>
@@ -61,6 +62,10 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                          const std::vector<uint8_t>& request_blob) override;
   std::vector<uint8_t> GetFilesSources(
       const std::vector<uint8_t>& request_blob) override;
+  void CheckFilesTransfer(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>>> response,
+      const std::vector<uint8_t>& request_blob) override;
 
   void SetFanotifyWatcherStartedForTesting(bool is_started);
 
@@ -80,6 +85,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
+  FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
 
   // Opens the database |db_| to store files sources.
   void InitDatabase(const base::FilePath database_path);
@@ -113,6 +119,21 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
           brillo::dbus_utils::FileDescriptor>> response,
       base::ScopedFD remote_fd,
       bool allowed,
+      const std::string& error);
+
+  using CheckFilesTransferCallback =
+      base::OnceCallback<void(std::vector<std::string>, const std::string&)>;
+  // Callback on IsFilesTransferRestricted D-Bus request.
+  void OnIsFilesTransferRestricted(
+      base::flat_map<std::string, std::vector<std::string>> transferred_files,
+      CheckFilesTransferCallback callback,
+      const std::vector<uint8_t>& response_blob);
+  void OnIsFilesTransferRestrictedError(CheckFilesTransferCallback callback,
+                                        brillo::Error* error);
+  void ReplyOnCheckFilesTransfer(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>>> response,
+      std::vector<std::string> restricted_files_paths,
       const std::string& error);
 
   // Functions and callbacks to handle lifeline fd.
