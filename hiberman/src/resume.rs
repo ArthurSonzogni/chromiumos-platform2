@@ -29,6 +29,7 @@ use crate::hiberutil::{
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
+use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
 use crate::preloader::ImagePreloader;
 use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode};
@@ -193,6 +194,8 @@ impl ResumeConductor {
             self.metadata.image_meta_size,
             true,
         );
+        self.load_header(&mut joiner, snap_dev)?;
+        image_size -= self.metadata.image_meta_size;
         let mover_source: &mut dyn Read;
 
         // Fire up the preloader to start loading pages off of disk right away.
@@ -214,34 +217,6 @@ impl ResumeConductor {
                     .try_into()
                     .expect("The whole image should fit in memory"),
             );
-            // Pump the header pages directly into the kernel. After the header
-            // pages are fed to the kernel, the kernel will do a giant
-            // allocation to make space for the resume image. We'll preload
-            // using whatever memory is left. Note that if we don't feed in the
-            // header pages early, and instead preload to fill memory before the
-            // kernel attempts its giant resume image allocation, the kernel
-            // tends to crash the system by asking for too much memory too
-            // quickly.
-            let header_size = self.metadata.image_meta_size;
-            debug!("Loading {} header bytes", header_size);
-            ImageMover::new(
-                &mut preloader,
-                &mut snap_dev.file,
-                header_size,
-                page_size * BUFFER_PAGES,
-                page_size,
-            )?
-            .move_all()
-            .context("Failed to load in header file")?;
-            debug!("Done loading header pages");
-            image_size -= header_size;
-
-            // Also write the first data byte, which is what actually triggers
-            // the kernel to do its big allocation.
-            snap_dev
-                .file
-                .write_all(std::slice::from_ref(&self.metadata.first_data_byte))
-                .context("Failed to write first byte to snapshot")?;
 
             // By now the kernel has done its own allocation for hibernate image
             // space. We can use the remaining memory to preload from disk.
@@ -294,15 +269,12 @@ impl ResumeConductor {
                 .context("Detected unencrypted image without --unencrypted");
         }
 
-        // If the preloader was used, then the first data byte was already sent
-        // down. Send down a partial page Move from the image, which can read
-        // big chunks, to the snapshot dev, which only writes pages.
-        if !self.options.no_preloader {
-            debug!("Sending in partial page");
-            self.read_first_partial_page(&mut decryptor, page_size, snap_dev)?;
-            image_size -= page_size as i64;
-        }
-
+        // The first data byte was already sent down. Send down a partial page
+        // Move from the image, which can read big chunks, to the snapshot dev,
+        // which only writes pages.
+        debug!("Sending in partial page");
+        self.read_first_partial_page(&mut decryptor, page_size, snap_dev)?;
+        image_size -= page_size as i64;
         let main_move_start = Instant::now();
         // Fire up the big image pump into the kernel.
         ImageMover::new(
@@ -344,6 +316,41 @@ impl ResumeConductor {
         Ok(pending_resume_call)
     }
 
+    /// Load the page map directly into the kernel.
+    fn load_header(
+        &mut self,
+        joiner: &mut ImageJoiner,
+        snap_dev: &mut SnapshotDevice,
+    ) -> Result<()> {
+        // Pump the header pages directly into the kernel. After the header
+        // pages are fed to the kernel, the kernel will then do a giant
+        // allocation to make space for the resume image.
+        let header_size = self.metadata.image_meta_size;
+        debug!("Loading {} header bytes immediately", header_size);
+        let start = Instant::now();
+        let page_size = get_page_size();
+        ImageMover::new(
+            joiner,
+            &mut snap_dev.file,
+            header_size,
+            page_size * BUFFER_PAGES,
+            page_size,
+        )?
+        .move_all()
+        .context("Failed to load in header file")?;
+        debug!("Done loading header pages");
+
+        // Also write the first data byte, which is what actually triggers
+        // the kernel to do its big allocation.
+        snap_dev
+            .file
+            .write_all(std::slice::from_ref(&self.metadata.first_data_byte))
+            .context("Failed to write first byte to snapshot")?;
+
+        log_io_duration("Loaded page map", header_size, start.elapsed());
+        Ok(())
+    }
+
     /// Block waiting for the hibernate key seed, and then feed it to the key
     /// manager.
     fn populate_seed(
@@ -370,10 +377,11 @@ impl ResumeConductor {
         page_size: usize,
         snap_dev: &mut SnapshotDevice,
     ) -> Result<()> {
-        let mut buf = vec![0u8; page_size];
+        let mut buffer = MmapBuffer::new(page_size)?;
+        let buf = buffer.u8_slice_mut();
         // Get the whole page from the source, including the first byte.
         let bytes_read = source
-            .read(&mut buf[..])
+            .read(buf)
             .context("Failed to read partial first page")?;
         if bytes_read != page_size {
             return Err(HibernateError::IoSizeError(format!(
@@ -385,7 +393,10 @@ impl ResumeConductor {
 
         if buf[0] != self.metadata.first_data_byte {
             // Print an error, but don't print the right answer.
-            error!("First data byte of {:x} was incorrect", buf[0]);
+            error!(
+                "First data byte of {:x} was incorrect, expected {:x}",
+                buf[0], self.metadata.first_data_byte
+            );
             return Err(HibernateError::FirstDataByteMismatch())
                 .context("Failed to read first partial page");
         }

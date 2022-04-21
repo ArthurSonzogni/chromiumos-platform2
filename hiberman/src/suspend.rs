@@ -9,7 +9,7 @@ use std::mem::MaybeUninit;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use libc::{reboot, RB_POWER_OFF};
+use libc::{loff_t, reboot, RB_POWER_OFF};
 use log::{debug, error, info};
 use sys_util::syscall;
 
@@ -233,17 +233,7 @@ impl SuspendConductor {
         let start = Instant::now();
         let mut splitter =
             ImageSplitter::new(&mut header_file, &mut encryptor, &mut self.metadata, true);
-        let mut writer = ImageMover::new(
-            &mut snap_dev.file,
-            &mut splitter,
-            image_size,
-            page_size,
-            page_size * BUFFER_PAGES,
-        )?;
-        writer
-            .move_all()
-            .context("Failed to write out main image")?;
-
+        Self::move_image(snap_dev, &mut splitter, image_size)?;
         log_io_duration("Wrote hibernate image", image_size, start.elapsed());
         self.metadata.data_tag = encryptor.get_tag()?;
 
@@ -252,6 +242,63 @@ impl SuspendConductor {
         self.metadata.image_size = image_size;
         self.metadata.flags |= META_FLAG_VALID;
         Ok(())
+    }
+
+    /// Move the image in stages, first the header, then the body. This is done
+    /// because when using kernel encryption, the header size won't align to a
+    /// page. But we still want the main data DiskFile to use DIRECT_IO with
+    /// page-aligned buffers. By stopping after the header, we can ensure that
+    /// the main data I/O pumps through in page-aligned chunks.
+    fn move_image(
+        snap_dev: &mut SnapshotDevice,
+        splitter: &mut ImageSplitter,
+        image_size: loff_t,
+    ) -> Result<()> {
+        let page_size = get_page_size();
+        let meta_size;
+        // If the header size is not known, move a single page so the splitter
+        // can parse the header and figure it out.
+        if splitter.meta_size == 0 {
+            ImageMover::new(
+                &mut snap_dev.file,
+                splitter,
+                page_size as i64,
+                page_size,
+                page_size,
+            )?
+            .move_all()
+            .context("Failed to move first page")?;
+
+            meta_size = splitter.meta_size - (page_size as i64);
+        } else {
+            meta_size = splitter.meta_size;
+        }
+
+        assert!(splitter.meta_size != 0);
+
+        // Move the header portion. Pad the header size out to a page.
+        let mut mover = ImageMover::new(
+            &mut snap_dev.file,
+            splitter,
+            meta_size,
+            page_size,
+            page_size * BUFFER_PAGES,
+        )?;
+        mover
+            .move_all()
+            .context("Failed to write out header pages")?;
+        drop(mover);
+
+        // Now move the main image data.
+        let meta_size = splitter.meta_size;
+        let mut mover = ImageMover::new(
+            &mut snap_dev.file,
+            splitter,
+            image_size - meta_size,
+            page_size,
+            page_size * BUFFER_PAGES,
+        )?;
+        mover.move_all().context("Failed to write out data pages")
     }
 
     /// Clean up the hibernate files, releasing that space back to other usermode apps.
