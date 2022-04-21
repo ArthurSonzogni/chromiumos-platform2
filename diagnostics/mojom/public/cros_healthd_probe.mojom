@@ -416,7 +416,8 @@ struct PhysicalCpuInfo {
   string? model_name@0;
   // Logical CPUs corresponding to this physical CPU.
   array<LogicalCpuInfo> logical_cpus@1;
-  // The cpu flags.
+  // The cpu flags, labelled as |flags| in x86 architecture and |Features| in
+  // ARM architecture.
   [MinVersion=1] array<string>? flags@2;
   // The virtualization info of this cpu.
   [MinVersion=1] CpuVirtualizationInfo? virtualization@3;

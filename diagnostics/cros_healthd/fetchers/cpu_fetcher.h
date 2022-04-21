@@ -5,15 +5,19 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_CPU_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_CPU_FETCHER_H_
 
-#include <base/files/file_path.h>
+#include <map>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 
+#include "diagnostics/cros_healthd/executor/constants.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/async_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
@@ -47,6 +51,14 @@ inline constexpr char kRelativeCryptoFilePath[] = "proc/crypto";
 
 // File to see if KVM exists.
 inline constexpr char kRelativeKvmFilePath[] = "dev/kvm";
+
+// The different bits that indicates what kind of CPU virtualization is enabled
+// and locked.
+inline constexpr uint64_t kIA32FeatureLocked = 1llu << 0;
+inline constexpr uint64_t kIA32FeatureEnableVmxInsideSmx = 1llu << 1;
+inline constexpr uint64_t kIA32FeatureEnableVmxOutsideSmx = 1llu << 2;
+inline constexpr uint64_t kVmCrLockedBit = 1llu << 3;
+inline constexpr uint64_t kVmCrSvmeDisabledBit = 1llu << 4;
 
 // Returns an absolute path to the C-state directory for the logical CPU with ID
 // |logical_id|. On a real device, this will be
@@ -89,6 +101,15 @@ class CpuFetcher final
   // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
   void HandleCallbackComplete(bool all_callback_called);
 
+  // Callback function to handle ReadMsr() call reading vmx registers.
+  void HandleVmxReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
+
+  // Callback function to handle ReadMsr() call reading svm registers.
+  void HandleSvmReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
+
+  // Calls ReadMsr based on the virtualization capability of each physical cpu.
+  void FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier);
+
   // Logs |message| and sets |error_|. Only do the logging if |error_| has been
   // set.
   void LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
@@ -101,6 +122,10 @@ class CpuFetcher final
   chromeos::cros_healthd::mojom::ProbeErrorPtr error_;
   // Stores the final cpu info that will be returned.
   chromeos::cros_healthd::mojom::CpuInfoPtr cpu_info_;
+
+  // Maintains a map that maps each physical cpu id to its first corresponding
+  // logical cpu id.
+  std::map<uint32_t, uint32_t> physical_id_to_first_logical_id_;
   // Must be the last member of the class.
   base::WeakPtrFactory<CpuFetcher> weak_factory_{this};
 };

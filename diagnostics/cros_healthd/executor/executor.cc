@@ -64,8 +64,9 @@ constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 
 // Whitelist of msr registers that can be read by the ReadMsr call.
-constexpr uint32_t kMsrAccessAllowList[] = {cpu_msr::kIA32TmeCapability,
-                                            cpu_msr::kIA32TmeActivate};
+constexpr uint32_t kMsrAccessAllowList[] = {
+    cpu_msr::kIA32TmeCapability, cpu_msr::kIA32TmeActivate,
+    cpu_msr::kIA32FeatureControl, cpu_msr::kVmCr};
 
 // Path to the UEFI SecureBoot file. This file can be read by root only.
 // It's one of EFI globally defined variables (EFI_GLOBAL_VARIABLE, fixed UUID

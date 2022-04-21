@@ -591,6 +591,7 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     // exists. If not, make one.
     auto itr = physical_cpus.find(physical_id);
     if (itr == physical_cpus.end()) {
+      physical_id_to_first_logical_id_[physical_id] = processor_id;
       mojo_ipc::PhysicalCpuInfoPtr physical_cpu =
           mojo_ipc::PhysicalCpuInfo::New();
       if (model_name.empty()) {
@@ -754,6 +755,65 @@ mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
   return mojo_ipc::VulnerabilityInfo::Status::kUnrecognized;
 }
 
+void CpuFetcher::FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier) {
+  for (uint32_t physical_id = 0; physical_id < cpu_info_->physical_cpus.size();
+       ++physical_id) {
+    uint32_t logical_id = physical_id_to_first_logical_id_[physical_id];
+    mojo_ipc::PhysicalCpuInfoPtr& physical_cpu =
+        cpu_info_->physical_cpus[physical_id];
+
+    physical_cpu->virtualization = mojo_ipc::CpuVirtualizationInfo::New();
+    const std::vector<std::string>& flags = physical_cpu->flags.value();
+    if (std::find(flags.begin(), flags.end(), "vmx") != flags.end()) {
+      physical_cpu->virtualization->type =
+          mojo_ipc::CpuVirtualizationInfo::Type::kVMX;
+      context_->executor()->ReadMsr(
+          cpu_msr::kIA32FeatureControl, logical_id,
+          barrier.Depend(base::BindOnce(&CpuFetcher::HandleVmxReadMsr,
+                                        weak_factory_.GetWeakPtr(),
+                                        physical_id)));
+    } else if (std::find(flags.begin(), flags.end(), "svm") != flags.end()) {
+      physical_cpu->virtualization->type =
+          mojo_ipc::CpuVirtualizationInfo::Type::kSVM;
+      context_->executor()->ReadMsr(
+          cpu_msr::kVmCr, logical_id,
+          barrier.Depend(base::BindOnce(&CpuFetcher::HandleSvmReadMsr,
+                                        weak_factory_.GetWeakPtr(),
+                                        physical_id)));
+    } else {
+      physical_cpu->virtualization = nullptr;
+      continue;
+    }
+  }
+}
+
+void CpuFetcher::HandleSvmReadMsr(uint32_t physical_id,
+                                  mojo_ipc::NullableUint64Ptr val) {
+  if (val.is_null()) {
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Error while reading svm msr register");
+    return;
+  }
+  cpu_info_->physical_cpus[physical_id]->virtualization->is_enabled =
+      !(val->value & kVmCrSvmeDisabledBit);
+  cpu_info_->physical_cpus[physical_id]->virtualization->is_locked =
+      val->value & kVmCrLockedBit;
+}
+
+void CpuFetcher::HandleVmxReadMsr(uint32_t physical_id,
+                                  mojo_ipc::NullableUint64Ptr val) {
+  if (val.is_null()) {
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Error while reading vmx msr register");
+    return;
+  }
+  cpu_info_->physical_cpus[physical_id]->virtualization->is_enabled =
+      (val->value & kIA32FeatureEnableVmxInsideSmx) ||
+      (val->value & kIA32FeatureEnableVmxOutsideSmx);
+  cpu_info_->physical_cpus[physical_id]->virtualization->is_locked =
+      val->value & kIA32FeatureLocked;
+}
+
 void CpuFetcher::HandleCallbackComplete(bool all_callback_called) {
   if (!all_callback_called) {
     LogAndSetError(mojo_ipc::ErrorType::kServiceUnavailable,
@@ -793,6 +853,8 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
     return;
   }
   cpu_info_ = std::move(cpu_result->get_cpu_info());
+
+  FetchPhysicalCpusVirtualizationInfo(barrier);
   return;
 }
 

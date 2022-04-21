@@ -7,6 +7,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -27,6 +28,7 @@
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -383,6 +385,19 @@ class CpuFetcherTest : public testing::Test {
                      kThirdFakeScalingCurrentFrequency, kThirdFakeUserTime,
                      kThirdFakeSystemTime, kThirdFakeIdleTime,
                      GetCStateVector(kThirdLogicalId), second_logical_cpus[0]);
+  }
+
+  void SetReadMsrResponse(uint32_t expected_msr_reg,
+                          uint32_t expected_logical_id,
+                          uint64_t expected_val) {
+    EXPECT_CALL(*mock_executor(),
+                ReadMsr(expected_msr_reg, expected_logical_id, _))
+        .WillRepeatedly(Invoke(
+            [expected_val](uint32_t msr_reg, uint32_t cpu_index,
+                           mojo_ipc::Executor::ReadMsrCallback callback) {
+              std::move(callback).Run(
+                  mojo_ipc::NullableUint64::New(expected_val));
+            }));
   }
 
  private:
@@ -1127,5 +1142,120 @@ INSTANTIATE_TEST_SUITE_P(
                                        mojo_ipc::CpuArchitectureEnum::kArmv7l},
         ParseCpuArchitectureTestParams{
             "Unknown uname machine", mojo_ipc::CpuArchitectureEnum::kUnknown}));
+
+// Test that we handle cpu with no virtualization.
+TEST_F(CpuFetcherTest, NoVirtualizationEnabled) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetProcCpuInfoPath(root_dir()),
+      "processor\t: 0\nmodel name\t: model\nflags\t: \n\n"));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+  ASSERT_TRUE(
+      cpu_result->get_cpu_info()->physical_cpus[0]->virtualization.is_null());
+}
+
+// Test that we handle different flag values of vmx cpu virtualization.
+TEST_F(CpuFetcherTest, TestVmxVirtualizationFlags) {
+  // Add two CPUs, with the second CPU having a different physical ID compared
+  // to logical ID.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetProcCpuInfoPath(root_dir()),
+      "processor\t: 0\nmodel name\t: model\nphysical id\t: 0\nflags\t:\n\n"
+      "processor\t: 12\nmodel name\t: model\nphysical id\t: 1\nflags\t: "
+      "vmx\n\n"));
+
+  std::vector<
+      std::tuple</*val*/ uint64_t, /*is_locked*/ bool, /*is_enabled*/ bool>>
+      vmx_msr_tests = {{0, false, false},
+                       {kIA32FeatureLocked, true, false},
+                       {kIA32FeatureEnableVmxInsideSmx, false, true},
+                       {kIA32FeatureEnableVmxOutsideSmx, false, true}};
+
+  for (const auto& msr_test : vmx_msr_tests) {
+    // Set the mock executor response for ReadMsr calls. Make sure that the call
+    // uses logical ID instead of physical ID.
+    SetReadMsrResponse(cpu_msr::kIA32FeatureControl, 12, std::get<0>(msr_test));
+
+    auto cpu_result = FetchCpuInfo();
+
+    ASSERT_TRUE(cpu_result->is_cpu_info());
+    ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
+    ASSERT_EQ(
+        cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->type,
+        mojo_ipc::CpuVirtualizationInfo::Type::kVMX);
+    ASSERT_EQ(
+        cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->is_locked,
+        std::get<1>(msr_test));
+    ASSERT_EQ(cpu_result->get_cpu_info()
+                  ->physical_cpus[1]
+                  ->virtualization->is_enabled,
+              std::get<2>(msr_test));
+  }
+}
+
+// Test that we handle different flag values of svm cpu virtualization.
+TEST_F(CpuFetcherTest, TestSvmVirtualizationFlags) {
+  // Add two CPUs, with the second CPU having a different physical ID compared
+  // to logical ID.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetProcCpuInfoPath(root_dir()),
+      "processor\t: 0\nmodel name\t: model\nphysical id\t: 0\nflags\t:\n\n"
+      "processor\t: 12\nmodel name\t: model\nphysical id\t: 1\nflags\t: "
+      "svm\n\n"));
+
+  std::vector<
+      std::tuple</*val*/ uint64_t, /*is_locked*/ bool, /*is_enabled*/ bool>>
+      svm_msr_tests = {{0, false, true},
+                       {kVmCrLockedBit, true, true},
+                       {kVmCrSvmeDisabledBit, false, false}};
+
+  for (const auto& msr_test : svm_msr_tests) {
+    // Set the mock executor response for ReadMsr calls. Make sure that the call
+    // uses logical ID instead of physical ID.
+    SetReadMsrResponse(cpu_msr::kVmCr, 12, std::get<0>(msr_test));
+
+    auto cpu_result = FetchCpuInfo();
+
+    ASSERT_TRUE(cpu_result->is_cpu_info());
+    ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
+    ASSERT_EQ(
+        cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->type,
+        mojo_ipc::CpuVirtualizationInfo::Type::kSVM);
+    ASSERT_EQ(
+        cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->is_locked,
+        std::get<1>(msr_test));
+    ASSERT_EQ(cpu_result->get_cpu_info()
+                  ->physical_cpus[1]
+                  ->virtualization->is_enabled,
+              std::get<2>(msr_test));
+  }
+}
+
+// Test that we handle different types of vmx cpu virtualization based on
+// different physical CPU.
+TEST_F(CpuFetcherTest, TestMultipleCpuVirtualization) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetProcCpuInfoPath(root_dir()),
+      "processor\t: 0\nmodel name\t: model\nphysical id\t: 0\nflags\t: vmx\n\n"
+      "processor\t: 12\nmodel name\t: model\nphysical id\t: 1\nflags\t: "
+      "svm\n\n"));
+
+  // Set the mock executor response for ReadMsr calls.
+  SetReadMsrResponse(cpu_msr::kIA32FeatureControl, 0, 0);
+  SetReadMsrResponse(cpu_msr::kVmCr, 12, 0);
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->virtualization->type,
+            mojo_ipc::CpuVirtualizationInfo::Type::kVMX);
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->type,
+            mojo_ipc::CpuVirtualizationInfo::Type::kSVM);
+}
+
 }  // namespace
 }  // namespace diagnostics

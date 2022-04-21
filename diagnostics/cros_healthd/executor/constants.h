@@ -12,6 +12,12 @@ inline constexpr uint32_t kIA32TmeCapability = 0x981;
 // The msr address for IA32_TME_ACTIVATE_MSR (0x982), used to report tme
 // telemetry data.
 inline constexpr uint32_t kIA32TmeActivate = 0x982;
+// The msr address for IA32_FEATURE_CONTROL, used to report vmx
+// virtualization data.
+inline constexpr uint32_t kIA32FeatureControl = 0x3A;
+// The msr address for VM_CR, used to report svm virtualization
+// data.
+inline constexpr uint32_t kVmCr = 0xC0010114;
 
 }  // namespace cpu_msr
 
