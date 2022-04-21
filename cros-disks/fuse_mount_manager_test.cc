@@ -189,8 +189,9 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
 
   EXPECT_CALL(*bar_, Mount(kSomeSource.value(), _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(MOUNT_ERROR_NONE),
-                      Return(ByMove(MountPoint::CreateLeaking(
-                          base::FilePath(kSomeMountpoint))))));
+                      Return(ByMove(MountPoint::CreateUnmounted(
+                          {.mount_path = base::FilePath(kSomeMountpoint),
+                           .source = kSomeSource.value()})))));
 
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));

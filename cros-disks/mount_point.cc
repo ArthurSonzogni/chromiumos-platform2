@@ -15,12 +15,10 @@
 
 namespace cros_disks {
 
-// static
-std::unique_ptr<MountPoint> MountPoint::CreateLeaking(
-    const base::FilePath& path) {
-  auto mount_point =
-      std::make_unique<MountPoint>(MountPointData{path}, nullptr);
-  mount_point->Release();
+std::unique_ptr<MountPoint> MountPoint::CreateUnmounted(MountPointData data) {
+  std::unique_ptr<MountPoint> mount_point =
+      std::make_unique<MountPoint>(std::move(data));
+  mount_point->is_mounted_ = false;
   return mount_point;
 }
 
@@ -47,17 +45,13 @@ MountPoint::~MountPoint() {
   Unmount();
 }
 
-void MountPoint::Release() {
-  released_ = true;
-}
-
 MountErrorType MountPoint::Unmount() {
-  if (released_)
+  if (!is_mounted_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
 
   const MountErrorType error = UnmountImpl();
   if (!error || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
-    released_ = true;
+    is_mounted_ = false;
 
     if (eject_)
       std::move(eject_).Run();
@@ -69,7 +63,7 @@ MountErrorType MountPoint::Unmount() {
 }
 
 MountErrorType MountPoint::Remount(bool read_only) {
-  if (released_)
+  if (!is_mounted_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
 
   int flags = data_.flags;

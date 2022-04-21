@@ -124,8 +124,8 @@ class MountManager {
   using MountStateMap =
       std::unordered_map<std::string, std::unique_ptr<MountPoint>>;
 
-  MountPoint* FindMountBySource(const std::string& source);
-  MountPoint* FindMountByMountPath(const base::FilePath& path);
+  MountPoint* FindMountBySource(const std::string& source) const;
+  MountPoint* FindMountByMountPath(const base::FilePath& path) const;
   bool RemoveMount(MountPoint* mount_point);
 
   // Type definition of a cache mapping a reserved mount path to the mount

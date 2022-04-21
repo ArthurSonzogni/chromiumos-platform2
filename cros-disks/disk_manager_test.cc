@@ -613,11 +613,10 @@ TEST_F(DiskManagerTest, EjectDeviceWhenReleased) {
   EXPECT_CALL(platform_, Unmount).Times(0);
 
   std::unique_ptr<MountPoint> mount_point =
-      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
+      MountPoint::CreateUnmounted({kMountPath});
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
   std::unique_ptr<MountPoint> wrapped_mount_point =
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
-  wrapped_mount_point->Release();
   EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, wrapped_mount_point->Unmount());
 }
 

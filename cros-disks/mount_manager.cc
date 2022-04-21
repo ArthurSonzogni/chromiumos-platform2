@@ -192,10 +192,16 @@ void MountManager::MountNewSource(const std::string& source,
     DCHECK(!mount_point);
     ReserveMountPath(mount_path, error);
     // Create dummy mount point to associate with the mount path.
-    mount_point = MountPoint::CreateLeaking(mount_path);
+    mount_point = MountPoint::CreateUnmounted(
+        {.mount_path = mount_path, .source = source});
   }
 
   DCHECK(mount_point);
+  DCHECK_EQ(mount_point->path(), mount_path);
+
+  // For some mounters, the string stored in |mount_point->source()| is
+  // different from |source|.
+  // DCHECK_EQ(mount_point->source(), source);
   const auto [it, ok] =
       mount_states_.try_emplace(source, std::move(mount_point));
   DCHECK(ok);
@@ -257,14 +263,15 @@ bool MountManager::ResolvePath(const std::string& path,
   return platform_->GetRealPath(path, real_path);
 }
 
-MountPoint* MountManager::FindMountBySource(const std::string& source) {
+MountPoint* MountManager::FindMountBySource(const std::string& source) const {
   const auto it = mount_states_.find(source);
   if (it == mount_states_.end())
     return nullptr;
   return it->second.get();
 }
 
-MountPoint* MountManager::FindMountByMountPath(const base::FilePath& path) {
+MountPoint* MountManager::FindMountByMountPath(
+    const base::FilePath& path) const {
   for (const auto& [source, mount_point] : mount_states_) {
     DCHECK(mount_point);
     if (mount_point->path() == path)

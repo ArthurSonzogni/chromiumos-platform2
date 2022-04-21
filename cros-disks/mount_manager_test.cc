@@ -138,7 +138,8 @@ class MountManagerTest : public ::testing::Test {
   }
 
   std::unique_ptr<MountPoint> MakeMountPoint(const std::string& mount_path) {
-    return MountPoint::CreateLeaking(base::FilePath(mount_path));
+    return MountPoint::CreateUnmounted(
+        {.mount_path = base::FilePath(mount_path), .source = kSourcePath});
   }
 
   void OnMountCompleted(const std::string& path, MountErrorType error) {
@@ -381,6 +382,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -423,6 +425,7 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -462,6 +465,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = MS_RDONLY,
       },
       &platform_);
@@ -499,6 +503,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -538,6 +543,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -572,6 +578,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -799,6 +806,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -834,6 +842,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);
@@ -869,6 +878,7 @@ TEST_F(MountManagerTest, UnmountRemovesFromCacheIfNotMounted) {
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{
           .mount_path = mount_path,
+          .source = kSourcePath,
           .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
       },
       &platform_);

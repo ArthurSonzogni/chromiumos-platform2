@@ -39,10 +39,11 @@ class Platform;
 // Class representing a mount created by a mounter.
 class MountPoint final {
  public:
-  // Creates a MountPoint that does nothing on unmount and 'leaks' the mount
-  // point.
-  static std::unique_ptr<MountPoint> CreateLeaking(const base::FilePath& path);
+  // Creates a MountPoint that is not actually mounted.
+  static std::unique_ptr<MountPoint> CreateUnmounted(MountPointData data);
 
+  // Mounts a mount point. Returns a null pointer and sets *error in case of
+  // error.
   static std::unique_ptr<MountPoint> Mount(MountPointData data,
                                            const Platform* platform,
                                            MountErrorType* error);
@@ -57,11 +58,6 @@ class MountPoint final {
   ~MountPoint();
 
   base::WeakPtr<MountPoint> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
-
-  // Releases (leaks) the ownership of the mount point.
-  // Until all places handle ownership of mount points properly
-  // it's necessary to be able to leave the mount alone.
-  void Release();
 
   // Unmounts right now.
   MountErrorType Unmount();
@@ -90,17 +86,18 @@ class MountPoint final {
   int flags() const { return data_.flags; }
   const std::string& data() const { return data_.data; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
+  bool is_mounted() const { return is_mounted_; }
 
  private:
   // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
-  // called once, regardless of the number of times Unmount() is called. If
-  // Release() is called, this function will not be called.
+  // called once, regardless of the number of times Unmount() is called.
   MountErrorType UnmountImpl();
 
   // Remounts with new flags. Only called if mount is assumed to be mounted.
   MountErrorType RemountImpl(int flags);
 
   MountPointData data_;
+
   const Platform* const platform_;
 
   // SandboxedProcess object holding the FUSE mounter processes associated to
@@ -110,7 +107,8 @@ class MountPoint final {
   // Eject action called after successfully unmounting this mount point.
   base::OnceClosure eject_;
 
-  bool released_ = false;
+  // Is this mount point actually mounted?
+  bool is_mounted_ = true;
 
   base::WeakPtrFactory<MountPoint> weak_factory_{this};
 };
