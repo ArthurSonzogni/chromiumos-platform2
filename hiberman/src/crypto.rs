@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use openssl::symm::Mode;
 
 use anyhow::{Context, Result};
-use log::warn;
+use log::debug;
 use openssl::symm::{Cipher, Crypter};
 
 use crate::hibermeta::{
@@ -32,6 +32,7 @@ pub struct CryptoWriter<'a> {
     buffer: MmapBuffer,
     buffer_size: usize,
     mode: CryptoMode,
+    bytes_done: i64,
 }
 
 pub enum CryptoMode {
@@ -64,10 +65,6 @@ impl<'a> CryptoWriter<'a> {
             CryptoMode::Unencrypted => Mode::Encrypt,
         };
 
-        if matches!(mode, CryptoMode::Unencrypted) {
-            warn!("Warning: The hibernate image is unencrypted");
-        }
-
         // This is not expected to fail, since it would indicate we are passing
         // nutty parameters, which we are not.
         let mut crypter = Crypter::new(cipher, openssl_mode, key, Some(iv)).unwrap();
@@ -84,6 +81,7 @@ impl<'a> CryptoWriter<'a> {
             buffer,
             buffer_size,
             mode,
+            bytes_done: 0,
         })
     }
 
@@ -102,6 +100,7 @@ impl<'a> CryptoWriter<'a> {
         assert!(crypto_count == 0);
 
         let mut tag = [0u8; META_TAG_SIZE];
+        debug!("Encrypted 0x{:x} bytes", self.bytes_done);
         self.crypter.get_tag(&mut tag)?;
         Ok(tag)
     }
@@ -154,6 +153,7 @@ impl Write for CryptoWriter<'_> {
             self.dest_file
                 .write_all(&self.buffer.u8_slice()[..crypto_count])?;
             offset += crypto_count;
+            self.bytes_done += crypto_count as i64;
         }
 
         Ok(offset)
@@ -183,6 +183,7 @@ pub struct CryptoReader<'a> {
     extra_offset: usize,
     extra_size: usize,
     mode: CryptoMode,
+    bytes_done: i64,
 }
 
 impl<'a> CryptoReader<'a> {
@@ -210,10 +211,6 @@ impl<'a> CryptoReader<'a> {
             CryptoMode::Unencrypted => Mode::Encrypt,
         };
 
-        if matches!(mode, CryptoMode::Unencrypted) {
-            warn!("Warning: The resume image is unencrypted");
-        }
-
         // This is not expected to fail, since it would indicate we are passing
         // nutty parameters, which we are not.
         let mut crypter = Crypter::new(cipher, openssl_mode, key, Some(iv)).unwrap();
@@ -231,6 +228,7 @@ impl<'a> CryptoReader<'a> {
             extra_offset: 0,
             extra_size: 0,
             mode,
+            bytes_done: 0,
         })
     }
 
@@ -239,11 +237,13 @@ impl<'a> CryptoReader<'a> {
     /// must be called exactly once after all data has been passed.
     pub fn check_tag(&mut self, tag: &[u8]) -> Result<()> {
         assert!(tag.len() == META_TAG_SIZE);
+        debug_assert!(self.extra_offset == self.extra_size);
 
         if matches!(self.mode, CryptoMode::Unencrypted) {
             return Ok(());
         }
 
+        debug!("Decrypted {:x} bytes", self.bytes_done);
         let mut unused = [0u8; CRYPTO_BLOCK_SIZE];
         self.crypter.set_tag(tag)?;
         let crypto_count = self
@@ -296,8 +296,12 @@ impl Read for CryptoReader<'_> {
 
             assert!((size_this_round % CRYPTO_BLOCK_SIZE) == 0);
 
-            self.source_file
-                .read_exact(&mut source_buf[..size_this_round])?;
+            let bytes_read = self.source_file.read(&mut source_buf[..size_this_round])?;
+            if bytes_read == 0 {
+                break;
+            }
+
+            assert!((bytes_read % CRYPTO_BLOCK_SIZE) == 0);
 
             // Process as much as possible directly into the caller's buffer.
             // Unfortunately the destination has to be oversized by one block,
@@ -305,8 +309,8 @@ impl Read for CryptoReader<'_> {
             // crypto operations are not expected to fail, as that would
             // indicate a serious misconfiguration (read programmer error),
             // rather than a condition that crops up at runtime.
-            let direct_count = size_this_round - CRYPTO_BLOCK_SIZE;
-            let dst_end = offset + size_this_round;
+            let direct_count = bytes_read - CRYPTO_BLOCK_SIZE;
+            let dst_end = offset + bytes_read;
             offset += self
                 .crypter
                 .update(&source_buf[..direct_count], &mut buf[offset..dst_end])
@@ -317,10 +321,11 @@ impl Read for CryptoReader<'_> {
             self.extra_offset = 0;
             self.extra_size = self
                 .crypter
-                .update(&source_buf[direct_count..size_this_round], extra)
+                .update(&source_buf[direct_count..bytes_read], extra)
                 .unwrap();
         }
 
+        self.bytes_done += offset as i64;
         Ok(offset)
     }
 }

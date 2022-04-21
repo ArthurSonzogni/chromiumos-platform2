@@ -224,6 +224,10 @@ impl Read for DiskFile {
         while offset < length {
             // There is no extending the file size.
             if self.current_position >= self.fiemap.file_size {
+                error!(
+                    "DiskFile hit read EOF current_position {:x} file_size {:x}",
+                    self.current_position, self.fiemap.file_size
+                );
                 break;
             }
 
@@ -242,11 +246,13 @@ impl Read for DiskFile {
             // Get a slice of the portion of the buffer to be read into, and read from
             // the block device into the slice.
             let end = offset + this_io_length;
+            debug_assert!((this_io_length & (get_page_size() - 1)) == 0);
             self.blockdev.read_exact(&mut buf[offset..end])?;
             self.current_position += this_io_length as u64;
             offset += this_io_length;
         }
 
+        assert!(offset != 0);
         Ok(offset)
     }
 }
@@ -280,6 +286,7 @@ impl Write for DiskFile {
             // Get a slice of the portion of the buffer to be read into, and read from
             // the block device into the slice.
             let end = offset + this_io_length;
+            debug_assert!((this_io_length & (get_page_size() - 1)) == 0);
             self.blockdev.write_all(&buf[offset..end])?;
             self.current_position += this_io_length as u64;
             offset += this_io_length;
