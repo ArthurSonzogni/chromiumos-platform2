@@ -133,6 +133,7 @@ source_set("hardware_abstraction_library") {
   if (use.tpm) {
     sources += [
       "backend/tpm1/backend.cc",
+      "backend/tpm1/random.cc",
       "backend/tpm1/state.cc",
     ]
     libs += [ "tspi" ]
@@ -141,6 +142,7 @@ source_set("hardware_abstraction_library") {
   if (use.tpm2) {
     sources += [
       "backend/tpm2/backend.cc",
+      "backend/tpm2/random.cc",
       "backend/tpm2/state.cc",
     ]
     libs += [ "trunks" ]
@@ -211,6 +213,7 @@ if (use.test) {
     if (use.tpm) {
       sources += [
         "backend/tpm1/backend_test.cc",
+        "backend/tpm1/random_test.cc",
         "backend/tpm1/state_test.cc",
         "error/tpm1_error_test.cc",
         "overalls/overalls_api_test.cc",
@@ -220,6 +223,7 @@ if (use.test) {
     }
     if (use.tpm2) {
       sources += [
+        "backend/tpm2/random_test.cc",
         "backend/tpm2/state_test.cc",
         "error/tpm2_error_test.cc",
       ]

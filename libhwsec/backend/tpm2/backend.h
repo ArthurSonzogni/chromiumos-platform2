@@ -35,6 +35,13 @@ class BackendTpm2 : public Backend {
     Status Prepare() override;
   };
 
+  class RandomTpm2 : public Random, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<brillo::Blob> RandomBlob(size_t size) override;
+    StatusOr<brillo::SecureBlob> RandomSecureBlob(size_t size) override;
+  };
+
   BackendTpm2(Proxy& proxy, MiddlewareDerivative middleware_derivative);
 
   ~BackendTpm2() override;
@@ -65,7 +72,7 @@ class BackendTpm2 : public Backend {
   KeyManagerment* GetKeyManagerment() override { return nullptr; }
   SessionManagerment* GetSessionManagerment() override { return nullptr; }
   Config* GetConfig() override { return nullptr; }
-  Random* GetRandom() override { return nullptr; }
+  Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return nullptr; }
   Vendor* GetVendor() override { return nullptr; }
 
@@ -74,6 +81,7 @@ class BackendTpm2 : public Backend {
   TrunksClientContext trunks_context_;
 
   StateTpm2 state_{*this};
+  RandomTpm2 random_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 };
