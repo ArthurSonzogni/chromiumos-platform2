@@ -214,14 +214,14 @@ void DeviceConfig::AddV4L2Sensors() {
                                 base::FileEnumerator::FILES, "media*");
   for (base::FilePath name = dev_enum.Next(); !name.empty();
        name = dev_enum.Next()) {
-    int fd = open(name.value().c_str(), O_RDWR);
-    if (fd < 0) {
+    auto fd = base::ScopedFD(open(name.value().c_str(), O_RDWR));
+    if (!fd.is_valid()) {
       LOG(ERROR) << "Failed to open '" << name.value() << "'";
       continue;
     }
 
     media_device_info info = {};
-    if (ioctl(fd, MEDIA_IOC_DEVICE_INFO, &info) != 0) {
+    if (ioctl(fd.get(), MEDIA_IOC_DEVICE_INFO, &info) != 0) {
       PLOG(ERROR) << "Failed to get media device info on " << name;
       continue;
     }
@@ -230,8 +230,7 @@ void DeviceConfig::AddV4L2Sensors() {
     }
 
     LOG(INFO) << "Probing media device '" << name.value() << "'";
-    ProbeMediaController(fd);
-    close(fd);
+    ProbeMediaController(fd.get());
   }
 }
 
