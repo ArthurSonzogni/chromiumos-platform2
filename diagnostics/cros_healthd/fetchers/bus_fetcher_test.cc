@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,18 +13,24 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <brillo/variant_dictionary.h>
+#include <fwupd/dbus-proxy-mocks.h>
+#include <libfwupd/fwupd-enums.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_type_utils.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/utils/fwupd_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
 namespace diagnostics {
 namespace {
 
-using chromeos::cros_healthd::mojom::ThunderboltSecurityLevel;
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+using mojo_ipc::ThunderboltSecurityLevel;
 
 constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
 constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
@@ -46,6 +53,10 @@ constexpr uint8_t kFakeProtocol = kFakeProg;
 constexpr uint16_t kFakeVendor = 0x12ab;
 constexpr uint16_t kFakeDevice = 0x34cd;
 constexpr char kFakeDriver[] = "driver";
+constexpr char kFakeUsbFWVer[] = "3.14";
+constexpr mojo_ipc::FwupdVersionFormat kFakeUsbFwVerFmtMojoEnum =
+    mojo_ipc::FwupdVersionFormat::kBcd;
+constexpr FwupdVersionFormat kFakeUsbFwVerFmtLibEnum = FWUPD_VERSION_FORMAT_BCD;
 
 constexpr char kFakeThunderboltDeviceVendorName[] =
     "FakeThunderboltDeviceVendor";
@@ -58,14 +69,21 @@ constexpr char kFakeThunderboltDeviceUUID[] =
     "d5010000-0060-6508-2304-61066ed3f91e";
 constexpr char kFakeThunderboltDeviceFWVer[] = "29.0";
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 std::string ToFixHexStr(uint8_t val) {
   return base::StringPrintf("%02x", val);
 }
 
 std::string ToFixHexStr(uint16_t val) {
   return base::StringPrintf("%04x", val);
+}
+
+template <typename T>
+void EmplaceOptional(brillo::VariantDictionary* dictionary,
+                     const std::string& key,
+                     const std::optional<T>& value) {
+  if (value) {
+    dictionary->emplace(key, *value);
+  }
 }
 
 class BusFetcherTest : public BaseFileTest {
@@ -79,6 +97,37 @@ class BusFetcherTest : public BaseFileTest {
     ON_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
         .WillByDefault(
             [this](const char* syspath) { return CreateMockUdevDevice(); });
+    EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
+        .WillRepeatedly(Invoke(this, &BusFetcherTest::GetDevicesAsyncMock));
+  }
+
+  void GetDevicesAsyncMock(
+      base::OnceCallback<void(const std::vector<brillo::VariantDictionary>&)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) {
+    std::vector<brillo::VariantDictionary> fwupd_response;
+    for (const auto& device_info : fwupd_device_list_) {
+      brillo::VariantDictionary dbus_response_entry;
+      EmplaceOptional(&dbus_response_entry, fwupd_utils::kFwupdResultKeyName,
+                      device_info.name);
+      dbus_response_entry.emplace(fwupd_utils::kFwupdReusltKeyGuid,
+                                  device_info.guids);
+      dbus_response_entry.emplace(fwupd_utils::kFwupdResultKeyInstanceIds,
+                                  device_info.instance_ids);
+      EmplaceOptional(&dbus_response_entry, fwupd_utils::kFwupdResultKeySerial,
+                      device_info.serial);
+      EmplaceOptional(&dbus_response_entry,
+                      fwupd_utils::kFwupdResultKeyVendorId,
+                      device_info.joined_vendor_id);
+      EmplaceOptional(&dbus_response_entry, fwupd_utils::kFwupdResultKeyVersion,
+                      device_info.version);
+      dbus_response_entry.emplace(
+          fwupd_utils::kFwupdResultKeyVersionFormat,
+          static_cast<uint32_t>(kFakeUsbFwVerFmtLibEnum));
+      fwupd_response.push_back(std::move(dbus_response_entry));
+    }
+    std::move(success_callback).Run(std::move(fwupd_response));
   }
 
   std::unique_ptr<brillo::MockUdevDevice> CreateMockUdevDevice() {
@@ -125,6 +174,12 @@ class BusFetcherTest : public BaseFileTest {
     usb_info->protocol_id = kFakeProtocol;
     usb_info->vendor_id = kFakeVendor;
     usb_info->product_id = kFakeDevice;
+
+    auto usb_fw_info = mojo_ipc::FwupdFirmwareVersionInfo::New();
+    usb_fw_info->version = kFakeUsbFWVer;
+    usb_fw_info->version_format = kFakeUsbFwVerFmtMojoEnum;
+    usb_info->fwupd_firmware_version_info = std::move(usb_fw_info);
+
     for (size_t i = 0; i < interface_count; ++i) {
       auto usb_if_info = mojo_ipc::UsbBusInterfaceInfo::New();
       usb_if_info->interface_number = static_cast<uint8_t>(i);
@@ -213,6 +268,17 @@ class BusFetcherTest : public BaseFileTest {
             ToFixHexStr(usb_info->protocol_id));
     SetFile({dir, dev, kFileUsbVendor}, ToFixHexStr(usb_info->vendor_id));
     SetFile({dir, dev, kFileUsbProduct}, ToFixHexStr(usb_info->product_id));
+
+    fwupd_device_list_.push_back(fwupd_utils::DeviceInfo{
+        .name = kFakeUsbProductName,
+        .instance_ids = {base::StringPrintf("USB\\VID_%04X&PID_%04X",
+                                            usb_info->vendor_id,
+                                            usb_info->product_id)},
+        .version = usb_info->fwupd_firmware_version_info->version,
+        .version_format = usb_info->fwupd_firmware_version_info->version_format,
+        .joined_vendor_id =
+            base::StringPrintf("USB:0x%04X", usb_info->vendor_id),
+    });
 
     for (size_t i = 0; i < usb_info->interfaces.size(); ++i) {
       const auto dev_if = base::StringPrintf("1-%zu:1.%zu", id, i);
@@ -306,6 +372,7 @@ class BusFetcherTest : public BaseFileTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   std::vector<mojo_ipc::BusDevicePtr> expected_bus_devices_;
+  fwupd_utils::DeviceList fwupd_device_list_;
   MockContext mock_context_;
   BusFetcher bus_fetcher_{&mock_context_};
 };

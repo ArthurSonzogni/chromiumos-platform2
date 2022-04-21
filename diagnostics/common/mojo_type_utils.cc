@@ -252,6 +252,7 @@ std::string GetDiffString<mojo_ipc::UsbBusInfo>(const mojo_ipc::UsbBusInfo& a,
       .FIELD(vendor_id)
       .FIELD(product_id)
       .FIELD(interfaces)
+      .FIELD(fwupd_firmware_version_info)
       .GetResult();
 }
 
@@ -266,6 +267,13 @@ std::string GetDiffString<mojo_ipc::UsbBusInterfaceInfo>(
       .FIELD(protocol_id)
       .FIELD(driver)
       .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::FwupdFirmwareVersionInfo>(
+    const mojo_ipc::FwupdFirmwareVersionInfo& a,
+    const mojo_ipc::FwupdFirmwareVersionInfo& b) {
+  return CompareHelper(a, b).FIELD(version).FIELD(version_format).GetResult();
 }
 
 template <>

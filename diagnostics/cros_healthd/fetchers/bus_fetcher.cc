@@ -18,11 +18,14 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
+#include <fwupd/dbus-proxies.h>
 
+#include "diagnostics/common/dbus_utils.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
+#include "diagnostics/cros_healthd/utils/fwupd_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
@@ -138,7 +141,27 @@ mojo_ipc::UsbBusInterfaceInfoPtr FetchUsbBusInterfaceInfo(
   return info;
 }
 
-mojo_ipc::UsbBusInfoPtr FetchUsbBusInfo(const base::FilePath& path) {
+mojo_ipc::FwupdFirmwareVersionInfoPtr GetUsbFirmwareVersion(
+    const base::FilePath& path,
+    const fwupd_utils::DeviceList& fwupd_devices,
+    uint16_t vendor_id,
+    uint16_t product_id) {
+  std::optional<std::string> serial;
+  if (!ReadAndTrimString(path, kFileUsbSerial, &serial)) {
+    serial = std::nullopt;
+  }
+
+  fwupd_utils::UsbDeviceFilter usb_device_filter{
+      .vendor_id = vendor_id,
+      .product_id = product_id,
+      .serial = serial,
+  };
+
+  return fwupd_utils::FetchUsbFirmwareVersion(fwupd_devices, usb_device_filter);
+}
+
+mojo_ipc::UsbBusInfoPtr FetchUsbBusInfo(
+    const base::FilePath& path, const fwupd_utils::DeviceList& fwupd_devices) {
   auto info = mojo_ipc::UsbBusInfo::New();
   if (!ReadInteger(path, kFileUsbDevClass, &HexToU8, &info->class_id) ||
       !ReadInteger(path, kFileUsbDevSubclass, &HexToU8, &info->subclass_id) ||
@@ -146,6 +169,8 @@ mojo_ipc::UsbBusInfoPtr FetchUsbBusInfo(const base::FilePath& path) {
       !ReadInteger(path, kFileUsbVendor, &HexToU16, &info->vendor_id) ||
       !ReadInteger(path, kFileUsbProduct, &HexToU16, &info->product_id))
     return nullptr;
+  info->fwupd_firmware_version_info = GetUsbFirmwareVersion(
+      path, fwupd_devices, info->vendor_id, info->product_id);
   for (const auto& if_path : ListDirectory(path)) {
     auto if_info = FetchUsbBusInterfaceInfo(if_path);
     if (if_info) {
@@ -182,8 +207,9 @@ mojo_ipc::BusDeviceClass GetUsbDeviceClass(
 
 mojo_ipc::BusDevicePtr FetchUsbDevice(
     const base::FilePath& path,
-    const std::unique_ptr<brillo::UdevDevice>& udevice) {
-  auto usb_info = FetchUsbBusInfo(path);
+    const std::unique_ptr<brillo::UdevDevice>& udevice,
+    const fwupd_utils::DeviceList& fwupd_devices) {
+  auto usb_info = FetchUsbBusInfo(path, fwupd_devices);
   if (usb_info.is_null())
     return nullptr;
   auto device = mojo_ipc::BusDevice::New();
@@ -312,9 +338,19 @@ mojo_ipc::BusDevicePtr FetchThunderboltDevice(
   return device;
 }
 
+fwupd_utils::DeviceList ParseFwupdDevices(
+    brillo::Error* err,
+    const std::vector<brillo::VariantDictionary>& response) {
+  if (err)
+    return {};
+  return fwupd_utils::ParseDbusFwupdDeviceList(response);
+}
+
 }  // namespace
 
-void BusFetcher::FetchBusDevices(FetchBusDevicesCallback&& callback) {
+void BusFetcher::FetchBusDevicesWithFwupdInfo(
+    FetchBusDevicesCallback&& callback,
+    const fwupd_utils::DeviceList& fwupd_devices) {
   const auto& root = context_->root_dir();
   std::vector<mojo_ipc::BusDevicePtr> res;
 
@@ -328,7 +364,7 @@ void BusFetcher::FetchBusDevices(FetchBusDevicesCallback&& callback) {
   for (const auto& path : ListDirectory(root.Append(kPathSysUsb))) {
     auto udevice =
         context_->udev()->CreateDeviceFromSysPath(path.value().c_str());
-    auto device = FetchUsbDevice(path, udevice);
+    auto device = FetchUsbDevice(path, udevice, fwupd_devices);
     if (device) {
       res.push_back(std::move(device));
     }
@@ -341,6 +377,18 @@ void BusFetcher::FetchBusDevices(FetchBusDevicesCallback&& callback) {
     }
   }
   std::move(callback).Run(mojo_ipc::BusResult::NewBusDevices(std::move(res)));
+}
+
+void BusFetcher::FetchBusDevices(FetchBusDevicesCallback&& callback) {
+  auto get_devices_cb =
+      base::BindOnce(&ParseFwupdDevices)
+          .Then(base::BindOnce(&BusFetcher::FetchBusDevicesWithFwupdInfo,
+                               weak_factory_.GetWeakPtr(),
+                               std::move(callback)));
+
+  auto [on_success, on_error] = SplitDbusCallback(std::move(get_devices_cb));
+  context_->fwupd_proxy()->GetDevicesAsync(std::move(on_success),
+                                           std::move(on_error));
 }
 
 }  // namespace diagnostics

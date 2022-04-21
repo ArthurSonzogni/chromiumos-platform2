@@ -62,7 +62,9 @@ if (use.test) {
   pkg_config("libcros_healthd_fetchers_test_pkg_deps") {
     pkg_deps = [
       "egl",
+      "fwupd",
       "glesv2",
+      "libbrillo",
       "libchrome",
       "libchrome-test",
       "libcros_config",

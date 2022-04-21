@@ -21,6 +21,7 @@ inline constexpr char kFileUsbIFSubclass[] = "bInterfaceSubClass";
 inline constexpr char kFileUsbIFProtocol[] = "bInterfaceProtocol";
 inline constexpr char kFileUsbVendor[] = "idVendor";
 inline constexpr char kFileUsbProduct[] = "idProduct";
+inline constexpr char kFileUsbSerial[] = "serial";
 
 }  // namespace diagnostics
 
