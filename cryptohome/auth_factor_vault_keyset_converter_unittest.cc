@@ -133,7 +133,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     vk.CreateFromFileSystemKeyset(file_system_keyset_);
     vk.SetKeyData(key_data);
     user.credentials.set_key_data(key_data);
-    ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated));
+    ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
     ASSERT_TRUE(
         vk.Save(user.homedir_path.Append(kKeyFile).AddExtension(indice)));
   }

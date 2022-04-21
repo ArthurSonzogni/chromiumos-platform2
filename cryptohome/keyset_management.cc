@@ -47,7 +47,14 @@ namespace {
 bool DecryptExWrapper(const KeyBlobs& key_blobs,
                       VaultKeyset* vk,
                       CryptoError* error) {
-  return vk->DecryptEx(key_blobs, error);
+  CryptoStatus status = vk->DecryptEx(key_blobs);
+  if (status.ok()) {
+    return true;
+  }
+  if (error) {
+    *error = status->local_crypto_error();
+  }
+  return false;
 }
 
 // Wraps VaultKeyset::Decrypt to bind to DecryptVkCallback without object
@@ -56,7 +63,14 @@ bool DecryptWrapper(const brillo::SecureBlob& key,
                     bool locked_to_single_user,
                     VaultKeyset* vk,
                     CryptoError* error) {
-  return vk->Decrypt(key, locked_to_single_user, error);
+  CryptoStatus status = vk->Decrypt(key, locked_to_single_user);
+  if (status.ok()) {
+    return true;
+  }
+  if (error) {
+    *error = status->local_crypto_error();
+  }
+  return false;
 }
 
 // Wraps VaultKeyset::ExncryptEx to bind to EncryptVkCallback without object
@@ -64,7 +78,7 @@ bool DecryptWrapper(const brillo::SecureBlob& key,
 bool EncryptExWrapper(const KeyBlobs& key_blobs,
                       std::unique_ptr<AuthBlockState> auth_state,
                       VaultKeyset* vk) {
-  return vk->EncryptEx(key_blobs, *auth_state);
+  return vk->EncryptEx(key_blobs, *auth_state).ok();
 }
 
 // Wraps VaultKeyset::Exncryptto bind to EncryptVkCallback without object
@@ -72,7 +86,7 @@ bool EncryptExWrapper(const KeyBlobs& key_blobs,
 bool EncryptWrapper(const brillo::SecureBlob& key,
                     const std::string& obfuscated_username,
                     VaultKeyset* vk) {
-  return vk->Encrypt(key, obfuscated_username);
+  return vk->Encrypt(key, obfuscated_username).ok();
 }
 
 }  // namespace
@@ -676,8 +690,9 @@ CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(
     return CRYPTOHOME_ERROR_NOT_SET;
   }
 
-  if (!vault_keyset->Encrypt(credentials.passkey(),
-                             credentials.GetObfuscatedUsername()) ||
+  if (!vault_keyset
+           ->Encrypt(credentials.passkey(), credentials.GetObfuscatedUsername())
+           .ok() ||
       !vault_keyset->Save(vault_keyset->GetSourceFile())) {
     LOG(WARNING) << "Failed to re-encrypt the old keyset";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
@@ -812,7 +827,7 @@ bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
     migrated_vk->SetKeyData(old_vk.GetKeyData());
   }
 
-  if (!migrated_vk->Encrypt(newcreds.passkey(), obfuscated_username) ||
+  if (!migrated_vk->Encrypt(newcreds.passkey(), obfuscated_username).ok() ||
       !migrated_vk->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset to migrate.";
     return false;
@@ -1073,7 +1088,7 @@ CryptohomeErrorCode KeysetManagement::SaveKeysetWithKeyBlobs(
     VaultKeyset& vault_keyset,
     const KeyBlobs& key_blobs,
     const AuthBlockState& auth_state) {
-  if (!vault_keyset.EncryptEx(key_blobs, auth_state) ||
+  if (!vault_keyset.EncryptEx(key_blobs, auth_state).ok() ||
       !vault_keyset.Save(vault_keyset.GetSourceFile())) {
     LOG(WARNING) << "Failed to encrypt the keyset";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;

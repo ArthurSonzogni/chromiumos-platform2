@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/credentials.h"
@@ -43,6 +44,12 @@
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 
+using ::cryptohome::error::CryptohomeCryptoError;
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
+using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
@@ -147,6 +154,11 @@ class KeysetManagementTest : public ::testing::Test {
     base::FilePath user_path;
   };
 
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+
   // SETUPers
 
   // Information about users' keyset_management. The order of users is equal to
@@ -197,7 +209,7 @@ class KeysetManagementTest : public ::testing::Test {
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
       user.credentials.set_key_data(key_data);
-      ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated));
+      ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
       ASSERT_TRUE(
           vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
     }
@@ -208,7 +220,7 @@ class KeysetManagementTest : public ::testing::Test {
       VaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
-      ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated));
+      ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
       ASSERT_TRUE(
           vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
     }
@@ -228,7 +240,7 @@ class KeysetManagementTest : public ::testing::Test {
                                                    brillo::SecureBlob(kSalt)};
       auth_state_->state = pcr_state;
 
-      ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_));
+      ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_).ok());
       ASSERT_TRUE(
           vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
     }
@@ -247,7 +259,7 @@ class KeysetManagementTest : public ::testing::Test {
                                                    brillo::SecureBlob(kSalt)};
       auth_state_->state = pcr_state;
 
-      ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_));
+      ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_).ok());
       ASSERT_TRUE(
           vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
     }
@@ -713,18 +725,18 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 
   vk->CreateRandomResetSeed();
   vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
-  vk->Encrypt(users_[0].passkey, users_[0].obfuscated);
+  EXPECT_TRUE(vk->Encrypt(users_[0].passkey, users_[0].obfuscated).ok());
   vk->Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0"));
 
-  // ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
-  //    .WillByDefault(Return(mock_vk_to_add));
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
       .Times(1)
       .WillOnce(Return(mock_vk_to_add));
 
   EXPECT_CALL(*mock_vk_to_add,
               Encrypt(new_credentials.passkey(), users_[0].obfuscated))
-      .WillOnce(Return(false));
+      .WillOnce(ReturnError<CryptohomeError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   // TEST
   ASSERT_EQ(
@@ -761,7 +773,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   vk->CreateRandomResetSeed();
   vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
-  vk->Encrypt(users_[0].passkey, users_[0].obfuscated);
+  ASSERT_TRUE(vk->Encrypt(users_[0].passkey, users_[0].obfuscated).ok());
   vk->Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0"));
 
   // ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
@@ -772,7 +784,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   EXPECT_CALL(*mock_vk_to_add,
               Encrypt(new_credentials.passkey(), users_[0].obfuscated))
-      .WillOnce(Return(true));
+      .WillOnce(ReturnError<CryptohomeError>());
   // The first available slot is in indice 1 since the 0 is used by |vk|.
   EXPECT_CALL(*mock_vk_to_add,
               Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("1")))
@@ -1435,7 +1447,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   // wrong_auth_attempts stops incrementing and sets auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < kWrongAuthAttempts; iter++) {
-    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
@@ -1485,7 +1497,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   // Manually trigger attempts, but not enough to set auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < (kWrongAuthAttempts - 1); iter++) {
-    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
@@ -1535,7 +1547,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   // wrong_auth_attempts stops incrementing and sets auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < kWrongAuthAttempts; iter++) {
-    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
@@ -1589,7 +1601,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWithPreValidatedKeyset) {
   // Manually trigger attempts, but not enough to set auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < (kWrongAuthAttempts - 1); iter++) {
-    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
@@ -1641,7 +1653,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
   // Manually trigger attempts, but not enough to set auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < (kWrongAuthAttempts - 1); iter++) {
-    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
@@ -1670,7 +1682,7 @@ TEST_F(KeysetManagementTest, AddWrappedResetSeed) {
 
   // Explicitly set |reset_seed_| to be empty.
   vk.reset_seed_.clear();
-  ASSERT_TRUE(vk.Encrypt(users_[0].passkey, users_[0].obfuscated));
+  ASSERT_TRUE(vk.Encrypt(users_[0].passkey, users_[0].obfuscated).ok());
   ASSERT_TRUE(
       vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
 
@@ -1731,8 +1743,10 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
     EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
         .WillOnce(Return(mock_vk));
     EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
-    EXPECT_CALL(*mock_vk, Decrypt(_, _, _))
-        .WillOnce(DoAll(SetArgPointee<2>(key), Return(false)));
+    EXPECT_CALL(*mock_vk, Decrypt(_, _))
+        .WillOnce(ReturnError<CryptohomeCryptoError>(
+            kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kReboot}),
+            key));
 
     MountError mount_error;
     EXPECT_EQ(nullptr, keyset_management_mock_vk_->GetValidKeyset(
@@ -1809,7 +1823,10 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
   // AddKeyset creates a file at index 1, but deletes the file
   // after KeysetManagement finds a duplicate label at index 0.
   // AddKeyset tries to overwrite at index 0, but test forces encrypt to fail.
-  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_vk, Encrypt(_, _))
+      .WillOnce(ReturnError<CryptohomeError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   // Test
   EXPECT_EQ(
@@ -1838,7 +1855,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
   EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
   // Because of conditional or short-circuiting, Encrypt must
   // return true for Save() to run.
-  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(ReturnError<CryptohomeError>());
   EXPECT_CALL(*mock_vk, Save(_)).WillOnce(Return(false));
 
   // Test
@@ -1863,7 +1880,10 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
 
   auto mock_vk = new NiceMock<MockVaultKeyset>();
   EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
-  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_vk, Encrypt(_, _))
+      .WillOnce(ReturnError<CryptohomeError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   // Test
   // The file path created by AddKeyset is deleted after encyrption fails.
@@ -1929,7 +1949,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileExtension) {
   vk.SetKeyData(new_credentials.key_data());
 
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
-  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
+  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username).ok());
   ASSERT_TRUE(
       vk.Save(users_[0].homedir_path.Append("wrong_ext").AddExtension("1")));
 
@@ -1970,7 +1990,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileIndex) {
   vk.SetKeyData(new_credentials.key_data());
 
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
-  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
+  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username).ok());
   // GetVaultKeysetLabelsAndData will skip over any file with an exentsion
   // that is not a number (NAN), but in this case we use the string NAN to
   // represent this.
@@ -2014,7 +2034,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
   vk.SetKeyData(new_credentials.key_data());
 
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
-  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
+  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username).ok());
   ASSERT_TRUE(
       vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("1")));
 
@@ -2387,7 +2407,7 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
 
   // Explicitly set |reset_seed_| to be empty.
   vk.reset_seed_.clear();
-  ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_));
+  ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_).ok());
   ASSERT_TRUE(
       vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
 

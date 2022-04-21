@@ -36,17 +36,17 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_METHOD(bool, Load, (const base::FilePath&), (override));
   MOCK_METHOD(bool, Save, (const base::FilePath&), (override));
 
-  MOCK_METHOD(bool,
+  MOCK_METHOD(CryptoStatus,
               Decrypt,
-              (const brillo::SecureBlob&, bool, CryptoError*),
+              (const brillo::SecureBlob&, bool),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(CryptohomeStatus,
               Encrypt,
               (const brillo::SecureBlob&, const std::string&),
               (override));
 
-  MOCK_METHOD(bool, DecryptEx, (const KeyBlobs&, CryptoError*), (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(CryptoStatus, DecryptEx, (const KeyBlobs&), (override));
+  MOCK_METHOD(CryptohomeStatus,
               EncryptEx,
               (const KeyBlobs&, const AuthBlockState&),
               (override));

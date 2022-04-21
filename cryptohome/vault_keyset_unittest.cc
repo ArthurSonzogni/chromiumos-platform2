@@ -275,14 +275,13 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username));
+  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_TRUE(keyset.Save(FilePath(kFilePath)));
 
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
-  EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */,
-                                 nullptr /* crypto_error */));
+  EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */).ok());
   EXPECT_EQ(new_keyset.GetFSCryptPolicyVersion(), kFscryptPolicyVersion);
 }
 
@@ -298,7 +297,7 @@ TEST_F(VaultKeysetTest, WriteError) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username));
+  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_FALSE(keyset.Save(FilePath(kFilePath)));
 }
 
@@ -314,7 +313,7 @@ TEST_F(VaultKeysetTest, AuthLockedDefault) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username));
+  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_FALSE(keyset.GetAuthLocked());
 }
 
@@ -498,7 +497,7 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 }
 
 TEST_F(VaultKeysetTest, DecryptionTest) {
@@ -512,7 +511,7 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
@@ -521,9 +520,9 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
-      key, false /* locked_to_single_user */, &crypto_error));
+  ASSERT_TRUE(
+      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
+          .ok());
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
@@ -584,7 +583,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  vault_keyset.Encrypt(key, obfuscated_username);
+  ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username).ok());
 
   // Check that InitializeToAdd correctly copied vault_keyset fields
   // i.e. fek/fnek keys, reset seed, reset IV, and FSCrypt policy version
@@ -621,14 +620,14 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username));
+  ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username).ok());
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
+  CryptoStatus status =
+      vault_keyset.Decrypt(key, false /*locked_to_single_user*/);
   // locked_to_single_user determines whether to use the extended tmp_key,
   // uses normal tpm_key when false with a TpmBoundToPcrAuthBlock
-  ASSERT_FALSE(vault_keyset.Decrypt(key, false /*locked_to_single_user*/,
-                                    &crypto_error));
-  ASSERT_EQ(crypto_error, CryptoError::CE_OTHER_CRYPTO);
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
@@ -663,7 +662,7 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   // Test
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(vk.Encrypt(key, obfuscated_username));
+  ASSERT_TRUE(vk.Encrypt(key, obfuscated_username).ok());
   ASSERT_TRUE(vk.Save(FilePath(kFilePath)));
 
   VaultKeyset new_keyset;
@@ -677,9 +676,9 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   // and passes error CryptoError::CE_TPM_COMM_ERROR
   // Decrypt -> DecryptVaultKeyset -> Derive
   // -> CheckTPMReadiness -> HasCryptohomeKey(fails and error propagates up)
-  CryptoError tmp_error;
-  ASSERT_FALSE(new_keyset.Decrypt(key, false, &tmp_error));
-  ASSERT_EQ(tmp_error, CryptoError::CE_TPM_COMM_ERROR);
+  CryptoStatus status = new_keyset.Decrypt(key, false);
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_COMM_ERROR);
 }
 
 TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
@@ -698,11 +697,10 @@ TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  EXPECT_TRUE(vk.DecryptVaultKeyset(
-      brillo::SecureBlob(HexDecode(kHexLibScryptExamplePasskey)), false,
-      &crypto_error));
-  EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
+  EXPECT_TRUE(
+      vk.DecryptVaultKeyset(
+            brillo::SecureBlob(HexDecode(kHexLibScryptExamplePasskey)), false)
+          .ok());
 
   EXPECT_EQ(SecureBlobToHex(vk.GetFek()), kHexLibScryptExampleFek);
   EXPECT_EQ(SecureBlobToHex(vk.GetFekSig()), kHexLibScryptExampleFekSig);
@@ -756,7 +754,7 @@ TEST_F(VaultKeysetTest, DecryptionTestWithKeyBlobs) {
 
   TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
-  ASSERT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state));
+  ASSERT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state).ok());
   EXPECT_TRUE(vault_keyset.Save(FilePath(kFilePath)));
 
   SecureBlob original_data;
@@ -766,9 +764,7 @@ TEST_F(VaultKeysetTest, DecryptionTestWithKeyBlobs) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(new_keyset.DecryptEx(key_blobs, &crypto_error));
-  ASSERT_EQ(crypto_error, CryptoError::CE_NONE);
+  ASSERT_TRUE(new_keyset.DecryptEx(key_blobs).ok());
 
   // Verify
   SecureBlob new_data;
@@ -792,12 +788,12 @@ TEST_F(VaultKeysetTest, DecryptWithAuthBlockFailNotLoaded) {
   TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
 
-  EXPECT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state));
+  EXPECT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state).ok());
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
+  CryptoStatus status = vault_keyset.DecryptEx(key_blobs);
   // Load() needs to be called before decrypting the keyset.
-  ASSERT_FALSE(vault_keyset.DecryptEx(key_blobs, &crypto_error));
-  ASSERT_EQ(crypto_error, CryptoError::CE_OTHER_CRYPTO);
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
 class LeCredentialsManagerTest : public ::testing::Test {
@@ -865,9 +861,11 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
 
   AuthBlockState auth_block_state;
-  EXPECT_TRUE(pin_vault_keyset_.EncryptVaultKeyset(
-      brillo::SecureBlob(HexDecode(kHexVaultKey)), "unused",
-      &auth_block_state));
+  EXPECT_TRUE(
+      pin_vault_keyset_
+          .EncryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
+                              "unused", &auth_block_state)
+          .ok());
 
   EXPECT_TRUE(
       std::holds_alternative<PinWeaverAuthBlockState>(auth_block_state.state));
@@ -891,9 +889,11 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
 
   AuthBlockState auth_block_state;
-  EXPECT_FALSE(pin_vault_keyset_.EncryptVaultKeyset(
-      brillo::SecureBlob(HexDecode(kHexVaultKey)), "unused",
-      &auth_block_state));
+  EXPECT_FALSE(
+      pin_vault_keyset_
+          .EncryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
+                              "unused", &auth_block_state)
+          .ok());
 }
 
 TEST_F(LeCredentialsManagerTest, Decrypt) {
@@ -915,10 +915,9 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  EXPECT_TRUE(vk.DecryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
-                                    false, &crypto_error));
-  EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
+  EXPECT_TRUE(
+      vk.DecryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)), false)
+          .ok());
 }
 
 // crbug.com/1224150: auth_locked must be set to false when an LE credential is
@@ -941,7 +940,7 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username));
+  EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username).ok());
   EXPECT_TRUE(pin_vault_keyset_.HasKeyData());
   EXPECT_FALSE(pin_vault_keyset_.auth_locked_);
 
@@ -966,7 +965,7 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username));
+  ASSERT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username).ok());
   ASSERT_TRUE(pin_vault_keyset_.Save(FilePath(kFilePath)));
 
   VaultKeyset new_keyset;
@@ -982,9 +981,9 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
 
-  CryptoError crypto_error;
-  ASSERT_FALSE(new_keyset.Decrypt(key, false, &crypto_error));
-  ASSERT_EQ(crypto_error, CryptoError::CE_TPM_DEFEND_LOCK);
+  CryptoStatus status = new_keyset.Decrypt(key, false);
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_DEFEND_LOCK);
   ASSERT_TRUE(new_keyset.GetAuthLocked());
 }
 
@@ -1012,7 +1011,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
 
   EXPECT_TRUE(
       std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
-  EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state));
+  EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state).ok());
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
@@ -1067,9 +1066,7 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
   CryptoStatus status = auth_block->Derive(auth_input, auth_state, &key_blobs);
   ASSERT_TRUE(status.ok());
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  EXPECT_TRUE(vk.DecryptVaultKeysetEx(key_blobs, &crypto_error));
-  EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
+  EXPECT_TRUE(vk.DecryptVaultKeysetEx(key_blobs).ok());
 }
 
 }  // namespace cryptohome

@@ -206,13 +206,11 @@ TEST_F(CryptoTest, TpmStepTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
-
-  CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
@@ -221,8 +219,9 @@ TEST_F(CryptoTest, TpmStepTest) {
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
-      key, false /* locked_to_single_user */, &crypto_error));
+  ASSERT_TRUE(
+      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
+          .ok());
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
@@ -278,13 +277,11 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
-
-  CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, DecryptBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(vkk_key), ReturnError<TPMErrorBase>()));
@@ -292,8 +289,9 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
-      key, false /* locked_to_single_user */, &crypto_error));
+  ASSERT_TRUE(
+      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
+          .ok());
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
@@ -343,22 +341,20 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
-
-  CryptoError crypto_error = CryptoError::CE_NONE;
 
   // UnsealWithAuthorization operation will fail.
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
-  ASSERT_FALSE(vault_keyset.DecryptVaultKeyset(
-      key, false /* locked_to_single_user */, &crypto_error));
-  ASSERT_NE(CryptoError::CE_NONE, crypto_error);
+  ASSERT_FALSE(
+      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
+          .ok());
 }
 
 TEST_F(CryptoTest, ScryptStepTest) {
@@ -374,7 +370,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
@@ -383,9 +379,9 @@ TEST_F(CryptoTest, ScryptStepTest) {
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
-      key, false /* locked_to_single_user */, &crypto_error));
+  ASSERT_TRUE(
+      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
+          .ok());
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));

@@ -18,6 +18,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -65,27 +66,26 @@ class VaultKeyset {
   // Encrypt must be called first.
   virtual bool Save(const base::FilePath& filename);
 
-  // Load must be called first. |crypto_error| may be null.
+  // Load must be called first.
   // Decrypts the encrypted fields of the VaultKeyset from serialized with the
   // KeyBlobs derived from the provided |key|.
-  virtual bool Decrypt(const brillo::SecureBlob& key,
-                       bool is_pcr_extended,
-                       CryptoError* crypto_error);
+  virtual CryptoStatus Decrypt(const brillo::SecureBlob& key,
+                               bool is_pcr_extended);
 
-  // Load must be called first. |crypto_error| may be null.
+  // Load must be called first.
   // Decrypts the encrypted fields of the VaultKeyset from serialized with the
   // provided |key_blobs|.
-  virtual bool DecryptEx(const KeyBlobs& key_blobs, CryptoError* crypto_error);
+  virtual CryptoStatus DecryptEx(const KeyBlobs& key_blobs);
 
   // Encrypts the VaultKeyset fields with the KeyBlobs derived from the provided
   // |key| for the |obfuscated_username|.
-  virtual bool Encrypt(const brillo::SecureBlob& key,
-                       const std::string& obfuscated_username);
+  virtual CryptohomeStatus Encrypt(const brillo::SecureBlob& key,
+                                   const std::string& obfuscated_username);
 
   // Encrypts the VaultKeyset fields with the provided |key_blobs| based on the
   // encryption mechanisms provided by the |auth_state|.
-  virtual bool EncryptEx(const KeyBlobs& key_blobs,
-                         const AuthBlockState& auth_state);
+  virtual CryptohomeStatus EncryptEx(const KeyBlobs& key_blobs,
+                                     const AuthBlockState& auth_state);
 
   // Convenience methods to initialize a new VaultKeyset with random values.
   virtual void CreateRandomChapsKey();
@@ -261,10 +261,10 @@ class VaultKeyset {
   //   serialized - The serialized vault keyset protobuf.
   //   vkk_data - Key data includes the VaultKeysetKey to decrypt the serialized
   // keyset.
-  //   error (OUT) - The specific error code on failure.
-  bool UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
-                            const KeyBlobs& vkk_data,
-                            CryptoError* error);
+  // Return
+  //   error - The specific error code on failure.
+  CryptoStatus UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
+                                    const KeyBlobs& vkk_data);
 
   // This function decrypts a keyset that is encrypted with an scrypt derived
   // key.
@@ -272,22 +272,24 @@ class VaultKeyset {
   // Parameters
   //   serialized - The serialized vault keyset protobuf.
   //   vkk_data - Key data that includes the scrypt derived keys.
-  //   error (OUT) - The specific error code on failure.
-  bool UnwrapScryptVaultKeyset(const SerializedVaultKeyset& serialized,
-                               const KeyBlobs& vkk_data,
-                               CryptoError* error);
+  // Return
+  //   error - The specific error code on failure.
+  CryptoStatus UnwrapScryptVaultKeyset(const SerializedVaultKeyset& serialized,
+                                       const KeyBlobs& vkk_data);
 
   // This function encrypts a keyset with a VaultKeysetKey.
   //
   // Parameters
   //   key_blobs - Key bloc that stores VaultKeysetKey.
-  bool WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs);
+  CryptohomeStatus WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs);
 
   // This function encrypts a VaultKeyset with an scrypt derived key.
   //
   // Parameters
   //   key_blobs - Key blob that stores scrypt derived keys.
-  bool WrapScryptVaultKeyset(const KeyBlobs& key_blobs);
+  // Return
+  //   error - The specific error code on failure.
+  CryptohomeStatus WrapScryptVaultKeyset(const KeyBlobs& key_blobs);
 
   // This function consumes the Vault Keyset Key (VKK) and IV, and produces
   // the unwrapped secrets from the Vault Keyset.
@@ -295,18 +297,19 @@ class VaultKeyset {
   // Parameters
   //   serialized - The serialized vault keyset protobuf.
   //   vkk_data - The VKK and the VKK IV.
-  //   error (OUT) - The specific error code on failure.
-  bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
-                         const KeyBlobs& vkk_data,
-                         CryptoError* error);
+  // Return
+  //   error - The specific error code on failure.
+  CryptoStatus UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
+                                 const KeyBlobs& vkk_data);
 
   // Decrypts an encrypted vault keyset which is obtained from the unwrapped
   // secrets returned from UnwrapVaultKeyset() using the key_blobs.
   //
   // Parameters
   //   key_blobs - KeyBlobs to decrypt serialized VaultKeyset.
-  //   error(OUT) - The specific error code on failure.
-  bool DecryptVaultKeysetEx(const KeyBlobs& key_blobs, CryptoError* error);
+  // Return
+  //   error - The specific error code on failure.
+  CryptoStatus DecryptVaultKeysetEx(const KeyBlobs& key_blobs);
 
   // Decrypts an encrypted vault keyset which is obtained from the unwrapped
   // secrets returned from UnwrapVaultKeyset().
@@ -316,10 +319,10 @@ class VaultKeyset {
   //   locked_to_single_user - Whether the device has transitioned.
   //   into user-specific modality by extending PCR4 with a user-specific
   //   value.
-  //   error(OUT) - The specific error code on failure.
-  bool DecryptVaultKeyset(const brillo::SecureBlob& vault_key,
-                          bool locked_to_single_user,
-                          CryptoError* error);
+  // Return
+  //   error - The specific error code on failure.
+  CryptoStatus DecryptVaultKeyset(const brillo::SecureBlob& vault_key,
+                                  bool locked_to_single_user);
 
   // Encrypts the vault keyset with the given passkey
   //
@@ -330,9 +333,11 @@ class VaultKeyset {
   //                         is stored.
   //   auth_block_state - On success, the plaintext state needed to initialize
   //                      the auth block.
-  bool EncryptVaultKeyset(const brillo::SecureBlob& vault_key,
-                          const std::string& obfuscated_username,
-                          AuthBlockState* auth_block_state);
+  // Return
+  //   error - The specific error code on failure.
+  CryptohomeStatus EncryptVaultKeyset(const brillo::SecureBlob& vault_key,
+                                      const std::string& obfuscated_username,
+                                      AuthBlockState* auth_block_state);
 
   // These store run time state for the class.
   Platform* platform_;
