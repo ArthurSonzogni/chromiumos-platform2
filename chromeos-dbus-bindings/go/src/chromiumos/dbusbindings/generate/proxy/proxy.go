@@ -28,9 +28,11 @@ var funcMap = template.FuncMap{
 	"makeProxyInArgTypeProxy": func(p *introspect.Property) (string, error) {
 		return p.InArgType(dbustype.ReceiverProxy)
 	},
-	"makeVariableName": genutil.MakeVariableName,
-	"repeat":           strings.Repeat,
-	"reverse":          genutil.Reverse,
+	"makeSignalCallbackType": makeSignalCallbackType,
+	"makeVariableName":       genutil.MakeVariableName,
+	"nindent":                genutil.Nindent,
+	"repeat":                 strings.Repeat,
+	"reverse":                genutil.Reverse,
 }
 
 const (
@@ -72,7 +74,7 @@ class {{makeProxyName .ObjectManagerName}};
 }  // namespace {{.}}
 {{end}}
 {{end -}}
-{{range $introspect := .Introspects}}{{range .Interfaces -}}
+{{range $introspect := .Introspects}}{{range $itf := .Interfaces -}}
 
 {{range extractNameSpaces .Name -}}
 namespace {{.}} {
@@ -88,7 +90,10 @@ class {{$itfName}} {
 {{- /* TODO(crbug.com/983008): Add asyn method proxies */ -}}
 {{- end}}
 {{- range .Signals}}
-{{- /* TODO(crbug.com/983008): Add signal handler registration */ -}}
+
+  virtual void Register{{.Name}}SignalHandler(
+      {{- makeSignalCallbackType .Args | nindent 6}} signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 {{- end}}
 {{- if .Properties}}{{"\n"}}{{end}}
 {{- range .Properties}}
@@ -153,7 +158,17 @@ class {{$proxyName}} final : public {{$itfName}} {
   ~{{$proxyName}}() override {
   }
 {{- range .Signals}}
-{{- /* TODO(crbug.com/983008): Add signal andler registration. */ -}}
+
+  void Register{{.Name}}SignalHandler(
+      {{- makeSignalCallbackType .Args | nindent 6}} signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
+    brillo::dbus_utils::ConnectToSignal(
+        dbus_object_proxy_,
+        "{{$itf.Name}}",
+        "{{.Name}}",
+        signal_callback,
+        std::move(on_connected_callback));
+  }
 {{- end}}
 
   void ReleaseObjectProxy(base::OnceClosure callback) {

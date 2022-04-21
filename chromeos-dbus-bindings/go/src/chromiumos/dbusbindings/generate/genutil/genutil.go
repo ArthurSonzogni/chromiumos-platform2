@@ -74,6 +74,13 @@ func Reverse(s []string) []string {
 	return s
 }
 
+// Nindent returns string with indent, prefixed by a NL.
+func Nindent(i int, s string) string {
+	lines := strings.Split(s, "\n")
+	indent := "\n" + strings.Repeat(" ", i)
+	return indent + strings.Join(lines, indent)
+}
+
 var indentRE = regexp.MustCompile(`^[ \t]+`)
 
 // FormatComment removes extraneous white space, inserts a double slash and adds an indent of |indent| characters

@@ -87,6 +87,24 @@ func TestReverse(t *testing.T) {
 	}
 }
 
+func TestNindent(t *testing.T) {
+	cases := []struct {
+		n           int
+		input, want string
+	}{
+		{n: 0, input: "", want: "\n"},
+		{n: 1, input: "", want: "\n "},
+		{n: 1, input: "abc\ndef", want: "\n abc\n def"},
+	}
+
+	for _, tc := range cases {
+		got := genutil.Nindent(tc.n, tc.input)
+		if diff := cmp.Diff(got, tc.want); diff != "" {
+			t.Errorf("Wrong result in Nindent(%q): diff (-got +want):\n%s", tc.input, diff)
+		}
+	}
+}
+
 func TestFormatComment(t *testing.T) {
 	cases := []struct {
 		indent int

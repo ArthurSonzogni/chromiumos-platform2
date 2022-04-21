@@ -240,6 +240,14 @@ func (a *SignalArg) OutArgType(receiver dbustype.Receiver) (string, error) {
 	return outArgTypeInternal(a.Type, receiver, &a.Annotation)
 }
 
+// CallbackType returns the C++ type to be used as a callback's argument.
+func (a *SignalArg) CallbackType() (string, error) {
+	// This is workaround to deal with current function layering structure.
+	// TODO(crbug.com/983008): Cleans up the implementation by moving
+	// receiver concept up to here.
+	return a.InArgType(dbustype.ReceiverAdaptor)
+}
+
 // BaseType returns the C++ type corresponding to the type that the property describes.
 func (p *Property) BaseType(dir dbustype.Direction) (string, error) {
 	return baseTypeInternal(p.Type, dir, nil)

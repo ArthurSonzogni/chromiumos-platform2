@@ -144,6 +144,11 @@ class InterfaceProxyInterface {
  public:
   virtual ~InterfaceProxyInterface() = default;
 
+  virtual void RegisterBSSRemovedSignalHandler(
+      const base::RepeatingCallback<void(const YetAnotherProto&,
+                                         const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
   static const char* CapabilitiesName() { return "Capabilities"; }
   virtual const brillo::VariantDictionary& capabilities() const = 0;
 
@@ -185,6 +190,18 @@ class InterfaceProxy final : public InterfaceProxyInterface {
   InterfaceProxy& operator=(const InterfaceProxy&) = delete;
 
   ~InterfaceProxy() override {
+  }
+
+  void RegisterBSSRemovedSignalHandler(
+      const base::RepeatingCallback<void(const YetAnotherProto&,
+                                         const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
+    brillo::dbus_utils::ConnectToSignal(
+        dbus_object_proxy_,
+        "fi.w1.wpa_supplicant1.Interface",
+        "BSSRemoved",
+        signal_callback,
+        std::move(on_connected_callback));
   }
 
   void ReleaseObjectProxy(base::OnceClosure callback) {
@@ -555,6 +572,167 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   const dbus::ObjectPath object_path_{"test.node.Name"};
+  dbus::ObjectProxy* dbus_object_proxy_;
+
+};
+
+}  // namespace test
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateProxiesWithSignals(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "test.EmptyInterface",
+		Signals: []introspect.Signal{
+			{
+				Name: "Signal1",
+				Args: []introspect.SignalArg{
+					{
+						Name: "sarg1_1",
+						Type: "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "YetAnotherProto",
+						},
+					}, {
+						Name: "sarg1_2",
+						Type: "(ih)",
+					},
+				},
+				DocString: "\n        signal doc\n      ",
+			},
+			{
+				Name: "Signal2",
+				Args: []introspect.SignalArg{
+					{
+						Name: "sarg2_1",
+						Type: "ay",
+					}, {
+						Name: "sarg2_2",
+						Type: "i",
+					},
+				},
+				DocString: "\n        signal doc\n      ",
+			},
+		},
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{}
+	out := new(bytes.Buffer)
+	if err := Generate(introspections, out, "/tmp/proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interfaces:
+//  - test.EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_manager.h>
+#include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
+
+namespace test {
+
+// Abstract interface proxy for test::EmptyInterface.
+class EmptyInterfaceProxyInterface {
+ public:
+  virtual ~EmptyInterfaceProxyInterface() = default;
+
+  virtual void RegisterSignal1SignalHandler(
+      const base::RepeatingCallback<void(const YetAnotherProto&,
+                                         const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual void RegisterSignal2SignalHandler(
+      const base::RepeatingCallback<void(const std::vector<uint8_t>&,
+                                         int32_t)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+};
+
+}  // namespace test
+
+namespace test {
+
+// Interface proxy for test::EmptyInterface.
+class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
+  EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
+
+  ~EmptyInterfaceProxy() override {
+  }
+
+  void RegisterSignal1SignalHandler(
+      const base::RepeatingCallback<void(const YetAnotherProto&,
+                                         const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
+    brillo::dbus_utils::ConnectToSignal(
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "Signal1",
+        signal_callback,
+        std::move(on_connected_callback));
+  }
+
+  void RegisterSignal2SignalHandler(
+      const base::RepeatingCallback<void(const std::vector<uint8_t>&,
+                                         int32_t)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
+    brillo::dbus_utils::ConnectToSignal(
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "Signal2",
+        signal_callback,
+        std::move(on_connected_callback));
+  }
+
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
+  }
+
+  const dbus::ObjectPath& GetObjectPath() const override {
+    return object_path_;
+  }
+
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
 
 };
