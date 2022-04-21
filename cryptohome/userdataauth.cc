@@ -3694,6 +3694,15 @@ bool UserDataAuth::StartAuthSession(
 
   reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_user_exists(auth_session->user_exists());
+
+  if (!auth_session->user_has_configured_credential() &&
+      !auth_session->user_has_configured_auth_factor() &&
+      auth_session->user_exists()) {
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
   google::protobuf::Map<std::string, cryptohome::KeyData> proto_key_map(
       auth_session->key_label_data().begin(),
       auth_session->key_label_data().end());
@@ -3708,7 +3717,6 @@ bool UserDataAuth::StartAuthSession(
   }
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-
   return true;
 }
 

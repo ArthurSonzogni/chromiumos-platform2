@@ -788,9 +788,15 @@ static_assert(
     "Enum member CRYPTOHOME_ERROR_UNKNOWN_LEGACY differs between "
     "user_data_auth:: and cryptohome::");
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 52,
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_UNUSABLE_VAULT),
+    "Enum member CRYPTOHOME_ERROR_UNUSABLE_VAULT differs between "
+    "user_data_auth:: and cryptohome::");
+
+static_assert(
+    user_data_auth::CryptohomeErrorCode_MAX == 53,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 52,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 53,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
@@ -3851,6 +3857,37 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
               NotNull());
 }
 
+TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
+  PrepareArguments();
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
+      .WillOnce(Return(new NiceMock<cryptohome::MockFileEnumerator>));
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
+                  auth_session_id.value()),
+              NotNull());
+}
 TEST_F(UserDataAuthExTest, AuthenticateAuthSessionInvalidToken) {
   PrepareArguments();
   std::string invalid_token = "invalid_token_16";
