@@ -61,7 +61,6 @@
 #include <base/time/time.h>
 #include <base/version.h>
 #include <brillo/dbus/dbus_proxy_util.h>
-#include <brillo/files/safe_fd.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -643,31 +642,6 @@ string RemoveCloseOnExec(int raw_fd) {
   flags &= ~FD_CLOEXEC;
   if (fcntl(raw_fd, F_SETFD, flags) == -1) {
     return "Failed to clear close-on-exec flag for fd";
-  }
-
-  return "";
-}
-
-// Convert file path into fd path
-// This will open the file and append SafeFD into provided container
-string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
-                            base::FilePath* in_out_path,
-                            int flags,
-                            std::vector<brillo::SafeFD>& fd_storage) {
-  static auto procSelfFd = base::FilePath("/proc/self/fd");
-  if (procSelfFd.IsParent(*in_out_path)) {
-    if (!base::PathExists(*in_out_path)) {
-      return "Path does not exist";
-    }
-  } else {
-    auto disk_fd = parent_fd.OpenExistingFile(*in_out_path, flags);
-    if (brillo::SafeFD::IsError(disk_fd.second)) {
-      LOG(ERROR) << "Could not open file: " << static_cast<int>(disk_fd.second);
-      return "Could not open file";
-    }
-    *in_out_path = base::FilePath(kProcFileDescriptorsPath)
-                       .Append(base::NumberToString(disk_fd.first.get()));
-    fd_storage.push_back(std::move(disk_fd.first));
   }
 
   return "";
@@ -1558,17 +1532,6 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     return response;
   }
 
-  // Exists just to keep FDs around for crosvm to inherit
-  std::vector<brillo::SafeFD> owned_fds;
-  auto root_fd = brillo::SafeFD::Root();
-
-  if (brillo::SafeFD::IsError(root_fd.second)) {
-    LOG(ERROR) << "Could not open root directory: "
-               << static_cast<int>(root_fd.second);
-    response.set_failure_reason("Could not open root directory");
-    return response;
-  }
-
   string failure_reason;
   VMImageSpec image_spec =
       GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd, bios_fd,
@@ -1579,26 +1542,16 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     return response;
   }
 
-  if (!image_spec.kernel.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.kernel,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
-      response.set_failure_reason("Kernel path does not exist");
-      return response;
-    }
+  if (!image_spec.kernel.empty() && !base::PathExists(image_spec.kernel)) {
+    LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
+    response.set_failure_reason("Kernel path does not exist");
+    return response;
   }
 
-  if (!image_spec.bios.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.bios,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
-      response.set_failure_reason("BIOS path does not exist");
-      return response;
-    }
+  if (!image_spec.bios.empty() && !base::PathExists(image_spec.bios)) {
+    LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
+    response.set_failure_reason("BIOS path does not exist");
+    return response;
   }
 
   if (image_spec.kernel.empty() && image_spec.bios.empty()) {
@@ -1607,27 +1560,16 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     return response;
   }
 
-  if (!image_spec.initrd.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.initrd,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM initrd path: " << image_spec.initrd.value();
-      response.set_failure_reason("Initrd path does not exist");
-      return response;
-    }
+  if (!image_spec.initrd.empty() && !base::PathExists(image_spec.initrd)) {
+    LOG(ERROR) << "Missing VM initrd path: " << image_spec.initrd.value();
+    response.set_failure_reason("Initrd path does not exist");
+    return response;
   }
 
-  if (!image_spec.rootfs.empty()) {
-    failure_reason = ConvertToFdBasedPath(
-        root_fd.first, &image_spec.rootfs,
-        request.writable_rootfs() ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
-      response.set_failure_reason("Rootfs path does not exist");
-      return response;
-    }
+  if (!image_spec.rootfs.empty() && !base::PathExists(image_spec.rootfs)) {
+    LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
+    response.set_failure_reason("Rootfs path does not exist");
+    return response;
   }
 
   const bool is_untrusted_vm =
@@ -1689,13 +1631,6 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   // to keep compatibility with older components with only vm_rootfs.img.
   string tools_device;
   if (base::PathExists(image_spec.tools_disk)) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.tools_disk,
-                                          O_RDONLY, owned_fds);
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Could not open tools_disk file";
-      response.set_failure_reason(failure_reason);
-      return response;
-    }
     disks.push_back(
         Disk(std::move(image_spec.tools_disk), false /* writable */));
     tools_device = base::StringPrintf("/dev/vd%c", disk_letter++);
@@ -1720,21 +1655,16 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   for (const auto& disk : request.disks()) {
-    Disk::Config config{};
-    config.writable = disk.writable();
-    config.sparse = !IsDiskUserChosenSize(disk.path());
-
-    auto path = base::FilePath(disk.path());
-    failure_reason = ConvertToFdBasedPath(
-        root_fd.first, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Could not open disk file";
-      response.set_failure_reason(failure_reason);
+    if (!base::PathExists(base::FilePath(disk.path()))) {
+      LOG(ERROR) << "Missing disk path: " << disk.path();
+      response.set_failure_reason("One or more disk paths do not exist");
       return response;
     }
 
-    disks.push_back(Disk(path, config));
+    Disk::Config config{};
+    config.writable = disk.writable();
+    config.sparse = !IsDiskUserChosenSize(disk.path());
+    disks.push_back(Disk(base::FilePath(disk.path()), config));
   }
 
   // Check if an opened storage image was passed over D-BUS.
