@@ -99,6 +99,7 @@ class MachineLearningServiceImpl
   void LoadDocumentScanner(
       mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
           receiver,
+      chromeos::machine_learning::mojom::DocumentScannerConfigPtr config,
       LoadDocumentScannerCallback callback) override;
   void CreateWebPlatformModelLoader(
       mojo::PendingReceiver<model_loader::mojom::ModelLoader> receiver,

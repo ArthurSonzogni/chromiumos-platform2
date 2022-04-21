@@ -1631,9 +1631,13 @@ class DocumentScannerTest : public ::testing::Test {
     const MachineLearningServiceImplForTesting ml_service_impl(
         ml_service.BindNewPipeAndPassReceiver());
 
+    auto config =
+        chromeos::machine_learning::mojom::DocumentScannerConfig::New();
+    config->library_dlc_path = "/usr/share/cros-camera/libfs/";
+
     bool model_callback_done = false;
     ml_service->LoadDocumentScanner(
-        scanner_.BindNewPipeAndPassReceiver(),
+        scanner_.BindNewPipeAndPassReceiver(), std::move(config),
         base::BindOnce(
             [](bool* model_callback_done, const LoadModelResult result) {
               ASSERT_EQ(result, LoadModelResult::OK);

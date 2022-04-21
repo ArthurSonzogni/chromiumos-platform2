@@ -106,6 +106,7 @@ _IUSE = [
     'ndk_translation',
     'oemcrypto_v16',
     'ondevice_document_scanner',
+    'ondevice_document_scanner_dlc',
     'ondevice_grammar',
     'ondevice_handwriting',
     'ondevice_handwriting_dlc',

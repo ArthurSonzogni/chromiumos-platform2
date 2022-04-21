@@ -29,6 +29,14 @@ enum DocumentScannerResultStatus {
   ERROR = 1,
 };
 
+// The configuration for document scanner.
+// Next min field ID: 1
+[Stable]
+struct DocumentScannerConfig {
+  // Path to already-installed DocumentScanner library.
+  string library_dlc_path@0;
+};
+
 // The corner detection response.
 // Next min field ID: 2
 [Stable]

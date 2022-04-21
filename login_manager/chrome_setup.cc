@@ -948,6 +948,8 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("ondevice_document_scanner"))
     builder->AddArg("--ondevice_document_scanner=use_rootfs");
+  else if (builder->UseFlagIsSet("ondevice_document_scanner_dlc"))
+    builder->AddArg("--ondevice_document_scanner=use_dlc");
 
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
   SetUpHasHpsFlag(builder, cros_config);

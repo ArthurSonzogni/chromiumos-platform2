@@ -747,6 +747,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
 void MachineLearningServiceImpl::LoadDocumentScanner(
     mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
         receiver,
+    chromeos::machine_learning::mojom::DocumentScannerConfigPtr config,
     LoadDocumentScannerCallback callback) {
   if (!ml::DocumentScannerLibrary::IsSupported()) {
     LOG(ERROR) << "Document scanner library is not supported";
@@ -770,13 +771,18 @@ void MachineLearningServiceImpl::LoadDocumentScanner(
     Process::GetInstance()
         ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
                                          kModelName)
-        ->LoadDocumentScanner(std::move(receiver), std::move(callback));
+        ->LoadDocumentScanner(std::move(receiver), std::move(config),
+                              std::move(callback));
     return;
   }
 
   // From here below is the worker process.
+  std::string path = ml::kLibDocumentScannerDefaultDir;
+  if (!config.is_null()) {
+    path = config->library_dlc_path;
+  }
   LoadDocumentScannerFromPath(std::move(receiver), std::move(callback),
-                              ml::kLibDocumentScannerDefaultDir);
+                              std::move(path));
 }
 
 void MachineLearningServiceImpl::CreateWebPlatformModelLoader(

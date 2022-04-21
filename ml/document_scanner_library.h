@@ -49,12 +49,17 @@ class DocumentScannerLibrary {
 
   // Returns whether DocumentScannerLibrary is supported.
   static constexpr bool IsSupported() {
-    return IsEnabledOnRootfs() && !IsAsan();
+    return (IsEnabledOnRootfs() || IsEnabledOnDlc()) && !IsAsan();
   }
 
   // Returns bool of use.ondevice_document_scanning.
   static constexpr bool IsEnabledOnRootfs() {
     return USE_ONDEVICE_DOCUMENT_SCANNER;
+  }
+
+  // Returns bool of use.ondevice_document_scanning_dlc.
+  static constexpr bool IsEnabledOnDlc() {
+    return USE_ONDEVICE_DOCUMENT_SCANNER_DLC;
   }
 
   bool IsInitialized() { return initialized_; }
