@@ -135,7 +135,7 @@ bool TouchFileInternal(const base::FilePath& path,
   }
 
   if (fd_out) {
-    fd_out->swap(scoped_fd);
+    *fd_out = std::move(scoped_fd);
   }
   return true;
 }
@@ -210,8 +210,7 @@ base::ScopedFD OpenSafelyInternal(int parent_fd,
                                   const base::FilePath& path,
                                   int flags,
                                   mode_t mode) {
-  std::vector<std::string> components;
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
 
   auto itr = components.begin();
   if (itr == components.end()) {
@@ -355,8 +354,7 @@ base::ScopedFD OpenFifoSafely(const base::FilePath& path,
 }
 
 base::ScopedFD MkdirRecursively(const base::FilePath& full_path, mode_t mode) {
-  std::vector<std::string> components;
-  full_path.GetComponents(&components);
+  std::vector<std::string> components = full_path.GetComponents();
 
   auto itr = components.begin();
   if (!full_path.IsAbsolute() || itr == components.end()) {

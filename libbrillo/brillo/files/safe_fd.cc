@@ -102,8 +102,7 @@ SafeFD::SafeFDResult OpenSafelyInternal(int parent_fd,
                                         const base::FilePath& path,
                                         int flags,
                                         mode_t mode) {
-  std::vector<std::string> components;
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
 
   auto itr = components.begin();
   if (itr == components.end()) {
@@ -500,8 +499,7 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
     return MakeErrorResult(SafeFD::Error::kNotInitialized);
   }
 
-  std::vector<std::string> components;
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
   if (components.empty()) {
     LOG(ERROR) << "Called MakeDir() with an empty path";
     return MakeErrorResult(SafeFD::Error::kBadArgument);
