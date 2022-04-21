@@ -12,6 +12,21 @@
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #if USE_TPM2
+
+// Prevent the conflict definition from tss.h
+#pragma push_macro("TPM_ALG_RSA")
+#undef TPM_ALG_RSA
+#pragma push_macro("TPM_ALG_SHA")
+#undef TPM_ALG_SHA
+#pragma push_macro("TPM_ALG_HMAC")
+#undef TPM_ALG_HMAC
+#pragma push_macro("TPM_ALG_AES")
+#undef TPM_ALG_AES
+#pragma push_macro("TPM_ALG_MGF1")
+#undef TPM_ALG_MGF1
+#pragma push_macro("TPM_ALG_XOR")
+#undef TPM_ALG_XOR
+
 #include <trunks/mock_authorization_delegate.h>
 #include <trunks/mock_blob_parser.h>
 #include <trunks/mock_command_transceiver.h>
@@ -22,6 +37,15 @@
 #include <trunks/mock_tpm_state.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/trunks_factory_for_test.h>
+
+// Restore the definitions
+#pragma pop_macro("TPM_ALG_RSA")
+#pragma pop_macro("TPM_ALG_SHA")
+#pragma pop_macro("TPM_ALG_HMAC")
+#pragma pop_macro("TPM_ALG_AES")
+#pragma pop_macro("TPM_ALG_MGF1")
+#pragma pop_macro("TPM_ALG_XOR")
+
 #endif
 
 #if USE_TPM1

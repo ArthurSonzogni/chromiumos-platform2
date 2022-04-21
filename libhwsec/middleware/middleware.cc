@@ -10,6 +10,14 @@
 #include "libhwsec/proxy/proxy_impl.h"
 #include "libhwsec/status.h"
 
+#if USE_TPM2
+#include "libhwsec/backend/tpm2/backend.h"
+#endif
+
+#if USE_TPM1
+#include "libhwsec/backend/tpm1/backend.h"
+#endif
+
 namespace {
 constexpr char kThreadName[] = "libhwsec_thread";
 }  // namespace
@@ -88,6 +96,24 @@ void MiddlewareOwner::InitBackend(std::unique_ptr<Backend> custom_backend) {
   }
 
   TPM_SELECT_BEGIN;
+  TPM1_SECTION({
+    auto proxy = std::make_unique<ProxyImpl>();
+    if (!proxy->Init()) {
+      LOG(ERROR) << "Failed to init hwsec proxy";
+      return;
+    }
+    proxy_ = std::move(proxy);
+    backend_ = std::make_unique<BackendTpm1>(*proxy_, Derive());
+  });
+  TPM2_SECTION({
+    auto proxy = std::make_unique<ProxyImpl>();
+    if (!proxy->Init()) {
+      LOG(ERROR) << "Failed to init hwsec proxy";
+      return;
+    }
+    proxy_ = std::move(proxy);
+    backend_ = std::make_unique<BackendTpm2>(*proxy_, Derive());
+  });
   OTHER_TPM_SECTION({
     LOG(ERROR) << "Calling on unsupported TPM platform.";
     return;

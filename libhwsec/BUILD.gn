@@ -131,10 +131,12 @@ source_set("hardware_abstraction_library") {
   ]
 
   if (use.tpm) {
+    sources += [ "backend/tpm1/backend.cc" ]
     libs += [ "tspi" ]
   }
 
   if (use.tpm2) {
+    sources += [ "backend/tpm2/backend.cc" ]
     libs += [ "trunks" ]
   }
 }
@@ -202,6 +204,7 @@ if (use.test) {
     ]
     if (use.tpm) {
       sources += [
+        "backend/tpm1/backend_test.cc",
         "error/tpm1_error_test.cc",
         "overalls/overalls_api_test.cc",
         "overalls/overalls_singleton_test.cc",
