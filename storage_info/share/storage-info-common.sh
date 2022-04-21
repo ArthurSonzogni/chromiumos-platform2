@@ -59,6 +59,17 @@ UFS_DIR_NAME_7="power"
 UFS_DIR_NAME_8=""
 UFS_DIR_NAME_MAX=8
 
+# exapnd_var - evaluates a variable represented by a string
+#
+# inputs:
+#   variable name
+#
+# outputs:
+#   output of variable's evaluation
+expand_var() {
+  eval "echo \"\${$1}\""
+}
+
 # get_ssd_model - Return the model name of an ATA device.
 #
 # inputs:
@@ -107,10 +118,10 @@ is_ssd_ignorelist() {
   local version_ignorelist
   local i
 
-  for i in $(seq 0 ${IGNORELIST_MAX}); do
-    eval model_ignorelist=\${MODEL_IGNORELIST_${i}}
+  for i in $(seq 0 "${IGNORELIST_MAX}"); do
+    model_ignorelist=$(expand_var "MODEL_IGNORELIST_${i}")
     if is_ignorelist "${model}" "${model_ignorelist}"; then
-      eval version_ignorelist=\${VERSION_IGNORELIST_${i}}
+      version_ignorelist=$(expand_var "VERSION_IGNORELIST_${i}")
       if is_ignorelist "${version}" "${version_ignorelist}"; then
         return 0
       fi
@@ -140,9 +151,8 @@ print_ssd_info() {
     SSD_CMD_1=${SSD_CMD_1_NORMAL}
   fi
 
-  for i in $(seq 0 ${SSD_CMD_MAX}); do
-    # Use eval for variable indirection.
-    eval ssd_cmd=\${SSD_CMD_${i}}
+  for i in $(seq 0 "${SSD_CMD_MAX}"); do
+    ssd_cmd=$(expand_var "SSD_CMD_${i}")
     echo "$ ${ssd_cmd} /dev/$1"
     ${ssd_cmd} "/dev/$1"
     echo ""
@@ -159,8 +169,8 @@ print_mmc_info() {
   local mmc_result
   local i
 
-  for i in $(seq 0 ${MMC_NAME_MAX}); do
-    eval mmc_name=\${MMC_NAME_${i}}
+  for i in $(seq 0 "${MMC_NAME_MAX}"); do
+    mmc_name=$(expand_var "MMC_NAME_${i}")
     mmc_path="/sys/block/$1/device/${mmc_name}"
     mmc_result="$(cat "${mmc_path}" 2>/dev/null)"
     printf "%-20s | %s\n" "${mmc_name}" "${mmc_result}"
@@ -178,9 +188,8 @@ print_nvme_info() {
   local mvme_dev="/dev/$1"
   local i
 
-  for i in $(seq 0 ${NVME_CMD_MAX}); do
-    # Use eval for variable indirection.
-    eval nvme_cmd=\${NVME_CMD_${i}}
+  for i in $(seq 0 "${NVME_CMD_MAX}"); do
+    nvme_cmd=$(expand_var "NVME_CMD_${i}")
     echo "$ ${nvme_cmd} ${mvme_dev}"
     ${nvme_cmd} "${mvme_dev}"
     echo ""
@@ -214,8 +223,8 @@ print_ufs_info() {
   done
 
   echo "/sys/block/$1"
-  for i in $(seq 0 ${UFS_DIR_NAME_MAX}); do
-    eval ufs_name=\${UFS_DIR_NAME_${i}}
+  for i in $(seq 0 "${UFS_DIR_NAME_MAX}"); do
+    ufs_name=$(expand_var "UFS_DIR_NAME_${i}")
     ufs_path="${ufs_dir}/${ufs_name}"
     echo "${ufs_path}"
     find "${ufs_path}" -maxdepth 1 -type f -not -name uevent \
