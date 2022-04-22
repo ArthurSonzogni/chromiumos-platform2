@@ -58,7 +58,7 @@ void DBusAdaptor::SetTestingMode(bool enable_testing) {
   }
 }
 
-RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServicePath) {}
+RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServiceName) {}
 
 void RgbkbdDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
