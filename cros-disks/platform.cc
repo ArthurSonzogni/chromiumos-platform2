@@ -135,7 +135,7 @@ int Platform::ReadFile(const std::string& file, char* data, int size) const {
 
 std::string Platform::GetDirectoryFallbackName(const std::string& path,
                                                unsigned suffix) const {
-  if (!path.empty() && base::IsAsciiDigit(path[path.size() - 1]))
+  if (!path.empty() && base::IsAsciiDigit(path.back()))
     return base::StringPrintf("%s (%u)", path.c_str(), suffix);
 
   return base::StringPrintf("%s %u", path.c_str(), suffix);
