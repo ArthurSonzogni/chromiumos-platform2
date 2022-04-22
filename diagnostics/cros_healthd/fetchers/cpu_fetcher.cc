@@ -142,30 +142,6 @@ bool ReadTemperatureSensorInfo(
   return has_data;
 }
 
-// Fetches and returns information about the device's CPU temperature channels.
-std::vector<mojo_ipc::CpuTemperatureChannelPtr> GetCpuTemperatures(
-    const base::FilePath& root_dir) {
-  std::vector<mojo_ipc::CpuTemperatureChannelPtr> temps;
-  // Get directories /sys/class/hwmon/hwmon*
-  base::FileEnumerator hwmon_enumerator(root_dir.AppendASCII(kHwmonDir), false,
-                                        base::FileEnumerator::DIRECTORIES,
-                                        kHwmonDirectoryPattern);
-  for (base::FilePath hwmon_path = hwmon_enumerator.Next(); !hwmon_path.empty();
-       hwmon_path = hwmon_enumerator.Next()) {
-    // Get temp*_input files in hwmon*/ and hwmon*/device/
-    base::FilePath device_path = hwmon_path.Append(kDeviceDir);
-    if (base::PathExists(device_path)) {
-      // We might have hwmon*/device/, but sensor values are still in hwmon*/
-      if (!ReadTemperatureSensorInfo(device_path, &temps)) {
-        ReadTemperatureSensorInfo(hwmon_path, &temps);
-      }
-    } else {
-      ReadTemperatureSensorInfo(hwmon_path, &temps);
-    }
-  }
-  return temps;
-}
-
 // Gets the time spent in each C-state for the logical processor whose ID is
 // |logical_id|. Returns std::nullopt if a required sysfs node was not found.
 std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
@@ -571,6 +547,32 @@ bool CpuFetcher::FetchKeylockerInfo() {
   return true;
 }
 
+// Fetches and returns information about the device's CPU temperature channels.
+bool CpuFetcher::FetchCpuTemperatures() {
+  base::FilePath root_dir = context_->root_dir();
+
+  std::vector<mojo_ipc::CpuTemperatureChannelPtr> temps;
+  // Get directories |/sys/class/hwmon/hwmon*|
+  base::FileEnumerator hwmon_enumerator(root_dir.AppendASCII(kHwmonDir), false,
+                                        base::FileEnumerator::DIRECTORIES,
+                                        kHwmonDirectoryPattern);
+  for (base::FilePath hwmon_path = hwmon_enumerator.Next(); !hwmon_path.empty();
+       hwmon_path = hwmon_enumerator.Next()) {
+    // First try to get |temp*_input| files from |hwmon*/device/|. If the values
+    // cannot be read, fallback to |hwmon*/| instead.
+    base::FilePath device_path = hwmon_path.Append(kDeviceDir);
+    if (base::PathExists(device_path) &&
+        ReadTemperatureSensorInfo(device_path, &temps)) {
+      continue;
+    }
+    ReadTemperatureSensorInfo(hwmon_path, &temps);
+  }
+
+  cpu_info_->temperature_channels = std::move(temps);
+
+  return true;
+}
+
 mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   base::FilePath root_dir = context_->root_dir();
 
@@ -686,9 +688,6 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
 
   // Populate the final CpuInfo struct.
   mojo_ipc::CpuInfo cpu_info;
-
-  for (const auto& temperature : GetCpuTemperatures(root_dir))
-    cpu_info.temperature_channels.push_back(temperature.Clone());
 
   for (auto& key_value : physical_cpus) {
     cpu_info.physical_cpus.push_back(key_value.second.Clone());
@@ -869,7 +868,7 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
   cpu_info_ = std::move(cpu_result->get_cpu_info());
 
   if (!FetchNumTotalThreads() || !FetchArchitecture() ||
-      !FetchKeylockerInfo()) {
+      !FetchKeylockerInfo() || !FetchCpuTemperatures()) {
     DCHECK(!error_.is_null());
     return;
   }
