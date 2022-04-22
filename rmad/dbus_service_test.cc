@@ -40,13 +40,14 @@ class DBusServiceTest : public testing::Test {
     mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     dbus::ObjectPath path(kRmadServicePath);
     mock_exported_object_ =
-        base::MakeRefCounted<NiceMock<dbus::MockExportedObject>>(
+        base::MakeRefCounted<StrictMock<dbus::MockExportedObject>>(
             mock_bus_.get(), path);
     ON_CALL(*mock_bus_, GetExportedObject(path))
         .WillByDefault(Return(mock_exported_object_.get()));
+    EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
+        .WillRepeatedly(Return());
+    EXPECT_CALL(*mock_exported_object_, Unregister()).WillRepeatedly(Return());
 
-    EXPECT_CALL(mock_rmad_service_, GetCurrentStateCase())
-        .WillRepeatedly(Return(RmadState::STATE_NOT_SET));
     EXPECT_CALL(mock_rmad_service_, RegisterRequestQuitDaemonCallback(
                                         A<base::RepeatingCallback<void()>>()))
         .WillRepeatedly(Return());
@@ -312,19 +313,11 @@ TEST_F(DBusServiceTest, GetCurrentState_Success) {
 
 TEST_F(DBusServiceTest, GetCurrentState_InterfaceSetUpFailed) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, false);
-  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
-        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
-        EXPECT_EQ(signal->GetMember(), "Error");
-        dbus::MessageReader reader(signal);
-        int error;
-        EXPECT_TRUE(brillo::dbus_utils::DBusType<int>::Read(&reader, &error));
-        EXPECT_EQ(static_cast<RmadErrorCode>(error),
-                  RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
-      }));
 
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED, reply.error());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
 }
 
 TEST_F(DBusServiceTest, TransitionNextState) {
@@ -413,7 +406,7 @@ TEST_F(DBusServiceTest, SaveLog) {
 TEST_F(DBusServiceTest, SignalError) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "Error");
         dbus::MessageReader reader(signal);
@@ -427,7 +420,7 @@ TEST_F(DBusServiceTest, SignalError) {
 TEST_F(DBusServiceTest, SignalHardwareVerification) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "HardwareVerificationResult");
         dbus::MessageReader reader(signal);
@@ -445,7 +438,7 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
 TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "UpdateRoFirmwareStatus");
         dbus::MessageReader reader(signal);
@@ -459,7 +452,7 @@ TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
 TEST_F(DBusServiceTest, SignalCalibrationOverall) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "CalibrationOverall");
         dbus::MessageReader reader(signal);
@@ -474,7 +467,7 @@ TEST_F(DBusServiceTest, SignalCalibrationOverall) {
 TEST_F(DBusServiceTest, SignalCalibrationComponent) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "CalibrationProgress");
         dbus::MessageReader reader(signal);
@@ -498,7 +491,7 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
 TEST_F(DBusServiceTest, SignalProvision) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "ProvisioningProgress");
         dbus::MessageReader reader(signal);
@@ -517,7 +510,7 @@ TEST_F(DBusServiceTest, SignalProvision) {
 TEST_F(DBusServiceTest, SignalFinalize) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "FinalizeProgress");
         dbus::MessageReader reader(signal);
@@ -536,7 +529,7 @@ TEST_F(DBusServiceTest, SignalFinalize) {
 TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "HardwareWriteProtectionState");
         dbus::MessageReader reader(signal);
@@ -550,7 +543,7 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
 TEST_F(DBusServiceTest, SignalPowerCableState) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
-      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+      .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "PowerCableState");
         dbus::MessageReader reader(signal);

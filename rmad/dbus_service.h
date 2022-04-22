@@ -58,7 +58,7 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   ~DBusService() override = default;
 
-  void SendErrorSignal(RmadErrorCode error);
+  void SendErrorSignal(RmadErrorCode error);  // This is currently not used.
   void SendHardwareVerificationResultSignal(
       const HardwareVerificationResult& result);
   void SendUpdateRoFirmwareStatusSignal(UpdateRoFirmwareStatus status);
@@ -90,50 +90,57 @@ class DBusService : public brillo::DBusServiceDaemon {
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
   // Template for handling D-Bus methods with a request.
-  template <typename RequestType, typename ReplyType>
+  template <typename RequestType, typename ReplyProtobufType>
   using HandlerFunction = void (RmadInterface::*)(
-      const RequestType&, base::OnceCallback<void(const ReplyType&)>);
+      const RequestType&, base::OnceCallback<void(const ReplyProtobufType&)>);
 
   template <typename RequestType,
-            typename ReplyType,
-            DBusService::HandlerFunction<RequestType, ReplyType> func>
+            typename ReplyProtobufType,
+            DBusService::HandlerFunction<RequestType, ReplyProtobufType> func>
   void DelegateToInterface(
-      std::unique_ptr<DBusMethodResponse<ReplyType>> response,
+      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response,
       const RequestType& request) {
     if (is_rma_required_ && !SetUpInterface()) {
-      SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      // Reply messages should always contain an error field.
+      ReplyProtobufType reply;
+      reply.set_error(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      SendReply(std::move(response), reply);
       return;
     }
     (rmad_interface_->*func)(
-        request, base::BindOnce(&DBusService::SendReply<ReplyType>,
+        request, base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
                                 base::Unretained(this), std::move(response)));
   }
 
   // Template for handling D-Bus methods without a request.
-  template <typename ReplyType>
-  using HandlerFunctionEmptyRequest =
-      void (RmadInterface::*)(base::OnceCallback<void(const ReplyType&)>);
+  template <typename ReplyProtobufType>
+  using HandlerFunctionEmptyRequest = void (RmadInterface::*)(
+      base::OnceCallback<void(const ReplyProtobufType&)>);
 
-  template <typename ReplyType,
-            DBusService::HandlerFunctionEmptyRequest<ReplyType> func>
+  template <typename ReplyProtobufType,
+            DBusService::HandlerFunctionEmptyRequest<ReplyProtobufType> func>
   void DelegateToInterface(
-      std::unique_ptr<DBusMethodResponse<ReplyType>> response) {
+      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response) {
     if (is_rma_required_ && !SetUpInterface()) {
-      SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      // Reply messages should always contain an error field.
+      ReplyProtobufType reply;
+      reply.set_error(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      SendReply(std::move(response), reply);
       return;
     }
-    (rmad_interface_->*func)(base::BindOnce(&DBusService::SendReply<ReplyType>,
-                                            base::Unretained(this),
-                                            std::move(response)));
+    (rmad_interface_->*func)(
+        base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
+                       base::Unretained(this), std::move(response)));
   }
 
   void HandleIsRmaRequiredMethod(
       std::unique_ptr<DBusMethodResponse<bool>> response);
 
   // Template for sending out the reply.
-  template <typename ReplyType>
-  void SendReply(std::unique_ptr<DBusMethodResponse<ReplyType>> response,
-                 const ReplyType& reply) {
+  template <typename ReplyProtobufType>
+  void SendReply(
+      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response,
+      const ReplyProtobufType& reply) {
     response->Return(reply);
 
     if (!is_rma_required_ || quit_requested_) {
