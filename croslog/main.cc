@@ -5,9 +5,11 @@
 #include <string>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/threading/platform_thread.h>
 
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
