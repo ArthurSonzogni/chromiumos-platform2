@@ -6,6 +6,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libec/ec_usb_endpoint.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/mock_ec_command_factory.h>
 
@@ -17,6 +18,7 @@ using ec::EcCommandFactoryInterface;
 using ec::EcCommandInterface;
 using ec::FpInfoCommand;
 using ec::FpMode;
+using testing::An;
 using testing::NiceMock;
 using testing::Return;
 
@@ -26,6 +28,7 @@ namespace {
 class MockEcCommandInterface : public EcCommandInterface {
  public:
   MOCK_METHOD(bool, Run, (int fd), (override));
+  MOCK_METHOD(bool, Run, (ec::EcUsbEndpointInterface & uep), (override));
   MOCK_METHOD(bool,
               RunWithMultipleAttempts,
               (int fd, int num_attempts),
@@ -51,7 +54,7 @@ class CrosFpDevice_ResetContext : public testing::Test {
         ec::CrosFpDeviceInterface* cros_fp,
         const std::string& user_id) override {
       auto cmd = std::make_unique<MockEcCommandInterface>();
-      EXPECT_CALL(*cmd, Run).WillOnce(testing::Return(true));
+      EXPECT_CALL(*cmd, Run(An<int>())).WillOnce(testing::Return(true));
       return cmd;
     }
   };
@@ -110,7 +113,7 @@ class CrosFpDevice_SetContext : public testing::Test {
         ec::CrosFpDeviceInterface* cros_fp,
         const std::string& user_id) override {
       auto cmd = std::make_unique<MockEcCommandInterface>();
-      EXPECT_CALL(*cmd, Run).WillOnce(testing::Return(true));
+      EXPECT_CALL(*cmd, Run(An<int>())).WillOnce(testing::Return(true));
       return cmd;
     }
   };
