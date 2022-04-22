@@ -365,8 +365,8 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
       text->AddLineAndPushOffsetTo("MOCK_METHOD1(InitializeProperties,", 1,
                                    '(');
       text->AddLine(
-          StringPrintf("void(base::OnceCallback<void(%sInterface*, "
-                       "const std::string&)>));",
+          StringPrintf("void(const base::RepeatingCallback<void(%sInterface*, "
+                       "const std::string&)>&));",
                        proxy_name.c_str()));
       text->PopOffset();
     } else {
