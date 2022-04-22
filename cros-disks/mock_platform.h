@@ -69,6 +69,10 @@ class MockPlatform : public Platform {
               GetOwnership,
               (const std::string&, uid_t*, gid_t*),
               (const, override));
+  MOCK_METHOD(bool,
+              CleanUpStaleMountPoints,
+              (const std::string&),
+              (const, override));
 };
 
 }  // namespace cros_disks

@@ -4,9 +4,11 @@
 
 #include "cros-disks/platform.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <iomanip>
@@ -14,10 +16,10 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
@@ -293,6 +295,42 @@ MountErrorType Platform::Mount(const std::string& source_path,
     default:
       return MOUNT_ERROR_UNKNOWN;
   }
+}
+
+bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
+  // We cannot use base::FileEnumerator here because FileEnumerator tries to
+  // call `stat` on the found entries, and this fails if the entry is a FUSE
+  // mount point for which the FUSE daemon is already dead.
+  struct CloseDir {
+    void operator()(DIR* p) const { closedir(p); }
+  };
+
+  const std::unique_ptr<DIR, CloseDir> d(opendir(dir.c_str()));
+  if (!d) {
+    PLOG(ERROR) << "Cannot enumerate entries in " << quote(dir);
+  }
+
+  while (true) {
+    errno = 0;
+    const dirent* const entry = readdir(d.get());
+    if (!entry)
+      break;
+
+    const base::StringPiece name = entry->d_name;
+    if (name == "." || name == "..")
+      continue;
+
+    const base::FilePath subdir = base::FilePath(dir).Append(name);
+    Platform::Unmount(subdir.value(), MNT_FORCE | MNT_DETACH);
+    Platform::RemoveEmptyDirectory(subdir.value());
+  }
+
+  if (errno) {
+    PLOG(ERROR) << "Error while enumerating entries in " << quote(dir);
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace cros_disks

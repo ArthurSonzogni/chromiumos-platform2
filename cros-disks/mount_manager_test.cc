@@ -163,6 +163,7 @@ TEST_F(MountManagerTest, InitializeFailedInCreateDirectory) {
   EXPECT_CALL(platform_, SetOwnership(kMountRootDirectory, getuid(), getgid()))
       .Times(0);
   EXPECT_CALL(platform_, SetPermissions(kMountRootDirectory, _)).Times(0);
+  EXPECT_CALL(platform_, CleanUpStaleMountPoints(_)).Times(0);
 
   EXPECT_FALSE(manager_.Initialize());
 }
@@ -175,6 +176,7 @@ TEST_F(MountManagerTest, InitializeFailedInSetOwnership) {
   EXPECT_CALL(platform_, SetOwnership(kMountRootDirectory, getuid(), getgid()))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_, SetPermissions(kMountRootDirectory, _)).Times(0);
+  EXPECT_CALL(platform_, CleanUpStaleMountPoints(_)).Times(0);
 
   EXPECT_FALSE(manager_.Initialize());
 }
@@ -188,6 +190,22 @@ TEST_F(MountManagerTest, InitializeFailedInSetPermissions) {
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetPermissions(kMountRootDirectory, _))
       .WillOnce(Return(false));
+  EXPECT_CALL(platform_, CleanUpStaleMountPoints(_)).Times(0);
+
+  EXPECT_FALSE(manager_.Initialize());
+}
+
+// Verifies that MountManager::Initialize() returns false when it fails to
+// clean up stale mount points.
+TEST_F(MountManagerTest, InitializeFailedInCleanUp) {
+  EXPECT_CALL(platform_, CreateDirectory(kMountRootDirectory))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(kMountRootDirectory, getuid(), getgid()))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(kMountRootDirectory, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CleanUpStaleMountPoints(kMountRootDirectory))
+      .WillOnce(Return(false));
 
   EXPECT_FALSE(manager_.Initialize());
 }
@@ -200,6 +218,8 @@ TEST_F(MountManagerTest, InitializeSucceeded) {
   EXPECT_CALL(platform_, SetOwnership(kMountRootDirectory, getuid(), getgid()))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetPermissions(kMountRootDirectory, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CleanUpStaleMountPoints(kMountRootDirectory))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(manager_.Initialize());

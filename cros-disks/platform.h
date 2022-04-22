@@ -140,6 +140,9 @@ class Platform {
                                uint64_t flags,
                                const std::string& options) const;
 
+  // Unmounts and removes all the subdirectories of |dir|.
+  virtual bool CleanUpStaleMountPoints(const std::string& dir) const;
+
   gid_t mount_group_id() const { return mount_group_id_; }
 
   uid_t mount_user_id() const { return mount_user_id_; }

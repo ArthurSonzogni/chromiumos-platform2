@@ -65,7 +65,8 @@ bool MountManager::Initialize() {
   return platform_->CreateDirectory(mount_root_.value()) &&
          platform_->SetOwnership(mount_root_.value(), getuid(), getgid()) &&
          platform_->SetPermissions(mount_root_.value(),
-                                   kMountRootDirectoryPermissions);
+                                   kMountRootDirectoryPermissions) &&
+         platform_->CleanUpStaleMountPoints(mount_root_.value());
 }
 
 void MountManager::StartSession() {}
