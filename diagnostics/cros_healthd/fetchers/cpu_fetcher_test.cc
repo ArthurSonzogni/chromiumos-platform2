@@ -1046,7 +1046,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTControlFile) {
   auto cpu_result = FetchCpuInfo();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
 }
 
 // POD struct for ParseSmtControlTest.

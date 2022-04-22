@@ -406,58 +406,6 @@ std::optional<VulnerabilityInfoMap> GetVulnerabilities(
   }
   return VulnerabilityInfoMap(std::move(vulnerabilities_vec));
 }
-
-mojo_ipc::VirtualizationInfoPtr GetVirtualizationInfo(
-    const base::FilePath& root_dir) {
-  auto virtualization = mojo_ipc::VirtualizationInfo::New();
-
-  virtualization->has_kvm_device =
-      base::PathExists(root_dir.Append(kRelativeKvmFilePath));
-
-  base::FilePath smt_dir = root_dir.Append(kRelativeCpuDir).Append(kSmtDirName);
-  // If smt control directory does not exist, this means the linux kernel
-  // version does not support smt and we mark it as kNotImplemented.
-  if (!base::PathExists(smt_dir)) {
-    virtualization->is_smt_active = false;
-    virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented;
-    return virtualization;
-  }
-
-  base::FilePath smt_active_path = smt_dir.Append(kSmtActiveFileName);
-
-  uint32_t active;
-  if (!ReadInteger(smt_active_path, base::StringToUint, &active) || active > 1)
-    return nullptr;
-
-  virtualization->is_smt_active = active == 1;
-
-  std::string control;
-  base::FilePath smt_control_path = smt_dir.Append(kSmtControlFileName);
-
-  if (!ReadAndTrimString(smt_control_path, &control))
-    return nullptr;
-
-  if (control == kSmtControlOnContent) {
-    virtualization->smt_control = mojo_ipc::VirtualizationInfo::SMTControl::kOn;
-  } else if (control == kSmtControlOffContent) {
-    virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kOff;
-  } else if (control == kSmtControlForceOffContent) {
-    virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kForceOff;
-  } else if (control == kSmtControlNotSupportedContent) {
-    virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kNotSupported;
-  } else if (control == kSmtControlNotImplementedContent) {
-    virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented;
-  } else {
-    return nullptr;
-  }
-
-  return virtualization;
-}
 }  // namespace
 
 bool CpuFetcher::FetchNumTotalThreads() {
@@ -693,13 +641,6 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     cpu_info.physical_cpus.push_back(key_value.second.Clone());
   }
 
-  cpu_info.virtualization = GetVirtualizationInfo(root_dir);
-  if (cpu_info.virtualization.is_null()) {
-    return mojo_ipc::CpuResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                               "Unable to read Virtualization Information."));
-  }
-
   cpu_info.vulnerabilities = GetVulnerabilities(root_dir);
   if (!cpu_info.vulnerabilities.has_value()) {
     return mojo_ipc::CpuResult::NewError(
@@ -708,6 +649,68 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   }
 
   return mojo_ipc::CpuResult::NewCpuInfo(cpu_info.Clone());
+}
+
+bool CpuFetcher::FetchVirtualization() {
+  base::FilePath root_dir = context_->root_dir();
+
+  cpu_info_->virtualization = mojo_ipc::VirtualizationInfo::New();
+  cpu_info_->virtualization->has_kvm_device =
+      base::PathExists(root_dir.Append(kRelativeKvmFilePath));
+
+  base::FilePath smt_dir = root_dir.Append(kRelativeCpuDir).Append(kSmtDirName);
+  // If smt control directory does not exist, this means the linux kernel
+  // version does not support smt and we mark it as kNotImplemented.
+  if (!base::PathExists(smt_dir)) {
+    cpu_info_->virtualization->is_smt_active = false;
+    cpu_info_->virtualization->smt_control =
+        mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented;
+    return true;
+  }
+
+  base::FilePath smt_active_path = smt_dir.Append(kSmtActiveFileName);
+
+  uint32_t active;
+  if (!ReadInteger(smt_active_path, base::StringToUint, &active) ||
+      active > 1) {
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read smt active file.");
+    return false;
+  }
+
+  cpu_info_->virtualization->is_smt_active = active == 1;
+
+  std::string control;
+  base::FilePath smt_control_path = smt_dir.Append(kSmtControlFileName);
+
+  if (!ReadAndTrimString(smt_control_path, &control)) {
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read smt control file.");
+    return false;
+  }
+
+  if (control == kSmtControlOnContent) {
+    cpu_info_->virtualization->smt_control =
+        mojo_ipc::VirtualizationInfo::SMTControl::kOn;
+  } else if (control == kSmtControlOffContent) {
+    cpu_info_->virtualization->smt_control =
+        mojo_ipc::VirtualizationInfo::SMTControl::kOff;
+  } else if (control == kSmtControlForceOffContent) {
+    cpu_info_->virtualization->smt_control =
+        mojo_ipc::VirtualizationInfo::SMTControl::kForceOff;
+  } else if (control == kSmtControlNotSupportedContent) {
+    cpu_info_->virtualization->smt_control =
+        mojo_ipc::VirtualizationInfo::SMTControl::kNotSupported;
+  } else if (control == kSmtControlNotImplementedContent) {
+    cpu_info_->virtualization->smt_control =
+        mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented;
+  } else {
+    LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                   "Unable to parse smt control file.");
+    return false;
+  }
+
+  return true;
 }
 
 base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
@@ -868,7 +871,8 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
   cpu_info_ = std::move(cpu_result->get_cpu_info());
 
   if (!FetchNumTotalThreads() || !FetchArchitecture() ||
-      !FetchKeylockerInfo() || !FetchCpuTemperatures()) {
+      !FetchKeylockerInfo() || !FetchCpuTemperatures() ||
+      !FetchVirtualization()) {
     DCHECK(!error_.is_null());
     return;
   }
