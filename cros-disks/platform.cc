@@ -244,7 +244,8 @@ MountErrorType Platform::Unmount(const std::string& path, int flags) const {
               << std::hex << flags;
 
   switch (error) {
-    case ENOENT:
+    case EINVAL:  // |path| is not a mount point
+    case ENOENT:  // |path| has a nonexistent component
       return MOUNT_ERROR_PATH_NOT_MOUNTED;
     case EPERM:
       return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
