@@ -37,6 +37,22 @@ class BackendTpm1 : public Backend {
     Status Prepare() override;
   };
 
+  class ConfigTpm1 : public Config, public SubClassHelper<BackendTpm1> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<OperationPolicy> ToOperationPolicy(
+        const OperationPolicySetting& policy) override;
+    Status SetCurrentUser(const std::string& current_user) override;
+    StatusOr<QuoteResult> Quote(DeviceConfigs device_config, Key key) override;
+
+    using PcrMap = std::map<uint32_t, brillo::Blob>;
+    StatusOr<PcrMap> ToPcrMap(const DeviceConfigs& device_config);
+    StatusOr<PcrMap> ToSettingsPcrMap(const DeviceConfigSettings& settings);
+
+   private:
+    StatusOr<brillo::Blob> ReadPcr(uint32_t pcr_index);
+  };
+
   class RandomTpm1 : public Random, public SubClassHelper<BackendTpm1> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -80,7 +96,7 @@ class BackendTpm1 : public Backend {
   Signing* GetSigning() override { return nullptr; }
   KeyManagerment* GetKeyManagerment() override { return nullptr; }
   SessionManagerment* GetSessionManagerment() override { return nullptr; }
-  Config* GetConfig() override { return nullptr; }
+  Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return nullptr; }
   Vendor* GetVendor() override { return nullptr; }
@@ -90,6 +106,7 @@ class BackendTpm1 : public Backend {
   OverallsContext overall_context_;
 
   StateTpm1 state_{*this};
+  ConfigTpm1 config_{*this};
   RandomTpm1 random_{*this};
 
   MiddlewareDerivative middleware_derivative_;

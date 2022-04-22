@@ -35,6 +35,31 @@ class BackendTpm2 : public Backend {
     Status Prepare() override;
   };
 
+  class ConfigTpm2 : public Config, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<OperationPolicy> ToOperationPolicy(
+        const OperationPolicySetting& policy) override;
+    Status SetCurrentUser(const std::string& current_user) override;
+    StatusOr<QuoteResult> Quote(DeviceConfigs device_config, Key key) override;
+
+    using PcrMap = std::map<uint32_t, std::string>;
+    struct TrunksSession {
+      using InnerSession = std::variant<std::unique_ptr<trunks::HmacSession>,
+                                        std::unique_ptr<trunks::PolicySession>>;
+      InnerSession session;
+      trunks::AuthorizationDelegate* delegate;
+    };
+    StatusOr<PcrMap> ToPcrMap(const DeviceConfigs& device_config);
+    StatusOr<PcrMap> ToSettingsPcrMap(const DeviceConfigSettings& settings);
+    StatusOr<TrunksSession> GetTrunksSession(const OperationPolicy& policy,
+                                             bool salted = true,
+                                             bool enable_encryption = true);
+
+   private:
+    StatusOr<std::string> ReadPcr(uint32_t pcr_index);
+  };
+
   class RandomTpm2 : public Random, public SubClassHelper<BackendTpm2> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -71,7 +96,7 @@ class BackendTpm2 : public Backend {
   Signing* GetSigning() override { return nullptr; }
   KeyManagerment* GetKeyManagerment() override { return nullptr; }
   SessionManagerment* GetSessionManagerment() override { return nullptr; }
-  Config* GetConfig() override { return nullptr; }
+  Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return nullptr; }
   Vendor* GetVendor() override { return nullptr; }
@@ -81,6 +106,7 @@ class BackendTpm2 : public Backend {
   TrunksClientContext trunks_context_;
 
   StateTpm2 state_{*this};
+  ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
 
   MiddlewareDerivative middleware_derivative_;
