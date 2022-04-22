@@ -139,7 +139,8 @@ class MountManagerTest : public ::testing::Test {
 
   std::unique_ptr<MountPoint> MakeMountPoint(const std::string& mount_path) {
     return MountPoint::CreateUnmounted(
-        {.mount_path = base::FilePath(mount_path), .source = kSourcePath});
+        {.mount_path = base::FilePath(mount_path), .source = kSourcePath},
+        &platform_);
   }
 
   void OnMountCompleted(const std::string& path, MountErrorType error) {
@@ -899,7 +900,7 @@ TEST_F(MountManagerTest, UnmountRemovesFromCacheIfNotMounted) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
 
-  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, manager_.Unmount(mount_path_));
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Unmount(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -974,6 +975,9 @@ TEST_F(MountManagerTest, IsMountPathInCache) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
   manager_.AddMountStateCache(kSourcePath, MakeMountPoint(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
+
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
+      .WillOnce(Return(true));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
@@ -984,6 +988,9 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
 
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
   manager_.AddMountStateCache(kSourcePath, MakeMountPoint(mount_path_));
+
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
+      .WillOnce(Return(true));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
@@ -1088,7 +1095,7 @@ TEST_F(MountManagerTest, GetMountEntries) {
   EXPECT_EQ(kMountPath, mount_entries[0].mount_path);
 
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
-      .WillOnce(Return(false));
+      .WillOnce(Return(true));
 }
 
 // Verifies that MountManager::IsPathImmediateChildOfParent() correctly

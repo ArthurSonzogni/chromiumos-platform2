@@ -193,7 +193,7 @@ void MountManager::MountNewSource(const std::string& source,
     ReserveMountPath(mount_path, error);
     // Create dummy mount point to associate with the mount path.
     mount_point = MountPoint::CreateUnmounted(
-        {.mount_path = mount_path, .source = source});
+        {.mount_path = mount_path, .source = source}, platform_);
   }
 
   DCHECK(mount_point);
@@ -212,44 +212,34 @@ MountErrorType MountManager::Unmount(const std::string& path) {
   // Look for a matching mount point, either by source path or by mount path.
   MountPoint* const mount_point =
       FindMountBySource(path) ?: FindMountByMountPath(base::FilePath(path));
-  if (!mount_point)
+  if (!mount_point) {
+    LOG(ERROR) << "Cannot find mount point " << redact(path);
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
-
-  MountErrorType error = MOUNT_ERROR_NONE;
-  if (IsMountPathReserved(mount_point->path())) {
-    LOG(INFO) << "Removing mount path '" << mount_point->path()
-              << "' from the reserved list";
-    UnreserveMountPath(mount_point->path());
-    platform_->RemoveEmptyDirectory(mount_point->path().value());
-  } else {
-    error = mount_point->Unmount();
-    if (error && error != MOUNT_ERROR_PATH_NOT_MOUNTED)
-      return error;
   }
+
+  UnreserveMountPath(mount_point->path());
+
+  if (const MountErrorType error = mount_point->Unmount();
+      mount_point->is_mounted())
+    return error;
 
   const bool removed = RemoveMount(mount_point);
   DCHECK(removed);
-
-  return error;
+  return MOUNT_ERROR_NONE;
 }
 
 bool MountManager::UnmountAll() {
   bool all_umounted = true;
 
-  // Enumerate all the mount paths and then unmount, as calling Unmount()
-  // modifies the cache.
-
-  std::vector<std::string> paths;
-  paths.reserve(mount_states_.size());
   for (const auto& [source, mount_point] : mount_states_) {
-    paths.push_back(source);
+    DCHECK(mount_point);
+    mount_point->Unmount();
+    if (mount_point->is_mounted())
+      all_umounted = false;
   }
 
-  for (const auto& source : paths) {
-    if (Unmount(source) != MOUNT_ERROR_NONE) {
-      all_umounted = false;
-    }
-  }
+  mount_states_.clear();
+  reserved_mount_paths_.clear();
 
   return all_umounted;
 }
@@ -333,13 +323,18 @@ void MountManager::ReserveMountPath(base::FilePath mount_path,
                                     MountErrorType error) {
   const auto [it, ok] =
       reserved_mount_paths_.try_emplace(std::move(mount_path), error);
-  LOG_IF(WARNING, !ok && it->second != error)
-      << "Cannot update error associated to reserved mount path "
-      << redact(mount_path) << " from " << it->second << " to " << error;
+  if (ok) {
+    LOG(INFO) << "Reserved mount path " << quote(it->first);
+  } else if (it->second != error) {
+    LOG(WARNING) << "Cannot update error associated with reserved mount path "
+                 << redact(it->first) << " from " << it->second << " to "
+                 << error;
+  }
 }
 
 void MountManager::UnreserveMountPath(const base::FilePath& mount_path) {
-  reserved_mount_paths_.erase(mount_path);
+  if (reserved_mount_paths_.erase(mount_path))
+    LOG(INFO) << "Unreserved mount path " << quote(mount_path);
 }
 
 std::vector<MountEntry> MountManager::GetMountEntries() const {
