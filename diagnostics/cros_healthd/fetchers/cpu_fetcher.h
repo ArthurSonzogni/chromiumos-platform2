@@ -94,6 +94,11 @@ class CpuFetcher final
   // the same |architecture|.
   chromeos::cros_healthd::mojom::CpuResultPtr GetCpuInfoFromProcessorInfo();
 
+  // Reads and parses the total number of threads available on the device and
+  // store into |num_total_threads|. Returns true on success and false
+  // otherwise.
+  bool FetchNumTotalThreads();
+
   // Uses |context_| to obtain the CPU architecture.
   chromeos::cros_healthd::mojom::CpuArchitectureEnum GetArchitecture();
 

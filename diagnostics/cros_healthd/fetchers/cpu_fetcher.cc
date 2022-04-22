@@ -191,42 +191,6 @@ std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
   return c_states;
 }
 
-// Reads and parses the total number of threads available on the device. Returns
-// an error if encountered, otherwise returns std::nullopt and populates
-// |num_total_threads|.
-std::optional<mojo_ipc::ProbeErrorPtr> GetNumTotalThreads(
-    const base::FilePath& root_dir, uint32_t* num_total_threads) {
-  DCHECK(num_total_threads);
-
-  std::string cpu_present;
-  auto cpu_dir = root_dir.Append(kRelativeCpuDir);
-  if (!ReadAndTrimString(cpu_dir, kPresentFileName, &cpu_present)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                                  "Unable to read CPU present file: " +
-                                      cpu_dir.Append(kPresentFileName).value());
-  }
-
-  // Two strings will be parsed directly from the regex, then converted to
-  // uint32_t's. Expect |cpu_present| to contain the pattern "%d-%d", where the
-  // first integer is strictly smaller than the second.
-  std::string low_thread_num;
-  std::string high_thread_num;
-  uint32_t low_thread_int;
-  uint32_t high_thread_int;
-  if (!RE2::FullMatch(cpu_present, kPresentFileRegex, &low_thread_num,
-                      &high_thread_num) ||
-      !base::StringToUint(low_thread_num, &low_thread_int) ||
-      !base::StringToUint(high_thread_num, &high_thread_int)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
-        "Unable to parse CPU present file: " + cpu_present);
-  }
-
-  DCHECK_GT(high_thread_int, low_thread_int);
-  *num_total_threads = high_thread_int - low_thread_int + 1;
-  return std::nullopt;
-}
-
 // Parses the contents of /proc/stat into a map of logical IDs to
 // ParsedStatContents. Returns std::nullopt if an error was encountered while
 // parsing.
@@ -547,6 +511,41 @@ mojo_ipc::VirtualizationInfoPtr GetVirtualizationInfo(
 }
 }  // namespace
 
+bool CpuFetcher::FetchNumTotalThreads() {
+  base::FilePath root_dir = context_->root_dir();
+
+  std::string cpu_present;
+  auto cpu_dir = root_dir.Append(kRelativeCpuDir);
+  if (!ReadAndTrimString(cpu_dir, kPresentFileName, &cpu_present)) {
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read CPU present file: " +
+                       cpu_dir.Append(kPresentFileName).value());
+    return false;
+  }
+
+  // Two strings will be parsed directly from the regex, then converted to
+  // uint32_t's. Expect |cpu_present| to contain the pattern "%d-%d", where the
+  // first integer is strictly smaller than the second.
+  std::string low_thread_num;
+  std::string high_thread_num;
+  uint32_t low_thread_int;
+  uint32_t high_thread_int;
+  if (!RE2::FullMatch(cpu_present, kPresentFileRegex, &low_thread_num,
+                      &high_thread_num) ||
+      !base::StringToUint(low_thread_num, &low_thread_int) ||
+      !base::StringToUint(high_thread_num, &high_thread_int)) {
+    LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                   "Unable to parse CPU present file: " + cpu_present);
+    return false;
+  }
+
+  DCHECK_GT(high_thread_int, low_thread_int);
+
+  cpu_info_->num_total_threads = high_thread_int - low_thread_int + 1;
+
+  return true;
+}
+
 mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   base::FilePath root_dir = context_->root_dir();
 
@@ -662,10 +661,6 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
 
   // Populate the final CpuInfo struct.
   mojo_ipc::CpuInfo cpu_info;
-  auto thread_error = GetNumTotalThreads(root_dir, &cpu_info.num_total_threads);
-  if (thread_error != std::nullopt) {
-    return mojo_ipc::CpuResult::NewError(std::move(thread_error.value()));
-  }
 
   cpu_info.architecture = GetArchitecture();
   auto& keylocker_info = cpu_info.keylocker_info;
@@ -853,6 +848,11 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
     return;
   }
   cpu_info_ = std::move(cpu_result->get_cpu_info());
+
+  if (!FetchNumTotalThreads()) {
+    DCHECK(!error_.is_null());
+    return;
+  }
 
   FetchPhysicalCpusVirtualizationInfo(barrier);
   return;
