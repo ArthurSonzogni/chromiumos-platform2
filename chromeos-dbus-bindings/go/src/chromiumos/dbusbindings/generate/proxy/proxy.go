@@ -153,7 +153,7 @@ namespace {{.}} {
 {{- $proxyName := makeProxyName .Name -}}
 class {{$proxyName}} final : public {{$itfName}} {
  public:
-{{- if .Properties }}
+{{- if or $.ObjectManagerName .Properties }}
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -173,7 +173,41 @@ class {{$proxyName}} final : public {{$itfName}} {
 
   };
 {{- end}}
-{{- /* TODO(crbug.com/983008): Add constructor */}}
+
+{{- /* TODO(crbug.com/983008): Simplify the format into Chromium style. */ -}}
+{{- if and $.ServiceName $introspect.Name (or (not $.ObjectManagerName) (not .Properties))}}
+  {{$proxyName}}(const scoped_refptr<dbus::Bus>& bus) :
+      bus_{bus},
+      dbus_object_proxy_{
+           bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+{{- else}}
+  {{$proxyName}}(
+      const scoped_refptr<dbus::Bus>& bus
+{{- if not $.ServiceName}},
+      const std::string& service_name
+{{- end}}
+{{- if not $introspect.Name}},
+      const dbus::ObjectPath& object_path
+{{- end}}
+{{- if and $.ObjectManagerName .Properties}},
+      PropertySet property_set
+{{- end}}) :
+          bus_{bus},
+{{- if not $.ServiceName}}
+          service_name_{service_name},
+{{- end}}
+{{- if not $introspect.Name}}
+          object_path_{object_path},
+{{- end}}
+{{- if and $.ObjectManagerName .Properties}}
+          property_set_{property_set},
+{{- end}}
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+{{- end}}
+
   {{$proxyName}}(const {{$proxyName}}&) = delete;
   {{$proxyName}}& operator=(const {{$proxyName}}&) = delete;
 

@@ -210,6 +210,17 @@ class InterfaceProxy final : public InterfaceProxyInterface {
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
 
   };
+  InterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      PropertySet property_set) :
+          bus_{bus},
+          service_name_{service_name},
+          property_set_{property_set},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   InterfaceProxy(const InterfaceProxy&) = delete;
   InterfaceProxy& operator=(const InterfaceProxy&) = delete;
 
@@ -349,6 +360,30 @@ class EmptyInterfaceProxyInterface {
 // Interface proxy for EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "EmptyInterface",
+                            callback} {
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+
+
+  };
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -443,6 +478,17 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -540,6 +586,15 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -636,6 +691,15 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name) :
+          bus_{bus},
+          service_name_{service_name},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -865,6 +929,17 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -1200,6 +1275,17 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -1360,6 +1446,17 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     brillo::dbus_utils::Property<brillo::VariantDictionary> writable_property;
 
   };
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -1488,6 +1585,30 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "test.EmptyInterface",
+                            callback} {
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+
+
+  };
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
@@ -1620,6 +1741,19 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
 
   };
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const dbus::ObjectPath& object_path,
+      PropertySet property_set) :
+          bus_{bus},
+          service_name_{service_name},
+          object_path_{object_path},
+          property_set_{property_set},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
   EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
   EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
 
