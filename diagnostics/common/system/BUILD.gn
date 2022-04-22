@@ -17,8 +17,6 @@ pkg_config("libsystem_common_pkg_deps") {
 source_set("libsystem") {
   configs += [ ":libsystem_common_pkg_deps" ]
   sources = [
-    "bluetooth_client.cc",
-    "bluetooth_client_impl.cc",
     "debugd_adapter_impl.cc",
     "powerd_adapter_impl.cc",
   ]
@@ -36,7 +34,6 @@ if (use.test || use.fuzzer) {
     ]
     deps = [ ":libsystem" ]
     sources = [
-      "fake_bluetooth_client.cc",
       "fake_powerd_adapter.cc",
       "mock_debugd_adapter.cc",
     ]
