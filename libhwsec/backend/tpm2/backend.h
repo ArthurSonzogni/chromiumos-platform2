@@ -20,6 +20,7 @@
 #include <trunks/trunks_factory.h>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/tpm2/key_managerment.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy.h"
 
@@ -33,6 +34,55 @@ class BackendTpm2 : public Backend {
     StatusOr<bool> IsEnabled() override;
     StatusOr<bool> IsReady() override;
     Status Prepare() override;
+  };
+
+  class KeyManagermentTpm2 : public KeyManagerment,
+                             public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    ~KeyManagermentTpm2();
+
+    StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
+    StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
+                                        KeyAlgoType key_algo,
+                                        CreateKeyOptions options) override;
+    StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
+                                const brillo::Blob& key_blob) override;
+    StatusOr<CreateKeyResult> CreateAutoReloadKey(
+        const OperationPolicySetting& policy,
+        KeyAlgoType key_algo,
+        CreateKeyOptions options) override;
+    StatusOr<ScopedKey> LoadAutoReloadKey(
+        const OperationPolicy& policy, const brillo::Blob& key_blob) override;
+    StatusOr<ScopedKey> GetPersistentKey(PersistentKeyType key_type) override;
+    StatusOr<brillo::Blob> GetPubkeyHash(Key key) override;
+    Status Flush(Key key) override;
+    Status ReloadIfPossible(Key key) override;
+
+    StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) override;
+    StatusOr<uint32_t> GetKeyHandle(Key key) override;
+
+    StatusOr<std::reference_wrapper<KeyTpm2>> GetKeyData(Key key);
+
+   private:
+    StatusOr<CreateKeyResult> CreateRsaKey(const OperationPolicySetting& policy,
+                                           const CreateKeyOptions& options,
+                                           bool auto_reload);
+    StatusOr<CreateKeyResult> CreateSoftwareGenRsaKey(
+        const OperationPolicySetting& policy,
+        const CreateKeyOptions& options,
+        bool auto_reload);
+    StatusOr<CreateKeyResult> CreateEccKey(const OperationPolicySetting& policy,
+                                           const CreateKeyOptions& options,
+                                           bool auto_reload);
+    StatusOr<ScopedKey> LoadKeyInternal(
+        KeyTpm2::Type key_type,
+        uint32_t key_handle,
+        std::optional<KeyReloadDataTpm2> reload_data);
+
+    KeyToken current_token_ = 0;
+    absl::flat_hash_map<KeyToken, KeyTpm2> key_map_;
+    absl::flat_hash_map<PersistentKeyType, KeyToken> persistent_key_map_;
   };
 
   class ConfigTpm2 : public Config, public SubClassHelper<BackendTpm2> {
@@ -94,7 +144,7 @@ class BackendTpm2 : public Backend {
   Deriving* GetDeriving() override { return nullptr; }
   Encryption* GetEncryption() override { return nullptr; }
   Signing* GetSigning() override { return nullptr; }
-  KeyManagerment* GetKeyManagerment() override { return nullptr; }
+  KeyManagerment* GetKeyManagerment() override { return &key_managerment_; }
   SessionManagerment* GetSessionManagerment() override { return nullptr; }
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
@@ -106,6 +156,7 @@ class BackendTpm2 : public Backend {
   TrunksClientContext trunks_context_;
 
   StateTpm2 state_{*this};
+  KeyManagermentTpm2 key_managerment_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
 
