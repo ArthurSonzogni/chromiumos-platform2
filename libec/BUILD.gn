@@ -21,6 +21,7 @@ group("all") {
 default_pkg_deps = [
   "libbrillo",
   "libchrome",
+  "libusb-1.0",
 ]
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
@@ -30,6 +31,7 @@ libec_sources = [
   "device_event_command.cc",
   "display_soc_command.cc",
   "ec_command_factory.cc",
+  "ec_usb_endpoint.cc",
   "fingerprint/fp_context_command.cc",
   "fingerprint/fp_context_command_factory.cc",
   "fingerprint/fp_flashprotect_command.cc",
@@ -109,6 +111,7 @@ if (use.test) {
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
       "ec_command_test.cc",
+      "ec_usb_endpoint_test.cc",
       "fingerprint/fp_context_command_factory_test.cc",
       "fingerprint/fp_context_command_test.cc",
       "fingerprint/fp_flashprotect_command_test.cc",
@@ -152,7 +155,10 @@ generate_pkg_config("libec_pc") {
 
   # ec_command.h uses base/logging.h (and is a header-only class), so we need
   # a direct dependency on libchrome.
-  requires = [ "libchrome" ]
+  requires = [
+    "libchrome",
+    "libusb-1.0",
+  ]
   requires_private = default_pkg_deps
   libs = [ "-lec" ]
   install = true
