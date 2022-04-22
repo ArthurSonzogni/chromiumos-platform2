@@ -36,6 +36,7 @@ namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
+using PhysicalCpuMap = std::map<int, mojo_ipc::PhysicalCpuInfoPtr>;
 using VulnerabilityInfoMap =
     base::flat_map<std::string, mojo_ipc::VulnerabilityInfoPtr>;
 
@@ -494,31 +495,31 @@ bool CpuFetcher::FetchCpuTemperatures() {
   return true;
 }
 
-mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
+bool CpuFetcher::FetchPhysicalCpus() {
   base::FilePath root_dir = context_->root_dir();
 
   std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
       GetParsedStatContents(root_dir);
   if (parsed_stat_contents == std::nullopt) {
-    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
+    LogAndSetError(
         mojo_ipc::ErrorType::kParseError,
-        "Unable to parse stat file: " + GetProcStatPath(root_dir).value()));
+        "Unable to parse stat file: " + GetProcStatPath(root_dir).value());
+    return false;
   }
-
   std::map<int, ParsedStatContents> logical_ids_to_stat_contents =
       parsed_stat_contents.value();
 
   std::optional<std::vector<std::string>> processor_info_opt =
       GetProcCpuInfoContent(root_dir);
   if (processor_info_opt == std::nullopt) {
-    return mojo_ipc::CpuResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                               "Unable to read CPU info file: " +
-                                   GetProcCpuInfoPath(root_dir).value()));
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read CPU info file: " +
+                       GetProcCpuInfoPath(root_dir).value());
+    return false;
   }
   const std::vector<std::string>& processor_info = processor_info_opt.value();
 
-  std::map<int, mojo_ipc::PhysicalCpuInfoPtr> physical_cpus;
+  PhysicalCpuMap physical_cpus;
   for (const auto& processor : processor_info) {
     if (!IsProcessorBlock(processor))
       continue;
@@ -529,9 +530,9 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     std::vector<std::string> cpu_flags;
     if (!ParseProcessor(processor, processor_id, physical_id, model_name,
                         cpu_flags)) {
-      return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kParseError,
-          "Unable to parse processor string: " + processor));
+      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                     "Unable to parse processor string: " + processor);
+      return false;
     }
 
     // Find the physical CPU corresponding to this logical CPU, if it already
@@ -561,10 +562,10 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     const auto parsed_stat_itr =
         logical_ids_to_stat_contents.find(processor_id);
     if (parsed_stat_itr == logical_ids_to_stat_contents.end()) {
-      return mojo_ipc::CpuResult::NewError(
-          CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                 "No parsed stat contents for logical ID: " +
-                                     std::to_string(processor_id)));
+      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                     "No parsed stat contents for logical ID: " +
+                         std::to_string(processor_id));
+      return false;
     }
     logical_cpu.user_time_user_hz = parsed_stat_itr->second.user_time_user_hz;
     logical_cpu.system_time_user_hz =
@@ -573,48 +574,47 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
 
     auto c_states = GetCStates(root_dir, processor_id);
     if (c_states == std::nullopt) {
-      return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kFileReadError, "Unable to read C States."));
+      LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                     "Unable to read C States.");
+      return false;
     }
     logical_cpu.c_states = std::move(c_states.value());
 
     auto cpufreq_dir = GetCpuFreqDirectoryPath(root_dir, processor_id);
     if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFileName, &base::StringToUint,
                      &logical_cpu.max_clock_speed_khz)) {
-      return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kFileReadError,
-          "Unable to read max CPU frequency file to integer: " +
-              cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value()));
+      LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                     "Unable to read max CPU frequency file to integer: " +
+                         cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value());
+      return false;
     }
 
     if (!ReadInteger(cpufreq_dir, kScalingMaxFreqFileName, &base::StringToUint,
                      &logical_cpu.scaling_max_frequency_khz)) {
-      return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kFileReadError,
-          "Unable to read scaling max frequency file to integer: " +
-              cpufreq_dir.Append(kScalingMaxFreqFileName).value()));
+      LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                     "Unable to read scaling max frequency file to integer: " +
+                         cpufreq_dir.Append(kScalingMaxFreqFileName).value());
+      return false;
     }
 
     if (!ReadInteger(cpufreq_dir, kScalingCurFreqFileName, &base::StringToUint,
                      &logical_cpu.scaling_current_frequency_khz)) {
-      return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
+      LogAndSetError(
           mojo_ipc::ErrorType::kFileReadError,
           "Unable to read scaling current frequency file to integer: " +
-              cpufreq_dir.Append(kScalingCurFreqFileName).value()));
+              cpufreq_dir.Append(kScalingCurFreqFileName).value());
+      return false;
     }
 
     // Add this logical CPU to the corresponding physical CPU.
     itr->second->logical_cpus.push_back(logical_cpu.Clone());
   }
 
-  // Populate the final CpuInfo struct.
-  mojo_ipc::CpuInfo cpu_info;
-
   for (auto& key_value : physical_cpus) {
-    cpu_info.physical_cpus.push_back(key_value.second.Clone());
+    cpu_info_->physical_cpus.push_back(key_value.second.Clone());
   }
 
-  return mojo_ipc::CpuResult::NewCpuInfo(cpu_info.Clone());
+  return true;
 }
 
 bool CpuFetcher::FetchVirtualization() {
@@ -684,8 +684,8 @@ bool CpuFetcher::FetchVulnerabilities() {
   base::FilePath vulnerability_dir =
       root_dir.Append(kRelativeCpuDir).Append(kVulnerabilityDirName);
   // If vulnerabilities directory does not exist, this means the linux kernel
-  // version does not support vulnerability detection yet and we will return an
-  // empty map.
+  // version does not support vulnerability detection yet and we will return
+  // an empty map.
   std::vector<VulnerabilityInfoMap::value_type> vulnerabilities_vec;
   base::FileEnumerator it(vulnerability_dir,
                           /*recursive=*/false, base::FileEnumerator::FILES);
@@ -853,25 +853,19 @@ void CpuFetcher::LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
 void CpuFetcher::FetchImpl(ResultCallback callback) {
   callback_ = std::move(callback);
 
-  CallbackBarrier barrier{
-      base::BindOnce(&CpuFetcher::HandleCallbackComplete,
-                     weak_factory_.GetWeakPtr(), /*all_callback_called=*/true),
-      base::BindOnce(&CpuFetcher::HandleCallbackComplete,
-                     weak_factory_.GetWeakPtr(),
-                     /*all_callback_called=*/false)};
+  CallbackBarrier barrier{base::BindOnce(&CpuFetcher::HandleCallbackComplete,
+                                         weak_factory_.GetWeakPtr(),
+                                         /*all_callback_called=*/true),
+                          base::BindOnce(&CpuFetcher::HandleCallbackComplete,
+                                         weak_factory_.GetWeakPtr(),
+                                         /*all_callback_called=*/false)};
 
-  mojo_ipc::CpuResultPtr cpu_result = GetCpuInfoFromProcessorInfo();
-  if (cpu_result->is_error()) {
-    // TODO(b/230046339): Use LogAndSetError after refactor
-    // GetCpuInfoFromProcessorInfo.
-    error_ = std::move(cpu_result->get_error());
-    return;
-  }
-  cpu_info_ = std::move(cpu_result->get_cpu_info());
+  cpu_info_ = chromeos::cros_healthd::mojom::CpuInfo::New();
 
   if (!FetchNumTotalThreads() || !FetchArchitecture() ||
       !FetchKeylockerInfo() || !FetchCpuTemperatures() ||
-      !FetchVirtualization() || !FetchVulnerabilities()) {
+      !FetchVirtualization() || !FetchVulnerabilities() ||
+      !FetchPhysicalCpus()) {
     DCHECK(!error_.is_null());
     return;
   }

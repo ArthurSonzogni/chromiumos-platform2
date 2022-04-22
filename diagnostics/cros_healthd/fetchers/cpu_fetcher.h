@@ -89,10 +89,9 @@ class CpuFetcher final
   // AsyncFetcherInterface override
   void FetchImpl(ResultCallback callback) override;
 
-  // Aggregates data from |processor_info| and |logical_ids_to_stat_contents| to
-  // form the final CpuResultPtr. It's assumed that all CPUs on the device share
-  // the same |architecture|.
-  chromeos::cros_healthd::mojom::CpuResultPtr GetCpuInfoFromProcessorInfo();
+  // Read and parse physical cpus and store into |physical_cpus|. Returns true
+  // on success and false otherwise.
+  bool FetchPhysicalCpus();
 
   // Reads and parses the total number of threads available on the device and
   // store into |num_total_threads|. Returns true on success and false
