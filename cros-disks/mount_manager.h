@@ -67,20 +67,13 @@ class MountManager {
   // perform any necessary initialization.
   virtual bool Initialize();
 
-  // Starts a session. Returns true on success.
-  // This base class provides a default implementation that does nothing.
-  // A derived class can override this method to perform any necessary
-  // operations when a session starts. This method is called in response
-  // to a SessionStateChanged event from the Chromium OS session manager.
-  virtual bool StartSession();
+  // Starts a session. This method is called in response to a
+  // SessionStateChanged event from the Chromium OS session manager.
+  void StartSession();
 
-  // Stops a session. Returns true on success.
-  // This base class provides a default implementation that calls UnmountAll()
-  // to unmount all mounted paths managed by this mount manager.
-  // A derived class can override this method to perform any necessary
-  // operations when a session stops. This method is called in response
-  // to a SessionStateChanged event from the Chromium OS session manager.
-  virtual bool StopSession();
+  // Stops a session. This method is called in response to a SessionStateChanged
+  // event from the Chromium OS session manager.
+  void StopSession();
 
   // Implemented by a derived class to return true if it supports mounting
   // |source|.
@@ -113,7 +106,7 @@ class MountManager {
   MountErrorType Unmount(const std::string& path);
 
   // Unmounts all mounted paths.
-  virtual bool UnmountAll();
+  virtual void UnmountAll();
 
   // Returns the mount entries managed by this mount manager.
   std::vector<MountEntry> GetMountEntries() const;

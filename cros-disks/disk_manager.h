@@ -58,7 +58,7 @@ class DiskManager : public MountManager {
   }
 
   // Unmounts all mounted paths.
-  bool UnmountAll() override;
+  void UnmountAll() override;
 
  protected:
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.

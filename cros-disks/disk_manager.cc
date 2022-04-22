@@ -407,14 +407,13 @@ std::unique_ptr<MountPoint> DiskManager::MaybeWrapMountPointForEject(
   return mount_point;
 }
 
-bool DiskManager::UnmountAll() {
+void DiskManager::UnmountAll() {
   // UnmountAll() is called when a user session ends. We do not want to eject
   // devices in that situation and thus set |eject_device_on_unmount_| to
   // false temporarily to prevent devices from being ejected upon unmount.
   eject_device_on_unmount_ = false;
-  bool all_unmounted = MountManager::UnmountAll();
+  MountManager::UnmountAll();
   eject_device_on_unmount_ = true;
-  return all_unmounted;
 }
 
 }  // namespace cros_disks

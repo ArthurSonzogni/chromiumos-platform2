@@ -57,8 +57,8 @@ MountManager::MountManager(const std::string& mount_root,
 
 MountManager::~MountManager() {
   // UnmountAll() should be called from a derived class instead of this base
-  // class as UnmountAll() calls MountPoint::Unmount() which may call back into
-  // a derived class.
+  // class as UnmountAll() can be overridden.
+  DCHECK(mount_points_.empty());
 }
 
 bool MountManager::Initialize() {
@@ -68,12 +68,10 @@ bool MountManager::Initialize() {
                                    kMountRootDirectoryPermissions);
 }
 
-bool MountManager::StartSession() {
-  return true;
-}
+void MountManager::StartSession() {}
 
-bool MountManager::StopSession() {
-  return UnmountAll();
+void MountManager::StopSession() {
+  UnmountAll();
 }
 
 void MountManager::Mount(const std::string& source,
@@ -223,19 +221,8 @@ MountErrorType MountManager::Unmount(const std::string& path) {
   return MOUNT_ERROR_NONE;
 }
 
-bool MountManager::UnmountAll() {
-  bool all_umounted = true;
-
-  for (const auto& [source, mount_point] : mount_points_) {
-    DCHECK(mount_point);
-    mount_point->Unmount();
-    if (mount_point->is_mounted())
-      all_umounted = false;
-  }
-
+void MountManager::UnmountAll() {
   mount_points_.clear();
-
-  return all_umounted;
 }
 
 bool MountManager::ResolvePath(const std::string& path,

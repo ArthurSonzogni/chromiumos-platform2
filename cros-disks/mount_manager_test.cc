@@ -389,7 +389,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -505,7 +505,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -545,7 +545,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(final_mount_path))
       .WillOnce(Return(true));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -595,7 +595,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
@@ -623,7 +623,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
 
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -651,7 +651,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -686,7 +686,7 @@ TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
@@ -1121,7 +1121,7 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
-  EXPECT_TRUE(manager_.UnmountAll());
+  manager_.UnmountAll();
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
