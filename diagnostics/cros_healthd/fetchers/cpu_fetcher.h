@@ -115,6 +115,10 @@ class CpuFetcher final
   // Returns true on success and false otherwise.
   bool FetchVirtualization();
 
+  // Read and parse cpu vulnerabilities and store into |vulnerabilities|.
+  // Returns true on success and false otherwise.
+  bool FetchVulnerabilities();
+
   // Calls |callback_| and passes the result. If |all_callback_called| or
   // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
   void HandleCallbackComplete(bool all_callback_called);

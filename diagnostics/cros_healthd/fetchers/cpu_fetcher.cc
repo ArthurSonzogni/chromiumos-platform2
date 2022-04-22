@@ -379,33 +379,6 @@ void GetArmSoCModelName(const base::FilePath& root_dir,
   }
   ParseCompatibleString(root_dir, model_name);
 }
-
-std::optional<VulnerabilityInfoMap> GetVulnerabilities(
-    const base::FilePath& root_dir) {
-  base::FilePath vulnerability_dir =
-      root_dir.Append(kRelativeCpuDir).Append(kVulnerabilityDirName);
-  // If vulnerabilities directory does not exist, this means the linux kernel
-  // version does not support vulnerability detection yet and we will return an
-  // empty map.
-  std::vector<VulnerabilityInfoMap::value_type> vulnerabilities_vec;
-  base::FileEnumerator it(vulnerability_dir,
-                          /*recursive=*/false, base::FileEnumerator::FILES);
-  for (base::FilePath vulnerability_file = it.Next();
-       !vulnerability_file.empty(); vulnerability_file = it.Next()) {
-    auto vulnerability = mojo_ipc::VulnerabilityInfo::New();
-
-    if (!ReadAndTrimString(vulnerability_file, &vulnerability->message)) {
-      return std::nullopt;
-    }
-
-    vulnerability->status =
-        GetVulnerabilityStatusFromMessage(vulnerability->message);
-
-    vulnerabilities_vec.push_back(
-        {vulnerability_file.BaseName().value(), std::move(vulnerability)});
-  }
-  return VulnerabilityInfoMap(std::move(vulnerabilities_vec));
-}
 }  // namespace
 
 bool CpuFetcher::FetchNumTotalThreads() {
@@ -641,13 +614,6 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     cpu_info.physical_cpus.push_back(key_value.second.Clone());
   }
 
-  cpu_info.vulnerabilities = GetVulnerabilities(root_dir);
-  if (!cpu_info.vulnerabilities.has_value()) {
-    return mojo_ipc::CpuResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                               "Unable to read vulnerabilities."));
-  }
-
   return mojo_ipc::CpuResult::NewCpuInfo(cpu_info.Clone());
 }
 
@@ -710,6 +676,39 @@ bool CpuFetcher::FetchVirtualization() {
     return false;
   }
 
+  return true;
+}
+
+bool CpuFetcher::FetchVulnerabilities() {
+  base::FilePath root_dir = context_->root_dir();
+  base::FilePath vulnerability_dir =
+      root_dir.Append(kRelativeCpuDir).Append(kVulnerabilityDirName);
+  // If vulnerabilities directory does not exist, this means the linux kernel
+  // version does not support vulnerability detection yet and we will return an
+  // empty map.
+  std::vector<VulnerabilityInfoMap::value_type> vulnerabilities_vec;
+  base::FileEnumerator it(vulnerability_dir,
+                          /*recursive=*/false, base::FileEnumerator::FILES);
+  for (base::FilePath vulnerability_file = it.Next();
+       !vulnerability_file.empty(); vulnerability_file = it.Next()) {
+    auto vulnerability = mojo_ipc::VulnerabilityInfo::New();
+
+    if (!ReadAndTrimString(vulnerability_file, &vulnerability->message)) {
+      LogAndSetError(
+          mojo_ipc::ErrorType::kFileReadError,
+          "Unable to read vulnerability file: " + vulnerability_file.value());
+      return false;
+    }
+
+    vulnerability->status =
+        GetVulnerabilityStatusFromMessage(vulnerability->message);
+
+    vulnerabilities_vec.push_back(
+        {vulnerability_file.BaseName().value(), std::move(vulnerability)});
+  }
+
+  cpu_info_->vulnerabilities =
+      VulnerabilityInfoMap(std::move(vulnerabilities_vec));
   return true;
 }
 
@@ -872,7 +871,7 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
 
   if (!FetchNumTotalThreads() || !FetchArchitecture() ||
       !FetchKeylockerInfo() || !FetchCpuTemperatures() ||
-      !FetchVirtualization()) {
+      !FetchVirtualization() || !FetchVulnerabilities()) {
     DCHECK(!error_.is_null());
     return;
   }
