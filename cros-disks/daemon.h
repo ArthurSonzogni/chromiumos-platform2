@@ -42,20 +42,25 @@ class Daemon : public brillo::DBusServiceDaemon {
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  void OnDeviceEvents();
-
   const bool has_session_manager_;
   Metrics metrics_;
   Platform platform_;
   brillo::ProcessReaper process_reaper_;
-  DeviceEjector device_ejector_;
-  ArchiveManager archive_manager_;
+
+  ArchiveManager archive_manager_{"/media/archive", &platform_, &metrics_,
+                                  &process_reaper_};
+  DeviceEjector device_ejector_{&process_reaper_};
   DiskMonitor disk_monitor_;
-  DiskManager disk_manager_;
-  FormatManager format_manager_;
-  PartitionManager partition_manager_;
-  RenameManager rename_manager_;
-  FUSEMountManager fuse_manager_;
+  DiskManager disk_manager_{"/media/removable", &platform_,
+                            &metrics_,          &process_reaper_,
+                            &disk_monitor_,     &device_ejector_};
+  FUSEMountManager fuse_manager_{"/media/fuse", "/run/fuse", &platform_,
+                                 &metrics_, &process_reaper_};
+
+  FormatManager format_manager_{&platform_, &process_reaper_};
+  PartitionManager partition_manager_{&process_reaper_, &disk_monitor_};
+  RenameManager rename_manager_{&platform_, &process_reaper_};
+
   std::unique_ptr<DeviceEventModerator> event_moderator_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<CrosDisksServer> server_;

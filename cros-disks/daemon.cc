@@ -4,56 +4,19 @@
 
 #include "cros-disks/daemon.h"
 
+#include <base/check.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cros-disks/quote.h"
-
-#include <base/check.h>
-
 namespace cros_disks {
-namespace {
-
-const char kArchiveMountRootDirectory[] = "/media/archive";
-const char kDiskMountRootDirectory[] = "/media/removable";
-const char kFUSEMountRootDirectory[] = "/media/fuse";
-
-// A temporary directory where every FUSE invocation will have some
-// writable subdirectory.
-const char kFUSEWritableRootDirectory[] = "/run/fuse";
-
-const char kNonPrivilegedMountUser[] = "chronos";
-
-}  // namespace
 
 Daemon::Daemon(bool has_session_manager)
     : brillo::DBusServiceDaemon(kCrosDisksServiceName),
-      has_session_manager_(has_session_manager),
-      device_ejector_(&process_reaper_),
-      archive_manager_(
-          kArchiveMountRootDirectory, &platform_, &metrics_, &process_reaper_),
-      disk_monitor_(),
-      disk_manager_(kDiskMountRootDirectory,
-                    &platform_,
-                    &metrics_,
-                    &process_reaper_,
-                    &disk_monitor_,
-                    &device_ejector_),
-      format_manager_(&platform_, &process_reaper_),
-      partition_manager_(&process_reaper_, &disk_monitor_),
-      rename_manager_(&platform_, &process_reaper_),
-      fuse_manager_(kFUSEMountRootDirectory,
-                    kFUSEWritableRootDirectory,
-                    &platform_,
-                    &metrics_,
-                    &process_reaper_) {
-  CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
-      << quote(kNonPrivilegedMountUser)
-      << " is not available for non-privileged mount operations";
-  CHECK(archive_manager_.Initialize())
-      << "Failed to initialize the archive manager";
-  CHECK(disk_manager_.Initialize()) << "Failed to initialize the disk manager";
-  CHECK(fuse_manager_.Initialize()) << "Failed to initialize the FUSE manager";
+      has_session_manager_(has_session_manager) {
   process_reaper_.Register(this);
+  CHECK(platform_.SetMountUser("chronos"));
+  CHECK(archive_manager_.Initialize());
+  CHECK(disk_manager_.Initialize());
+  CHECK(fuse_manager_.Initialize());
 }
 
 Daemon::~Daemon() = default;
@@ -80,14 +43,11 @@ void Daemon::RegisterDBusObjectsAsync(
 
   device_event_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       disk_monitor_.udev_monitor_fd(),
-      base::BindRepeating(&Daemon::OnDeviceEvents, base::Unretained(this)));
+      base::BindRepeating(&DeviceEventModerator::ProcessDeviceEvents,
+                          base::Unretained(event_moderator_.get())));
 
   server_->RegisterAsync(
       sequencer->GetHandler("Failed to export cros-disks service.", false));
-}
-
-void Daemon::OnDeviceEvents() {
-  event_moderator_->ProcessDeviceEvents();
 }
 
 }  // namespace cros_disks

@@ -11,7 +11,7 @@
 int main(int argc, char** argv) {
   DEFINE_bool(foreground, false, "Run in foreground");
   DEFINE_bool(no_session_manager, false,
-              "run without the expectation of a session manager.");
+              "Run without the expectation of a session manager");
   DEFINE_int32(log_level, 0,
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
@@ -21,9 +21,11 @@ int main(int argc, char** argv) {
   logging::SetMinLogLevel(FLAGS_log_level);
 
   if (!FLAGS_foreground)
-    PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
+    PCHECK(daemon(0, 0) == 0);
 
-  bool has_session_manager = !FLAGS_no_session_manager;
-  cros_disks::Daemon daemon(has_session_manager);
-  return daemon.Run();
+  LOG(INFO) << "Service started";
+  const int ret = cros_disks::Daemon(!FLAGS_no_session_manager).Run();
+  LOG(INFO) << "Service stopped with exit code " << ret;
+
+  return ret;
 }
