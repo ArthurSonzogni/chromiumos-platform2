@@ -140,8 +140,7 @@ void MountManager::MountNewSource(const std::string& source,
   if (const MountPoint* const mp = FindMountBySource(source)) {
     LOG(ERROR) << redact(source) << " is already mounted on "
                << redact(mp->path());
-    return std::move(callback).Run(
-        mp->path().value(), GetMountErrorOfReservedMountPath(mp->path()));
+    return std::move(callback).Run(mp->path().value(), mp->error());
   }
 
   // Extract the mount label string from the passed options.
@@ -187,13 +186,13 @@ void MountManager::MountNewSource(const std::string& source,
       return std::move(callback).Run("", error);
     }
 
-    LOG(INFO) << "Reserving mount path " << quote(mount_path) << " for "
-              << quote(source);
     DCHECK(!mount_point);
-    ReserveMountPath(mount_path, error);
     // Create dummy mount point to associate with the mount path.
     mount_point = MountPoint::CreateUnmounted(
-        {.mount_path = mount_path, .source = source}, platform_);
+        {.mount_path = mount_path, .source = source, .error = error},
+        platform_);
+    LOG(INFO) << "Reserved mount path " << quote(mount_path) << " for "
+              << quote(source);
   }
 
   DCHECK(mount_point);
@@ -212,12 +211,8 @@ MountErrorType MountManager::Unmount(const std::string& path) {
   // Look for a matching mount point, either by source path or by mount path.
   MountPoint* const mount_point =
       FindMountBySource(path) ?: FindMountByMountPath(base::FilePath(path));
-  if (!mount_point) {
-    LOG(ERROR) << "Cannot find mount point " << redact(path);
+  if (!mount_point)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
-  }
-
-  UnreserveMountPath(mount_point->path());
 
   if (const MountErrorType error = mount_point->Unmount();
       mount_point->is_mounted())
@@ -239,7 +234,6 @@ bool MountManager::UnmountAll() {
   }
 
   mount_points_.clear();
-  reserved_mount_paths_.clear();
 
   return all_umounted;
 }
@@ -293,8 +287,9 @@ MountErrorType MountManager::CreateMountPathForSource(
   }
 
   std::unordered_set<std::string> reserved_paths;
-  for (const auto& entry : reserved_mount_paths_) {
-    reserved_paths.insert(entry.first.value());
+  reserved_paths.reserve(mount_points_.size());
+  for (const auto& [source, mount_point] : mount_points_) {
+    reserved_paths.insert(mount_point->path().value());
   }
 
   std::string path = mount_path->value();
@@ -309,43 +304,14 @@ MountErrorType MountManager::CreateMountPathForSource(
   return MOUNT_ERROR_NONE;
 }
 
-bool MountManager::IsMountPathReserved(const base::FilePath& mount_path) const {
-  return base::Contains(reserved_mount_paths_, mount_path);
-}
-
-MountErrorType MountManager::GetMountErrorOfReservedMountPath(
-    const base::FilePath& mount_path) const {
-  const auto it = reserved_mount_paths_.find(mount_path);
-  return it != reserved_mount_paths_.end() ? it->second : MOUNT_ERROR_NONE;
-}
-
-void MountManager::ReserveMountPath(base::FilePath mount_path,
-                                    MountErrorType error) {
-  const auto [it, ok] =
-      reserved_mount_paths_.try_emplace(std::move(mount_path), error);
-  if (ok) {
-    LOG(INFO) << "Reserved mount path " << quote(it->first);
-  } else if (it->second != error) {
-    LOG(WARNING) << "Cannot update error associated with reserved mount path "
-                 << redact(it->first) << " from " << it->second << " to "
-                 << error;
-  }
-}
-
-void MountManager::UnreserveMountPath(const base::FilePath& mount_path) {
-  if (reserved_mount_paths_.erase(mount_path))
-    LOG(INFO) << "Unreserved mount path " << quote(mount_path);
-}
-
 std::vector<MountEntry> MountManager::GetMountEntries() const {
   std::vector<MountEntry> mount_entries;
   mount_entries.reserve(mount_points_.size());
   for (const auto& [source, mount_point] : mount_points_) {
     DCHECK(mount_point);
-    mount_entries.push_back(
-        {GetMountErrorOfReservedMountPath(mount_point->path()), source,
-         GetMountSourceType(), mount_point->path().value(),
-         mount_point->is_read_only()});
+    mount_entries.push_back({mount_point->error(), source, GetMountSourceType(),
+                             mount_point->path().value(),
+                             mount_point->is_read_only()});
   }
   return mount_entries;
 }

@@ -53,7 +53,6 @@ MountErrorType MountPoint::Unmount() {
     error = UnmountImpl();
     if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
       is_mounted_ = false;
-      LOG(INFO) << "Unmounted " << quote(data_.mount_path);
 
       if (eject_)
         std::move(eject_).Run();
@@ -62,6 +61,7 @@ MountErrorType MountPoint::Unmount() {
 
   if (!is_mounted_ && must_remove_dir_ &&
       platform_->RemoveEmptyDirectory(data_.mount_path.value())) {
+    LOG(INFO) << "Removed " << quote(data_.mount_path);
     must_remove_dir_ = false;
   }
 

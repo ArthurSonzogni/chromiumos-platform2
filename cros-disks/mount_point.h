@@ -32,6 +32,8 @@ struct MountPointData {
   int flags = 0;
   // Additional data passed during mount.
   std::string data;
+  // Mount error.
+  MountErrorType error = MOUNT_ERROR_NONE;
 };
 
 class Platform;
@@ -86,6 +88,7 @@ class MountPoint final {
   const std::string& fstype() const { return data_.filesystem_type; }
   int flags() const { return data_.flags; }
   const std::string& data() const { return data_.data; }
+  MountErrorType error() const { return data_.error; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
   bool is_mounted() const { return is_mounted_; }
 

@@ -88,16 +88,8 @@ class MountManagerUnderTest : public MountManager {
     mount_points_.insert({source, std::move(mount_point)});
   }
 
-  using MountManager::GetMountErrorOfReservedMountPath;
-  using MountManager::ReserveMountPath;
-  using MountManager::UnreserveMountPath;
-
   bool IsMountPathInCache(const std::string& path) {
     return FindMountByMountPath(base::FilePath(path));
-  }
-
-  bool IsMountPathReserved(const std::string& path) {
-    return MountManager::IsMountPathReserved(base::FilePath(path));
   }
 
   void AddMountStateCache(const std::string& source,
@@ -110,14 +102,6 @@ class MountManagerUnderTest : public MountManager {
     if (!mp)
       return false;
     return RemoveMount(mp);
-  }
-
-  std::unordered_set<std::string> GetReservedMountPaths() {
-    std::unordered_set<std::string> result;
-    for (const auto& element : reserved_mount_paths_) {
-      result.insert(element.first.value());
-    }
-    return result;
   }
 
   std::optional<MountEntry> GetMountEntryForTest(const std::string& source) {
@@ -330,7 +314,6 @@ TEST_F(MountManagerTest, MountFailsWithNoMountPointAndNoError) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mount_error_);
   EXPECT_EQ("", mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
-  EXPECT_FALSE(manager_.IsMountPathReserved(kMountPath));
 }
 
 // Verifies that MountManager::Mount() fails when DoMount returns both a
@@ -366,7 +349,6 @@ TEST_F(MountManagerTest, MountFailsWithMountPointAndError) {
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mount_error_);
   EXPECT_EQ("", mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
-  EXPECT_FALSE(manager_.IsMountPathReserved(kMountPath));
 }
 
 // Verifies that MountManager::Mount() returns no error when it successfully
@@ -408,7 +390,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
   EXPECT_TRUE(manager_.UnmountAll());
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
+  EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() stores correct mount status in cache when
@@ -524,7 +506,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_TRUE(manager_.UnmountAll());
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
+  EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() returns no error when it successfully
@@ -564,7 +546,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(final_mount_path))
       .WillOnce(Return(true));
   EXPECT_TRUE(manager_.UnmountAll());
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
+  EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() handles the mounting of an already
@@ -614,7 +596,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
   EXPECT_TRUE(manager_.UnmountAll());
-  EXPECT_FALSE(manager_.IsMountPathReserved(kMountPath));
+  EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
 // Verifies that MountManager::Mount() successfully reserves a path for a given
@@ -638,13 +620,11 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
   EXPECT_TRUE(manager_.UnmountAll());
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
+  EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() successfully reserves a path for a given
@@ -671,10 +651,8 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Verifies that MountManager::Mount() successfully reserves a path for a given
@@ -701,18 +679,15 @@ TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Verifies that MountManager::Mount() successfully reserves a path for a given
@@ -738,7 +713,6 @@ TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Verifies that MountManager::Mount() fails to mount or reserve a path for
@@ -764,7 +738,6 @@ TEST_F(MountManagerTest, MountFailedWithEmptyMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ("", mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Verifies that MountManager::Unmount() returns an error when it is invoked
@@ -926,14 +899,12 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
   EXPECT_CALL(platform_, Unmount).Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Unmount(kSourcePath));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Verifies that MountManager::Unmount() returns no error when it is invoked
@@ -958,14 +929,12 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
   EXPECT_CALL(platform_, Unmount).Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Unmount(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Verifies that MountManager::IsMountPathInCache() works as expected.
@@ -995,79 +964,6 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
 
-// Verifies that MountManager::GetReservedMountPaths() works as expected.
-TEST_F(MountManagerTest, GetReservedMountPaths) {
-  std::unordered_set<std::string> reserved_paths;
-  std::unordered_set<std::string> expected_paths;
-  base::FilePath path1("path1");
-  base::FilePath path2("path2");
-
-  reserved_paths = manager_.GetReservedMountPaths();
-  EXPECT_TRUE(expected_paths == reserved_paths);
-
-  manager_.ReserveMountPath(path1, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
-  reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.insert(path1.value());
-  EXPECT_TRUE(expected_paths == reserved_paths);
-
-  manager_.ReserveMountPath(path2, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
-  reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.insert(path2.value());
-  EXPECT_TRUE(expected_paths == reserved_paths);
-
-  manager_.UnreserveMountPath(path1);
-  reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.erase(path1.value());
-  EXPECT_TRUE(expected_paths == reserved_paths);
-
-  manager_.UnreserveMountPath(path2);
-  reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.erase(path2.value());
-  EXPECT_TRUE(expected_paths == reserved_paths);
-}
-
-// Verifies that MountManager::ReserveMountPath() and
-// MountManager::UnreserveMountPath() work as expected.
-TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
-  mount_path_ = kMountPath;
-
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.GetMountErrorOfReservedMountPath(
-                                  base::FilePath(mount_path_)));
-  manager_.ReserveMountPath(base::FilePath(mount_path_),
-                            MOUNT_ERROR_UNKNOWN_FILESYSTEM);
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(
-      MOUNT_ERROR_UNKNOWN_FILESYSTEM,
-      manager_.GetMountErrorOfReservedMountPath(base::FilePath(mount_path_)));
-  manager_.UnreserveMountPath(base::FilePath(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.GetMountErrorOfReservedMountPath(
-                                  base::FilePath(mount_path_)));
-
-  // Removing a nonexistent mount path should be ok
-  manager_.UnreserveMountPath(base::FilePath(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-
-  // Adding an existent mount path should be ok
-  manager_.ReserveMountPath(base::FilePath(mount_path_),
-                            MOUNT_ERROR_UNSUPPORTED_FILESYSTEM);
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(
-      MOUNT_ERROR_UNSUPPORTED_FILESYSTEM,
-      manager_.GetMountErrorOfReservedMountPath(base::FilePath(mount_path_)));
-  manager_.ReserveMountPath(base::FilePath(mount_path_),
-                            MOUNT_ERROR_UNKNOWN_FILESYSTEM);
-  EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(
-      MOUNT_ERROR_UNSUPPORTED_FILESYSTEM,
-      manager_.GetMountErrorOfReservedMountPath(base::FilePath(mount_path_)));
-  manager_.UnreserveMountPath(base::FilePath(mount_path_));
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.GetMountErrorOfReservedMountPath(
-                                  base::FilePath(mount_path_)));
-}
-
 // Verifies that MountManager::GetMountEntries() returns the expected list of
 // mount entries under different scenarios.
 TEST_F(MountManagerTest, GetMountEntries) {
@@ -1080,16 +976,6 @@ TEST_F(MountManagerTest, GetMountEntries) {
   mount_entries = manager_.GetMountEntries();
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type);
-  EXPECT_EQ(kSourcePath, mount_entries[0].source_path);
-  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type);
-  EXPECT_EQ(kMountPath, mount_entries[0].mount_path);
-
-  // A reserved mount entry is returned.
-  manager_.ReserveMountPath(base::FilePath(kMountPath),
-                            MOUNT_ERROR_UNKNOWN_FILESYSTEM);
-  mount_entries = manager_.GetMountEntries();
-  ASSERT_EQ(1, mount_entries.size());
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_entries[0].error_type);
   EXPECT_EQ(kSourcePath, mount_entries[0].source_path);
   EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type);
   EXPECT_EQ(kMountPath, mount_entries[0].mount_path);
@@ -1237,7 +1123,6 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
       .WillOnce(Return(true));
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
-  EXPECT_FALSE(manager_.IsMountPathReserved(kMountPath));
 }
 
 }  // namespace cros_disks
