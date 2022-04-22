@@ -14,6 +14,11 @@
 
 #include "hwsec-test-utils/ownership_id/ownership_id_tpm1.h"
 
+namespace {
+// A constant to represent the corner case.
+constexpr char kNoOwnerDelegate[] = "NO_OWNER_DELEGATE";
+}  // namespace
+
 namespace hwsec_test_utils {
 
 bool OwnershipIdTpm1::InitializeTpmManagerUtility() {
@@ -55,8 +60,8 @@ std::optional<std::string> OwnershipIdTpm1::Get() {
   }
 
   if (local_data.owner_delegate().secret().empty()) {
-    LOG(ERROR) << "Empty owner delegate secret.";
-    return std::nullopt;
+    LOG(WARNING) << "Empty owner delegate secret.";
+    return kNoOwnerDelegate;
   }
 
   const std::string id =

@@ -14,6 +14,11 @@
 
 #include "hwsec-test-utils/ownership_id/ownership_id_tpm2.h"
 
+namespace {
+// A constant to represent the corner case.
+constexpr char kNoLockoutPassword[] = "NO_LOCKOUT_PASSWORD";
+}  // namespace
+
 namespace hwsec_test_utils {
 
 bool OwnershipIdTpm2::InitializeTpmManagerUtility() {
@@ -55,8 +60,8 @@ std::optional<std::string> OwnershipIdTpm2::Get() {
   }
 
   if (local_data.lockout_password().empty()) {
-    LOG(ERROR) << "Empty lockout password.";
-    return std::nullopt;
+    LOG(WARNING) << "Empty lockout password.";
+    return kNoLockoutPassword;
   }
 
   const std::string id =
