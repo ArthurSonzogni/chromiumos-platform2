@@ -58,7 +58,6 @@ if (use.test) {
       ":libsystem_test_utils",
     ]
     sources = [
-      "bluetooth_client_impl_test.cc",
       "debugd_adapter_impl_test.cc",
       "powerd_adapter_impl_test.cc",
     ]

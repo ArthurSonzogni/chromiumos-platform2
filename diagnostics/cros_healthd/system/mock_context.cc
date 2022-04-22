@@ -20,7 +20,6 @@ namespace diagnostics {
 MockContext::MockContext() {
   attestation_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::AttestationProxyMock>>();
-  bluetooth_client_ = std::make_unique<FakeBluetoothClient>();
   cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
   cras_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::cras::ControlProxyMock>>();
@@ -64,10 +63,6 @@ org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()
 
 mojom::Executor* MockContext::executor() {
   return &mock_executor_;
-}
-
-FakeBluetoothClient* MockContext::fake_bluetooth_client() const {
-  return static_cast<FakeBluetoothClient*>(bluetooth_client_.get());
 }
 
 brillo::FakeCrosConfig* MockContext::fake_cros_config() const {

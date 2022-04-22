@@ -15,7 +15,6 @@
 #include <brillo/udev/mock_udev_monitor.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
-#include "diagnostics/common/system/fake_bluetooth_client.h"
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/common/system/mock_debugd_adapter.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
@@ -61,7 +60,6 @@ class MockContext final : public Context {
 
   // Accessors to the fake and mock objects held by MockContext:
   org::chromium::AttestationProxyMock* mock_attestation_proxy() const;
-  FakeBluetoothClient* fake_bluetooth_client() const;
   brillo::FakeCrosConfig* fake_cros_config() const;
   org::chromium::debugdProxyMock* mock_debugd_proxy() const;
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
