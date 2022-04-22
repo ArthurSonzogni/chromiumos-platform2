@@ -40,7 +40,8 @@ class Platform;
 class MountPoint final {
  public:
   // Creates a MountPoint that is not actually mounted.
-  static std::unique_ptr<MountPoint> CreateUnmounted(MountPointData data);
+  static std::unique_ptr<MountPoint> CreateUnmounted(
+      MountPointData data, const Platform* platform = nullptr);
 
   // Mounts a mount point. Returns a null pointer and sets *error in case of
   // error.
@@ -109,6 +110,9 @@ class MountPoint final {
 
   // Is this mount point actually mounted?
   bool is_mounted_ = true;
+
+  // Should the mount point directory be eventually removed?
+  bool must_remove_dir_ = platform_ != nullptr;
 
   base::WeakPtrFactory<MountPoint> weak_factory_{this};
 };
