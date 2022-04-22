@@ -119,19 +119,9 @@ class MountManager {
   std::vector<MountEntry> GetMountEntries() const;
 
  protected:
-  // Type definition of a cache mapping a source path to its mount state of
-  // filesystems mounted by the manager.
-  using MountStateMap =
-      std::unordered_map<std::string, std::unique_ptr<MountPoint>>;
-
   MountPoint* FindMountBySource(const std::string& source) const;
   MountPoint* FindMountByMountPath(const base::FilePath& path) const;
   bool RemoveMount(MountPoint* mount_point);
-
-  // Type definition of a cache mapping a reserved mount path to the mount
-  // error that caused the mount path to be reserved.
-  using ReservedMountPathMap =
-      std::unordered_map<base::FilePath, MountErrorType>;
 
   // The base class calls Platform::GetRealPath(), derived classes can override
   // it.
@@ -232,13 +222,12 @@ class MountManager {
   // Object that monitors children processes.
   brillo::ProcessReaper* const process_reaper_;
 
-  // A cache mapping a source path to its mount state of filesystems mounted
-  // by the manager.
-  MountStateMap mount_states_;
+  // Mount points indexed by source path.
+  std::unordered_map<std::string, std::unique_ptr<MountPoint>> mount_points_;
 
   // A cache mapping a reserved mount path to the error that caused
   // the path to reserved.
-  ReservedMountPathMap reserved_mount_paths_;
+  std::unordered_map<base::FilePath, MountErrorType> reserved_mount_paths_;
 
   friend class MountManagerUnderTest;
 

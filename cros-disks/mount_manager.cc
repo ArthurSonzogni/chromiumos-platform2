@@ -203,7 +203,7 @@ void MountManager::MountNewSource(const std::string& source,
   // different from |source|.
   // DCHECK_EQ(mount_point->source(), source);
   const auto [it, ok] =
-      mount_states_.try_emplace(source, std::move(mount_point));
+      mount_points_.try_emplace(source, std::move(mount_point));
   DCHECK(ok);
   return std::move(callback).Run(mount_path.value(), error);
 }
@@ -231,14 +231,14 @@ MountErrorType MountManager::Unmount(const std::string& path) {
 bool MountManager::UnmountAll() {
   bool all_umounted = true;
 
-  for (const auto& [source, mount_point] : mount_states_) {
+  for (const auto& [source, mount_point] : mount_points_) {
     DCHECK(mount_point);
     mount_point->Unmount();
     if (mount_point->is_mounted())
       all_umounted = false;
   }
 
-  mount_states_.clear();
+  mount_points_.clear();
   reserved_mount_paths_.clear();
 
   return all_umounted;
@@ -250,13 +250,13 @@ bool MountManager::ResolvePath(const std::string& path,
 }
 
 MountPoint* MountManager::FindMountBySource(const std::string& source) const {
-  const auto it = mount_states_.find(source);
-  return it != mount_states_.cend() ? it->second.get() : nullptr;
+  const auto it = mount_points_.find(source);
+  return it != mount_points_.cend() ? it->second.get() : nullptr;
 }
 
 MountPoint* MountManager::FindMountByMountPath(
     const base::FilePath& path) const {
-  for (const auto& [source, mount_point] : mount_states_) {
+  for (const auto& [source, mount_point] : mount_points_) {
     DCHECK(mount_point);
     if (mount_point->path() == path)
       return mount_point.get();
@@ -265,9 +265,9 @@ MountPoint* MountManager::FindMountByMountPath(
 }
 
 bool MountManager::RemoveMount(MountPoint* const mount_point) {
-  for (auto it = mount_states_.cbegin(); it != mount_states_.cend(); ++it) {
+  for (auto it = mount_points_.cbegin(); it != mount_points_.cend(); ++it) {
     if (it->second.get() == mount_point) {
-      mount_states_.erase(it);
+      mount_points_.erase(it);
       return true;
     }
   }
@@ -339,8 +339,8 @@ void MountManager::UnreserveMountPath(const base::FilePath& mount_path) {
 
 std::vector<MountEntry> MountManager::GetMountEntries() const {
   std::vector<MountEntry> mount_entries;
-  mount_entries.reserve(mount_states_.size());
-  for (const auto& [source, mount_point] : mount_states_) {
+  mount_entries.reserve(mount_points_.size());
+  for (const auto& [source, mount_point] : mount_points_) {
     DCHECK(mount_point);
     mount_entries.push_back(
         {GetMountErrorOfReservedMountPath(mount_point->path()), source,

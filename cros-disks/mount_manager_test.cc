@@ -85,7 +85,7 @@ class MountManagerUnderTest : public MountManager {
                 std::unique_ptr<MountPoint> mount_point) {
     DCHECK(mount_point);
     DCHECK(!FindMountBySource(source));
-    mount_states_.insert({source, std::move(mount_point)});
+    mount_points_.insert({source, std::move(mount_point)});
   }
 
   using MountManager::GetMountErrorOfReservedMountPath;
@@ -102,7 +102,7 @@ class MountManagerUnderTest : public MountManager {
 
   void AddMountStateCache(const std::string& source,
                           std::unique_ptr<MountPoint> mount_point) {
-    mount_states_.insert({source, std::move(mount_point)});
+    mount_points_.try_emplace(source, std::move(mount_point));
   }
 
   bool RemoveMountPathFromCache(const std::string& path) {
