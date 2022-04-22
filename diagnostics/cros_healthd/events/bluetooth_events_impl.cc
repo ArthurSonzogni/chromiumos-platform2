@@ -4,82 +4,81 @@
 
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 
+#include <string>
 #include <utility>
 
 #include <base/check.h>
 
 namespace diagnostics {
 
-BluetoothEventsImpl::BluetoothEventsImpl(Context* context) : context_(context) {
+BluetoothEventsImpl::BluetoothEventsImpl(Context* context)
+    : context_(context), weak_ptr_factory_(this) {
   DCHECK(context_);
+  SetProxyCallback();
 }
 
-BluetoothEventsImpl::~BluetoothEventsImpl() {
-  if (is_observing_bluetooth_client_)
-    context_->bluetooth_client()->RemoveObserver(this);
-}
+BluetoothEventsImpl::~BluetoothEventsImpl() {}
 
 void BluetoothEventsImpl::AddObserver(
     mojo::PendingRemote<
         chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) {
-  if (!is_observing_bluetooth_client_) {
-    context_->bluetooth_client()->AddObserver(this);
-    is_observing_bluetooth_client_ = true;
-  }
-
   observers_.Add(std::move(observer));
 }
 
+void BluetoothEventsImpl::SetProxyCallback() {
+  org::bluezProxy* bluetooth_proxy = context_->bluetooth_proxy();
+  DCHECK(bluetooth_proxy);
+
+  bluetooth_proxy->SetAdapter1AddedCallback(base::BindRepeating(
+      &BluetoothEventsImpl::AdapterAdded, weak_ptr_factory_.GetWeakPtr()));
+  bluetooth_proxy->SetAdapter1RemovedCallback(base::BindRepeating(
+      &BluetoothEventsImpl::AdapterRemoved, weak_ptr_factory_.GetWeakPtr()));
+  bluetooth_proxy->SetDevice1AddedCallback(base::BindRepeating(
+      &BluetoothEventsImpl::DeviceAdded, weak_ptr_factory_.GetWeakPtr()));
+  bluetooth_proxy->SetDevice1RemovedCallback(base::BindRepeating(
+      &BluetoothEventsImpl::DeviceRemoved, weak_ptr_factory_.GetWeakPtr()));
+}
+
 void BluetoothEventsImpl::AdapterAdded(
-    const dbus::ObjectPath& adapter_path,
-    const BluetoothClient::AdapterProperties& properties) {
+    org::bluez::Adapter1ProxyInterface* adapter) {
   for (auto& observer : observers_)
     observer->OnAdapterAdded();
-  StopObservingBluetoothClientIfNecessary();
+  adapter->SetPropertyChangedCallback(
+      base::BindRepeating(&BluetoothEventsImpl::AdapterPropertyChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void BluetoothEventsImpl::AdapterRemoved(const dbus::ObjectPath& adapter_path) {
   for (auto& observer : observers_)
     observer->OnAdapterRemoved();
-  StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::AdapterPropertyChanged(
-    const dbus::ObjectPath& adapter_path,
-    const BluetoothClient::AdapterProperties& properties) {
+    org::bluez::Adapter1ProxyInterface* adapter,
+    const std::string& property_name) {
   for (auto& observer : observers_)
     observer->OnAdapterPropertyChanged();
-  StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::DeviceAdded(
-    const dbus::ObjectPath& device_path,
-    const BluetoothClient::DeviceProperties& properties) {
+    org::bluez::Device1ProxyInterface* device) {
   for (auto& observer : observers_)
     observer->OnDeviceAdded();
-  StopObservingBluetoothClientIfNecessary();
+  device->SetPropertyChangedCallback(
+      base::BindRepeating(&BluetoothEventsImpl::DevicePropertyChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void BluetoothEventsImpl::DeviceRemoved(const dbus::ObjectPath& device_path) {
   for (auto& observer : observers_)
     observer->OnDeviceRemoved();
-  StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::DevicePropertyChanged(
-    const dbus::ObjectPath& device_path,
-    const BluetoothClient::DeviceProperties& properties) {
+    org::bluez::Device1ProxyInterface* device,
+    const std::string& property_name) {
   for (auto& observer : observers_)
     observer->OnDevicePropertyChanged();
-  StopObservingBluetoothClientIfNecessary();
-}
-
-void BluetoothEventsImpl::StopObservingBluetoothClientIfNecessary() {
-  if (!observers_.empty())
-    return;
-
-  context_->bluetooth_client()->RemoveObserver(this);
-  is_observing_bluetooth_client_ = false;
 }
 
 }  // namespace diagnostics

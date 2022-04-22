@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_BLUETOOTH_EVENTS_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_BLUETOOTH_EVENTS_IMPL_H_
 
+#include <string>
+
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
@@ -16,8 +18,7 @@
 namespace diagnostics {
 
 // Production implementation of the BluetoothEvents interface.
-class BluetoothEventsImpl final : public BluetoothEvents,
-                                  public BluetoothClient::Observer {
+class BluetoothEventsImpl final : public BluetoothEvents {
  public:
   explicit BluetoothEventsImpl(Context* context);
   BluetoothEventsImpl(const BluetoothEventsImpl&) = delete;
@@ -30,29 +31,15 @@ class BluetoothEventsImpl final : public BluetoothEvents,
                        observer) override;
 
  private:
-  // BluetoothClient::Observer overrides:
-  void AdapterAdded(
-      const dbus::ObjectPath& adapter_path,
-      const BluetoothClient::AdapterProperties& properties) override;
-  void AdapterRemoved(const dbus::ObjectPath& adapter_path) override;
-  void AdapterPropertyChanged(
-      const dbus::ObjectPath& adapter_path,
-      const BluetoothClient::AdapterProperties& properties) override;
-  void DeviceAdded(
-      const dbus::ObjectPath& device_path,
-      const BluetoothClient::DeviceProperties& properties) override;
-  void DeviceRemoved(const dbus::ObjectPath& device_path) override;
-  void DevicePropertyChanged(
-      const dbus::ObjectPath& device_path,
-      const BluetoothClient::DeviceProperties& properties) override;
-
-  // Checks to see if any observers are left. If not, removes this object from
-  // the BluetoothClient's observers.
-  void StopObservingBluetoothClientIfNecessary();
-
-  // Tracks whether or not this instance has added itself as an observer of
-  // the BluetoothClient.
-  bool is_observing_bluetooth_client_ = false;
+  void SetProxyCallback();
+  void AdapterAdded(org::bluez::Adapter1ProxyInterface* adapter);
+  void AdapterRemoved(const dbus::ObjectPath& adapter_path);
+  void AdapterPropertyChanged(org::bluez::Adapter1ProxyInterface* adapter,
+                              const std::string& property_name);
+  void DeviceAdded(org::bluez::Device1ProxyInterface* device);
+  void DeviceRemoved(const dbus::ObjectPath& device_path);
+  void DevicePropertyChanged(org::bluez::Device1ProxyInterface* device,
+                             const std::string& property_name);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.
@@ -64,6 +51,7 @@ class BluetoothEventsImpl final : public BluetoothEvents,
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
+  base::WeakPtrFactory<BluetoothEventsImpl> weak_ptr_factory_;
 };
 
 }  // namespace diagnostics

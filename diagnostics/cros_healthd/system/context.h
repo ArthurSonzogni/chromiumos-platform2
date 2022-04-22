@@ -18,7 +18,6 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
-#include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/common/system/powerd_adapter.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
@@ -81,9 +80,6 @@ class Context {
   // Use the object returned by attestation_proxy() to get the attestation
   // information from attestation service.
   org::chromium::AttestationProxyInterface* attestation_proxy() const;
-  // Use the object returned by bluetooth_client() to subscribe to notifications
-  // for D-Bus objects representing Bluetooth adapters and devices.
-  BluetoothClient* bluetooth_client() const;
   // Use the object returned by bluetooth_proxy() to subscribe to notifications
   // for D-Bus objects representing Bluetooth adapters and devices.
   org::bluezProxy* bluetooth_proxy() const;
@@ -163,7 +159,6 @@ class Context {
 
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
-  std::unique_ptr<BluetoothClient> bluetooth_client_;
   std::unique_ptr<org::bluezProxy> bluetooth_proxy_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;

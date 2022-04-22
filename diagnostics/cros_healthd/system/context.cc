@@ -21,7 +21,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "diagnostics/common/system/bluetooth_client_impl.h"
 #include "diagnostics/common/system/debugd_adapter_impl.h"
 #include "diagnostics/common/system/powerd_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
@@ -79,7 +78,6 @@ std::unique_ptr<Context> Context::Create(
   // Create D-Bus clients:
   context->attestation_proxy_ =
       std::make_unique<org::chromium::AttestationProxy>(dbus_bus);
-  context->bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus);
   context->bluetooth_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
   context->cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
@@ -131,10 +129,6 @@ std::unique_ptr<PciUtil> Context::CreatePciUtil() {
 
 org::chromium::AttestationProxyInterface* Context::attestation_proxy() const {
   return attestation_proxy_.get();
-}
-
-BluetoothClient* Context::bluetooth_client() const {
-  return bluetooth_client_.get();
 }
 
 org::bluezProxy* Context::bluetooth_proxy() const {
