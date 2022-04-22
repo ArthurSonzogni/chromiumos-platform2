@@ -24,8 +24,10 @@
 #include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/fake_cros_config_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace brillo {
 namespace dbus_utils {
@@ -297,12 +299,14 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          RmadInterface* rmad_interface,
                          const base::FilePath& state_file_path,
                          std::unique_ptr<TpmManagerClient> tpm_manager_client,
-                         std::unique_ptr<CrosConfigUtils> cros_config_utils)
+                         std::unique_ptr<CrosConfigUtils> cros_config_utils,
+                         std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
       state_file_path_(state_file_path),
       tpm_manager_client_(std::move(tpm_manager_client)),
       cros_config_utils_(std::move(cros_config_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
       is_external_utils_initialized_(true),
       is_interface_set_up_(false),
       quit_requested_(false),
@@ -324,10 +328,13 @@ int DBusService::OnEventLoopStarted() {
       tpm_manager_client_ =
           std::make_unique<fake::FakeTpmManagerClient>(test_dir_path);
       cros_config_utils_ = std::make_unique<fake::FakeCrosConfigUtils>();
+      crossystem_utils_ =
+          std::make_unique<fake::FakeCrosSystemUtils>(test_dir_path);
     } else {
       tpm_manager_client_ =
           std::make_unique<TpmManagerClientImpl>(GetSystemBus());
       cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
+      crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
     }
     is_external_utils_initialized_ = true;
   }
@@ -403,6 +410,12 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 }
 
 bool DBusService::CheckRmaCriteria() const {
+  // Only allow Shimless RMA in normal mode.
+  if (std::string mainfw_type;
+      !crossystem_utils_->GetMainFwType(&mainfw_type) ||
+      mainfw_type != "normal") {
+    return false;
+  }
   // Only allow Shimless RMA on some models.
   if (std::string model; !cros_config_utils_->GetModelName(&model) ||
                          std::find(kAllowedModels.begin(), kAllowedModels.end(),

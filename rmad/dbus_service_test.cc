@@ -20,12 +20,14 @@
 #include "rmad/mock_rmad_interface.h"
 #include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/utils/mock_cros_config_utils.h"
+#include "rmad/utils/mock_crossystem_utils.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::PopValueFromReader;
 using testing::_;
 using testing::A;
 using testing::DoAll;
+using testing::Eq;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
@@ -109,9 +111,15 @@ class DBusServiceTest : public testing::Test {
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
     ON_CALL(*mock_cros_config_utils, GetModelName(_))
         .WillByDefault(DoAll(SetArgPointee<0>("fleex"), Return(true)));
+    auto mock_crossystem_utils =
+        std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    ON_CALL(*mock_crossystem_utils,
+            GetString(Eq(CrosSystemUtils::kMainFwTypeProperty), _))
+        .WillByDefault(DoAll(SetArgPointee<1>("normal"), Return(true)));
     dbus_service_ = std::make_unique<DBusService>(
         mock_bus_, &mock_rmad_service_, state_file_path,
-        std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils));
+        std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils),
+        std::move(mock_crossystem_utils));
     ASSERT_EQ(dbus_service_->OnEventLoopStarted(), EX_OK);
 
     auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();

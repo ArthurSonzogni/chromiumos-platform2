@@ -20,6 +20,7 @@
 #include "rmad/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
+#include "rmad/utils/crossystem_utils.h"
 
 namespace brillo {
 namespace dbus_utils {
@@ -54,7 +55,8 @@ class DBusService : public brillo::DBusServiceDaemon {
               RmadInterface* rmad_interface,
               const base::FilePath& state_file_path,
               std::unique_ptr<TpmManagerClient> tpm_manager_client,
-              std::unique_ptr<CrosConfigUtils> cros_config_utils);
+              std::unique_ptr<CrosConfigUtils> cros_config_utils,
+              std::unique_ptr<CrosSystemUtils> crossystem_utils);
   DBusService(const DBusService&) = delete;
   DBusService& operator=(const DBusService&) = delete;
 
@@ -199,6 +201,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
   // External utils to get cros_config data.
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
+  // External utils to get crossystem data.
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   // External utils initialization status.
   bool is_external_utils_initialized_;
   // RMA interface setup status. Only set up the interface when RMA is required
