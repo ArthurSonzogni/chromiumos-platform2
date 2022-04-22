@@ -49,6 +49,7 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/user_session/user_session_factory.h"
+#include "cryptohome/uss_experiment_config_fetcher.h"
 
 namespace cryptohome {
 
@@ -613,6 +614,12 @@ class UserDataAuth {
     fingerprint_manager_ = fingerprint_manager;
   }
 
+  // Override |uss_experiment_config_fetcher_| for testing purpose
+  void set_uss_experiment_config_fetcher(
+      UssExperimentConfigFetcher* uss_experiment_config_fetcher) {
+    uss_experiment_config_fetcher_ = uss_experiment_config_fetcher;
+  }
+
   // Override |mount_factory_| for testing purpose
   void set_user_session_factory(UserSessionFactory* user_session_factory) {
     user_session_factory_ = user_session_factory;
@@ -1102,6 +1109,13 @@ class UserDataAuth {
   bool PrepareWebAuthnSecret(const std::string& account_id,
                              const VaultKeyset& vk);
 
+  // =============== USS Experiment Related Methods ===============
+
+  // Called on Mount thread. This creates a dbus proxy for flimflam::Manager
+  // and connects to signals. It fetches the experiment config from gstatic when
+  // network is ready.
+  void CreateUssExperimentConfigFetcher();
+
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth
@@ -1374,6 +1388,15 @@ class UserDataAuth {
   // A counter to count the number of parallel tasks on mount thread.
   // Recorded when a requests comes in. Counts of 1 will not reported.
   std::atomic<int> parallel_task_count_ = 0;
+
+  // The default USS experiment config fetcher object. This is used to fetch the
+  // USS experiment config when network is first connected.
+  std::unique_ptr<UssExperimentConfigFetcher>
+      default_uss_experiment_config_fetcher_;
+
+  // The actual USS experiment config fetcher object. Usually set to
+  // default_uss_experiment_config_fetcher_, but can be overridden for testing.
+  UssExperimentConfigFetcher* uss_experiment_config_fetcher_;
 
   friend class UserDataAuthTestTasked;
   FRIEND_TEST(UserDataAuthTest, Unmount_AllDespiteFailures);

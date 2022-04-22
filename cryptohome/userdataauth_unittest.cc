@@ -52,6 +52,7 @@
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_uss_experiment_config_fetcher.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
@@ -165,6 +166,8 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_chaps_client(&chaps_client_);
     userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
+    userdataauth_->set_uss_experiment_config_fetcher(
+        &uss_experiment_config_fetcher_);
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
@@ -283,6 +286,10 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Fingerprint Manager object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockFingerprintManager> fingerprint_manager_;
+
+  // Mock USS experiment config fetcher object, will be passed to UserDataAuth
+  // for its internal use.
+  NiceMock<MockUssExperimentConfigFetcher> uss_experiment_config_fetcher_;
 
   // Mock challenge credential helper utility object, will be passed to
   // UserDataAuth for its internal use.

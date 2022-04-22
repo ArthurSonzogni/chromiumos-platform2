@@ -16,6 +16,7 @@ pkg_config("target_default_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libshill-client",
     "openssl",
     "system_api",
   ]
@@ -426,6 +427,7 @@ static_library("libcryptohome") {
     "../storage/out_of_process_mount_helper.cc",
     "../user_session/real_user_session.cc",
     "../userdataauth.cc",
+    "../uss_experiment_config_fetcher.cc",
     "../vault_keyset_factory.cc",
   ]
 

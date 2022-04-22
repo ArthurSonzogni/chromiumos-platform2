@@ -66,6 +66,7 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
+#include "cryptohome/uss_experiment_config_fetcher.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -679,7 +680,23 @@ bool UserDataAuth::PostDBusInitialize() {
                         base::BindOnce(&UserDataAuth::CreateFingerprintManager,
                                        base::Unretained(this)));
 
+  PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuth::CreateUssExperimentConfigFetcher,
+                                base::Unretained(this)));
+
   return true;
+}
+
+void UserDataAuth::CreateUssExperimentConfigFetcher() {
+  AssertOnMountThread();
+  if (!uss_experiment_config_fetcher_) {
+    if (!default_uss_experiment_config_fetcher_) {
+      default_uss_experiment_config_fetcher_ =
+          UssExperimentConfigFetcher::Create(mount_thread_bus_);
+    }
+    uss_experiment_config_fetcher_ =
+        default_uss_experiment_config_fetcher_.get();
+  }
 }
 
 void UserDataAuth::CreateFingerprintManager() {
