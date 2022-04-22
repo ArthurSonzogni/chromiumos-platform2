@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BLUETOOTH_FETCHER_H_
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
@@ -24,13 +25,18 @@ class BluetoothFetcher final : public BaseFetcher {
   chromeos::cros_healthd::mojom::BluetoothResultPtr FetchBluetoothInfo(
       std::vector<org::bluez::Adapter1ProxyInterface*> adapters,
       std::vector<org::bluez::Device1ProxyInterface*> devices);
+  chromeos::cros_healthd::mojom::BluetoothDeviceType GetDeviceType(
+      const std::string& type);
 
  private:
   std::vector<org::bluez::Adapter1ProxyInterface*> GetAdapterInstances();
   std::vector<org::bluez::Device1ProxyInterface*> GetDeviceInstances();
   void FetchDevicesInfo(
       std::vector<org::bluez::Device1ProxyInterface*> devices,
-      std::map<dbus::ObjectPath, uint32_t>& num_connected_devices);
+      std::map<
+          dbus::ObjectPath,
+          std::vector<chromeos::cros_healthd::mojom::BluetoothDeviceInfoPtr>>&
+          connected_devices);
 };
 
 }  // namespace diagnostics
