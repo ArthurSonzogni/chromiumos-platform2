@@ -98,7 +98,9 @@
     "-b",
     "/sys/class/block/",
     "-b",
-    "/sys/devices/pci0000:00/"
+    "/sys/devices/pci0000:00/",
+    "-b",
+    "/sys/devices/platform/"
   ],
   "nvme_storage": [
     "-k",
