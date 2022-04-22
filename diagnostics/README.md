@@ -1,4 +1,4 @@
-# Chrome OS on-device Health Service (healthd)
+# ChromeOS on-device Health Service (healthd)
 
 Health Service (a.k.a healthd) aims to provide
 [one-stop APIs](./mojom/public/cros_healthd.mojom), including diagnostic and
@@ -48,7 +48,7 @@ Here are more benefits for the whole ChromeOS ecosystem:
 
 ## Code structure
 
-The repository hosts the core Chrome OS Health Service components, including:
+The repository hosts the core ChromeOS Health Service components, including:
 * [interface definitions](./mojom/public) for other on-device services to
   access.
 * [core health service daemon](./cros_healthd) (a.k.a. `cros_healthd`) provides

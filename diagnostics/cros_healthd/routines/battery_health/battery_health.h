@@ -25,7 +25,7 @@ extern const char kBatteryHealthExcessiveCycleCountMessage[];
 extern const char kBatteryHealthRoutinePassedMessage[];
 
 // Fleet-wide default values for the battery health routine's parameters. These
-// values were suggested by the Chrome OS power team.
+// values were suggested by the ChromeOS power team.
 extern const uint32_t kBatteryHealthDefaultMaximumCycleCount;
 extern const uint8_t kBatteryHealthDefaultPercentBatteryWearAllowed;
 

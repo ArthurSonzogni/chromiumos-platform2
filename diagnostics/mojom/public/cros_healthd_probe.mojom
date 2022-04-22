@@ -753,7 +753,7 @@ struct OsVersion {
 [Extensible]
 enum BootMode {
   [Default] kUnknown = 0,
-  // Boot with Chrome OS firmware.
+  // Boot with ChromeOS firmware.
   kCrosSecure = 1,
   // Boot with EFI
   kCrosEfi = 2,

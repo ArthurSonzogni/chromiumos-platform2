@@ -86,12 +86,12 @@ void ConfigureAndEnterMinijail() {
                                                 // backlights.
   BindMountIfPathExists(
       jail.get(),
-      base::FilePath("/sys/class/chromeos"));  // Files related to Chrome OS
+      base::FilePath("/sys/class/chromeos"));  // Files related to ChromeOS
                                                // hardware devices.
 
   BindMountIfPathExists(
       jail.get(),
-      base::FilePath("/sys/class/hwmon"));  // Files related to Chrome OS
+      base::FilePath("/sys/class/hwmon"));  // Files related to ChromeOS
                                             // hardware monitors.
 
   BindMountIfPathExists(

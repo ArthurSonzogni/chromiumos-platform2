@@ -20,14 +20,14 @@ cros_healthd and cherry-picking a test CL is no longer necessary.
 
 ### Procedure
 
-*   Make sure both Chrome OS and Chrome sources are up to date. This is
-    necessary because there are a number of dependencies between Chrome OS and
-    Chrome, and trying to deploy a recent Chrome image onto an older Chrome OS
+*   Make sure both ChromeOS and Chrome sources are up to date. This is
+    necessary because there are a number of dependencies between ChromeOS and
+    Chrome, and trying to deploy a recent Chrome image onto an older ChromeOS
     image (or vice versa) will likely fail in a manner unrelated to the code
     under test.
 
 *   Enterprise-enroll the DUT. Make sure that the DUT is running a recent
-    Chrome OS image, preferably by running:
+    ChromeOS image, preferably by running:
     ```bash
     (cros-sdk) cros flash ${DUT_IP} xbuddy://remote/${BOARD}/latest-dev/test
     ```
