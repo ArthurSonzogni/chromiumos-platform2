@@ -174,15 +174,14 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
   LOG_IF(WARNING, !options.empty())
       << "Ignoring non-empty unmount options " << quote(options);
 
-  MountErrorType error = MOUNT_ERROR_INVALID_PATH;
   for (const auto& manager : mount_managers_) {
-    error = manager->Unmount(path);
+    const MountErrorType error = manager->Unmount(path);
     if (error != MOUNT_ERROR_PATH_NOT_MOUNTED)
-      break;
+      return error;
   }
 
-  LOG_IF(ERROR, error) << "Cannot unmount " << quote(path) << ": " << error;
-  return error;
+  LOG(ERROR) << "Cannot find mount point " << redact(path);
+  return MOUNT_ERROR_PATH_NOT_MOUNTED;
 }
 
 void CrosDisksServer::UnmountAll() {
