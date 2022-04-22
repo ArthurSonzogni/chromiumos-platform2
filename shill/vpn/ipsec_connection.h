@@ -196,6 +196,10 @@ class IPsecConnection : public VPNConnection {
   void ParseIKECipherSuite(const std::vector<std::string>& swanctl_output);
   void ParseESPCipherSuite(const std::vector<std::string>& swanctl_output);
 
+  // Reads ResolveConfPath() written by charon to get the DNS servers pushed
+  // from the VPN server. Will only be called for an IKEv2 connection.
+  void ParseDNSServers();
+
   // Callbacks from L2TPConnection.
   void OnL2TPConnected(const std::string& interface_name,
                        int interface_index,
@@ -208,6 +212,9 @@ class IPsecConnection : public VPNConnection {
 
   // Stops the charon process if it is running and invokes NotifyStopped().
   void StopCharon();
+
+  // Path to the resolv.conf file written by charon.
+  base::FilePath StrongSwanResolvConfPath() const;
 
   std::unique_ptr<Config> config_;
   std::unique_ptr<VPNConnection> l2tp_connection_;
@@ -227,6 +234,7 @@ class IPsecConnection : public VPNConnection {
   std::optional<int> xfrm_interface_index_;
   // Set when the IPsec layer is connected.
   std::string local_virtual_ip_;
+  std::vector<std::string> dns_servers_;
 
   // Cipher algorithms used by this connection. Set when IPsec is connected.
   Metrics::VpnIpsecEncryptionAlgorithm ike_encryption_algo_;

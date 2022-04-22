@@ -39,6 +39,7 @@ namespace {
 constexpr char kBaseRunDir[] = "/run/ipsec";
 constexpr char kStrongSwanConfFileName[] = "strongswan.conf";
 constexpr char kSwanctlConfFileName[] = "swanctl.conf";
+constexpr char kResolvConfFilename[] = "resolv.conf";
 constexpr char kSwanctlPath[] = "/usr/sbin/swanctl";
 constexpr char kCharonPath[] = "/usr/libexec/ipsec/charon";
 constexpr char kViciSocketPath[] = "/run/ipsec/charon.vici";
@@ -445,6 +446,7 @@ void IPsecConnection::ScheduleConnectTask(ConnectStep step) {
       if (l2tp_connection_) {
         l2tp_connection_->Connect();
       } else {
+        ParseDNSServers();
         CreateXFRMInterface();
       }
       return;
@@ -479,6 +481,9 @@ void IPsecConnection::WriteStrongSwanConfig() {
       "          path = " + std::string{PKCS11_LIB},
       "        }",
       "      }",
+      "    }",
+      "    resolve {",
+      "      file = " + StrongSwanResolvConfPath().value(),
       "    }",
       "  }",
       "}",
@@ -1015,6 +1020,41 @@ void IPsecConnection::ParseESPCipherSuite(
   }
 }
 
+// The file to be parsed is in resolv.conf format. Example of its contents:
+//   nameserver 1.2.3.4   # by strongSwan
+//   nameserver 1.2.3.5   # by strongSwan
+// TODO(b/229918180): Add a fuzzer test for this function.
+void IPsecConnection::ParseDNSServers() {
+  dns_servers_.clear();
+  const base::FilePath path = StrongSwanResolvConfPath();
+
+  if (!base::PathExists(path)) {
+    LOG(INFO) << "No DNS servers found";
+    return;
+  }
+
+  std::string contents;
+  if (!base::ReadFileToString(path, &contents)) {
+    LOG(ERROR) << "Failed to read " << path.value();
+    return;
+  }
+
+  // TODO(jiejiang): Support IPv6 name servers.
+  static constexpr LazyRE2 kNameServerLine = {
+      R"(^nameserver\s+(\d+\.\d+\.\d+\.\d+).*)"};
+  const std::vector<std::string> lines = base::SplitString(
+      contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : lines) {
+    std::string matched_part;
+    if (RE2::FullMatch(line, *kNameServerLine, &matched_part)) {
+      dns_servers_.push_back(matched_part);
+    }
+  }
+
+  LOG(INFO) << "Received " << dns_servers_.size() << " DNS server entries";
+  return;
+}
+
 void IPsecConnection::OnL2TPConnected(const std::string& interface_name,
                                       int interface_index,
                                       const IPConfig::Properties& properties) {
@@ -1089,6 +1129,7 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
   IPConfig::Properties props;
   props.address = local_virtual_ip_;
   props.subnet_prefix = 32;
+  props.dns_servers = dns_servers_;
   props.blackhole_ipv6 = true;
   // This is a point-to-point link, gateway does not make sense here. Set it
   // default to skip RTA_GATEWAY when installing routes.
@@ -1125,6 +1166,10 @@ void IPsecConnection::StopCharon() {
     // signal.
     NotifyStopped();
   }
+}
+
+base::FilePath IPsecConnection::StrongSwanResolvConfPath() const {
+  return temp_dir_.GetPath().Append(kResolvConfFilename);
 }
 
 }  // namespace shill

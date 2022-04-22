@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
+#include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -85,6 +86,7 @@ class IPsecConnectionUnderTest : public IPsecConnection {
   }
 
   std::string local_virtual_ip() { return local_virtual_ip_; }
+  std::vector<std::string> dns_servers() { return dns_servers_; }
 
   MOCK_METHOD(void, ScheduleConnectTask, (ConnectStep), (override));
 };
@@ -99,32 +101,31 @@ using testing::DoAll;
 using testing::Return;
 using testing::WithArg;
 
-// Note that there is a MACRO in this string so we cannot use raw string literal
-// here.
-constexpr char kExpectedStrongSwanConf[] =
-    "charon {\n"
-    "  accept_unencrypted_mainmode_messages = yes\n"
-    "  ignore_routing_tables = 0\n"
-    "  install_routes = no\n"
-    "  routing_table = 0\n"
-    "  syslog {\n"
-    "    daemon {\n"
-    "      ike = 2\n"
-    "      cfg = 2\n"
-    "      knl = 2\n"
-    "    }\n"
-    "  }\n"
-    "  plugins {\n"
-    "    pkcs11 {\n"
-    "      modules {\n"
-    "        crypto_module {\n"
-    "          path = " PKCS11_LIB
-    "\n"
-    "        }\n"
-    "      }\n"
-    "    }\n"
-    "  }\n"
-    "}";
+constexpr char kExpectedStrongSwanConf[] = R"(charon {
+  accept_unencrypted_mainmode_messages = yes
+  ignore_routing_tables = 0
+  install_routes = no
+  routing_table = 0
+  syslog {
+    daemon {
+      ike = 2
+      cfg = 2
+      knl = 2
+    }
+  }
+  plugins {
+    pkcs11 {
+      modules {
+        crypto_module {
+          path = $1
+        }
+      }
+    }
+    resolve {
+      file = $2
+    }
+  }
+})";
 
 // Expected contents of swanctl.conf in WriteSwanctlConfigL2TPIPsec test.
 constexpr char kExpectedSwanctlConfL2TPIPsecPSK[] = R"(connections {
@@ -305,7 +306,10 @@ TEST_F(IPsecConnectionTest, WriteStrongSwanConfig) {
   ASSERT_TRUE(base::PathExists(expected_path));
   std::string actual_content;
   ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
-  EXPECT_EQ(actual_content, kExpectedStrongSwanConf);
+  EXPECT_EQ(actual_content,
+            base::ReplaceStringPlaceholders(
+                kExpectedStrongSwanConf,
+                {PKCS11_LIB, temp_dir.Append("resolv.conf").value()}, nullptr));
 
   // The file should be deleted after destroying the IPsecConnection object.
   ipsec_connection_ = nullptr;
@@ -730,8 +734,45 @@ TEST_F(IPsecConnectionTest, OnL2TPStopped) {
   dispatcher_.task_environment().RunUntilIdle();
 }
 
+TEST_F(IPsecConnectionTest, ParseDNSServers) {
+  SetAsIKEv2Connection();
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
+  // Simulates that charon creates the file.
+  const auto tmp_dir = ipsec_connection_->SetTempDir();
+  const base::FilePath kResolvConfPath = tmp_dir.Append("resolv.conf");
+  CHECK(
+      base::WriteFile(kResolvConfPath,
+                      base::JoinString({"nameserver 1.2.3.4   # by strongSwan",
+                                        "nameserver 1.2.3.5   # by strongSwan"},
+                                       "\n")));
+  EXPECT_CALL(device_info_, CreateXFRMInterface(_, _, _, _, _))
+      .WillRepeatedly(Return(true));
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
+  const auto acutal_dns_servers = ipsec_connection_->dns_servers();
+  EXPECT_EQ(acutal_dns_servers.size(), 2);
+  EXPECT_EQ(acutal_dns_servers[0], "1.2.3.4");
+  EXPECT_EQ(acutal_dns_servers[1], "1.2.3.5");
+}
+
+TEST_F(IPsecConnectionTest, ParseDNSServersEmptyFile) {
+  SetAsIKEv2Connection();
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
+  // Simulates that charon does not create the file.
+  const auto tmp_dir = ipsec_connection_->SetTempDir();
+  EXPECT_CALL(device_info_, CreateXFRMInterface(_, _, _, _, _))
+      .WillRepeatedly(Return(true));
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
+  const auto acutal_dns_servers = ipsec_connection_->dns_servers();
+  EXPECT_EQ(acutal_dns_servers.size(), 0);
+}
+
 TEST_F(IPsecConnectionTest, CreateXFRMInterfaceAndNotifyConnected) {
   SetAsIKEv2Connection();
+  ipsec_connection_->SetTempDir();
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
   constexpr int kLoIndex = 10;
@@ -759,6 +800,7 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceAndNotifyConnected) {
 
 TEST_F(IPsecConnectionTest, CreateXFRMInterfaceFailed) {
   SetAsIKEv2Connection();
+  ipsec_connection_->SetTempDir();
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
   constexpr int kLoIndex = 10;
