@@ -42,6 +42,7 @@ const char kReclaimVmMemoryMethod[] = "ReclaimVmMemory";
 const char kMakeRtVcpuMethod[] = "MakeRtVcpu";
 const char kListVmsMethod[] = "ListVms";
 const char kArcVmCompleteBootMethod[] = "ArcVmCompleteBoot";
+const char kSetBalloonTimerMethod[] = "SetBalloonTimer";
 
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";

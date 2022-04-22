@@ -665,6 +665,21 @@ message ArcVmCompleteBootResponse {
   ArcVmCompleteBootResult result = 1;
 }
 
+// Request for setting balloon timer interval.
+message SetBalloonTimerRequest {
+  // The interval of the balloon timer in milliseconds.
+  uint64 timer_interval_millis = 1;
+}
+
+// Response sent back by vm_concierge for a SetBalloonTimerRequest dbus message.
+message SetBalloonTimerResponse {
+  // If true, the request succeeded.
+  bool success = 1;
+
+  // The failure_reason if the request could not be processed.
+  string failure_reason = 2;
+}
+
 // The type of storage location for a disk image.
 enum StorageLocation {
   // Subdirectory under /home/root/<id>/crosvm.

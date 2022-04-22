@@ -1697,6 +1697,50 @@ int ListVms(dbus::ObjectProxy* proxy, string owner_id) {
   return 0;
 }
 
+int SetBalloonTimer(dbus::ObjectProxy* proxy, uint64_t timer_interval_millis) {
+  LOG(INFO) << "Update balloon timer interval.";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kSetBalloonTimerMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::SetBalloonTimerRequest request;
+  request.set_timer_interval_millis(timer_interval_millis);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode SetBalloonTimerRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::SetBalloonTimerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Could not update balloon timer: "
+               << response.failure_reason();
+    return -1;
+  }
+
+  if (timer_interval_millis == 0) {
+    LOG(INFO) << "Successfully stopped the balloon timer.";
+  } else {
+    LOG(INFO) << "Successfully updated balloon timer interval as "
+              << timer_interval_millis << "ms.";
+  }
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1734,6 +1778,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(reclaim_vm_memory, false, "Reclaim VM memory");
   DEFINE_bool(list_vms, false, "List VMs");
   DEFINE_bool(arcvm_complete_boot, false, "Complete ARCVM Boot");
+  DEFINE_bool(set_balloon_timer, false, "Update balloon timer interval");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -1772,6 +1817,11 @@ int main(int argc, char** argv) {
   DEFINE_string(cgroup, "", "Cgroup to update");
   DEFINE_string(restriction, "", "The CPU restriction to apply");
 
+  // set_balloon_timer parameters
+  DEFINE_uint64(
+      timer_interval_millis, 1000,
+      "The interval of the balloon timer in milliseconds. '0' stops the timer");
+
   brillo::FlagHelper::Init(argc, argv, "vm_concierge client tool");
   brillo::InitLog(brillo::kLogToStderrIfTty);
 
@@ -1807,7 +1857,7 @@ int main(int argc, char** argv) {
       FLAGS_list_usb_devices + FLAGS_start_plugin_vm + FLAGS_start_arc_vm +
       FLAGS_get_vm_enterprise_reporting_info +
       FLAGS_set_vm_cpu_restriction + FLAGS_reclaim_vm_memory + FLAGS_list_vms +
-      FLAGS_arcvm_complete_boot != 1) {
+      FLAGS_arcvm_complete_boot + FLAGS_set_balloon_timer != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --suspend, --resume, "
@@ -1817,8 +1867,8 @@ int main(int argc, char** argv) {
         << "--attach_usb, --detach_usb, "
         << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, "
         << "--get_vm_enterprise_reporting_info, --set_vm_cpu_restriction, "
-        << "--reclaim_vm_memory, --arcvm_complete_boot, or --list_vms "
-        << "must be provided";
+        << "--reclaim_vm_memory, --arcvm_complete_boot, --list_vms, or "
+        << "--set_balloon_timer must be provided";
     return -1;
   }
 
@@ -1914,6 +1964,8 @@ int main(int argc, char** argv) {
     return ListVms(proxy, std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_arcvm_complete_boot) {
     return ArcVmCompleteBoot(proxy, std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_set_balloon_timer) {
+    return SetBalloonTimer(proxy, std::move(FLAGS_timer_interval_millis));
   }
 
   // Unreachable.
