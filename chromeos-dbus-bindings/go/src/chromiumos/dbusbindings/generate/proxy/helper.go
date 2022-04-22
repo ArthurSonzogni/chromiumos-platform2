@@ -8,8 +8,44 @@ import (
 	"fmt"
 	"strings"
 
+	"chromiumos/dbusbindings/dbustype"
+	"chromiumos/dbusbindings/generate/genutil"
 	"chromiumos/dbusbindings/introspect"
 )
+
+type param struct {
+	Type, Name string
+}
+
+func makeMethodParams(offset int, args []introspect.MethodArg) ([]param, error) {
+	var ret []param
+	for i, a := range args {
+		argType, prefix := a.InArgType, "in"
+		if a.Direction == "out" {
+			argType, prefix = a.OutArgType, "out"
+		}
+		t, err := argType(dbustype.ReceiverProxy)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, param{t, genutil.ArgName(prefix, a.Name, i+offset)})
+	}
+
+	return ret, nil
+}
+
+func makeMethodCallbackType(args []introspect.MethodArg) (string, error) {
+	var params []string
+	for _, a := range args {
+		t, err := a.CallbackType()
+		if err != nil {
+			return "", err
+		}
+		params = append(params, fmt.Sprintf("%s /*%s*/", t, a.Name))
+	}
+	return fmt.Sprintf("base::OnceCallback<void(%s)>", strings.Join(params, ", ")), nil
+
+}
 
 // Returns stringified C++ type for signal callback.
 func makeSignalCallbackType(args []introspect.SignalArg) (string, error) {

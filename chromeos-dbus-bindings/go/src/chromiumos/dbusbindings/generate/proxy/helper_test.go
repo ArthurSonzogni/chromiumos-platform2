@@ -7,8 +7,130 @@ package proxy
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"chromiumos/dbusbindings/introspect"
 )
+
+func TestMakeMethodParams(t *testing.T) {
+	cases := []struct {
+		offset int
+		args   []introspect.MethodArg
+		want   []param
+	}{{
+		offset: 0,
+		args: []introspect.MethodArg{{
+			Name: "iarg1", Type: "i",
+		}, {
+			Name: "iarg2", Type: "h",
+		}, {
+			Name: "iarg3", Type: "o",
+		}},
+		want: []param{
+			{Type: "int32_t", Name: "in_iarg1"},
+			{Type: "const brillo::dbus_utils::FileDescriptor&", Name: "in_iarg2"},
+			{Type: "const dbus::ObjectPath&", Name: "in_iarg3"},
+		},
+	}, {
+		offset: 3,
+		args: []introspect.MethodArg{{
+			Type: "i",
+		}, {
+			Name: "iarg2", Type: "i",
+		}, {
+			Type: "i",
+		}, {
+			Name: "iarg4", Type: "i",
+		}, {
+			Type: "i",
+		}},
+		want: []param{
+			{Type: "int32_t", Name: "in_3"},
+			{Type: "int32_t", Name: "in_iarg2"},
+			{Type: "int32_t", Name: "in_5"},
+			{Type: "int32_t", Name: "in_iarg4"},
+			{Type: "int32_t", Name: "in_7"},
+		},
+	}, {
+		offset: 0,
+		args: []introspect.MethodArg{{
+			Name: "oarg1", Type: "i", Direction: "out",
+		}, {
+			Name: "oarg2", Type: "h", Direction: "out",
+		}, {
+			Name: "oarg3", Type: "o", Direction: "out",
+		}},
+		want: []param{
+			{Type: "int32_t*", Name: "out_oarg1"},
+			{Type: "base::ScopedFD*", Name: "out_oarg2"},
+			{Type: "dbus::ObjectPath*", Name: "out_oarg3"},
+		},
+	}, {
+		offset: 5,
+		args: []introspect.MethodArg{{
+			Type: "i", Direction: "out",
+		}, {
+			Name: "oarg2", Type: "i", Direction: "out",
+		}, {
+			Type: "i", Direction: "out",
+		}, {
+			Name: "oarg4", Type: "i", Direction: "out",
+		}, {
+			Type: "i", Direction: "out",
+		}},
+		want: []param{
+			{Type: "int32_t*", Name: "out_5"},
+			{Type: "int32_t*", Name: "out_oarg2"},
+			{Type: "int32_t*", Name: "out_7"},
+			{Type: "int32_t*", Name: "out_oarg4"},
+			{Type: "int32_t*", Name: "out_9"},
+		},
+	}}
+
+	for _, tc := range cases {
+		got, err := makeMethodParams(tc.offset, tc.args)
+		if err != nil {
+			t.Errorf("Unexpected method params format error: %v", err)
+		} else if diff := cmp.Diff(got, tc.want); diff != "" {
+			t.Errorf("Unexpected method params format: got %v, want %v", got, tc.want)
+		}
+	}
+}
+
+func TestMakeMethodCallbackType(t *testing.T) {
+	cases := []struct {
+		args []introspect.MethodArg
+		want string
+	}{{
+		args: []introspect.MethodArg{},
+		want: "base::OnceCallback<void()>",
+	}, {
+		args: []introspect.MethodArg{{
+			Name: "arg1", Type: "ay", Direction: "out",
+		}},
+		want: "base::OnceCallback<void(const std::vector<uint8_t>& /*arg1*/)>",
+	}, {
+		args: []introspect.MethodArg{{
+			Name: "arg1", Type: "i",
+		}, {
+			Name: "arg2", Type: "x",
+		}, {
+			Name: "arg3", Type: "(sh)",
+		}},
+		want: ("base::OnceCallback<void(int32_t /*arg1*/, " +
+			"int64_t /*arg2*/, " +
+			"const std::tuple<std::string, base::ScopedFD>& /*arg3*/)>"),
+	}}
+
+	for _, tc := range cases {
+		got, err := makeMethodCallbackType(tc.args)
+		if err != nil {
+			t.Errorf("Unexpected method callback type format error: %v", err)
+		} else if got != tc.want {
+			t.Errorf("Unexpected method callback type format: got %v, want %v", got, tc.want)
+		}
+	}
+}
 
 func TestMakeSignalCallbackType(t *testing.T) {
 	cases := []struct {

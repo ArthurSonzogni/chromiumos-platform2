@@ -17,11 +17,13 @@ import (
 )
 
 var funcMap = template.FuncMap{
-	"extractNameSpaces": genutil.ExtractNameSpaces,
-	"formatComment":     genutil.FormatComment,
-	"makeFullItfName":   genutil.MakeFullItfName,
-	"makeFullProxyName": genutil.MakeFullProxyName,
-	"makeProxyName":     genutil.MakeProxyName,
+	"extractNameSpaces":      genutil.ExtractNameSpaces,
+	"formatComment":          genutil.FormatComment,
+	"makeFullItfName":        genutil.MakeFullItfName,
+	"makeFullProxyName":      genutil.MakeFullProxyName,
+	"makeMethodParams":       makeMethodParams,
+	"makeMethodCallbackType": makeMethodCallbackType,
+	"makeProxyName":          genutil.MakeProxyName,
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
 		return p.BaseType(dbustype.DirectionExtract)
 	},
@@ -86,8 +88,28 @@ class {{$itfName}} {
  public:
   virtual ~{{$itfName}}() = default;
 {{- range .Methods}}
-{{- /* TODO(crbug.com/983008): Add method proxies */ -}}
-{{- /* TODO(crbug.com/983008): Add asyn method proxies */ -}}
+{{- $inParams := makeMethodParams 0 .InputArguments -}}
+{{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments}}
+
+{{formatComment .DocString 2 -}}
+{{"  "}}virtual bool {{.Name}}(
+{{- range $inParams }}
+      {{.Type}} {{.Name}},
+{{- end}}
+{{- range $outParams }}
+      {{.Type}} {{.Name}},
+{{- end}}
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+{{formatComment .DocString 2 -}}
+{{"  "}}virtual void {{.Name}}Async(
+{{- range $inParams}}
+      {{.Type}} {{.Name}},
+{{- end}}
+      {{makeMethodCallbackType .OutputArguments}} success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 {{- end}}
 {{- range .Signals}}
 
@@ -205,8 +227,52 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- end}}
 
 {{- range .Methods}}
-{{- /* TODO(crbug.com/983008): Add method proxy. */ -}}
-{{- /* TODO(crbug.com/983008): Add async method proxy. */ -}}
+{{- $inParams := makeMethodParams 0 .InputArguments -}}
+{{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments}}
+
+{{formatComment .DocString 2 -}}
+{{"  "}}bool {{.Name}}(
+{{- range $inParams }}
+      {{.Type}} {{.Name}},
+{{- end}}
+{{- range $outParams }}
+      {{.Type}} {{.Name}},
+{{- end}}
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "{{$itf.Name}}",
+        "{{.Name}}",
+        error
+{{- range $inParams }},
+        {{.Name}}
+{{- end}});
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error{{range $i, $param := $outParams}}, {{.Name}}{{end}});
+  }
+
+{{formatComment .DocString 2 -}}
+{{"  "}}void {{.Name}}Async(
+{{- range $inParams}}
+      {{.Type}} {{.Name}},
+{{- end}}
+      {{makeMethodCallbackType .OutputArguments}} success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "{{$itf.Name}}",
+        "{{.Name}}",
+        std::move(success_callback),
+        std::move(error_callback)
+{{- range $inParams}},
+        {{.Name}}
+{{- end}});
+  }
+
 {{- end}}
 
 {{- range .Properties}}

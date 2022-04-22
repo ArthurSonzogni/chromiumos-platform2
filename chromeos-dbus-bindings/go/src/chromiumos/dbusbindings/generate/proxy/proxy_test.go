@@ -144,6 +144,30 @@ class InterfaceProxyInterface {
  public:
   virtual ~InterfaceProxyInterface() = default;
 
+  virtual bool Scan(
+      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void ScanAsync(
+      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  // method doc
+  virtual bool PassMeProtos(
+      const PassMeProtosRequest& in_request,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  // method doc
+  virtual void PassMeProtosAsync(
+      const PassMeProtosRequest& in_request,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
   virtual void RegisterBSSRemovedSignalHandler(
       const base::RepeatingCallback<void(const YetAnotherProto&,
                                          const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
@@ -223,6 +247,68 @@ class InterfaceProxy final : public InterfaceProxyInterface {
 
   const PropertySet* GetProperties() const { return &(*property_set_); }
   PropertySet* GetProperties() { return &(*property_set_); }
+
+  bool Scan(
+      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "fi.w1.wpa_supplicant1.Interface",
+        "Scan",
+        error,
+        in_args);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error);
+  }
+
+  void ScanAsync(
+      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "fi.w1.wpa_supplicant1.Interface",
+        "Scan",
+        std::move(success_callback),
+        std::move(error_callback),
+        in_args);
+  }
+
+  // method doc
+  bool PassMeProtos(
+      const PassMeProtosRequest& in_request,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "fi.w1.wpa_supplicant1.Interface",
+        "PassMeProtos",
+        error,
+        in_request);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error);
+  }
+
+  // method doc
+  void PassMeProtosAsync(
+      const PassMeProtosRequest& in_request,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "fi.w1.wpa_supplicant1.Interface",
+        "PassMeProtos",
+        std::move(success_callback),
+        std::move(error_callback),
+        in_request);
+  }
 
   const brillo::VariantDictionary& capabilities() const override {
     return property_set_->capabilities.value();
@@ -572,6 +658,433 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   const dbus::ObjectPath object_path_{"test.node.Name"};
+  dbus::ObjectProxy* dbus_object_proxy_;
+
+};
+
+}  // namespace test
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateProxiesWithMethods(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "test.EmptyInterface",
+		Methods: []introspect.Method{{
+			Name: "MethodNoArg",
+			Args: []introspect.MethodArg{},
+		}, {
+			Name: "MethodWithInArgs",
+			Args: []introspect.MethodArg{
+				{Name: "iarg1", Type: "x"},
+				{Name: "iarg2", Type: "ay"},
+				{Name: "iarg3", Type: "(ih)"},
+				{
+					Name: "iprotoArg",
+					Type: "ay",
+					Annotation: introspect.Annotation{
+						Name:  "org.chromium.DBus.Argument.ProtobufClass",
+						Value: "RequestProto",
+					},
+				},
+			},
+		}, {
+			Name: "MethodWithOutArgs",
+			Args: []introspect.MethodArg{
+				{Name: "oarg1", Type: "x", Direction: "out"},
+				{Name: "oarg2", Type: "ay", Direction: "out"},
+				{Name: "oarg3", Type: "(ih)", Direction: "out"},
+				{
+					Name:      "oprotoArg",
+					Type:      "ay",
+					Direction: "out",
+					Annotation: introspect.Annotation{
+						Name:  "org.chromium.DBus.Argument.ProtobufClass",
+						Value: "ResponseProto",
+					},
+				},
+			},
+		}, {
+			Name: "MethodWithBothArgs",
+			Args: []introspect.MethodArg{
+				{Name: "iarg1", Type: "x"},
+				{Name: "iarg2", Type: "ay"},
+				{Name: "oarg1", Type: "q", Direction: "out"},
+				{Name: "oarg2", Type: "d", Direction: "out"},
+			},
+		}, {
+			Name: "MethodWithMixedArgs",
+			Args: []introspect.MethodArg{
+				{Name: "iarg1", Type: "x"},
+				{Name: "oarg1", Type: "q", Direction: "out"},
+				{Name: "iarg2", Type: "ay"},
+				{Name: "oarg2", Type: "d", Direction: "out"},
+			},
+		}, {
+			Name:      "MethodWithDoc",
+			DocString: "\n        method doc\n      ",
+		}},
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{}
+	out := new(bytes.Buffer)
+	if err := Generate(introspections, out, "/tmp/proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interfaces:
+//  - test.EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_manager.h>
+#include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
+
+namespace test {
+
+// Abstract interface proxy for test::EmptyInterface.
+class EmptyInterfaceProxyInterface {
+ public:
+  virtual ~EmptyInterfaceProxyInterface() = default;
+
+  virtual bool MethodNoArg(
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void MethodNoArgAsync(
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual bool MethodWithInArgs(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const RequestProto& in_iprotoArg,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void MethodWithInArgsAsync(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const RequestProto& in_iprotoArg,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual bool MethodWithOutArgs(
+      int64_t* out_oarg1,
+      std::vector<uint8_t>* out_oarg2,
+      std::tuple<int32_t, base::ScopedFD>* out_oarg3,
+      ResponseProto* out_oprotoArg,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void MethodWithOutArgsAsync(
+      base::OnceCallback<void(int64_t /*oarg1*/, const std::vector<uint8_t>& /*oarg2*/, const std::tuple<int32_t, base::ScopedFD>& /*oarg3*/, const ResponseProto& /*oprotoArg*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual bool MethodWithBothArgs(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      uint16_t* out_oarg1,
+      double* out_oarg2,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void MethodWithBothArgsAsync(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual bool MethodWithMixedArgs(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      uint16_t* out_oarg1,
+      double* out_oarg2,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void MethodWithMixedArgsAsync(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  // method doc
+  virtual bool MethodWithDoc(
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  // method doc
+  virtual void MethodWithDocAsync(
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+};
+
+}  // namespace test
+
+namespace test {
+
+// Interface proxy for test::EmptyInterface.
+class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
+  EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
+
+  ~EmptyInterfaceProxy() override {
+  }
+
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
+  }
+
+  const dbus::ObjectPath& GetObjectPath() const override {
+    return object_path_;
+  }
+
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
+
+  bool MethodNoArg(
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodNoArg",
+        error);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error);
+  }
+
+  void MethodNoArgAsync(
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodNoArg",
+        std::move(success_callback),
+        std::move(error_callback));
+  }
+
+  bool MethodWithInArgs(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const RequestProto& in_iprotoArg,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithInArgs",
+        error,
+        in_iarg1,
+        in_iarg2,
+        in_iarg3,
+        in_iprotoArg);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error);
+  }
+
+  void MethodWithInArgsAsync(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const RequestProto& in_iprotoArg,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithInArgs",
+        std::move(success_callback),
+        std::move(error_callback),
+        in_iarg1,
+        in_iarg2,
+        in_iarg3,
+        in_iprotoArg);
+  }
+
+  bool MethodWithOutArgs(
+      int64_t* out_oarg1,
+      std::vector<uint8_t>* out_oarg2,
+      std::tuple<int32_t, base::ScopedFD>* out_oarg3,
+      ResponseProto* out_oprotoArg,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithOutArgs",
+        error);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_oarg1, out_oarg2, out_oarg3, out_oprotoArg);
+  }
+
+  void MethodWithOutArgsAsync(
+      base::OnceCallback<void(int64_t /*oarg1*/, const std::vector<uint8_t>& /*oarg2*/, const std::tuple<int32_t, base::ScopedFD>& /*oarg3*/, const ResponseProto& /*oprotoArg*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithOutArgs",
+        std::move(success_callback),
+        std::move(error_callback));
+  }
+
+  bool MethodWithBothArgs(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      uint16_t* out_oarg1,
+      double* out_oarg2,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithBothArgs",
+        error,
+        in_iarg1,
+        in_iarg2);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_oarg1, out_oarg2);
+  }
+
+  void MethodWithBothArgsAsync(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithBothArgs",
+        std::move(success_callback),
+        std::move(error_callback),
+        in_iarg1,
+        in_iarg2);
+  }
+
+  bool MethodWithMixedArgs(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      uint16_t* out_oarg1,
+      double* out_oarg2,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithMixedArgs",
+        error,
+        in_iarg1,
+        in_iarg2);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_oarg1, out_oarg2);
+  }
+
+  void MethodWithMixedArgsAsync(
+      int64_t in_iarg1,
+      const std::vector<uint8_t>& in_iarg2,
+      base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithMixedArgs",
+        std::move(success_callback),
+        std::move(error_callback),
+        in_iarg1,
+        in_iarg2);
+  }
+
+  // method doc
+  bool MethodWithDoc(
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithDoc",
+        error);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error);
+  }
+
+  // method doc
+  void MethodWithDocAsync(
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "test.EmptyInterface",
+        "MethodWithDoc",
+        std::move(success_callback),
+        std::move(error_callback));
+  }
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
 
 };
