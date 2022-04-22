@@ -404,33 +404,6 @@ void GetArmSoCModelName(const base::FilePath& root_dir,
   ParseCompatibleString(root_dir, model_name);
 }
 
-// Fetch Keylocker information.
-std::optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
-    const base::FilePath& root_dir,
-    mojo_ipc::KeylockerInfoPtr* keylocker_info) {
-  std::string file_contents;
-  // Crypto file is common for all CPU architects. However, crypto algorithms
-  // populated in crypto file could be hardware dependent.
-  if (!ReadAndTrimString(root_dir, kRelativeCryptoFilePath, &file_contents)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read file: " +
-            root_dir.Append(kRelativeCryptoFilePath).value());
-  }
-  // aeskl algorithm populated in crypto file is the indication that keylocker
-  // driver had been loaded, the hardware had been configured and ready for use.
-  std::size_t found = file_contents.find(kKeylockerAeskl);
-  if (found == std::string::npos) {
-    *keylocker_info = nullptr;
-    return std::nullopt;
-  }
-  auto info = mojo_ipc::KeylockerInfo::New();
-  info->keylocker_configured = true;
-  *keylocker_info = std::move(info);
-
-  return std::nullopt;
-}
-
 std::optional<VulnerabilityInfoMap> GetVulnerabilities(
     const base::FilePath& root_dir) {
   base::FilePath vulnerability_dir =
@@ -571,6 +544,33 @@ bool CpuFetcher::FetchArchitecture() {
   return true;
 }
 
+// Fetch Keylocker information.
+bool CpuFetcher::FetchKeylockerInfo() {
+  base::FilePath root_dir = context_->root_dir();
+
+  std::string file_contents;
+  // Crypto file is common for all CPU architects. However, crypto algorithms
+  // populated in crypto file could be hardware dependent.
+  if (!ReadAndTrimString(root_dir, kRelativeCryptoFilePath, &file_contents)) {
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read file: " +
+                       root_dir.Append(kRelativeCryptoFilePath).value());
+    return false;
+  }
+  // aeskl algorithm populated in crypto file is the indication that keylocker
+  // driver had been loaded, the hardware had been configured and ready for use.
+  std::size_t found = file_contents.find(kKeylockerAeskl);
+  if (found == std::string::npos) {
+    cpu_info_->keylocker_info = nullptr;
+    return true;
+  }
+  auto info = mojo_ipc::KeylockerInfo::New();
+  info->keylocker_configured = true;
+  cpu_info_->keylocker_info = std::move(info);
+
+  return true;
+}
+
 mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   base::FilePath root_dir = context_->root_dir();
 
@@ -686,11 +686,6 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
 
   // Populate the final CpuInfo struct.
   mojo_ipc::CpuInfo cpu_info;
-
-  auto& keylocker_info = cpu_info.keylocker_info;
-  auto error = FetchKeylockerInfo(root_dir, &keylocker_info);
-  if (error.has_value())
-    return mojo_ipc::CpuResult::NewError(std::move(error.value()));
 
   for (const auto& temperature : GetCpuTemperatures(root_dir))
     cpu_info.temperature_channels.push_back(temperature.Clone());
@@ -873,7 +868,8 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
   }
   cpu_info_ = std::move(cpu_result->get_cpu_info());
 
-  if (!FetchNumTotalThreads() || !FetchArchitecture()) {
+  if (!FetchNumTotalThreads() || !FetchArchitecture() ||
+      !FetchKeylockerInfo()) {
     DCHECK(!error_.is_null());
     return;
   }

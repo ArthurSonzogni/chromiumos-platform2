@@ -103,6 +103,10 @@ class CpuFetcher final
   // and false otherwise.
   bool FetchArchitecture();
 
+  // Record the keylocker information into |architecture|. Returns true on
+  // success and false otherwise.
+  bool FetchKeylockerInfo();
+
   // Calls |callback_| and passes the result. If |all_callback_called| or
   // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
   void HandleCallbackComplete(bool all_callback_called);
