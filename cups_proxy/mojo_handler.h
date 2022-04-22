@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/threading/thread.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "cups_proxy/mhd_http_request.h"
@@ -70,7 +71,7 @@ class MojoHandler {
 
   // The top-level interface. Empty until it is created & bound to a pipe by
   // BootstrapMojoConnection.
-  mojom::CupsProxierPtr chrome_proxy_;
+  mojo::Remote<mojom::CupsProxier> chrome_proxy_;
 
   // Queued requests that come before |chrome_proxy_| is ready.
   std::vector<base::OnceClosure> queued_requests_;

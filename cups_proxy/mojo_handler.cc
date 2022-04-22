@@ -55,9 +55,9 @@ MojoHandler::~MojoHandler() {
   // The message pipe is bound on the mojo thread, and it has to be closed on
   // the same thread which it is bound, so we close the message pipe by calling
   // .reset() on the mojo thread.
-  mojo_task_runner_->PostTask(FROM_HERE,
-                              base::BindOnce(&mojom::CupsProxierPtr::reset,
-                                             base::Unretained(&chrome_proxy_)));
+  mojo_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&mojo::Remote<mojom::CupsProxier>::reset,
+                                base::Unretained(&chrome_proxy_)));
   mojo_thread_.Stop();
 }
 
@@ -87,11 +87,11 @@ void MojoHandler::SetupMojoPipeOnThread(base::OnceClosure error_handler,
   DCHECK(!chrome_proxy_);
 
   // Bind primordial message pipe to a CupsProxyService implementation.
-  chrome_proxy_.Bind(mojom::CupsProxierPtrInfo(
+  chrome_proxy_.Bind(mojo::PendingRemote<mojom::CupsProxier>(
       invitation.ExtractMessagePipe(
           printing::kBootstrapMojoConnectionChannelToken),
       0u /* version */));
-  chrome_proxy_.set_connection_error_handler(std::move(error_handler));
+  chrome_proxy_.set_disconnect_handler(std::move(error_handler));
 
   chrome_proxy_.RequireVersion(kMinVersionRequired);
 
