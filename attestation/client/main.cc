@@ -107,7 +107,7 @@ Commands:
       Creates enroll request to CA and stores it to |output_file|.
   finish_enroll [--attestation-server=default|test] --input=<input_file>
       Finishes enrollment using the CA response from |input_file|.
-  create_enroll_request [--attestation-server=default|test]
+  enroll [--attestation-server=default|test] [--forced]
       Enrolls the device to the specified CA.
   create_cert_request [--attestation-server=default|test]
         [--profile=<profile>] [--user=<user>] [--origin=<origin>]
@@ -122,7 +122,7 @@ Commands:
       |input_file|, and stores it in the key with the specified |label|.
   get_cert [--attestation-server=default|test] [--profile=<profile>]
         [--label=<label>] [--user=<user>] [--origin=<origin>]
-        [--output=<output_file>] [--key-type={rsa|ecc}]
+        [--output=<output_file>] [--key-type={rsa|ecc}] [--forced]
       Creates certificate request to CA for |user|, using provided certificate
       |profile| and |origin|, and sends to the specified CA, then stores it
       with the specified |label|.
