@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include <absl/base/attributes.h>
 #include <gtest/gtest.h>
 
 #include "libhwsec/backend/tpm1/backend.h"
@@ -68,7 +69,55 @@ class BackendTpm1TestBase : public ::testing::Test {
  protected:
   static inline constexpr TSS_HCONTEXT kDefaultContext = 9876;
   static inline constexpr TSS_HTPM kDefaultTpm = 6543;
+  static inline constexpr uint32_t kDefaultSrkHandle = 5566123;
 
+  void SetupSrk() {
+    using testing::_;
+    using testing::DoAll;
+    using testing::Return;
+    using testing::SetArgPointee;
+    using tpm_manager::TpmManagerStatus;
+
+    const uint32_t kFakeSrkAuthUsage = 0x9876123;
+    const uint32_t kFakeSrkUsagePolicy = 0x1283789;
+
+    tpm_manager::GetTpmNonsensitiveStatusReply reply;
+    reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+    reply.set_is_owned(true);
+    EXPECT_CALL(proxy_->GetMock().tpm_manager,
+                GetTpmNonsensitiveStatus(_, _, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+    EXPECT_CALL(
+        proxy_->GetMock().overalls,
+        Ospi_Context_LoadKeyByUUID(kDefaultContext, TSS_PS_TYPE_SYSTEM, _, _))
+        .WillOnce(
+            DoAll(SetArgPointee<3>(kDefaultSrkHandle), Return(TPM_SUCCESS)));
+
+    EXPECT_CALL(proxy_->GetMock().overalls,
+                Ospi_GetAttribUint32(kDefaultSrkHandle, TSS_TSPATTRIB_KEY_INFO,
+                                     TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, _))
+        .WillOnce(
+            DoAll(SetArgPointee<3>(kFakeSrkAuthUsage), Return(TPM_SUCCESS)));
+
+    EXPECT_CALL(proxy_->GetMock().overalls,
+                Ospi_GetPolicyObject(kDefaultSrkHandle, TSS_POLICY_USAGE, _))
+        .WillOnce(
+            DoAll(SetArgPointee<2>(kFakeSrkUsagePolicy), Return(TPM_SUCCESS)));
+
+    EXPECT_CALL(
+        proxy_->GetMock().overalls,
+        Ospi_Policy_SetSecret(kFakeSrkUsagePolicy, TSS_SECRET_MODE_PLAIN, _, _))
+        .WillOnce(Return(TPM_SUCCESS));
+
+    EXPECT_CALL(proxy_->GetMock().overalls,
+                Ospi_Key_GetPubKey(kDefaultSrkHandle, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(default_srk_pubkey.size()),
+                        SetArgPointee<2>(default_srk_pubkey.data()),
+                        Return(TPM_SUCCESS)));
+  }
+
+  brillo::Blob default_srk_pubkey = brillo::BlobFromString("default_srk");
   std::unique_ptr<ProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
   std::unique_ptr<Middleware> middleware_;
