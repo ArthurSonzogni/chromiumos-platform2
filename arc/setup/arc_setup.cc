@@ -1196,12 +1196,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // Unconditionally generate host-side code here.
   {
     base::ElapsedTimer timer;
-    // HACK: Temporarily removing EXIT_IF for GenerateHostSideCode() to work
-    // around the zork startup issue. See b/229844647#comment21 for more
-    // details.
-    IGNORE_ERRORS(GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
+    EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
     EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
-
     // Remove the file zygote may have created.
     IGNORE_ERRORS(base::DeleteFile(
         arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
