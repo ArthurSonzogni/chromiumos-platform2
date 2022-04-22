@@ -546,6 +546,31 @@ bool CpuFetcher::FetchNumTotalThreads() {
   return true;
 }
 
+bool CpuFetcher::FetchArchitecture() {
+  struct utsname buf;
+  if (context_->system_utils()->Uname(&buf)) {
+    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kUnknown;
+    return true;
+  }
+
+  std::string machine(buf.machine);
+  if (machine == kUnameMachineX86_64) {
+    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kX86_64;
+    return true;
+  }
+  if (machine == kUnameMachineAArch64) {
+    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kAArch64;
+    return true;
+  }
+  if (machine == kUnameMachineArmv7l) {
+    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kArmv7l;
+    return true;
+  }
+
+  cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kUnknown;
+  return true;
+}
+
 mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   base::FilePath root_dir = context_->root_dir();
 
@@ -662,7 +687,6 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   // Populate the final CpuInfo struct.
   mojo_ipc::CpuInfo cpu_info;
 
-  cpu_info.architecture = GetArchitecture();
   auto& keylocker_info = cpu_info.keylocker_info;
   auto error = FetchKeylockerInfo(root_dir, &keylocker_info);
   if (error.has_value())
@@ -849,31 +873,13 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
   }
   cpu_info_ = std::move(cpu_result->get_cpu_info());
 
-  if (!FetchNumTotalThreads()) {
+  if (!FetchNumTotalThreads() || !FetchArchitecture()) {
     DCHECK(!error_.is_null());
     return;
   }
 
   FetchPhysicalCpusVirtualizationInfo(barrier);
   return;
-}
-
-mojo_ipc::CpuArchitectureEnum CpuFetcher::GetArchitecture() {
-  struct utsname buf;
-  if (context_->system_utils()->Uname(&buf))
-    return mojo_ipc::CpuArchitectureEnum::kUnknown;
-
-  std::stringstream ss;
-  ss << buf.machine;
-  std::string machine = ss.str();
-  if (machine == kUnameMachineX86_64)
-    return mojo_ipc::CpuArchitectureEnum::kX86_64;
-  else if (machine == kUnameMachineAArch64)
-    return mojo_ipc::CpuArchitectureEnum::kAArch64;
-  else if (machine == kUnameMachineArmv7l)
-    return mojo_ipc::CpuArchitectureEnum::kArmv7l;
-
-  return mojo_ipc::CpuArchitectureEnum::kUnknown;
 }
 
 }  // namespace diagnostics

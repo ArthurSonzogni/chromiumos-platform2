@@ -99,8 +99,9 @@ class CpuFetcher final
   // otherwise.
   bool FetchNumTotalThreads();
 
-  // Uses |context_| to obtain the CPU architecture.
-  chromeos::cros_healthd::mojom::CpuArchitectureEnum GetArchitecture();
+  // Record the cpu architecture into |architecture|. Returns true on success
+  // and false otherwise.
+  bool FetchArchitecture();
 
   // Calls |callback_| and passes the result. If |all_callback_called| or
   // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
