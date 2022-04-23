@@ -15,8 +15,9 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
-
 #include <gtest/gtest_prod.h>
+
+#include "cros-disks/sandboxed_init.h"
 
 namespace cros_disks {
 
@@ -120,8 +121,15 @@ class Process {
   // or -1 if the process is still running.
   virtual int WaitNonBlockingImpl() = 0;
 
+  // Pipe through which the exit code of the 'launcher' process
+  // will be communicated. Only used when |use_pid_namespace_| is true.
+  SubprocessPipe launcher_pipe_{SubprocessPipe::kChildToParent};
+
   // Callback to call when the 'launcher' process finished.
   LauncherExitCallback launcher_exit_callback_;
+
+  // Watch controller for |launcher_pipe_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> launcher_watch_;
 
  private:
   // Gets the name of the program (from the first argument passed to
@@ -165,6 +173,9 @@ class Process {
   // Builds |arguments_array_| from |arguments_|. Existing values of
   // |arguments_array_| are overridden.
   void BuildArgumentsArray();
+
+  // Called when the 'launcher' process finished.
+  void OnLauncherExit();
 
   bool finished() const { return exit_code_ >= 0; }
 

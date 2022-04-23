@@ -121,10 +121,26 @@ void Process::SetOutputCallback(OutputCallback callback) {
   DCHECK(output_callback_);
 }
 
+void Process::OnLauncherExit() {
+  if (!IsFinished()) {
+    LOG(WARNING) << "Spurious call to OnLauncherExit";
+    return;
+  }
+
+  // By then, |launcher_exit_callback_| should have been called.
+  DCHECK(!launcher_exit_callback_);
+  launcher_watch_.reset();
+}
+
 void Process::SetLauncherExitCallback(LauncherExitCallback callback) {
   DCHECK(!launcher_exit_callback_);
   launcher_exit_callback_ = std::move(callback);
   DCHECK(launcher_exit_callback_);
+  DCHECK(!launcher_watch_);
+  launcher_watch_ = base::FileDescriptorWatcher::WatchReadable(
+      launcher_pipe_.parent_fd.get(),
+      base::BindRepeating(&Process::OnLauncherExit, base::Unretained(this)));
+  DCHECK(launcher_watch_);
 }
 
 bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {

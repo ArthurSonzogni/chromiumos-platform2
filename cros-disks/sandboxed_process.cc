@@ -23,7 +23,6 @@
 
 #include "cros-disks/mount_options.h"
 #include "cros-disks/quote.h"
-#include "cros-disks/sandboxed_init.h"
 
 namespace cros_disks {
 namespace {
@@ -186,11 +185,7 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
     }
   } else {
     // The sandboxed process will run in a PID namespace.
-
-    // Create pipe that will communicate the exit code of the 'launcher'
-    // process.
-    SubprocessPipe launcher_pipe(SubprocessPipe::kChildToParent);
-    PreserveFile(launcher_pipe.child_fd.get());
+    PreserveFile(launcher_pipe_.child_fd.get());
 
     // Create child 'init' process in the PID namespace.
     child_pid = minijail_fork(jail_);
@@ -203,24 +198,13 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
     if (child_pid == 0) {
       // In child 'init' process.
       SandboxedInit(base::BindOnce(Exec, args, env),
-                    std::move(launcher_pipe.child_fd))
+                    std::move(launcher_pipe_.child_fd))
           .Run();
       NOTREACHED();
     } else {
       // In parent process.
-      PCHECK(base::SetNonBlocking(launcher_pipe.parent_fd.get()));
-      DCHECK(!launcher_fd_.is_valid());
-      launcher_fd_ = std::move(launcher_pipe.parent_fd);
-      DCHECK(launcher_fd_.is_valid());
-
-      if (launcher_exit_callback_) {
-        DCHECK(!launcher_watch_);
-        launcher_watch_ = base::FileDescriptorWatcher::WatchReadable(
-            launcher_fd_.get(),
-            base::BindRepeating(&SandboxedProcess::OnLauncherExit,
-                                base::Unretained(this)));
-        DCHECK(launcher_watch_);
-      }
+      PCHECK(base::SetNonBlocking(launcher_pipe_.parent_fd.get()));
+      launcher_pipe_.child_fd.reset();
     }
   }
 
@@ -230,7 +214,7 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
 int SandboxedProcess::WaitImpl() {
   if (use_pid_namespace_) {
     launcher_watch_.reset();
-    return SandboxedInit::WaitForLauncher(&launcher_fd_);
+    return SandboxedInit::WaitForLauncher(&launcher_pipe_.parent_fd);
   }
 
   while (true) {
@@ -248,7 +232,8 @@ int SandboxedProcess::WaitImpl() {
 
 int SandboxedProcess::WaitNonBlockingImpl() {
   if (use_pid_namespace_) {
-    const int exit_code = SandboxedInit::PollLauncher(&launcher_fd_);
+    const int exit_code =
+        SandboxedInit::PollLauncher(&launcher_pipe_.parent_fd);
     if (exit_code >= 0)
       launcher_watch_.reset();
     return exit_code;
@@ -269,17 +254,6 @@ int SandboxedProcess::WaitNonBlockingImpl() {
   }
 
   return SandboxedInit::WaitStatusToExitCode(wstatus);
-}
-
-void SandboxedProcess::OnLauncherExit() {
-  if (!IsFinished()) {
-    LOG(WARNING) << "Spurious call to OnLauncherExit";
-    return;
-  }
-
-  // By then, |launcher_exit_callback_| should have been called.
-  DCHECK(!launcher_exit_callback_);
-  launcher_watch_.reset();
 }
 
 int FakeSandboxedProcess::OnProcessLaunch(
