@@ -12,17 +12,10 @@
 namespace cros_disks {
 namespace {
 
-static_assert(!FORMAT_ERROR_NONE,
-              "FORMAT_ERROR_NONE must convert to false in boolean context");
-
-static_assert(!MOUNT_ERROR_NONE,
-              "MOUNT_ERROR_NONE must convert to false in boolean context");
-
-static_assert(!PARTITION_ERROR_NONE,
-              "PARTITION_ERROR_NONE must convert to false in boolean context");
-
-static_assert(!RENAME_ERROR_NONE,
-              "RENAME_ERROR_NONE must convert to false in boolean context");
+static_assert(!FORMAT_ERROR_NONE);
+static_assert(!MOUNT_ERROR_NONE);
+static_assert(!PARTITION_ERROR_NONE);
+static_assert(!RENAME_ERROR_NONE);
 
 template <typename T>
 std::string ToString(T error) {
@@ -79,6 +72,8 @@ TEST(ErrorLogger, MountErrorType) {
   EXPECT_EQ(ToString(MOUNT_ERROR_MOUNT_PROGRAM_FAILED),
             "MOUNT_ERROR_MOUNT_PROGRAM_FAILED");
   EXPECT_EQ(ToString(MOUNT_ERROR_NEED_PASSWORD), "MOUNT_ERROR_NEED_PASSWORD");
+  EXPECT_EQ(ToString(MOUNT_ERROR_IN_PROGRESS), "MOUNT_ERROR_IN_PROGRESS");
+  EXPECT_EQ(ToString(MOUNT_ERROR_CANCELLED), "MOUNT_ERROR_CANCELLED");
   EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_DEVICE_PATH),
             "MOUNT_ERROR_INVALID_DEVICE_PATH");
   EXPECT_EQ(ToString(MOUNT_ERROR_UNKNOWN_FILESYSTEM),
