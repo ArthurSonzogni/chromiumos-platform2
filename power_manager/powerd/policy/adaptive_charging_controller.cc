@@ -246,18 +246,19 @@ void AdaptiveChargingController::OnPredictionFail(brillo::Error* error) {
 
 void AdaptiveChargingController::OnPowerStatusUpdate() {
   const system::PowerStatus status = power_supply_->GetPowerStatus();
+  PowerSupplyProperties::ExternalPower last_external_power =
+      cached_external_power_;
+  cached_external_power_ = status.external_power;
 
-  if (status.external_power != cached_external_power_) {
-    if (status.external_power == PowerSupplyProperties_ExternalPower_AC &&
-        status.battery_state != PowerSupplyProperties_BatteryState_FULL) {
-      report_charge_time_ = status.display_battery_percentage <= hold_percent_;
+  if (status.external_power != last_external_power) {
+    if (status.external_power == PowerSupplyProperties_ExternalPower_AC) {
       StartAdaptiveCharging(UserChargingEvent::Event::CHARGER_PLUGGED_IN);
-    } else if (cached_external_power_ ==
-               PowerSupplyProperties_ExternalPower_AC) {
+    } else if (last_external_power == PowerSupplyProperties_ExternalPower_AC) {
       StopAdaptiveCharging();
 
-      // Only generate metrics if we're above hold_percent_.
-      if (AtHoldPercent(status.display_battery_percentage) &&
+      // Only generate metrics if Adaptive Charging started, and we're above
+      // hold_percent_.
+      if (started_ && AtHoldPercent(status.display_battery_percentage) &&
           status.external_power ==
               PowerSupplyProperties_ExternalPower_DISCONNECTED) {
         delegate_->GenerateAdaptiveChargingUnplugMetrics(
@@ -271,17 +272,15 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
       hold_percent_start_time_ = base::TimeTicks();
       hold_percent_end_time_ = base::TimeTicks();
       charge_finished_time_ = base::TimeTicks();
-      cached_external_power_ = status.external_power;
       return;
     }
-
-    cached_external_power_ = status.external_power;
   }
 
   // Only collect information for metrics, etc. if plugged into a full powered
   // charge (denoted as PowerSupplyProperties_ExternalPower_AC) since that's the
   // only time that Adaptive Charging will be active.
-  if (status.external_power != PowerSupplyProperties_ExternalPower_AC)
+  if (!started_ ||
+      status.external_power != PowerSupplyProperties_ExternalPower_AC)
     return;
 
   if (AtHoldPercent(status.display_battery_percentage)) {
@@ -322,12 +321,21 @@ bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
   return success;
 }
 
-void AdaptiveChargingController::StartAdaptiveCharging(
+bool AdaptiveChargingController::StartAdaptiveCharging(
     const UserChargingEvent::Event::Reason& reason) {
+  const system::PowerStatus status = power_supply_->GetPowerStatus();
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
+    started_ = false;
+    return false;
+  }
+
+  started_ = true;
+  report_charge_time_ = status.display_battery_percentage <= hold_percent_;
   if (adaptive_charging_enabled_)
     state_ = AdaptiveChargingState::ACTIVE;
 
   UpdateAdaptiveCharging(reason, true /* async */);
+  return true;
 }
 
 void AdaptiveChargingController::UpdateAdaptiveCharging(

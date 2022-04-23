@@ -164,8 +164,11 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
 
   // Initiates Adaptive Charging logic, which fetches predictions from the
   // Adaptive Charging ml-service, and delays charging if
-  // `adaptive_charging_enabled_` is true.
-  void StartAdaptiveCharging(const UserChargingEvent::Event::Reason& reason);
+  // `adaptive_charging_enabled_` is true. Should not be called a second time if
+  // Adaptive Charging is already started.
+  // Returns true if Adaptive Charging is started.
+  // Battery full is one reason this will return false.
+  bool StartAdaptiveCharging(const UserChargingEvent::Event::Reason& reason);
 
   // Starts the prediction evaluation. Logic is finished via the
   // `OnPredictionResponse` callback.
@@ -272,6 +275,12 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // value in this vector must be larger than `min_probability_` for the
   // prediction to be used to delay charging.
   double min_probability_;
+
+  // Whether Adaptive Charging logic was started on AC plug in, or when it was
+  // enabled. Currently set to false if the battery was full under these
+  // conditions. This can be true even if Adaptive Charging isn't enabled, and
+  // we're just reporting metrics.
+  bool started_;
 
   // Whether the Battery Sustainer is currently set for Adaptive Charging.
   bool is_sustain_set_;

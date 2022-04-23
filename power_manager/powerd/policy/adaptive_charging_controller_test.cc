@@ -101,6 +101,29 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
     EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
   }
 
+  void InitFullCharge() {
+    power_status_.battery_percentage = 100;
+    power_status_.display_battery_percentage = 100;
+    power_status_.battery_state = PowerSupplyProperties_BatteryState_FULL;
+    power_supply_.set_status(power_status_);
+    adaptive_charging_controller_.Init(&delegate_, &backlight_controller_,
+                                       &input_watcher_, &power_supply_,
+                                       &dbus_wrapper_, &prefs_);
+    power_supply_.NotifyObservers();
+
+    // Adaptive Charging is not enabled yet.
+    EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+    EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+    PowerManagementPolicy policy;
+    policy.set_adaptive_charging_enabled(true);
+    adaptive_charging_controller_.HandlePolicyChange(policy);
+
+    // Adaptive Charging is not started when charge is full.
+    EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+    EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  }
+
  protected:
   FakeDelegate delegate_;
   policy::BacklightControllerStub backlight_controller_;
@@ -308,6 +331,27 @@ TEST_F(AdaptiveChargingControllerTest, TestChargeNow) {
   EXPECT_TRUE(recheck_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
   EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that we don't start Adaptive Charging when the battery is already full.
+TEST_F(AdaptiveChargingControllerTest, TestFullCharge) {
+  // This verifies that Adaptive Charging doesn't start when enabled via policy.
+  InitFullCharge();
+
+  // Verify that Adaptive Charging doesn't start on unplug/plug as well.
+  power_status_.external_power =
+      PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  power_status_.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+  power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
+  power_status_.battery_state = PowerSupplyProperties_BatteryState_FULL;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
 }
 
 }  // namespace policy
