@@ -27,7 +27,9 @@ ArchiveManager::ArchiveManager(const std::string& mount_root,
                                brillo::ProcessReaper* process_reaper)
     : MountManager(mount_root, platform, metrics, process_reaper) {}
 
-ArchiveManager::~ArchiveManager() = default;
+ArchiveManager::~ArchiveManager() {
+  UnmountAll();
+}
 
 bool ArchiveManager::Initialize() {
   if (!MountManager::Initialize())
