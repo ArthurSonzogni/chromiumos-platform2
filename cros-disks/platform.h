@@ -109,8 +109,8 @@ class Platform {
   // Returns true on success.
   virtual bool GetPermissions(const std::string& path, mode_t* mode) const;
 
-  // Removes a directory at |path| if it is empty and not in use.
-  // Returns true on success.
+  // Removes a directory at |path| if it is empty and not in use. Returns true
+  // on success, or if the directory does not exist in the first place.
   virtual bool RemoveEmptyDirectory(const std::string& path) const;
 
   // Makes |user_name| to perform mount operations, which changes the value of

@@ -197,13 +197,18 @@ bool Platform::SetMountUser(const std::string& user_name) {
 }
 
 bool Platform::RemoveEmptyDirectory(const std::string& path) const {
-  if (rmdir(path.c_str()) != 0) {
-    PLOG(ERROR) << "Cannot remove directory " << redact(path);
-    return false;
+  if (rmdir(path.c_str()) == 0) {
+    VLOG(1) << "Removed directory " << quote(path);
+    return true;
   }
 
-  VLOG(1) << "Removed directory " << quote(path);
-  return true;
+  if (errno == ENOENT) {
+    VLOG(1) << "Tried to remove non-existent directory " << quote(path);
+    return true;
+  }
+
+  PLOG(ERROR) << "Cannot remove directory " << redact(path);
+  return false;
 }
 
 bool Platform::SetOwnership(const std::string& path,

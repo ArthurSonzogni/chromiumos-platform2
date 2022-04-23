@@ -362,7 +362,7 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
   // Nonexistent directory
   base::FilePath new_dir = temp_dir.GetPath().Append("test");
   std::string path = new_dir.value();
-  EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
+  EXPECT_TRUE(platform_.RemoveEmptyDirectory(path));
 
   // Existent but empty directory
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectory(path));
