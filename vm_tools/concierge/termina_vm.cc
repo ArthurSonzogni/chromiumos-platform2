@@ -71,9 +71,6 @@ constexpr size_t kHostAddressOffset = 0;
 // Offset in a subnet of the client/guest.
 constexpr size_t kGuestAddressOffset = 1;
 
-// The CPU cgroup where all the Termina crosvm processes should belong to.
-constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina";
-
 // The maximum GPU shader cache disk usage, interpreted by Mesa. For details
 // see MESA_GLSL_CACHE_MAX_SIZE at https://docs.mesa3d.org/envvars.html.
 constexpr char kGpuCacheSizeString[] = "50M";
@@ -909,7 +906,9 @@ bool TerminaVm::GetVmEnterpriseReportingInfo(
 // static
 bool TerminaVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
   return VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kTerminaCpuCgroup);
+                                         kTerminaCpuCgroup) &&
+         VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
+                                         kTerminaVcpuCpuCgroup);
 }
 
 // Extract the disk index of a virtio-blk device name.
