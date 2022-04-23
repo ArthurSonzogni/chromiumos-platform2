@@ -91,6 +91,7 @@ class MountPoint final {
   MountErrorType error() const { return data_.error; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
   bool is_mounted() const { return is_mounted_; }
+  SandboxedProcess* process() const { return process_.get(); }
 
  private:
   // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be

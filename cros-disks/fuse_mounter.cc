@@ -34,7 +34,6 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/process/process_reaper.h>
 
 #include "cros-disks/error_logger.h"
 #include "cros-disks/mount_point.h"
@@ -45,30 +44,6 @@
 
 namespace cros_disks {
 namespace {
-
-// Callback called when a FUSE daemon finishes.
-void CleanUpCallback(const base::FilePath& mount_path,
-                     const base::WeakPtr<MountPoint> mount_point,
-                     const siginfo_t& info) {
-  DCHECK_EQ(SIGCHLD, info.si_signo);
-  if (info.si_code != CLD_EXITED) {
-    LOG(ERROR) << "The 'init' process holding the FUSE daemon for "
-               << redact(mount_path) << " was killed by signal "
-               << info.si_status << ": " << strsignal(info.si_status);
-  } else if (info.si_status != 0) {
-    LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
-               << " finished with exit code " << info.si_status;
-  } else {
-    LOG(INFO) << "FUSE daemon for " << quote(mount_path)
-              << " finished normally";
-  }
-
-  // If the MountPoint instance has been deleted, it was already unmounted and
-  // cleaned up due to a request from the browser (or logout). In this case,
-  // there's nothing to do.
-  if (mount_point)
-    mount_point->Unmount();
-}
 
 // Gets the physical block size of the given block device.
 // Returns 0 in case of error.
@@ -326,20 +301,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     return nullptr;
   }
 
-  const pid_t pid = process->pid();
-  LOG(INFO) << "FUSE daemon for " << quote(target_path)
-            << " is running in PID namespace " << pid;
-
   mount_point->SetProcess(std::move(process));
-
-  // At this point, the FUSE daemon has successfully started.
-  // Add a watcher that cleans up the FUSE mount when the FUSE daemon exits.
-  // This is detected when the in-jail "init" process |pid| terminates, which
-  // happens only when the last daemon process in the jailed PID namespace
-  // terminates.
-  process_reaper_->WatchForChild(
-      FROM_HERE, pid,
-      base::BindOnce(&CleanUpCallback, target_path, mount_point->GetWeakPtr()));
 
   *error = MOUNT_ERROR_NONE;
   return mount_point;

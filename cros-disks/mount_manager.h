@@ -15,6 +15,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <sys/wait.h>
+
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
@@ -114,7 +116,7 @@ class MountManager {
  protected:
   MountPoint* FindMountBySource(const std::string& source) const;
   MountPoint* FindMountByMountPath(const base::FilePath& path) const;
-  bool RemoveMount(MountPoint* mount_point);
+  bool RemoveMount(const MountPoint* mount_point);
 
   // The base class calls Platform::GetRealPath(), derived classes can override
   // it.
@@ -185,6 +187,11 @@ class MountManager {
   MountErrorType CreateMountPathForSource(const std::string& source,
                                           const std::string& label,
                                           base::FilePath* mount_path);
+
+  // Called when the sandbox holding a FUSE process finishes.
+  void OnSandboxedProcessExit(const base::FilePath& mount_path,
+                              const base::WeakPtr<MountPoint> mount_point,
+                              const siginfo_t& info);
 
   // The root directory under which mount directories are created.
   const base::FilePath mount_root_;

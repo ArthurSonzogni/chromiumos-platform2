@@ -13,12 +13,14 @@
 #include <unordered_set>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/containers/contains.h>
 #include <base/strings/string_util.h>
+#include <brillo/process/process_reaper.h>
 
 #include "cros-disks/error_logger.h"
 #include "cros-disks/mount_options.h"
@@ -200,6 +202,15 @@ void MountManager::MountNewSource(const std::string& source,
   // For some mounters, the string stored in |mount_point->source()| is
   // different from |source|.
   // DCHECK_EQ(mount_point->source(), source);
+
+  if (const Process* const process = mount_point->process()) {
+    process_reaper_->WatchForChild(
+        FROM_HERE, process->pid(),
+        base::BindOnce(&MountManager::OnSandboxedProcessExit,
+                       base::Unretained(this), mount_path,
+                       mount_point->GetWeakPtr()));
+  }
+
   const auto [it, ok] =
       mount_points_.try_emplace(source, std::move(mount_point));
   DCHECK(ok);
@@ -246,7 +257,7 @@ MountPoint* MountManager::FindMountByMountPath(
   return nullptr;
 }
 
-bool MountManager::RemoveMount(MountPoint* const mount_point) {
+bool MountManager::RemoveMount(const MountPoint* const mount_point) {
   for (auto it = mount_points_.cbegin(); it != mount_points_.cend(); ++it) {
     if (it->second.get() == mount_point) {
       mount_points_.erase(it);
@@ -254,6 +265,29 @@ bool MountManager::RemoveMount(MountPoint* const mount_point) {
     }
   }
   return false;
+}
+
+void MountManager::OnSandboxedProcessExit(
+    const base::FilePath& mount_path,
+    const base::WeakPtr<MountPoint> mount_point,
+    const siginfo_t& info) {
+  DCHECK_EQ(SIGCHLD, info.si_signo);
+  if (info.si_code != CLD_EXITED) {
+    LOG(ERROR) << "The FUSE sandbox for " << redact(mount_path)
+               << " was killed by signal " << info.si_status << ": "
+               << strsignal(info.si_status);
+  } else if (info.si_status != 0) {
+    LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
+               << " finished with exit code " << info.si_status;
+  } else {
+    LOG(INFO) << "FUSE daemon for " << quote(mount_path)
+              << " finished normally";
+  }
+
+  // If the MountPoint instance has been deleted, it was already unmounted and
+  // cleaned up due to a request from the browser (or logout). In this case,
+  // there's nothing to do.
+  RemoveMount(mount_point.get());
 }
 
 MountErrorType MountManager::CreateMountPathForSource(
