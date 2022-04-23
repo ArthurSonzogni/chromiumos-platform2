@@ -35,11 +35,13 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
+#include <re2/re2.h>
 
 #include "shill/connection.h"
 #include "shill/device.h"
@@ -127,6 +129,10 @@ constexpr char kInterfaceDeviceId[] = "device/device";
 
 // Sysfs path to the subsystem ID file via its interface name.
 constexpr char kInterfaceSubsystemId[] = "device/subsystem_device";
+
+// Sysfs path to the device uevent file that contains the characteristics of
+// integrated WiFi adapters.
+constexpr char kInterfaceIntegratedId[] = "device/uevent";
 
 // Sysfs path to the file that is used to determine the owner of the interface.
 constexpr char kInterfaceOwner[] = "owner";
@@ -1091,6 +1097,32 @@ bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
   return true;
 }
 
+bool DeviceInfo::GetIntegratedWiFiHardwareIds(const std::string& iface_name,
+                                              int* vendor_id,
+                                              int* product_id,
+                                              int* subsystem_id) const {
+  std::string content;
+  if (!GetDeviceInfoContents(iface_name, kInterfaceIntegratedId, &content)) {
+    LOG(WARNING) << iface_name << " no uevent file found";
+    return false;
+  }
+  const auto lines = base::SplitString(content, "\n", base::TRIM_WHITESPACE,
+                                       base::SPLIT_WANT_NONEMPTY);
+  static constexpr LazyRE2 qcom_adapter_matcher = {
+      "OF_COMPATIBLE_(\\d+)=qcom,wcn(\\d+)-wifi"};
+  for (const auto& line : lines) {
+    int i;
+    int wcn_id;
+    if (RE2::FullMatch(line, *qcom_adapter_matcher, &i, &wcn_id)) {
+      *vendor_id = Metrics::kWiFiIntegratedAdapterVendorId;
+      *product_id = wcn_id;
+      *subsystem_id = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
                                     int* vendor_id,
                                     int* product_id,
@@ -1110,8 +1142,11 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
 
   if (!base::PathIsReadable(
           GetDeviceInfoPath(info->name, kInterfaceVendorId))) {
-    // TODO(b/203692510): Support integrated chipsets without PCIe/CNVi/SDIO
-    // that do not have a "vendor" file.
+    // No "vendor" file, check if the adapter is an integrated chipset.
+    if (GetIntegratedWiFiHardwareIds(info->name, vendor_id, product_id,
+                                     subsystem_id)) {
+      return true;
+    }
     LOG(WARNING) << "No vendor ID found";
     return false;
   }

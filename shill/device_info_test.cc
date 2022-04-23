@@ -1524,6 +1524,42 @@ TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNoVendor) {
   EXPECT_EQ(subsystem, kDefaultTestHardwareId);
 }
 
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsIntegrated) {
+  CreateWiFiDevice();
+
+  // Vendor ID file is missing, but the file for integrated chipsets is present
+  // and valid.
+  CreateInfoFile("device/uevent",
+                 "TEST TEST \n OF_COMPATIBLE_0=qcom,wcn3990-wifi\n TEST TEST");
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_TRUE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                              &product, &subsystem));
+  // Integrated chipsets are given the unassigned vendor ID 0x0000.
+  EXPECT_EQ(vendor, Metrics::kWiFiIntegratedAdapterVendorId);
+  // product and subsystem IDs for WCN3990.
+  EXPECT_EQ(product, 3990);
+  EXPECT_EQ(subsystem, 0);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsIntegratedInvalid) {
+  CreateWiFiDevice();
+
+  // Vendor ID file is missing, but the file for integrated chipsets is present.
+  // However its format is invalid (missing "OF_COMPATIBLE_0=" prefix), expect
+  // failure.
+  CreateInfoFile("device/uevent", "qcom,wcn3990-wifi");
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  EXPECT_EQ(vendor, kDefaultTestHardwareId);
+  EXPECT_EQ(product, kDefaultTestHardwareId);
+  EXPECT_EQ(subsystem, kDefaultTestHardwareId);
+}
+
 TEST_F(DeviceInfoTest, GetWiFiHardwareIdsInvalidVendor) {
   CreateWiFiDevice();
 

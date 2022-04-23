@@ -130,7 +130,13 @@ static constexpr Metrics::WiFiAdapterInfo AVLWiFiAdapters[] = {
     {0x14c3, 0x7961,
      Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921PCIE,
     {0x037a, 0x7901,
-     Metrics::kWiFiStructuredMetricsErrorValue}  // MediaTekMT7921SDIO,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921SDIO,
+    {Metrics::kWiFiIntegratedAdapterVendorId, 3990,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Qualcomm WCN3990 integrated
+                                                  // chipset,
+    {Metrics::kWiFiIntegratedAdapterVendorId, 6750,
+     Metrics::kWiFiStructuredMetricsErrorValue}  // Qualcomm WCN6750 integrated
+                                                 // chipset,
 };
 
 bool CanReportAdapterInfo(const Metrics::WiFiAdapterInfo& info) {

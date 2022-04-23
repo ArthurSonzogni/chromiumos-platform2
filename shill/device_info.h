@@ -264,6 +264,17 @@ class DeviceInfo {
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether / cdc_ncm driver.
   bool IsCdcEthernetModemDevice(const std::string& iface_name) const;
+  // Query the IDs that identify the WiFi adapter of integrated chipsets like
+  // the ones included in some Qualcomm SoCs.
+  // To be compatible with the IDs of PCIe adapters, we set the vendor ID to the
+  // value 0x0000 (Metrics::kWiFiIntegratedAdapterVendorId) that is not assigned
+  // by the PCI-SIG. Integrated adapters are identified by the tuple
+  // (Metrics::kWiFiIntegratedAdapterVendorId, product_id, subsystem_id).
+  // Returns true if an integrated adapter was detected, false otherwise.
+  bool GetIntegratedWiFiHardwareIds(const std::string& iface_name,
+                                    int* vendor_id,
+                                    int* product_id,
+                                    int* subsystem_id) const;
   // Returns true if |base_dir| has a subdirectory named |subdir|.
   // |subdir| can be an immediate subdirectory of |base_dir| or can be
   // several levels deep.

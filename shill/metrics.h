@@ -1085,6 +1085,13 @@ class Metrics : public DefaultServiceObserver {
   // value for the field.
   static constexpr int kWiFiStructuredMetricsErrorValue = -1;
 
+  // Some WiFi adapters like the ones integrated in some Qualcomm SoCs do not
+  // have a PCI vendor/product/subsystem ID. When we detect such an adapter on
+  // the system we use "0x0000" as PCI Vendor ID since that ID is not used by
+  // the PCI-SIG. Otherwise if we assigned an actual vendor ID like Qualcomm's
+  // ID we may have conflicting values with PCI devices from those vendors.
+  static constexpr int kWiFiIntegratedAdapterVendorId = 0x0000;
+
   struct WiFiAdapterInfo {
     int vendor_id;
     int product_id;
