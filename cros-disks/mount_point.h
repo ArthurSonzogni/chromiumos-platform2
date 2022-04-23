@@ -85,7 +85,7 @@ class MountPoint final {
   }
 
   // Callback called when the FUSE 'launcher' process finished.
-  using LauncherExitCallback = base::OnceCallback<void(MountPoint*)>;
+  using LauncherExitCallback = base::OnceCallback<void(MountErrorType)>;
   void SetLauncherExitCallback(LauncherExitCallback callback) {
     DCHECK(!launcher_exit_callback_);
     launcher_exit_callback_ = std::move(callback);

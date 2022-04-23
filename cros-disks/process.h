@@ -121,6 +121,9 @@ class Process {
   // or -1 if the process is still running.
   virtual int WaitNonBlockingImpl() = 0;
 
+  // Called when the 'launcher' process finished.
+  void OnLauncherExit();
+
   // Pipe through which the exit code of the 'launcher' process
   // will be communicated. Only used when |use_pid_namespace_| is true.
   SubprocessPipe launcher_pipe_{SubprocessPipe::kChildToParent};
@@ -173,9 +176,6 @@ class Process {
   // Builds |arguments_array_| from |arguments_|. Existing values of
   // |arguments_array_| are overridden.
   void BuildArgumentsArray();
-
-  // Called when the 'launcher' process finished.
-  void OnLauncherExit();
 
   bool finished() const { return exit_code_ >= 0; }
 

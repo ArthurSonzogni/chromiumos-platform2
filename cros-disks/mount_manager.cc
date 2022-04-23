@@ -204,17 +204,44 @@ void MountManager::MountNewSource(const std::string& source,
   // DCHECK_EQ(mount_point->source(), source);
 
   if (const Process* const process = mount_point->process()) {
+    // There is a FUSE process to monitor.
     process_reaper_->WatchForChild(
         FROM_HERE, process->pid(),
         base::BindOnce(&MountManager::OnSandboxedProcessExit,
                        base::Unretained(this), mount_path,
                        mount_point->GetWeakPtr()));
+
+    DCHECK(callback);
+    mount_point->SetLauncherExitCallback(base::BindOnce(
+        &MountManager::OnLauncherExit, base::Unretained(this),
+        std::move(callback), mount_path, mount_point->GetWeakPtr()));
+  } else {
+    // There is no FUSE process.
+    std::move(callback).Run(mount_path.value(), error);
   }
 
   const auto [it, ok] =
       mount_points_.try_emplace(source, std::move(mount_point));
   DCHECK(ok);
-  return std::move(callback).Run(mount_path.value(), error);
+}
+
+void MountManager::OnLauncherExit(
+    MountCallback callback,
+    const base::FilePath& mount_path,
+    const base::WeakPtr<const MountPoint> mount_point,
+    const MountErrorType error) {
+  DCHECK(callback);
+  std::move(callback).Run(mount_path.value(), error);
+
+  if (!mount_point)
+    return;
+
+  DCHECK_EQ(mount_path, mount_point->path());
+  DCHECK_EQ(error, mount_point->error());
+  DCHECK_NE(MOUNT_ERROR_IN_PROGRESS, error);
+
+  if (error)
+    RemoveMount(mount_point.get());
 }
 
 MountErrorType MountManager::Unmount(const std::string& path) {

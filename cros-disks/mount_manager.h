@@ -188,6 +188,12 @@ class MountManager {
                                           const std::string& label,
                                           base::FilePath* mount_path);
 
+  // Called when the FUSE launcher process finishes.
+  void OnLauncherExit(MountCallback callback,
+                      const base::FilePath& mount_path,
+                      base::WeakPtr<const MountPoint> mount_point,
+                      MountErrorType error);
+
   // Called when the sandbox holding a FUSE process finishes.
   void OnSandboxedProcessExit(const base::FilePath& mount_path,
                               const base::WeakPtr<MountPoint> mount_point,

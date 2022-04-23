@@ -329,18 +329,10 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
   process->AddArgument(base::StringPrintf("/dev/fd/%d", fd));
   process->PreserveFile(fd);
 
-  const int exit_code = process->Run();
-
-  // Record the FUSE launcher's exit code in Metrics.
-  if (config_.metrics && !config_.metrics_name.empty()) {
-    config_.metrics->RecordFuseMounterErrorCode(config_.metrics_name,
-                                                exit_code);
-  }
-
-  *error = ConvertLauncherExitCodeToMountError(exit_code);
-
-  if (*error)
+  if (!process->Start()) {
+    *error = MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
     return nullptr;
+  }
 
   return process;
 }

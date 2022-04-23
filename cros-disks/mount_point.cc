@@ -60,6 +60,14 @@ MountErrorType MountPoint::Unmount() {
     }
   }
 
+  process_.reset();
+
+  if (launcher_exit_callback_) {
+    DCHECK_EQ(MOUNT_ERROR_IN_PROGRESS, data_.error);
+    data_.error = MOUNT_ERROR_CANCELLED;
+    std::move(launcher_exit_callback_).Run(MOUNT_ERROR_CANCELLED);
+  }
+
   if (!is_mounted_ && must_remove_dir_ &&
       platform_->RemoveEmptyDirectory(data_.mount_path.value())) {
     LOG(INFO) << "Removed " << quote(data_.mount_path);
@@ -136,10 +144,12 @@ void MountPoint::OnLauncherExit(const int exit_code) {
   if (metrics_ && !metrics_name_.empty())
     metrics_->RecordFuseMounterErrorCode(metrics_name_, exit_code);
 
+  DCHECK_EQ(MOUNT_ERROR_IN_PROGRESS, data_.error);
   data_.error = ConvertLauncherExitCodeToMountError(exit_code);
+  DCHECK_NE(MOUNT_ERROR_IN_PROGRESS, data_.error);
 
   if (launcher_exit_callback_)
-    std::move(launcher_exit_callback_).Run(this);
+    std::move(launcher_exit_callback_).Run(data_.error);
 }
 
 void MountPoint::SetProcess(std::unique_ptr<Process> process,
@@ -149,10 +159,19 @@ void MountPoint::SetProcess(std::unique_ptr<Process> process,
   DCHECK(!process_);
   process_ = std::move(process);
   DCHECK(process_);
+
+  DCHECK(!metrics_);
   metrics_ = metrics;
+  DCHECK(metrics_name_.empty());
   metrics_name_ = std::move(metrics_name);
+
   password_needed_exit_codes_ = std::move(password_needed_exit_codes);
+
+  DCHECK_EQ(MOUNT_ERROR_NONE, data_.error);
   data_.error = MOUNT_ERROR_IN_PROGRESS;
+
+  process_->SetLauncherExitCallback(
+      base::BindOnce(&MountPoint::OnLauncherExit, GetWeakPtr()));
 }
 
 }  // namespace cros_disks

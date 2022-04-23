@@ -16,6 +16,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
 #include <brillo/process/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -125,6 +126,7 @@ class MockSandboxedProcess : public SandboxedProcess {
   MOCK_METHOD(pid_t, StartImpl, (base::ScopedFD, base::ScopedFD), (override));
   MOCK_METHOD(int, WaitImpl, (), (override));
   MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
+  using SandboxedProcess::OnLauncherExit;
 };
 
 class FUSEMounterForTesting : public FUSEMounter {
@@ -246,12 +248,14 @@ class FUSEMounterTest : public ::testing::Test {
   FUSEMounterTest() : mounter_(&platform_, &process_reaper_) {}
 
  protected:
-  MockFUSEPlatform platform_;
+  testing::StrictMock<MockFUSEPlatform> platform_;
   brillo::ProcessReaper process_reaper_;
+  using Environment = base::test::TaskEnvironment;
+  Environment task_environment_{Environment::MainThreadType::IO};
   FUSEMounterForTesting mounter_;
 };
 
-TEST_F(FUSEMounterTest, MountingUnprivileged) {
+TEST_F(FUSEMounterTest, MountingSucceeds) {
   EXPECT_CALL(platform_,
               Mount("fuse:source", kMountDir, "fuse.fusefs",
                     kFUSEMountFlags | MS_NOSYMFOLLOW,
@@ -259,42 +263,64 @@ TEST_F(FUSEMounterTest, MountingUnprivileged) {
                              "permissions,rootmode=40000")))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
-  EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
+  MockSandboxedProcess& process = *process_ptr;
+  EXPECT_CALL(process, StartImpl).WillOnce(Return(123));
   EXPECT_CALL(mounter_, PrepareSandbox("source", base::FilePath(kMountDir),
                                        ElementsAre("arg1", "arg2", "arg3"), _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
-  // The MountPoint returned by Mount() will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point = mounter_.Mount("source", base::FilePath(kMountDir),
                                     {"arg1", "arg2", "arg3"}, &error);
-  EXPECT_TRUE(mount_point);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_IN_PROGRESS, mount_point->error());
+  EXPECT_EQ(base::FilePath(kMountDir), mount_point->path());
+  EXPECT_EQ("fuse:source", mount_point->source());
+
+  // Simulate asynchronous termination of FUSE launcher process.
+  EXPECT_CALL(process, WaitNonBlockingImpl).WillOnce(Return(0));
+  process.OnLauncherExit();
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
+
+  // The MountPoint will unmount when it is destructed.
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
 }
 
-TEST_F(FUSEMounterTest, MountingUnprivileged_ReadOnly) {
+TEST_F(FUSEMounterTest, MountingReadOnly) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _,
                                kFUSEMountFlags | MS_NOSYMFOLLOW | MS_RDONLY, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
-  EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
+  MockSandboxedProcess& process = *process_ptr;
+  EXPECT_CALL(process, StartImpl).WillOnce(Return(123));
   EXPECT_CALL(mounter_, PrepareSandbox(kSomeSource, base::FilePath(kMountDir),
                                        ElementsAre("arg1", "arg2", "ro"), _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
-  // The MountPoint returned by Mount() will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point = mounter_.Mount(kSomeSource, base::FilePath(kMountDir),
                                     {"arg1", "arg2", "ro"}, &error);
-  EXPECT_TRUE(mount_point);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_IN_PROGRESS, mount_point->error());
+
+  // Simulate asynchronous termination of FUSE launcher process.
+  EXPECT_CALL(process, WaitNonBlockingImpl).WillOnce(Return(0));
+  process.OnLauncherExit();
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
+
+  // The MountPoint will unmount when it is destructed.
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
 }
 
-TEST_F(FUSEMounterTest, MountingUnprivileged_BlockDevice) {
+TEST_F(FUSEMounterTest, MountingBlockDevice) {
   EXPECT_CALL(platform_,
               Mount("/dev/foobar", kMountDir, "fuseblk.fusefs",
                     kFUSEMountFlags | MS_NOSYMFOLLOW,
@@ -302,22 +328,32 @@ TEST_F(FUSEMounterTest, MountingUnprivileged_BlockDevice) {
                              "permissions,rootmode=40000")))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
-  EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
+  MockSandboxedProcess& process = *process_ptr;
+  EXPECT_CALL(process, StartImpl).WillOnce(Return(123));
   EXPECT_CALL(mounter_,
               PrepareSandbox("/dev/foobar", base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
-  // The MountPoint returned by Mount() will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount("/dev/foobar", base::FilePath(kMountDir), {}, &error);
-  EXPECT_TRUE(mount_point);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_IN_PROGRESS, mount_point->error());
+
+  // Simulate asynchronous termination of FUSE launcher process.
+  EXPECT_CALL(process, WaitNonBlockingImpl).WillOnce(Return(0));
+  process.OnLauncherExit();
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
+
+  // The MountPoint will unmount when it is destructed.
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
 }
 
-TEST_F(FUSEMounterTest, MountingUnprivileged_MountFailed) {
+TEST_F(FUSEMounterTest, MountFailed) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(mounter_, PrepareSandbox).Times(0);
@@ -330,7 +366,7 @@ TEST_F(FUSEMounterTest, MountingUnprivileged_MountFailed) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, error);
 }
 
-TEST_F(FUSEMounterTest, MountingUnprivileged_SandboxFailed) {
+TEST_F(FUSEMounterTest, SandboxFailed) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(mounter_, PrepareSandbox)
@@ -338,6 +374,8 @@ TEST_F(FUSEMounterTest, MountingUnprivileged_SandboxFailed) {
                       Return(ByMove(nullptr))));
   EXPECT_CALL(platform_, Unmount(kMountDir, 0))
       .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
@@ -346,57 +384,65 @@ TEST_F(FUSEMounterTest, MountingUnprivileged_SandboxFailed) {
   EXPECT_EQ(MOUNT_ERROR_INVALID_MOUNT_OPTIONS, error);
 }
 
-TEST_F(FUSEMounterTest, MountingUnprivileged_AppFailed) {
+TEST_F(FUSEMounterTest, AppFailed) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
-  EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
-  EXPECT_CALL(*process_ptr, WaitNonBlockingImpl).WillOnce(Return(1));
+  MockSandboxedProcess& process = *process_ptr;
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(process, StartImpl).WillOnce(Return(123));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
-  EXPECT_FALSE(mount_point);
-  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, error);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_IN_PROGRESS, mount_point->error());
+
+  // Simulate asynchronous termination of FUSE launcher process.
+  EXPECT_CALL(process, WaitNonBlockingImpl).WillOnce(Return(1));
+  process.OnLauncherExit();
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mount_point->error());
+
+  // The MountPoint will unmount when it is destructed.
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
 }
 
-TEST_F(FUSEMounterTest, MountPoint_UnmountTwice) {
+TEST_F(FUSEMounterTest, UnmountTwice) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
   EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
+
+  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  auto mount_point =
+      mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+
   // Even though Unmount() is called twice, the underlying unmount should only
   // be done once.
   EXPECT_CALL(platform_, Unmount(kMountDir, 0))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto mount_point =
-      mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
-  EXPECT_TRUE(mount_point);
-  EXPECT_EQ(MOUNT_ERROR_NONE, error);
-
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
   EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Unmount());
 }
 
-TEST_F(FUSEMounterTest, MountPoint_UnmountFailure) {
+TEST_F(FUSEMounterTest, UnmountFailure) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
   EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
-  // If an Unmount fails, we should be able to retry.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_UNKNOWN))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
@@ -404,27 +450,38 @@ TEST_F(FUSEMounterTest, MountPoint_UnmountFailure) {
   EXPECT_TRUE(mount_point);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
+  // If an Unmount fails, we should be able to retry.
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+      .WillOnce(Return(MOUNT_ERROR_UNKNOWN));
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mount_point->Unmount());
+
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
 }
 
-TEST_F(FUSEMounterTest, MountPoint_UnmountBusy) {
+TEST_F(FUSEMounterTest, UnmountBusy) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   auto process_ptr = std::make_unique<MockSandboxedProcess>();
   EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
+
+  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  auto mount_point =
+      mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+
   EXPECT_CALL(platform_, Unmount(kMountDir, 0))
       .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
   EXPECT_CALL(platform_, Unmount(kMountDir, MNT_FORCE | MNT_DETACH))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto mount_point =
-      mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
-  EXPECT_TRUE(mount_point);
-  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
+      .WillOnce(Return(true));
 
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
 }

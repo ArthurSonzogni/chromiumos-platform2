@@ -22,6 +22,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/test/task_environment.h>
 #include <brillo/process/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -154,6 +155,7 @@ class MockSandboxedProcess : public SandboxedProcess {
   int WaitImpl() override { return WaitNonBlockingImpl(); }
   int WaitNonBlockingImpl() override { return 0; }
   MOCK_METHOD(void, OnStart, (const std::vector<std::string>& args), (const));
+  using SandboxedProcess::OnLauncherExit;
 };
 
 }  // namespace
@@ -176,6 +178,7 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
  protected:
   std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const override {
     auto ptr = std::make_unique<MockSandboxedProcess>();
+    process_ = ptr.get();
     ON_CALL(*ptr, OnStart).WillByDefault(SaveArg<0>(&fuse_args_));
     return ptr;
   }
@@ -196,6 +199,8 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
                           base::Unretained(this));
   }
 
+  using Environment = base::test::TaskEnvironment;
+  Environment task_environment_{Environment::MainThreadType::IO};
   base::ScopedTempDir dir_;
   Metrics metrics_;
   MockPlatform platform_;
@@ -203,6 +208,7 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
   MockDeviceEjector ejector_;
   FakeDiskMonitor monitor_;
   std::unique_ptr<DiskManager> manager_;
+  mutable MockSandboxedProcess* process_ = nullptr;
   mutable std::vector<std::string> fuse_args_;
   std::string mount_path_;
   MountErrorType mount_error_;
@@ -310,6 +316,11 @@ TEST_F(DiskManagerTest, MountExFAT) {
                                HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+
+  // Simulate asynchronous termination of FUSE launcher process.
+  EXPECT_FALSE(mount_completed_);
+  process_->OnLauncherExit();
+
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
@@ -340,6 +351,11 @@ TEST_F(DiskManagerTest, MountNTFS) {
                                HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+
+  // Simulate asynchronous termination of FUSE launcher process.
+  EXPECT_FALSE(mount_completed_);
+  process_->OnLauncherExit();
+
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
