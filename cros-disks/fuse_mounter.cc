@@ -301,7 +301,9 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     return nullptr;
   }
 
-  mount_point->SetProcess(std::move(process));
+  mount_point->SetProcess(std::move(process), config_.metrics,
+                          config_.metrics_name,
+                          config_.password_needed_exit_codes);
 
   *error = MOUNT_ERROR_NONE;
   return mount_point;

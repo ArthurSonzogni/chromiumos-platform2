@@ -10,13 +10,15 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include <base/callback_forward.h>
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cros-disks/sandboxed_process.h"
+#include "cros-disks/metrics.h"
+#include "cros-disks/process.h"
 
 namespace cros_disks {
 
@@ -32,7 +34,7 @@ struct MountPointData {
   int flags = 0;
   // Additional data passed during mount.
   std::string data;
-  // Mount error.
+  // Error state associated to this mount point.
   MountErrorType error = MOUNT_ERROR_NONE;
 };
 
@@ -68,12 +70,11 @@ class MountPoint final {
   // Remount with specified ro/rw.
   MountErrorType Remount(bool read_only);
 
-  // Associates a SandboxedProcess object to this MountPoint.
-  void SetProcess(std::unique_ptr<SandboxedProcess> process) {
-    DCHECK(!process_);
-    process_ = std::move(process);
-    DCHECK(process_);
-  }
+  // Associates a Process object to this MountPoint.
+  void SetProcess(std::unique_ptr<Process> process,
+                  Metrics* const metrics,
+                  std::string metrics_name,
+                  std::vector<int> password_needed_exit_codes);
 
   // Sets the eject action, that will be called when this mount point is
   // successfully unmounted.
@@ -81,6 +82,14 @@ class MountPoint final {
     DCHECK(!eject_);
     eject_ = std::move(eject);
     DCHECK(eject_);
+  }
+
+  // Callback called when the FUSE 'launcher' process finished.
+  using LauncherExitCallback = base::OnceCallback<void(MountPoint*)>;
+  void SetLauncherExitCallback(LauncherExitCallback callback) {
+    DCHECK(!launcher_exit_callback_);
+    launcher_exit_callback_ = std::move(callback);
+    DCHECK(launcher_exit_callback_);
   }
 
   const base::FilePath& path() const { return data_.mount_path; }
@@ -91,7 +100,7 @@ class MountPoint final {
   MountErrorType error() const { return data_.error; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
   bool is_mounted() const { return is_mounted_; }
-  SandboxedProcess* process() const { return process_.get(); }
+  Process* process() const { return process_.get(); }
 
  private:
   // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
@@ -101,16 +110,34 @@ class MountPoint final {
   // Remounts with new flags. Only called if mount is assumed to be mounted.
   MountErrorType RemountImpl(int flags);
 
+  // Converts the FUSE launcher's exit code into a MountErrorType.
+  MountErrorType ConvertLauncherExitCodeToMountError(int exit_code) const;
+
+  // Called when the 'launcher' process finished.
+  void OnLauncherExit(int exit_code);
+
+  // Mount point data.
   MountPointData data_;
 
+  // Pointer to Platform implementation.
   const Platform* const platform_;
 
-  // SandboxedProcess object holding the FUSE mounter processes associated to
-  // this MountPoint.
-  std::unique_ptr<SandboxedProcess> process_;
+  // Process object holding the FUSE processes associated to this MountPoint.
+  std::unique_ptr<Process> process_;
 
   // Eject action called after successfully unmounting this mount point.
   base::OnceClosure eject_;
+
+  // Metrics object and name used to record the FUSE launcher exit code.
+  Metrics* metrics_ = nullptr;
+  std::string metrics_name_;
+
+  // Set of FUSE launcher exit codes that are interpreted as
+  // MOUNT_ERROR_NEED_PASSWORD.
+  std::vector<int> password_needed_exit_codes_;
+
+  // Callback called when the FUSE 'launcher' process finished.
+  LauncherExitCallback launcher_exit_callback_;
 
   // Is this mount point actually mounted?
   bool is_mounted_ = true;

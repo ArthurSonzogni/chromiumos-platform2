@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/logging.h>
 
 #include "cros-disks/error_logger.h"
@@ -117,6 +118,41 @@ MountErrorType MountPoint::RemountImpl(int flags) {
   return platform_->Mount(data_.source, data_.mount_path.value(),
                           data_.filesystem_type, flags | MS_REMOUNT,
                           data_.data);
+}
+
+MountErrorType MountPoint::ConvertLauncherExitCodeToMountError(
+    const int exit_code) const {
+  if (exit_code == 0)
+    return MOUNT_ERROR_NONE;
+
+  if (base::Contains(password_needed_exit_codes_, exit_code))
+    return MOUNT_ERROR_NEED_PASSWORD;
+
+  return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+}
+
+void MountPoint::OnLauncherExit(const int exit_code) {
+  // Record the FUSE launcher's exit code in Metrics.
+  if (metrics_ && !metrics_name_.empty())
+    metrics_->RecordFuseMounterErrorCode(metrics_name_, exit_code);
+
+  data_.error = ConvertLauncherExitCodeToMountError(exit_code);
+
+  if (launcher_exit_callback_)
+    std::move(launcher_exit_callback_).Run(this);
+}
+
+void MountPoint::SetProcess(std::unique_ptr<Process> process,
+                            Metrics* const metrics,
+                            std::string metrics_name,
+                            std::vector<int> password_needed_exit_codes) {
+  DCHECK(!process_);
+  process_ = std::move(process);
+  DCHECK(process_);
+  metrics_ = metrics;
+  metrics_name_ = std::move(metrics_name);
+  password_needed_exit_codes_ = std::move(password_needed_exit_codes);
+  data_.error = MOUNT_ERROR_IN_PROGRESS;
 }
 
 }  // namespace cros_disks
