@@ -1822,6 +1822,8 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       .AppendSharedDir(CreateFontsSharedDataParam())
       .EnableSmt(false /* enable */)
       .SetGpuCachePath(std::move(gpu_cache_spec.device))
+      .AppendCustomParam("--vcpu-cgroup-path",
+                         base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
