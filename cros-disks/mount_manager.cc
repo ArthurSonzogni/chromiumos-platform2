@@ -300,20 +300,23 @@ void MountManager::OnSandboxedProcessExit(
     const siginfo_t& info) {
   DCHECK_EQ(SIGCHLD, info.si_signo);
   if (info.si_code != CLD_EXITED) {
-    LOG(ERROR) << "The FUSE sandbox for " << redact(mount_path)
+    LOG(ERROR) << "FUSE sandbox for " << redact(mount_path)
                << " was killed by signal " << info.si_status << ": "
                << strsignal(info.si_status);
-  } else if (info.si_status != 0) {
+  } else if (mount_point) {
     LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
-               << " finished with exit code " << info.si_status;
+               << " finished unexpectedly with exit code " << info.si_status;
   } else {
-    LOG(INFO) << "FUSE daemon for " << quote(mount_path)
-              << " finished normally";
+    LOG(INFO) << "FUSE daemon for " << redact(mount_path)
+              << " finished with exit code " << info.si_status;
   }
 
-  // If the MountPoint instance has been deleted, it was already unmounted and
-  // cleaned up due to a request from the browser (or logout). In this case,
-  // there's nothing to do.
+  if (!mount_point) {
+    VLOG(1) << "Mount point " << redact(mount_path) << " was already removed";
+    return;
+  }
+
+  DCHECK_EQ(mount_path, mount_point->path());
   RemoveMount(mount_point.get());
 }
 
