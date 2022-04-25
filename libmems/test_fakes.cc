@@ -7,6 +7,7 @@
 #include <linux/iio/events.h>
 #include <sys/eventfd.h>
 
+#include <array>
 #include <iterator>
 #include <optional>
 
@@ -198,7 +199,7 @@ bool FakeIioDevice::CreateBuffer() {
   CHECK_GE(fd, 0);
   sample_fd_.fd.reset(fd);
 
-  if (sample_fd_.index >= base::size(kFakeAccelSamples) || sample_fd_.is_paused)
+  if (sample_fd_.index >= std::size(kFakeAccelSamples) || sample_fd_.is_paused)
     return true;
 
   if (!sample_fd_.WriteByte()) {
@@ -257,7 +258,7 @@ std::optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
 
   sample_fd_.index += 1;
 
-  if (sample_fd_.index < base::size(kFakeAccelSamples)) {
+  if (sample_fd_.index < std::size(kFakeAccelSamples)) {
     if (sample_fd_.pause_index.has_value() &&
         sample_fd_.index == sample_fd_.pause_index.value()) {
       sample_fd_.SetPause();
@@ -354,7 +355,7 @@ void FakeIioDevice::AddFailedReadAtKthSample(int k) {
 void FakeIioDevice::SetPauseCallbackAtKthSamples(
     int k, base::OnceCallback<void()> callback) {
   CHECK_GE(k, sample_fd_.index);
-  CHECK_LE(k, base::size(kFakeAccelSamples));
+  CHECK_LE(k, std::size(kFakeAccelSamples));
   CHECK(!sample_fd_.pause_index.has_value());  // pause callback hasn't been set
 
   sample_fd_.pause_index = k;
