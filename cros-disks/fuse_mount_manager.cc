@@ -40,14 +40,16 @@ bool FUSEMountManager::Initialize() {
   if (!MountManager::Initialize())
     return false;
 
-  if (!platform()->DirectoryExists(working_dirs_root_) &&
-      !platform()->CreateDirectory(working_dirs_root_)) {
-    LOG(ERROR) << "Can't create writable FUSE directory";
+  if (!platform()->CreateDirectory(working_dirs_root_)) {
+    PLOG(ERROR) << "Cannot create writable FUSE directory "
+                << quote(working_dirs_root_);
     return false;
   }
+
   if (!platform()->SetOwnership(working_dirs_root_, getuid(), getgid()) ||
       !platform()->SetPermissions(working_dirs_root_, 0755)) {
-    LOG(ERROR) << "Can't set up writable FUSE directory";
+    PLOG(ERROR) << "Cannot set up writable FUSE directory "
+                << quote(working_dirs_root_);
     return false;
   }
 
@@ -88,7 +90,8 @@ std::unique_ptr<MountPoint> FUSEMountManager::DoMount(
     return nullptr;
   }
 
-  auto mountpoint = selected_helper->Mount(source, mount_path, options, error);
+  std::unique_ptr<MountPoint> mountpoint =
+      selected_helper->Mount(source, mount_path, options, error);
   LOG_IF(ERROR, *error != MOUNT_ERROR_NONE)
       << "Cannot mount " << redact(source) << " of type " << quote(fuse_type)
       << ": " << *error;
