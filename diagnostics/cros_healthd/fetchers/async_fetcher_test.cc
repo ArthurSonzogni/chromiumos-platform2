@@ -3,9 +3,11 @@
 // found in the LICENSE file.
 
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
@@ -17,30 +19,24 @@ namespace {
 
 namespace mojom = chromeos::cros_healthd::mojom;
 
-class FakeAsyncFetcher : public AsyncFetcher<mojom::TimezoneResult> {
+int destructor_called_times;
+
+class FakeAsyncFetcher : public AsyncFetcherInterface<mojom::TimezoneResult> {
  public:
-  using AsyncFetcher::AsyncFetcher;
+  using AsyncFetcherInterface::AsyncFetcherInterface;
 
-  // Overrides AsyncFetcher.
-  void FetchImpl(ResultCallback callback) override {
-    CHECK(!callback_) << "Call twice before the last call finished.";
-    callback_ = std::move(callback);
-  }
+  static std::vector<ResultCallback> callbacks;
 
-  void FulfillCallback(mojom::TimezoneResultPtr result) {
-    CHECK(callback_) << "Callback is not set.";
-    std::move(callback_).Run(std::move(result));
-    callback_.Reset();
-  }
-
-  void DropCallback() {
-    CHECK(callback_) << "Callback is not set.";
-    callback_.Reset();
-  }
+  ~FakeAsyncFetcher() override { destructor_called_times++; }
 
  private:
-  ResultCallback callback_;
+  // Overrides AsyncFetcherInterface.
+  void FetchImpl(ResultCallback callback) override {
+    callbacks.push_back(std::move(callback));
+  }
 };
+
+std::vector<FakeAsyncFetcher::ResultCallback> FakeAsyncFetcher::callbacks;
 
 FakeAsyncFetcher::ResultCallback ExpectToBeCalled(
     FakeAsyncFetcher::ResultCallback callback) {
@@ -65,30 +61,53 @@ FakeAsyncFetcher::ResultCallback ExpectResultCallback(
 
 class AsyncFetcherTest : public ::testing::Test {
  protected:
-  MockContext mock_context;
-  FakeAsyncFetcher fetcher{&mock_context};
+  void SetUp() override { destructor_called_times = 0; }
+  void TearDown() override {
+    FakeAsyncFetcher::callbacks.clear();
+    // Wait for all task to be done.
+    env_.RunUntilIdle();
+  }
+
+  base::test::SingleThreadTaskEnvironment env_;
+  MockContext mock_context_;
+  AsyncFetcher<FakeAsyncFetcher> fetcher_{&mock_context_};
 };
 
 TEST_F(AsyncFetcherTest, Fetch) {
   auto expected =
       mojom::TimezoneResult::NewTimezoneInfo(mojom::TimezoneInfo::New());
-  fetcher.Fetch(ExpectResultCallback(expected.Clone()));
-  fetcher.FulfillCallback(expected.Clone());
+  fetcher_.Fetch(ExpectResultCallback(expected.Clone()));
+  EXPECT_EQ(FakeAsyncFetcher::callbacks.size(), 1);
+  std::move(FakeAsyncFetcher::callbacks[0]).Run(expected.Clone());
+  // Destructor should not be called at this time.
+  EXPECT_EQ(destructor_called_times, 0);
+  env_.RunUntilIdle();
+  EXPECT_EQ(destructor_called_times, 1);
 }
 
 TEST_F(AsyncFetcherTest, FetchMultiple) {
-  auto expected =
-      mojom::TimezoneResult::NewTimezoneInfo(mojom::TimezoneInfo::New());
-  fetcher.Fetch(ExpectResultCallback(expected.Clone()));
-  fetcher.Fetch(ExpectResultCallback(expected.Clone()));
-  fetcher.Fetch(ExpectResultCallback(expected.Clone()));
-  fetcher.Fetch(ExpectResultCallback(expected.Clone()));
-  fetcher.FulfillCallback(expected.Clone());
+  std::vector<mojom::TimezoneResultPtr> expecteds;
+  expecteds.push_back(mojom::TimezoneResult::NewError(
+      mojom::ProbeError::New(mojom::ErrorType::kFileReadError, "0")));
+  expecteds.push_back(mojom::TimezoneResult::NewError(
+      mojom::ProbeError::New(mojom::ErrorType::kFileReadError, "1")));
+  expecteds.push_back(mojom::TimezoneResult::NewError(
+      mojom::ProbeError::New(mojom::ErrorType::kFileReadError, "2")));
+  expecteds.push_back(mojom::TimezoneResult::NewError(
+      mojom::ProbeError::New(mojom::ErrorType::kFileReadError, "3")));
+  for (int i = 0; i < 4; ++i) {
+    fetcher_.Fetch(ExpectResultCallback(expecteds[i].Clone()));
+  }
+  EXPECT_EQ(FakeAsyncFetcher::callbacks.size(), 4);
+  // Test the callback being fulfilled in reverse order.
+  for (int i = 3; i >= 0; --i) {
+    std::move(FakeAsyncFetcher::callbacks[i]).Run(expecteds[i].Clone());
+  }
 }
 
 TEST_F(AsyncFetcherTest, FetchDropCallback) {
-  fetcher.Fetch(ExpectResultIsErrorCallback());
-  fetcher.DropCallback();
+  fetcher_.Fetch(ExpectResultIsErrorCallback());
+  std::move(FakeAsyncFetcher::callbacks[0]);
 }
 
 }  // namespace
