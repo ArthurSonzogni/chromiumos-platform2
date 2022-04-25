@@ -23,6 +23,8 @@ var funcMap = template.FuncMap{
 	"makeFullProxyName":      genutil.MakeFullProxyName,
 	"makeMethodParams":       makeMethodParams,
 	"makeMethodCallbackType": makeMethodCallbackType,
+	"makeProxyInterfaceArgs": makeProxyInterfaceArgs,
+	"makeProxyInterfaceName": genutil.MakeProxyInterfaceName,
 	"makeProxyName":          genutil.MakeProxyName,
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
 		return p.BaseType(dbustype.DirectionExtract)
@@ -77,74 +79,8 @@ class {{makeProxyName .ObjectManagerName}};
 {{end}}
 {{end -}}
 {{range $introspect := .Introspects}}{{range $itf := .Interfaces -}}
-
-{{range extractNameSpaces .Name -}}
-namespace {{.}} {
-{{end}}
-// Abstract interface proxy for {{makeFullItfName .Name}}.
-{{formatComment .DocString 0 -}}
-{{- $itfName := makeProxyName .Name | printf "%sInterface" -}}
-class {{$itfName}} {
- public:
-  virtual ~{{$itfName}}() = default;
-{{- range .Methods}}
-{{- $inParams := makeMethodParams 0 .InputArguments -}}
-{{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments}}
-
-{{formatComment .DocString 2 -}}
-{{"  "}}virtual bool {{.Name}}(
-{{- range $inParams }}
-      {{.Type}} {{.Name}},
-{{- end}}
-{{- range $outParams }}
-      {{.Type}} {{.Name}},
-{{- end}}
-      brillo::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
-
-{{formatComment .DocString 2 -}}
-{{"  "}}virtual void {{.Name}}Async(
-{{- range $inParams}}
-      {{.Type}} {{.Name}},
-{{- end}}
-      {{makeMethodCallbackType .OutputArguments}} success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
-{{- end}}
-{{- range .Signals}}
-
-  virtual void Register{{.Name}}SignalHandler(
-      {{- makeSignalCallbackType .Args | nindent 6}} signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
-{{- end}}
-{{- if .Properties}}{{"\n"}}{{end}}
-{{- range .Properties}}
-{{- $name := makeVariableName .Name -}}
-{{- $type := makeProxyInArgTypeProxy . }}
-  static const char* {{.Name}}Name() { return "{{.Name}}"; }
-  virtual {{$type}} {{$name}}() const = 0;
-{{- if eq .Access "readwrite"}}
-  virtual void set_{{$name}}({{$type}} value,
-                   {{repeat " " (len $name)}} base::OnceCallback<void(bool)> callback) = 0;
-{{- end}}
-{{- end}}
-
-  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
-  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
-{{- if .Properties}}
-{{if $.ObjectManagerName}}
-  virtual void SetPropertyChangedCallback(
-      const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) = 0;
-{{- else}}
-  virtual void InitializeProperties(
-      const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) = 0;
-{{- end}}
-{{- end}}
-};
-
-{{range extractNameSpaces .Name | reverse -}}
-}  // namespace {{.}}
-{{end}}
+{{- $itfName := makeProxyInterfaceName .Name -}}
+{{template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
 {{range extractNameSpaces .Name -}}
 namespace {{.}} {
 {{end}}
@@ -373,6 +309,10 @@ class {{$proxyName}} final : public {{$itfName}} {
 func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePath string, config serviceconfig.Config) error {
 	tmpl, err := template.New("proxy").Funcs(funcMap).Parse(templateText)
 	if err != nil {
+		return err
+	}
+
+	if _, err := tmpl.Parse(proxyInterfaceTemplate); err != nil {
 		return err
 	}
 

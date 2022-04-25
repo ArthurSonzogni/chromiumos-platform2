@@ -24,6 +24,7 @@ func main() {
 	methodNamesPath := flag.String("method-names", "", "the output header file with string constants for each method name")
 	adaptorPath := flag.String("adaptor", "", "the output header file name containing the DBus adaptor class")
 	proxyPath := flag.String("proxy", "", "the output header file name containing the DBus proxy class")
+	mockPath := flag.String("mock", "", "the output header file name containing the DBus gmock proxy class")
 	flag.Parse()
 
 	var sc serviceconfig.Config
@@ -95,6 +96,22 @@ func main() {
 
 		if err := proxy.Generate(introspections, f, *proxyPath, sc); err != nil {
 			log.Fatalf("Failed to generate proxy: %v\n", err)
+		}
+	}
+
+	if *mockPath != "" {
+		f, err := os.Create(*mockPath)
+		if err != nil {
+			log.Fatalf("Failed to create proxy mock file %s: %v\n", *mockPath, err)
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Fatalf("Failed to close file %s: %v\n", *mockPath, err)
+			}
+		}()
+
+		if err := proxy.GenerateMock(introspections, f, *mockPath, sc); err != nil {
+			log.Fatalf("Failed to generate proxy mock: %v\n", err)
 		}
 	}
 }
