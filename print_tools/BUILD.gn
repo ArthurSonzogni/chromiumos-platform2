@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":printer_diag" ]
+  if (use.test) {
+    deps += [ ":ipp_in_json_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -23,4 +26,20 @@ executable("printer_diag") {
     "printer_diag.cc",
   ]
   configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  executable("ipp_in_json_test") {
+    sources = [
+      "ipp_in_json.cc",
+      "ipp_in_json.h",
+      "ipp_in_json_test.cc",
+    ]
+    configs += [
+      ":target_defaults",
+      "//common-mk:test",
+    ]
+    run_test = true
+    deps = [ "//common-mk/testrunner" ]
+  }
 }

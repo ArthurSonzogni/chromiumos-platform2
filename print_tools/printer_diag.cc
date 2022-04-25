@@ -12,9 +12,10 @@
 #include <brillo/flag_helper.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/libipp/ipp.h>
+#include <chromeos/libipp/attribute.h>
+#include <chromeos/libipp/frame.h>
 
-#include "print_tools/ipp_in_json.h"
+#include "ipp_in_json.h"
 
 namespace {
 
@@ -200,15 +201,10 @@ int main(int argc, char** argv) {
     FLAGS_jsonf = "-";
 
   // Send IPP request and get a response.
-  ipp::Request_Get_Printer_Attributes request;
-  request.operation_attributes->printer_uri.Set(FLAGS_url);
-  ipp::Client client(version);
-  client.BuildRequestFrom(&request);
-  std::vector<uint8_t> data;
-  if (!client.WriteRequestFrameTo(&data)) {
-    std::cerr << "Error when preparing frame with IPP request." << std::endl;
-    return -1;
-  }
+  ipp::Frame request(version, ipp::Operation::Get_Printer_Attributes);
+  auto group = request.GetGroup(ipp::GroupTag::operation_attributes);
+  group->AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
+  std::vector<uint8_t> data = request.SaveToBuffer();
   auto data_optional = SendIppFrameAndGetResponse(FLAGS_url, data);
   if (!data_optional)
     return -2;
@@ -223,9 +219,9 @@ int main(int argc, char** argv) {
 
   // Parse the IPP response and save results.
   int return_code = 0;
-  ipp::Response_Get_Printer_Attributes response;
-  if (client.ReadResponseFrameFrom(data) &&
-      client.ParseResponseAndSaveTo(&response)) {
+  ipp::ParsingResults log;
+  ipp::Frame response(data.data(), data.size(), &log);
+  if (!log.whole_buffer_was_parsed) {
     std::cerr << "Parsing of an obtained response was not completed."
               << std::endl;
     return_code = -5;
@@ -233,7 +229,7 @@ int main(int argc, char** argv) {
   }
   if (!FLAGS_jsonc.empty()) {
     std::string json;
-    if (!ConvertToJson(response, client.GetErrorLog(), true, &json)) {
+    if (!ConvertToJson(response, log, true, &json)) {
       std::cerr << "Error when preparing a report in JSON (compressed)."
                 << std::endl;
       return -4;
@@ -244,7 +240,7 @@ int main(int argc, char** argv) {
   }
   if (!FLAGS_jsonf.empty()) {
     std::string json;
-    if (!ConvertToJson(response, client.GetErrorLog(), false, &json)) {
+    if (!ConvertToJson(response, log, false, &json)) {
       std::cerr << "Error when preparing a report in JSON (formatted)."
                 << std::endl;
       return -4;
