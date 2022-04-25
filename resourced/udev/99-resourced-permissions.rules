@@ -2,4 +2,5 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-z- /sys/class/drm/card*/gt_boost_freq_mhz 0644 resourced resourced
+DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="" \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/gt_boost_freq_mhz"
