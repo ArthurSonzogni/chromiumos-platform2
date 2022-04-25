@@ -44,7 +44,6 @@ class DaemonTask {
           minimum_mtu(0),
           passive_mode(false),
           use_portal_list(false) {}
-    std::string accept_hostname_from;
     std::string default_technology_order;
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;

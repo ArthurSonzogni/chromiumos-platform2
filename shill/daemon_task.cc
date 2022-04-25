@@ -67,7 +67,6 @@ void DaemonTask::ApplySettings() {
   if (settings_.minimum_mtu) {
     manager_->SetMinimumMTU(settings_.minimum_mtu);
   }
-  manager_->SetAcceptHostnameFrom(settings_.accept_hostname_from);
 }
 
 bool DaemonTask::Quit(const base::Closure& completion_callback) {

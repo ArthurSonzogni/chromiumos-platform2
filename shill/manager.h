@@ -491,10 +491,6 @@ class Manager {
     return ignore_unknown_ethernet_;
   }
 
-  // Accept hostname from DHCP server for devices matching |hostname_from|.
-  virtual void SetAcceptHostnameFrom(const std::string& hostname_from);
-  virtual bool ShouldAcceptHostnameFrom(const std::string& device_name) const;
-
   // Returns true iff |power_manager_| exists and is suspending (i.e.
   // power_manager->suspending() is true), false otherwise.
   virtual bool IsSuspending();
@@ -897,10 +893,6 @@ class Manager {
   // Properties to be get/set via PropertyStore calls.
   ManagerProperties props_;
   PropertyStore store_;
-
-  // Accept hostname supplied by the DHCP server from the specified devices.
-  // eg. eth0 or eth*
-  std::string accept_hostname_from_;
 
   base::CancelableClosure sort_services_task_;
 

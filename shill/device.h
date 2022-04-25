@@ -595,11 +595,6 @@ class Device : public base::RefCounted<Device> {
   // Remove connection state
   void DestroyConnection();
 
-  // Set the system hostname to |hostname| if this device is configured to
-  // do so.  If |hostname| is too long, truncate this parameter to fit within
-  // the maximum hostname size.
-  bool SetHostname(const std::string& hostname);
-
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.

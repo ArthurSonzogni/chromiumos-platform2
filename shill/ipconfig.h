@@ -44,7 +44,6 @@ class IPConfig {
     std::string broadcast_address;
     std::vector<std::string> dns_servers;
     std::string domain_name;
-    std::string accepted_hostname;
     std::vector<std::string> domain_search;
     std::string gateway;
     std::string method;

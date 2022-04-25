@@ -1615,15 +1615,6 @@ void DeviceInfo::RecordDarkResumeWakeReason(const std::string& wake_reason) {
 
 #endif  // DISABLE_WIFI
 
-bool DeviceInfo::SetHostname(const std::string& hostname) const {
-  if (sethostname(hostname.c_str(), hostname.length())) {
-    PLOG(ERROR) << "Failed to set hostname to: " << hostname;
-    return false;
-  }
-
-  return true;
-}
-
 // Verifies if a device is guest by checking if the owner of the device
 // identified by |interface_name| has the same UID as the user that runs the
 // Crostini VMs.

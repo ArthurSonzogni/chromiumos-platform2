@@ -4263,37 +4263,6 @@ TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
             manager()->GetEnabledDeviceWithTechnology(Technology::kCellular));
 }
 
-TEST_F(ManagerTest, AcceptHostnameFrom) {
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
-
-  manager()->SetAcceptHostnameFrom("eth0");
-  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth0"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
-
-  manager()->SetAcceptHostnameFrom("eth1");
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
-  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth1"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
-
-  manager()->SetAcceptHostnameFrom("eth*");
-  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth0"));
-  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth1"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
-
-  manager()->SetAcceptHostnameFrom("wlan*");
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
-  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("wlan0"));
-
-  manager()->SetAcceptHostnameFrom("ether*");
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
-  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
-}
-
 TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
   const std::string kPackage = "com.example.test.vpn";
   EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));

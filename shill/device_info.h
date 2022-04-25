@@ -161,9 +161,6 @@ class DeviceInfo {
   // Returns the interface index for |interface_name| or -1 if unknown.
   virtual int GetIndex(const std::string& interface_name) const;
 
-  // Sets the system hostname to |hostname|.
-  virtual bool SetHostname(const std::string& hostname) const;
-
   // Gets the real user ID of the given |user_name| and returns it via |uid|.
   // Returns true on success.
   virtual bool GetUserId(const std::string& user_name, uid_t* uid) const;

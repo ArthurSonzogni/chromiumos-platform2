@@ -319,7 +319,6 @@ const char kWireGuardPeerAllowedIPs[] = "AllowedIPs";
 const char kWireGuardPeerPersistentKeepalive[] = "PersistentKeepalive";
 
 // IPConfig property names.
-const char kAcceptedHostnameProperty[] = "AcceptedHostname";
 // kAddressProperty: Defined below for Device.
 const char kBroadcastProperty[] = "Broadcast";
 const char kDomainNameProperty[] = "DomainName";

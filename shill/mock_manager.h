@@ -113,10 +113,6 @@ class MockManager : public Manager {
               (Technology),
               (const, override));
   MOCK_METHOD(int, GetMinimumMTU, (), (const, override));
-  MOCK_METHOD(bool,
-              ShouldAcceptHostnameFrom,
-              (const std::string&),
-              (const, override));
   MOCK_METHOD(void,
               SetBlockedDevices,
               (const std::vector<std::string>&),
@@ -129,7 +125,6 @@ class MockManager : public Manager {
   MOCK_METHOD(void, SetStartupPortalList, (const std::string&), (override));
   MOCK_METHOD(void, SetPassiveMode, (), (override));
   MOCK_METHOD(void, SetMinimumMTU, (const int), (override));
-  MOCK_METHOD(void, SetAcceptHostnameFrom, (const std::string&), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
   MOCK_METHOD(int64_t, GetSuspendDurationUsecs, (), (const, override));
   MOCK_METHOD(void, OnInnerDevicesChanged, (), (override));

@@ -811,26 +811,6 @@ void Device::SetupConnection(IPConfig* ipconfig) {
     // to the Online state.
     StartPortalDetection();
   }
-
-  SetHostname(ipconfig->properties().accepted_hostname);
-}
-
-bool Device::SetHostname(const std::string& hostname) {
-  if (hostname.empty() || !manager()->ShouldAcceptHostnameFrom(link_name_)) {
-    return false;
-  }
-
-  std::string fixed_hostname = hostname;
-  if (fixed_hostname.length() > MAXHOSTNAMELEN) {
-    auto truncate_length = fixed_hostname.find('.');
-    if (truncate_length == std::string::npos ||
-        truncate_length > MAXHOSTNAMELEN) {
-      truncate_length = MAXHOSTNAMELEN;
-    }
-    fixed_hostname.resize(truncate_length);
-  }
-
-  return manager_->device_info()->SetHostname(fixed_hostname);
 }
 
 void Device::ConnectionDiagnosticsCallback(

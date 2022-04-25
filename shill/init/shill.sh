@@ -41,10 +41,6 @@ if [ -n "${SHILL_PASSIVE_MODE}" ]; then
   set -- "$@" --passive-mode
 fi
 
-if [ -n "${SHILL_ACCEPT_HOSTNAME_FROM}" ]; then
-  set -- "$@" --accept-hostname-from="${SHILL_ACCEPT_HOSTNAME_FROM}"
-fi
-
 if [ -n "${SHILL_MINIMUM_MTU}" ]; then
   set -- "$@" --minimum-mtu="${SHILL_MINIMUM_MTU}"
 fi

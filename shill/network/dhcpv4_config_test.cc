@@ -92,7 +92,6 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   conf.Set<Strings>(DHCPv4Config::kConfigurationKeyDomainSearch,
                     {"foo.com", "bar.com"});
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 600);
-  conf.Set<std::string>(DHCPv4Config::kConfigurationKeyHostname, "hostname");
   conf.Set<std::string>("UnknownKey", "UnknownValue");
 
   ByteArray isns_data{0x1, 0x2, 0x3, 0x4};
@@ -114,7 +113,6 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   EXPECT_EQ("foo.com", properties.domain_search[0]);
   EXPECT_EQ("bar.com", properties.domain_search[1]);
   EXPECT_EQ(600, properties.mtu);
-  EXPECT_EQ("hostname", properties.accepted_hostname);
   EXPECT_EQ(isns_data.size(), properties.isns_option_data.size());
   EXPECT_FALSE(
       memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));

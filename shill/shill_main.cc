@@ -47,9 +47,6 @@ const char kPassiveMode[] = "passive-mode";
 const char kTechnologyOrder[] = "default-technology-order";
 // The minimum MTU value that will be respected in DHCP responses.
 const char kMinimumMTU[] = "minimum-mtu";
-// Accept hostname from the DHCP server for the specified devices.
-// eg. eth0 or eth*
-const char kAcceptHostnameFrom[] = "accept-hostname-from";
 // Flag that causes shill to show the help message and exit.
 const char kHelp[] = "help";
 
@@ -77,8 +74,6 @@ const char kHelpMessage[] =
     "    Do not manage any devices by default\n"
     "  --default-technology-order=technology1,technology2\n"
     "    Specify the default priority order of the technologies.\n"
-    "  --accept-hostname-from=eth0 or --accept-hostname-from=eth*\n"
-    "    Accept a hostname from the DHCP server for the matching devices.\n"
     "  --minimum-mtu=mtu\n"
     "    Set the minimum value to respect as the MTU from DHCP responses.\n";
 }  // namespace switches
@@ -186,11 +181,6 @@ int main(int argc, char** argv) {
       LOG(FATAL) << "Could not convert '" << value << "' to integer.";
     }
     settings.minimum_mtu = mtu;
-  }
-
-  if (cl->HasSwitch(switches::kAcceptHostnameFrom)) {
-    settings.accept_hostname_from =
-        cl->GetSwitchValueASCII(switches::kAcceptHostnameFrom);
   }
 
   shill::Config config;

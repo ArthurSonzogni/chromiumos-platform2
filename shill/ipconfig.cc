@@ -54,8 +54,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
   store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);
   store_.RegisterConstString(kDomainNameProperty, &properties_.domain_name);
-  store_.RegisterConstString(kAcceptedHostnameProperty,
-                             &properties_.accepted_hostname);
   store_.RegisterConstString(kGatewayProperty, &properties_.gateway);
   store_.RegisterConstString(kMethodProperty, &properties_.method);
   store_.RegisterConstInt32(kMtuProperty, &properties_.mtu);

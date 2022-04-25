@@ -227,10 +227,6 @@ class DeviceTest : public testing::Test {
     device_->ip6config_->set_properties(properties);
   }
 
-  bool SetHostname(const std::string& hostname) {
-    return device_->SetHostname(hostname);
-  }
-
   static ManagerProperties MakePortalProperties() {
     ManagerProperties props;
     props.portal_http_url = PortalDetector::kDefaultHttpUrl;
@@ -1152,58 +1148,6 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(connection);
-}
-
-TEST_F(DeviceTest, SetHostnameWithEmptyHostname) {
-  EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(_)).Times(0);
-  EXPECT_CALL(device_info_, SetHostname(_)).Times(0);
-  EXPECT_FALSE(SetHostname(""));
-}
-
-TEST_F(DeviceTest, SetHostnameForDisallowedDevice) {
-  EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(kDeviceName))
-      .WillOnce(Return(false));
-  EXPECT_CALL(device_info_, SetHostname(_)).Times(0);
-  EXPECT_FALSE(SetHostname("wilson"));
-}
-
-TEST_F(DeviceTest, SetHostnameWithFailingDeviceInfo) {
-  EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(kDeviceName))
-      .WillOnce(Return(true));
-  EXPECT_CALL(device_info_, SetHostname("wilson")).WillOnce(Return(false));
-  EXPECT_FALSE(SetHostname("wilson"));
-}
-
-TEST_F(DeviceTest, SetHostnameMaximumHostnameLength) {
-  EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(kDeviceName))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      device_info_,
-      SetHostname(
-          "wilson.was-a-good-ball.and-was.an-excellent-swimmer.in-high-seas"))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(SetHostname(
-      "wilson.was-a-good-ball.and-was.an-excellent-swimmer.in-high-seas"));
-}
-
-TEST_F(DeviceTest, SetHostnameTruncateDomainName) {
-  EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(kDeviceName))
-      .WillOnce(Return(true));
-  EXPECT_CALL(device_info_, SetHostname("wilson")).WillOnce(Return(false));
-  EXPECT_FALSE(SetHostname(
-      "wilson.was-a-great-ball.and-was.an-excellent-swimmer.in-high-seas"));
-}
-
-TEST_F(DeviceTest, SetHostnameTruncateHostname) {
-  EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(kDeviceName))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      device_info_,
-      SetHostname(
-          "wilson-was-a-great-ball-and-was-an-excellent-swimmer-in-high-sea"))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(SetHostname(
-      "wilson-was-a-great-ball-and-was-an-excellent-swimmer-in-high-sea-chop"));
 }
 
 TEST_F(DeviceTest, SetMacAddress) {

@@ -159,8 +159,6 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       }
     } else if (key == kConfigurationKeyDomainName) {
       properties->domain_name = value.Get<std::string>();
-    } else if (key == kConfigurationKeyHostname) {
-      properties->accepted_hostname = value.Get<std::string>();
     } else if (key == kConfigurationKeyDomainSearch) {
       properties->domain_search = value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {

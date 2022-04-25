@@ -1248,14 +1248,6 @@ void Manager::SetIgnoreUnknownEthernet(bool ignore) {
   ignore_unknown_ethernet_ = ignore;
 }
 
-void Manager::SetAcceptHostnameFrom(const std::string& hostname_from) {
-  accept_hostname_from_ = hostname_from;
-}
-
-bool Manager::ShouldAcceptHostnameFrom(const std::string& device_name) const {
-  return base::MatchPattern(device_name, accept_hostname_from_);
-}
-
 bool Manager::IsSuspending() {
   if (power_manager_ && power_manager_->suspending()) {
     return true;
