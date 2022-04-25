@@ -258,20 +258,30 @@ CryptoStatus DeriveKeyBlobs(AuthBlockUtility& auth_block_utility,
 }
 
 // Returns a vector of all the VaultKeyset labels in |out_labels| if the
-// |credentials| has an empty label and the key type is KEY_TYPE_PASSWORD,
-// otherwise |credentials|'s label is pushed to |out_labels|. Returns false if
-// there are no VaultKeysets on the disk, otherwise returns true.
+// |credentials| has an empty label and the key type is KEY_TYPE_PASSWORD, and
+// not PIN. Otherwise |credentials|'s label is pushed to |out_labels|. Returns
+// false if there are no VaultKeysets on the disk, otherwise returns true.
 bool GetKeyLabels(const KeysetManagement& keyset_management,
                   const Credentials& credentials,
                   std::vector<std::string>& out_labels) {
+  std::vector<std::string> key_labels;
+  if (!keyset_management.GetVaultKeysetLabels(
+          credentials.GetObfuscatedUsername(), &key_labels)) {
+    return false;
+  }
+
+  out_labels.clear();
   if (credentials.key_data().label() == "" &&
-      credentials.key_data().type() == KeyData::KEY_TYPE_PASSWORD) {
-    if (!keyset_management.GetVaultKeysetLabels(
-            credentials.GetObfuscatedUsername(), &out_labels)) {
-      return false;
-    }
+      credentials.key_data().type() == KeyData::KEY_TYPE_PASSWORD &&
+      !credentials.key_data().policy().low_entropy_credential()) {
+    // Use the |key_labels| from the GetVaultKeysetLabels() if the empty string,
+    // i.e. wildcard, is received for the label and credentials type is either
+    // password or smartunlock.
+    out_labels = std::move(key_labels);
     return true;
   }
+  // If the label received with the |credentials| is a specific label rather
+  // than an empty string |out_label| should have only this specific label.
   out_labels.push_back(credentials.key_data().label());
   return true;
 }

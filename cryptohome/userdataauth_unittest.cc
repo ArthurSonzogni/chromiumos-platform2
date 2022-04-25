@@ -2188,6 +2188,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -2296,6 +2298,8 @@ TEST_F(UserDataAuthTest,
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -2736,6 +2740,90 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
   EXPECT_TRUE(called);
 }
 
+// Test that DoMount request returns CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
+// there is no VaultKeyset found on disk.
+TEST_F(UserDataAuthExTest, MountFailsWithUnrecoverableVault) {
+  // Setup
+  constexpr char kUser[] = "foo@bar.net";
+  constexpr char kKey[] = "key";
+  constexpr char kLabel[] = "label";
+
+  InitializeUserDataAuth();
+  PrepareArguments();
+  SetupMount(kUser);
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+
+  // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
+  // there no VaultKeysets are found in disk.
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(true));
+
+  user_data_auth::MountRequest mount_req;
+  mount_req.mutable_account()->set_account_id(kUser);
+  mount_req.mutable_authorization()->mutable_key()->set_secret(kKey);
+  mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
+      kLabel);
+  mount_req.mutable_create()->set_copy_authorization_key(true);
+  bool mount_done = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        mount_req,
+        base::BindOnce(
+            [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
+                        reply.error());
+              *mount_done_ptr = true;
+            },
+            base::Unretained(&mount_done)));
+    ASSERT_EQ(TRUE, mount_done);
+  }
+}
+
+// Test that DoMount with an empty label authorization request returns
+// CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when there is no VaultKeyset found on
+// disk.
+TEST_F(UserDataAuthExTest, MountWithEmptyLabelFailsWithUnrecoverableVault) {
+  // Setup
+  constexpr char kUser[] = "foo@bar.net";
+  constexpr char kKey[] = "key";
+  constexpr char kEmptyLabel[] = "";
+
+  InitializeUserDataAuth();
+  PrepareArguments();
+  SetupMount(kUser);
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+
+  // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
+  // there no VaultKeysets are found in disk.
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(true));
+
+  user_data_auth::MountRequest mount_req;
+  mount_req.mutable_account()->set_account_id(kUser);
+  mount_req.mutable_authorization()->mutable_key()->set_secret(kKey);
+  mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
+      kEmptyLabel);
+
+  bool mount_done = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        mount_req,
+        base::BindOnce(
+            [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
+                        reply.error());
+              *mount_done_ptr = true;
+            },
+            base::Unretained(&mount_done)));
+    ASSERT_EQ(TRUE, mount_done);
+  }
+}
+
 TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   // Note that this test doesn't distinguish between different causes of invalid
   // argument, that is, this doesn't check that
@@ -2747,7 +2835,10 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
 
   bool called;
   user_data_auth::CryptohomeErrorCode error_code;
-
+  PrepareArguments();
+  mount_req_->mutable_account()->set_account_id("foo@gmail.com");
+  mount_req_->mutable_authorization()->mutable_key()->set_secret("blerg");
+  mount_req_->mutable_create()->add_keys()->set_secret("");
   // This calls DoMount and check that the result is reported (i.e. the callback
   // is called), and is CRYPTOHOME_ERROR_INVALID_ARGUMENT.
   auto CallDoMountAndGetError = [&called, &error_code, this]() {
