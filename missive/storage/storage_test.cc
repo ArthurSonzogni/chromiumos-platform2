@@ -1048,7 +1048,9 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
               Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
-      .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+      .Times(AtLeast(1))
+      .WillRepeatedly(Invoke([&waiter,
+                              this](UploaderInterface::UploadReason reason) {
         return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
             .Required(3, kMoreData[0])
             .Required(4, kMoreData[1])
@@ -1751,7 +1753,7 @@ TEST_P(StorageTest, KeyDeliveryFailureOnNewStorage) {
   EXPECT_CALL(set_mock_uploader_expectations_,
               Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
       .Times(AtLeast(1))
-      .WillOnce(Invoke([this](UploaderInterface::UploadReason) {
+      .WillRepeatedly(Invoke([this](UploaderInterface::UploadReason) {
         return TestUploader::SetKeyDelivery(this).Complete();
       }));
 
