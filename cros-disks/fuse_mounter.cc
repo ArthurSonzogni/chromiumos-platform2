@@ -337,17 +337,6 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
   return process;
 }
 
-MountErrorType FUSEMounter::ConvertLauncherExitCodeToMountError(
-    const int exit_code) const {
-  if (exit_code == 0)
-    return MOUNT_ERROR_NONE;
-
-  if (base::Contains(config_.password_needed_exit_codes, exit_code))
-    return MOUNT_ERROR_NEED_PASSWORD;
-
-  return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
-}
-
 FUSEMounterHelper::FUSEMounterHelper(
     const Platform* platform,
     brillo::ProcessReaper* process_reaper,

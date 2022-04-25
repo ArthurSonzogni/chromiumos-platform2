@@ -117,9 +117,6 @@ class FUSEMounter : public Mounter {
     return !config_.password_needed_exit_codes.empty();
   }
 
-  // Converts the FUSE launcher's exit code into a MountErrorType.
-  MountErrorType ConvertLauncherExitCodeToMountError(int exit_code) const;
-
   // Performs necessary set up and makes a SandboxedProcess ready to be
   // launched to serve a mount. The returned instance will have one more
   // last argument added to indicate the FUSE mount path according to
