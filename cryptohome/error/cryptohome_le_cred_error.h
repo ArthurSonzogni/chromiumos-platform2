@@ -12,6 +12,7 @@
 
 #include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/le_credential_error.h"
@@ -91,6 +92,9 @@ class CryptohomeLECredError : public CryptohomeCryptoError {
 // Define an alias in the cryptohome namespace for easier access.
 using LECredStatus =
     hwsec_foundation::status::StatusChain<error::CryptohomeLECredError>;
+template <typename _Et>
+using LECredStatusOr =
+    hwsec_foundation::status::StatusChainOr<_Et, error::CryptohomeLECredError>;
 
 }  // namespace cryptohome
 

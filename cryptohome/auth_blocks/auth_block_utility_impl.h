@@ -115,15 +115,13 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
  private:
   // This helper function serves as a factory method to return the authblock
   // used in authentication.
-  hwsec_foundation::status::StatusChainOr<std::unique_ptr<SyncAuthBlock>,
-                                          error::CryptohomeCryptoError>
-  GetAuthBlockWithType(const AuthBlockType& auth_block_type) const;
+  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> GetAuthBlockWithType(
+      const AuthBlockType& auth_block_type) const;
 
   // This helper function returns an authblock with asynchronous create and
   // derive.
-  hwsec_foundation::status::StatusChainOr<std::unique_ptr<AuthBlock>,
-                                          error::CryptohomeCryptoError>
-  GetAsyncAuthBlockWithType(const AuthBlockType& auth_block_type);
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAsyncAuthBlockWithType(
+      const AuthBlockType& auth_block_type);
 
   // Non-owned object used for the keyset management operations. Must be alive
   // for the entire lifecycle of the class.

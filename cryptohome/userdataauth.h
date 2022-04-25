@@ -831,10 +831,10 @@ class UserDataAuth {
 
   // Determines whether the mount request should be ephemeral. On error, returns
   // status, otherwise, return the result (whether to mount ephemeral).
-  hwsec_foundation::status::StatusChainOr<bool, error::CryptohomeError>
-  GetShouldMountAsEphemeral(const std::string& account_id,
-                            bool is_ephemeral_mount_requested,
-                            bool has_create_request) const;
+  CryptohomeStatusOr<bool> GetShouldMountAsEphemeral(
+      const std::string& account_id,
+      bool is_ephemeral_mount_requested,
+      bool has_create_request) const;
 
   // Returns either and existing or a newly created UserSession, if not present.
   scoped_refptr<UserSession> GetOrCreateUserSession(

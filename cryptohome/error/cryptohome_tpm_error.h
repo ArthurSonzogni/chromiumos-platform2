@@ -13,6 +13,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <libhwsec/error/tpm_error.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/error/cryptohome_crypto_error.h"
 
@@ -90,6 +91,13 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
 };
 
 }  // namespace error
+
+// Define an alias in the cryptohome namespace for easier access.
+using TPMStatus =
+    hwsec_foundation::status::StatusChain<error::CryptohomeTPMError>;
+template <typename _Et>
+using TPMStatusOr =
+    hwsec_foundation::status::StatusChainOr<_Et, error::CryptohomeTPMError>;
 
 }  // namespace cryptohome
 

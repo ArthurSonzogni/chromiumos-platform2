@@ -82,7 +82,6 @@ using hwsec_foundation::Sha1;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
-using hwsec_foundation::status::StatusChainOr;
 
 namespace cryptohome {
 
@@ -1301,7 +1300,7 @@ void UserDataAuth::FinalizeInstallAttributesIfMounted() {
   }
 }
 
-StatusChainOr<bool, CryptohomeError> UserDataAuth::GetShouldMountAsEphemeral(
+CryptohomeStatusOr<bool> UserDataAuth::GetShouldMountAsEphemeral(
     const std::string& account_id,
     bool is_ephemeral_mount_requested,
     bool has_create_request) const {
@@ -1604,7 +1603,7 @@ void UserDataAuth::DoMount(
       request.require_ephemeral() ||
       (auth_session ? auth_session->ephemeral_user() : false);
 
-  StatusChainOr<bool, CryptohomeError> should_mount_as_ephemeral_status =
+  CryptohomeStatusOr<bool> should_mount_as_ephemeral_status =
       GetShouldMountAsEphemeral(account_id, require_ephemeral,
                                 (request.has_create() || auth_session));
   if (!should_mount_as_ephemeral_status.ok()) {

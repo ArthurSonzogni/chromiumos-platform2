@@ -13,6 +13,7 @@
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/error/error.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/error/action.h"
 
@@ -124,6 +125,9 @@ class CryptohomeError : public hwsec_foundation::status::Error {
 // Define an alias in the cryptohome namespace for easier access.
 using CryptohomeStatus =
     hwsec_foundation::status::StatusChain<error::CryptohomeError>;
+template <typename _Et>
+using CryptohomeStatusOr =
+    hwsec_foundation::status::StatusChainOr<_Et, error::CryptohomeError>;
 
 }  // namespace cryptohome
 

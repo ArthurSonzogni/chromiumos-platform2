@@ -52,7 +52,6 @@ using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::ReturnError;
-using ::hwsec_foundation::status::StatusChainOr;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
@@ -1578,7 +1577,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
       &challenge_credentials_helper_, std::move(mock_key_challenge_service),
       credentials.username());
   // Test. All fields are valid to get an AsyncChallengeCredentialAuthBlock.
-  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
           AuthBlockType::kChallengeCredential);
   EXPECT_TRUE(auth_block.ok());
@@ -1594,7 +1593,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
           AuthBlockType::kChallengeCredential);
   EXPECT_FALSE(auth_block.ok());

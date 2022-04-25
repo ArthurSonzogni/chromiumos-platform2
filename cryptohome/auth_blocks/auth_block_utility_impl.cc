@@ -50,7 +50,6 @@ using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
-using hwsec_foundation::status::StatusChainOr;
 
 namespace cryptohome {
 
@@ -98,8 +97,8 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
     const std::optional<brillo::SecureBlob>& reset_secret,
     AuthBlockState& out_state,
     KeyBlobs& out_key_blobs) const {
-  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
-      auth_block = GetAuthBlockWithType(auth_block_type);
+  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
+      GetAuthBlockWithType(auth_block_type);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     return MakeStatus<CryptohomeCryptoError>(
@@ -137,7 +136,7 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
-  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
@@ -172,8 +171,8 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
 
   auth_input.locked_to_single_user = GetLockedToSingleUser();
 
-  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
-      auth_block = GetAuthBlockWithType(auth_block_type);
+  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
+      GetAuthBlockWithType(auth_block_type);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Keyset wrapped with unknown method.";
     return MakeStatus<CryptohomeCryptoError>(
@@ -229,7 +228,7 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
     AuthBlock::DeriveCallback derive_callback) {
   DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
 
-  StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError> auth_block =
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
@@ -301,7 +300,7 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
   return auth_block_type;
 }
 
-StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
+CryptoStatusOr<std::unique_ptr<SyncAuthBlock>>
 AuthBlockUtilityImpl::GetAuthBlockWithType(
     const AuthBlockType& auth_block_type) const {
   switch (auth_block_type) {
@@ -359,7 +358,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
       CryptoError::CE_OTHER_CRYPTO);
 }
 
-StatusChainOr<std::unique_ptr<AuthBlock>, CryptohomeCryptoError>
+CryptoStatusOr<std::unique_ptr<AuthBlock>>
 AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     const AuthBlockType& auth_block_type) {
   switch (auth_block_type) {
@@ -497,8 +496,8 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
         CryptoError::CE_OTHER_CRYPTO);
   }
   // TODO(b/216804305): Stop hardcoding the auth block.
-  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
-      auth_block = GetAuthBlockWithType(auth_block_type);
+  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
+      GetAuthBlockWithType(auth_block_type);
   return auth_block.value()->Create(auth_input, &out_auth_block_state,
                                     &out_key_blobs);
 }
@@ -542,8 +541,8 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
-  StatusChainOr<std::unique_ptr<SyncAuthBlock>, CryptohomeCryptoError>
-      auth_block = GetAuthBlockWithType(auth_block_type);
+  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
+      GetAuthBlockWithType(auth_block_type);
   return auth_block.value()->Derive(auth_input, auth_block_state,
                                     &out_key_blobs);
 }
