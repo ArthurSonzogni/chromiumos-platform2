@@ -311,9 +311,7 @@ void Process::FlushOutput() {
 }
 
 void Process::OnOutputAvailable() {
-  LOG(INFO) << "Process::OnOutputAvailable: Data might be available from "
-               "file descriptor "
-            << out_fd_.get();
+  VLOG(1) << "Data available from file descriptor " << out_fd_.get();
   CaptureOutput();
 }
 

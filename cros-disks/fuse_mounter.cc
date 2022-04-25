@@ -329,6 +329,11 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
   process->AddArgument(base::StringPrintf("/dev/fd/%d", fd));
   process->PreserveFile(fd);
 
+  process->SetOutputCallback(
+      base::BindRepeating([](const base::StringPiece line) {
+        VLOG(1) << "FUSE mounter says: " << line;
+      }));
+
   if (!process->Start()) {
     *error = MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
     return nullptr;
