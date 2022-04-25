@@ -161,6 +161,9 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
     return false;
   }
 
+  // Check size in addition to result code to guard against bugs in the
+  // command implementation. See ec_command_test.cc for details and example test
+  // cases.
   return (static_cast<uint32_t>(ret) == data_.cmd.insize) &&
          data_.cmd.result == EC_RES_SUCCESS;
 }

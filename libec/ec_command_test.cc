@@ -84,6 +84,35 @@ TEST(EcCommand, Run_CommandFailure) {
   EXPECT_FALSE(mock.Run(kDummyFd));
 }
 
+// It's possible for the implementation of the command to incorrectly return
+// the wrong size. The kernel driver does not check for this, but Run() should
+// return an error since the data returned is not what was requested.
+TEST(EcCommand, Run_ResponseSizeTooSmall) {
+  MockFpModeCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return data->cmd.insize - 1;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+}
+
+// It's possible for the implementation of the command to incorrectly return
+// the wrong size. In the case where the size is too large, the kernel driver
+// will return an error, but we'll be defensive and check as well in case the
+// implementation changes.
+// See
+// https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/upstream/drivers/platform/chrome/cros_ec_spi.c;l=259-261;drc=a0386bba70934d42f586eaf68b21d5eeaffa7bd0
+TEST(EcCommand, Run_ResponseSizeTooLarge) {
+  MockFpModeCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return data->cmd.insize + 1;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+}
+
 TEST(EcCommand, Run_CommandWithEmptyResponse_Failure) {
   MockEmptyResponseCommand mock;
   EXPECT_CALL(mock, ioctl)
