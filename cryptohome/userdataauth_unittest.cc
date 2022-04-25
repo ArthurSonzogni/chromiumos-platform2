@@ -71,6 +71,7 @@ using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeMountError;
+using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 
@@ -4149,7 +4150,21 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
                     const structure::ChallengePublicKeyInfo& public_key_info,
                     std::unique_ptr<KeyChallengeService> key_challenge_service,
                     ChallengeCredentialsHelper::VerifyKeyCallback callback) {
-      std::move(callback).Run(is_key_valid);
+      if (is_key_valid) {
+        std::move(callback).Run(OkStatus<CryptohomeTPMError>());
+      } else {
+        const error::CryptohomeError::ErrorLocationPair
+            kErrorLocationPlaceholder =
+                error::CryptohomeError::ErrorLocationPair(
+                    static_cast<
+                        ::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+                    "Testing1");
+
+        std::move(callback).Run(MakeStatus<CryptohomeTPMError>(
+            kErrorLocationPlaceholder,
+            ErrorActionSet({ErrorAction::kIncorrectAuth}),
+            TPMRetryAction::kUserAuth));
+      }
     }
 
     bool is_key_valid = false;
@@ -4166,7 +4181,9 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
       std::unique_ptr<brillo::SecureBlob> passkey_to_pass;
       if (passkey)
         passkey_to_pass = std::make_unique<brillo::SecureBlob>(*passkey);
-      std::move(callback).Run(std::move(passkey_to_pass));
+      std::move(callback).Run(
+          ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+              nullptr, std::move(passkey_to_pass)));
     }
 
     std::optional<brillo::SecureBlob> passkey;

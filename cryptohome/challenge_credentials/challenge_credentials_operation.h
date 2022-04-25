@@ -14,6 +14,7 @@
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
@@ -30,8 +31,8 @@ class ChallengeCredentialsOperation {
   //
   // If the challenge succeeded, then |signature| will contain the signature of
   // the challenge. Otherwise, it will be null.
-  using KeySignatureChallengeCallback =
-      base::OnceCallback<void(std::unique_ptr<brillo::Blob> signature)>;
+  using KeySignatureChallengeCallback = base::OnceCallback<void(
+      TPMStatusOr<std::unique_ptr<brillo::Blob>> signature)>;
 
   virtual ~ChallengeCredentialsOperation();
 
@@ -44,7 +45,7 @@ class ChallengeCredentialsOperation {
   // Should complete the operation with an error result.
   //
   // If the completion already happened, should do nothing.
-  virtual void Abort() = 0;
+  virtual void Abort(TPMStatus status) = 0;
 
  protected:
   static brillo::SecureBlob ConstructPasskey(

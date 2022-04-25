@@ -111,21 +111,25 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
 
 void AsyncChallengeCredentialAuthBlock::CreateContinue(
     CreateCallback callback,
-    std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
-  if (!passkey) {
-    // TODO(b/229569484): Make ChallengeCredentialHelper pass the error in.
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
+  if (!result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to obtain challenge-response passkey.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
-                kLocAsyncChalCredAuthBlockServiceGenerateFailedInCreate),
-            ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
-                            ErrorAction::kReboot}),
-            CryptoError::CE_OTHER_CRYPTO),
+                kLocAsyncChalCredAuthBlockServiceGenerateFailedInCreate))
+            .Wrap(std::move(result).status()),
         nullptr, nullptr);
     return;
   }
+
+  ChallengeCredentialsHelper::GenerateNewOrDecryptResult result_val =
+      std::move(result).value();
+  std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info =
+      result_val.info();
+  std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
+  DCHECK(passkey);
 
   // We only need passkey for the AuthInput.
   AuthInput auth_input = {.user_input = std::move(*passkey)};
@@ -255,19 +259,23 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
 void AsyncChallengeCredentialAuthBlock::DeriveContinue(
     DeriveCallback callback,
     const AuthBlockState& scrypt_state,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
-  if (!passkey) {
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
+  if (!result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to obtain challenge-response passkey.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
-                kLocAsyncChalCredAuthBlockServiceDeriveFailedInDerive),
-            ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
-                            ErrorAction::kReboot, ErrorAction::kIncorrectAuth}),
-            CryptoError::CE_OTHER_CRYPTO),
+                kLocAsyncChalCredAuthBlockServiceDeriveFailedInDerive))
+            .Wrap(std::move(result).status()),
         nullptr);
     return;
   }
+
+  ChallengeCredentialsHelper::GenerateNewOrDecryptResult result_val =
+      std::move(result).value();
+  std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
+  DCHECK(passkey);
 
   // We only need passkey for the LibScryptCompatAuthBlock AuthInput.
   AuthInput auth_input = {.user_input = std::move(*passkey)};

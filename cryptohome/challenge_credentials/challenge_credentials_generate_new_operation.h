@@ -15,7 +15,9 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/signature_sealing_backend.h"
 
@@ -37,10 +39,8 @@ class ChallengeCredentialsGenerateNewOperation final
   // If the operation succeeds, |passkey| can be used for decryption of the
   // user's vault keyset, and |signature_challenge_info| containing the data to
   // be stored in the auth block state.
-  using CompletionCallback =
-      base::OnceCallback<void(std::unique_ptr<structure::SignatureChallengeInfo>
-                                  signature_challenge_info,
-                              std::unique_ptr<brillo::SecureBlob> passkey)>;
+  using CompletionCallback = base::OnceCallback<void(
+      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -65,23 +65,24 @@ class ChallengeCredentialsGenerateNewOperation final
 
   // ChallengeCredentialsOperation:
   void Start() override;
-  void Abort() override;
+  void Abort(TPMStatus status) override;
 
  private:
   // Starts the processing. Returns |false| on fatal error.
-  bool StartProcessing();
+  TPMStatus StartProcessing();
 
   // Generates a salt. Returns |false| on fatal error.
-  bool GenerateSalt();
+  TPMStatus GenerateSalt();
 
   // Makes a challenge request against the salt. Returns |false| on fatal error.
-  bool StartGeneratingSaltSignature();
+  TPMStatus StartGeneratingSaltSignature();
 
   // Creates a TPM-protected signature-sealed secret.
-  bool CreateTpmProtectedSecret();
+  TPMStatus CreateTpmProtectedSecret();
 
   // Called when signature for the salt is received.
-  void OnSaltChallengeResponse(std::unique_ptr<brillo::Blob> salt_signature);
+  void OnSaltChallengeResponse(
+      TPMStatusOr<std::unique_ptr<brillo::Blob>> salt_signature);
 
   // Generates the result if all necessary pieces are computed.
   void ProceedIfComputationsDone();

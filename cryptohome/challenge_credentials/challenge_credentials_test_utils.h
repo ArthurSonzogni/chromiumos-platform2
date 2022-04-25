@@ -16,20 +16,6 @@ namespace cryptohome {
 
 class Credentials;
 
-// Structures that hold results returned from ChallengeCredentialsHelper
-// operations:
-
-// for ChallengeCredentialsHelper::GenerateNew():
-struct ChallengeCredentialsGenerateNewResult {
-  std::unique_ptr<brillo::SecureBlob> passkey;
-  std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info;
-};
-
-// for ChallengeCredentialsHelper::Decrypt():
-struct ChallengeCredentialsDecryptResult {
-  std::unique_ptr<brillo::SecureBlob> passkey;
-};
-
 // Functions that make callbacks for ChallengeCredentialsHelper that store the
 // result into the given smart pointer (this smart pointer will become non-null
 // after the callback gets executed):
@@ -37,36 +23,27 @@ struct ChallengeCredentialsDecryptResult {
 // for ChallengeCredentialsHelper::GenerateNew():
 ChallengeCredentialsHelper::GenerateNewCallback
 MakeChallengeCredentialsGenerateNewResultWriter(
-    std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result);
+    std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
+        result);
 
 // for ChallengeCredentialsHelper::Decrypt():
 ChallengeCredentialsHelper::DecryptCallback
 MakeChallengeCredentialsDecryptResultWriter(
-    std::unique_ptr<ChallengeCredentialsDecryptResult>* result);
+    std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
+        result);
 
 // Functions that verify that the result returned from the
 // ChallengeCredentialsHelper operation is valid:
 
 // for ChallengeCredentialsHelper::GenerateNew():
 void VerifySuccessfulChallengeCredentialsGenerateNewResult(
-    const ChallengeCredentialsGenerateNewResult& result,
+    const ChallengeCredentialsHelper::GenerateNewOrDecryptResult& result,
     const brillo::SecureBlob& expected_passkey);
 
 // for ChallengeCredentialsHelper::Decrypt():
 void VerifySuccessfulChallengeCredentialsDecryptResult(
-    const ChallengeCredentialsDecryptResult& result,
+    const ChallengeCredentialsHelper::GenerateNewOrDecryptResult& result,
     const brillo::SecureBlob& expected_passkey);
-
-// Functions that verify that the result returned from the
-// ChallengeCredentialsHelper operation is a failure result:
-
-// for ChallengeCredentialsHelper::GenerateNew():
-void VerifyFailedChallengeCredentialsGenerateNewResult(
-    const ChallengeCredentialsGenerateNewResult& result);
-
-// for ChallengeCredentialsHelper::Decrypt():
-void VerifyFailedChallengeCredentialsDecryptResult(
-    const ChallengeCredentialsDecryptResult& result);
 
 }  // namespace cryptohome
 

@@ -95,7 +95,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // operation completes, will be stored in |generate_new_result|.
   void CallGenerateNew(
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      std::unique_ptr<ChallengeCredentialsGenerateNewResult>*
+      std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
           generate_new_result) {
     DCHECK(challenge_service_);
     const structure::ChallengePublicKeyInfo public_key_info =
@@ -112,7 +112,8 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       structure::ChallengeSignatureAlgorithm salt_challenge_algorithm,
       const Blob& salt,
-      std::unique_ptr<ChallengeCredentialsDecryptResult>* decrypt_result) {
+      std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
+          decrypt_result) {
     DCHECK(challenge_service_);
     const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
@@ -162,14 +163,16 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Assert that the given GenerateNew() operation result is a valid success
   // result.
   void VerifySuccessfulGenerateNewResult(
-      const ChallengeCredentialsGenerateNewResult& generate_new_result) const {
+      const ChallengeCredentialsHelper::GenerateNewOrDecryptResult&
+          generate_new_result) const {
     VerifySuccessfulChallengeCredentialsGenerateNewResult(
         generate_new_result, SecureBlob(kPasskey.begin(), kPasskey.end()));
   }
 
   // Assert that the given Decrypt() operation result is a valid success result.
   void VerifySuccessfulDecryptResult(
-      const ChallengeCredentialsDecryptResult& decrypt_result) const {
+      const ChallengeCredentialsHelper::GenerateNewOrDecryptResult&
+          decrypt_result) const {
     VerifySuccessfulChallengeCredentialsDecryptResult(
         decrypt_result, SecureBlob(kPasskey.begin(), kPasskey.end()));
   }
@@ -398,7 +401,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, GenerateNewSuccess) {
   MakeSealedCreationMocker({kAlgorithm} /* key_algorithms */)
       ->SetUpSuccessfulMock();
 
-  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      generate_new_result;
   CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
   EXPECT_FALSE(generate_new_result);
   EXPECT_TRUE(is_salt_challenge_requested());
@@ -414,10 +418,10 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
        GenerateNewFailureInSaltGeneration) {
   SetFailingSaltGenerationMock();
 
-  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      generate_new_result;
   CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
-  ASSERT_TRUE(generate_new_result);
-  VerifyFailedChallengeCredentialsGenerateNewResult(*generate_new_result);
+  ASSERT_FALSE(generate_new_result);
 }
 
 // Test failure of the GenerateNew() operation due to failure of salt challenge
@@ -429,14 +433,14 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
   MakeSealedCreationMocker({kAlgorithm} /* key_algorithms */)
       ->SetUpSuccessfulMock();
 
-  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      generate_new_result;
   CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
   EXPECT_FALSE(generate_new_result);
   EXPECT_TRUE(is_salt_challenge_requested());
 
   SimulateSaltChallengeFailure();
-  ASSERT_TRUE(generate_new_result);
-  VerifyFailedChallengeCredentialsGenerateNewResult(*generate_new_result);
+  ASSERT_FALSE(generate_new_result);
 }
 
 // Test failure of the GenerateNew() operation due to failure of sealed secret
@@ -448,21 +452,21 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
   MakeSealedCreationMocker({kAlgorithm} /* key_algorithms */)
       ->SetUpFailingMock();
 
-  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      generate_new_result;
   CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
-  ASSERT_TRUE(generate_new_result);
-  VerifyFailedChallengeCredentialsGenerateNewResult(*generate_new_result);
+  ASSERT_FALSE(generate_new_result);
 }
 
 // Test failure of the Decrypt() operation due to the input salt being empty.
 TEST_F(ChallengeCredentialsHelperImplBasicTest,
        DecryptFailureInSaltCheckEmpty) {
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */,
               &decrypt_result);
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 // Test failure of the Decrypt() operation due to the input salt not starting
@@ -471,24 +475,24 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
        DecryptFailureInSaltCheckNotPrefixed) {
   Blob salt = kSalt;
   salt[GetChallengeCredentialsSaltConstantPrefix().size() - 1] ^= 1;
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, salt, &decrypt_result);
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 // Test failure of the Decrypt() operation due to the input salt containing
 // nothing besides the expected constant prefix.
 TEST_F(ChallengeCredentialsHelperImplBasicTest,
        DecryptFailureInSaltCheckNothingBesidesPrefix) {
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */,
               GetChallengeCredentialsSaltConstantPrefix() /* salt */,
               &decrypt_result);
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 // Test success of the Decrypt() operation in scenario when the salt challenge
@@ -501,7 +505,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpSuccessfulMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -526,7 +531,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpSuccessfulMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -554,13 +560,13 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpCreationFailingMock(true /* mock_repeatedly */);
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 
   // Responding to the salt challenge shouldn't have any effect.
   SimulateSaltChallengeResponse();
@@ -578,7 +584,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptFailureInUnsealing) {
         ->SetUpUsealingFailingMock();
   }
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -591,8 +598,7 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptFailureInUnsealing) {
     EXPECT_FALSE(decrypt_result);
     SimulateUnsealingChallengeResponse();
   }
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 
   // Responding to the salt challenge shouldn't have any effect.
   SimulateSaltChallengeResponse();
@@ -607,7 +613,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptFailureInSaltChallenge) {
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -616,8 +623,7 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptFailureInSaltChallenge) {
   EXPECT_FALSE(decrypt_result);
 
   SimulateSaltChallengeFailure();
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 
   // Responding to the unsealing challenge shouldn't have any effect.
   SimulateUnsealingChallengeResponse();
@@ -633,7 +639,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -642,8 +649,7 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
   EXPECT_FALSE(decrypt_result);
 
   SimulateUnsealingChallengeFailure();
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 
   // Responding to the salt challenge shouldn't have any effect.
   SimulateSaltChallengeResponse();
@@ -659,7 +665,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -669,8 +676,7 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
 
   // Abort the first operation by starting a new one.
   StartSurplusOperation();
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 // Test failure of the Decrypt() operation due to its abortion after the salt
@@ -683,7 +689,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -695,8 +702,7 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
 
   // Abort the first operation by starting a new one.
   StartSurplusOperation();
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 // Test failure of the Decrypt() operation due to its abortion after the
@@ -708,7 +714,8 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptAbortionAfterUnsealing) {
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpSuccessfulMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
@@ -720,8 +727,7 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptAbortionAfterUnsealing) {
 
   // Abort the first operation by starting a new one.
   StartSurplusOperation();
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 namespace {
@@ -740,12 +746,12 @@ class ChallengeCredentialsHelperImplNoBackendTest
 // Test failure of the Decrypt() operation due to the absence of the sealing
 // backend.
 TEST_F(ChallengeCredentialsHelperImplNoBackendTest, DecryptFailure) {
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
-  ASSERT_TRUE(decrypt_result);
-  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 namespace {
@@ -777,7 +783,8 @@ TEST_P(ChallengeCredentialsHelperImplAlgorithmsTest, DecryptSuccess) {
   MakeUnsealingMocker(GetParam().key_algorithms, GetParam().unsealing_algorithm)
       ->SetUpSuccessfulMock();
 
-  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
   CallDecrypt(GetParam().key_algorithms, GetParam().salt_challenge_algorithm,
               kSalt, &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());

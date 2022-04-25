@@ -12,6 +12,8 @@
 #include <cryptohome/proto_bindings/fido.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 
+#include "cryptohome/error/cryptohome_tpm_error.h"
+
 namespace cryptohome {
 
 // Interface for making challenge requests against the specified cryptographic
@@ -32,8 +34,8 @@ class KeyChallengeService {
   //
   // In case of error, |response| will be null; otherwise, it will contain the
   // challenge response data.
-  using ResponseCallback =
-      base::OnceCallback<void(std::unique_ptr<KeyChallengeResponse> response)>;
+  using ResponseCallback = base::OnceCallback<void(
+      TPMStatusOr<std::unique_ptr<KeyChallengeResponse>> response)>;
 
   // This callback is called with a response containing the public key for a
   // make credential request to a FIDO security key.

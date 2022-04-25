@@ -43,16 +43,18 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
  private:
   // This continues the creating process after generated the new high entropy
   // secret from the key challenge service.
-  void CreateContinue(CreateCallback callback,
-                      std::unique_ptr<structure::SignatureChallengeInfo>
-                          signature_challenge_info,
-                      std::unique_ptr<brillo::SecureBlob> passkey);
+  void CreateContinue(
+      CreateCallback callback,
+      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+          result);
 
   // This continues the deriving process after decrypted the high entropy secret
   // from the key challenge service.
-  void DeriveContinue(DeriveCallback callback,
-                      const AuthBlockState& scrypt_state,
-                      std::unique_ptr<brillo::SecureBlob> passkey);
+  void DeriveContinue(
+      DeriveCallback callback,
+      const AuthBlockState& scrypt_state,
+      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+          result);
 
   Tpm* const tpm_;
   ChallengeCredentialsHelper* const challenge_credentials_helper_;

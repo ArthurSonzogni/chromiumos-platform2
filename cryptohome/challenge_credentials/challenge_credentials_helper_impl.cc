@@ -16,16 +16,21 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_verify_key_operation.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing_backend.h"
 
 using brillo::Blob;
 using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
@@ -127,7 +132,11 @@ void ChallengeCredentialsHelperImpl::CancelRunningOperation() {
   // SignatureSealingBackend::UnsealingSession at a time).
   if (operation_) {
     DLOG(INFO) << "Cancelling an old challenge-response credentials operation";
-    operation_->Abort();
+    // Note: kReboot is specified here instead of kRetry because kRetry could
+    // trigger upper layer to retry immediately, causing failures again.
+    operation_->Abort(MakeStatus<CryptohomeTPMError>(
+        CRYPTOHOME_ERR_LOC(kLocChalCredHelperConcurrencyNotAllowed),
+        ErrorActionSet({ErrorAction::kReboot}), TPMRetryAction::kReboot));
     operation_.reset();
     // It's illegal for the consumer code to request a new operation in
     // immediate response to completion of a previous one.
@@ -137,12 +146,11 @@ void ChallengeCredentialsHelperImpl::CancelRunningOperation() {
 
 void ChallengeCredentialsHelperImpl::OnGenerateNewCompleted(
     GenerateNewCallback original_callback,
-    std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  std::move(original_callback)
-      .Run(std::move(signature_challenge_info), std::move(passkey));
+  std::move(original_callback).Run(std::move(result));
 }
 
 void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
@@ -152,31 +160,30 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     bool locked_to_single_user,
     int attempt_number,
     DecryptCallback original_callback,
-    StatusChain<CryptohomeTPMError> status,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK_EQ(passkey == nullptr, !status.ok());
   CancelRunningOperation();
-  if (!status.ok() && IsOperationFailureTransient(status) &&
+  if (!result.ok() && IsOperationFailureTransient(result.status()) &&
       attempt_number < kRetryAttemptCount) {
     LOG(WARNING) << "Retrying the decryption operation after transient error: "
-                 << status;
+                 << result.status();
     StartDecryptOperation(account_id, public_key_info, keyset_challenge_info,
                           locked_to_single_user, attempt_number + 1,
                           std::move(original_callback));
   } else {
-    if (!status.ok()) {
-      LOG(ERROR) << "Decryption completed with error: " << status;
+    if (!result.ok()) {
+      LOG(ERROR) << "Decryption completed with error: " << result.status();
     }
-    std::move(original_callback).Run(std::move(passkey));
+    std::move(original_callback).Run(std::move(result));
   }
 }
 
 void ChallengeCredentialsHelperImpl::OnVerifyKeyCompleted(
-    VerifyKeyCallback original_callback, bool is_key_valid) {
+    VerifyKeyCallback original_callback, TPMStatus verify_status) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  std::move(original_callback).Run(is_key_valid);
+  std::move(original_callback).Run(std::move(verify_status));
 }
 
 }  // namespace cryptohome

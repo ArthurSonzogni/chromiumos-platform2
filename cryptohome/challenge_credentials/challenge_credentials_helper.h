@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -34,30 +35,64 @@ namespace cryptohome {
 // This class must be used on a single thread only.
 class ChallengeCredentialsHelper {
  public:
+  // A simple storage struct for storing the results of Decrypt() or
+  // GenerateNew(). For Decrypt(), the signature_challenge_info field is always
+  // nullptr.
+  class GenerateNewOrDecryptResult {
+   public:
+    GenerateNewOrDecryptResult(
+        std::unique_ptr<structure::SignatureChallengeInfo>
+            signature_challenge_info,
+        std::unique_ptr<brillo::SecureBlob> passkey)
+        : info_(std::move(signature_challenge_info)),
+          passkey_(std::move(passkey)) {}
+
+    // Getters
+    std::unique_ptr<structure::SignatureChallengeInfo> info() {
+      return std::move(info_);
+    }
+    std::unique_ptr<brillo::SecureBlob> passkey() {
+      return std::move(passkey_);
+    }
+
+    // Const getters
+    const structure::SignatureChallengeInfo* info() const {
+      return info_.get();
+    }
+    const brillo::SecureBlob* passkey() const { return passkey_.get(); }
+
+   private:
+    std::unique_ptr<structure::SignatureChallengeInfo> info_;
+    std::unique_ptr<brillo::SecureBlob> passkey_;
+  };
+
   // This callback reports result of a GenerateNew() call.
   //
-  // If the operation succeeds, |passkey| can be used for decryption of the
-  // user's vault keyset, and |signature_challenge_info| containing the data to
-  // be stored in the auth block state.
-  // If the operation fails, the arguments will be null.
+  // If the operation succeeds, the result struct will contain the |passkey|,
+  // which can be used for decryption of the user's vault keyset, and
+  // |signature_challenge_info|, which contains the data to be stored in the
+  // auth block state. If the operation fails, the argument will be the
+  // TPMStatus on the details of the failure.
   using GenerateNewCallback =
-      base::OnceCallback<void(std::unique_ptr<structure::SignatureChallengeInfo>
-                                  signature_challenge_info,
-                              std::unique_ptr<brillo::SecureBlob> passkey)>;
+      base::OnceCallback<void(TPMStatusOr<GenerateNewOrDecryptResult>)>;
 
   // This callback reports result of a Decrypt() call.
   //
-  // If the operation succeeds, |passkey| can be used for decryption of the
-  // user's vault keyset.
-  // If the operation fails, the argument will be null.
+  // If the operation succeeds, result struct will contain the passkey, which
+  // can be used for decryption of the user's vault keyset. The
+  // signature_challenge_info field is always nullptr. If the operation fails,
+  // the argument will be the TPMStatus on details of the failure.
   using DecryptCallback =
-      base::OnceCallback<void(std::unique_ptr<brillo::SecureBlob> passkey)>;
+      base::OnceCallback<void(TPMStatusOr<GenerateNewOrDecryptResult>)>;
 
   // This callback reports result of a VerifyKey() call.
   //
   // The |is_key_valid| argument will be true iff the operation succeeds and
   // the provided key is valid for decryption of the given vault keyset.
-  using VerifyKeyCallback = base::OnceCallback<void(bool /* is_key_valid */)>;
+  // An OK status is returned for successful verification. A status with
+  // kIncorrectAuth is returned if it failed and the user is at fault.
+  // Otherwise, other actions are returned.
+  using VerifyKeyCallback = base::OnceCallback<void(TPMStatus)>;
 
   // The maximum number of attempts that will be made for a single operation
   // when it fails with a transient error.

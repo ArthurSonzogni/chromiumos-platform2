@@ -19,6 +19,14 @@
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_tpm.h"
 
+using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
+
 using ::testing::_;
 using ::testing::NiceMock;
 
@@ -87,6 +95,11 @@ class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   const std::string kFakeAccountId = "account_id";
   std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;
+
+  const error::CryptohomeError::ErrorLocationPair kErrorLocationPlaceholder =
+      error::CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          "Testing1");
 };
 
 // The AsyncChallengeCredentialAuthBlock::Create should work correctly.
@@ -111,7 +124,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Create) {
         info->public_key_spki_der = public_key_info.public_key_spki_der;
         info->salt_signature_algorithm = public_key_info.signature_algorithm[0];
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
-        std::move(callback).Run(std::move(info), std::move(passkey));
+        std::move(callback).Run(
+            ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+                std::move(info), std::move(passkey)));
       });
 
   base::RunLoop run_loop;
@@ -130,14 +145,17 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
               GenerateNew(kFakeAccountId, _, _, _, _))
       .WillOnce(
           [&](auto&&, auto public_key_info, auto&&, auto&&, auto&& callback) {
-            std::move(callback).Run(nullptr, nullptr);
+            std::move(callback).Run(MakeStatus<CryptohomeTPMError>(
+                kErrorLocationPlaceholder,
+                ErrorActionSet({ErrorAction::kIncorrectAuth}),
+                TPMRetryAction::kUserAuth));
           });
 
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_TPM_CRYPTO);
         run_loop.Quit();
       });
 
@@ -181,7 +199,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
         info->public_key_spki_der = public_key_info.public_key_spki_der;
         info->salt_signature_algorithm = public_key_info.signature_algorithm[0];
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
-        std::move(callback).Run(std::move(info), std::move(passkey));
+        std::move(callback).Run(
+            ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+                std::move(info), std::move(passkey)));
       });
 
   base::RunLoop run_loop;
@@ -412,7 +432,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
       Decrypt(kFakeAccountId, _, _, /*locked_to_single_user=*/true, _, _))
       .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>(scrypt_passkey);
-        std::move(callback).Run(std::move(passkey));
+        std::move(callback).Run(
+            ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+                nullptr, std::move(passkey)));
       });
 
   base::RunLoop run_loop;
@@ -452,13 +474,16 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
   EXPECT_CALL(challenge_credentials_helper_,
               Decrypt(kFakeAccountId, _, _, _, _, _))
       .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
-        std::move(callback).Run(nullptr);
+        std::move(callback).Run(MakeStatus<CryptohomeTPMError>(
+            kErrorLocationPlaceholder,
+            ErrorActionSet({ErrorAction::kIncorrectAuth}),
+            TPMRetryAction::kUserAuth));
       });
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_TPM_CRYPTO);
         run_loop.Quit();
       });
 
@@ -519,7 +544,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
               Decrypt(kFakeAccountId, _, _, _, _, _))
       .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
-        std::move(callback).Run(std::move(passkey));
+        std::move(callback).Run(
+            ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+                nullptr, std::move(passkey)));
       });
 
   AuthBlockState auth_state{

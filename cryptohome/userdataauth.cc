@@ -77,9 +77,11 @@ using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
+using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::Sha1;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
@@ -1862,8 +1864,7 @@ void UserDataAuth::DoChallengeResponseMount(
         locked_to_single_user, std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
-            base::Unretained(this), request, mount_args, std::move(on_done),
-            /*signature_challenge_info=*/nullptr));
+            base::Unretained(this), request, mount_args, std::move(on_done)));
   } else {
     // We'll create a new VaultKeyset that accepts challenge response
     // authentication.
@@ -1887,8 +1888,8 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
     const user_data_auth::MountRequest& request,
     const UserDataAuth::MountArgs mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
-    std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
   AssertOnMountThread();
   // If we get here, that means the ChallengeCredentialsHelper have finished the
   // process of doing challenge response authentication, either successful or
@@ -1900,14 +1901,23 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
   DCHECK_EQ(request.authorization().key().data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 
-  if (!passkey) {
+  if (!result.ok()) {
     // Challenge response authentication have failed.
     LOG(ERROR) << "Could not mount due to failure to obtain challenge-response "
                   "credentials";
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-    std::move(on_done).Run(reply);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthChalCredFailedInChalRespMount))
+            .Wrap(std::move(result).status()));
     return;
   }
+
+  ChallengeCredentialsHelper::GenerateNewOrDecryptResult result_val =
+      std::move(result).value();
+  std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
+  std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info =
+      result_val.info();
 
   const std::string& account_id = GetAccountId(request.account());
   auto credentials = std::make_unique<Credentials>(account_id, *passkey);
@@ -2668,8 +2678,12 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
   }
   if (!found_session_key_data) {
     // No matching user session found, so fall back to the full check.
-    OnLightweightChallengeResponseCheckKeyDone(request, std::move(on_done),
-                                               /*success=*/false);
+    OnLightweightChallengeResponseCheckKeyDone(
+        request, std::move(on_done),
+        MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoSessionInTryLiteChalRespCheckKey),
+            ErrorActionSet({ErrorAction::kReboot}), TPMRetryAction::kReboot));
     return;
   }
 
@@ -2680,23 +2694,38 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
           mount_thread_bus_, authorization.key_delegate().dbus_service_name());
   if (!key_challenge_service) {
     LOG(ERROR) << "Failed to create key challenge service";
-    OnLightweightChallengeResponseCheckKeyDone(request, std::move(on_done),
-                                               /*success=*/false);
+    OnLightweightChallengeResponseCheckKeyDone(
+        request, std::move(on_done),
+        MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoServiceInTryLiteChalRespCheckKey),
+            ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+            TPMRetryAction::kReboot));
     return;
   }
 
   if (!found_session_key_data->challenge_response_key_size()) {
     LOG(ERROR) << "Missing challenge-response key information";
-    OnLightweightChallengeResponseCheckKeyDone(request, std::move(on_done),
-                                               /*success=*/false);
+    OnLightweightChallengeResponseCheckKeyDone(
+        request, std::move(on_done),
+        MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoKeyInfoInTryLiteChalRespCheckKey),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            TPMRetryAction::kNoRetry));
     return;
   }
 
   if (found_session_key_data->challenge_response_key_size() > 1) {
     LOG(ERROR)
         << "Using multiple challenge-response keys at once is unsupported";
-    OnLightweightChallengeResponseCheckKeyDone(request, std::move(on_done),
-                                               /*success=*/false);
+    OnLightweightChallengeResponseCheckKeyDone(
+        request, std::move(on_done),
+        MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthMultipleKeyInTryLiteChalRespCheckKey),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            TPMRetryAction::kNoRetry));
     return;
   }
 
@@ -2714,9 +2743,9 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
 void UserDataAuth::OnLightweightChallengeResponseCheckKeyDone(
     const user_data_auth::CheckKeyRequest& request,
     base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
-    bool is_key_valid) {
+    TPMStatus status) {
   AssertOnMountThread();
-  if (!is_key_valid) {
+  if (!status.ok()) {
     DoFullChallengeResponseCheckKey(request, std::move(on_done));
     return;
   }
@@ -2796,14 +2825,19 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
 void UserDataAuth::OnFullChallengeResponseCheckKeyDone(
     const user_data_auth::CheckKeyRequest& request,
     base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
   AssertOnMountThread();
-  if (!passkey) {
+  if (!result.ok()) {
     LOG(ERROR) << "Key checking failed due to failure to obtain "
                   "challenge-response credentials";
     std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
     return;
   }
+
+  ChallengeCredentialsHelper::GenerateNewOrDecryptResult result_val =
+      std::move(result).value();
+  std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
 
   const auto& authorization = request.authorization_request();
   const auto& identifier = request.account_id();

@@ -10,6 +10,7 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
@@ -17,7 +18,14 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using ::hwsec_foundation::Sha256;
+using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::Sha256;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -28,16 +36,28 @@ namespace {
 void OnKeySignatureChallengeResponse(
     ChallengeCredentialsOperation::KeySignatureChallengeCallback
         response_callback,
-    std::unique_ptr<KeyChallengeResponse> response) {
-  if (!response) {
+    TPMStatusOr<std::unique_ptr<KeyChallengeResponse>> response_status) {
+  if (!response_status.ok()) {
     LOG(ERROR) << "Signature challenge request failed";
-    std::move(response_callback).Run(nullptr /* signature */);
+    std::move(response_callback)
+        .Run(MakeStatus<CryptohomeTPMError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocChalCredOperationNoResponseInOnSigResponse))
+                 .Wrap(std::move(response_status).status()));
     return;
   }
+  std::unique_ptr<KeyChallengeResponse> response =
+      std::move(response_status).value();
+  DCHECK(response);
   if (!response->has_signature_response_data() ||
       !response->signature_response_data().has_signature()) {
     LOG(ERROR) << "Signature challenge response is invalid";
-    std::move(response_callback).Run(nullptr /* signature */);
+    std::move(response_callback)
+        .Run(MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocChalCredOperationResponseInvalidInOnSigResponse),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            TPMRetryAction::kNoRetry));
     return;
   }
   std::move(response_callback)

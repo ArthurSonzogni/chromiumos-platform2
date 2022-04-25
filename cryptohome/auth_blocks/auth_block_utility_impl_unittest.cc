@@ -838,7 +838,9 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
         info->public_key_spki_der = public_key_info.public_key_spki_der;
         info->salt_signature_algorithm = public_key_info.signature_algorithm[0];
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
-        std::move(callback).Run(std::move(info), std::move(passkey));
+        std::move(callback).Run(
+            ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+                std::move(info), std::move(passkey)));
       });
 
   auto mock_key_challenge_service =
@@ -1057,7 +1059,9 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
               Decrypt(kUser, _, _, /*locked_to_single_user=*/false, _, _))
       .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>(scrypt_passkey);
-        std::move(callback).Run(std::move(passkey));
+        std::move(callback).Run(
+            ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+                nullptr, std::move(passkey)));
       });
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(

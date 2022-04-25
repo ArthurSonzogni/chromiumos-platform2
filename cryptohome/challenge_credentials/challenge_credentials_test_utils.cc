@@ -20,60 +20,65 @@ namespace cryptohome {
 
 ChallengeCredentialsHelper::GenerateNewCallback
 MakeChallengeCredentialsGenerateNewResultWriter(
-    std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result) {
+    std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
+        result) {
   DCHECK(!*result);
   return base::BindOnce(
-      [](std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result,
-         std::unique_ptr<structure::SignatureChallengeInfo>
-             signature_challenge_info,
-         std::unique_ptr<brillo::SecureBlob> passkey) {
+      [](std::unique_ptr<
+             ChallengeCredentialsHelper::GenerateNewOrDecryptResult>* result,
+         TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+             returned) {
         ASSERT_FALSE(*result);
-        *result = std::make_unique<ChallengeCredentialsGenerateNewResult>();
-        (*result)->signature_challenge_info =
-            std::move(signature_challenge_info);
-        (*result)->passkey = std::move(passkey);
+        if (returned.ok()) {
+          ChallengeCredentialsHelper::GenerateNewOrDecryptResult returned_val =
+              std::move(returned).value();
+          *result = std::make_unique<
+              ChallengeCredentialsHelper::GenerateNewOrDecryptResult>(
+              returned_val.info(), returned_val.passkey());
+        } else {
+          *result = nullptr;
+        }
       },
       base::Unretained(result));
 }
 
 ChallengeCredentialsHelper::DecryptCallback
 MakeChallengeCredentialsDecryptResultWriter(
-    std::unique_ptr<ChallengeCredentialsDecryptResult>* result) {
+    std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
+        result) {
   DCHECK(!*result);
   return base::BindOnce(
-      [](std::unique_ptr<ChallengeCredentialsDecryptResult>* result,
-         std::unique_ptr<brillo::SecureBlob> passkey) {
+      [](std::unique_ptr<
+             ChallengeCredentialsHelper::GenerateNewOrDecryptResult>* result,
+         TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+             returned) {
         ASSERT_FALSE(*result);
-        *result = std::make_unique<ChallengeCredentialsDecryptResult>();
-        (*result)->passkey = std::move(passkey);
+        if (returned.ok()) {
+          std::unique_ptr<brillo::SecureBlob> passkey =
+              std::move(returned).value().passkey();
+          *result = std::make_unique<
+              ChallengeCredentialsHelper::GenerateNewOrDecryptResult>(
+              nullptr, std::move(passkey));
+        } else {
+          *result = nullptr;
+        }
       },
       base::Unretained(result));
 }
 
 void VerifySuccessfulChallengeCredentialsGenerateNewResult(
-    const ChallengeCredentialsGenerateNewResult& result,
+    const ChallengeCredentialsHelper::GenerateNewOrDecryptResult& result,
     const SecureBlob& expected_passkey) {
-  ASSERT_TRUE(result.passkey);
-  ASSERT_TRUE(result.signature_challenge_info);
-  EXPECT_EQ(expected_passkey, *result.passkey);
+  ASSERT_TRUE(result.passkey());
+  ASSERT_TRUE(result.info());
+  EXPECT_EQ(expected_passkey, *result.passkey());
 }
 
 void VerifySuccessfulChallengeCredentialsDecryptResult(
-    const ChallengeCredentialsDecryptResult& result,
+    const ChallengeCredentialsHelper::GenerateNewOrDecryptResult& result,
     const SecureBlob& expected_passkey) {
-  ASSERT_TRUE(result.passkey);
-  EXPECT_EQ(expected_passkey, *result.passkey);
-}
-
-void VerifyFailedChallengeCredentialsGenerateNewResult(
-    const ChallengeCredentialsGenerateNewResult& result) {
-  EXPECT_FALSE(result.passkey);
-  EXPECT_FALSE(result.signature_challenge_info);
-}
-
-void VerifyFailedChallengeCredentialsDecryptResult(
-    const ChallengeCredentialsDecryptResult& result) {
-  EXPECT_FALSE(result.passkey);
+  ASSERT_TRUE(result.passkey());
+  EXPECT_EQ(expected_passkey, *result.passkey());
 }
 
 }  // namespace cryptohome

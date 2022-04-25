@@ -619,6 +619,56 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocVaultKeysetWrapScryptFailedInEncryptVK = 396,
   /* ./vault_keyset.cc */
   kLocVaultKeysetWrapAESDFailedInEncryptVK = 397,
+  /* ./challenge_credentials/challenge_credentials_operation.cc */
+  kLocChalCredOperationNoResponseInOnSigResponse = 398,
+  /* ./challenge_credentials/challenge_credentials_operation.cc */
+  kLocChalCredOperationResponseInvalidInOnSigResponse = 399,
+  /* ./challenge_credentials/challenge_credentials_verify_key_operation.cc */
+  kLocChalCredVerifyNoAlgorithm = 400,
+  /* ./challenge_credentials/challenge_credentials_verify_key_operation.cc */
+  kLocChalCredVerifyNoAlgorithmChosen = 401,
+  /* ./challenge_credentials/challenge_credentials_verify_key_operation.cc */
+  kLocChalCredVerifyGetRandomFailed = 402,
+  /* ./challenge_credentials/challenge_credentials_verify_key_operation.cc */
+  kLocChalCredVerifyAborted = 403,
+  /* ./challenge_credentials/challenge_credentials_verify_key_operation.cc */
+  kLocChalCredVerifyChallengeFailed = 404,
+  /* ./challenge_credentials/challenge_credentials_verify_key_operation.cc */
+  kLocChalCredVerifyInvalidSignature = 405,
+  /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
+  kLocChalCredHelperConcurrencyNotAllowed = 406,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredNewAborted = 407,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredNewNoBackend = 408,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredNewNoAlgorithm = 409,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredNewGenerateRandomSaltFailed = 410,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredNewCantChooseSaltSignatureAlgorithm = 411,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredNewSealFailed = 412,
+  /* ./key_challenge_service_impl.cc */
+  kLocKeyChallengeServiceEmptyResponseInChallengeKey = 413,
+  /* ./key_challenge_service_impl.cc */
+  kLocKeyChallengeServiceParseFailedInChallengeKey = 414,
+  /* ./key_challenge_service_impl.cc */
+  kLocKeyChallengeServiceKnownDBusErrorInChallengeKey = 415,
+  /* ./key_challenge_service_impl.cc */
+  kLocKeyChallengeServiceUnknownDBusErrorInChallengeKey = 416,
+  /* ./key_challenge_service_impl.cc */
+  kLocKeyChallengeServiceInvalidDBusNameInChallengeKey = 417,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthChalCredFailedInChalRespMount = 418,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoSessionInTryLiteChalRespCheckKey = 419,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoServiceInTryLiteChalRespCheckKey = 420,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoKeyInfoInTryLiteChalRespCheckKey = 421,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMultipleKeyInTryLiteChalRespCheckKey = 422,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

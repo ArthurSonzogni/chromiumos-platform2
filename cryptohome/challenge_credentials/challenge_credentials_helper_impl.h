@@ -81,9 +81,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // associated with the operation and forwards results to the original
   // callback.
   void OnGenerateNewCompleted(GenerateNewCallback original_callback,
-                              std::unique_ptr<structure::SignatureChallengeInfo>
-                                  signature_challenge_info,
-                              std::unique_ptr<brillo::SecureBlob> passkey);
+                              TPMStatusOr<GenerateNewOrDecryptResult> result);
 
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original
@@ -95,15 +93,13 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       bool locked_to_single_user,
       int attempt_number,
       DecryptCallback original_callback,
-      hwsec_foundation::status::StatusChain<
-          cryptohome::error::CryptohomeTPMError> retry_action,
-      std::unique_ptr<brillo::SecureBlob> passkey);
+      TPMStatusOr<GenerateNewOrDecryptResult> result);
 
   // Wrapper for the completion callback of VerifyKey(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
   void OnVerifyKeyCompleted(VerifyKeyCallback original_callback,
-                            bool is_key_valid);
+                            TPMStatus verify_status);
 
   // Non-owned.
   Tpm* const tpm_;

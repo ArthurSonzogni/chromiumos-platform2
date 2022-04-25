@@ -16,10 +16,20 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/tpm.h"
 
 using brillo::Blob;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec::TPMError;
 using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -132,14 +142,22 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
       public_key_info_.public_key_spki_der;
   if (!public_key_info_.signature_algorithm.size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
-    Complete(&completion_callback_, /*is_key_valid=*/false);
+    Complete(&completion_callback_,
+             MakeStatus<CryptohomeTPMError>(
+                 CRYPTOHOME_ERR_LOC(kLocChalCredVerifyNoAlgorithm),
+                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                 TPMRetryAction::kNoRetry));
     return;
   }
   const std::optional<structure::ChallengeSignatureAlgorithm>
       chosen_challenge_algorithm = ChooseChallengeAlgorithm(public_key_info_);
   if (!chosen_challenge_algorithm) {
     LOG(ERROR) << "Failed to choose verification signature challenge algorithm";
-    Complete(&completion_callback_, /*is_key_valid=*/false);
+    Complete(&completion_callback_,
+             MakeStatus<CryptohomeTPMError>(
+                 CRYPTOHOME_ERR_LOC(kLocChalCredVerifyNoAlgorithmChosen),
+                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                 TPMRetryAction::kNoRetry));
     return;
   }
   Blob challenge;
@@ -148,7 +166,10 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     LOG(ERROR)
         << "Failed to generate random bytes for the verification challenge: "
         << err;
-    Complete(&completion_callback_, /*is_key_valid=*/false);
+    Complete(&completion_callback_,
+             MakeStatus<CryptohomeTPMError>(
+                 CRYPTOHOME_ERR_LOC(kLocChalCredVerifyGetRandomFailed))
+                 .Wrap(MakeStatus<CryptohomeTPMError>(std::move(err))));
     return;
   }
   MakeKeySignatureChallenge(
@@ -159,9 +180,12 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
           *chosen_challenge_algorithm, challenge));
 }
 
-void ChallengeCredentialsVerifyKeyOperation::Abort() {
+void ChallengeCredentialsVerifyKeyOperation::Abort(TPMStatus status) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  Complete(&completion_callback_, /*is_key_valid=*/false);
+  Complete(&completion_callback_,
+           MakeStatus<CryptohomeTPMError>(
+               CRYPTOHOME_ERR_LOC(kLocChalCredVerifyAborted))
+               .Wrap(std::move(status)));
   // |this| can be already destroyed at this point.
 }
 
@@ -169,20 +193,29 @@ void ChallengeCredentialsVerifyKeyOperation::OnChallengeResponse(
     const Blob& public_key_spki_der,
     structure::ChallengeSignatureAlgorithm challenge_algorithm,
     const Blob& challenge,
-    std::unique_ptr<Blob> challenge_response) {
+    TPMStatusOr<std::unique_ptr<Blob>> challenge_response_status) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (!challenge_response) {
+  if (!challenge_response_status.ok()) {
     LOG(ERROR) << "Verification signature challenge failed";
-    Complete(&completion_callback_, /*is_key_valid=*/false);
+    Complete(&completion_callback_,
+             MakeStatus<CryptohomeTPMError>(
+                 CRYPTOHOME_ERR_LOC(kLocChalCredVerifyChallengeFailed))
+                 .Wrap(std::move(challenge_response_status).status()));
     return;
   }
+  std::unique_ptr<Blob> challenge_response =
+      std::move(challenge_response_status).value();
   if (!IsValidSignature(public_key_spki_der, challenge_algorithm, challenge,
                         *challenge_response)) {
     LOG(ERROR) << "Invalid signature for the verification challenge";
-    Complete(&completion_callback_, /*is_key_valid=*/false);
+    Complete(&completion_callback_,
+             MakeStatus<CryptohomeTPMError>(
+                 CRYPTOHOME_ERR_LOC(kLocChalCredVerifyInvalidSignature),
+                 ErrorActionSet({ErrorAction::kIncorrectAuth}),
+                 TPMRetryAction::kUserAuth));
     return;
   }
-  Complete(&completion_callback_, /*is_key_valid=*/true);
+  Complete(&completion_callback_, OkStatus<CryptohomeTPMError>());
 }
 
 }  // namespace cryptohome

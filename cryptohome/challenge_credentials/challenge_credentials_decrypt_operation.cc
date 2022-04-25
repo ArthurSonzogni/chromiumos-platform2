@@ -22,6 +22,7 @@
 
 using brillo::Blob;
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
@@ -66,18 +67,16 @@ void ChallengeCredentialsDecryptOperation::Start() {
     Resolve(MakeStatus<CryptohomeTPMError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptCantStartProcessing),
                 NoErrorAction())
-                .Wrap(std::move(status)),
-            nullptr /* passkey */);
+                .Wrap(std::move(status)));
     // |this| can be already destroyed at this point.
   }
 }
 
-void ChallengeCredentialsDecryptOperation::Abort() {
+void ChallengeCredentialsDecryptOperation::Abort(TPMStatus status) {
   DCHECK(thread_checker_.CalledOnValidThread());
   Resolve(MakeStatus<CryptohomeTPMError>(
-              CRYPTOHOME_ERR_LOC(kLocChalCredDecryptOperationAborted),
-              NoErrorAction(), TPMRetryAction::kNoRetry),
-          nullptr /* passkey */);
+              CRYPTOHOME_ERR_LOC(kLocChalCredDecryptOperationAborted))
+              .Wrap(std::move(status)));
   // |this| can be already destroyed at this point.
 }
 
@@ -205,33 +204,33 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
 }
 
 void ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse(
-    std::unique_ptr<Blob> salt_signature) {
+    TPMStatusOr<std::unique_ptr<brillo::Blob>> salt_signature) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (!salt_signature) {
+  if (!salt_signature.ok()) {
     Resolve(MakeStatus<CryptohomeTPMError>(
-                CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltResponseNoSignature),
-                NoErrorAction(), TPMRetryAction::kNoRetry),
-            nullptr /* passkey */);
+                CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltResponseNoSignature))
+                .Wrap(std::move(salt_signature).status()));
     // |this| can be already destroyed at this point.
     return;
   }
-  salt_signature_ = std::move(salt_signature);
+  salt_signature_ = std::move(salt_signature).value();
   ProceedIfChallengesDone();
 }
 
 void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
-    std::unique_ptr<Blob> challenge_signature) {
+    TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature_status) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (!challenge_signature) {
+  if (!challenge_signature_status.ok()) {
     Resolve(
         MakeStatus<CryptohomeTPMError>(
-            CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoSignature),
-            ErrorActionSet({ErrorAction::kAuth}), TPMRetryAction::kNoRetry),
-        nullptr /* passkey */);
+            CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoSignature))
+            .Wrap(std::move(challenge_signature_status).status()));
     // |this| can be already destroyed at this point.
     return;
   }
   SecureBlob unsealed_secret;
+  std::unique_ptr<brillo::Blob> challenge_signature =
+      std::move(challenge_signature_status).value();
   auto status = MakeStatus<CryptohomeTPMError>(
       unsealing_session_->Unseal(*challenge_signature, &unsealed_secret));
   if (!status.ok()) {
@@ -240,8 +239,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     Resolve(MakeStatus<CryptohomeTPMError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealFailed),
                 NoErrorAction())
-                .Wrap(std::move(status)),
-            nullptr /* passkey */);
+                .Wrap(std::move(status)));
     // |this| can be already destroyed at this point.
     return;
   }
@@ -254,13 +252,14 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
     return;
   auto passkey = std::make_unique<brillo::SecureBlob>(
       ConstructPasskey(*unsealed_secret_, *salt_signature_));
-  Resolve(OkStatus<CryptohomeTPMError>(), std::move(passkey));
+  Resolve(ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
+      /* signature_challenge_info */ nullptr, std::move(passkey)));
   // |this| can be already destroyed at this point.
 }
 
 void ChallengeCredentialsDecryptOperation::Resolve(
-    StatusChain<CryptohomeTPMError> error,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
+    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+        result) {
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our
   // abortion (in case |this| doesn't get destroyed immediately).
@@ -270,7 +269,7 @@ void ChallengeCredentialsDecryptOperation::Resolve(
   // cancellation is not supported by the challenges IPC API currently, neither
   // it is supported by the API for smart card drivers in Chrome OS.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  Complete(&completion_callback_, std::move(error), std::move(passkey));
+  Complete(&completion_callback_, std::move(result));
 }
 
 }  // namespace cryptohome

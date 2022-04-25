@@ -18,6 +18,16 @@
 #include <dbus/bus.h>
 #include <google/protobuf/message_lite.h>
 
+#include "cryptohome/error/location_utils.h"
+
+using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
+
 namespace cryptohome {
 
 namespace {
@@ -69,14 +79,25 @@ void OnDBusChallengeKeySuccess(
     // TODO(crbug.com/1046860): Remove the logging after stabilizing the
     // feature.
     LOG(INFO) << "Signature key challenge failed: empty response";
-    std::move(original_callback).Run(nullptr /* response */);
+    std::move(original_callback)
+        .Run(MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocKeyChallengeServiceEmptyResponseInChallengeKey),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            TPMRetryAction::kNoRetry));
     return;
   }
   auto response_proto = std::make_unique<KeyChallengeResponse>();
   if (!DeserializeProto(challenge_response, response_proto.get())) {
     LOG(ERROR)
         << "Failed to parse KeyChallengeResponse from ChallengeKey D-Bus call";
-    std::move(original_callback).Run(nullptr /* response */);
+    std::move(original_callback)
+        .Run(MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocKeyChallengeServiceParseFailedInChallengeKey),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            TPMRetryAction::kNoRetry));
     return;
   }
   // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
@@ -94,15 +115,28 @@ void OnDBusChallengeKeyFailure(
         callback_holder,
     brillo::Error* error) {
   // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
+  TPMStatus status;
   if (error) {
     LOG(INFO) << "Signature key challenge failed: dbus error code "
               << error->GetCode() << ", message " << error->GetMessage();
+    // TODO(b/230326115): Distinguish between user cancellation and actual
+    // error.
+    status = MakeStatus<CryptohomeTPMError>(
+        CRYPTOHOME_ERR_LOC(kLocKeyChallengeServiceKnownDBusErrorInChallengeKey),
+        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        TPMRetryAction::kUserAuth);
   } else {
     LOG(INFO) << "Key challenge failed: unknown dbus error";
+    status = MakeStatus<CryptohomeTPMError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocKeyChallengeServiceUnknownDBusErrorInChallengeKey),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        TPMRetryAction::kNoRetry);
   }
   KeyChallengeService::ResponseCallback original_callback =
       callback_holder->get();
-  std::move(original_callback).Run(nullptr /* response */);
+  std::move(original_callback).Run(std::move(status));
 }
 
 void OnDBusFidoMakeCredentialSuccess(
@@ -192,7 +226,12 @@ void KeyChallengeServiceImpl::ChallengeKey(
     // include the fix from crbug.com/927196.
     LOG(ERROR) << "Invalid key challenge service name "
                << key_delegate_dbus_service_name_;
-    std::move(response_callback).Run(nullptr /* response */);
+    std::move(response_callback)
+        .Run(MakeStatus<CryptohomeTPMError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocKeyChallengeServiceInvalidDBusNameInChallengeKey),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            TPMRetryAction::kNoRetry));
     return;
   }
   std::shared_ptr<OnceCallbackHolder<ResponseCallback>> callback_holder(

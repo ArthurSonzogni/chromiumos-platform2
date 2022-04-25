@@ -13,6 +13,13 @@
 
 using brillo::Blob;
 using brillo::BlobToString;
+using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 using testing::_;
 using testing::Invoke;
 using testing::Mock;
@@ -85,7 +92,16 @@ void KeyChallengeServiceMockController::SimulateFailureResponse() {
   KeyChallengeService::ResponseCallback callback_to_run =
       std::move(intercepted_response_callbacks_.front());
   intercepted_response_callbacks_.pop();
-  std::move(callback_to_run).Run(nullptr /* response */);
+
+  const error::CryptohomeError::ErrorLocationPair kErrorLocationPlaceholder =
+      error::CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          "Testing1");
+  std::move(callback_to_run)
+      .Run(MakeStatus<CryptohomeTPMError>(
+          kErrorLocationPlaceholder,
+          ErrorActionSet({ErrorAction::kIncorrectAuth}),
+          TPMRetryAction::kUserAuth));
 }
 
 }  // namespace cryptohome

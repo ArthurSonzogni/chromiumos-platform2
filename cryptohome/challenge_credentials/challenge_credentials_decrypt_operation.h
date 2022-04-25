@@ -16,6 +16,7 @@
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/status.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/signature_sealing/structures.h"
@@ -38,10 +39,8 @@ class ChallengeCredentialsDecryptOperation final
  public:
   // If the operation succeeds, |passkey| can be used for decryption of the
   // user's vault keyset.
-  using CompletionCallback =
-      base::OnceCallback<void(hwsec_foundation::status::StatusChain<
-                                  cryptohome::error::CryptohomeTPMError> error,
-                              std::unique_ptr<brillo::SecureBlob> passkey)>;
+  using CompletionCallback = base::OnceCallback<void(
+      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -63,7 +62,7 @@ class ChallengeCredentialsDecryptOperation final
 
   // ChallengeCredentialsOperation:
   void Start() override;
-  void Abort() override;
+  void Abort(TPMStatus status) override;
 
  private:
   // Starts the processing.
@@ -80,19 +79,19 @@ class ChallengeCredentialsDecryptOperation final
   StartProcessingSealedSecret();
 
   // Called when signature for the salt is received.
-  void OnSaltChallengeResponse(std::unique_ptr<brillo::Blob> salt_signature);
+  void OnSaltChallengeResponse(
+      TPMStatusOr<std::unique_ptr<brillo::Blob>> salt_signature);
 
   // Called when signature for the unsealing challenge is received.
   void OnUnsealingChallengeResponse(
-      std::unique_ptr<brillo::Blob> challenge_signature);
+      TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
   // Generates the result if all necessary challenges are completed.
   void ProceedIfChallengesDone();
 
   // Completes with returning the specified results.
-  void Resolve(hwsec_foundation::status::StatusChain<
-                   cryptohome::error::CryptohomeTPMError> error,
-               std::unique_ptr<brillo::SecureBlob> passkey);
+  void Resolve(
+      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
 
   Tpm* const tpm_;
   const brillo::Blob delegate_blob_;
