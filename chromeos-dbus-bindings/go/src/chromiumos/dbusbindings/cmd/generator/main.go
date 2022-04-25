@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"chromiumos/dbusbindings/generate/adaptor"
 	"chromiumos/dbusbindings/generate/methodnames"
@@ -25,6 +26,7 @@ func main() {
 	adaptorPath := flag.String("adaptor", "", "the output header file name containing the DBus adaptor class")
 	proxyPath := flag.String("proxy", "", "the output header file name containing the DBus proxy class")
 	mockPath := flag.String("mock", "", "the output header file name containing the DBus gmock proxy class")
+	proxyPathForMocks := flag.String("proxy-path-for-mocks", "", "the path to the header file for proxy interface, relative to the mock output path")
 	flag.Parse()
 
 	var sc serviceconfig.Config
@@ -100,6 +102,17 @@ func main() {
 	}
 
 	if *mockPath != "" {
+		p := *proxyPathForMocks
+		if p == "" && *proxyPath != "" {
+			// -proxy-path-for-mock is not specified. Derive it from proxyPath.
+			d := filepath.Dir(*mockPath)
+			var err error
+			p, err = filepath.Rel(d, *proxyPath)
+			if err != nil {
+				log.Fatal("Failed to compute the relpath from mock to proxy: ", err)
+			}
+		}
+
 		f, err := os.Create(*mockPath)
 		if err != nil {
 			log.Fatalf("Failed to create proxy mock file %s: %v\n", *mockPath, err)
@@ -110,7 +123,7 @@ func main() {
 			}
 		}()
 
-		if err := proxy.GenerateMock(introspections, f, *mockPath, sc); err != nil {
+		if err := proxy.GenerateMock(introspections, f, *mockPath, p, sc); err != nil {
 			log.Fatalf("Failed to generate proxy mock: %v\n", err)
 		}
 	}

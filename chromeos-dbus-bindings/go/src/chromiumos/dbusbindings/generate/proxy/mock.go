@@ -66,7 +66,7 @@ class {{$mockName}} : public {{$itfName}} {
 
 // GenerateMock outputs the header file containing gmock proxy interfaces into f.
 // outputFilePath is used to make a unique header guard.
-func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFilePath string, config serviceconfig.Config) error {
+func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFilePath string, proxyFilePath string, config serviceconfig.Config) error {
 	tmpl, err := template.New("mock").Funcs(funcMap).Parse(mockTemplateText)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFil
 	}{
 		Introspects:       introspects,
 		HeaderGuard:       headerGuard,
-		ProxyFilePath:     "", // TODO(crbug.com/983008): Support ProxyFilePath.
+		ProxyFilePath:     proxyFilePath,
 		ServiceName:       config.ServiceName,
 		ObjectManagerName: config.ObjectManager.Name,
 	})

@@ -97,7 +97,7 @@ func TestGenerateMockProxies(t *testing.T) {
 		},
 	}
 	out := new(bytes.Buffer)
-	if err := GenerateMock(introspections, out, "/tmp/mock.h", sc); err != nil {
+	if err := GenerateMock(introspections, out, "/tmp/mock.h", "", sc); err != nil {
 		t.Fatalf("Generate got error, want nil: %v", err)
 	}
 
@@ -193,6 +193,116 @@ class EmptyInterfaceProxyInterface {
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
+
+
+
+// Mock object for EmptyInterfaceProxyInterface.
+class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxyMock() = default;
+  EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
+  EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
+
+};
+
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateMockProxiesEmpty(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "EmptyInterface",
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{}
+	out := new(bytes.Buffer)
+	if err := GenerateMock(introspections, out, "/tmp/mock.h", "", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interface mock proxies for:
+//  - EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#include <string>
+#include <vector>
+
+#include <base/callback_forward.h>
+#include <base/logging.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <gmock/gmock.h>
+
+
+// Abstract interface proxy for EmptyInterface.
+class EmptyInterfaceProxyInterface {
+ public:
+  virtual ~EmptyInterfaceProxyInterface() = default;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+};
+
+
+
+// Mock object for EmptyInterfaceProxyInterface.
+class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxyMock() = default;
+  EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
+  EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
+
+};
+
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateMockProxiesWithProxyPath(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "EmptyInterface",
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{}
+	out := new(bytes.Buffer)
+	if err := GenerateMock(introspections, out, "/tmp/mock.h", "../proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interface mock proxies for:
+//  - EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#include <string>
+#include <vector>
+
+#include <base/callback_forward.h>
+#include <base/logging.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <gmock/gmock.h>
+
+#include "../proxy.h"
 
 
 
