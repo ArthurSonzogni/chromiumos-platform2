@@ -16,7 +16,6 @@
 #include <base/time/time.h>
 
 #include "shill/net/ip_address.h"
-#include "shill/portal_detector.h"
 
 namespace shill {
 
@@ -38,70 +37,59 @@ class RTNLHandler;
 class RTNLListener;
 class RTNLMessage;
 
-// The ConnectionDiagnostics class implements facilities to diagnose problems
-// that a connection encounters reaching a specific URL.
-//
-// Given a connection and a URL, ConnectionDiagnostics performs the following
-// actions based on the result of portal detection for a connected Service:
-// (A) Receives the results from the latest portal detection attempt.
-//     (B) If portal detection ends in the content phase, the connection is
-//         either functioning, or we are trapped in a captive portal. END.
-//     (C) If the portal detection ends in the DNS phase and failed for any
-//         reason other than a timeout, we have found a DNS server issue. END.
-//     (D) If the portal detection ends in the DNS phase and failed because of a
-//         timeout, ping all DNS servers.
-//         (E) If none of the DNS servers reply to pings, then we might have a
-//             problem issue reaching DNS servers. Send a request to the kernel
-//             for a route the first DNS server on our list (step M).
-//         (F) If at least one DNS server replies to pings, and we have DNS
-//             retries left, attempt DNS resolution again using the pingable DNS
-//             servers.
-//         (G) If at least one DNS server replies to pings but we are out of DNS
-//             retries, the DNS servers are at fault. END.
-//     (H) If portal detection ends in any other phase (i.e. HTTP or Connection)
-//         resolve the IP of the target web server via DNS.
-//         (I) If DNS resolution fails because of a timeout, ping all DNS
-//             servers (step D).
-//         (J) If DNS resolution fails for any other reason, we have found a
+// Given a connected Network and a URL, ConnectionDiagnostics performs the
+// following actions to diagnose a connectivity problem on the current
+// Connection:
+// (A) Starts by pinging all DNS servers.
+//     (B) If none of the DNS servers reply to pings, then we might have a
+//         problem issue reaching DNS servers. Send a request to the kernel
+//         for a route the first DNS server on our list (step I).
+//     (C) If at least one DNS server replies to pings but we are out of DNS
+//         retries, the DNS servers are at fault. END.
+//     (D) If at least one DNS server replies to pings, and we have DNS
+//         retries left, resolve the IP of the target web server via DNS.
+//         (E) If DNS resolution fails because of a timeout, ping all DNS
+//             servers again and find a new reachable DNS server (step A).
+//         (F) If DNS resolution fails for any other reason, we have found a
 //             DNS server issue. END.
-//         (K) Otherwise, ping the IP address of the target web server.
-//             (L) If ping is successful, we can reach the target web server. We
+//         (G) Otherwise, ping the IP address of the target web server.
+//             (H) If ping is successful, we can reach the target web server. We
 //                 might have a HTTP issue or a broken portal. END.
-//             (M) If ping is unsuccessful, we send a request to the kernel for
+//             (I) If ping is unsuccessful, we send a request to the kernel for
 //                 a route to the IP address of the target web server.
-//                 (N) If no route is found, a routing issue has been found.
+//                 (J) If no route is found, a routing issue has been found.
 //                     END.
-//                 (O) If a route is found, and the destination is a local IPv6
+//                 (K) If a route is found, and the destination is a local IPv6
 //                     address, look for a neighbor table entry.
-//                     (P) If a neighbor table entry is found, then this
+//                     (L) If a neighbor table entry is found, then this
 //                         gateway/web server appears to be on the local
 //                         network, but is not responding to pings. END.
-//                     (Q) If a neighbor table entry is not found, then either
+//                     (M) If a neighbor table entry is not found, then either
 //                         this gateway/web server does not exist on the local
 //                         network, or there are link layer issues.
-//                 (R) If a route is found and the destination is a remote
+//                 (N) If a route is found and the destination is a remote
 //                     address, ping the local gateway.
-//                     (S) If the local gateway respond to pings, then we have
+//                     (O) If the local gateway respond to pings, then we have
 //                         found an upstream connectivity problem or gateway
 //                         problem. END.
-//                     (T) If the local gateway is at an IPv6 address and does
+//                     (P) If the local gateway is at an IPv6 address and does
 //                         not respond to pings, look for a neighbor table
-//                         entry (step O).
-//                     (U) If the local gateway is at an IPv4 address and does
+//                         entry (step K).
+//                     (Q) If the local gateway is at an IPv4 address and does
 //                         not respond to pings, check for an ARP table entry
-//                         for its address (step V).
-//                 (V) Otherwise, if a route is found and the destination is a
+//                         for its address (step R).
+//                 (R) Otherwise, if a route is found and the destination is a
 //                     local IPv4 address, look for an ARP table entry for it.
-//                     (W) If an ARP table entry is found, then this gateway/
+//                     (S) If an ARP table entry is found, then this gateway/
 //                         web server appears to be on the local network, but is
 //                         not responding to pings. END.
-//                     (X) If an ARP table entry is not found, check for IP
+//                     (T) If an ARP table entry is not found, check for IP
 //                         address collision in the local network by sending out
 //                         an ARP request for the local IP address of this
 //                         connection.
-//                         (Y) If a reply is received, an IP collision has been
+//                         (U) If a reply is received, an IP collision has been
 //                             detected. END.
-//                         (Z) If no reply was received, no IP address collision
+//                         (V) If no reply was received, no IP address collision
 //                             was detected. Since we are here because ARP and
 //                             ping failed, either the web server or gateway
 //                             does not actually exist on the local network, or
@@ -116,7 +104,6 @@ class ConnectionDiagnostics {
   // The ConnectionDiagnostics::kEventNames string array depends on this enum.
   // Any changes to this enum should be synced with that array.
   enum Type {
-    kTypePortalDetection = 0,
     kTypePingDNSServers = 1,
     kTypeResolveTargetServerIP = 2,
     kTypePingTargetServer = 3,
@@ -132,10 +119,6 @@ class ConnectionDiagnostics {
   enum Phase {
     kPhaseStart = 0,
     kPhaseEnd = 1,
-    // End phases specific to kTypePortalDetection.
-    kPhasePortalDetectionEndContent = 2,
-    kPhasePortalDetectionEndDNS = 3,
-    kPhasePortalDetectionEndOther = 4
   };
 
   // The ConnectionDiagnostics::kResultNames string array depends on this enum.
@@ -167,13 +150,12 @@ class ConnectionDiagnostics {
   // Any changes to these strings should be synced with that Metrics function.
   static const char kIssueIPCollision[];
   static const char kIssueRouting[];
-  static const char kIssueHTTPBrokenPortal[];
+  static const char kIssueHTTP[];
   static const char kIssueDNSServerMisconfig[];
   static const char kIssueDNSServerNoResponse[];
   static const char kIssueNoDNSServersConfigured[];
   static const char kIssueDNSServersInvalid[];
   static const char kIssueNone[];
-  static const char kIssueCaptivePortal[];
   static const char kIssueGatewayUpstream[];
   static const char kIssueGatewayNotResponding[];
   static const char kIssueServerNotResponding[];
@@ -199,10 +181,8 @@ class ConnectionDiagnostics {
 
   ~ConnectionDiagnostics();
 
-  // Performs connectivity diagnostics based on the |result| from a completed
-  // portal detection attempt.
-  bool Start(const std::string& url_string,
-             const PortalDetector::Result& result);
+  // Performs connectivity diagnostics for the hostname of the URL |url_string|.
+  bool Start(const std::string& url_string);
   void Stop();
 
   // Returns a string representation of |event|.
@@ -235,9 +215,8 @@ class ConnectionDiagnostics {
   // |result_callback_| to report the results of the diagnostics.
   void ReportResultAndStop(const std::string& issue);
 
-  void StartInternal(const PortalDetector::Result& result);
-
-  // Attempts to resolve the IP address of |target_url_| using |dns_list|.
+  // Attempts to resolve the IP address of the hostname of |target_url_| using
+  // |dns_list|.
   void ResolveTargetServerIPAddress(const std::vector<std::string>& dns_list);
 
   // Pings all the DNS servers of |dns_list_|.
@@ -266,9 +245,9 @@ class ConnectionDiagnostics {
   // Called after each IcmpSession started in
   // ConnectionDiagnostics::PingDNSServers finishes or times out. The DNS server
   // that was pinged can be uniquely identified with |dns_server_index|.
-  // Attempts to resolve the IP address of |target_url_| again if at least one
-  // DNS server was pinged successfully, and if |num_dns_attempts_| has not yet
-  // reached |kMaxDNSRetries|.
+  // Attempts to resolve the IP address of the hostname of |target_url_| again
+  // if at least one DNS server was pinged successfully, and if
+  // |num_dns_attempts_| has not yet reached |kMaxDNSRetries|.
   void OnPingDNSServerComplete(int dns_server_index,
                                const std::vector<base::TimeDelta>& result);
 
@@ -344,8 +323,8 @@ class ConnectionDiagnostics {
   std::unique_ptr<ArpClient> arp_client_;
   std::unique_ptr<IcmpSession> icmp_session_;
 
-  // The URL being diagnosed. Stored in unique_ptr so that it can be cleared
-  // when we stop diagnostics.
+  // The URL whose hostname is being diagnosed. Stored in unique_ptr so that it
+  // can be cleared when we stop diagnostics.
   std::unique_ptr<HttpUrl> target_url_;
 
   // Used to ping multiple DNS servers in parallel.

@@ -241,8 +241,8 @@ class ConnectionDiagnosticsTest : public Test {
                                                           num_events_ago);
   }
 
-  bool Start(const std::string& url, const PortalDetector::Result& result) {
-    return connection_diagnostics_.Start(url, result);
+  bool Start(const std::string& url) {
+    return connection_diagnostics_.Start(url);
   }
 
   void VerifyStopped() {
@@ -268,46 +268,11 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectIcmpSessionStop() { EXPECT_CALL(*icmp_session_, Stop()); }
 
-  void ExpectPortalDetectionStartSuccess() {
+  void ExpectSuccessfulStart() {
     EXPECT_FALSE(connection_diagnostics_.running());
     EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());
-    EXPECT_TRUE(Start(kHttpUrl, PortalDetector::Result()));
+    EXPECT_TRUE(Start(kHttpUrl));
     EXPECT_TRUE(connection_diagnostics_.running());
-  }
-
-  void ExpectPortalDetectionEndContentPhaseSuccess() {
-    ExpectPortalDetectionEnd(
-        ConnectionDiagnostics::kPhasePortalDetectionEndContent,
-        ConnectionDiagnostics::kResultSuccess, PortalDetector::Phase::kContent,
-        PortalDetector::Status::kSuccess);
-  }
-
-  void ExpectPortalDetectionEndContentPhaseFailure() {
-    ExpectPortalDetectionEnd(
-        ConnectionDiagnostics::kPhasePortalDetectionEndContent,
-        ConnectionDiagnostics::kResultFailure, PortalDetector::Phase::kContent,
-        PortalDetector::Status::kFailure);
-  }
-
-  void ExpectPortalDetectionEndDNSPhaseFailure() {
-    ExpectPortalDetectionEnd(ConnectionDiagnostics::kPhasePortalDetectionEndDNS,
-                             ConnectionDiagnostics::kResultFailure,
-                             PortalDetector::Phase::kDNS,
-                             PortalDetector::Status::kFailure);
-  }
-
-  void ExpectPortalDetectionEndDNSPhaseTimeout() {
-    ExpectPortalDetectionEnd(ConnectionDiagnostics::kPhasePortalDetectionEndDNS,
-                             ConnectionDiagnostics::kResultTimeout,
-                             PortalDetector::Phase::kDNS,
-                             PortalDetector::Status::kTimeout);
-  }
-
-  void ExpectPortalDetectionEndHTTPPhaseFailure() {
-    ExpectPortalDetectionEnd(
-        ConnectionDiagnostics::kPhasePortalDetectionEndOther,
-        ConnectionDiagnostics::kResultFailure, PortalDetector::Phase::kHTTP,
-        PortalDetector::Status::kFailure);
   }
 
   void ExpectPingDNSServersStartSuccess() {
@@ -401,7 +366,7 @@ class ConnectionDiagnosticsTest : public Test {
     const auto& issue =
         ping_event_type == ConnectionDiagnostics::kTypePingGateway
             ? ConnectionDiagnostics::kIssueGatewayUpstream
-            : ConnectionDiagnostics::kIssueHTTPBrokenPortal;
+            : ConnectionDiagnostics::kIssueHTTP;
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
     EXPECT_CALL(callback_target(),
                 ResultCallback(issue, IsEventList(expected_events_)));
@@ -571,43 +536,6 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
  private:
-  void ExpectPortalDetectionEnd(ConnectionDiagnostics::Phase diag_phase,
-                                ConnectionDiagnostics::Result diag_result,
-                                PortalDetector::Phase trial_phase,
-                                PortalDetector::Status trial_status) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypePortalDetection, diag_phase,
-                     diag_result);
-    if (diag_phase == ConnectionDiagnostics::kPhasePortalDetectionEndContent) {
-      const auto& issue = diag_result == ConnectionDiagnostics::kResultSuccess
-                              ? ConnectionDiagnostics::kIssueNone
-                              : ConnectionDiagnostics::kIssueCaptivePortal;
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
-      EXPECT_CALL(callback_target(),
-                  ResultCallback(issue, IsEventList(expected_events_)));
-
-    } else if (diag_phase ==
-                   ConnectionDiagnostics::kPhasePortalDetectionEndDNS &&
-               diag_result == ConnectionDiagnostics::kResultFailure) {
-      EXPECT_CALL(metrics_,
-                  NotifyConnectionDiagnosticsIssue(
-                      ConnectionDiagnostics::kIssueDNSServerMisconfig));
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
-                         IsEventList(expected_events_)));
-    } else {
-      // Otherwise, we end in DNS phase with a timeout, or a HTTP phase failure.
-      // Either of these cases warrant further diagnostic actions.
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    }
-    PortalDetector::Result result;
-    result.http_phase = trial_phase;
-    result.http_status = trial_status;
-    result.https_phase = PortalDetector::Phase::kContent;
-    result.https_status = PortalDetector::Status::kSuccess;
-    connection_diagnostics_.StartInternal(result);
-  }
-
   // |expected_issue| only used if |is_success| is false.
   void ExpectPingDNSSeversStart(bool is_success,
                                 const std::string& expected_issue) {
@@ -818,20 +746,14 @@ class ConnectionDiagnosticsTest : public Test {
 TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {
   // If |diagnostic_events| is empty, we should always fail to match an event.
   EXPECT_FALSE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePortalDetection,
+      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePingDNSServers,
                              ConnectionDiagnostics::kPhaseStart,
                              ConnectionDiagnostics::kResultSuccess, 0));
   EXPECT_FALSE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePortalDetection,
+      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePingDNSServers,
                              ConnectionDiagnostics::kPhaseStart,
                              ConnectionDiagnostics::kResultSuccess, 2));
 
-  AddActualEvent(ConnectionDiagnostics::kTypePortalDetection,
-                 ConnectionDiagnostics::kPhaseStart,
-                 ConnectionDiagnostics::kResultSuccess);
-  AddActualEvent(ConnectionDiagnostics::kTypePortalDetection,
-                 ConnectionDiagnostics::kPhasePortalDetectionEndOther,
-                 ConnectionDiagnostics::kResultFailure);
   AddActualEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                  ConnectionDiagnostics::kPhaseStart,
                  ConnectionDiagnostics::kResultSuccess);
@@ -839,18 +761,14 @@ TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {
                  ConnectionDiagnostics::kPhaseEnd,
                  ConnectionDiagnostics::kResultSuccess);
 
-  // Matching out of bounds should fail. (4 events total, so 4 events before the
+  // Matching out of bounds should fail. (2 events total, so 2 events before the
   // last event is out of bounds).
   EXPECT_FALSE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePortalDetection,
+      DoesPreviousEventMatch(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                              ConnectionDiagnostics::kPhaseStart,
-                             ConnectionDiagnostics::kResultSuccess, 4));
+                             ConnectionDiagnostics::kResultSuccess, 2));
 
   // Valid matches.
-  EXPECT_TRUE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePortalDetection,
-                             ConnectionDiagnostics::kPhaseStart,
-                             ConnectionDiagnostics::kResultSuccess, 3));
   EXPECT_TRUE(
       DoesPreviousEventMatch(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                              ConnectionDiagnostics::kPhaseStart,
@@ -865,18 +783,16 @@ TEST_F(ConnectionDiagnosticsTest, StartWithBadURL) {
   const std::string kBadURL("http://www.foo.com:x");  // Colon but no port
   // IcmpSession::Stop will be called once when the bad URL is rejected.
   ExpectIcmpSessionStop();
-  EXPECT_FALSE(Start(kBadURL, PortalDetector::Result()));
+  EXPECT_FALSE(Start(kBadURL));
   // IcmpSession::Stop will be called a second time when
   // |connection_diagnostics_| is destructed.
   ExpectIcmpSessionStop();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, and we
-  // attempt to ping the target web server but fail because of an internal
-  // error.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, and we attempt to ping the target web server but
+  // fail because of an internal error.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartFailure(ConnectionDiagnostics::kTypePingTargetServer,
@@ -884,65 +800,36 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
   VerifyStopped();
 }
 
-TEST_F(ConnectionDiagnosticsTest, EndWith_PortalDetectionContentPhase_Success) {
-  // Portal detection ends successfully in content phase, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndContentPhaseSuccess();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_PortalDetectionContentPhase_Failure) {
-  // Portal detection ends unsuccessfully in content phase, so we end
-  // diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndContentPhaseFailure();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_DNSFailure_1) {
-  // Portal detection ends with a DNS failure (not timeout), so we end
-  // diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseFailure();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_DNSFailure_2) {
-  // Portal detection ends in HTTP phase, DNS resolution fails (not timeout), so
-  // we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+TEST_F(ConnectionDiagnosticsTest, EndWith_DNSFailure) {
+  // DNS resolution fails (not timeout), so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndFailure();
   VerifyStopped();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_1) {
-  // Portal detection ends with a DNS timeout, and we attempt to pinging DNS
-  // servers, but fail to start any IcmpSessions, so end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // we attempt to pinging DNS servers, but fail to start any IcmpSessions, so
+  // end diagnostics.
+  ExpectSuccessfulStart();
   ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed();
   VerifyStopped();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_2) {
-  // Portal detection ends with a DNS timeout, and we attempt to pinging DNS
-  // servers, but all DNS servers configured for this connection have invalid IP
-  // addresses, so we fail to start ping DNs servers, and end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // We attempt to pinging DNS servers, but all DNS servers configured for this
+  // connection have invalid IP addresses, so we fail to start ping DNs servers,
+  // and end diagnostics.
+  ExpectSuccessfulStart();
   ExpectPingDNSSeversStartFailureAllAddressesInvalid();
   VerifyStopped();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_1) {
-  // Portal detection ends with a DNS timeout, pinging DNS servers succeeds, DNS
-  // resolution times out, pinging DNS servers succeeds again, and DNS
-  // resolution times out again. End diagnostics because we have no more DNS
-  // retries left.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // Pinging DNS servers succeeds, DNS resolution times out, pinging DNS servers
+  // succeeds again, and DNS resolution times out again. End diagnostics because
+  // we have no more DNS retries left.
+  ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -957,11 +844,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_2) {
-  // Portal detection ends in HTTP phase, DNS resolution times out, pinging DNS
-  // servers succeeds, DNS resolution times out again, pinging DNS servers
-  // succeeds. End diagnostics because we have no more DNS retries left.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
+  // times out again, pinging DNS servers succeeds. End diagnostics because we
+  // have no more DNS retries left.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -974,10 +860,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, and pinging
-  // the resolved IP address succeeds, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, and pinging the resolved IP address succeeds, so
+  // we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -988,11 +873,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
-  // Portal detection ends with a DNS timeout, pinging DNS servers succeeds, DNS
-  // resolution succeeds, and pinging the resolved IP address succeeds, so we
-  // end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // pinging DNS servers succeeds, DNS resolution succeeds, and pinging the
+  // resolved IP address succeeds, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1005,11 +888,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
-  // Portal detection ends in HTTP phase, DNS resolution times out, pinging DNS
-  // servers succeeds, DNS resolution succeeds, and pinging the resolved IP
-  // address succeeds, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
+  // succeeds, and pinging the resolved IP address succeeds, so we end
+  // diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1024,11 +906,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we fail to get a route for the IP address,
-  // so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we fail
+  // to get a route for the IP address, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1041,11 +921,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_FindRoute_Failure_2) {
-  // Portal detection ends with a DNS timeout, pinging DNS servers succeeds, DNS
-  // resolution succeeds, pinging the resolved IP address fails, and we fail to
-  // get a route for the IP address, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // Pinging DNS servers succeeds, DNS resolution succeeds, pinging the resolved
+  // IP address fails, and we fail to get a route for the IP address, so we end
+  // diagnostics.
+  ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1058,12 +937,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRoute_Failure_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_3) {
-  // Portal detection ends in HTTP phase, DNS resolution times out, pinging DNS
-  // servers succeeds, DNS resolution succeeds, pinging the resolved IP address
-  // fails, and we fail to get a route for the IP address, so we end
-  // diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
+  // succeeds, pinging the resolved IP address fails, and we fail to get a route
+  // for the IP address, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1080,10 +957,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_3) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_4) {
-  // Portal detection ends with a DNS timeout, pinging DNS servers fails, get a
-  // route for the first DNS server, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // Pinging DNS servers fails, get a route for the first DNS server, so we end
+  // diagnostics.
+  ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndFailure();
   ExpectFindRouteToHostStartSuccess(gateway());
@@ -1092,12 +968,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_4) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is remote, so ping the local gateway and succeed, so
-  // we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is remote, so ping
+  // the local gateway and succeed, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1113,12 +987,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
-  // Same as above, but this time the resolved IP address of the target URL
-  // is IPv6.
+  // Same as above, but this time the resolved IP address of the target URL is
+  // IPv6.
   UseIPv6();
 
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1134,12 +1007,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
-  // Portal detection ends with a DNS timeout, pinging DNS servers succeeds, DNS
-  // resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote, so ping
-  // the local gateway and succeed, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndDNSPhaseTimeout();
+  // Pinging DNS servers succeeds, DNS resolution succeeds, pinging the resolved
+  // IP address fails, and we successfully get route for the IP address. This
+  // address is remote, so ping the local gateway and succeed, so we end
+  // diagnostics.
+  ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1155,13 +1027,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
-  // Portal detection ends in HTTP phase, DNS resolution times out, pinging DNS
-  // servers succeeds, DNS resolution succeeds, pinging the resolved IP address
-  // fails, and we successfully get route for the IP address. This address is
-  // remote, so ping the local gateway. The ping succeeds, so we end
-  // diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
+  // succeeds, pinging the resolved IP address fails, and we successfully get
+  // route for the IP address. This address is remote, so ping the local
+  // gateway. The ping succeeds, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1186,12 +1056,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
 // since the above tests have already exercised these sub-paths extensively,
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is remote, pinging the local gateway fails, and we
-  // find an ARP table entry for the gateway address, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is remote, pinging
+  // the local gateway fails, and we find an ARP table entry for the gateway
+  // address, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1208,12 +1077,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_2) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is local, and we find an ARP table entry for this
-  // address, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is local, and we
+  // find an ARP table entry for this address, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1227,13 +1094,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is remote, pinging the local gateway fails, ARP table
-  // lookup fails, we check for IP collision and find one, so we end
-  // diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is remote, pinging
+  // the local gateway fails, ARP table lookup fails, we check for IP collision
+  // and find one, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1252,12 +1117,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_2) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is local, ARP table lookup fails, we check for IP
-  // collision and find one, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is local, ARP table
+  // lookup fails, we check for IP collision and find one, so we end
+  // diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1271,13 +1135,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is remote, pinging the local gateway fails, ARP table
-  // lookup fails, we check for IP collision and do not find one, so we end
-  // diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is remote, pinging
+  // the local gateway fails, ARP table lookup fails, we check for IP collision
+  // and do not find one, so we end diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1296,12 +1158,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_2) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is local, ARP table lookup fails, we check for IP
-  // collision and do not find one, so we end diagnostics.
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is local, ARP table
+  // lookup fails, we check for IP collision and do not find one, so we end
+  // diagnostics.
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1317,14 +1178,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is remote, pinging the local IPv6 gateway fails,
-  // and we find a neighbor table entry for the gateway. End diagnostics.
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is remote, pinging
+  // the local IPv6 gateway fails, and we find a neighbor table entry for the
+  // gateway. End diagnostics.
   UseIPv6();
 
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1342,14 +1202,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_2) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, we succeed in getting a route for the IP
-  // address. This address is a local IPv6 address, and we find a neighbor table
-  // entry for it. End diagnostics.
+  // DNS resolution succeeds, pinging the resolved IP address fails, we succeed
+  // in getting a route for the IP address. This address is a local IPv6
+  // address, and we find a neighbor table entry for it. End diagnostics.
   UseIPv6();
 
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1364,15 +1222,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_2) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, and we successfully get route for the IP
-  // address. This address is remote, pinging the local IPv6 gateway fails, and
-  // we find a neighbor table entry for the gateway, but it is not marked as
-  // reachable. End diagnostics.
+  // DNS resolution succeeds, pinging the resolved IP address fails, and we
+  // successfully get route for the IP address. This address is remote,
+  // pinging the local IPv6 gateway fails, and we find a neighbor table entry
+  // for the gateway, but it is not marked as reachable. End diagnostics.
   UseIPv6();
 
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
@@ -1390,14 +1246,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_2) {
-  // Portal detection ends in HTTP phase, DNS resolution succeeds, pinging the
-  // resolved IP address fails, we succeed in getting a route for the IP
-  // address. This address is a local IPv6 address, and we do not find a
-  // neighbor table entry for it. End diagnostics.
+  // DNS resolution succeeds, pinging the resolved IP address fails, we succeed
+  // in getting a route for the IP address. This address is a local IPv6
+  // address, and we do not find a neighbor table entry for it. End diagnostics.
   UseIPv6();
 
-  ExpectPortalDetectionStartSuccess();
-  ExpectPortalDetectionEndHTTPPhaseFailure();
+  ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,

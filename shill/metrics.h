@@ -367,12 +367,13 @@ class Metrics : public DefaultServiceObserver {
   enum ConnectionDiagnosticsIssue {
     kConnectionDiagnosticsIssueIPCollision = 0,
     kConnectionDiagnosticsIssueRouting = 1,
-    kConnectionDiagnosticsIssueHTTPBrokenPortal = 2,
+    kConnectionDiagnosticsIssueHTTP = 2,
     kConnectionDiagnosticsIssueDNSServerMisconfig = 3,
     kConnectionDiagnosticsIssueDNSServerNoResponse = 4,
     kConnectionDiagnosticsIssueNoDNSServersConfigured = 5,
     kConnectionDiagnosticsIssueDNSServersInvalid = 6,
     kConnectionDiagnosticsIssueNone = 7,
+    // Not logged anymore
     kConnectionDiagnosticsIssueCaptivePortal = 8,
     kConnectionDiagnosticsIssueGatewayUpstream = 9,
     kConnectionDiagnosticsIssueGatewayNotResponding = 10,

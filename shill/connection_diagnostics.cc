@@ -66,9 +66,9 @@ const char ConnectionDiagnostics::kIssueIPCollision[] =
     "IP collision detected. Another host on the local network has been "
     "assigned the same IP address.";
 const char ConnectionDiagnostics::kIssueRouting[] = "Routing problem detected.";
-const char ConnectionDiagnostics::kIssueHTTPBrokenPortal[] =
-    "Target URL is pingable. Connectivity problems might be caused by HTTP "
-    "issues on the server or a broken portal.";
+const char ConnectionDiagnostics::kIssueHTTP[] =
+    "Target hostname is pingable. Connectivity problems might be caused by a "
+    "firewall, a web proxy, or a captive portal";
 const char ConnectionDiagnostics::kIssueDNSServerMisconfig[] =
     "DNS servers responding to DNS queries, but sending invalid responses. "
     "DNS servers might be misconfigured.";
@@ -82,8 +82,6 @@ const char ConnectionDiagnostics::kIssueDNSServersInvalid[] =
     "All configured DNS server addresses are invalid.";
 const char ConnectionDiagnostics::kIssueNone[] =
     "No connection issue detected.";
-const char ConnectionDiagnostics::kIssueCaptivePortal[] =
-    "Trapped in captive portal.";
 const char ConnectionDiagnostics::kIssueGatewayUpstream[] =
     "We can find a route to the target web server at a remote IP address, "
     "and the local gateway is pingable. Gatway issue or upstream "
@@ -160,8 +158,7 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const std::string& url_string,
-                                  const PortalDetector::Result& result) {
+bool ConnectionDiagnostics::Start(const std::string& url_string) {
   SLOG(this, 3) << __func__ << "(" << url_string << ")";
 
   if (running()) {
@@ -177,9 +174,11 @@ bool ConnectionDiagnostics::Start(const std::string& url_string,
   }
 
   running_ = true;
+  // Ping DNS servers to make sure at least one is reachable before resolving
+  // the hostname of |target_url_|;
   dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&ConnectionDiagnostics::StartInternal,
-                                       weak_ptr_factory_.GetWeakPtr(), result));
+                        base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
+                                       weak_ptr_factory_.GetWeakPtr()));
   return true;
 }
 
@@ -238,68 +237,6 @@ void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
     result_callback_.Run(issue, diagnostic_events_);
   }
   Stop();
-}
-
-void ConnectionDiagnostics::StartInternal(
-    const PortalDetector::Result& result) {
-  SLOG(this, 3) << __func__;
-
-  Result result_type;
-  if (result.http_status == PortalDetector::Status::kSuccess) {
-    result_type = kResultSuccess;
-  } else if (result.http_status == PortalDetector::Status::kTimeout) {
-    result_type = kResultTimeout;
-  } else {
-    result_type = kResultFailure;
-  }
-
-  switch (result.http_phase) {
-    case PortalDetector::Phase::kContent: {
-      AddEvent(kTypePortalDetection, kPhasePortalDetectionEndContent,
-               result_type);
-      // We have found the issue if we end in the content phase.
-      ReportResultAndStop(result_type == kResultSuccess ? kIssueNone
-                                                        : kIssueCaptivePortal);
-      break;
-    }
-    case PortalDetector::Phase::kDNS: {
-      AddEvent(kTypePortalDetection, kPhasePortalDetectionEndDNS, result_type);
-      if (result.http_status == PortalDetector::Status::kSuccess) {
-        LOG(ERROR) << __func__
-                   << ": portal detection should not end with "
-                      "success status in DNS phase";
-        ReportResultAndStop(kIssueInternalError);
-      } else if (result.http_status == PortalDetector::Status::kTimeout) {
-        // DNS timeout occurred in portal detection. Ping DNS servers to make
-        // sure they are reachable.
-        dispatcher_->PostTask(
-            FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
-                                      weak_ptr_factory_.GetWeakPtr()));
-      } else {
-        ReportResultAndStop(kIssueDNSServerMisconfig);
-      }
-      break;
-    }
-    case PortalDetector::Phase::kConnection:
-    case PortalDetector::Phase::kHTTP:
-    case PortalDetector::Phase::kUnknown:
-    default: {
-      AddEvent(kTypePortalDetection, kPhasePortalDetectionEndOther,
-               result_type);
-      if (result.http_status == PortalDetector::Status::kSuccess) {
-        LOG(ERROR) << __func__
-                   << ": portal detection should not end with success status in"
-                      " Connection/HTTP/Unknown phase";
-        ReportResultAndStop(kIssueInternalError);
-      } else {
-        dispatcher_->PostTask(
-            FROM_HERE,
-            base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                           weak_ptr_factory_.GetWeakPtr(), dns_list_));
-      }
-      break;
-    }
-  }
 }
 
 void ConnectionDiagnostics::ResolveTargetServerIPAddress(
@@ -664,7 +601,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
     // an upstream connectivity problem or gateway issue.
     ReportResultAndStop(ping_event_type == kTypePingGateway
                             ? kIssueGatewayUpstream
-                            : kIssueHTTPBrokenPortal);
+                            : kIssueHTTP);
   } else if (result_type == kResultFailure &&
              ping_event_type == kTypePingTargetServer) {
     dispatcher_->PostTask(

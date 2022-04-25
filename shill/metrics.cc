@@ -1242,8 +1242,8 @@ void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
     issue_enum = kConnectionDiagnosticsIssueIPCollision;
   } else if (issue == ConnectionDiagnostics::kIssueRouting) {
     issue_enum = kConnectionDiagnosticsIssueRouting;
-  } else if (issue == ConnectionDiagnostics::kIssueHTTPBrokenPortal) {
-    issue_enum = kConnectionDiagnosticsIssueHTTPBrokenPortal;
+  } else if (issue == ConnectionDiagnostics::kIssueHTTP) {
+    issue_enum = kConnectionDiagnosticsIssueHTTP;
   } else if (issue == ConnectionDiagnostics::kIssueDNSServerMisconfig) {
     issue_enum = kConnectionDiagnosticsIssueDNSServerMisconfig;
   } else if (issue == ConnectionDiagnostics::kIssueDNSServerNoResponse) {
@@ -1254,8 +1254,6 @@ void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
     issue_enum = kConnectionDiagnosticsIssueDNSServersInvalid;
   } else if (issue == ConnectionDiagnostics::kIssueNone) {
     issue_enum = kConnectionDiagnosticsIssueNone;
-  } else if (issue == ConnectionDiagnostics::kIssueCaptivePortal) {
-    issue_enum = kConnectionDiagnosticsIssueCaptivePortal;
   } else if (issue == ConnectionDiagnostics::kIssueGatewayUpstream) {
     issue_enum = kConnectionDiagnosticsIssueGatewayUpstream;
   } else if (issue == ConnectionDiagnostics::kIssueGatewayNotResponding) {

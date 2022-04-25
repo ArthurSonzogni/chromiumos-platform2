@@ -1162,15 +1162,14 @@ void Device::StopPortalDetection() {
   portal_detector_.reset();
 }
 
-bool Device::StartConnectionDiagnosticsAfterPortalDetection(
-    const PortalDetector::Result& portal_result) {
+bool Device::StartConnectionDiagnosticsAfterPortalDetection() {
   connection_diagnostics_.reset(new ConnectionDiagnostics(
       connection_->interface_name(), connection_->interface_index(),
       connection_->local(), connection_->gateway(), connection_->dns_servers(),
       dispatcher(), metrics(), manager_->device_info(),
       base::Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
-  if (!connection_diagnostics_->Start(manager_->GetProperties().portal_http_url,
-                                      portal_result)) {
+  if (!connection_diagnostics_->Start(
+          manager_->GetProperties().portal_http_url)) {
     LOG(ERROR) << link_name() << ": Connection diagnostics failed to start.";
     connection_diagnostics_.reset();
     return false;
@@ -1283,7 +1282,12 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
           result.http_status_code);
     }
     SetServiceConnectedState(state);
-    StartConnectionDiagnosticsAfterPortalDetection(result);
+    // If portal detection was not conclusive, also start additional connection
+    // diagnostics for the current network connection.
+    if (state == Service::kStateNoConnectivity ||
+        state == Service::kStatePortalSuspected) {
+      StartConnectionDiagnosticsAfterPortalDetection();
+    }
   }
 }
 

@@ -608,8 +608,7 @@ class Device : public base::RefCounted<Device> {
 
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
-  mockable bool StartConnectionDiagnosticsAfterPortalDetection(
-      const PortalDetector::Result& portal_result);
+  mockable bool StartConnectionDiagnosticsAfterPortalDetection();
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
