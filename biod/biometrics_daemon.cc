@@ -34,6 +34,9 @@ namespace dbus_constants {
 const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 const char kSessionStateStarted[] = "started";
 constexpr char kSessionStateStopped[] = "stopped";
+constexpr char kDBusErrorNoReply[] = "org.freedesktop.DBus.Error.NoReply";
+constexpr char kDBusErrorServiceUnknown[] =
+    "org.freedesktop.DBus.Error.ServiceUnknown";
 }  // namespace dbus_constants
 
 namespace errors {
@@ -473,13 +476,32 @@ BiometricsDaemon::BiometricsDaemon() {
 }
 
 bool BiometricsDaemon::RetrievePrimarySession() {
+  dbus::ScopedDBusError error;
   primary_user_.clear();
   dbus::MethodCall method_call(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrievePrimarySession);
+
   std::unique_ptr<dbus::Response> response =
-      session_manager_proxy_->CallMethodAndBlock(
-          &method_call, dbus_constants::kDbusTimeoutMs);
+      session_manager_proxy_->CallMethodAndBlockWithErrorDetails(
+          &method_call, dbus_constants::kDbusTimeoutMs, &error);
+  if (error.is_set()) {
+    std::string error_name = error.name();
+    LOG(ERROR) << "Calling "
+               << login_manager::kSessionManagerRetrievePrimarySession
+               << " from " << login_manager::kSessionManagerInterface
+               << " interface finished with " << error_name << " error.";
+
+    if (error_name == dbus_constants::kDBusErrorNoReply) {
+      LOG(FATAL) << "Timeout while getting primary session";
+    } else if (error_name == dbus_constants::kDBusErrorServiceUnknown) {
+      LOG(FATAL) << "Can't find " << login_manager::kSessionManagerServiceName
+                 << " service. Maybe session_manager is not running?";
+    } else {
+      LOG(FATAL) << "Error details: " << error.message();
+    }
+  }
+
   if (!response.get()) {
     LOG(ERROR) << "Cannot retrieve username for primary session.";
     return false;
