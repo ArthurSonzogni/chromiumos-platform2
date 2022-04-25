@@ -17,6 +17,7 @@ import (
 )
 
 var funcMap = template.FuncMap{
+	"add":                    func(a, b int) int { return a + b },
 	"extractNameSpaces":      genutil.ExtractNameSpaces,
 	"formatComment":          genutil.FormatComment,
 	"makeFullItfName":        genutil.MakeFullItfName,

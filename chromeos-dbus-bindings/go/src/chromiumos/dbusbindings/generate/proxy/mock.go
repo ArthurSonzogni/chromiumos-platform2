@@ -50,10 +50,63 @@ class {{$mockName}} : public {{$itfName}} {
   {{$mockName}}() = default;
   {{$mockName}}(const {{$mockName}}&) = delete;
   {{$mockName}}& operator=(const {{$mockName}}&) = delete;
-{{- /* TODO(crbug.com/983008): add mock method API generation. */ -}}
+{{range .Methods -}}
+{{- $inParams := makeMethodParams 0 .InputArguments -}}
+{{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments -}}
+{{- $arity := gmockArity (len $inParams) (len $outParams) -}}
+{{- /* TODO(crbug.com/983008): The following format is to make the output compatible with C++. */}}
+{{- if ge $arity.Sync 11}}
+{{- /* TODO(crbug.com/983008): Old gmock does not support arity >= 11. So this is workaround. */ -}}
+{{- $indent := repeat " " (add (len "  bool (") (len .Name))}}
+  bool {{.Name}}(
+{{- range $inParams -}}
+{{.Type}} /*{{.Name}}*/,
+{{$indent}}{{end -}}
+{{- range $outParams -}}
+{{.Type}} /*{{.Name}}*/,
+{{$indent}}{{end -}}
+brillo::ErrorPtr* /*error*/,
+{{$indent}}int /*timeout_ms*/) override {
+    LOG(WARNING) << "{{.Name}}(): gmock can't handle methods with {{$arity.Sync}} arguments. You can override this method in a subclass if you need to.";
+    return false;
+  }
+{{- else}}
+  MOCK_METHOD{{$arity.Sync}}({{.Name}},
+               {{if ge $arity.Sync 10}} {{end}}bool(
+{{- range $inParams -}}
+{{.Type}} /*{{.Name}}*/,
+                    {{if ge $arity.Sync 10}} {{end}}{{end -}}
+{{- range $outParams -}}
+{{.Type}} /*{{.Name}}*/,
+                    {{if ge $arity.Sync 10}} {{end}}{{end -}}
+                    brillo::ErrorPtr* /*error*/,
+                    {{if ge $arity.Sync 10}} {{end}}int /*timeout_ms*/));
+{{- end}}
+{{- if ge $arity.Async 11}}
+{{- /* TODO(crbug.com/983008): Old gmock does not support arity >= 11. So this is workaround. */ -}}
+{{- $indent := repeat " " (add 13 (len .Name))}}
+  void {{.Name}}Async(
+{{- range $inParams -}}
+{{.Type}} /*{{.Name}}*/,
+{{$indent}}{{end -}}
+{{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
+{{$indent}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+{{$indent}}int /*timeout_ms*/) override {
+    LOG(WARNING) << "{{.Name}}Async(): gmock can't handle methods with {{$arity.Async}} arguments. You can override this method in a subclass if you need to.";
+  }
+{{- else}}
+  MOCK_METHOD{{$arity.Async}}({{.Name}}Async,
+               {{if ge $arity.Async 10}} {{end}}void(
+{{- range $inParams -}}
+{{.Type}} /*{{.Name}}*/,
+                    {{if ge $arity.Async 10}} {{end}}{{end -}}
+                    {{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
+                    {{if ge $arity.Async 10}} {{end}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+                    {{if ge $arity.Async 10}} {{end}}int /*timeout_ms*/));
+{{- end}}
+{{- end}}
 {{- /* TODO(crbug.com/983008): add mock signal API generation. */ -}}
 {{- /* TODO(crbug.com/983008): add mock properties generation. */}}
-
 };
 {{range extractNameSpaces .Name | reverse -}}
 }  // namespace {{.}}
@@ -67,7 +120,22 @@ class {{$mockName}} : public {{$itfName}} {
 // GenerateMock outputs the header file containing gmock proxy interfaces into f.
 // outputFilePath is used to make a unique header guard.
 func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFilePath string, proxyFilePath string, config serviceconfig.Config) error {
-	tmpl, err := template.New("mock").Funcs(funcMap).Parse(mockTemplateText)
+	mockFuncMap := make(template.FuncMap)
+	for k, v := range funcMap {
+		mockFuncMap[k] = v
+	}
+
+	type gmockArity struct {
+		Sync, Async int
+	}
+	mockFuncMap["gmockArity"] = func(nInArgs, nOutArgs int) gmockArity {
+		return gmockArity{
+			Sync:  nInArgs + nOutArgs + 2, // error and timeout.
+			Async: nInArgs + 3,            // success_callback, error_callback and timeout
+		}
+	}
+
+	tmpl, err := template.New("mock").Funcs(mockFuncMap).Parse(mockTemplateText)
 	if err != nil {
 		return err
 	}
