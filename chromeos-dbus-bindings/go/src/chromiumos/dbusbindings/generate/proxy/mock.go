@@ -105,7 +105,18 @@ brillo::ErrorPtr* /*error*/,
                     {{if ge $arity.Async 10}} {{end}}int /*timeout_ms*/));
 {{- end}}
 {{- end}}
-{{- /* TODO(crbug.com/983008): add mock signal API generation. */ -}}
+{{- range .Signals}}
+  void Register{{.Name}}SignalHandler(
+    {{- /* TODO(crbug.com/983008): fix the indent to meet style guide. */ -}}
+    {{- makeSignalCallbackType .Args | nindent 4}} signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    DoRegister{{.Name}}SignalHandler(signal_callback, &on_connected_callback);
+  }
+  MOCK_METHOD2(DoRegister{{.Name}}SignalHandler,
+               void({{makeSignalCallbackType .Args | nindent 20 | trimLeft " \n"}} /*signal_callback*/,
+                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+{{- end}}
+
 {{- /* TODO(crbug.com/983008): add mock properties generation. */}}
 };
 {{range extractNameSpaces .Name | reverse -}}

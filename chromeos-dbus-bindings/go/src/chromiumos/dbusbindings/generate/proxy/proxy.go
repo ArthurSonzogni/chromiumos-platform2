@@ -36,8 +36,12 @@ var funcMap = template.FuncMap{
 	"makeSignalCallbackType": makeSignalCallbackType,
 	"makeVariableName":       genutil.MakeVariableName,
 	"nindent":                genutil.Nindent,
-	"repeat":                 strings.Repeat,
-	"reverse":                genutil.Reverse,
+	"trimLeft": func(cutset, s string) string {
+		// Swap the args to fit with template's context.
+		return strings.TrimLeft(s, cutset)
+	},
+	"repeat":  strings.Repeat,
+	"reverse": genutil.Reverse,
 }
 
 const (

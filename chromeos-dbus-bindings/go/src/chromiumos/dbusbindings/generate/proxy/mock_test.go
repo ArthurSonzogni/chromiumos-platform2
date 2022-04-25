@@ -198,6 +198,16 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
                     base::OnceCallback<void()> /*success_callback*/,
                     base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
+  void RegisterBSSRemovedSignalHandler(
+    const base::RepeatingCallback<void(const YetAnotherProto&,
+                                       const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    DoRegisterBSSRemovedSignalHandler(signal_callback, &on_connected_callback);
+  }
+  MOCK_METHOD2(DoRegisterBSSRemovedSignalHandler,
+               void(const base::RepeatingCallback<void(const YetAnotherProto&,
+                                                       const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
+                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
 };
 }  // namespace wpa_supplicant1
 }  // namespace w1
@@ -635,6 +645,109 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
                            int /*timeout_ms*/) override {
     LOG(WARNING) << "MethodArity8_2Async(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
   }
+};
+
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateMockProxiesWithSignals(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "EmptyInterface",
+		Signals: []introspect.Signal{
+			{
+				Name: "Signal1",
+				Args: []introspect.SignalArg{
+					{
+						Name: "sarg1_1",
+						Type: "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "YetAnotherProto",
+						},
+					}, {
+						Name: "sarg1_2",
+						Type: "(ih)",
+					},
+				},
+				DocString: "\n        signal doc\n      ",
+			},
+			{
+				Name: "Signal2",
+				Args: []introspect.SignalArg{
+					{
+						Name: "sarg2_1",
+						Type: "ay",
+					}, {
+						Name: "sarg2_2",
+						Type: "i",
+					},
+				},
+				DocString: "\n        signal doc\n      ",
+			},
+		},
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{}
+	out := new(bytes.Buffer)
+	if err := GenerateMock(introspections, out, "/tmp/mock.h", "../proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interface mock proxies for:
+//  - EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#include <string>
+#include <vector>
+
+#include <base/callback_forward.h>
+#include <base/logging.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <gmock/gmock.h>
+
+#include "../proxy.h"
+
+
+
+// Mock object for EmptyInterfaceProxyInterface.
+class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxyMock() = default;
+  EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
+  EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
+
+  void RegisterSignal1SignalHandler(
+    const base::RepeatingCallback<void(const YetAnotherProto&,
+                                       const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    DoRegisterSignal1SignalHandler(signal_callback, &on_connected_callback);
+  }
+  MOCK_METHOD2(DoRegisterSignal1SignalHandler,
+               void(const base::RepeatingCallback<void(const YetAnotherProto&,
+                                                       const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
+                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+  void RegisterSignal2SignalHandler(
+    const base::RepeatingCallback<void(const std::vector<uint8_t>&,
+                                       int32_t)>& signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    DoRegisterSignal2SignalHandler(signal_callback, &on_connected_callback);
+  }
+  MOCK_METHOD2(DoRegisterSignal2SignalHandler,
+               void(const base::RepeatingCallback<void(const std::vector<uint8_t>&,
+                                                       int32_t)>& /*signal_callback*/,
+                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
 };
 
 
