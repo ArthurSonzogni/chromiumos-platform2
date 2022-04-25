@@ -41,6 +41,14 @@ class UsbDriverTracker {
   std::optional<std::string> RegisterClient(int lifeline_fd,
                                             const base::FilePath& path);
 
+  // Try to detach the kernel driver to the interface of |iface_num| of the USB
+  // device associated with the |client_id|.
+  bool DetachInterface(const std::string& client_id, uint8_t iface_num);
+
+  // Try to reattach the kernel driver to the interface of |iface_num| of the
+  // USB device associated with the |client_id|.
+  bool ReattachInterface(const std::string& client_id, uint8_t iface_num);
+
  private:
   friend class UsbDriverTrackerTest;
   friend class MockUsbDriverTracker;
@@ -66,6 +74,24 @@ class UsbDriverTracker {
                            HandleClosedFdTwoClientsOnSamePath);
   FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest, RecordInterfaceDetached);
   FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest, ClearDetachedInterfaceRecord);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest, DetachInterfaceSuccess);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           DetachInterfaceUnTrackedClientFail);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           DetachInterfaceIfaceDetachedByOtherClient);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           DetachInterfaceIfaceAlreadyDetachedByTheClientNoOp);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           DetachInterfaceIfaceDisconnectFail);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest, ReattachInterfaceSuccess);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           ReattachInterfaceUntrackedClientFail);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           ReattachInterfacePathNoIfaceDetachedNoOp);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           ReattachInterfaceIfaceNotDetachedNoOp);
+  FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerTest,
+                           ReattachInterfaceIfaceDetachedByOtherClient);
 
   FRIEND_TEST_ALL_PREFIXES(UsbDriverTrackerDeathTest,
                            RecordInterfaceDetachedUntrackedClient);

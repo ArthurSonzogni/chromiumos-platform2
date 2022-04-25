@@ -420,4 +420,100 @@ TEST_F(UsbDriverTrackerDeathTest, ClearDetachedInterfaceRecordDupIface) {
   usb_driver_tracker_.dev_fds_.clear();
 }
 
+TEST_F(UsbDriverTrackerTest, DetachInterfaceSuccess) {
+  std::vector<uint8_t> client_0_ifaces = {};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  EXPECT_CALL(usb_driver_tracker_,
+              DisconnectInterface(
+                  usb_driver_tracker_.dev_fds_[client_0_id].fd.get(), kIface0))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(usb_driver_tracker_.DetachInterface(client_0_id, kIface0));
+  ASSERT_EQ(usb_driver_tracker_.dev_fds_[client_0_id].interfaces[0], kIface0);
+  ASSERT_EQ(usb_driver_tracker_.dev_ifaces_[path][kIface0], client_0_id);
+}
+
+TEST_F(UsbDriverTrackerTest, DetachInterfaceUnTrackedClientFail) {
+  std::string untracked_client_id = "abc";
+  ASSERT_FALSE(
+      usb_driver_tracker_.DetachInterface(untracked_client_id, kIface0));
+  ASSERT_EQ(usb_driver_tracker_.dev_fds_.size(), 0);
+  ASSERT_EQ(usb_driver_tracker_.dev_ifaces_.size(), 0);
+}
+
+TEST_F(UsbDriverTrackerTest, DetachInterfaceIfaceAlreadyDetachedByOtherClient) {
+  std::vector<uint8_t> client_0_ifaces = {};
+  std::vector<uint8_t> client_1_ifaces = {kIface0};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  SetupClient(kClient1, path, client_1_ifaces);
+  ASSERT_FALSE(usb_driver_tracker_.DetachInterface(client_0_id, kIface0));
+}
+
+TEST_F(UsbDriverTrackerTest,
+       DetachInterfaceIfaceAlreadyDetachedByTheClientNoOp) {
+  std::vector<uint8_t> client_0_ifaces = {kIface0};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  ASSERT_TRUE(usb_driver_tracker_.DetachInterface(client_0_id, kIface0));
+}
+
+TEST_F(UsbDriverTrackerTest, DetachInterfaceIfaceDisconnectFail) {
+  std::vector<uint8_t> client_0_ifaces = {};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  EXPECT_CALL(usb_driver_tracker_,
+              DisconnectInterface(
+                  usb_driver_tracker_.dev_fds_[client_0_id].fd.get(), kIface0))
+      .WillOnce(Return(false));
+  ASSERT_FALSE(usb_driver_tracker_.DetachInterface(client_0_id, kIface0));
+  ASSERT_EQ(usb_driver_tracker_.dev_ifaces_.size(), 0);
+}
+
+TEST_F(UsbDriverTrackerTest, ReattachInterfaceSuccess) {
+  std::vector<uint8_t> client_0_ifaces = {kIface0};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  EXPECT_CALL(usb_driver_tracker_,
+              ConnectInterface(
+                  usb_driver_tracker_.dev_fds_[client_0_id].fd.get(), kIface0))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(usb_driver_tracker_.ReattachInterface(client_0_id, kIface0));
+  ASSERT_EQ(usb_driver_tracker_.dev_ifaces_.size(), 0);
+  // The client id should still be tracked even it doesn't have any ifaces
+  // detached.
+  ASSERT_TRUE(usb_driver_tracker_.IsClientIdTracked(client_0_id));
+}
+
+TEST_F(UsbDriverTrackerTest, ReattachInterfaceUntrackedClientFail) {
+  std::string untracked_client_id = "abc";
+  ASSERT_FALSE(
+      usb_driver_tracker_.ReattachInterface(untracked_client_id, kIface0));
+}
+
+TEST_F(UsbDriverTrackerTest, ReattachInterfacePathNoIfaceDetachedNoOp) {
+  std::vector<uint8_t> client_0_ifaces = {};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  ASSERT_TRUE(usb_driver_tracker_.ReattachInterface(client_0_id, kIface0));
+  ASSERT_EQ(usb_driver_tracker_.dev_ifaces_.size(), 0);
+}
+
+TEST_F(UsbDriverTrackerTest, ReattachInterfaceIfaceNotDetachedNoOp) {
+  std::vector<uint8_t> client_0_ifaces = {kIface1};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  ASSERT_TRUE(usb_driver_tracker_.ReattachInterface(client_0_id, kIface0));
+  ASSERT_EQ(usb_driver_tracker_.dev_ifaces_[path][kIface1], client_0_id);
+}
+
+TEST_F(UsbDriverTrackerTest, ReattachInterfaceIfaceDetachedByOtherClient) {
+  std::vector<uint8_t> client_0_ifaces = {};
+  std::vector<uint8_t> client_1_ifaces = {kIface0};
+  const auto& path = temp_file_path_;
+  auto client_0_id = SetupClient(kClient0, path, client_0_ifaces);
+  SetupClient(kClient1, path, client_1_ifaces);
+  ASSERT_FALSE(usb_driver_tracker_.ReattachInterface(client_0_id, kIface0));
+}
+
 }  // namespace permission_broker

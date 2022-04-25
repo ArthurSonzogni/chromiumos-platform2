@@ -40,13 +40,16 @@ void UsbDriverTracker::HandleClosedFd(std::string client_id) {
     // Reattaching the kernel driver to the USB interface.
     while (!entry.interfaces.empty()) {
       uint8_t iface_num = *entry.interfaces.begin();
-      if (!ConnectInterface(entry.fd.get(), iface_num)) {
+      // This might remove elements in entry.interfaces.
+      if (!ReattachInterface(client_id, iface_num)) {
         LOG(ERROR) << "Failed to reattach interface "
                    << static_cast<int>(iface_num) << " for client "
                    << client_id;
+        // Remove the interface from the tracking record even if reattaching
+        // fails (ex: ioctl() failure) to avoid orphan tracking record as this
+        // client is being closed.
+        ClearDetachedInterfaceRecord(client_id, entry.path, iface_num);
       }
-      // This might remove elements in entry.interfaces.
-      ClearDetachedInterfaceRecord(client_id, entry.path, iface_num);
     }
     // We are done with the client_id.
     dev_fds_.erase(iter);
@@ -79,7 +82,6 @@ bool UsbDriverTracker::DetachPathFromKernel(int fd,
   // Try to find our USB interface nodes, by iterating through all devices
   // and extracting our children devices.
   bool detached = false;
-  std::vector<uint8_t> ifaces;
   struct udev_list_entry* entry;
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
@@ -103,21 +105,23 @@ bool UsbDriverTracker::DetachPathFromKernel(int fd,
         continue;
       }
 
-      if (!DisconnectInterface(fd, iface_num)) {
-        LOG(WARNING) << "Kernel USB driver disconnection for " << path
-                     << " on interface " << iface_num << " failed " << errno;
+      detached = true;
+      if (client_id) {
+        if (!DetachInterface(*client_id, iface_num)) {
+          LOG(ERROR) << "Fail to detach interface "
+                     << static_cast<int>(iface_num) << " for client "
+                     << client_id;
+          detached = false;
+        }
       } else {
-        detached = true;
-        ifaces.push_back(iface_num);
-        LOG(INFO) << "USB driver '" << driver << "' detached on " << path
-                  << " interface " << iface_num;
+        // This is the case in Permission Broker OpenPath() which doesn't use
+        // any client tracking.
+        if (!DisconnectInterface(fd, iface_num)) {
+          LOG(ERROR) << "Failed to detach interface "
+                     << static_cast<int>(iface_num) << " with fd " << fd;
+          detached = false;
+        }
       }
-    }
-  }
-
-  if (detached && client_id) {
-    for (auto iface_num : ifaces) {
-      RecordInterfaceDetached(*client_id, path, iface_num);
     }
   }
 
@@ -259,6 +263,80 @@ void UsbDriverTracker::CleanUpTracking() {
     // This might remove the element.
     HandleClosedFd(dev_fds_.begin()->first);
   }
+}
+
+bool UsbDriverTracker::DetachInterface(const std::string& client_id,
+                                       uint8_t iface_num) {
+  if (!IsClientIdTracked(client_id)) {
+    LOG(WARNING) << "DetachInterface: Untracked client " << client_id;
+    return false;
+  }
+
+  const auto& path = dev_fds_[client_id].path;
+  const auto& fd = dev_fds_[client_id].fd;
+  auto path_it = dev_ifaces_.find(path);
+  if (path_it != dev_ifaces_.end()) {
+    auto iface_it = path_it->second.find(iface_num);
+    if (iface_it != path_it->second.end()) {
+      if (iface_it->second != client_id) {
+        LOG(WARNING) << "The interface " << static_cast<int>(iface_num)
+                     << " at path " << path << " can't be detached by client "
+                     << client_id << " as it has been detached by other client "
+                     << iface_it->second;
+        return false;
+      }
+      // No-op if the interface has been detached by the requested client.
+      return true;
+    }
+  }
+
+  if (!DisconnectInterface(fd.get(), iface_num)) {
+    LOG(ERROR) << "Kernel USB driver disconnection for " << path
+               << " on interface " << static_cast<int>(iface_num)
+               << " by client " << client_id << " failed";
+    return false;
+  }
+
+  RecordInterfaceDetached(client_id, path, iface_num);
+  return true;
+}
+
+bool UsbDriverTracker::ReattachInterface(const std::string& client_id,
+                                         uint8_t iface_num) {
+  if (!IsClientIdTracked(client_id)) {
+    LOG(WARNING) << "ReattachInterface: Untracked client " << client_id;
+    return false;
+  }
+
+  const auto& path = dev_fds_[client_id].path;
+  const auto& fd = dev_fds_[client_id].fd;
+  auto path_it = dev_ifaces_.find(path);
+  if (path_it == dev_ifaces_.end()) {
+    // No-op if the path hasn't been detached by any clients.
+    return true;
+  }
+  auto iface_it = path_it->second.find(iface_num);
+  if (iface_it == path_it->second.end()) {
+    // No-op if the interface hasn't been detached by any clients.
+    return true;
+  }
+  if (iface_it->second != client_id) {
+    LOG(WARNING) << "The interface " << static_cast<int>(iface_num)
+                 << " at path " << path << " can't be attached by client "
+                 << client_id << " as it was detached by other client "
+                 << iface_it->second;
+    return false;
+  }
+
+  if (!ConnectInterface(fd.get(), iface_num)) {
+    LOG(ERROR) << "Kernel USB driver connection for " << path
+               << " on interface " << static_cast<int>(iface_num)
+               << " by client " << client_id << " failed";
+    return false;
+  }
+
+  ClearDetachedInterfaceRecord(client_id, path, iface_num);
+  return true;
 }
 
 }  // namespace permission_broker
