@@ -103,7 +103,7 @@ class TestDevice : public Device {
               SetIPFlag,
               (IPAddress::Family, const std::string&, const std::string&),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(void,
               StartConnectionDiagnosticsAfterPortalDetection,
               (),
               (override));

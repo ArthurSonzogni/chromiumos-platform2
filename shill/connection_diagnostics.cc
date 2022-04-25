@@ -159,16 +159,17 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
 }
 
 bool ConnectionDiagnostics::Start(const std::string& url_string) {
-  SLOG(this, 3) << __func__ << "(" << url_string << ")";
+  LOG(INFO) << iface_name_ << ": Starting diagnostics for " << url_string;
 
   if (running()) {
-    LOG(ERROR) << "Connection diagnostics already started";
+    LOG(ERROR) << iface_name_ << ": Diagnostics already started";
     return false;
   }
 
   target_url_.reset(new HttpUrl());
   if (!target_url_->ParseFromString(url_string)) {
-    LOG(ERROR) << "Failed to parse URL string: " << url_string;
+    LOG(ERROR) << iface_name_ << ": Failed to parse URL \"" << url_string
+               << "\". Cannot start diagnostics";
     Stop();
     return false;
   }
@@ -224,16 +225,13 @@ void ConnectionDiagnostics::AddEventWithMessage(Type type,
 }
 
 void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
-  SLOG(this, 3) << __func__;
-
   metrics_->NotifyConnectionDiagnosticsIssue(issue);
+  for (size_t i = 0; i < diagnostic_events_.size(); ++i) {
+    LOG(INFO) << iface_name_ << ": Diagnostics event #" << i << ": "
+              << EventToString(diagnostic_events_[i]);
+  }
+  LOG(INFO) << iface_name_ << ": Connection diagnostics result: " << issue;
   if (!result_callback_.is_null()) {
-    LOG(INFO) << "Connection diagnostics events:";
-    for (size_t i = 0; i < diagnostic_events_.size(); ++i) {
-      LOG(INFO) << "  #" << i << ": " << EventToString(diagnostic_events_[i]);
-    }
-    LOG(INFO) << "Connection diagnostics completed. Connection issue: "
-              << issue;
     result_callback_.Run(issue, diagnostic_events_);
   }
   Stop();
@@ -245,7 +243,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
 
   Error e;
   if (!dns_client_->Start(dns_list, target_url_->host(), &e)) {
-    LOG(ERROR) << __func__ << ": could not start DNS -- " << e.message();
+    LOG(ERROR) << iface_name_ << ": could not start DNS on -- " << e.message();
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,
                         e.message());
     ReportResultAndStop(kIssueInternalError);
@@ -263,7 +261,8 @@ void ConnectionDiagnostics::PingDNSServers() {
   SLOG(this, 3) << __func__;
 
   if (dns_list_.empty()) {
-    LOG(ERROR) << __func__ << ": no DNS servers for this connection";
+    LOG(ERROR) << iface_name_ << ": no DNS servers for network connection on "
+               << iface_name_;
     AddEventWithMessage(kTypePingDNSServers, kPhaseStart, kResultFailure,
                         "No DNS servers for this connection");
     ReportResultAndStop(kIssueNoDNSServersConfigured);
@@ -280,7 +279,7 @@ void ConnectionDiagnostics::PingDNSServers() {
     // DNS servers can be reached.
     IPAddress dns_server_ip_addr(dns_list_[i]);
     if (dns_server_ip_addr.family() == IPAddress::kFamilyUnknown) {
-      LOG(ERROR) << __func__
+      LOG(ERROR) << iface_name_
                  << ": could not parse DNS server IP address from string";
       ++num_invalid_dns_server_addr;
       id_to_pending_dns_server_icmp_session_.erase(i);
@@ -295,7 +294,7 @@ void ConnectionDiagnostics::PingDNSServers() {
             dns_server_ip_addr, iface_index_,
             base::Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
                        weak_ptr_factory_.GetWeakPtr(), i))) {
-      LOG(ERROR) << "Failed to initiate ping for DNS server at "
+      LOG(ERROR) << iface_name_ << "Failed to initiate ping for DNS server at "
                  << dns_server_ip_addr.ToString();
       ++num_failed_icmp_session_start;
       id_to_pending_dns_server_icmp_session_.erase(i);
@@ -332,7 +331,7 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
                                           route_query_callback_.callback(),
                                           table_id)) {
     route_query_callback_.Cancel();
-    LOG(ERROR) << __func__ << ": could not request route to "
+    LOG(ERROR) << iface_name_ << ": could not request route to "
                << address.ToString();
     AddEventWithMessage(kTypeFindRoute, kPhaseStart, kResultFailure,
                         "Could not request route to " + address.ToString());
@@ -356,7 +355,7 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
 
   if (address.family() != IPAddress::kFamilyIPv4) {
     // We only perform ARP table lookups for IPv4 addresses.
-    LOG(ERROR) << __func__ << ": " << address.ToString()
+    LOG(ERROR) << iface_name_ << ": " << address.ToString()
                << " is not an IPv4 address";
     AddEventWithMessage(kTypeArpTableLookup, kPhaseStart, kResultFailure,
                         address.ToString() + " is not an IPv4 address");
@@ -389,7 +388,7 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
 
   if (address.family() != IPAddress::kFamilyIPv6) {
     // We only perform neighbor table lookups for IPv6 addresses.
-    LOG(ERROR) << __func__ << ": " << address.ToString()
+    LOG(ERROR) << iface_name_ << ": " << address.ToString()
                << " is not an IPv6 address";
     AddEventWithMessage(kTypeNeighborTableLookup, kPhaseStart, kResultFailure,
                         address.ToString() + " is not an IPv6 address");
@@ -417,7 +416,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
   SLOG(this, 3) << __func__;
 
   if (!device_info_->GetMacAddress(iface_index_, &mac_address_)) {
-    LOG(ERROR) << __func__ << ": could not get local MAC address";
+    LOG(ERROR) << iface_name_ << ": could not get local MAC address";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
                         "Could not get local MAC address");
     ReportResultAndStop(kIssueInternalError);
@@ -425,7 +424,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
   }
 
   if (!arp_client_->StartReplyListener()) {
-    LOG(ERROR) << __func__ << ": failed to start ARP client";
+    LOG(ERROR) << iface_name_ << ": failed to start ARP client";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
                         "Failed to start ARP client");
     ReportResultAndStop(kIssueInternalError);
@@ -442,7 +441,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
                     mac_address_,
                     ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)));
   if (!arp_client_->TransmitRequest(request)) {
-    LOG(ERROR) << __func__ << ": failed to send ARP request";
+    LOG(ERROR) << iface_name_ << ": failed to send ARP request";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
                         "Failed to send ARP request");
     arp_client_->Stop();
@@ -468,7 +467,7 @@ void ConnectionDiagnostics::PingHost(const IPAddress& address) {
           address, iface_index_,
           base::Bind(&ConnectionDiagnostics::OnPingHostComplete,
                      weak_ptr_factory_.GetWeakPtr(), event_type, address))) {
-    LOG(ERROR) << __func__ << ": failed to start ICMP session with "
+    LOG(ERROR) << iface_name_ << ": failed to start ICMP session with "
                << address.ToString();
     AddEventWithMessage(
         event_type, kPhaseStart, kResultFailure,
@@ -492,7 +491,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     // any reason, |id_to_pending_dns_server_icmp_session_| might never become
     // empty, and we might never move to the next step after pinging DNS
     // servers. Stop diagnostics immediately to prevent this from happening.
-    LOG(ERROR) << __func__
+    LOG(ERROR) << iface_name_
                << ": no matching pending DNS server ICMP session found";
     ReportResultAndStop(kIssueInternalError);
     return;
@@ -510,7 +509,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     // Use the first DNS server on the list and diagnose its connectivity.
     IPAddress first_dns_server_ip_addr(dns_list_[0]);
     if (first_dns_server_ip_addr.family() == IPAddress::kFamilyUnknown) {
-      LOG(ERROR) << __func__ << ": could not parse DNS server IP address "
+      LOG(ERROR) << iface_name_ << ": could not parse DNS server IP address "
                  << dns_list_[0];
       AddEventWithMessage(kTypePingDNSServers, kPhaseEnd, kResultFailure,
                           "Could not parse DNS "
@@ -591,7 +590,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
   Result result_type =
       IcmpSession::AnyRepliesReceived(result) ? kResultSuccess : kResultFailure;
   if (IcmpSession::IsPacketLossPercentageGreaterThan(result, 50)) {
-    LOG(WARNING) << __func__ << ": high packet loss when pinging "
+    LOG(WARNING) << iface_name_ << ": high packet loss when pinging "
                  << address_pinged.ToString();
   }
   AddEventWithMessage(ping_event_type, kPhaseEnd, result_type, message);
@@ -765,7 +764,7 @@ bool ConnectionDiagnostics::DoesPreviousEventMatch(Type type,
                                                    size_t num_events_ago) {
   int event_index = diagnostic_events_.size() - 1 - num_events_ago;
   if (event_index < 0) {
-    LOG(ERROR) << __func__ << ": requested event " << num_events_ago
+    LOG(ERROR) << iface_name_ << ": requested event " << num_events_ago
                << " before the last event, but we only have "
                << diagnostic_events_.size() << " logged";
     return false;

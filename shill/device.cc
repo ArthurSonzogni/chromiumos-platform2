@@ -813,14 +813,6 @@ void Device::SetupConnection(IPConfig* ipconfig) {
   }
 }
 
-void Device::ConnectionDiagnosticsCallback(
-    const std::string& connection_issue,
-    const std::vector<ConnectionDiagnostics::Event>& diagnostic_events) {
-  SLOG(this, 2) << "Device " << link_name()
-                << ": Completed Connection diagnostics";
-  // TODO(samueltan): add connection diagnostics metrics.
-}
-
 void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
@@ -1162,21 +1154,15 @@ void Device::StopPortalDetection() {
   portal_detector_.reset();
 }
 
-bool Device::StartConnectionDiagnosticsAfterPortalDetection() {
+void Device::StartConnectionDiagnosticsAfterPortalDetection() {
   connection_diagnostics_.reset(new ConnectionDiagnostics(
       connection_->interface_name(), connection_->interface_index(),
       connection_->local(), connection_->gateway(), connection_->dns_servers(),
-      dispatcher(), metrics(), manager_->device_info(),
-      base::Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
+      dispatcher(), metrics(), manager_->device_info(), base::DoNothing()));
   if (!connection_diagnostics_->Start(
           manager_->GetProperties().portal_http_url)) {
-    LOG(ERROR) << link_name() << ": Connection diagnostics failed to start.";
     connection_diagnostics_.reset();
-    return false;
   }
-
-  SLOG(this, 2) << link_name() << ": Connection diagnostics has started.";
-  return true;
 }
 
 void Device::StopConnectionDiagnostics() {

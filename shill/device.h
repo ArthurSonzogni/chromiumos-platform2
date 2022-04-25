@@ -608,15 +608,10 @@ class Device : public base::RefCounted<Device> {
 
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
-  mockable bool StartConnectionDiagnosticsAfterPortalDetection();
+  mockable void StartConnectionDiagnosticsAfterPortalDetection();
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
-
-  // Called by |connection_diagnostics| after diagnostics have finished.
-  void ConnectionDiagnosticsCallback(
-      const std::string& connection_issue,
-      const std::vector<ConnectionDiagnostics::Event>& diagnostic_events);
 
   // Stop all monitoring/testing activities on this device. Called when tearing
   // down or changing network connection on the device.
