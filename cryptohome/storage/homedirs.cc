@@ -138,9 +138,15 @@ bool HomeDirs::MustRunAutomaticCleanupOnLogin() {
   if (!policy_provider_->device_policy_is_loaded())
     return false;
 
+  // If the device is not enterprise owned, do not run cleanup.
+  if (!enterprise_owned_) {
+    return false;
+  }
+
+  // Get the value of the policy and default to true if unset.
   return policy_provider_->GetDevicePolicy()
       .GetRunAutomaticCleanupOnLogin()
-      .value_or(false);
+      .value_or(true);
 }
 
 bool HomeDirs::SetLockedToSingleUser() const {
