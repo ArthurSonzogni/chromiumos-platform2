@@ -1147,7 +1147,7 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
                                      subsystem_id)) {
       return true;
     }
-    LOG(WARNING) << "No vendor ID found";
+    LOG(WARNING) << info->name << " no vendor ID found";
     return false;
   }
   bool ret = true;
