@@ -24,9 +24,9 @@ DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean fw_errors_fatal ${FLAGS_TRUE} \
                "Abort on firmware errors (subset of --errors_fatal)"
-DEFINE_boolean premature_wake_fatal ${FLAGS_FALSE} \
+DEFINE_boolean premature_wake_fatal ${FLAGS_TRUE} \
                "Abort on any premature wakes from suspend"
-DEFINE_boolean late_wake_fatal ${FLAGS_FALSE} \
+DEFINE_boolean late_wake_fatal ${FLAGS_TRUE} \
                "Abort on any late wakes from suspend"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 DEFINE_boolean pm_print_times ${FLAGS_TRUE} \
