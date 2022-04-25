@@ -116,8 +116,25 @@ brillo::ErrorPtr* /*error*/,
                void({{makeSignalCallbackType .Args | nindent 20 | trimLeft " \n"}} /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
 {{- end}}
-
-{{- /* TODO(crbug.com/983008): add mock properties generation. */}}
+{{- range .Properties}}
+{{- $name := makeVariableName .Name -}}
+{{- $type := makeProxyInArgTypeProxy . }}
+  MOCK_CONST_METHOD0({{$name}}, {{$type}}());
+{{- if eq .Access "readwrite"}}
+  MOCK_METHOD2(set_{{$name}}, void({{$type}}, base::OnceCallback<bool>));
+{{- end}}
+{{- end}}
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+{{- if .Properties}}
+{{- if $.ObjectManagerName }}
+  MOCK_METHOD1(SetPropertyChangedCallback,
+               void(const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>&));
+{{- else}}
+  MOCK_METHOD1(InitializeProperties,
+               void(const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>&));
+{{- end}}
+{{- end}}
 };
 {{range extractNameSpaces .Name | reverse -}}
 }  // namespace {{.}}

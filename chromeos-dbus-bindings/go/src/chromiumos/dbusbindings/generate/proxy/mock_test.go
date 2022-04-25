@@ -208,6 +208,11 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
                void(const base::RepeatingCallback<void(const YetAnotherProto&,
                                                        const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+  MOCK_CONST_METHOD0(capabilities, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD1(SetPropertyChangedCallback,
+               void(const base::RepeatingCallback<void(InterfaceProxyInterface*, const std::string&)>&));
 };
 }  // namespace wpa_supplicant1
 }  // namespace w1
@@ -231,6 +236,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
 
 
@@ -290,6 +297,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
 
 
@@ -341,6 +350,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
 
 
@@ -645,6 +656,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
                            int /*timeout_ms*/) override {
     LOG(WARNING) << "MethodArity8_2Async(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
   }
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
 
 
@@ -748,6 +761,156 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
                void(const base::RepeatingCallback<void(const std::vector<uint8_t>&,
                                                        int32_t)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+};
+
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateMockProxiesWithProperties(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "EmptyInterface",
+		Properties: []introspect.Property{
+			{
+				Name:      "ReadonlyProperty",
+				Type:      "a{sv}",
+				Access:    "read",
+				DocString: "\n        property doc\n      ",
+			},
+			{
+				Name:      "WritableProperty",
+				Type:      "a{sv}",
+				Access:    "readwrite",
+				DocString: "\n        property doc\n      ",
+			},
+		},
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{}
+	out := new(bytes.Buffer)
+	if err := GenerateMock(introspections, out, "/tmp/mock.h", "../proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interface mock proxies for:
+//  - EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#include <string>
+#include <vector>
+
+#include <base/callback_forward.h>
+#include <base/logging.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <gmock/gmock.h>
+
+#include "../proxy.h"
+
+
+
+// Mock object for EmptyInterfaceProxyInterface.
+class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxyMock() = default;
+  EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
+  EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
+
+  MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
+  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<bool>));
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD1(InitializeProperties,
+               void(const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>&));
+};
+
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateMockProxiesWithPropertiesAndObjectManager(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "EmptyInterface",
+		Properties: []introspect.Property{
+			{
+				Name:      "ReadonlyProperty",
+				Type:      "a{sv}",
+				Access:    "read",
+				DocString: "\n        property doc\n      ",
+			},
+			{
+				Name:      "WritableProperty",
+				Type:      "a{sv}",
+				Access:    "readwrite",
+				DocString: "\n        property doc\n      ",
+			},
+		},
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{
+		ObjectManager: serviceconfig.ObjectManagerConfig{
+			Name: "test.ObjectManager",
+		},
+	}
+	out := new(bytes.Buffer)
+	if err := GenerateMock(introspections, out, "/tmp/mock.h", "../proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interface mock proxies for:
+//  - EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
+#include <string>
+#include <vector>
+
+#include <base/callback_forward.h>
+#include <base/logging.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <gmock/gmock.h>
+
+#include "../proxy.h"
+
+
+
+// Mock object for EmptyInterfaceProxyInterface.
+class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
+ public:
+  EmptyInterfaceProxyMock() = default;
+  EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
+  EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
+
+  MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
+  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<bool>));
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD1(SetPropertyChangedCallback,
+               void(const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>&));
 };
 
 
