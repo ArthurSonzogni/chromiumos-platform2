@@ -46,7 +46,7 @@ enum Code : int32_t {
 };
 }  // namespace error
 
-class WARN_UNUSED_RESULT Status {
+class Status {
  public:
   // Creates a "successful" status.
   Status();

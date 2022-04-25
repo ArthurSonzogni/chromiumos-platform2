@@ -275,8 +275,7 @@ TEST(StatusOr, TestBinding) {
 
 TEST(StatusOr, TestAbort) {
   StatusOr<int> thing1(Status(error::UNKNOWN, "Unknown"));
-  int v1;
-  ALLOW_UNUSED_LOCAL(v1);
+  [[maybe_unused]] int v1;
   EXPECT_DEATH_IF_SUPPORTED(v1 = thing1.ValueOrDie(), "");
 
   StatusOr<std::unique_ptr<int>> thing2(Status(error::UNKNOWN, "Unknown"));
