@@ -101,7 +101,7 @@ std::unique_ptr<DeviceId> DeviceId::CreateFromSysfs(
   std::string bus_type = subsystem.BaseName().value();
   if (bus_type == "pci") {
     auto dev = ReadDeviceId(DeviceId::BusType::kPci, syspath.Append("vendor"),
-                            syspath.Append("product"));
+                            syspath.Append("device"));
 
     std::string is_external;
     if (base::ReadFileToString(syspath.Append(kExternalAttribute),

@@ -196,7 +196,7 @@ TEST_F(DeviceIdFromSysfsTest, UnknownSubsystem) {
 TEST_F(DeviceIdFromSysfsTest, PciDevice) {
   CreateDeviceSysfs(kDeviceName1, kPciBusName);
   CreateDeviceSysfsFile(kDeviceName1, "vendor", "0x97ba");
-  CreateDeviceSysfsFile(kDeviceName1, "product", "0x6012");
+  CreateDeviceSysfsFile(kDeviceName1, "device", "0x6012");
   ExpectDeviceId(kDeviceName1, {DeviceId::BusType::kPci, 0x97ba, 0x6012});
 }
 
