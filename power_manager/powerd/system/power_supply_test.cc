@@ -265,7 +265,7 @@ class PowerSupplyTest : public ::testing::Test {
 
   // Refreshes and updates |status|. Returns false if the refresh failed (but
   // still copies |power_supply_|'s current status to |status|).
-  bool UpdateStatus(PowerStatus* status) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool UpdateStatus(PowerStatus* status) {
     CHECK(status);
     const bool success = power_supply_->RefreshImmediately();
     *status = power_supply_->GetPowerStatus();
@@ -280,7 +280,7 @@ class PowerSupplyTest : public ::testing::Test {
 
   // Makes a SetPowerSource D-Bus method call and returns true if the call was
   // successful or false if it failed.
-  bool CallSetPowerSource(const std::string& id) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool CallSetPowerSource(const std::string& id) {
     dbus::MethodCall method_call(kPowerManagerInterface, kSetPowerSourceMethod);
     dbus::MessageWriter(&method_call).AppendString(id);
     std::unique_ptr<dbus::Response> response =

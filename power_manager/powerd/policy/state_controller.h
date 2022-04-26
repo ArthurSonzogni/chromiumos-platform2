@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/compiler_specific.h>
 #include <base/files/file_path_watcher.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
@@ -128,11 +127,11 @@ class StateController : public PrefsObserver {
 
     // Runs StateController::HandleInitialStateTimeout(). Returns false if the
     // timer wasn't running.
-    bool TriggerInitialStateTimeout() WARN_UNUSED_RESULT;
+    [[nodiscard]] bool TriggerInitialStateTimeout();
 
     // Runs StateController::HandleWaitForExternalDisplayTimeout(). Returns
     // false if the timer wasn't running.
-    bool TriggerWaitForExternalDisplayTimeout() WARN_UNUSED_RESULT;
+    [[nodiscard]] bool TriggerWaitForExternalDisplayTimeout();
 
     // Runs StateController::HandleCrashBootCollectTimeout(). Returns
     // false if the timer wasn't running.

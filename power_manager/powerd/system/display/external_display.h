@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -193,7 +192,7 @@ class ExternalDisplay {
 
     // If |display_|'s |timer_| is running, stops it, executes UpdateState(),
     // and returns true. Otherwise, returns false.
-    bool TriggerTimeout() WARN_UNUSED_RESULT;
+    [[nodiscard]] bool TriggerTimeout();
 
    private:
     ExternalDisplay* display_;  // weak pointer

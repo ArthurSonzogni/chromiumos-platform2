@@ -10,7 +10,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/check.h>
-#include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/time/time.h>
@@ -84,8 +83,8 @@ class AsyncFileReaderTest : public ::testing::Test {
   // Creates a file containing |file_size| bytes and uses AsyncFileReader to
   // read from it, starting with an |initial_read_size|-byte chunk. Returns
   // false if initialization failed or if the reader timed out.
-  bool WriteAndReadData(size_t file_size,
-                        size_t initial_read_size) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool WriteAndReadData(size_t file_size,
+                                      size_t initial_read_size) {
     data_.clear();
     got_error_ = false;
 

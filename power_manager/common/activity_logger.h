@@ -34,8 +34,8 @@ class BaseActivityLogger {
 
   // Triggers timers and returns true if they're running. Returns false if they
   // aren't.
-  bool TriggerStoppedTimerForTest() WARN_UNUSED_RESULT;
-  bool TriggerOngoingTimerForTest() WARN_UNUSED_RESULT;
+  [[nodiscard]] bool TriggerStoppedTimerForTest();
+  [[nodiscard]] bool TriggerOngoingTimerForTest();
 
  protected:
   BaseActivityLogger(const std::string& activity_name,

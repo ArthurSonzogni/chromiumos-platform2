@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/compiler_specific.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
@@ -56,8 +55,8 @@ class KeyboardBacklightController : public BacklightController,
 
     // Triggers |turn_off_timer_| or |video_timer_| and returns true. Returns
     // false if the timer wasn't running.
-    bool TriggerTurnOffTimeout() WARN_UNUSED_RESULT;
-    bool TriggerVideoTimeout() WARN_UNUSED_RESULT;
+    [[nodiscard]] bool TriggerTurnOffTimeout();
+    [[nodiscard]] bool TriggerVideoTimeout();
 
    private:
     KeyboardBacklightController* controller_;  // weak

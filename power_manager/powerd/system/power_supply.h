@@ -286,7 +286,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
     // If |poll_timer_| was running, calls OnPollTimeout() and returns true.
     // Returns false otherwise.
-    bool TriggerPollTimeout() WARN_UNUSED_RESULT;
+    [[nodiscard]] bool TriggerPollTimeout();
 
    private:
     PowerSupply* power_supply_;  // weak

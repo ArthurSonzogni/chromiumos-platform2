@@ -125,8 +125,8 @@ class ArcTimerManagerTest : public ::testing::Test {
   ArcTimerManagerTest& operator=(const ArcTimerManagerTest&) = delete;
 
  protected:
-  bool CreateTimers(const std::string& tag,
-                    const std::vector<clockid_t>& clocks) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool CreateTimers(const std::string& tag,
+                                  const std::vector<clockid_t>& clocks) {
     dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                  power_manager::kCreateArcTimersMethod);
     dbus::MessageWriter writer(&method_call);
@@ -175,9 +175,9 @@ class ArcTimerManagerTest : public ::testing::Test {
     return true;
   }
 
-  bool StartTimer(const std::string& tag,
-                  clockid_t clock_id,
-                  base::TimeTicks absolute_expiration_time) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool StartTimer(const std::string& tag,
+                                clockid_t clock_id,
+                                base::TimeTicks absolute_expiration_time) {
     dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                  power_manager::kStartArcTimerMethod);
 
@@ -209,8 +209,8 @@ class ArcTimerManagerTest : public ::testing::Test {
 
   // Returns true iff the read descriptor of a timer is signalled. If the
   // signalling is incorrect returns false. Blocks otherwise.
-  bool WaitForExpiration(const std::string& tag,
-                         clockid_t clock_id) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool WaitForExpiration(const std::string& tag,
+                                       clockid_t clock_id) {
     if (arc_timer_stores_.find(tag) == arc_timer_stores_.end()) {
       LOG(ERROR) << "Tag=" << tag << " not created";
       return false;
@@ -264,7 +264,7 @@ class ArcTimerManagerTest : public ::testing::Test {
     return true;
   }
 
-  bool DeleteTimers(const std::string& tag) WARN_UNUSED_RESULT {
+  [[nodiscard]] bool DeleteTimers(const std::string& tag) {
     dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                  power_manager::kDeleteArcTimersMethod);
     dbus::MessageWriter writer(&method_call);

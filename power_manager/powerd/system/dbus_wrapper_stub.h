@@ -64,8 +64,7 @@ class DBusWrapperStub : public DBusWrapperInterface {
   void ClearSentSignals();
 
   // Returns true if |method_name| has been exported.
-  bool IsMethodExported(const std::string& method_name) const
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] bool IsMethodExported(const std::string& method_name) const;
 
   // Invokes a method previously exported with ExportedMethod().
   void CallExportedMethod(dbus::MethodCall* method_call,

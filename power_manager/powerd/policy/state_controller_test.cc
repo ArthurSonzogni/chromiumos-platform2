@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/compiler_specific.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
@@ -292,7 +291,7 @@ class StateControllerTest : public testing::Test {
   // Checks that |controller_|'s action timeout is scheduled for |now_| and then
   // runs it.  Returns false if the timeout isn't scheduled or is scheduled for
   // a different time.
-  bool TriggerTimeout() WARN_UNUSED_RESULT {
+  [[nodiscard]] bool TriggerTimeout() {
     base::TimeTicks timeout_time = test_api_.action_timer_time();
     if (timeout_time == base::TimeTicks()) {
       LOG(ERROR) << "Ignoring request to trigger unscheduled timeout at "
@@ -310,8 +309,7 @@ class StateControllerTest : public testing::Test {
   }
 
   // Advances |now_| by |interval| and calls TriggerTimeout().
-  bool AdvanceTimeAndTriggerTimeout(base::TimeDelta interval)
-      WARN_UNUSED_RESULT {
+  [[nodiscard]] bool AdvanceTimeAndTriggerTimeout(base::TimeDelta interval) {
     AdvanceTime(interval);
     return TriggerTimeout();
   }
@@ -328,8 +326,7 @@ class StateControllerTest : public testing::Test {
     last_step_delay_ = next_delay;
   }
 
-  bool StepTimeAndTriggerTimeout(base::TimeDelta next_delay)
-      WARN_UNUSED_RESULT {
+  [[nodiscard]] bool StepTimeAndTriggerTimeout(base::TimeDelta next_delay) {
     StepTime(next_delay);
     return TriggerTimeout();
   }
@@ -339,7 +336,7 @@ class StateControllerTest : public testing::Test {
 
   // Steps through time to trigger the default AC screen dim, off, and
   // suspend timeouts.
-  bool TriggerDefaultAcTimeouts() WARN_UNUSED_RESULT {
+  [[nodiscard]] bool TriggerDefaultAcTimeouts() {
     ResetLastStepDelay();
     return StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_) &&
            StepTimeAndTriggerTimeout(default_ac_screen_off_delay_) &&
