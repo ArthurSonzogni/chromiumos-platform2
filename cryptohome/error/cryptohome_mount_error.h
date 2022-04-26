@@ -24,22 +24,88 @@ namespace error {
 // still be compatible with CryptohomeError.
 class CryptohomeMountError : public CryptohomeError {
  public:
-  using MakeStatusTrait =
-      hwsec_foundation::status::DefaultMakeStatus<CryptohomeMountError>;
+  struct MakeStatusTrait {
+    // |MountErrorUnset| represents an intermediate state, when we create an
+    // error without fully specifying that error. That allows to require Wrap to
+    // be called, or otherwise a type mismatch error will be raised.
+    class MountErrorUnset {
+     public:
+      MountErrorUnset(
+          const ErrorLocationPair& loc,
+          const std::set<CryptohomeError::Action>& actions,
+          const std::optional<user_data_auth::CryptohomeErrorCode> ec);
+
+      hwsec_foundation::status::StatusChain<CryptohomeMountError> Wrap(
+          hwsec_foundation::status::StatusChain<CryptohomeMountError>
+              status) &&;
+
+     private:
+      const ErrorLocationPair loc_;
+      const std::set<CryptohomeError::Action> actions_;
+      const std::optional<user_data_auth::CryptohomeErrorCode> ec_;
+    };
+
+    // |ActionsUnset| represents an intermediate state, when we create an error
+    // without fully specifying that error. This is similar to |MountErrorUnset|
+    // but MountError is supplied instead of Action. This is needed so that
+    // we've more freedom in the type accepted in Wrap.
+    class ActionsUnset {
+     public:
+      ActionsUnset(const ErrorLocationPair& loc,
+                   const MountError mount_error,
+                   const std::optional<user_data_auth::CryptohomeErrorCode> ec);
+
+      hwsec_foundation::status::StatusChain<CryptohomeMountError> Wrap(
+          hwsec_foundation::status::StatusChain<CryptohomeError> status) &&;
+
+     private:
+      const ErrorLocationPair loc_;
+      const MountError mount_error_;
+      const std::optional<user_data_auth::CryptohomeErrorCode> ec_;
+    };
+
+    // Creates a stub which has to wrap another |CryptohomeMountError| to
+    // become a valid status chain.
+    MountErrorUnset operator()(
+        const ErrorLocationPair& loc,
+        const std::set<CryptohomeError::Action>& actions,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
+
+    // Creates a stub which has to wrap another |CryptohomeMountError| to
+    // become a valid status chain. This variant is without ErrorAction and
+    // MountError.
+    MountErrorUnset operator()(
+        const ErrorLocationPair& loc,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
+
+    // Creates a stub which has to wrap another |CryptohomeMountError| to
+    // become a valid status chain. This variant is without ErrorAction.
+    ActionsUnset operator()(
+        const ErrorLocationPair& loc,
+        const MountError mount_err,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
+
+    // Create an error directly.
+    hwsec_foundation::status::StatusChain<CryptohomeMountError> operator()(
+        const ErrorLocationPair& loc,
+        const std::set<CryptohomeError::Action>& actions,
+        const MountError mount_err,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
+  };
 
   // The copyable/movable aspect of this class depends on the base
   // hwsec_foundation::status::Error class. See that class for more info.
 
+  // If the legacy error code is not supplied, it is automatically converted.
   CryptohomeMountError(
       const ErrorLocationPair& loc,
       const std::set<Action>& actions,
       const MountError mount_err,
       const std::optional<user_data_auth::CryptohomeErrorCode> ec);
-
-  // If the legacy error code is not supplied, it is automatically converted.
-  CryptohomeMountError(const ErrorLocationPair& loc,
-                       const std::set<Action>& actions,
-                       const MountError mount_err);
 
   MountError mount_error() const { return mount_error_; }
 

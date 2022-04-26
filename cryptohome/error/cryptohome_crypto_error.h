@@ -15,7 +15,7 @@
 #include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/cryptohome_mount_error.h"
 
 namespace cryptohome {
 
@@ -24,7 +24,7 @@ namespace error {
 // This class is a CryptohomeError that holds an extra CryptoError.
 // It is designed for situations that needs the content of the CryptoError and
 // still be compatible with CryptohomeError.
-class CryptohomeCryptoError : public CryptohomeError {
+class CryptohomeCryptoError : public CryptohomeMountError {
  public:
   struct MakeStatusTrait {
     // |Unactioned| represents an intermediate state, when we create an error

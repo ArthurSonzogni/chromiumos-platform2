@@ -66,13 +66,14 @@ CryptohomeCryptoError::CryptohomeCryptoError(
     const std::set<Action>& actions,
     const CryptoError crypto_error,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
-    : CryptohomeError(std::move(loc),
-                      actions,
-                      ec.has_value()
-                          ? ec
-                          : std::optional<user_data_auth::CryptohomeErrorCode>(
-                                MountErrorToCryptohomeError(
-                                    CryptoErrorToMountError(crypto_error)))),
+    : CryptohomeMountError(
+          std::move(loc),
+          actions,
+          CryptoErrorToMountError(crypto_error),
+          ec.has_value() ? ec
+                         : std::optional<user_data_auth::CryptohomeErrorCode>(
+                               MountErrorToCryptohomeError(
+                                   CryptoErrorToMountError(crypto_error)))),
       crypto_error_(crypto_error) {}
 
 }  // namespace error
