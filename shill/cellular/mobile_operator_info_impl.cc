@@ -38,7 +38,7 @@ const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =
     "/usr/share/shill/serviceproviders.pbf";
 // The exclusive-override db can be used to replace the default modb.
 const char MobileOperatorInfoImpl::kExclusiveOverrideDatabasePath[] =
-    "/usr/share/shill/serviceproviders-exclusive-override.pbf";
+    "/var/cache/shill/serviceproviders-exclusive-override.pbf";
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 
 namespace {

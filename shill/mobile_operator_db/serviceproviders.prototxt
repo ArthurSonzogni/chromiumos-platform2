@@ -9,7 +9,7 @@
 #
 # It is included by shill but the settings herein may be overridden by
 # installing a serviceproviders-exclusive-override.pbf in
-# (currently /usr/share/shill).
+# (currently /var/cache/shill).
 #
 # Keep the operators sorted: Sort by country first. Within a country, sort by
 # name. International MVNOs and test networks should be added at the bottom.
