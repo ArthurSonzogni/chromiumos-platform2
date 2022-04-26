@@ -50,7 +50,8 @@ bool CreateUnixDomainSocket(base::ScopedFD* out_fd) {
     return false;
   }
 
-  fd.swap(*out_fd);
+  if (fd.get() != out_fd->get())
+    *out_fd = std::move(fd);
 
   return true;
 }
