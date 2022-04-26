@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <base/compiler_specific.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 
@@ -27,9 +26,8 @@ class BRILLO_EXPORT Tpm {
   //   sealed_value - The sealed value.
   //
   // Returns true on success.
-  virtual bool SealToPCR0(const brillo::SecureBlob& value,
-                          brillo::SecureBlob* sealed_value)
-      WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual bool SealToPCR0(const brillo::SecureBlob& value,
+                                        brillo::SecureBlob* sealed_value) = 0;
 
   // Unseals a secret previously sealed with the SRK.
   //
@@ -38,8 +36,8 @@ class BRILLO_EXPORT Tpm {
   //   value - The original value.
   //
   // Returns true on success.
-  virtual bool Unseal(const brillo::SecureBlob& sealed_value,
-                      brillo::SecureBlob* value) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual bool Unseal(const brillo::SecureBlob& sealed_value,
+                                    brillo::SecureBlob* value) = 0;
 
   // Gets the attributes of an index in the NVRAM.
   //

@@ -46,7 +46,7 @@ class Tpm2Impl : public Tpm {
  private:
   // If already initialized this returns true, otherwise attempts to
   // initialize and returns whether initialization was successful.
-  bool EnsureInitialized() WARN_UNUSED_RESULT;
+  [[nodiscard]] bool EnsureInitialized();
   bool CreatePcr0PolicyDigest(std::string* policy_digest);
   bool CreateHmacSession(std::unique_ptr<trunks::HmacSession>* hmac_session);
   bool CreatePolicySessionForPCR0(
