@@ -124,6 +124,7 @@ constexpr base::TimeDelta kShutdownLockfileRetryInterval = base::Seconds(5);
 constexpr base::TimeDelta kSessionManagerDBusTimeout = base::Seconds(3);
 constexpr base::TimeDelta kTpmManagerdDBusTimeout = base::Minutes(2);
 constexpr base::TimeDelta kResourceManagerDBusTimeout = base::Seconds(3);
+constexpr base::TimeDelta kPrivacyScreenServiceDBusTimeoutMs = base::Seconds(3);
 
 // Interval between log messages while user, audio, or video activity is
 // ongoing, in seconds.
@@ -180,6 +181,22 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
     dbus::MethodCall* method_call, std::string message) {
   return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
       method_call, DBUS_ERROR_INVALID_ARGS, message));
+}
+
+std::string PrivacyScreenStateToString(
+    const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state) {
+  switch (state) {
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_DISABLED:
+      return "disabled";
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_ENABLED:
+      return "enabled";
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_NOT_SUPPORTED:
+      return "not supported";
+    default:
+      NOTREACHED() << "Unhandled privacy screen state "
+                   << static_cast<int>(state);
+      return base::StringPrintf("unknown (%d)", static_cast<int>(state));
+  }
 }
 
 }  // namespace
@@ -1058,6 +1075,10 @@ void Daemon::OnDBusNameOwnerChanged(const std::string& name,
   } else if (name == chromeos::kDisplayServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     HandleDisplayServiceAvailableOrRestarted(true);
+  } else if (name == privacy_screen::kPrivacyScreenServiceName &&
+             !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
+    HandlePrivacyScreenServiceAvailableOrRestarted(true);
   }
   suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
@@ -1118,6 +1139,21 @@ void Daemon::InitDBus() {
       session_manager_dbus_proxy_, login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
       base::BindRepeating(&Daemon::HandleSessionStateChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+
+  privacy_screen_service_dbus_proxy_ =
+      dbus_wrapper_->GetObjectProxy(privacy_screen::kPrivacyScreenServiceName,
+                                    privacy_screen::kPrivacyScreenServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      privacy_screen_service_dbus_proxy_,
+      base::BindRepeating(
+          &Daemon::HandlePrivacyScreenServiceAvailableOrRestarted,
+          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->RegisterForSignal(
+      privacy_screen_service_dbus_proxy_,
+      privacy_screen::kPrivacyScreenServiceInterface,
+      privacy_screen::kPrivacyScreenServicePrivacyScreenSettingChangedSignal,
+      base::BindRepeating(&Daemon::HandlePrivacyScreenSettingChangedSignal,
                           weak_ptr_factory_.GetWeakPtr()));
 
   // Export Daemon's D-Bus method calls.
@@ -1221,6 +1257,22 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
   OnSessionStateChange(state);
 }
 
+void Daemon::HandlePrivacyScreenServiceAvailableOrRestarted(bool available) {
+  if (!available) {
+    LOG(ERROR)
+        << "Failed waiting for privacy screen service to become available";
+    return;
+  }
+  dbus::MethodCall method_call(
+      privacy_screen::kPrivacyScreenServiceInterface,
+      privacy_screen::kPrivacyScreenServiceGetPrivacyScreenSettingMethod);
+  dbus_wrapper_->CallMethodAsync(
+      privacy_screen_service_dbus_proxy_, &method_call,
+      kPrivacyScreenServiceDBusTimeoutMs,
+      base::BindRepeating(&Daemon::HandleGetPrivacyScreenSettingResponse,
+                          weak_ptr_factory_.GetWeakPtr()));
+}
+
 void Daemon::HandleTpmManagerdAvailable(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for tpm_manager to become available";
@@ -1244,6 +1296,39 @@ void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
   } else {
     LOG(ERROR) << "Unable to read " << login_manager::kSessionStateChangedSignal
                << " args";
+  }
+}
+
+void Daemon::HandlePrivacyScreenSettingChangedSignal(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  privacy_screen::PrivacyScreenSetting setting;
+  if (reader.PopArrayOfBytesAsProto(&setting)) {
+    OnPrivacyScreenStateChange(setting.state());
+  } else {
+    LOG(ERROR) << "Unable to read "
+               << privacy_screen::
+                      kPrivacyScreenServicePrivacyScreenSettingChangedSignal
+               << " args";
+  }
+}
+
+void Daemon::HandleGetPrivacyScreenSettingResponse(dbus::Response* response) {
+  if (!response) {
+    LOG(ERROR)
+        << "D-Bus method call to "
+        << privacy_screen::kPrivacyScreenServiceGetPrivacyScreenSettingMethod
+        << " failed";
+    return;
+  }
+  dbus::MessageReader reader(response);
+  privacy_screen::PrivacyScreenSetting setting;
+  if (reader.PopArrayOfBytesAsProto(&setting)) {
+    OnPrivacyScreenStateChange(setting.state());
+  } else {
+    LOG(ERROR)
+        << "Unable to read "
+        << privacy_screen::kPrivacyScreenServiceGetPrivacyScreenSettingMethod
+        << " args";
   }
 }
 
@@ -1552,6 +1637,16 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
   state_controller_->HandleSessionStateChange(state);
   for (auto controller : all_backlight_controllers_)
     controller->HandleSessionStateChange(state);
+}
+
+void Daemon::OnPrivacyScreenStateChange(
+    const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state) {
+  if (state == privacy_screen_state_)
+    return;
+
+  VLOG(1) << "Privacy screen state changed to "
+          << PrivacyScreenStateToString(state);
+  privacy_screen_state_ = state;
 }
 
 void Daemon::RequestTpmStatus() {

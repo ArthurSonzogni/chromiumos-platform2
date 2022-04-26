@@ -39,6 +39,7 @@
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
+#include "privacy_screen/proto_bindings/privacy_screen.pb.h"
 
 namespace dbus {
 class ObjectProxy;
@@ -253,6 +254,7 @@ class Daemon :
   // Handles various D-Bus services becoming available or restarting.
   void HandleDisplayServiceAvailableOrRestarted(bool available);
   void HandleSessionManagerAvailableOrRestarted(bool available);
+  void HandlePrivacyScreenServiceAvailableOrRestarted(bool available);
 
   // Handles other D-Bus services just becoming initially available (i.e.
   // restarts are ignored).
@@ -260,6 +262,8 @@ class Daemon :
 
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
+  void HandlePrivacyScreenSettingChangedSignal(dbus::Signal* signal);
+  void HandleGetPrivacyScreenSettingResponse(dbus::Response* response);
   void HandleGetDictionaryAttackInfoSuccess(
       const tpm_manager::GetDictionaryAttackInfoReply& da_reply);
   void HandleGetDictionaryAttackInfoFailed(brillo::Error* err);
@@ -296,6 +300,11 @@ class Daemon :
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
 
+  // Handles information from the privacy screen service about the privacy
+  // screen state.
+  void OnPrivacyScreenStateChange(
+      const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state);
+
   // Asynchronously asks |tpm_manager_proxy_| (which must be non-null) to
   // return the TPM status, which is handled by HandleGetTpmStatusResponse().
   void RequestTpmStatus();
@@ -330,6 +339,8 @@ class Daemon :
   dbus::ObjectProxy* session_manager_dbus_proxy_ = nullptr;
   // The |resource_manager_dbus_proxy_| is owned by |dbus_wrapper_|
   dbus::ObjectProxy* resource_manager_dbus_proxy_ = nullptr;
+  // The |privacy_screen_service_dbus_proxy_| is owned by |dbus_wrapper_|
+  dbus::ObjectProxy* privacy_screen_service_dbus_proxy_ = nullptr;
   // DBus proxy for contacting tpm_managerd. May be null if the TPM status is
   // not needed.
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
@@ -465,6 +476,11 @@ class Daemon :
 
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_ = SessionState::STOPPED;
+
+  // Last privacy screen state that we have been informed of.
+  privacy_screen::PrivacyScreenSetting_PrivacyScreenState
+      privacy_screen_state_ =
+          privacy_screen::PrivacyScreenSetting_PrivacyScreenState_NOT_SUPPORTED;
 
   // Set to true if powerd touched a file for crash-reporter before
   // suspending. If true, the file will be unlinked after resuming.
