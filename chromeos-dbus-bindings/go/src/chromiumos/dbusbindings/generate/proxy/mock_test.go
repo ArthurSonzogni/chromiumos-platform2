@@ -218,6 +218,7 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
 }  // namespace w1
 }  // namespace fi
 
+
 // Abstract interface proxy for EmptyInterface.
 class EmptyInterfaceProxyInterface {
  public:
@@ -239,7 +240,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
@@ -301,7 +301,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
 
-
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
@@ -342,7 +341,6 @@ func TestGenerateMockProxiesWithProxyPath(t *testing.T) {
 #include "../proxy.h"
 
 
-
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
  public:
@@ -353,7 +351,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
@@ -494,7 +491,6 @@ func TestGenerateMockProxiesWithMethods(t *testing.T) {
 #include <gmock/gmock.h>
 
 #include "../proxy.h"
-
 
 
 // Mock object for EmptyInterfaceProxyInterface.
@@ -660,7 +656,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
 
-
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
@@ -733,7 +728,6 @@ func TestGenerateMockProxiesWithSignals(t *testing.T) {
 #include "../proxy.h"
 
 
-
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
  public:
@@ -764,7 +758,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 };
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
@@ -820,7 +813,6 @@ func TestGenerateMockProxiesWithProperties(t *testing.T) {
 #include "../proxy.h"
 
 
-
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
  public:
@@ -836,7 +828,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_METHOD1(InitializeProperties,
                void(const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>&));
 };
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
@@ -896,7 +887,6 @@ func TestGenerateMockProxiesWithPropertiesAndObjectManager(t *testing.T) {
 #include "../proxy.h"
 
 
-
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
  public:
@@ -912,7 +902,6 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_METHOD1(SetPropertyChangedCallback,
                void(const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>&));
 };
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `

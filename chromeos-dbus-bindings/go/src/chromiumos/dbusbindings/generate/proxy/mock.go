@@ -33,12 +33,11 @@ const mockTemplateText = `// Automatic generation of D-Bus interface mock proxie
 
 #include "{{$.ProxyFilePath}}"
 {{- end}}
-
 {{range $introspect := .Introspects}}{{range $itf := .Interfaces -}}
 {{- $itfName := makeProxyInterfaceName .Name -}}
 
 {{- if (not $.ProxyFilePath)}}
-{{- template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
+{{template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
 {{- end}}
 {{range extractNameSpaces .Name -}}
 namespace {{.}} {
@@ -141,7 +140,6 @@ brillo::ErrorPtr* /*error*/,
 {{end}}
 {{- end}}
 {{- end}}
-
 #endif  // {{.HeaderGuard}}
 `
 

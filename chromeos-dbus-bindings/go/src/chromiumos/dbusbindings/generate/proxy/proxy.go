@@ -76,8 +76,7 @@ const (
 #include <dbus/object_manager.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-
-{{if .ObjectManagerName -}}
+{{if .ObjectManagerName}}
 {{range extractNameSpaces .ObjectManagerName -}}
 namespace {{.}} {
 {{end -}}
@@ -85,9 +84,9 @@ class {{makeProxyName .ObjectManagerName}};
 {{range extractNameSpaces .ObjectManagerName | reverse -}}
 }  // namespace {{.}}
 {{end}}
-{{end -}}
-{{range $introspect := .Introspects}}{{range $itf := .Interfaces -}}
-{{- $itfName := makeProxyInterfaceName .Name -}}
+{{- end}}
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces -}}
+{{- $itfName := makeProxyInterfaceName .Name}}
 {{template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
 {{range extractNameSpaces .Name -}}
 namespace {{.}} {
@@ -97,7 +96,7 @@ namespace {{.}} {
 {{- $proxyName := makeProxyName .Name -}}
 class {{$proxyName}} final : public {{$itfName}} {
  public:
-{{- if or $.ObjectManagerName .Properties }}
+{{- if (or $.ObjectManagerName .Properties) }}
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -116,14 +115,14 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- end}}
 
   };
-{{- end}}
+{{end}}
 
 {{- /* TODO(crbug.com/983008): Simplify the format into Chromium style. */ -}}
 {{- if and $.ServiceName $introspect.Name (or (not $.ObjectManagerName) (not .Properties))}}
   {{$proxyName}}(const scoped_refptr<dbus::Bus>& bus) :
       bus_{bus},
       dbus_object_proxy_{
-           bus_->GetObjectProxy(service_name_, object_path_)} {
+          bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 {{- else}}
   {{$proxyName}}(
@@ -306,7 +305,7 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{range extractNameSpaces .Name | reverse -}}
 }  // namespace {{.}}
 {{end}}
-{{end}}{{end -}}
+{{- end}}{{end}}
 {{- if .ObjectManagerName }}
 {{- range extractNameSpaces .ObjectManagerName}}
 namespace {{.}} {

@@ -210,6 +210,7 @@ class InterfaceProxy final : public InterfaceProxyInterface {
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
 
   };
+
   InterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -373,6 +374,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 
   };
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -409,7 +411,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   dbus::ObjectProxy* dbus_object_proxy_;
 
 };
-
 
 
 namespace foo {
@@ -695,7 +696,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
-
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -802,7 +802,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
-
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -907,7 +906,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
@@ -1347,7 +1345,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
-
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -1520,7 +1517,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
-
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -1629,6 +1625,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     brillo::dbus_utils::Property<brillo::VariantDictionary> writable_property;
 
   };
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -1692,7 +1689,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
-
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
@@ -1782,6 +1778,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 
   };
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -1820,7 +1817,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
-
 
 namespace test {
 
@@ -2022,6 +2018,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 
   };
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const dbus::ObjectPath& object_path) :
@@ -2058,7 +2055,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
-
 
 namespace test {
 
@@ -2272,6 +2268,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
 
   };
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -2332,7 +2329,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
-
 
 namespace test {
 
