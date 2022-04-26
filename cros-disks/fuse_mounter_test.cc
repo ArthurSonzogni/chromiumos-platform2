@@ -257,7 +257,7 @@ class FUSEMounterTest : public ::testing::Test {
 
 TEST_F(FUSEMounterTest, MountingSucceeds) {
   EXPECT_CALL(platform_,
-              Mount("fuse:source", kMountDir, "fuse.fusefs",
+              Mount("source", kMountDir, "fuse.fusefs",
                     kFUSEMountFlags | MS_NOSYMFOLLOW,
                     EndsWith(",user_id=1000,group_id=1001,allow_other,default_"
                              "permissions,rootmode=40000")))
@@ -276,7 +276,7 @@ TEST_F(FUSEMounterTest, MountingSucceeds) {
   EXPECT_TRUE(mount_point);
   EXPECT_EQ(MOUNT_ERROR_IN_PROGRESS, mount_point->error());
   EXPECT_EQ(base::FilePath(kMountDir), mount_point->path());
-  EXPECT_EQ("fuse:source", mount_point->source());
+  EXPECT_EQ("source", mount_point->source());
 
   // Simulate asynchronous termination of FUSE launcher process.
   EXPECT_CALL(process, WaitNonBlockingImpl).WillOnce(Return(0));

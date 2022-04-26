@@ -246,7 +246,6 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
       fuse_file.GetPlatformFile(), kChronosUID, kChronosAccessGID, S_IFDIR);
 
   std::string fuse_type = "fuse";
-  std::string source_descr = source;
   base::stat_wrapper_t statbuf = {0};
   if (platform_->Lstat(source, &statbuf) && S_ISBLK(statbuf.st_mode)) {
     // TODO(crbug.com/931500): It's possible that specifying a block size equal
@@ -259,8 +258,6 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
       fuse_mount_options.append(base::StringPrintf(",blksize=%d", blksize));
 
     fuse_type = "fuseblk";
-  } else {
-    source_descr = "fuse:" + source;
   }
 
   if (!filesystem_type_.empty()) {
@@ -279,7 +276,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
 
   std::unique_ptr<MountPoint> mount_point =
       MountPoint::Mount({.mount_path = target_path,
-                         .source = source_descr,
+                         .source = source,
                          .filesystem_type = fuse_type,
                          .flags = mount_flags,
                          .data = fuse_mount_options},
