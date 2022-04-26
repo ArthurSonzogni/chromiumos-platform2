@@ -74,6 +74,11 @@ getrandom: 1
 #   0xc05064a7 == DRM_IOCTL_MODE_GETCONNECTOR
 #   0xc01464a6 == DRM_IOCTL_MODE_GETENCODER
 #   0xc06864a1 == DRM_IOCTL_MODE_GETCRTC
+#   0xc0106441 == DRM_IOCTL_VIRTGPU_MAP
+#   0xc0106443 == DRM_IOCTL_VIRTGPU_GETPARAM
+#   0xc0186449 == DRM_IOCTL_VIRTGPU_GET_CAPS
+#   0xc0206442 == DRM_IOCTL_VIRTGPU_EXECBUFFER
+#   0xc0386444 == DRM_IOCTL_VIRTGPU_RESOURCE_CREATE
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -91,7 +96,9 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc018645c || arg1 == 0xc018646b || arg1 == 0xc018646d || \
        arg1 == 0xc020645d || arg1 == 0xc020645e || arg1 == 0xc04064a0 || \
        arg1 == 0xc04064aa || arg1 == 0xc05064a7 || arg1 == 0xc01464a6 || \
-       arg1 == 0xc06864a1 || arg1 == 0xc008646a || arg1 == 0xc0206466
+       arg1 == 0xc06864a1 || arg1 == 0xc008646a || arg1 == 0xc0206466 || \
+       arg1 == 0xc0106441 || arg1 == 0xc0106443 || arg1 == 0xc0186449 || \
+       arg1 == 0xc0206442 || arg1 == 0xc0386444
 geteuid: 1
 brk: 1
 getuid: 1
