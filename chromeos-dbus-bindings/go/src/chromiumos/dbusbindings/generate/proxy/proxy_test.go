@@ -411,6 +411,45 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 
+
+namespace foo {
+namespace bar {
+
+class ObjectManagerProxy : public dbus::ObjectManager::Interface {
+ public:
+  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
+                     const std::string& service_name)
+      : bus_{bus},
+        service_name_{service_name},
+        dbus_object_manager_{bus->GetObjectManager(
+            service_name,
+            dbus::ObjectPath{""})} {
+    dbus_object_manager_->RegisterInterface("fi.w1.wpa_supplicant1.Interface", this);
+    dbus_object_manager_->RegisterInterface("EmptyInterface", this);
+  }
+
+  ObjectManagerProxy(const ObjectManagerProxy&) = delete;
+  ObjectManagerProxy& operator=(const ObjectManagerProxy&) = delete;
+
+  ~ObjectManagerProxy() override {
+    dbus_object_manager_->UnregisterInterface("fi.w1.wpa_supplicant1.Interface");
+    dbus_object_manager_->UnregisterInterface("EmptyInterface");
+  }
+
+  dbus::ObjectManager* GetObjectManagerProxy() const {
+    return dbus_object_manager_;
+  }
+
+
+
+ private:
+
+  base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
+};
+
+}  // namespace bar
+}  // namespace foo
+
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -516,6 +555,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
+
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
@@ -623,6 +663,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
+
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -727,6 +768,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
+
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
@@ -1166,6 +1208,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
+
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -1337,6 +1380,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 };
 
 }  // namespace test
+
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
@@ -1510,6 +1554,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
 }  // namespace test
 
+
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
@@ -1633,6 +1678,200 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
 
+};
+
+}  // namespace test
+
+
+namespace test {
+
+class ObjectManagerProxy : public dbus::ObjectManager::Interface {
+ public:
+  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
+                     const std::string& service_name)
+      : bus_{bus},
+        service_name_{service_name},
+        dbus_object_manager_{bus->GetObjectManager(
+            service_name,
+            dbus::ObjectPath{""})} {
+    dbus_object_manager_->RegisterInterface("test.EmptyInterface", this);
+  }
+
+  ObjectManagerProxy(const ObjectManagerProxy&) = delete;
+  ObjectManagerProxy& operator=(const ObjectManagerProxy&) = delete;
+
+  ~ObjectManagerProxy() override {
+    dbus_object_manager_->UnregisterInterface("test.EmptyInterface");
+  }
+
+  dbus::ObjectManager* GetObjectManagerProxy() const {
+    return dbus_object_manager_;
+  }
+
+
+
+ private:
+
+  base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
+};
+
+}  // namespace test
+
+#endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+`
+
+	if diff := cmp.Diff(out.String(), want); diff != "" {
+		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestGenerateProxiesWithObjectManagerAndServiceName(t *testing.T) {
+	emptyItf := introspect.Interface{
+		Name: "test.EmptyInterface",
+	}
+
+	introspections := []introspect.Introspection{{
+		Interfaces: []introspect.Interface{emptyItf},
+	}}
+
+	sc := serviceconfig.Config{
+		ServiceName: "test.service.Name",
+		ObjectManager: &serviceconfig.ObjectManagerConfig{
+			Name: "test.ObjectManager",
+		},
+	}
+	out := new(bytes.Buffer)
+	if err := Generate(introspections, out, "/tmp/proxy.h", sc); err != nil {
+		t.Fatalf("Generate got error, want nil: %v", err)
+	}
+
+	const want = `// Automatic generation of D-Bus interfaces:
+//  - test.EmptyInterface
+#ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+#define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_manager.h>
+#include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
+
+namespace test {
+class ObjectManagerProxy;
+}  // namespace test
+
+namespace test {
+
+// Abstract interface proxy for test::EmptyInterface.
+class EmptyInterfaceProxyInterface {
+ public:
+  virtual ~EmptyInterfaceProxyInterface() = default;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+};
+
+}  // namespace test
+
+namespace test {
+
+// Interface proxy for test::EmptyInterface.
+class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
+ public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "test.EmptyInterface",
+                            callback} {
+    }
+    PropertySet(const PropertySet&) = delete;
+    PropertySet& operator=(const PropertySet&) = delete;
+
+
+  };
+  EmptyInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const dbus::ObjectPath& object_path) :
+          bus_{bus},
+          object_path_{object_path},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
+  EmptyInterfaceProxy(const EmptyInterfaceProxy&) = delete;
+  EmptyInterfaceProxy& operator=(const EmptyInterfaceProxy&) = delete;
+
+  ~EmptyInterfaceProxy() override {
+  }
+
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
+  }
+
+  const dbus::ObjectPath& GetObjectPath() const override {
+    return object_path_;
+  }
+
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  const std::string service_name_{"test.service.Name"};
+  dbus::ObjectPath object_path_;
+  dbus::ObjectProxy* dbus_object_proxy_;
+
+};
+
+}  // namespace test
+
+
+namespace test {
+
+class ObjectManagerProxy : public dbus::ObjectManager::Interface {
+ public:
+  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus)
+      : bus_{bus},
+        dbus_object_manager_{bus->GetObjectManager(
+            "test.service.Name",
+            dbus::ObjectPath{""})} {
+    dbus_object_manager_->RegisterInterface("test.EmptyInterface", this);
+  }
+
+  ObjectManagerProxy(const ObjectManagerProxy&) = delete;
+  ObjectManagerProxy& operator=(const ObjectManagerProxy&) = delete;
+
+  ~ObjectManagerProxy() override {
+    dbus_object_manager_->UnregisterInterface("test.EmptyInterface");
+  }
+
+  dbus::ObjectManager* GetObjectManagerProxy() const {
+    return dbus_object_manager_;
+  }
+
+
+
+ private:
+
+  base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
 }  // namespace test
@@ -1798,6 +2037,41 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   dbus::ObjectProxy* dbus_object_proxy_;
   friend class test::ObjectManagerProxy;
 
+};
+
+}  // namespace test
+
+
+namespace test {
+
+class ObjectManagerProxy : public dbus::ObjectManager::Interface {
+ public:
+  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
+                     const std::string& service_name)
+      : bus_{bus},
+        service_name_{service_name},
+        dbus_object_manager_{bus->GetObjectManager(
+            service_name,
+            dbus::ObjectPath{""})} {
+    dbus_object_manager_->RegisterInterface("test.EmptyInterface", this);
+  }
+
+  ObjectManagerProxy(const ObjectManagerProxy&) = delete;
+  ObjectManagerProxy& operator=(const ObjectManagerProxy&) = delete;
+
+  ~ObjectManagerProxy() override {
+    dbus_object_manager_->UnregisterInterface("test.EmptyInterface");
+  }
+
+  dbus::ObjectManager* GetObjectManagerProxy() const {
+    return dbus_object_manager_;
+  }
+
+
+
+ private:
+
+  base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
 }  // namespace test

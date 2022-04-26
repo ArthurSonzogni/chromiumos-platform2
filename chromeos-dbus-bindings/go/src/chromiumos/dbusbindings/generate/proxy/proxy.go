@@ -304,7 +304,57 @@ class {{$proxyName}} final : public {{$itfName}} {
 }  // namespace {{.}}
 {{end}}
 {{end}}{{end -}}
-{{- /* TODO(crbug.com/983008): Convert ObjectManager::GenerateProxy */ -}}
+{{- if .ObjectManagerName }}
+{{- range extractNameSpaces .ObjectManagerName}}
+namespace {{.}} {
+{{- end}}
+
+{{ $className := makeProxyName .ObjectManagerName -}}
+class {{$className}} : public dbus::ObjectManager::Interface {
+ public:
+  {{$className}}(const scoped_refptr<dbus::Bus>& bus
+{{- if (not .ServiceName) }},
+  {{repeat " " (len $className)}} const std::string& service_name
+{{- end}})
+      : bus_{bus},
+{{- if (not .ServiceName) }}
+        service_name_{service_name},
+{{- end}}
+        dbus_object_manager_{bus->GetObjectManager(
+{{- if .ServiceName }}
+            "{{.ServiceName}}",
+{{- else}}
+            service_name,
+{{- end}}
+            dbus::ObjectPath{"{{.ObjectManagerPath}}"})} {
+{{- range .Introspects}}{{range .Interfaces}}
+    dbus_object_manager_->RegisterInterface("{{.Name}}", this);
+{{- end}}{{end}}
+  }
+
+  {{$className}}(const {{$className}}&) = delete;
+  {{$className}}& operator=(const {{$className}}&) = delete;
+
+  ~{{$className}}() override {
+{{- range .Introspects}}{{range .Interfaces}}
+    dbus_object_manager_->UnregisterInterface("{{.Name}}");
+{{- end}}{{end}}
+  }
+
+  dbus::ObjectManager* GetObjectManagerProxy() const {
+    return dbus_object_manager_;
+  }
+
+{{/* TODO(crbug.com/983008): Add public APIs. */}}
+
+ private:
+{{/* TODO(crbug.com/983008): Add private APIs. */}}
+  base::WeakPtrFactory<{{$className}}> weak_ptr_factory_{this};
+};
+{{range extractNameSpaces .ObjectManagerName | reverse }}
+}  // namespace {{.}}
+{{- end}}
+{{end}}
 #endif  // {{.HeaderGuard}}
 `
 )
@@ -321,9 +371,10 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 		return err
 	}
 
-	var omName string
+	var omName, omPath string
 	if config.ObjectManager != nil {
 		omName = config.ObjectManager.Name
+		omPath = config.ObjectManager.ObjectPath
 	}
 
 	headerGuard := genutil.GenerateHeaderGuard(outputFilePath)
@@ -332,10 +383,12 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 		HeaderGuard       string
 		ServiceName       string
 		ObjectManagerName string
+		ObjectManagerPath string
 	}{
 		Introspects:       introspects,
 		HeaderGuard:       headerGuard,
 		ServiceName:       config.ServiceName,
 		ObjectManagerName: omName,
+		ObjectManagerPath: omPath,
 	})
 }
