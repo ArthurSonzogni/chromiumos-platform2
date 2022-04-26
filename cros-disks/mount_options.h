@@ -21,9 +21,9 @@ bool IsReadOnlyMount(const std::vector<std::string>& options);
 
 // Finds the last value assigned to a parameter named |name|. Returns true if
 // found.
-bool GetParamValue(const std::vector<std::string>& params,
-                   base::StringPiece name,
-                   std::string* value) WARN_UNUSED_RESULT;
+[[nodiscard]] bool GetParamValue(const std::vector<std::string>& params,
+                                 base::StringPiece name,
+                                 std::string* value);
 
 // Adds a '|name|=|value|' parameter to the container.
 void SetParamValue(std::vector<std::string>* params,
@@ -46,8 +46,8 @@ size_t RemoveParamsWithSameName(std::vector<std::string>* params,
 
 // Joins params into a comma separated string. Returns false if comma is
 // encountered in an element.
-bool JoinParamsIntoOptions(const std::vector<std::string>& params,
-                           std::string* out) WARN_UNUSED_RESULT;
+[[nodiscard]] bool JoinParamsIntoOptions(const std::vector<std::string>& params,
+                                         std::string* out);
 
 }  // namespace cros_disks
 
