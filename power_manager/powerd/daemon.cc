@@ -1101,8 +1101,8 @@ void Daemon::InitDBus() {
       chromeos::kDisplayServiceName, chromeos::kDisplayServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
       display_service_proxy,
-      base::Bind(&Daemon::HandleDisplayServiceAvailableOrRestarted,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Daemon::HandleDisplayServiceAvailableOrRestarted,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   session_manager_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(login_manager::kSessionManagerServiceName,
@@ -1112,13 +1112,13 @@ void Daemon::InitDBus() {
       resource_manager::kResourceManagerServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
       session_manager_dbus_proxy_,
-      base::Bind(&Daemon::HandleSessionManagerAvailableOrRestarted,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Daemon::HandleSessionManagerAvailableOrRestarted,
+                          weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
       session_manager_dbus_proxy_, login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
-      base::Bind(&Daemon::HandleSessionStateChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Daemon::HandleSessionStateChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   // Export Daemon's D-Bus method calls.
   typedef std::unique_ptr<dbus::Response> (Daemon::*DaemonMethod)(
@@ -1142,8 +1142,9 @@ void Daemon::InitDBus() {
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
-        it.first, base::Bind(&HandleSynchronousDBusMethodCall,
-                             base::Bind(it.second, base::Unretained(this))));
+        it.first, base::BindRepeating(
+                      &HandleSynchronousDBusMethodCall,
+                      base::BindRepeating(it.second, base::Unretained(this))));
   }
 
   const scoped_refptr<dbus::Bus>& bus = dbus_wrapper_->GetBus();
@@ -1163,8 +1164,8 @@ void Daemon::InitDBus() {
   if (tpm_threshold > 0) {
     tpm_manager_proxy_.reset(new org::chromium::TpmManagerProxy(bus));
     tpm_manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-        base::Bind(&Daemon::HandleTpmManagerdAvailable,
-                   weak_ptr_factory_.GetWeakPtr()));
+        base::BindRepeating(&Daemon::HandleTpmManagerdAvailable,
+                            weak_ptr_factory_.GetWeakPtr()));
 
     int64_t tpm_status_sec = 0;
     prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
@@ -1558,10 +1559,10 @@ void Daemon::RequestTpmStatus() {
   tpm_manager::GetDictionaryAttackInfoRequest request;
   tpm_manager_proxy_->GetDictionaryAttackInfoAsync(
       request,
-      base::Bind(&Daemon::HandleGetDictionaryAttackInfoSuccess,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Daemon::HandleGetDictionaryAttackInfoFailed,
-                 weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Daemon::HandleGetDictionaryAttackInfoSuccess,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Daemon::HandleGetDictionaryAttackInfoFailed,
+                          weak_ptr_factory_.GetWeakPtr()),
       kTpmManagerdDBusTimeout.InMilliseconds());
 }
 
@@ -1577,8 +1578,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
     if (!retry_shutdown_for_lockfile_timer_.IsRunning()) {
       retry_shutdown_for_lockfile_timer_.Start(
           FROM_HERE, kShutdownLockfileRetryInterval,
-          base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode,
-                     reason));
+          base::BindRepeating(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(),
+                              mode, reason));
     }
     return;
   }
