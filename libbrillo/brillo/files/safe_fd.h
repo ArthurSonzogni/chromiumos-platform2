@@ -83,7 +83,7 @@ class SafeFD {
   BRILLO_EXPORT static constexpr size_t kDefaultDirPermissions = 0750;
 
   // Get a SafeFD to the root path.
-  BRILLO_EXPORT static SafeFDResult Root() WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT static SafeFDResult Root();
   BRILLO_EXPORT static void SetRootPathForTesting(const char* new_root_path);
 
   // Constructs an invalid fd;
@@ -94,10 +94,10 @@ class SafeFD {
   BRILLO_EXPORT SafeFD& operator=(SafeFD&&) = default;
 
   // Return the fd number.
-  BRILLO_EXPORT int get() const WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT int get() const;
 
   // Check the validity of the file descriptor.
-  BRILLO_EXPORT bool is_valid() const WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT bool is_valid() const;
 
   // Close the scoped file if one was open.
   BRILLO_EXPORT void reset();
@@ -118,7 +118,7 @@ class SafeFD {
   // Parameters
   //  data - The buffer to write to the file.
   //  size - The number of bytes to write.
-  BRILLO_EXPORT Error Replace(const char* data, size_t size) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error Replace(const char* data, size_t size);
 
   // Writes |size| bytes from |data| to the file and returns kNoError on
   // success. Note the file will **NOT** be truncated to the size of the
@@ -133,21 +133,21 @@ class SafeFD {
   // Parameters
   //  data - The buffer to write to the file.
   //  size - The number of bytes to write.
-  BRILLO_EXPORT Error Write(const char* data, size_t size) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error Write(const char* data, size_t size);
 
   // Read the contents of the file and return it as a string.
   //
   // Parameters
   //  size - The max number of bytes to read.
-  BRILLO_EXPORT std::pair<std::vector<char>, Error> ReadContents(
-      size_t max_size = kDefaultMaxRead) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT std::pair<std::vector<char>, Error> ReadContents(
+      size_t max_size = kDefaultMaxRead);
 
   // Reads exactly |size| bytes into |data|.
   //
   // Parameters
   //  data - The buffer to read the file into.
   //  size - The number of bytes to read.
-  BRILLO_EXPORT Error Read(char* data, size_t size) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error Read(char* data, size_t size);
 
   // Reads at most |max_size| bytes into |data|.
   //
@@ -155,8 +155,8 @@ class SafeFD {
   //  data - The buffer to read the file into.
   //  max_size - The maximum number of bytes to read (typically, the size of
   //    the buffer).
-  BRILLO_EXPORT std::pair<size_t, Error> ReadUntilEnd(
-      char* data, size_t max_size) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT std::pair<size_t, Error> ReadUntilEnd(
+      char* data, size_t max_size);
 
   // Copy the contents of this file to |destination|.
   //
@@ -165,43 +165,40 @@ class SafeFD {
   //    |this|.
   //  size - The max number of bytes to copy. If this amount is reached,
   //    Error::kExceededMaximum is returned.
-  BRILLO_EXPORT Error CopyContentsTo(SafeFD* destination,
-                                     size_t max_size = kDefaultMaxRead)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error
+  CopyContentsTo(SafeFD* destination, size_t max_size = kDefaultMaxRead);
 
   // Open an existing file relative to this directory.
   //
   // Parameters
   //  path - The path to open relative to the current directory.
-  BRILLO_EXPORT SafeFDResult OpenExistingFile(const base::FilePath& path,
-                                              int flags = O_RDWR | O_CLOEXEC)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT SafeFDResult
+  OpenExistingFile(const base::FilePath& path, int flags = O_RDWR | O_CLOEXEC);
 
   // Open an existing directory relative to this directory.
   //
   // Parameters
   //  path - The path to open relative to the current directory.
-  BRILLO_EXPORT SafeFDResult OpenExistingDir(const base::FilePath& path,
-                                             int flags = O_RDONLY | O_CLOEXEC)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT SafeFDResult
+  OpenExistingDir(const base::FilePath& path, int flags = O_RDONLY | O_CLOEXEC);
 
   // Open a file relative to this directory creating the parent directories and
   // file if they don't already exist.
-  BRILLO_EXPORT SafeFDResult
+  [[nodiscard]] BRILLO_EXPORT SafeFDResult
   MakeFile(const base::FilePath& path,
            mode_t permissions = kDefaultFilePermissions,
            uid_t uid = getuid(),
            gid_t gid = getgid(),
-           int flags = O_RDWR | O_CLOEXEC) WARN_UNUSED_RESULT;
+           int flags = O_RDWR | O_CLOEXEC);
 
   // Create the directories in the relative path with the given ownership and
   // permissions and return a file descriptor to the result.
-  BRILLO_EXPORT SafeFDResult
+  [[nodiscard]] BRILLO_EXPORT SafeFDResult
   MakeDir(const base::FilePath& path,
           mode_t permissions = kDefaultDirPermissions,
           uid_t uid = getuid(),
           gid_t gid = getgid(),
-          int flags = O_RDONLY | O_CLOEXEC) WARN_UNUSED_RESULT;
+          int flags = O_RDONLY | O_CLOEXEC);
 
   // Hard link |fd| in the directory represented by |this| with the specified
   // name |filename|. This requires CAP_DAC_READ_SEARCH.
@@ -209,16 +206,15 @@ class SafeFD {
   // Parameters
   //  data - The buffer to write to the file.
   //  size - The number of bytes to write.
-  BRILLO_EXPORT Error Link(const SafeFD& source_dir,
-                           const std::string& source_name,
-                           const std::string& destination_name)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error Link(const SafeFD& source_dir,
+                                         const std::string& source_name,
+                                         const std::string& destination_name);
 
   // Deletes the child path named |name|.
   //
   // Parameters
   //  name - the name of the filesystem object to delete.
-  BRILLO_EXPORT Error Unlink(const std::string& name) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error Unlink(const std::string& name);
 
   // Deletes a child directory. It will return kBoundaryDetected if a file
   // system boundary is reached during recursion.
@@ -231,10 +227,11 @@ class SafeFD {
   //  keep_going - in recursive case continue deleting even in the face of
   //    errors. If all entries cannot be deleted, the last error encountered
   //    during recursion is returned.
-  BRILLO_EXPORT Error Rmdir(const std::string& name,
-                            bool recursive = false,
-                            size_t max_depth = kDefaultMaxPathDepth,
-                            bool keep_going = true) WARN_UNUSED_RESULT;
+  [[nodiscard]] BRILLO_EXPORT Error
+  Rmdir(const std::string& name,
+        bool recursive = false,
+        size_t max_depth = kDefaultMaxPathDepth,
+        bool keep_going = true);
 
  private:
   FRIEND_TEST(SafeFDTest, CopyContentsTo_PseudoFsLargeFallbackSuccess);

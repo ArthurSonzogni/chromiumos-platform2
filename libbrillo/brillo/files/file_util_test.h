@@ -47,13 +47,13 @@ class FileTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
   SafeFD root_;
 
-  bool SetupSubdir() WARN_UNUSED_RESULT;
+  [[nodiscard]] bool SetupSubdir();
 
-  bool SetupSymlinks() WARN_UNUSED_RESULT;
+  [[nodiscard]] bool SetupSymlinks();
 
   // Writes |contents| to |file_path_|. Pulled into a separate function just
   // to improve readability of tests.
-  bool WriteFile(const std::string& contents) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool WriteFile(const std::string& contents);
 
   // Verifies that the file at |file_path_| exists and contains |contents|.
   void ExpectFileContains(const std::string& contents);
@@ -62,7 +62,7 @@ class FileTest : public testing::Test {
   void ExpectPermissions(base::FilePath path, int permissions);
 
   // Creates a file with a random name in the temporary directory.
-  base::FilePath GetTempName() WARN_UNUSED_RESULT;
+  [[nodiscard]] base::FilePath GetTempName();
 };
 
 }  // namespace brillo
