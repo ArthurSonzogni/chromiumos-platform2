@@ -60,6 +60,16 @@ func MakeFullProxyName(introspectItfName string) string {
 	return MakeFullItfName(introspectItfName) + "Proxy"
 }
 
+// MakeFullProxyName returns a fully qualified name of the proxy interface class.
+func MakeFullProxyInterfaceName(introspectItfName string) string {
+	return MakeFullItfName(introspectItfName) + "ProxyInterface"
+}
+
+// MakeTypeName returns the last component of the qualified name.
+func MakeTypeName(introspectItfName string) string {
+	return makeNameWithSuffix(introspectItfName, "")
+}
+
 // MakeFullItfName makes a full name of interface in C++ style.
 func MakeFullItfName(introspectItfName string) string {
 	return strings.Replace(introspectItfName, ".", "::", -1)

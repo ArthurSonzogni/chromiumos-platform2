@@ -17,16 +17,17 @@ import (
 )
 
 var funcMap = template.FuncMap{
-	"add":                    func(a, b int) int { return a + b },
-	"extractNameSpaces":      genutil.ExtractNameSpaces,
-	"formatComment":          genutil.FormatComment,
-	"makeFullItfName":        genutil.MakeFullItfName,
-	"makeFullProxyName":      genutil.MakeFullProxyName,
-	"makeMethodParams":       makeMethodParams,
-	"makeMethodCallbackType": makeMethodCallbackType,
-	"makeProxyInterfaceArgs": makeProxyInterfaceArgs,
-	"makeProxyInterfaceName": genutil.MakeProxyInterfaceName,
-	"makeProxyName":          genutil.MakeProxyName,
+	"add":                        func(a, b int) int { return a + b },
+	"extractNameSpaces":          genutil.ExtractNameSpaces,
+	"formatComment":              genutil.FormatComment,
+	"makeFullItfName":            genutil.MakeFullItfName,
+	"makeFullProxyName":          genutil.MakeFullProxyName,
+	"makeFullProxyInterfaceName": genutil.MakeFullProxyInterfaceName,
+	"makeMethodParams":           makeMethodParams,
+	"makeMethodCallbackType":     makeMethodCallbackType,
+	"makeProxyInterfaceArgs":     makeProxyInterfaceArgs,
+	"makeProxyInterfaceName":     genutil.MakeProxyInterfaceName,
+	"makeProxyName":              genutil.MakeProxyName,
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
 		return p.BaseType(dbustype.DirectionExtract)
 	},
@@ -34,6 +35,7 @@ var funcMap = template.FuncMap{
 		return p.InArgType(dbustype.ReceiverProxy)
 	},
 	"makeSignalCallbackType": makeSignalCallbackType,
+	"makeTypeName":           genutil.MakeTypeName,
 	"makeVariableName":       genutil.MakeVariableName,
 	"nindent":                genutil.Nindent,
 	"trimLeft": func(cutset, s string) string {
@@ -344,8 +346,46 @@ class {{$className}} : public dbus::ObjectManager::Interface {
   dbus::ObjectManager* GetObjectManagerProxy() const {
     return dbus_object_manager_;
   }
-
-{{/* TODO(crbug.com/983008): Add public APIs. */}}
+{{range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+{{- $typeName := makeTypeName .Name}}
+{{- $varName := makeVariableName .Name }}
+{{- $instancesName := printf "%s_instances_" $varName }}
+{{- $fullItfName := makeFullProxyInterfaceName .Name }}
+{{- $proxyName := makeProxyName .Name }}
+{{- if $introspect.Name }}
+  {{- /* We have a fixed path, so the object could be considered a "singleton". */}}
+  {{- /* Skip the object_path parameter and return the first available instance. */}}
+  {{$fullItfName}}* Get{{$proxyName}}() {
+    if ({{$instancesName}}.empty())
+      return nullptr;
+    return {{$instancesName}}.begin()->second.get();
+  }
+{{- else}}
+  {{- /* We have no fixed path, so there could be multiple instances of this itf. */}}
+  {{$fullItfName}}* Get{{$proxyName}}(
+      const dbus::ObjectPath& object_path) {
+    auto p = {{$instancesName}}.find(object_path);
+    if (p != {{$instancesName}}.end())
+      return p->second.get();
+    return nullptr;
+  }
+{{- end}}
+  std::vector<{{$fullItfName}}*> Get{{$typeName}}Instances() const {
+    std::vector<{{$fullItfName}}*> values;
+    values.reserve({{$instancesName}}.size());
+    for (const auto& pair : {{$instancesName}})
+      values.push_back(pair.second.get());
+    return values;
+  }
+  void Set{{$typeName}}AddedCallback(
+      const base::RepeatingCallback<void({{$fullItfName}}*)>& callback) {
+    on_{{$varName}}_added_ = callback;
+  }
+  void Set{{$typeName}}RemovedCallback(
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
+    on_{{$varName}}_removed_ = callback;
+  }
+{{- end}}{{end}}
 
  private:
 {{/* TODO(crbug.com/983008): Add private APIs. */}}

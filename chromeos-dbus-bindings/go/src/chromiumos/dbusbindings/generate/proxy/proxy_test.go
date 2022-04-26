@@ -440,7 +440,48 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-
+  fi::w1::wpa_supplicant1::InterfaceProxyInterface* GetInterfaceProxy() {
+    if (interface_instances_.empty())
+      return nullptr;
+    return interface_instances_.begin()->second.get();
+  }
+  std::vector<fi::w1::wpa_supplicant1::InterfaceProxyInterface*> GetInterfaceInstances() const {
+    std::vector<fi::w1::wpa_supplicant1::InterfaceProxyInterface*> values;
+    values.reserve(interface_instances_.size());
+    for (const auto& pair : interface_instances_)
+      values.push_back(pair.second.get());
+    return values;
+  }
+  void SetInterfaceAddedCallback(
+      const base::RepeatingCallback<void(fi::w1::wpa_supplicant1::InterfaceProxyInterface*)>& callback) {
+    on_interface_added_ = callback;
+  }
+  void SetInterfaceRemovedCallback(
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
+    on_interface_removed_ = callback;
+  }
+  EmptyInterfaceProxyInterface* GetEmptyInterfaceProxy(
+      const dbus::ObjectPath& object_path) {
+    auto p = empty_interface_instances_.find(object_path);
+    if (p != empty_interface_instances_.end())
+      return p->second.get();
+    return nullptr;
+  }
+  std::vector<EmptyInterfaceProxyInterface*> GetEmptyInterfaceInstances() const {
+    std::vector<EmptyInterfaceProxyInterface*> values;
+    values.reserve(empty_interface_instances_.size());
+    for (const auto& pair : empty_interface_instances_)
+      values.push_back(pair.second.get());
+    return values;
+  }
+  void SetEmptyInterfaceAddedCallback(
+      const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*)>& callback) {
+    on_empty_interface_added_ = callback;
+  }
+  void SetEmptyInterfaceRemovedCallback(
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
+    on_empty_interface_removed_ = callback;
+  }
 
  private:
 
@@ -1708,7 +1749,28 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-
+  test::EmptyInterfaceProxyInterface* GetEmptyInterfaceProxy(
+      const dbus::ObjectPath& object_path) {
+    auto p = empty_interface_instances_.find(object_path);
+    if (p != empty_interface_instances_.end())
+      return p->second.get();
+    return nullptr;
+  }
+  std::vector<test::EmptyInterfaceProxyInterface*> GetEmptyInterfaceInstances() const {
+    std::vector<test::EmptyInterfaceProxyInterface*> values;
+    values.reserve(empty_interface_instances_.size());
+    for (const auto& pair : empty_interface_instances_)
+      values.push_back(pair.second.get());
+    return values;
+  }
+  void SetEmptyInterfaceAddedCallback(
+      const base::RepeatingCallback<void(test::EmptyInterfaceProxyInterface*)>& callback) {
+    on_empty_interface_added_ = callback;
+  }
+  void SetEmptyInterfaceRemovedCallback(
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
+    on_empty_interface_removed_ = callback;
+  }
 
  private:
 
@@ -1867,7 +1929,28 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-
+  test::EmptyInterfaceProxyInterface* GetEmptyInterfaceProxy(
+      const dbus::ObjectPath& object_path) {
+    auto p = empty_interface_instances_.find(object_path);
+    if (p != empty_interface_instances_.end())
+      return p->second.get();
+    return nullptr;
+  }
+  std::vector<test::EmptyInterfaceProxyInterface*> GetEmptyInterfaceInstances() const {
+    std::vector<test::EmptyInterfaceProxyInterface*> values;
+    values.reserve(empty_interface_instances_.size());
+    for (const auto& pair : empty_interface_instances_)
+      values.push_back(pair.second.get());
+    return values;
+  }
+  void SetEmptyInterfaceAddedCallback(
+      const base::RepeatingCallback<void(test::EmptyInterfaceProxyInterface*)>& callback) {
+    on_empty_interface_added_ = callback;
+  }
+  void SetEmptyInterfaceRemovedCallback(
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
+    on_empty_interface_removed_ = callback;
+  }
 
  private:
 
@@ -2067,7 +2150,28 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-
+  test::EmptyInterfaceProxyInterface* GetEmptyInterfaceProxy(
+      const dbus::ObjectPath& object_path) {
+    auto p = empty_interface_instances_.find(object_path);
+    if (p != empty_interface_instances_.end())
+      return p->second.get();
+    return nullptr;
+  }
+  std::vector<test::EmptyInterfaceProxyInterface*> GetEmptyInterfaceInstances() const {
+    std::vector<test::EmptyInterfaceProxyInterface*> values;
+    values.reserve(empty_interface_instances_.size());
+    for (const auto& pair : empty_interface_instances_)
+      values.push_back(pair.second.get());
+    return values;
+  }
+  void SetEmptyInterfaceAddedCallback(
+      const base::RepeatingCallback<void(test::EmptyInterfaceProxyInterface*)>& callback) {
+    on_empty_interface_added_ = callback;
+  }
+  void SetEmptyInterfaceRemovedCallback(
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
+    on_empty_interface_removed_ = callback;
+  }
 
  private:
 
