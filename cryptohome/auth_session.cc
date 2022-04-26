@@ -118,10 +118,9 @@ AuthSession::AuthSession(
   converter_ =
       std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management);
 
-  // Decide on USS vs VaultKeyset based on USS experiment file
-  // and existence of VaultKeysets. If the experiment is enabled and there is no
-  // VK on the disk follow USS path. If at least one VK exists, don't take USS
-  // path even if the experiment is enabled.
+  // Decide on USS vs VaultKeyset based on what is on the disk for the user.
+  // If at least one VK exists, don't take USS path even if the experiment
+  // is enabled.
   // TODO(b/223916443): We assume user has either VaultKeyset or USS until the
   // USS migration is started. If for some reason both exists on the disk,
   // unused one will be ignored.
@@ -131,8 +130,7 @@ AuthSession::AuthSession(
                                                     &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
   }
-  if (IsUserSecretStashExperimentEnabled() &&
-      !user_has_configured_credential_) {
+  if (!user_has_configured_credential_) {
     label_to_auth_factor_ =
         LoadAllAuthFactors(obfuscated_username_, auth_factor_manager_);
     user_has_configured_auth_factor_ = !label_to_auth_factor_.empty();
@@ -722,10 +720,8 @@ bool AuthSession::AuthenticateAuthFactor(
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  // If the USS experiment is enabled and there is no VaultKeyset for the
-  // user continue authentication with USS.
-  if (IsUserSecretStashExperimentEnabled() &&
-      user_has_configured_auth_factor_) {
+  // If the user has configured AuthFactors, then we proceed with USS flow.
+  if (user_has_configured_auth_factor_) {
     AuthFactor auth_factor = *label_to_auth_factor_iter->second;
 
     CryptohomeStatus status = AuthenticateViaUserSecretStash(
@@ -751,9 +747,8 @@ bool AuthSession::AuthenticateAuthFactor(
     return true;
   }
 
-  // If USS experiment is not enabled or user has VaultKeysets continue
-  // authentication with Vaultkeyset. Status is flipped on the successful
-  // authentication.
+  // If user does not have AuthFactors, then we switch to authentication with
+  // Vaultkeyset. Status is flipped on the successful authentication.
   error = converter_->PopulateKeyDataForVK(
       username_, request.auth_factor_label(), key_data_);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
