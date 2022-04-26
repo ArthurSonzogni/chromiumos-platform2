@@ -939,6 +939,14 @@ properties:
                     required:
                       - name
                       - shared-library
+            typecd:
+              description: Configurable parameters for the Chrome OS Type C daemon.
+              type: object
+              properties:
+                mode-entry-dp-only:
+                  description: AP driven alternate mode entry on this system should be restricted to
+                    DisplayPort alternate mode.
+                  type: boolean
             demo-mode:
               type: object
               description: Properties related to the ChromeOS Demo Mode, defining the user

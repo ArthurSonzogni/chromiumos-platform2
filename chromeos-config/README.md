@@ -442,6 +442,7 @@ In the tables below,
 | test-label | string |  | False |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  | False |  |
 | touch | [touch](#touch) |  | False |  | False |  |
+| typecd | [typecd](#typecd) |  | False |  | False | Configurable parameters for the Chrome OS Type C daemon. |
 | ui | [ui](#ui) |  | False |  | False |  |
 | wallpaper | string |  | False |  | False | Base filename of the default wallpaper to show on this device. |
 | wifi | [wifi](#wifi) |  | False |  | False | Sets limits on maximum WiFi transmit power for tablet and non-tablet device configurations. This config must contain properties for ath10k driver, rtw88 driver, rtw89 driver, mtk driver, or intel driver. Note that configs for the intel driver are delivered as encoded wifi sar hex files. |
@@ -990,6 +991,11 @@ In the tables below,
 | destination | string |  | False |  | True | Installation path for the file on the system image. |
 | source | string |  | False |  | True | Source of the file relative to the build system ${FILESDIR} |
 | symlink | string |  | False |  | True | Symlink file that will be installed pointing to the destination. |
+
+### typecd
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| mode-entry-dp-only | boolean |  | False |  | False | AP driven alternate mode entry on this system should be restricted to DisplayPort alternate mode. |
 
 ### ui
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
