@@ -201,7 +201,7 @@ void MountManager::MountNewSource(const std::string& source,
 
   // For some mounters, the string stored in |mount_point->source()| is
   // different from |source|.
-  // DCHECK_EQ(mount_point->source(), source);
+  mount_point->SetSource(source);
 
   if (const Process* const process = mount_point->process()) {
     // There is a FUSE process to monitor.
@@ -220,9 +220,7 @@ void MountManager::MountNewSource(const std::string& source,
     std::move(callback).Run(mount_path.value(), error);
   }
 
-  const auto [it, ok] =
-      mount_points_.try_emplace(source, std::move(mount_point));
-  DCHECK(ok);
+  mount_points_.push_back(std::move(mount_point));
 }
 
 void MountManager::OnLauncherExit(
@@ -270,13 +268,17 @@ bool MountManager::ResolvePath(const std::string& path,
 }
 
 MountPoint* MountManager::FindMountBySource(const std::string& source) const {
-  const auto it = mount_points_.find(source);
-  return it != mount_points_.cend() ? it->second.get() : nullptr;
+  for (const auto& mount_point : mount_points_) {
+    DCHECK(mount_point);
+    if (mount_point->source() == source)
+      return mount_point.get();
+  }
+  return nullptr;
 }
 
 MountPoint* MountManager::FindMountByMountPath(
     const base::FilePath& path) const {
-  for (const auto& [source, mount_point] : mount_points_) {
+  for (const auto& mount_point : mount_points_) {
     DCHECK(mount_point);
     if (mount_point->path() == path)
       return mount_point.get();
@@ -286,7 +288,7 @@ MountPoint* MountManager::FindMountByMountPath(
 
 bool MountManager::RemoveMount(const MountPoint* const mount_point) {
   for (auto it = mount_points_.cbegin(); it != mount_points_.cend(); ++it) {
-    if (it->second.get() == mount_point) {
+    if (it->get() == mount_point) {
       mount_points_.erase(it);
       return true;
     }
@@ -340,7 +342,7 @@ MountErrorType MountManager::CreateMountPathForSource(
 
   std::unordered_set<std::string> reserved_paths;
   reserved_paths.reserve(mount_points_.size());
-  for (const auto& [source, mount_point] : mount_points_) {
+  for (const auto& mount_point : mount_points_) {
     reserved_paths.insert(mount_point->path().value());
   }
 
@@ -359,10 +361,10 @@ MountErrorType MountManager::CreateMountPathForSource(
 std::vector<MountEntry> MountManager::GetMountEntries() const {
   std::vector<MountEntry> mount_entries;
   mount_entries.reserve(mount_points_.size());
-  for (const auto& [source, mount_point] : mount_points_) {
+  for (const auto& mount_point : mount_points_) {
     DCHECK(mount_point);
-    mount_entries.push_back({mount_point->error(), source, GetMountSourceType(),
-                             mount_point->path().value(),
+    mount_entries.push_back({mount_point->error(), mount_point->source(),
+                             GetMountSourceType(), mount_point->path().value(),
                              mount_point->is_read_only()});
   }
   return mount_entries;

@@ -92,6 +92,8 @@ class MountPoint final {
     DCHECK(launcher_exit_callback_);
   }
 
+  void SetSource(std::string source) { data_.source = std::move(source); }
+
   const base::FilePath& path() const { return data_.mount_path; }
   const std::string& source() const { return data_.source; }
   const std::string& fstype() const { return data_.filesystem_type; }

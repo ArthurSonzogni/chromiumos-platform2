@@ -211,8 +211,8 @@ class MountManager {
   // Object that monitors children processes.
   brillo::ProcessReaper* const process_reaper_;
 
-  // Mount points indexed by source path.
-  std::unordered_map<std::string, std::unique_ptr<MountPoint>> mount_points_;
+  // Mount points, in no particular order.
+  std::vector<std::unique_ptr<MountPoint>> mount_points_;
 
   friend class MountManagerUnderTest;
 

@@ -80,21 +80,16 @@ class MountManagerUnderTest : public MountManager {
               (const std::string&),
               (const, override));
 
-  // Adds or updates a mapping |source| to its mount state in the cache.
-  void AddMount(const std::string& source,
-                std::unique_ptr<MountPoint> mount_point) {
+  // Adds a mount point to the collection of mount points.
+  void AddMount(std::unique_ptr<MountPoint> mount_point) {
     DCHECK(mount_point);
-    DCHECK(!FindMountBySource(source));
-    mount_points_.insert({source, std::move(mount_point)});
+    DCHECK(!FindMountBySource(mount_point->source()));
+    DCHECK(!FindMountByMountPath(mount_point->path()));
+    mount_points_.push_back(std::move(mount_point));
   }
 
   bool IsMountPathInCache(const std::string& path) {
     return FindMountByMountPath(base::FilePath(path));
-  }
-
-  void AddMountStateCache(const std::string& source,
-                          std::unique_ptr<MountPoint> mount_point) {
-    mount_points_.try_emplace(source, std::move(mount_point));
   }
 
   bool RemoveMountPathFromCache(const std::string& path) {
@@ -962,7 +957,7 @@ TEST_F(MountManagerTest, IsMountPathInCache) {
   mount_path_ = kMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  manager_.AddMountStateCache(kSourcePath, MakeMountPoint(mount_path_));
+  manager_.AddMount(MakeMountPoint(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
@@ -976,7 +971,7 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   mount_path_ = kMountPath;
 
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
-  manager_.AddMountStateCache(kSourcePath, MakeMountPoint(mount_path_));
+  manager_.AddMount(MakeMountPoint(mount_path_));
 
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -992,7 +987,7 @@ TEST_F(MountManagerTest, GetMountEntries) {
   EXPECT_TRUE(mount_entries.empty());
 
   // A normal mount entry is returned.
-  manager_.AddMountStateCache(kSourcePath, MakeMountPoint(kMountPath));
+  manager_.AddMount(MakeMountPoint(kMountPath));
   mount_entries = manager_.GetMountEntries();
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type);
