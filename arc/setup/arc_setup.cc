@@ -373,14 +373,11 @@ struct EsdfsMount {
   gid_t gid;
 };
 
-const std::vector<EsdfsMount> GetEsdfsMounts(AndroidSdkVersion version) {
-  std::vector<EsdfsMount> mounts{
-      {"default/emulated", 0006, kSdcardRwGid},
-      {"read/emulated", 0027, kEverybodyGid},
-      {"write/emulated", 0007, kEverybodyGid},
-  };
-  return mounts;
-}
+constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
+    {"default/emulated", 0006, kSdcardRwGid},
+    {"read/emulated", 0027, kEverybodyGid},
+    {"write/emulated", 0007, kEverybodyGid},
+}};
 
 // Esdfs mount options:
 // --------------------
@@ -421,20 +418,13 @@ std::string CreateEsdfsMountOpts(uid_t fsuid,
   return opts;
 }
 
-// Return path of layout_version based on |sdk_version|.
-std::string GetInstalldLayoutRelativePath(AndroidSdkVersion sdk_version) {
-  return "data/.layout_version";
-}
-
 // Wait upto kInstalldTimeout for the sdcard source directory to be setup.
 // On failure, exit.
-bool WaitForSdcardSource(const base::FilePath& android_root,
-                         AndroidSdkVersion sdk_version) {
+bool WaitForSdcardSource(const base::FilePath& android_root) {
   bool ret;
   base::TimeDelta elapsed;
   // <android_root>/data path to synchronize with installd
-  const base::FilePath fs_version =
-      android_root.Append(GetInstalldLayoutRelativePath(sdk_version));
+  const base::FilePath fs_version = android_root.Append("data/.layout_version");
 
   LOG(INFO) << "Waiting upto " << kInstalldTimeout
             << " for installd to complete setting up /data.";
@@ -856,7 +846,7 @@ void ArcSetup::UnmountSdcard() {
   // We unmount here in both the ESDFS and the FUSE cases in order to
   // clean up after Android's /system/bin/sdcard. However, the paths
   // must be the same in both cases.
-  for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
+  for (const auto& mount : kEsdfsMounts) {
     base::FilePath kDestDirectory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
     IGNORE_ERRORS(arc_mounter_->Umount(kDestDirectory));
@@ -999,13 +989,12 @@ void ArcSetup::SetUpSdcard() {
 
   // Installd setups up the user data directory skeleton on first-time boot.
   // Wait for setup
-  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source,
-                               GetSdkVersion()));
+  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source));
 
   // Ensure the Downloads directory exists.
   EXIT_IF(!base::DirectoryExists(host_downloads_directory));
 
-  for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
+  for (const auto& mount : kEsdfsMounts) {
     base::FilePath dest_directory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
 
