@@ -39,6 +39,19 @@ struct DeviceInfo {
   std::optional<std::string> joined_vendor_id;
 };
 
+// Information of an USB device. This struct is used in
+// FetchhUsbFirmwareVersion() to fetch the firmware version of this USB device.
+//
+// Both |vendor_id| and |product_id| are required while |serial| can be null if
+// the device does not have a serial.
+struct UsbDeviceFilter {
+  uint16_t vendor_id;
+  uint16_t product_id;
+  std::optional<std::string> serial;
+};
+
+using DeviceList = std::vector<DeviceInfo>;
+
 // Returns whether |device_info| contains a specific |vendor_id|, e.g.
 // "USB:0x1234".
 bool ContainsVendorId(const DeviceInfo& device_info,
@@ -47,6 +60,16 @@ bool ContainsVendorId(const DeviceInfo& device_info,
 // Returns the device GUID generated from the instance ID or NULL if the
 // conversion fails.
 std::optional<std::string> InstanceIdToGuid(const std::string& instance_id);
+
+// Returns the firmware version of the given |target_usb_device|. It will go
+// through fwupd devices |device_infos| and find out the best-matched version
+// to |target_usb_device|.
+//
+// Returns NULL if there are multiple firmware versions among the matched
+// devices or that no devices are matched.
+chromeos::cros_healthd::mojom::FwupdFirmwareVersionInfoPtr
+FetchUsbFirmwareVersion(const DeviceList& device_infos,
+                        const UsbDeviceFilter& target_usb_device);
 
 }  // namespace fwupd_utils
 }  // namespace diagnostics

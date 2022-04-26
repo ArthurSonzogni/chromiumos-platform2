@@ -6,11 +6,14 @@
 
 #include <optional>
 
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 namespace diagnostics {
 namespace fwupd_utils {
 namespace {
+
+using FwupdVersionFormat = chromeos::cros_healthd::mojom::FwupdVersionFormat;
 
 TEST(FwupdUtilsTest, DeviceContainsVendorId) {
   auto device_info = DeviceInfo();
@@ -47,6 +50,114 @@ TEST(FwupdUtilsTest, InstanceIdToGuid) {
 
 TEST(FwupdUtilsTest, InstanceIdToGuidConversionFails) {
   EXPECT_EQ(InstanceIdToGuid(""), std::nullopt);
+}
+
+TEST(FwupdUtilsTest, MatchUsbBySerials) {
+  // Tell apart different instances by their serial numbers.
+  DeviceInfo device1{
+      .name = "product_name",
+      .instance_ids = std::vector<std::string>{"USB\\VID_1234&PID_5678"},
+      .serial = "serial1",
+      .version = "version1",
+      .version_format = FwupdVersionFormat::kPlain,
+      .joined_vendor_id = "USB:0x1234",
+  };
+  if (auto guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
+      guid.has_value()) {
+    device1.guids.push_back(guid.value());
+  }
+
+  DeviceInfo device2 = device1;
+  device2.serial = "serial2";
+  device2.version = "version2";
+
+  std::vector<DeviceInfo> device_infos{device1, device2};
+
+  auto usb_device_filter = UsbDeviceFilter{
+      .vendor_id = 0x1234,
+      .product_id = 0x5678,
+      .serial = "serial1",
+  };
+
+  auto res = FetchUsbFirmwareVersion(device_infos, usb_device_filter);
+  EXPECT_EQ(res->version, "version1");
+  EXPECT_EQ(res->version_format, FwupdVersionFormat::kPlain);
+}
+
+TEST(FwupdUtilsTest, UsbProductNotMatched) {
+  // Only the vendor id and the product name are matched but no product id and
+  // no serial. This kind of matchingness is too weak.
+  DeviceInfo device{
+      .name = "product_name",
+      .version = "version",
+      .version_format = FwupdVersionFormat::kPlain,
+      .joined_vendor_id = "USB:0x1234",
+  };
+
+  std::vector<DeviceInfo> device_infos{device};
+
+  auto usb_device_filter = UsbDeviceFilter{
+      .vendor_id = 0x1234,
+      .product_id = 0x5678,
+  };
+
+  auto res = FetchUsbFirmwareVersion(device_infos, usb_device_filter);
+  EXPECT_EQ(res.get(), nullptr);
+}
+
+TEST(FwupdUtilsTest, MultipleUsbMatchedWithACommonVersion) {
+  // Multiple devices matches the VID:PID and the target serial number is
+  // absent.
+  DeviceInfo device{
+      .name = "device name",
+      .instance_ids = std::vector<std::string>{"USB\\VID_1234&PID_5678"},
+      .version = "version",
+      .version_format = FwupdVersionFormat::kPlain,
+      .joined_vendor_id = "USB:0x1234",
+  };
+  if (auto guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
+      guid.has_value()) {
+    device.guids.push_back(guid.value());
+  }
+
+  std::vector<DeviceInfo> device_infos{device, device};
+
+  auto usb_device_filter = UsbDeviceFilter{
+      .vendor_id = 0x1234,
+      .product_id = 0x5678,
+  };
+
+  auto res = FetchUsbFirmwareVersion(device_infos, usb_device_filter);
+  EXPECT_EQ(res->version, "version");
+  EXPECT_EQ(res->version_format, FwupdVersionFormat::kPlain);
+}
+
+TEST(FwupdUtilsTest, MultipleUsbMatchedButDifferentVersions) {
+  // Multiple matches but they have different versions.
+  DeviceInfo device1{
+      .name = "device name",
+      .instance_ids = std::vector<std::string>{"USB\\VID_1234&PID_5678"},
+      .version = "version",
+      .version_format = FwupdVersionFormat::kPlain,
+      .joined_vendor_id = "USB:0x1234",
+  };
+  if (auto guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
+      guid.has_value()) {
+    device1.guids.push_back(guid.value());
+  }
+
+  DeviceInfo device2 = device1;
+  device2.version = "version2";
+
+  std::vector<DeviceInfo> device_infos{device1, device2};
+
+  auto usb_device_filter = UsbDeviceFilter{
+      .vendor_id = 0x1234,
+      .product_id = 0x5678,
+  };
+
+  auto res = FetchUsbFirmwareVersion(device_infos, usb_device_filter);
+  EXPECT_EQ(res.get(), nullptr);
 }
 
 }  // namespace
