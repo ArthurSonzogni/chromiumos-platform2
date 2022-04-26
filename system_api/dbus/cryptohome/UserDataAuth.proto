@@ -1019,7 +1019,7 @@ message GetCurrentSpaceForArcProjectIdReply {
 
 // Type of paths that are allowed for SetProjectId.
 enum SetProjectIdAllowedPathType {
-  // /home/user/<obfuscated_username>/Downloads/
+  // /home/user/<obfuscated_username>/MyFiles/Downloads/
   PATH_DOWNLOADS = 0;
   // /home/root/<obfuscated_username>/android-data/
   PATH_ANDROID_DATA = 1;
@@ -1031,8 +1031,9 @@ message SetProjectIdRequest {
   uint32 project_id = 1;
 
   // |parent_path|, |child_path| and |account_id| are used for constructing the
-  // target path. (e.g. /home/user/<obfuscated_username>/Downloads/<child_path>
-  // for parent_path=PATH_DOWNLOADS)
+  // target path. (e.g.
+  // /home/user/<obfuscated_username>/MyFiles/Downloads/<child_path> for
+  // parent_path=PATH_DOWNLOADS)
   SetProjectIdAllowedPathType parent_path = 2;
   string child_path = 3;
   cryptohome.AccountIdentifier account_id = 4;

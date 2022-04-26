@@ -349,7 +349,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_Succeeds) {
   const auto kParentPath = SetProjectIdAllowedPathType::PATH_DOWNLOADS;
   const auto kChildPath = base::FilePath("test.png");
   const base::FilePath kExpectedPath =
-      base::FilePath("/home/user/cafef00d/Downloads/test.png");
+      base::FilePath("/home/user/cafef00d/MyFiles/Downloads/test.png");
 
   EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername, _))
       .WillOnce(Return(true));

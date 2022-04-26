@@ -152,7 +152,7 @@ bool ArcDiskQuota::SetProjectId(int project_id,
   base::FilePath path;
   switch (parent_path) {
     case PATH_DOWNLOADS:
-      // /home/user/<obfuscated_username>/Downloads/<child_path>
+      // /home/user/<obfuscated_username>/MyFiles/Downloads/<child_path>
       path = brillo::cryptohome::home::GetUserPathPrefix()
                  .Append(obfuscated_username)
                  .Append(kUserDownloadsDir)

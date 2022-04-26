@@ -23,7 +23,7 @@ namespace cryptohome {
 constexpr char kArcDiskHome[] = "/home/chronos/user";
 
 // Used for constructing the target path for SetProjectId().
-constexpr char kUserDownloadsDir[] = "Downloads";
+constexpr char kUserDownloadsDir[] = "MyFiles/Downloads";
 constexpr char kAndroidDataDir[] = "android-data";
 
 // SELinux context of Android media files.
