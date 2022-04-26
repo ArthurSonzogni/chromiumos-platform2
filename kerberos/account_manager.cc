@@ -55,8 +55,8 @@ std::string GetSafeFilename(const std::string& principal_name) {
 
 // Reads the file at |path| into |data|. Returns |ERROR_LOCAL_IO| if the file
 // could not be read.
-WARN_UNUSED_RESULT ErrorType LoadFile(const base::FilePath& path,
-                                      std::string* data) {
+[[nodiscard]] ErrorType LoadFile(const base::FilePath& path,
+                                 std::string* data) {
   data->clear();
   if (!base::ReadFileToStringWithMaxSize(path, data, kFileSizeLimit)) {
     PLOG(ERROR) << "Failed to read " << path.value();
@@ -68,8 +68,8 @@ WARN_UNUSED_RESULT ErrorType LoadFile(const base::FilePath& path,
 
 // Writes |data| to the file at |path|. Returns |ERROR_LOCAL_IO| if the file
 // could not be written.
-WARN_UNUSED_RESULT ErrorType SaveFile(const base::FilePath& path,
-                                      const std::string& data) {
+[[nodiscard]] ErrorType SaveFile(const base::FilePath& path,
+                                 const std::string& data) {
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(path, data.data(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write '" << path.value() << "'";
@@ -79,8 +79,8 @@ WARN_UNUSED_RESULT ErrorType SaveFile(const base::FilePath& path,
 }
 
 // Sets file permissions for a given |path|. Returns ERROR_LOCAL_IO on error.
-WARN_UNUSED_RESULT ErrorType SetFilePermissions(const base::FilePath& path,
-                                                int mode) {
+[[nodiscard]] ErrorType SetFilePermissions(const base::FilePath& path,
+                                           int mode) {
   if (!base::SetPosixFilePermissions(path, mode)) {
     LOG(ERROR) << "Failed to set permissions on '" << path.value() << "'";
     return ERROR_LOCAL_IO;

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 
 #include "bindings/kerberos_containers.pb.h"
@@ -71,20 +70,19 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // accounts. |is_managed| indicates whether the account is managed by the
   // KerberosAccounts policy. Returns |ERROR_DUPLICATE_PRINCIPAL_NAME| if the
   // account is already present.
-  ErrorType AddAccount(const std::string& principal_name,
-                       bool is_managed) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AddAccount(const std::string& principal_name,
+                                     bool is_managed);
 
   // The following methods return |ERROR_UNKNOWN_PRINCIPAL_NAME| if
   // |principal_name| (user@REALM.COM) is not known.
 
   // Removes the account keyed by |principal_name| from the list of accounts.
-  ErrorType RemoveAccount(const std::string& principal_name) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType RemoveAccount(const std::string& principal_name);
 
   // Removes account data or full accounts, depending on |mode|. Accounts in
   // |keep_list| are not touched.
-  ErrorType ClearAccounts(ClearMode mode,
-                          std::unordered_set<std::string> keep_list)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType ClearAccounts(
+      ClearMode mode, std::unordered_set<std::string> keep_list);
 
   // Returns a list of all existing accounts, including current status like
   // remaining Kerberos ticket lifetime. Does a best effort returning results.
@@ -93,15 +91,14 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
   // |principal_name|. Validates the config before setting it.
-  ErrorType SetConfig(const std::string& principal_name,
-                      const std::string& krb5conf) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType SetConfig(const std::string& principal_name,
+                                    const std::string& krb5conf) const;
 
   // Validates the Kerberos configuration data |krb5conf|. If the config has
   // syntax errors or uses non-allowlisted options, returns ERROR_BAD_CONFIG
   // and fills |error_info| with error information.
-  ErrorType ValidateConfig(const std::string& krb5conf,
-                           ConfigErrorInfo* error_info) const
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType ValidateConfig(const std::string& krb5conf,
+                                         ConfigErrorInfo* error_info) const;
 
   // Acquires a Kerberos ticket-granting-ticket for the account keyed by
   // |principal_name| using |password|. If |password| is empty, a stored
@@ -110,17 +107,17 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // |use_login_password| is true, the primary user's login password is used to
   // authenticate. Both |password| and |remember_password| are ignored by the
   // daemon in this case.
-  ErrorType AcquireTgt(const std::string& principal_name,
-                       std::string password,
-                       bool remember_password,
-                       bool use_login_password) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AcquireTgt(const std::string& principal_name,
+                                     std::string password,
+                                     bool remember_password,
+                                     bool use_login_password);
 
   // Retrieves the Kerberos credential cache and the configuration file for the
   // account keyed by |principal_name|. Returns ERROR_NONE if both files could
   // be retrieved or if the credential cache is missing. Returns ERROR_LOCAL_IO
   // if any of the files failed to read.
-  ErrorType GetKerberosFiles(const std::string& principal_name,
-                             KerberosFiles* files) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetKerberosFiles(const std::string& principal_name,
+                                           KerberosFiles* files) const;
 
   // Sends KerberosTicketExpiring signals for each expired Kerberos ticket and
   // starts scheduling renewal tasks for valid tickets.

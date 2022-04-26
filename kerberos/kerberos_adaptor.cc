@@ -10,7 +10,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -47,8 +46,8 @@ ByteArray SerializeProto(const google::protobuf::MessageLite& proto) {
 
 // Parses a proto from an array of bytes |proto_blob|. Returns
 // ERROR_PARSE_REQUEST_FAILED on error.
-WARN_UNUSED_RESULT ErrorType ParseProto(google::protobuf::MessageLite* proto,
-                                        const ByteArray& proto_blob) {
+[[nodiscard]] ErrorType ParseProto(google::protobuf::MessageLite* proto,
+                                   const ByteArray& proto_blob) {
   if (!proto->ParseFromArray(proto_blob.data(), proto_blob.size())) {
     LOG(ERROR) << "Failed to parse proto";
     return ERROR_PARSE_REQUEST_FAILED;
