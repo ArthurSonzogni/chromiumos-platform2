@@ -4,6 +4,7 @@
 
 #include "fusebox/fuse_file_handles.h"
 
+#include <ostream>
 #include <unordered_map>
 #include <utility>
 
