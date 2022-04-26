@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <dbus/typecd/dbus-constants.h>
 
+#include "typecd/cros_config_util.h"
+
 namespace {
 const char kObjectServicePath[] = "/org/chromium/typecd/ObjectManager";
 }  // namespace
@@ -58,6 +60,10 @@ int Daemon::OnInit() {
   if (!mode_entry_supported)
     LOG(INFO) << "Mode entry not supported on this device.";
   port_manager_->SetModeEntrySupported(mode_entry_supported);
+
+  auto config = std::make_unique<CrosConfigUtil>();
+  if (mode_entry_supported && config->APModeEntryDPOnly())
+    port_manager_->SetSupportsUSB4(false);
 
   InitUserActiveState();
   session_manager_proxy_->AddObserver(port_manager_.get());

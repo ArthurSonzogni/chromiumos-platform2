@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcros_config",
     "libdebugd-client",
     "libmetrics",
     "libsession_manager-client",
@@ -38,6 +39,7 @@ pkg_config("target_defaults") {
 
 executable("typecd") {
   sources = [
+    "cros_config_util.cc",
     "daemon.cc",
     "main.cc",
   ]
