@@ -33,7 +33,8 @@ Forwarder::Forwarder(base::ScopedFD destination, bool is_socket_destination)
 void Forwarder::SetFileDestination(base::ScopedFD destination) {
   CHECK(destination.is_valid());
   is_socket_destination_ = false;
-  destination_.swap(destination);
+  if (destination_.get() != destination.get())
+    destination_ = std::move(destination);
 }
 
 grpc::Status Forwarder::ForwardLogs(int64_t cid,
