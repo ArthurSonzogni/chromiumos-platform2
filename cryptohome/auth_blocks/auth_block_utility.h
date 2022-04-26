@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 
-#include <base/compiler_specific.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -108,17 +107,17 @@ class AuthBlockUtility {
 
   // Creates a new auth block state and key blobs using an auth block. On error,
   // returns the error code.
-  virtual CryptoStatus CreateKeyBlobsWithAuthFactorType(
+  [[nodiscard]] virtual CryptoStatus CreateKeyBlobsWithAuthFactorType(
       AuthFactorType auth_factor_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
-      KeyBlobs& out_key_blobs) const WARN_UNUSED_RESULT = 0;
+      KeyBlobs& out_key_blobs) const = 0;
 
   // Derives key blobs using the given auth block state and input.
-  virtual CryptoStatus DeriveKeyBlobs(const AuthInput& auth_input,
-                                      const AuthBlockState& auth_block_state,
-                                      KeyBlobs& out_key_blobs) const
-      WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual CryptoStatus DeriveKeyBlobs(
+      const AuthInput& auth_input,
+      const AuthBlockState& auth_block_state,
+      KeyBlobs& out_key_blobs) const = 0;
 };
 
 }  // namespace cryptohome
