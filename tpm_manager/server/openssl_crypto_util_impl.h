@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/compiler_specific.h>
-
 #include "tpm_manager/server/openssl_crypto_util.h"
 
 namespace tpm_manager {
@@ -28,8 +26,8 @@ class OpensslCryptoUtilImpl : public OpensslCryptoUtil {
   ~OpensslCryptoUtilImpl() override = default;
 
   // OpensslCryptoUtil methods.
-  bool GetRandomBytes(size_t num_bytes,
-                      std::string* random_data) override WARN_UNUSED_RESULT;
+  [[nodiscard]] bool GetRandomBytes(size_t num_bytes,
+                                    std::string* random_data) override;
 };
 
 }  // namespace tpm_manager
