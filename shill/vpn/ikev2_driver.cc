@@ -4,6 +4,7 @@
 
 #include "shill/vpn/ikev2_driver.h"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -111,7 +112,7 @@ IKEv2Driver::IKEv2Driver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 kProperties,
-                base::size(kProperties),
+                std::size(kProperties),
                 /*use_eap=*/true) {}
 
 IKEv2Driver::~IKEv2Driver() {}

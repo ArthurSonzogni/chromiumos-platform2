@@ -12,8 +12,6 @@
 
 #include <string>
 
-#include <base/compiler_specific.h>
-
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -131,7 +129,7 @@ class SHILL_EXPORT ScopedSocketCloser {
 
   // Release and return the socket file descriptor, allowing the socket to
   // remain open as the ScopedSocketCloser is destroyed.
-  int Release() WARN_UNUSED_RESULT;
+  [[nodiscard]] int Release();
 
  private:
   Sockets* sockets_;
