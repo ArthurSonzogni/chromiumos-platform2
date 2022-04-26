@@ -7,14 +7,15 @@
 #ifndef CAMERA_FEATURES_AUTO_FRAMING_AUTO_FRAMING_CLIENT_H_
 #define CAMERA_FEATURES_AUTO_FRAMING_AUTO_FRAMING_CLIENT_H_
 
-#include <map>
+#include <cutils/native_handle.h>
+
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/synchronization/lock.h>
 
-#include "common/camera_buffer_pool.h"
 #include "cros-camera/auto_framing_cros.h"
 #include "cros-camera/common_types.h"
 
@@ -40,10 +41,10 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   // Return the stored ROI if a new detection is available, or nullopt if not.
   // After this call the stored ROI is cleared, waiting for another new
   // detection to fill it.
-  std::optional<Rect<uint32_t>> TakeNewRegionOfInterest();
+  std::optional<Rect<float>> TakeNewRegionOfInterest();
 
   // Gets the crop window calculated by the full auto-framing pipeline.
-  Rect<uint32_t> GetCropWindow();
+  Rect<float> GetCropWindow();
 
   // Tear down the pipeline and clear states.
   void TearDown();
@@ -60,12 +61,12 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
 
  private:
   base::Lock lock_;
+  Size image_size_ GUARDED_BY(lock_);
   std::unique_ptr<AutoFramingCrOS> auto_framing_ GUARDED_BY(lock_);
-  std::unique_ptr<CameraBufferPool> buffer_pool_ GUARDED_BY(lock_);
-  std::map<int64_t, CameraBufferPool::Buffer> inflight_buffers_
-      GUARDED_BY(lock_);
-  std::optional<Rect<uint32_t>> region_of_interest_ GUARDED_BY(lock_);
-  Rect<uint32_t> crop_window_ GUARDED_BY(lock_);
+  std::vector<uint8_t> detector_input_buffer_ GUARDED_BY(lock_);
+  std::optional<int64_t> detector_input_buffer_timestamp_ GUARDED_BY(lock_);
+  std::optional<Rect<float>> region_of_interest_ GUARDED_BY(lock_);
+  Rect<float> crop_window_ GUARDED_BY(lock_);
 };
 
 }  // namespace cros

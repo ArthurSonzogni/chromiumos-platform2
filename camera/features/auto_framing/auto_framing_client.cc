@@ -24,12 +24,10 @@ namespace cros {
 
 namespace {
 
-// Estimated duration in frames that input buffer sent to the auto-framing
-// engine should keep valid.
-constexpr size_t kInputBufferCount = 10;
-constexpr uint32_t kInputBufferUsage = GRALLOC_USAGE_HW_TEXTURE |
-                                       GRALLOC_USAGE_SW_READ_OFTEN |
-                                       GRALLOC_USAGE_SW_WRITE_OFTEN;
+// The internal detector model input dimensions.  It saves an internal copy when
+// the detector input buffer matches this size and is continuous.
+constexpr uint32_t kDetectorInputWidth = 569;
+constexpr uint32_t kDetectorInputHeight = 320;
 
 constexpr char kAutoFramingGraphConfigOverridePath[] =
     "/run/camera/auto_framing_subgraph.pbtxt";
@@ -39,11 +37,15 @@ constexpr char kAutoFramingGraphConfigOverridePath[] =
 bool AutoFramingClient::SetUp(const Options& options) {
   base::AutoLock lock(lock_);
 
+  image_size_ = options.input_size;
+
   AutoFramingCrOS::Options auto_framing_options = {
-      .input_format = AutoFramingCrOS::ImageFormat::kGRAY8,
-      .input_width = base::checked_cast<int>(options.input_size.width),
-      .input_height = base::checked_cast<int>(options.input_size.height),
       .frame_rate = options.frame_rate,
+      .image_width = base::checked_cast<int>(options.input_size.width),
+      .image_height = base::checked_cast<int>(options.input_size.height),
+      .detector_input_format = AutoFramingCrOS::ImageFormat::kGRAY8,
+      .detector_input_width = base::checked_cast<int>(kDetectorInputWidth),
+      .detector_input_height = base::checked_cast<int>(kDetectorInputHeight),
       .target_aspect_ratio_x =
           base::checked_cast<int>(options.target_aspect_ratio_x),
       .target_aspect_ratio_y =
@@ -63,87 +65,79 @@ bool AutoFramingClient::SetUp(const Options& options) {
     return false;
   }
 
-  // Allocate buffers for auto-framing engine inputs.
-  // TODO(kamesan): Use a smaller size if detection works well.
-  CameraBufferPool::Options buffer_pool_options = {
-      .width = options.input_size.width,
-      .height = options.input_size.height,
-      .format = HAL_PIXEL_FORMAT_Y8,
-      .usage = kInputBufferUsage,
-      .max_num_buffers = kInputBufferCount,
-  };
-  buffer_pool_ = std::make_unique<CameraBufferPool>(buffer_pool_options);
+  detector_input_buffer_.resize(kDetectorInputWidth * kDetectorInputHeight);
 
   region_of_interest_ = std::nullopt;
-  crop_window_ =
+  crop_window_ = NormalizeRect(
       GetCenteringFullCrop(options.input_size, options.target_aspect_ratio_x,
-                           options.target_aspect_ratio_y);
+                           options.target_aspect_ratio_y),
+      image_size_);
 
   return true;
 }
 
 bool AutoFramingClient::ProcessFrame(int64_t timestamp,
-                                     buffer_handle_t src_buffer) {
+                                     buffer_handle_t buffer) {
   base::AutoLock lock(lock_);
+  DCHECK_NE(auto_framing_, nullptr);
 
-  if (!auto_framing_) {
-    LOGF(ERROR) << "AutoFramingClient is not initialized";
+  VLOGF(2) << "Notify frame @" << timestamp;
+  if (!auto_framing_->NotifyFrame(timestamp)) {
+    LOGF(ERROR) << "Failed to notify frame @" << timestamp;
     return false;
   }
 
-  DCHECK_NE(buffer_pool_, nullptr);
-  std::optional<CameraBufferPool::Buffer> dst_buffer =
-      buffer_pool_->RequestBuffer();
-  if (!dst_buffer) {
-    LOGF(ERROR) << "Failed to allocate buffer for detection @" << timestamp;
-    return false;
+  // Skip detecting this frame if there's an inflight detection.
+  if (detector_input_buffer_timestamp_.has_value()) {
+    return true;
   }
 
-  // TODO(kamesan): Use GPU to copy/scale the buffers.
-  ScopedMapping src_mapping(src_buffer);
-  const ScopedMapping& dst_mapping = dst_buffer->Map();
-  DCHECK_EQ(src_mapping.width(), dst_mapping.width());
-  DCHECK_EQ(src_mapping.height(), dst_mapping.height());
-  libyuv::CopyPlane(src_mapping.plane(0).addr, src_mapping.plane(0).stride,
-                    dst_mapping.plane(0).addr, dst_mapping.plane(0).stride,
-                    dst_mapping.width(), dst_mapping.height());
+  ScopedMapping mapping(buffer);
+  libyuv::ScalePlane(
+      mapping.plane(0).addr, mapping.plane(0).stride, mapping.width(),
+      mapping.height(), detector_input_buffer_.data(), kDetectorInputWidth,
+      kDetectorInputWidth, kDetectorInputHeight, libyuv::kFilterNone);
 
   VLOGF(2) << "Process frame @" << timestamp;
-  if (!auto_framing_->ProcessFrame(timestamp, dst_mapping.plane(0).addr,
-                                   dst_mapping.plane(0).stride)) {
-    LOGF(ERROR) << "Failed to process frame @" << timestamp;
+  detector_input_buffer_timestamp_ = timestamp;
+  if (!auto_framing_->ProcessFrame(timestamp, detector_input_buffer_.data(),
+                                   kDetectorInputWidth)) {
+    LOGF(ERROR) << "Failed to detect frame @" << timestamp;
+    detector_input_buffer_timestamp_ = std::nullopt;
     return false;
   }
-
-  DCHECK_EQ(inflight_buffers_.count(timestamp), 0);
-  inflight_buffers_.insert(std::make_pair(timestamp, *std::move(dst_buffer)));
 
   return true;
 }
 
-std::optional<Rect<uint32_t>> AutoFramingClient::TakeNewRegionOfInterest() {
+std::optional<Rect<float>> AutoFramingClient::TakeNewRegionOfInterest() {
   base::AutoLock lock(lock_);
-  std::optional<Rect<uint32_t>> roi;
+  std::optional<Rect<float>> roi;
   roi.swap(region_of_interest_);
   return roi;
 }
 
-Rect<uint32_t> AutoFramingClient::GetCropWindow() {
+Rect<float> AutoFramingClient::GetCropWindow() {
   base::AutoLock lock(lock_);
   return crop_window_;
 }
 
 void AutoFramingClient::TearDown() {
+  base::AutoLock lock(lock_);
+
   auto_framing_.reset();
-  inflight_buffers_.clear();
-  buffer_pool_.reset();
+
+  detector_input_buffer_timestamp_ = std::nullopt;
+  detector_input_buffer_.clear();
 }
 
 void AutoFramingClient::OnFrameProcessed(int64_t timestamp) {
   VLOGF(2) << "Release frame @" << timestamp;
 
   base::AutoLock lock(lock_);
-  inflight_buffers_.erase(timestamp);
+  DCHECK(detector_input_buffer_timestamp_.has_value());
+  DCHECK_EQ(*detector_input_buffer_timestamp_, timestamp);
+  detector_input_buffer_timestamp_ = std::nullopt;
 }
 
 void AutoFramingClient::OnNewRegionOfInterest(
@@ -152,9 +146,10 @@ void AutoFramingClient::OnNewRegionOfInterest(
            << x_max << "," << y_max;
 
   base::AutoLock lock(lock_);
-  region_of_interest_ =
+  region_of_interest_ = NormalizeRect(
       Rect<int>(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1)
-          .AsRect<uint32_t>();
+          .AsRect<uint32_t>(),
+      image_size_);
 }
 
 void AutoFramingClient::OnNewCropWindow(
@@ -163,8 +158,10 @@ void AutoFramingClient::OnNewCropWindow(
            << "," << x_max << "," << y_max;
 
   base::AutoLock lock(lock_);
-  crop_window_ = Rect<int>(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1)
-                     .AsRect<uint32_t>();
+  crop_window_ = NormalizeRect(
+      Rect<int>(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1)
+          .AsRect<uint32_t>(),
+      image_size_);
 }
 
 void AutoFramingClient::OnNewAnnotatedFrame(int64_t timestamp,

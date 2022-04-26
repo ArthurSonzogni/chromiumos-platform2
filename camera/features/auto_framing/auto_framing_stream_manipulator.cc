@@ -622,10 +622,10 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
       return false;
     }
 
-    std::optional<Rect<uint32_t>> roi =
+    std::optional<Rect<float>> roi =
         auto_framing_client_.TakeNewRegionOfInterest();
     if (roi) {
-      region_of_interest_ = NormalizeRect(*roi, full_frame_size_);
+      region_of_interest_ = *roi;
       if (!override_crop_window_) {
         DCHECK_NE(framer_, nullptr);
         framer_->OnNewRegionOfInterest(result->frame_number(),
@@ -636,8 +636,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
 
   // Crop the full frame into client buffers.
   if (override_crop_window_) {
-    active_crop_region_ =
-        NormalizeRect(auto_framing_client_.GetCropWindow(), full_frame_size_);
+    active_crop_region_ = auto_framing_client_.GetCropWindow();
   } else {
     DCHECK_NE(framer_, nullptr);
     active_crop_region_ =
