@@ -484,7 +484,105 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+  void OnPropertyChanged(const dbus::ObjectPath& object_path,
+                         const std::string& interface_name,
+                         const std::string& property_name) {
+    if (interface_name == "fi.w1.wpa_supplicant1.Interface") {
+      auto p = %s_instances_interface.find(object_path);
+      if (p == %s_instances_interface.end())
+        return;
+      p->second->OnPropertyChanged(property_name);
+      return;
+    }
+  }
 
+  void ObjectAdded(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "fi.w1.wpa_supplicant1.Interface") {
+      auto property_set =
+          static_cast<fi::w1::wpa_supplicant1::InterfaceProxy::PropertySet*>(
+              dbus_object_manager_->GetProperties(object_path, interface_name));
+      std::unique_ptr<fi::w1::wpa_supplicant1::InterfaceProxy> interface_proxy{
+        new fi::w1::wpa_supplicant1::InterfaceProxy{bus_, service_name_, property_set}
+      };
+      auto p = interface_instances_.emplace(object_path, std::move(interface_proxy));
+      if (!on_interface_added_.is_null())
+        on_interface_added_.Run(p.first->second.get());
+      return;
+    }
+    if (interface_name == "EmptyInterface") {
+      std::unique_ptr<EmptyInterfaceProxy> empty_interface_proxy{
+        new EmptyInterfaceProxy{bus_, service_name_, object_path}
+      };
+      auto p = empty_interface_instances_.emplace(object_path, std::move(empty_interface_proxy));
+      if (!on_empty_interface_added_.is_null())
+        on_empty_interface_added_.Run(p.first->second.get());
+      return;
+    }
+  }
+
+  void ObjectRemoved(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "fi.w1.wpa_supplicant1.Interface") {
+      auto p = interface_instances_.find(object_path);
+      if (p != interface_instances_.end()) {
+        if (!on_interface_removed_.is_null())
+          on_interface_removed_.Run(object_path);
+        interface_instances_.erase(p);
+      }
+      return;
+    }
+    if (interface_name == "EmptyInterface") {
+      auto p = empty_interface_instances_.find(object_path);
+      if (p != empty_interface_instances_.end()) {
+        if (!on_empty_interface_removed_.is_null())
+          on_empty_interface_removed_.Run(object_path);
+        empty_interface_instances_.erase(p);
+      }
+      return;
+    }
+  }
+
+  dbus::PropertySet* CreateProperties(
+      dbus::ObjectProxy* object_proxy,
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "fi.w1.wpa_supplicant1.Interface") {
+      return new fi::w1::wpa_supplicant1::InterfaceProxy::PropertySet{
+          object_proxy,
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
+      };
+    }
+    if (interface_name == "EmptyInterface") {
+      return new EmptyInterfaceProxy::PropertySet{
+          object_proxy,
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
+      };
+    }
+    LOG(FATAL) << "Creating properties for unsupported interface "
+               << interface_name;
+    return nullptr;
+  }
+
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  dbus::ObjectManager* dbus_object_manager_;
+  std::map<dbus::ObjectPath,
+           std::unique_ptr<fi::w1::wpa_supplicant1::InterfaceProxy>> interface_instances_;
+  base::RepeatingCallback<void(fi::w1::wpa_supplicant1::InterfaceProxyInterface*)> on_interface_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_interface_removed_;
+  std::map<dbus::ObjectPath,
+           std::unique_ptr<EmptyInterfaceProxy>> empty_interface_instances_;
+  base::RepeatingCallback<void(EmptyInterfaceProxyInterface*)> on_empty_interface_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_empty_interface_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
@@ -1773,7 +1871,63 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+  void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
+                         const std::string& /* interface_name */,
+                         const std::string& /* property_name */) {}
 
+  void ObjectAdded(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      std::unique_ptr<test::EmptyInterfaceProxy> empty_interface_proxy{
+        new test::EmptyInterfaceProxy{bus_, service_name_, object_path}
+      };
+      auto p = empty_interface_instances_.emplace(object_path, std::move(empty_interface_proxy));
+      if (!on_empty_interface_added_.is_null())
+        on_empty_interface_added_.Run(p.first->second.get());
+      return;
+    }
+  }
+
+  void ObjectRemoved(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      auto p = empty_interface_instances_.find(object_path);
+      if (p != empty_interface_instances_.end()) {
+        if (!on_empty_interface_removed_.is_null())
+          on_empty_interface_removed_.Run(object_path);
+        empty_interface_instances_.erase(p);
+      }
+      return;
+    }
+  }
+
+  dbus::PropertySet* CreateProperties(
+      dbus::ObjectProxy* object_proxy,
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      return new test::EmptyInterfaceProxy::PropertySet{
+          object_proxy,
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
+      };
+    }
+    LOG(FATAL) << "Creating properties for unsupported interface "
+               << interface_name;
+    return nullptr;
+  }
+
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  dbus::ObjectManager* dbus_object_manager_;
+  std::map<dbus::ObjectPath,
+           std::unique_ptr<test::EmptyInterfaceProxy>> empty_interface_instances_;
+  base::RepeatingCallback<void(test::EmptyInterfaceProxyInterface*)> on_empty_interface_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_empty_interface_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
@@ -1953,7 +2107,62 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+  void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
+                         const std::string& /* interface_name */,
+                         const std::string& /* property_name */) {}
 
+  void ObjectAdded(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      std::unique_ptr<test::EmptyInterfaceProxy> empty_interface_proxy{
+        new test::EmptyInterfaceProxy{bus_, object_path}
+      };
+      auto p = empty_interface_instances_.emplace(object_path, std::move(empty_interface_proxy));
+      if (!on_empty_interface_added_.is_null())
+        on_empty_interface_added_.Run(p.first->second.get());
+      return;
+    }
+  }
+
+  void ObjectRemoved(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      auto p = empty_interface_instances_.find(object_path);
+      if (p != empty_interface_instances_.end()) {
+        if (!on_empty_interface_removed_.is_null())
+          on_empty_interface_removed_.Run(object_path);
+        empty_interface_instances_.erase(p);
+      }
+      return;
+    }
+  }
+
+  dbus::PropertySet* CreateProperties(
+      dbus::ObjectProxy* object_proxy,
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      return new test::EmptyInterfaceProxy::PropertySet{
+          object_proxy,
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
+      };
+    }
+    LOG(FATAL) << "Creating properties for unsupported interface "
+               << interface_name;
+    return nullptr;
+  }
+
+  scoped_refptr<dbus::Bus> bus_;
+  dbus::ObjectManager* dbus_object_manager_;
+  std::map<dbus::ObjectPath,
+           std::unique_ptr<test::EmptyInterfaceProxy>> empty_interface_instances_;
+  base::RepeatingCallback<void(test::EmptyInterfaceProxyInterface*)> on_empty_interface_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_empty_interface_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
@@ -2174,7 +2383,74 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+  void OnPropertyChanged(const dbus::ObjectPath& object_path,
+                         const std::string& interface_name,
+                         const std::string& property_name) {
+    if (interface_name == "test.EmptyInterface") {
+      auto p = %s_instances_empty_interface.find(object_path);
+      if (p == %s_instances_empty_interface.end())
+        return;
+      p->second->OnPropertyChanged(property_name);
+      return;
+    }
+  }
 
+  void ObjectAdded(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      auto property_set =
+          static_cast<test::EmptyInterfaceProxy::PropertySet*>(
+              dbus_object_manager_->GetProperties(object_path, interface_name));
+      std::unique_ptr<test::EmptyInterfaceProxy> empty_interface_proxy{
+        new test::EmptyInterfaceProxy{bus_, service_name_, object_path, property_set}
+      };
+      auto p = empty_interface_instances_.emplace(object_path, std::move(empty_interface_proxy));
+      if (!on_empty_interface_added_.is_null())
+        on_empty_interface_added_.Run(p.first->second.get());
+      return;
+    }
+  }
+
+  void ObjectRemoved(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      auto p = empty_interface_instances_.find(object_path);
+      if (p != empty_interface_instances_.end()) {
+        if (!on_empty_interface_removed_.is_null())
+          on_empty_interface_removed_.Run(object_path);
+        empty_interface_instances_.erase(p);
+      }
+      return;
+    }
+  }
+
+  dbus::PropertySet* CreateProperties(
+      dbus::ObjectProxy* object_proxy,
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+    if (interface_name == "test.EmptyInterface") {
+      return new test::EmptyInterfaceProxy::PropertySet{
+          object_proxy,
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
+      };
+    }
+    LOG(FATAL) << "Creating properties for unsupported interface "
+               << interface_name;
+    return nullptr;
+  }
+
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  dbus::ObjectManager* dbus_object_manager_;
+  std::map<dbus::ObjectPath,
+           std::unique_ptr<test::EmptyInterfaceProxy>> empty_interface_instances_;
+  base::RepeatingCallback<void(test::EmptyInterfaceProxyInterface*)> on_empty_interface_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_empty_interface_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 

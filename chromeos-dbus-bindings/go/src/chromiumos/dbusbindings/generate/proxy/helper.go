@@ -68,3 +68,16 @@ func makeSignalCallbackType(args []introspect.SignalArg) (string, error) {
 	indent := strings.Repeat(" ", len(prefix))
 	return fmt.Sprintf("%s%s%s", prefix, strings.Join(lines, ",\n"+indent), suffix), nil
 }
+
+// extractInterfacesWithProperties returns an array of Interfaces that have Properties.
+func extractInterfacesWithProperties(iss []introspect.Introspection) []introspect.Interface {
+	var ret []introspect.Interface
+	for _, is := range iss {
+		for _, itf := range is.Interfaces {
+			if len(itf.Properties) > 0 {
+				ret = append(ret, itf)
+			}
+		}
+	}
+	return ret
+}

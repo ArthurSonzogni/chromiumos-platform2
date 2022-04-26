@@ -17,17 +17,18 @@ import (
 )
 
 var funcMap = template.FuncMap{
-	"add":                        func(a, b int) int { return a + b },
-	"extractNameSpaces":          genutil.ExtractNameSpaces,
-	"formatComment":              genutil.FormatComment,
-	"makeFullItfName":            genutil.MakeFullItfName,
-	"makeFullProxyName":          genutil.MakeFullProxyName,
-	"makeFullProxyInterfaceName": genutil.MakeFullProxyInterfaceName,
-	"makeMethodParams":           makeMethodParams,
-	"makeMethodCallbackType":     makeMethodCallbackType,
-	"makeProxyInterfaceArgs":     makeProxyInterfaceArgs,
-	"makeProxyInterfaceName":     genutil.MakeProxyInterfaceName,
-	"makeProxyName":              genutil.MakeProxyName,
+	"add":                             func(a, b int) int { return a + b },
+	"extractInterfacesWithProperties": extractInterfacesWithProperties,
+	"extractNameSpaces":               genutil.ExtractNameSpaces,
+	"formatComment":                   genutil.FormatComment,
+	"makeFullItfName":                 genutil.MakeFullItfName,
+	"makeFullProxyName":               genutil.MakeFullProxyName,
+	"makeFullProxyInterfaceName":      genutil.MakeFullProxyInterfaceName,
+	"makeMethodParams":                makeMethodParams,
+	"makeMethodCallbackType":          makeMethodCallbackType,
+	"makeProxyInterfaceArgs":          makeProxyInterfaceArgs,
+	"makeProxyInterfaceName":          genutil.MakeProxyInterfaceName,
+	"makeProxyName":                   genutil.MakeProxyName,
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
 		return p.BaseType(dbustype.DirectionExtract)
 	},
@@ -388,7 +389,104 @@ class {{$className}} : public dbus::ObjectManager::Interface {
 {{- end}}{{end}}
 
  private:
-{{/* TODO(crbug.com/983008): Add private APIs. */}}
+{{- $itfsWithProps := extractInterfacesWithProperties .Introspects -}}
+{{- if $itfsWithProps }}
+  void OnPropertyChanged(const dbus::ObjectPath& object_path,
+                         const std::string& interface_name,
+                         const std::string& property_name) {
+{{- range $itfsWithProps }}
+    if (interface_name == "{{.Name}}") {
+{{- $instancesName := makeVariableName .Name | print "%s_instances_" }}
+      auto p = {{$instancesName}}.find(object_path);
+      if (p == {{$instancesName}}.end())
+        return;
+      p->second->OnPropertyChanged(property_name);
+      return;
+    }
+{{- end }}
+  }
+{{- else }}
+  void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
+                         const std::string& /* interface_name */,
+                         const std::string& /* property_name */) {}
+{{- end }}
+
+  void ObjectAdded(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+{{- $fullProxyName := makeFullProxyName .Name}}
+{{- $varName := makeVariableName .Name}}
+    if (interface_name == "{{.Name}}") {
+{{- if .Properties }}
+      auto property_set =
+          static_cast<{{$fullProxyName}}::PropertySet*>(
+              dbus_object_manager_->GetProperties(object_path, interface_name));
+{{- end }}
+      std::unique_ptr<{{$fullProxyName}}> {{$varName}}_proxy{
+        new {{$fullProxyName}}{bus_
+{{- if (not $.ServiceName)}}, service_name_{{end}}
+{{- if (not $introspect.Name)}}, object_path{{end}}
+{{- if .Properties}}, property_set{{end}}}
+      };
+      auto p = {{$varName}}_instances_.emplace(object_path, std::move({{$varName}}_proxy));
+      if (!on_{{$varName}}_added_.is_null())
+        on_{{$varName}}_added_.Run(p.first->second.get());
+      return;
+    }
+{{- end}}{{end}}
+  }
+
+  void ObjectRemoved(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+{{- $varName := makeVariableName .Name}}
+    if (interface_name == "{{.Name}}") {
+      auto p = {{$varName}}_instances_.find(object_path);
+      if (p != {{$varName}}_instances_.end()) {
+        if (!on_{{$varName}}_removed_.is_null())
+          on_{{$varName}}_removed_.Run(object_path);
+        {{$varName}}_instances_.erase(p);
+      }
+      return;
+    }
+{{- end}}{{end}}
+  }
+
+  dbus::PropertySet* CreateProperties(
+      dbus::ObjectProxy* object_proxy,
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override {
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+    if (interface_name == "{{.Name}}") {
+      return new {{makeFullProxyName .Name}}::PropertySet{
+          object_proxy,
+          base::BindRepeating(&{{$className}}::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
+      };
+    }
+{{- end}}{{end}}
+    LOG(FATAL) << "Creating properties for unsupported interface "
+               << interface_name;
+    return nullptr;
+  }
+
+  scoped_refptr<dbus::Bus> bus_;
+{{- if not $.ServiceName }}
+  std::string service_name_;
+{{- end }}
+  dbus::ObjectManager* dbus_object_manager_;
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+{{- $fullProxyName := makeFullProxyName .Name}}
+{{- $varName := makeVariableName .Name}}
+  std::map<dbus::ObjectPath,
+           std::unique_ptr<{{$fullProxyName}}>> {{$varName}}_instances_;
+  base::RepeatingCallback<void({{$fullProxyName}}Interface*)> on_{{$varName}}_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_{{$varName}}_removed_;
+{{- end}}{{end}}
   base::WeakPtrFactory<{{$className}}> weak_ptr_factory_{this};
 };
 {{range extractNameSpaces .ObjectManagerName | reverse }}
