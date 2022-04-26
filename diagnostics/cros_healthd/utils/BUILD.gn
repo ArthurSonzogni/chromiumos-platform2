@@ -31,6 +31,8 @@ source_set("libcros_healthd_utils") {
 if (use.test) {
   pkg_config("libcros_healthd_utils_test_pkg_deps") {
     pkg_deps = [
+      "fwupd",
+      "libbrillo",
       "libchrome",
       "libchrome-test",
     ]

@@ -9,10 +9,20 @@
 #include <string>
 #include <vector>
 
+#include <brillo/variant_dictionary.h>
+
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace fwupd_utils {
+
+inline constexpr char kFwupdReusltKeyGuid[] = "Guid";
+inline constexpr char kFwupdResultKeyInstanceIds[] = "InstanceIds";
+inline constexpr char kFwupdResultKeyName[] = "Name";
+inline constexpr char kFwupdResultKeySerial[] = "Serial";
+inline constexpr char kFwupdResultKeyVendorId[] = "VendorId";
+inline constexpr char kFwupdResultKeyVersion[] = "Version";
+inline constexpr char kFwupdResultKeyVersionFormat[] = "VersionFormat";
 
 // DeviceInfo stores the data of a fwupd device.
 struct DeviceInfo {
@@ -51,6 +61,16 @@ struct UsbDeviceFilter {
 };
 
 using DeviceList = std::vector<DeviceInfo>;
+
+// Returns a device constructed from |dictionary|, which is a device from the
+// response of fwupd D-Bus GetDevices method.
+DeviceInfo ParseDbusFwupdDeviceInfo(
+    const brillo::VariantDictionary& dictionary);
+
+// Returns a device list constructed from |response|, which is the response of
+// fwupd D-Bus GetDevices method.
+DeviceList ParseDbusFwupdDeviceList(
+    const std::vector<brillo::VariantDictionary>& response);
 
 // Returns whether |device_info| contains a specific |vendor_id|, e.g.
 // "USB:0x1234".

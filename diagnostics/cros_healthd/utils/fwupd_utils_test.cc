@@ -7,7 +7,9 @@
 #include <optional>
 
 #include <base/strings/stringprintf.h>
+#include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
+#include <libfwupd/fwupd-enums.h>
 
 namespace diagnostics {
 namespace fwupd_utils {
@@ -50,6 +52,57 @@ TEST(FwupdUtilsTest, InstanceIdToGuid) {
 
 TEST(FwupdUtilsTest, InstanceIdToGuidConversionFails) {
   EXPECT_EQ(InstanceIdToGuid(""), std::nullopt);
+}
+
+TEST(FwupdUtilsTest, ParseDbusFwupdDeviceInfo) {
+  std::vector<std::string> guids{"GUID_1", "GUID_2"};
+  std::vector<std::string> instance_ids{"INSTNACE_ID1", "INSTNACE_ID2"};
+  std::string product_name("product_name");
+  std::string serial("serial");
+  std::string version("version");
+  std::string joined_vendor_id("USB:0x1234|PCI:0x5678");
+
+  brillo::VariantDictionary dbus_response_entry;
+  dbus_response_entry.emplace(kFwupdResultKeyName, product_name);
+  dbus_response_entry.emplace(kFwupdReusltKeyGuid, guids);
+  dbus_response_entry.emplace(kFwupdResultKeyInstanceIds, instance_ids);
+  dbus_response_entry.emplace(kFwupdResultKeySerial, serial);
+  dbus_response_entry.emplace(kFwupdResultKeyVendorId, joined_vendor_id);
+  dbus_response_entry.emplace(kFwupdResultKeyVersion, version);
+  dbus_response_entry.emplace(
+      kFwupdResultKeyVersionFormat,
+      static_cast<uint32_t>(FWUPD_VERSION_FORMAT_PLAIN));
+
+  DeviceInfo device_info = ParseDbusFwupdDeviceInfo(dbus_response_entry);
+
+  EXPECT_EQ(device_info.name, product_name);
+  EXPECT_EQ(device_info.guids, guids);
+  EXPECT_EQ(device_info.instance_ids, instance_ids);
+  EXPECT_EQ(device_info.serial, serial);
+  EXPECT_EQ(device_info.version, version);
+  EXPECT_EQ(device_info.version_format, FwupdVersionFormat::kPlain);
+  EXPECT_EQ(device_info.joined_vendor_id, joined_vendor_id);
+}
+
+TEST(FwupdUtilsTest, ParseDbusFwupdDeviceInfoMissingKeys) {
+  // For std::vector<std::string>, fill guids but not instance_ids.
+  // For std::optional<std::string>, fill product_name but not serial.
+  std::vector<std::string> guids{"GUID_1", "GUID_2"};
+  std::string product_name("product_name");
+
+  brillo::VariantDictionary dbus_response_entry;
+  dbus_response_entry.emplace(kFwupdResultKeyName, product_name);
+  dbus_response_entry.emplace(kFwupdReusltKeyGuid, guids);
+
+  DeviceInfo device_info = ParseDbusFwupdDeviceInfo(dbus_response_entry);
+
+  EXPECT_EQ(device_info.name, product_name);
+  EXPECT_EQ(device_info.guids, guids);
+  EXPECT_EQ(device_info.instance_ids.size(), 0);
+  EXPECT_EQ(device_info.serial, std::nullopt);
+  EXPECT_EQ(device_info.version, std::nullopt);
+  EXPECT_EQ(device_info.version_format, FwupdVersionFormat::kUnknown);
+  EXPECT_EQ(device_info.joined_vendor_id, std::nullopt);
 }
 
 TEST(FwupdUtilsTest, MatchUsbBySerials) {

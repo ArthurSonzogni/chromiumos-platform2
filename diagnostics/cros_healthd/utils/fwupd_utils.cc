@@ -12,7 +12,9 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/variant_dictionary.h>
 #include <libfwupd/fwupd-common.h>
+#include <libfwupd/fwupd-enums.h>
 
 #include "diagnostics/cros_healthd/utils/fwupd_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -81,7 +83,107 @@ bool MatchUsbDevice(const DeviceInfo& device_info,
          MatchSerial(device_info, target_usb_device);
 }
 
+// Similar to brillo::GetVariantValueOrDefault but returns std::nullopt
+// when the key does not exist or the type conversion fails.
+template <typename T>
+const std::optional<T> GetVariantOptionalValue(
+    const brillo::VariantDictionary& dictionary, const std::string& key) {
+  auto it = dictionary.find(key);
+  if (it == dictionary.end()) {
+    return std::nullopt;
+  }
+  T value;
+  if (!it->second.GetValue(&value)) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+// Converts a fwupd format enum to the corresponding mojo enum.
+mojo_ipc::FwupdVersionFormat ConvertFwupdVersionFormatToMojo(
+    FwupdVersionFormat version_format) {
+  switch (version_format) {
+    case FWUPD_VERSION_FORMAT_UNKNOWN:
+      return mojo_ipc::FwupdVersionFormat::kUnknown;
+    case FWUPD_VERSION_FORMAT_PLAIN:
+      return mojo_ipc::FwupdVersionFormat::kPlain;
+    case FWUPD_VERSION_FORMAT_NUMBER:
+      return mojo_ipc::FwupdVersionFormat::kNumber;
+    case FWUPD_VERSION_FORMAT_PAIR:
+      return mojo_ipc::FwupdVersionFormat::kPair;
+    case FWUPD_VERSION_FORMAT_TRIPLET:
+      return mojo_ipc::FwupdVersionFormat::kTriplet;
+    case FWUPD_VERSION_FORMAT_QUAD:
+      return mojo_ipc::FwupdVersionFormat::kQuad;
+    case FWUPD_VERSION_FORMAT_BCD:
+      return mojo_ipc::FwupdVersionFormat::kBcd;
+    case FWUPD_VERSION_FORMAT_INTEL_ME:
+      return mojo_ipc::FwupdVersionFormat::kIntelMe;
+    case FWUPD_VERSION_FORMAT_INTEL_ME2:
+      return mojo_ipc::FwupdVersionFormat::kIntelMe2;
+    case FWUPD_VERSION_FORMAT_SURFACE_LEGACY:
+      return mojo_ipc::FwupdVersionFormat::kSurfaceLegacy;
+    case FWUPD_VERSION_FORMAT_SURFACE:
+      return mojo_ipc::FwupdVersionFormat::kSurface;
+    case FWUPD_VERSION_FORMAT_DELL_BIOS:
+      return mojo_ipc::FwupdVersionFormat::kDellBios;
+    case FWUPD_VERSION_FORMAT_HEX:
+      return mojo_ipc::FwupdVersionFormat::kHex;
+    case FWUPD_VERSION_FORMAT_LAST:
+      return mojo_ipc::FwupdVersionFormat::kUnknown;
+  }
+}
+
+// Gets the version format from |dictionary| with the given |key|.
+mojo_ipc::FwupdVersionFormat GetVersionFormat(
+    const brillo::VariantDictionary& dictionary, const std::string& key) {
+  // Can not use brillo::GetVariantValueOrDefault here because when that
+  // function returns 0, we cannot tell whether it represents a valid enum or
+  // it means the key does not exist.
+  std::optional<uint32_t> format_int =
+      GetVariantOptionalValue<uint32_t>(dictionary, key);
+  // Check that the value is within the valid enum range.
+  if (format_int.has_value() &&
+      format_int.value() < FWUPD_VERSION_FORMAT_LAST) {
+    return ConvertFwupdVersionFormatToMojo(
+        static_cast<FwupdVersionFormat>(format_int.value()));
+  }
+  return mojo_ipc::FwupdVersionFormat::kUnknown;
+}
+
 }  // namespace
+
+DeviceInfo ParseDbusFwupdDeviceInfo(
+    const brillo::VariantDictionary& dictionary) {
+  DeviceInfo device_info;
+
+  device_info.name =
+      GetVariantOptionalValue<std::string>(dictionary, kFwupdResultKeyName);
+  device_info.guids =
+      brillo::GetVariantValueOrDefault<std::vector<std::string>>(
+          dictionary, kFwupdReusltKeyGuid);
+  device_info.instance_ids =
+      brillo::GetVariantValueOrDefault<std::vector<std::string>>(
+          dictionary, kFwupdResultKeyInstanceIds);
+  device_info.serial =
+      GetVariantOptionalValue<std::string>(dictionary, kFwupdResultKeySerial);
+  device_info.version =
+      GetVariantOptionalValue<std::string>(dictionary, kFwupdResultKeyVersion);
+  device_info.version_format =
+      GetVersionFormat(dictionary, kFwupdResultKeyVersionFormat);
+  device_info.joined_vendor_id =
+      GetVariantOptionalValue<std::string>(dictionary, kFwupdResultKeyVendorId);
+  return device_info;
+}
+
+DeviceList ParseDbusFwupdDeviceList(
+    const std::vector<brillo::VariantDictionary>& response) {
+  DeviceList fwupd_devices;
+  for (auto& raw_device_info : response) {
+    fwupd_devices.push_back(ParseDbusFwupdDeviceInfo(raw_device_info));
+  }
+  return fwupd_devices;
+}
 
 bool ContainsVendorId(const DeviceInfo& device_info,
                       const std::string& vendor_id) {
