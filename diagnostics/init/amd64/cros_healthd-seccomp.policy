@@ -31,9 +31,11 @@ getrandom: 1
 #   0xc0086457 == DRM_IOCTL_I915_GEM_BUSY
 #   0xc008646d == DRM_IOCTL_I915_GEM_CONTEXT_CREATE
 #   0xc00c6466 == DRM_IOCTL_I915_GEM_MADVISE
+#   0xc010640c == DRM_IOCTL_GET_CAP
 #   0xc0106446 == DRM_IOCTL_I915_GETPARAM
 #   0xc010645b == DRM_IOCTL_I915_GEM_CREATE
 #   0xc0106461 == DRM_IOCTL_I915_GEM_SET_TILING
+#   0xc010646d == DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT
 #   0xc0106471 == DRM_IOCTL_I915_REG_READ
 #   0xc0106479 == DRM_IOCTL_I915_QUERY
 #   0xc0186472 == DRM_IOCTL_I915_GET_RESET_STATS
@@ -98,7 +100,8 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc04064aa || arg1 == 0xc05064a7 || arg1 == 0xc01464a6 || \
        arg1 == 0xc06864a1 || arg1 == 0xc008646a || arg1 == 0xc0206466 || \
        arg1 == 0xc0106441 || arg1 == 0xc0106443 || arg1 == 0xc0186449 || \
-       arg1 == 0xc0206442 || arg1 == 0xc0386444
+       arg1 == 0xc0206442 || arg1 == 0xc0386444 || arg1 == 0xc010640c || \
+       arg1 == 0xc010646d
 geteuid: 1
 brk: 1
 getuid: 1
