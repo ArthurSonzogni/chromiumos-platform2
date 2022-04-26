@@ -92,7 +92,7 @@ func TestGenerateProxies(t *testing.T) {
 	}
 
 	sc := serviceconfig.Config{
-		ObjectManager: serviceconfig.ObjectManagerConfig{
+		ObjectManager: &serviceconfig.ObjectManagerConfig{
 			Name: "foo.bar.ObjectManager",
 		},
 	}
@@ -1528,7 +1528,7 @@ func TestGenerateProxiesWithObjectManager(t *testing.T) {
 	}}
 
 	sc := serviceconfig.Config{
-		ObjectManager: serviceconfig.ObjectManagerConfig{
+		ObjectManager: &serviceconfig.ObjectManagerConfig{
 			Name: "test.ObjectManager",
 		},
 	}
@@ -1663,7 +1663,7 @@ func TestGenerateProxiesWithPropertiesAndObjectManager(t *testing.T) {
 	}}
 
 	sc := serviceconfig.Config{
-		ObjectManager: serviceconfig.ObjectManagerConfig{
+		ObjectManager: &serviceconfig.ObjectManagerConfig{
 			Name: "test.ObjectManager",
 		},
 	}

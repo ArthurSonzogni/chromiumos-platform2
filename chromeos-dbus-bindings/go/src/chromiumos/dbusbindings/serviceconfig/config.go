@@ -7,6 +7,7 @@ package serviceconfig
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -30,7 +31,7 @@ type Config struct {
 	// constructor of generated proxy class(es).
 	ServiceName string `json:"service_name"`
 	// ObjectManger contains the settings of ObjectManager outputs.
-	ObjectManager ObjectManagerConfig `json:"object_manager"`
+	ObjectManager *ObjectManagerConfig `json:"object_manager"`
 }
 
 // Load reads and parses a file at path into Config.
@@ -39,10 +40,24 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parse(b)
+}
 
+// Parse parses the JSON byte array, and returns the config data.
+func parse(b []byte) (*Config, error) {
 	var c Config
 	if err := json.Unmarshal(b, &c); err != nil {
 		return nil, err
 	}
+
+	// If object_manager.name is not explicitly specified,
+	// derive it from service_name.
+	if c.ObjectManager != nil && c.ObjectManager.Name == "" {
+		if c.ServiceName == "" {
+			return nil, fmt.Errorf("ObjectManager's name cannot be set")
+		}
+		c.ObjectManager.Name = c.ServiceName + ".ObjectManager"
+	}
+
 	return &c, nil
 }

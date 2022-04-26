@@ -321,6 +321,11 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 		return err
 	}
 
+	var omName string
+	if config.ObjectManager != nil {
+		omName = config.ObjectManager.Name
+	}
+
 	headerGuard := genutil.GenerateHeaderGuard(outputFilePath)
 	return tmpl.Execute(f, struct {
 		Introspects       []introspect.Introspection
@@ -331,6 +336,6 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 		Introspects:       introspects,
 		HeaderGuard:       headerGuard,
 		ServiceName:       config.ServiceName,
-		ObjectManagerName: config.ObjectManager.Name,
+		ObjectManagerName: omName,
 	})
 }

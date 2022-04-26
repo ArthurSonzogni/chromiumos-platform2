@@ -172,6 +172,11 @@ func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFil
 		return err
 	}
 
+	var omName string
+	if config.ObjectManager != nil {
+		omName = config.ObjectManager.Name
+	}
+
 	headerGuard := genutil.GenerateHeaderGuard(outputFilePath)
 	return tmpl.Execute(f, struct {
 		Introspects       []introspect.Introspection
@@ -184,6 +189,6 @@ func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFil
 		HeaderGuard:       headerGuard,
 		ProxyFilePath:     proxyFilePath,
 		ServiceName:       config.ServiceName,
-		ObjectManagerName: config.ObjectManager.Name,
+		ObjectManagerName: omName,
 	})
 }

@@ -92,7 +92,7 @@ func TestGenerateMockProxies(t *testing.T) {
 	}
 
 	sc := serviceconfig.Config{
-		ObjectManager: serviceconfig.ObjectManagerConfig{
+		ObjectManager: &serviceconfig.ObjectManagerConfig{
 			Name: "foo.bar.ObjectManager",
 		},
 	}
@@ -870,7 +870,7 @@ func TestGenerateMockProxiesWithPropertiesAndObjectManager(t *testing.T) {
 	}}
 
 	sc := serviceconfig.Config{
-		ObjectManager: serviceconfig.ObjectManagerConfig{
+		ObjectManager: &serviceconfig.ObjectManagerConfig{
 			Name: "test.ObjectManager",
 		},
 	}
