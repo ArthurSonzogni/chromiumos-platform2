@@ -36,6 +36,20 @@ class BackendTpm2 : public Backend {
     Status Prepare() override;
   };
 
+  class SealingTpm2 : public Sealing, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<brillo::Blob> Seal(
+        const OperationPolicySetting& policy,
+        const brillo::SecureBlob& unsealed_data) override;
+    StatusOr<std::optional<ScopedKey>> PreloadSealedData(
+        const OperationPolicy& policy,
+        const brillo::Blob& sealed_data) override;
+    StatusOr<brillo::SecureBlob> Unseal(const OperationPolicy& policy,
+                                        const brillo::Blob& sealed_data,
+                                        UnsealOptions options) override;
+  };
+
   class KeyManagermentTpm2 : public KeyManagerment,
                              public SubClassHelper<BackendTpm2> {
    public:
@@ -139,7 +153,7 @@ class BackendTpm2 : public Backend {
   DAMitigation* GetDAMitigation() override { return nullptr; }
   Storage* GetStorage() override { return nullptr; }
   RoData* GetRoData() override { return nullptr; }
-  Sealing* GetSealing() override { return nullptr; }
+  Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override { return nullptr; }
   Deriving* GetDeriving() override { return nullptr; }
   Encryption* GetEncryption() override { return nullptr; }
@@ -156,6 +170,7 @@ class BackendTpm2 : public Backend {
   TrunksClientContext trunks_context_;
 
   StateTpm2 state_{*this};
+  SealingTpm2 sealing_{*this};
   KeyManagermentTpm2 key_managerment_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
