@@ -10,7 +10,6 @@
 
 #include <string>
 
-#include <base/compiler_specific.h>
 #include "chrome/knowledge/assist_ranker/ranker_example.pb.h"
 
 namespace assist_ranker {
@@ -19,16 +18,16 @@ namespace assist_ranker {
 // Returns false if the feature is not found. |feature| can be nullptr. In such
 // a case, the return value is not changed, but |feature| will not be filled in.
 // This can be used to check for the presence of a key.
-bool SafeGetFeature(const std::string& key,
-                    const RankerExample& example,
-                    Feature* feature) WARN_UNUSED_RESULT;
+[[nodiscard]] bool SafeGetFeature(const std::string& key,
+                                  const RankerExample& example,
+                                  Feature* feature);
 
 // Extract value from |feature| for scalar feature types. Returns true and fills
 // in |value| if the feature is found and has a float, int32 or bool value.
 // Returns false otherwise.
-bool GetFeatureValueAsFloat(const std::string& key,
-                            const RankerExample& example,
-                            float* value) WARN_UNUSED_RESULT;
+[[nodiscard]] bool GetFeatureValueAsFloat(const std::string& key,
+                                          const RankerExample& example,
+                                          float* value);
 
 // Converts a Ranker Feature to an int64. For feature list, this converts the
 // index-th value of the list.
@@ -47,9 +46,9 @@ bool FeatureToInt64(const Feature& feature, int64_t* res, int index = 0);
 // Extract category from one-hot feature. Returns true and fills
 // in |value| if the feature is found and is of type string_value. Returns false
 // otherwise.
-bool GetOneHotValue(const std::string& key,
-                    const RankerExample& example,
-                    std::string* value) WARN_UNUSED_RESULT;
+[[nodiscard]] bool GetOneHotValue(const std::string& key,
+                                  const RankerExample& example,
+                                  std::string* value);
 
 // Converts a string to a hex ahsh string.
 std::string HashFeatureName(const std::string& feature_name);
