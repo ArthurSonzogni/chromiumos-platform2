@@ -79,16 +79,16 @@ class TgtManager {
 
   // Acquires a TGT using the password given in the file descriptor
   // |password_fd|. See AcquireTgt() for details.
-  ErrorType AcquireTgtWithPassword(int password_fd) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AcquireTgtWithPassword(int password_fd);
 
   // Acquires a TGT using the keytab file at |keytab_path|. See AcquireTgt() for
   // details.
-  ErrorType AcquireTgtWithKeytab(Path keytab_path) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AcquireTgtWithKeytab(Path keytab_path);
 
   // Returns the Kerberos credentials cache and the configuration file. Returns
   // ERROR_NONE if the credentials cache is missing and ERROR_LOCAL_IO if any of
   // the files failed to read.
-  ErrorType GetKerberosFiles(KerberosFiles* files) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetKerberosFiles(KerberosFiles* files);
 
   // Sets a callback that gets called when either the Kerberos credential cache
   // or the configuration file changes on disk. Use in combination with
@@ -102,14 +102,14 @@ class TgtManager {
   void EnableTgtAutoRenewal(bool enabled);
 
   // Renews a TGT. Must happen within its validity lifetime.
-  ErrorType RenewTgt() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType RenewTgt();
 
   // Returns the lifetime of a TGT.
-  ErrorType GetTgtLifetime(protos::TgtLifetime* lifetime) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetTgtLifetime(protos::TgtLifetime* lifetime);
 
   // Use kpasswd to change the password for the current principal.
-  ErrorType ChangePassword(const std::string& old_password,
-                           const std::string& new_password) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType ChangePassword(const std::string& old_password,
+                                         const std::string& new_password);
 
   // Returns the file path of the Kerberos configuration file.
   Path GetConfigPath() const { return config_path_; }
@@ -137,15 +137,15 @@ class TgtManager {
   // the password in that file descriptor for authentication. If |keytab_path|
   // is not Path::INVALID, uses the keytab for authentication. Should always
   // pass one or the other. Must set principal, KDC IP and realm beforehand.
-  ErrorType AcquireTgt(int password_fd, Path keytab_path) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AcquireTgt(int password_fd, Path keytab_path);
 
   // Writes the Kerberos configuration and runs |kinit_cmd|. If |password_fd| is
   // not -1, the file descriptor is duplicated and set as input pipe.
-  ErrorType RunKinit(ProcessExecutor* kinit_cmd,
-                     int password_fd) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType RunKinit(ProcessExecutor* kinit_cmd,
+                                   int password_fd) const;
 
   // Writes the krb5 configuration file.
-  ErrorType WriteKrb5Conf() const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType WriteKrb5Conf() const;
 
   // Turns on krb5 trace logging if |flags_->TraceKrb5()| is enabled.
   void SetupKrb5Trace(ProcessExecutor* krb5_cmd) const;

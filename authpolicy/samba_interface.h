@@ -66,7 +66,7 @@ class SambaInterface : public TgtManager::Delegate {
   // Returns an error
   // - if a directory failed to create or
   // - if |expect_config| is true and the config file fails to load.
-  ErrorType Initialize(bool expect_config) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType Initialize(bool expect_config);
 
   // Sets the interface to Cryptohome.
   void SetCryptohomeClient(std::unique_ptr<CryptohomeClient> cryptohome_client);
@@ -89,11 +89,11 @@ class SambaInterface : public TgtManager::Delegate {
   // user name can change. The updated user name (or rather the sAMAccountName)
   // is returned in the |account_info|. Thus, |account_id| should be set if
   // known and left empty if unknown.
-  ErrorType AuthenticateUser(const std::string& user_principal_name,
-                             const std::string& account_id,
-                             int password_fd,
-                             ActiveDirectoryAccountInfo* account_info)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AuthenticateUser(
+      const std::string& user_principal_name,
+      const std::string& account_id,
+      int password_fd,
+      ActiveDirectoryAccountInfo* account_info);
 
   // Figures out whether the user is affiliated or not. If affiliated, caches
   // auth data and saves the auth data cache to disk. Must be called after a
@@ -106,15 +106,14 @@ class SambaInterface : public TgtManager::Delegate {
   // The returned |user_status| contains general ActiveDirectoryAccountInfo as
   // well as the status of the user's ticket-granting-ticket (TGT). Does not
   // fill |user_status| on error.
-  ErrorType GetUserStatus(const std::string& user_principal_name,
-                          const std::string& account_id,
-                          ActiveDirectoryUserStatus* user_status)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetUserStatus(const std::string& user_principal_name,
+                                        const std::string& account_id,
+                                        ActiveDirectoryUserStatus* user_status);
 
   // Gets the user Kerberos credential cache (krb5cc) and configuration
   // (krb5.conf) files if they exist. Does not set |files| on error.
-  ErrorType GetUserKerberosFiles(const std::string& account_id,
-                                 KerberosFiles* files) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetUserKerberosFiles(const std::string& account_id,
+                                               KerberosFiles* files);
 
   // Joins the local device with name |machine_name| to an Active Directory
   // domain. The credentials for joining (usually admin level) are given by
@@ -126,29 +125,29 @@ class SambaInterface : public TgtManager::Delegate {
   // Computers OU). |encryption_types| specifies the allowed encryption types
   // for Kerberos authentication. On success, |joined_domain| is set to the
   // domain that was joined (may be nullptr).
-  ErrorType JoinMachine(const std::string& machine_name,
-                        const std::string& machine_domain,
-                        const std::vector<std::string>& machine_ou,
-                        const std::string& user_principal_name,
-                        KerberosEncryptionTypes encryption_types,
-                        int password_fd,
-                        std::string* joined_domain) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType JoinMachine(
+      const std::string& machine_name,
+      const std::string& machine_domain,
+      const std::vector<std::string>& machine_ou,
+      const std::string& user_principal_name,
+      KerberosEncryptionTypes encryption_types,
+      int password_fd,
+      std::string* joined_domain);
 
   // Downloads user and extension policy from the Active Directory server and
   // stores it in |gpo_policy_data|. |account_id| is the unique user objectGUID
   // returned from |AuthenticateUser| in |account_info|. The user's Kerberos
   // authentication ticket must still be valid. If this operation fails, call
   // |AuthenticateUser| and try again.
-  ErrorType FetchUserGpos(const std::string& account_id,
-                          protos::GpoPolicyData* gpo_policy_data)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType FetchUserGpos(const std::string& account_id,
+                                        protos::GpoPolicyData* gpo_policy_data);
 
   // Downloads device and extension policy from the Active Directory server and
   // stores it in |gpo_policy_data|. The device must be joined to the Active
   // Directory domain already (see JoinMachine()) as policy fetch requires
   // authentication with the machine account generated during domain join.
-  ErrorType FetchDeviceGpos(protos::GpoPolicyData* gpo_policy_data)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType FetchDeviceGpos(
+      protos::GpoPolicyData* gpo_policy_data);
 
   // Should be called when the user session state changed (e.g. "started",
   // "stopped"). User auth state can only be backed up when the session is in
@@ -212,7 +211,7 @@ class SambaInterface : public TgtManager::Delegate {
   }
 
   // Renew the user ticket-granting-ticket.
-  ErrorType RenewUserTgtForTesting() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType RenewUserTgtForTesting();
 
   // Returns the ticket-granting-ticket manager for the user account.
   TgtManager& GetUserTgtManagerForTesting() { return user_tgt_manager_; }
@@ -239,7 +238,7 @@ class SambaInterface : public TgtManager::Delegate {
   void ResetForTesting();
 
   // Runs kpasswd to change machine password.
-  ErrorType ChangeMachinePasswordForTesting() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType ChangeMachinePasswordForTesting();
 
  private:
   // User or device specific information. The user might be logging on to a
@@ -266,17 +265,17 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Actual implementation of AuthenticateUser() (see above). The method is
   // wrapped in order to catch and memorize the returned error.
-  ErrorType AuthenticateUserInternal(const std::string& user_principal_name,
-                                     const std::string& account_id,
-                                     int password_fd,
-                                     ActiveDirectoryAccountInfo* account_info)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AuthenticateUserInternal(
+      const std::string& user_principal_name,
+      const std::string& account_id,
+      int password_fd,
+      ActiveDirectoryAccountInfo* account_info);
 
   // Gets the status of the user's ticket-granting-ticket (TGT). Uses klist
   // internally to check whether the ticket is valid, expired or not present.
   // Does not perform any server-side checks.
-  ErrorType GetUserTgtStatus(ActiveDirectoryUserStatus::TgtStatus* tgt_status)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetUserTgtStatus(
+      ActiveDirectoryUserStatus::TgtStatus* tgt_status);
 
   // Determines the password status by comparing the old |user_pwd_last_set_|
   // timestamp to the new timestamp in |account_info|.
@@ -284,11 +283,11 @@ class SambaInterface : public TgtManager::Delegate {
       const ActiveDirectoryAccountInfo& account_info);
 
   // Writes the Samba configuration file using the given |account|.
-  ErrorType WriteSmbConf(const AccountData& account) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType WriteSmbConf(const AccountData& account) const;
 
   // Queries the name of the workgroup for the given |account| and stores it in
   // |account|->workgroup.
-  ErrorType UpdateWorkgroup(AccountData* account) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType UpdateWorkgroup(AccountData* account) const;
 
   // Queries the IP of the key distribution center (KDC) and server time for the
   // given |account| and stores them in |account|->kdc_ip and
@@ -296,54 +295,53 @@ class SambaInterface : public TgtManager::Delegate {
   // up network communication and to get rid of waiting for the machine account
   // propagation after Active Directory domain join. The server time is required
   // to keep track of the machine password age.
-  ErrorType UpdateKdcIpAndServerTime(AccountData* account) const
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType UpdateKdcIpAndServerTime(AccountData* account) const;
 
   // Queries the DNS domain name of the domain controller (DC) for the given
   // |account| and stores it in |account|->dc_name. The DC name is required as
   // host name in smbclient. With an IP address only, Samba wouldn't be able to
   // use the Kerberos ticket.
-  ErrorType UpdateDcName(AccountData* account) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType UpdateDcName(AccountData* account) const;
 
   // Writes the Samba configuration file for the given |account| and updates
   // the account's |kdc_ip|, |server_time|, |dc_name| and |workgroup|. Does not
   // refresh the values if they are already set.
-  ErrorType UpdateAccountData(AccountData* account) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType UpdateAccountData(AccountData* account);
 
   // Checks whether the ADS server for |account| is available. Currently
   // implemented by calling net ads workgroup.
-  ErrorType PingServer(AccountData* account) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType PingServer(AccountData* account);
 
   // Returns true if the current user is affiliated with the machine domain in
   // the sense that the machine domain trusts the user domain. Returns false
   // otherwise and on error. Currently implemented by calling net ads search for
   // the machine account using the user's Kerberos ticket. The search command is
   // sent to the device's server.
-  bool IsUserAffiliated() WARN_UNUSED_RESULT;
+  [[nodiscard]] bool IsUserAffiliated();
 
   // Acquire a Kerberos ticket-granting-ticket for the user account.
   // |password_fd| is a file descriptor containing the user's password.
-  ErrorType AcquireUserTgt(int password_fd) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AcquireUserTgt(int password_fd);
 
   // Acquire a Kerberos ticket-granting-ticket for the device account. Uses the
   // machine password file for authentication (or the keytab for backwards
   // compatibility). If the current machine password doesn't work, uses the
   // previous password (e.g. password change didn't propagate through AD yet).
-  ErrorType AcquireDeviceTgt() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType AcquireDeviceTgt();
 
   // Writes the machine password to the path specified by |path|.
-  ErrorType WriteMachinePassword(
-      Path path, const std::string& machine_pass) const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType WriteMachinePassword(
+      Path path, const std::string& machine_pass) const;
 
   // Rolls NEW_MACHINE_PASS -> MACHINE_PASS -> PREV_MACHINE_PASS. Used during
   // machine password change.
-  ErrorType RollMachinePassword() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType RollMachinePassword();
 
   // Writes the file with configuration information.
-  ErrorType WriteConfiguration() const WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType WriteConfiguration() const;
 
   // Reads the file with configuration information.
-  ErrorType ReadConfiguration() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType ReadConfiguration();
 
   // Gets user account info. If |account_id| is not empty, searches by
   // objectGUID = |account_id| only. Otherwise, searches by sAMAccountName =
@@ -352,17 +350,17 @@ class SambaInterface : public TgtManager::Delegate {
   // userPrincipalName and that kinit/Windows prefer sAMAccountName over
   // userPrincipalName. Assumes that the account is up-to-date and the user's
   // TGT is valid.
-  ErrorType GetAccountInfo(const std::string& user_name,
-                           const std::string& normalized_upn,
-                           const std::string& account_id,
-                           ActiveDirectoryAccountInfo* account_info)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetAccountInfo(
+      const std::string& user_name,
+      const std::string& normalized_upn,
+      const std::string& account_id,
+      ActiveDirectoryAccountInfo* account_info);
 
   // Calls net ads search with given |search_string| to retrieve |account_info|.
   // Authenticates with the device TGT.
-  ErrorType SearchAccountInfo(const std::string& search_string,
-                              ActiveDirectoryAccountInfo* account_info)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType SearchAccountInfo(
+      const std::string& search_string,
+      ActiveDirectoryAccountInfo* account_info);
 
   // Downloads GPOs and returns the |gpo_file_paths|. |source| determines
   // whether to get GPOs that apply to the user or the device. |scope|
@@ -370,31 +368,30 @@ class SambaInterface : public TgtManager::Delegate {
   // Note that some use cases like user policy loopback processing require
   // reading user policy from device GPOs. Calls GetGpoList() and DownloadGpos()
   // internally.
-  ErrorType GetGpos(GpoSource source,
-                    PolicyScope scope,
-                    std::vector<base::FilePath>* gpo_file_paths)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetGpos(GpoSource source,
+                                  PolicyScope scope,
+                                  std::vector<base::FilePath>* gpo_file_paths);
 
   // Calls net ads gpo list to retrieve a list of GPOs in |gpo_list|. See
   // GetGpos() for an explanation of |source| and |scope|.
-  ErrorType GetGpoList(GpoSource source,
-                       PolicyScope scope,
-                       protos::GpoList* gpo_list) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType GetGpoList(GpoSource source,
+                                     PolicyScope scope,
+                                     protos::GpoList* gpo_list);
 
   // Downloads user or device GPOs in the given |gpo_list|. See GetGpos() for an
   // explanation of |source| and |scope|. Returns the downloaded GPO file paths
   // in |gpo_file_paths|.
-  ErrorType DownloadGpos(const protos::GpoList& gpo_list,
-                         GpoSource source,
-                         PolicyScope scope,
-                         std::vector<base::FilePath>* gpo_file_paths)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType DownloadGpos(
+      const protos::GpoList& gpo_list,
+      GpoSource source,
+      PolicyScope scope,
+      std::vector<base::FilePath>* gpo_file_paths);
 
   // Parses GPOs and stores them in user/device policy protobufs.
-  ErrorType ParseGposIntoProtobuf(
+  [[nodiscard]] ErrorType ParseGposIntoProtobuf(
       const std::vector<base::FilePath>& gpo_file_paths,
       const char* parser_cmd_string,
-      std::string* policy_blob) const WARN_UNUSED_RESULT;
+      std::string* policy_blob) const;
 
   // Update stuff that depends on device policy like |encryption_types_|. Should
   // be called whenever new device policy is available.
@@ -416,7 +413,7 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Checks whether the age of the password exceeds |password_change_rate_| and
   // renews the password if it does.
-  ErrorType CheckMachinePasswordChange() WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType CheckMachinePasswordChange();
 
   // Get user or device AccountData. Depends on GpoSource, not on PolicyScope,
   // since that determines what account to download GPOs for.
@@ -448,8 +445,7 @@ class SambaInterface : public TgtManager::Delegate {
   // workgroup, which authpolicyd places in /tmp/authpolicyd/samba/private, so
   // it is wiped whenever the daemon is restarted and the SID is lost. However,
   // the SID is not really needed for our purposes, so we set a fake SID here.
-  ErrorType MaybeSetFakeDomainSid(const AccountData& account)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType MaybeSetFakeDomainSid(const AccountData& account);
 
   // Sets machine name and realm on the device account and the tgt manager.
   void InitDeviceAccount(const std::string& netbios_name,

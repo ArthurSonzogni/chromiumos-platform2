@@ -57,7 +57,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   ~AuthPolicy();
 
   // Initializes internals. See SambaInterface::Initialize() for details.
-  ErrorType Initialize(bool device_is_locked) WARN_UNUSED_RESULT;
+  [[nodiscard]] ErrorType Initialize(bool device_is_locked);
 
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(

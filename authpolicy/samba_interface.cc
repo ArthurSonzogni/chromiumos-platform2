@@ -214,8 +214,8 @@ constexpr int kMaxDefaultLogLevelUptimeMinutes = 30;
 constexpr char kBackupFileName[] = "user_backup_data";
 constexpr int kMaxBackupSizeBytes = 4 * 1024 * 1024;
 
-WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
-                                         const std::string& net_command) {
+[[nodiscard]] ErrorType GetNetError(const ProcessExecutor& executor,
+                                    const std::string& net_command) {
   const std::string& net_out = executor.GetStdout();
   const std::string& net_err = executor.GetStderr();
   const std::string error_msg("net ads " + net_command + " failed: ");
@@ -283,8 +283,8 @@ WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
   return ERROR_NET_FAILED;
 }
 
-WARN_UNUSED_RESULT ErrorType
-GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
+[[nodiscard]] ErrorType GetSmbclientError(
+    const ProcessExecutor& smb_client_cmd) {
   const std::string& smb_client_out = smb_client_cmd.GetStdout();
   if (Contains(smb_client_out, kKeyNetworkTimeout) ||
       Contains(smb_client_out, kKeyConnectionReset)) {
@@ -297,7 +297,7 @@ GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
 }
 
 // Creates the given directory recursively and sets error message on failure.
-WARN_UNUSED_RESULT ErrorType CreateDirectory(const base::FilePath& dir) {
+[[nodiscard]] ErrorType CreateDirectory(const base::FilePath& dir) {
   base::File::Error ferror;
   if (!base::CreateDirectoryAndGetError(dir, &ferror)) {
     LOG(ERROR) << "Failed to create directory '" << dir.value()
@@ -308,8 +308,7 @@ WARN_UNUSED_RESULT ErrorType CreateDirectory(const base::FilePath& dir) {
 }
 
 // Sets file permissions for a given filepath and sets error message on failure.
-WARN_UNUSED_RESULT ErrorType SetFilePermissions(const base::FilePath& fp,
-                                                int mode) {
+[[nodiscard]] ErrorType SetFilePermissions(const base::FilePath& fp, int mode) {
   if (!base::SetPosixFilePermissions(fp, mode)) {
     LOG(ERROR) << "Failed to set permissions on '" << fp.value() << "'";
     return ERROR_LOCAL_IO;
@@ -320,7 +319,7 @@ WARN_UNUSED_RESULT ErrorType SetFilePermissions(const base::FilePath& fp,
 // Similar to |SetFilePermissions|, but sets permissions recursively up the path
 // to |base_fp| (not including |base_fp|). Returns false if |base_fp| is not a
 // parent of |fp|.
-WARN_UNUSED_RESULT ErrorType SetFilePermissionsRecursive(
+[[nodiscard]] ErrorType SetFilePermissionsRecursive(
     const base::FilePath& fp, const base::FilePath& base_fp, int mode) {
   if (!base_fp.IsParent(fp)) {
     LOG(ERROR) << "Base path '" << base_fp.value() << "' is not a parent of '"
@@ -366,9 +365,9 @@ bool CheckFlagsDefaultLevelValid(const base::FilePath& default_level_path) {
 
 // Parses |gpo_policy_data| from |gpo_policy_data_blob|. Returns ERROR_NONE on
 // success. Returns ERROR_PARSE_FAILED and prints an error on failure.
-WARN_UNUSED_RESULT ErrorType
-ParsePolicyData(const std::string& gpo_policy_data_blob,
-                protos::GpoPolicyData* gpo_policy_data) {
+[[nodiscard]] ErrorType ParsePolicyData(
+    const std::string& gpo_policy_data_blob,
+    protos::GpoPolicyData* gpo_policy_data) {
   if (!gpo_policy_data->ParseFromString(gpo_policy_data_blob)) {
     LOG(ERROR) << "Failed to parse policy data from string";
     return ERROR_PARSE_FAILED;
