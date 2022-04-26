@@ -102,10 +102,10 @@ class SambaInterfaceImpl : public SambaInterface {
   // success and errno on failure. The progress callback is currently not
   // exposed outside this class, but could in future to support progress and
   // cancellation.
-  int32_t CopyFile(const std::string& source_path,
-                   const std::string& target_path,
-                   CopyProgressCallback progress_callback,
-                   void* callback_context) WARN_UNUSED_RESULT;
+  [[nodiscard]] int32_t CopyFile(const std::string& source_path,
+                                 const std::string& target_path,
+                                 CopyProgressCallback progress_callback,
+                                 void* callback_context);
   int32_t OpenCopySource(const std::string& file_path, int32_t* source_fd);
   int32_t OpenCopyTarget(const std::string& file_path, int32_t* target_fd);
   void CloseCopySourceAndTarget(int32_t source_fd, int32_t target_fd);

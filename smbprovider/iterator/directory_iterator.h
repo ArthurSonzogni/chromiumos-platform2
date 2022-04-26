@@ -47,17 +47,17 @@ class BaseDirectoryIterator {
 
   // Initializes the iterator, setting the first value of current. Returns 0 on
   // success, error on failure. Must be called before any other operation.
-  int32_t Init() WARN_UNUSED_RESULT;
+  [[nodiscard]] int32_t Init();
 
   // Advances current to the next entry. Returns 0 on success,
   // error on failure.
-  int32_t Next() WARN_UNUSED_RESULT;
+  [[nodiscard]] int32_t Next();
 
   // Returns the current DirectoryEntry.
   const DirectoryEntry& Get();
 
   // Returns true if there is nothing left to iterate over.
-  bool IsDone() WARN_UNUSED_RESULT;
+  [[nodiscard]] bool IsDone();
 
   virtual ~BaseDirectoryIterator();
 

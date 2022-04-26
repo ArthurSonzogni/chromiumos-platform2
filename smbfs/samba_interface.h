@@ -49,52 +49,52 @@ class SambaInterface {
   // Retrieve stat information for the filesystem that backs |path| into
   // |out_statvfs|.
   // Returns 0 on success and errno on failure.
-  virtual int StatVfs(const std::string& path,
-                      struct statvfs* out_statvfs) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int StatVfs(const std::string& path,
+                                    struct statvfs* out_statvfs) = 0;
 
   // Opens a file at a given |file_path| with |flags| (O_RDONLY, O_WRONLY etc),
   // returning a handle to it in |out_file|, which will be nullptr on failure.
   // |mode| is used when using OpenFile() to create a new file.
   // Returns 0 on success and errno on failure.
-  virtual int OpenFile(const std::string& file_path,
-                       int flags,
-                       mode_t mode,
-                       SMBCFILE** out_file) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int OpenFile(const std::string& file_path,
+                                     int flags,
+                                     mode_t mode,
+                                     SMBCFILE** out_file) = 0;
 
   // Closes |file|, which is from OpenFile().
   // Returns 0 on success and errno on failure.
-  virtual int CloseFile(SMBCFILE* file) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int CloseFile(SMBCFILE* file) = 0;
 
   // Seeks to |offset| in |file| from position |whence|.
   // Returns 0 on success and errno on failure.
-  virtual int SeekFile(SMBCFILE* file,
-                       off_t offset,
-                       int whence) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int SeekFile(SMBCFILE* file,
+                                     off_t offset,
+                                     int whence) = 0;
 
   // Reads |count| bytes from |file| into |buf|. On success, |out_bytes_read|
   // contains the number of bytes read.
   // Returns 0 on success and errno on failure.
-  virtual int ReadFile(SMBCFILE* file,
-                       void* buf,
-                       size_t count,
-                       size_t* out_bytes_read) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int ReadFile(SMBCFILE* file,
+                                     void* buf,
+                                     size_t count,
+                                     size_t* out_bytes_read) = 0;
 
   // Writes |count| bytes from |buf| into |file|. On success,
   // |out_bytes_written| contains the number of bytes written. Returns 0 on
   // success and errno on failure.
-  virtual int WriteFile(SMBCFILE* file,
-                        const void* buf,
-                        size_t count,
-                        size_t* out_bytes_written) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int WriteFile(SMBCFILE* file,
+                                      const void* buf,
+                                      size_t count,
+                                      size_t* out_bytes_written) = 0;
 
   // Truncates |file| to |size| bytes.
   // Returns 0 on success and errno on failure.
-  virtual int TruncateFile(SMBCFILE* file, off_t size) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int TruncateFile(SMBCFILE* file, off_t size) = 0;
 
   // Retrieves a stat structure for the file or directory at |path| into
   // |out_stat|. Returns 0 on success and errno on failure.
-  virtual int Stat(const std::string& path,
-                   struct stat* out_stat) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int Stat(const std::string& path,
+                                 struct stat* out_stat) = 0;
 
   // Sets the access and modification times for the file or directory at |path|.
   // Returns 0 on success and errno on failure.
@@ -104,39 +104,38 @@ class SambaInterface {
 
   // Renames |old_path| to |new_path|.
   // Returns 0 on success and errno on failure.
-  virtual int Rename(const std::string& old_path,
-                     const std::string& new_path) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int Rename(const std::string& old_path,
+                                   const std::string& new_path) = 0;
 
   // Removes the file at |file_path|. Use RmDir() to remove a directory.
   // Returns 0 on success and errno on failure.
-  virtual int UnlinkFile(const std::string& file_path) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int UnlinkFile(const std::string& file_path) = 0;
 
   // Creates directory at |dir_path| with mode |mode|.
   // Returns 0 on success and errno on failure.
-  virtual int CreateDirectory(const std::string& dir_path,
-                              mode_t mode) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int CreateDirectory(const std::string& dir_path,
+                                            mode_t mode) = 0;
 
   // Opens directory at |dir_path|, returning a handle to it in |out_dir|,
   // which will be nullptr on failure.
   // Returns 0 on success and errno on failure.
-  virtual int OpenDirectory(const std::string& dir_path,
-                            SMBCFILE** out_dir) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int OpenDirectory(const std::string& dir_path,
+                                          SMBCFILE** out_dir) = 0;
 
   // Closes |dir|, which is from OpenDirectory().
   // Returns 0 on success and errno on failure.
-  virtual int CloseDirectory(SMBCFILE* dir) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int CloseDirectory(SMBCFILE* dir) = 0;
 
   // Seeks |offset| entries into |directory|. |offset| should be 0 to seek to
   // the beginning of the directory, or a value returned by TellDirectory().
   // Returns 0 on success and errno on failure.
-  virtual int SeekDirectory(SMBCFILE* dir, off_t offset) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int SeekDirectory(SMBCFILE* dir, off_t offset) = 0;
 
   // Retrieve the current offset in |dir| into |out_offset|. The value returned
   // in |out_offset| is opaque and should not be interpreted. It should only be
   // passed into SeekDirectory().
   // Returns 0 on success and errno on failure.
-  virtual int TellDirectory(SMBCFILE* dir,
-                            off_t* out_offset) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int TellDirectory(SMBCFILE* dir, off_t* out_offset) = 0;
 
   // Reads a directory entry from |dir|, returning metadata into
   // |out_file_info| and an associated stat structure into |out_stat|. Is used
@@ -144,14 +143,14 @@ class SambaInterface {
   // directory entries are available it will return 0 and set |out_file_info|
   // to a nullptr and |out_stat| to an empty struct.
   // Returns 0 on success and errno on failure.
-  virtual int ReadDirectory(SMBCFILE* dir,
-                            const struct libsmb_file_info** out_file_info,
-                            struct stat* out_stat) WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int ReadDirectory(
+      SMBCFILE* dir,
+      const struct libsmb_file_info** out_file_info,
+      struct stat* out_stat) = 0;
 
   // Removes the directory at |dir_path|.
   // Returns 0 on success and errno on failure.
-  virtual int RemoveDirectory(const std::string& dir_path)
-      WARN_UNUSED_RESULT = 0;
+  [[nodiscard]] virtual int RemoveDirectory(const std::string& dir_path) = 0;
 };
 
 }  // namespace smbfs
