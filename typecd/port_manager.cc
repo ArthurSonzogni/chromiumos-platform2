@@ -44,6 +44,7 @@ namespace typecd {
 
 PortManager::PortManager()
     : mode_entry_supported_(true),
+      supports_usb4_(true),
       notify_mgr_(nullptr),
       features_client_(nullptr),
       user_active_(false),
@@ -60,7 +61,9 @@ void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
       return;
     }
 
-    ports_.emplace(port_num, std::make_unique<Port>(path, port_num));
+    auto new_port = std::make_unique<Port>(path, port_num);
+    new_port->SetSupportsUSB4(supports_usb4_);
+    ports_.emplace(port_num, std::move(new_port));
   } else {
     if (it == ports_.end()) {
       LOG(WARNING) << "Attempting to remove a non-existent port.";

@@ -50,6 +50,8 @@ class PortManager : public UdevMonitor::TypecObserver,
     features_client_ = client;
   }
 
+  void SetSupportsUSB4(bool enable) { supports_usb4_ = enable; }
+
  protected:
   bool GetPeripheralDataAccess() { return peripheral_data_access_; }
   void SetPeripheralDataAccess(bool val) { peripheral_data_access_ = val; }
@@ -68,6 +70,7 @@ class PortManager : public UdevMonitor::TypecObserver,
   FRIEND_TEST(PortManagerTest,
               ModeSwitchDPandTBTPeripheralDataAccessChangingLockUnlock);
   FRIEND_TEST(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging);
+  FRIEND_TEST(PortManagerTest, ModeEntryDPOnlySystem);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,
@@ -108,6 +111,12 @@ class PortManager : public UdevMonitor::TypecObserver,
 
   std::map<int, std::unique_ptr<Port>> ports_;
   bool mode_entry_supported_;
+
+  // Variable used to reflect whether the system supports USB4. When it is
+  // false, we should not enter USB4 or TBT mode even if a partner which
+  // supports those modes is connected.
+  bool supports_usb4_;
+
   ECUtil* ec_util_;
   // Pointer to the NotificationManager instance. NOTE: This is owned by the
   // parent Daemon, and not PortManager.
