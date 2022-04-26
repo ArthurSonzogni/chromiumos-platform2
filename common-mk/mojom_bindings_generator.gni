@@ -36,6 +36,7 @@
 #   standalone (optional)
 #       If true, generates a library that can be referred from other packages.
 #       Otherwise it generates a thin archive assuming it's used inside the same package only.
+#       Deprecated: Use `install_package` instead.
 #   use_pic (optional)
 #       If true, generates a position independent code instead of position independent executable.
 #   mojom_bindings_generator (optional)
@@ -44,11 +45,18 @@
 #       contains it.
 #       If not given, /usr/src/libmojo/mojo/mojom_bindings_generator.py
 #       is used.
+#   install_package (optional)
+#       The package name that this mojo binding is installed to. If this is
+#       set, the generated mojo c++ headers will be installed into the relative
+#       path (related to `mojo_root`) under /usr/include/${install_package}/,
+#       and the static library will be installed to the default library path.
+#       This can be used to export mojo bindings to other packages.
 #   All flags which can be interpreted by static_library target:
 #       The values are used as if static_library does. Note that some flags
 #       may be modified in order to reflect the parameters described above
 #       and build mojom generated files.
 
+import("//common-mk/install_config.gni")
 import("//common-mk/pkg_config.gni")
 
 # This gn generates header files under ${root_gen_dir}/include.
@@ -60,18 +68,20 @@ _mojom_bindings_generator_wrapper =
 
 # Should be kept in sync with the templates (module*.tmpl) listed here:
 # src/aosp/external/libchrome/mojo/public/tools/bindings/generators/cpp_templates/
-_mojom_bindings_suffixes = [
+_mojom_bindings_headers_suffixes = [
   "-forward.h",
   "-import-headers.h",
   "-params-data.h",
   "-shared-internal.h",
   "-shared-message-ids.h",
-  "-shared.cc",
   "-shared.h",
   "-test-utils.h",
-  ".cc",
   ".h",
 ]
+_mojom_bindings_suffixes = [
+                             "-shared.cc",
+                             ".cc",
+                           ] + _mojom_bindings_headers_suffixes
 
 # Generates C++ mojo bindings source code and headers.
 template("generate_mojom_bindings_gen") {
@@ -186,6 +196,27 @@ template("generate_mojom_bindings_gen") {
     }
   }
 
+  install_config_targets = []
+  if (defined(invoker.install_package)) {
+    mojo_output_dir = _mojo_output_base + "/" + rebase_path(".", mojo_root)
+    foreach(source, invoker.sources) {
+      filename = get_path_info("$source", "file")
+      dirname = get_path_info("$source", "gen_dir")
+      relative_dir = rebase_path(dirname, target_gen_dir)
+      install_config_name = "_${target_name}-" + filename + "-install_config"
+      install_config(install_config_name) {
+        sources = []
+        foreach(suffix, _mojom_bindings_headers_suffixes) {
+          sources +=
+              [ "${mojo_output_dir}/${relative_dir}/${filename}${suffix}" ]
+        }
+        install_path = "/usr/include/" + invoker.install_package + "/" +
+                       rebase_path(".", mojo_root) + "/" + relative_dir
+      }
+      install_config_targets += [ ":${install_config_name}" ]
+    }
+  }
+
   action(target_name) {
     forward_variables_from(invoker, [ "sources" ])
     inputs = [
@@ -235,9 +266,9 @@ template("generate_mojom_bindings_gen") {
       args += [ "--disallow_interfaces" ]
     }
     deps = [
-      ":${mojo_parse_action_name}",
-      ":${mojo_templates_action_name}",
-    ]
+             ":${mojo_parse_action_name}",
+             ":${mojo_templates_action_name}",
+           ] + install_config_targets
     if (defined(invoker.typemaps)) {
       foreach(typemap, invoker.typemaps) {
         args += [
@@ -265,6 +296,7 @@ template("generate_mojom_bindings") {
                              "disallow_native_types",
                              "disallow_interfaces",
                              "enabled_features",
+                             "install_package",
                            ])
   }
 
@@ -296,6 +328,7 @@ template("generate_mojom_bindings") {
                              # Additional fields for this rule.
                              "standalone",
                              "use_pic",
+                             "install_package",
                            ])
     all_dependent_configs = [ ":${target_pkg_deps_name}" ]
     if (defined(invoker.all_dependent_configs)) {
@@ -314,9 +347,13 @@ template("generate_mojom_bindings") {
       configs -= [ "//common-mk:pie" ]
       configs += [ "//common-mk:pic" ]
     }
-    if (defined(invoker.standalone) && invoker.standalone) {
+    if ((defined(invoker.standalone) && invoker.standalone) ||
+        defined(invoker.install_package)) {
       configs -= [ "//common-mk:use_thin_archive" ]
       configs += [ "//common-mk:nouse_thin_archive" ]
+    }
+    if (defined(invoker.install_package)) {
+      install_path = "lib"
     }
     deps = [ ":${target_gen_name}" ]
     if (defined(invoker.deps)) {
