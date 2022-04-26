@@ -25,6 +25,7 @@ Port::Port(const base::FilePath& syspath, int port_num)
       user_active_on_mode_entry_(false),
       current_mode_(TypeCMode::kNone),
       metrics_reported_(false),
+      supports_usb4_(true),
       data_role_(DataRole::kNone),
       power_role_(PowerRole::kNone) {
   PortChanged();
@@ -186,6 +187,11 @@ bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
 //   USB Type-C Connector Spec, release 2.0
 //   Figure F-1.
 ModeEntryResult Port::CanEnterTBTCompatibilityMode() {
+  if (!supports_usb4_) {
+    LOG(ERROR) << "TBT Compat  mode not supported on port: " << port_num_;
+    return ModeEntryResult::kPortError;
+  }
+
   // Check if the partner supports Modal Operation
   // Ref:
   //   USB PD spec, rev 3.0, v2.0.
@@ -224,6 +230,11 @@ ModeEntryResult Port::CanEnterTBTCompatibilityMode() {
 // Figure 5-1: USB4 Discovery and Entry Flow Model
 // USB Type-C Cable & Connector Spec Rel 2.0.
 ModeEntryResult Port::CanEnterUSB4() {
+  if (!supports_usb4_) {
+    LOG(ERROR) << "USB4 not supported on port: " << port_num_;
+    return ModeEntryResult::kPortError;
+  }
+
   if (!partner_) {
     LOG(ERROR) << "Attempting USB4 entry without a registered partner on port: "
                << port_num_;

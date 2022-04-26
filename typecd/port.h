@@ -23,7 +23,8 @@ enum class ModeEntryResult {
   kSuccess = 0,
   kCableError = 1,
   kPartnerError = 2,
-  kMaxValue = kPartnerError,
+  kPortError = 3,
+  kMaxValue = kPortError,
 };
 
 // Possible data roles for the port.
@@ -81,6 +82,10 @@ class Port {
 
   // Returns the current power role for the port.
   virtual PowerRole GetPowerRole();
+
+  // Configure whether the port supports USB4 (and by extension, TBT Compat)
+  // mode.
+  void SetSupportsUSB4(bool enable) { supports_usb4_ = enable; }
 
   // Check whether we can enter DP Alt Mode. This should check for the presence
   // of required attributes on the Partner and (if applicable) Cable.
@@ -207,6 +212,8 @@ class Port {
   // Field which tracks whether port metrics have been reported. This
   // prevents duplicate reporting.
   bool metrics_reported_;
+  // Indicates whether the port supports USB4 entry.
+  bool supports_usb4_;
   DataRole data_role_;
   PowerRole power_role_;
 };
