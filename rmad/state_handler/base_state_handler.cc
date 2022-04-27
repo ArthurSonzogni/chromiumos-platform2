@@ -12,6 +12,7 @@
 #include <base/base64.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"

@@ -5,6 +5,7 @@
 #include "rmad/utils/json_store.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -111,7 +112,8 @@ bool JsonStore::SetValue(const std::string& key, base::Value&& value) {
   }
   const base::Value* result = data_.FindKey(key);
   if (!result || *result != value) {
-    base::Value* result_backup = result ? result->DeepCopy() : nullptr;
+    std::optional<base::Value> result_backup =
+        result ? std::make_optional(result->Clone()) : std::nullopt;
     data_.SetKey(key, std::move(value));
     bool ret = WriteToFile();
     if (!ret) {
@@ -163,11 +165,11 @@ bool JsonStore::RemoveKey(const std::string& key) {
 
   const base::Value* result = data_.FindKey(key);
   if (result) {
-    base::Value* result_backup = result->DeepCopy();
+    base::Value result_backup = result->Clone();
     data_.RemoveKey(key);
     bool ret = WriteToFile();
     if (!ret) {
-      data_.SetKey(key, std::move(*result_backup));
+      data_.SetKey(key, std::move(result_backup));
       read_only_ = true;
     }
     return ret;
