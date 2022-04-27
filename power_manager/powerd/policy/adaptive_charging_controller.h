@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <brillo/timers/alarm_timer.h>
