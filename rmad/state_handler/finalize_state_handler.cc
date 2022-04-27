@@ -150,13 +150,28 @@ void FinalizeStateHandler::FinalizeTask() {
       return;
     }
   }
+
   status_.set_progress(0.5);
+
+  // Disable factory mode if it's still enabled.
   if (!cr50_utils_->DisableFactoryMode()) {
     LOG(ERROR) << "Failed to disable factory mode";
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
     status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
     return;
   }
+
+  status_.set_progress(0.8);
+
+  // Make sure HWWP is disabled.
+  if (int hwwp_status;
+      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 1) {
+    LOG(ERROR) << "HWWP is still disabled";
+    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+    status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
+    return;
+  }
+
   // TODO(chenghan): Check cr50 data (e.g. board ID) and GBB flags.
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
   status_.set_progress(1);
