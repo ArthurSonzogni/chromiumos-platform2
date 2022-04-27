@@ -276,6 +276,16 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
 
   if (!tpm_status_->IsTpmEnabled()) {
     LOG(WARNING) << __func__ << ": TPM is disabled.";
+
+#if USE_TPM_DYNAMIC
+    // Don't allow the TPM to be used when it is disabled. This is
+    // necessary because when the TPM is active but disabled, some
+    // operations like reading nvram spaces are still possible. But
+    // since the TPM is disabled, we can't assume that the data is valid
+    // in that case; it might come from an old install.
+    tpm_allowed_ = false;
+#endif
+
     reply->set_enabled(false);
     reply->set_status(STATUS_SUCCESS);
     return reply;
