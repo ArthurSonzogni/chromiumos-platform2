@@ -928,13 +928,7 @@ bool CrashCollector::UseDaemonStore() {
     // When early in boot, daemon-store isn't available, so don't try it.
     return false;
   }
-  if (util::IsCrashTestInProgress()) {
-    // Always test crash_reporter using daemon store, since we hope to migrate
-    // over to it.
-    LOG(WARNING) << "Crash test in progress. Using daemon-store";
-    return true;
-  }
-  return base::RandGenerator(2) == 0;
+  return true;
 }
 
 std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
