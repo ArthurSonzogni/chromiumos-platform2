@@ -183,7 +183,6 @@ int Process::Wait() {
   if (launcher_exit_callback_)
     std::move(launcher_exit_callback_).Run(exit_code_);
 
-  pid_ = kInvalidProcessId;
   return exit_code_;
 }
 

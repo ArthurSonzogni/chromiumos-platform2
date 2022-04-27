@@ -162,7 +162,9 @@ TEST_F(ProcessTest, Run_Success) {
   EXPECT_CALL(process_, StartImpl(_, _)).WillOnce(Return(123));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).WillOnce(Return(42));
+  EXPECT_EQ(process_.pid(), Process::kInvalidProcessId);
   EXPECT_EQ(process_.Run(), 42);
+  EXPECT_NE(process_.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process_.GetCapturedOutput(), IsEmpty());
 }
 
@@ -172,6 +174,7 @@ TEST_F(ProcessTest, Run_Fail) {
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
   EXPECT_EQ(process_.Run(), -1);
+  EXPECT_EQ(process_.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process_.GetCapturedOutput(), IsEmpty());
 }
 
@@ -193,6 +196,7 @@ TEST_P(ProcessRunTest, RunReturnsZero) {
   process.AddArgument("-c");
   process.AddArgument("exit 0");
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
@@ -202,7 +206,9 @@ TEST_P(ProcessRunTest, WaitReturnsZero) {
   process.AddArgument("-c");
   process.AddArgument("exit 0");
   EXPECT_TRUE(process.Start());
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_EQ(process.Wait(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunReturnsNonZero) {
@@ -211,6 +217,7 @@ TEST_P(ProcessRunTest, RunReturnsNonZero) {
   process.AddArgument("-c");
   process.AddArgument("exit 42");
   EXPECT_EQ(process.Run(), 42);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
@@ -221,6 +228,7 @@ TEST_P(ProcessRunTest, WaitReturnsNonZero) {
   process.AddArgument("exit 42");
   EXPECT_TRUE(process.Start());
   EXPECT_EQ(process.Wait(), 42);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunKilledBySigKill) {
@@ -229,6 +237,7 @@ TEST_P(ProcessRunTest, RunKilledBySigKill) {
   process.AddArgument("-c");
   process.AddArgument("kill -KILL $$; sleep 1000");
   EXPECT_EQ(process.Run(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
@@ -238,7 +247,9 @@ TEST_P(ProcessRunTest, WaitKilledBySigKill) {
   process.AddArgument("-c");
   process.AddArgument("kill -KILL $$; sleep 1000");
   EXPECT_TRUE(process.Start());
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunKilledBySigSys) {
@@ -247,6 +258,7 @@ TEST_P(ProcessRunTest, RunKilledBySigSys) {
   process.AddArgument("-c");
   process.AddArgument("kill -SYS $$; sleep 1000");
   EXPECT_EQ(process.Run(), MINIJAIL_ERR_JAIL);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
@@ -256,7 +268,9 @@ TEST_P(ProcessRunTest, WaitKilledBySigSys) {
   process.AddArgument("-c");
   process.AddArgument("kill -SYS $$; sleep 1000");
   EXPECT_TRUE(process.Start());
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_JAIL);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
@@ -293,12 +307,14 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
 
   // Send SIGKILL to child process.
   const pid_t pid = process.pid();
+  EXPECT_NE(pid, Process::kInvalidProcessId);
   LOG(INFO) << "Sending signal to PID " << pid;
   EXPECT_EQ(kill(pid, SIGKILL), 0);
 
   // Wait for child process to finish.
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+  EXPECT_EQ(process.pid(), pid);
 }
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
@@ -335,38 +351,46 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
 
   // Send SIGTERM to child process.
   const pid_t pid = process.pid();
+  EXPECT_NE(pid, Process::kInvalidProcessId);
   LOG(INFO) << "Sending signal to PID " << pid;
   EXPECT_EQ(kill(pid, SIGTERM), 0);
 
   // Wait for child process to finish.
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGTERM);
+  EXPECT_EQ(process.pid(), pid);
 }
 
 TEST_P(ProcessRunTest, RunCannotFindCommand) {
   Process& process = *process_;
   process.AddArgument("non existing command");
   EXPECT_EQ(process.Run(), MINIJAIL_ERR_NO_COMMAND);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, WaitCannotFindCommand) {
   Process& process = *process_;
   process.AddArgument("non existing command");
   EXPECT_TRUE(process.Start());
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_COMMAND);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunCannotRunCommand) {
   Process& process = *process_;
   process.AddArgument("/dev/null");
   EXPECT_EQ(process.Run(), MINIJAIL_ERR_NO_ACCESS);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, WaitCannotRunCommand) {
   Process& process = *process_;
   process.AddArgument("/dev/null");
   EXPECT_TRUE(process.Start());
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_ACCESS);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
@@ -381,6 +405,7 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
     )");
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(),
               UnorderedElementsAre("Line 1", "Line 2", "Line 3", "Line 4",
                                    "Line 5", "Line 6"));
@@ -398,6 +423,7 @@ TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
     )");
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), SizeIs(2000));
 }
 
@@ -435,6 +461,7 @@ TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
 
   EXPECT_EQ(process.Wait(), 42);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunDoesNotBlockWhenReadingFromStdIn) {
@@ -442,6 +469,7 @@ TEST_P(ProcessRunTest, RunDoesNotBlockWhenReadingFromStdIn) {
   process.AddArgument("/bin/cat");
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
@@ -455,6 +483,7 @@ TEST_P(ProcessRunTest, ReadsFromStdIn) {
   EXPECT_EQ(process.input(), input);
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(),
               ElementsAre("Line 1", "Line 2", "Line 3"));
 }
@@ -469,6 +498,7 @@ TEST_P(ProcessRunTest, ReadsLotsFromStdIn) {
   EXPECT_THAT(process.input(), SizeIs(4096));
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), ElementsAre("4096"));
 }
 
@@ -481,6 +511,7 @@ TEST_P(ProcessRunTest, TruncatesDataFromStdIn) {
   process.SetStdIn(std::string(100'000, 'x'));
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), ElementsAre(Not("100000")));
 }
 
@@ -493,6 +524,7 @@ TEST_P(ProcessRunTest, WaitDoesNotBlockWhenReadingFromStdIn) {
   // left open, the process would block indefinitely while reading from it.
   EXPECT_TRUE(process.Start());
   EXPECT_EQ(process.Wait(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
@@ -528,6 +560,7 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
 
   LOG(INFO) << "Running launcher process";
   EXPECT_EQ(process.Run(), 5);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(),
               ElementsAre(StartsWith("Started background process")));
 
@@ -599,6 +632,7 @@ TEST_P(ProcessRunTest, WaitDoesNotWaitForBackgroundProcessToFinish) {
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
 
   LOG(INFO) << "Background process finished";
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
 }
 
 TEST_P(ProcessRunTest, RunUndisturbedBySignals) {
@@ -616,6 +650,7 @@ TEST_P(ProcessRunTest, RunUndisturbedBySignals) {
   // Activate an interval timer.
   const AlarmGuard guard(13 /* milliseconds */);
   EXPECT_EQ(process.Run(), 42);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_GT(AlarmGuard::count(), 0);
   // This checks that crbug.com/1005590 is fixed.
   EXPECT_THAT(process.GetCapturedOutput(), SizeIs(100));
@@ -634,6 +669,7 @@ TEST_P(ProcessRunTest, WaitUndisturbedBySignals) {
   const AlarmGuard guard(13 /* milliseconds */);
   EXPECT_TRUE(process.Start());
   EXPECT_EQ(process.Wait(), 42);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_GT(AlarmGuard::count(), 0);
 }
 
@@ -646,6 +682,7 @@ TEST_P(ProcessRunTest, PassCurrentEnvironment) {
   process.AddArgument("set");
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_1='Old 1'"));
   EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_2='Old 2'"));
   EXPECT_EQ(unsetenv("OLD_VAR_1"), 0);
@@ -671,6 +708,7 @@ TEST_P(ProcessRunTest, AppendExtraEnvironment) {
   process.AddArgument("set");
 
   EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
   EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_1='Old 1'"));
   EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_2='Old 2'"));
   EXPECT_THAT(process.GetCapturedOutput(), Contains("MY_VAR_1=''"));
