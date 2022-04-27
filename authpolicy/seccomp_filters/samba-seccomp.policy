@@ -59,6 +59,7 @@ openat: 1
 open: 1
 pipe: 1
 poll: 1
+prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_PTRACER
 pread64: 1
 preadv: 1
 prlimit64: arg2 == 0 && arg3 != 0
