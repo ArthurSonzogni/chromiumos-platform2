@@ -110,6 +110,10 @@ constexpr char kUserSubdirHasCorrectGroup[] =
 constexpr char kLegacyCodePathUsageHistogramPrefix[] =
     "Cryptohome.LegacyCodePathUsage";
 constexpr char kVaultKeysetMetric[] = "Cryptohome.VaultKeysetMetric";
+constexpr char kFetchUssExperimentConfigStatus[] =
+    "Cryptohome.UssExperiment.FetchUssExperimentConfigStatus";
+constexpr char kUssExperimentFlag[] =
+    "Cryptohome.UssExperiment.UssExperimentFlag";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -778,6 +782,26 @@ void ReportCryptohomeErrorAllLocations(const uint32_t loc) {
 
   g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
                              static_cast<int>(loc));
+}
+
+void ReportFetchUssExperimentConfigStatus(
+    FetchUssExperimentConfigStatus status) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(
+      kFetchUssExperimentConfigStatus, static_cast<int>(status),
+      static_cast<int>(FetchUssExperimentConfigStatus::kMaxValue));
+}
+
+void ReportUssExperimentFlag(UssExperimentFlag flag) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(kUssExperimentFlag, static_cast<int>(flag),
+                           static_cast<int>(UssExperimentFlag::kMaxValue));
 }
 
 }  // namespace cryptohome

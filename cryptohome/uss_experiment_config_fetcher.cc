@@ -8,14 +8,18 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
+#include <base/rand_util.h>
+#include <base/strings/string_util.h>
+#include <base/system/sys_info.h>
 #include <base/values.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
-#include <base/logging.h>
-#include <shill/dbus-proxies.h>
 #include <shill/dbus-constants.h>
-#include <base/strings/string_util.h>
-#include <base/system/sys_info.h>
+#include <shill/dbus-proxies.h>
+
+#include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/user_secret_stash.h"
 
 namespace cryptohome {
 
@@ -33,6 +37,31 @@ constexpr char kConfigLastInvalidKey[] = "last_invalid";
 void LogUssExperimentConfig(int last_invalid, double population) {
   LOG(INFO) << "USS experiment config fetched from server: last_inavlid = "
             << last_invalid << ", population = " << population;
+}
+
+void SetUssExperimentFlag(int last_invalid, double population) {
+  LogUssExperimentConfig(last_invalid, population);
+
+  bool enabled;
+  if (last_invalid >= UserSecretStashExperimentVersion()) {
+    enabled = false;
+  } else {
+    // `population` is directly interpreted as the probability to enable the
+    // experiment. This will result in roughly `population` portion of the total
+    // population enabling the experiment.
+    enabled = base::RandDouble() < population;
+  }
+
+  FetchUssExperimentConfigStatus status =
+      enabled ? FetchUssExperimentConfigStatus::kEnabled
+              : FetchUssExperimentConfigStatus::kDisabled;
+  ReportFetchUssExperimentConfigStatus(status);
+
+  SetUserSecretStashExperimentFlag(enabled);
+}
+
+void ReportFetchError() {
+  ReportFetchUssExperimentConfigStatus(FetchUssExperimentConfigStatus::kError);
 }
 
 }  // namespace
@@ -97,7 +126,7 @@ void UssExperimentConfigFetcher::OnManagerPropertyChange(
 
   if (base::EqualsCaseInsensitiveASCII(connection_state,
                                        kConnectionStateOnline)) {
-    Fetch(base::BindRepeating(&LogUssExperimentConfig));
+    Fetch(base::BindRepeating(&SetUssExperimentFlag));
   }
 }
 
@@ -113,7 +142,9 @@ void UssExperimentConfigFetcher::Fetch(
       kGstaticUrlPrefix, {}, transport_,
       base::BindRepeating(&UssExperimentConfigFetcher::OnFetchSuccess,
                           weak_factory_.GetWeakPtr(), success_callback),
-      base::DoNothing());
+      base::BindRepeating([](brillo::http::RequestID, const brillo::Error*) {
+        ReportFetchError();
+      }));
 }
 
 void UssExperimentConfigFetcher::OnFetchSuccess(
@@ -124,12 +155,14 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
   // determine which channel we are in to parse corresponding config fields.
   if (chromeos_release_track_.empty()) {
     LOG(WARNING) << "Failed to determine which channel the device is in.";
+    ReportFetchError();
     return;
   }
 
   int status_code = response->GetStatusCode();
   if (status_code != brillo::http::status_code::Ok) {
     LOG(WARNING) << "Fetch USS config failed with status code: " << status_code;
+    ReportFetchError();
     return;
   }
 
@@ -139,6 +172,7 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
       brillo::http::ParseJsonResponse(response.get(), nullptr, &error);
   if (error || !json.has_value()) {
     LOG(WARNING) << "The fetched USS config is not a valid json file.";
+    ReportFetchError();
     return;
   }
 
@@ -170,11 +204,13 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
   if (!last_invalid.has_value()) {
     LOG(WARNING)
         << "Failed to parse `last_inavlid` field in the fetched USS config.";
+    ReportFetchError();
     return;
   }
   if (!population.has_value()) {
     LOG(WARNING)
         << "Failed to parse `population` field in the fetched USS config.";
+    ReportFetchError();
     return;
   }
   success_callback.Run(*last_invalid, *population);

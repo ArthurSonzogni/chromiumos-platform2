@@ -488,6 +488,27 @@ inline constexpr char kCryptohomeErrorDevCheckUnexpectedState[] =
 inline constexpr char kCryptohomeErrorAllLocations[] =
     "Cryptohome.Error.AllLocations";
 
+// List of possible results of fetching the USS experiment config. If fetching
+// or parsing failed the status is kError.
+enum class FetchUssExperimentConfigStatus {
+  kEnabled = 0,
+  kDisabled = 1,
+  kError = 2,
+  kMaxValue,
+};
+
+// List of possible results when AuthSession checks whether USS experiment
+// should be enabled. This reports the normal case, which is the flag set by the
+// config fetcher. If the enable/disable behavior is overridden this will not be
+// reported. kNotFound means that the config fetching failed or haven't
+// completed by the time AuthSession checks the flag.
+enum class UssExperimentFlag {
+  kEnabled = 0,
+  kDisabled = 1,
+  kNotFound = 2,
+  kMaxValue,
+};
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -731,6 +752,13 @@ void ReportCryptohomeErrorAllLocations(const uint32_t loc);
 // for situations in which we generate too many possible values in
 // CryptohomeError related reporting.
 void DisableErrorMetricsReporting();
+
+// Reports the result of fetching the USS experiment config.
+void ReportFetchUssExperimentConfigStatus(
+    FetchUssExperimentConfigStatus status);
+
+// Reports the result of reading the USS experiment flag.
+void ReportUssExperimentFlag(UssExperimentFlag flag);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

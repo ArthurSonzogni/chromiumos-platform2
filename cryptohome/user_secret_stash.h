@@ -18,12 +18,28 @@
 
 namespace cryptohome {
 
+// Returns the UserSecretStash experiment version. This will compared with the
+// `last_invalid` field in the fetched experiment config to determine whether
+// this version should enable the experiment. Will be incremented whenever a
+// known issue that blocks the experiment is fixed so that it can be enabled
+// again.
+int UserSecretStashExperimentVersion();
+
+// This is used by the UssExperimentConfigFetcher to set the experiment flag to
+// enabled or disabled based on whether this USS version is valid and how much
+// of the population should have the experiment enabled.
+void SetUserSecretStashExperimentFlag(bool enabled);
+
 // Returns whether the UserSecretStash experiment (using the USS instead of
 // vault keysets) is enabled.
-// The experiment can currently be enabled by creating the
-// /var/lib/cryptohome/uss_enabled file (note: it's a temporary location until
-// the experiment is fully designed and implemented).
-// Unit tests can override this behavior using
+// The experiment is controlled by fetching a config file from gstatic. It
+// matches the local USS version returned by
+// `UserSecretStashExperimentVersion()` and the `last_invalid` version specified
+// in the config file. If our version is greater, the experiment is enabled with
+// `population` probability, and disabled otherwise. Whether the experiment is
+// enabled can be overridden by creating the /var/lib/cryptohome/uss_enabled (to
+// enable) or the /var/lib/cryptohome/uss_disabled (to disable) file. Unit tests
+// can furthermore override this behavior using
 // `SetUserSecretStashExperimentForTesting()`.
 bool IsUserSecretStashExperimentEnabled();
 // Allows to toggle the experiment state in tests. Passing nullopt reverts to

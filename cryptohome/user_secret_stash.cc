@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -39,17 +40,35 @@ namespace cryptohome {
 
 namespace {
 
-constexpr char kUssExperimentFlagPath[] = "/var/lib/cryptohome/uss_enabled";
+// TODO(b/230069013): Add guidelines on how to update this version value and its
+// documentation when we need it for the first time.
+constexpr int kCurrentUssVersion = 1;
 
-std::optional<bool>& GetUserSecretStashExperimentOverride() {
+constexpr char kEnableUssExperimentFlagPath[] =
+    "/var/lib/cryptohome/uss_enabled";
+constexpr char kDisableUssExperimentFlagPath[] =
+    "/var/lib/cryptohome/uss_disabled";
+
+std::optional<bool>& GetUserSecretStashExperimentFlag() {
   // The static variable holding the overridden state. The default state is
-  // nullopt, which .
+  // nullopt, which fallbacks to the default enabled/disabled state.
   static std::optional<bool> uss_experiment_enabled;
   return uss_experiment_enabled;
 }
 
-bool UserSecretStashExperimentFlagFileExists() {
-  return base::PathExists(base::FilePath(kUssExperimentFlagPath));
+std::optional<bool>& GetUserSecretStashExperimentOverride() {
+  // The static variable holding the overridden state. The default state is
+  // nullopt, which fallbacks to checking whether flag file exists.
+  static std::optional<bool> uss_experiment_enabled;
+  return uss_experiment_enabled;
+}
+
+bool EnableUserSecretStashExperimentFlagFileExists() {
+  return base::PathExists(base::FilePath(kEnableUssExperimentFlagPath));
+}
+
+bool DisableUserSecretStashExperimentFlagFileExists() {
+  return base::PathExists(base::FilePath(kDisableUssExperimentFlagPath));
 }
 
 // Loads the current OS version from the CHROMEOS_RELEASE_VERSION field in
@@ -312,13 +331,40 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
 
 }  // namespace
 
+int UserSecretStashExperimentVersion() {
+  return kCurrentUssVersion;
+}
+
 bool IsUserSecretStashExperimentEnabled() {
   // If the state is overridden by tests, return this value.
   if (GetUserSecretStashExperimentOverride().has_value())
     return GetUserSecretStashExperimentOverride().value();
-  // Otherwise, defer to checking the flag file existence.
-  // TODO(b/208834396): Fetch the experiment state from server.
-  return UserSecretStashExperimentFlagFileExists();
+  // Otherwise, defer to checking the flag file existence. The disable file
+  // precedes the enable file.
+  if (DisableUserSecretStashExperimentFlagFileExists()) {
+    return false;
+  }
+  if (EnableUserSecretStashExperimentFlagFileExists()) {
+    return true;
+  }
+  // Otherwise, check the flag set by UssExperimentConfigFetcher.
+  // TODO(b/230069013): Before actual launching, only report metrics for the
+  // result of this flag, and don't actually use its value.
+  UssExperimentFlag result = UssExperimentFlag::kNotFound;
+  std::optional<bool> flag = GetUserSecretStashExperimentFlag();
+  if (flag.has_value()) {
+    if (flag.value()) {
+      result = UssExperimentFlag::kEnabled;
+    } else {
+      result = UssExperimentFlag::kDisabled;
+    }
+  }
+  ReportUssExperimentFlag(result);
+  return false;
+}
+
+void SetUserSecretStashExperimentFlag(bool enabled) {
+  GetUserSecretStashExperimentFlag() = enabled;
 }
 
 void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {
