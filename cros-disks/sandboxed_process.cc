@@ -72,6 +72,7 @@ void SandboxedProcess::NewPidNamespace() {
   minijail_run_as_init(jail_);
   minijail_reset_signal_mask(jail_);
   minijail_reset_signal_handlers(jail_);
+  minijail_skip_remount_private(jail_);  // crbug.com/1008262
   use_pid_namespace_ = true;
 }
 
@@ -122,10 +123,6 @@ void SandboxedProcess::NewNetworkNamespace() {
   //
   // This libminijail message is harmless: https://crbug.com/1226229
   minijail_namespace_net(jail_);
-}
-
-void SandboxedProcess::SkipRemountPrivate() {
-  minijail_skip_remount_private(jail_);
 }
 
 void SandboxedProcess::SetNoNewPrivileges() {

@@ -73,9 +73,6 @@ class SandboxedProcess : public Process {
   // Makes the process to call pivot_root for an empty /.
   bool EnterPivotRoot();
 
-  // Skips re-marking existing mounts as private.
-  void SkipRemountPrivate();
-
   // Sets the no_new_privs bit.
   void SetNoNewPrivileges();
 

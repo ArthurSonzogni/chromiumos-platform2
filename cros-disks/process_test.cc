@@ -759,8 +759,6 @@ INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
                                auto process =
                                    std::make_unique<SandboxedProcess>();
                                process->NewPidNamespace();
-                               // TODO(crbug.com/1008262) Remove this line.
-                               process->SkipRemountPrivate();
                                return process;
                              }}),
                          PrintToStringParamName());

@@ -112,7 +112,6 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   sandbox->NewMountNamespace();
   sandbox->NewIpcNamespace();
   sandbox->NewPidNamespace();
-  sandbox->SkipRemountPrivate();
 
   // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
   // kernel 3.8 supports it or no more supported devices use kernel
