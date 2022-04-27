@@ -255,7 +255,7 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
 
   auto uid = inhibit ? modem_proxy_->device() : inhibited_uid_.value();
 
-  constexpr int kInhibitTimeoutMilliseconds = 1000;
+  constexpr int kInhibitTimeoutMilliseconds = 15000;
 
   auto on_inhibit_success = base::BindOnce(&ModemManagerProxy::OnInhibitSuccess,
                                            weak_factory_.GetWeakPtr(), inhibit,
