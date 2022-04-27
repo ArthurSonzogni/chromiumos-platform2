@@ -308,6 +308,51 @@ std::optional<std::string> EnumToString(mojom::BluetoothDeviceType type) {
   }
 }
 
+std::string EnumToString(mojom::VulnerabilityInfo::Status status) {
+  switch (status) {
+    case mojom::VulnerabilityInfo::Status::kUnmappedEnumField:
+      return "UnmappedEnumField";
+    case mojom::VulnerabilityInfo::Status::kNotAffected:
+      return "Not affected";
+    case mojom::VulnerabilityInfo::Status::kVulnerable:
+      return "Vulnerable";
+    case mojom::VulnerabilityInfo::Status::kMitigation:
+      return "Mitigation";
+    case mojom::VulnerabilityInfo::Status::kUnknown:
+      return "Unknown";
+    case mojom::VulnerabilityInfo::Status::kUnrecognized:
+      return "Unrecognized";
+  }
+}
+
+std::string EnumToString(mojom::CpuVirtualizationInfo::Type type) {
+  switch (type) {
+    case mojom::CpuVirtualizationInfo::Type::kUnmappedEnumField:
+      return "UnmappedEnumField";
+    case mojom::CpuVirtualizationInfo::Type::kVMX:
+      return "VMX";
+    case mojom::CpuVirtualizationInfo::Type::kSVM:
+      return "SVM";
+  }
+}
+
+std::string EnumToString(mojom::VirtualizationInfo::SMTControl control) {
+  switch (control) {
+    case mojom::VirtualizationInfo::SMTControl::kUnmappedEnumField:
+      return "UnmappedEnumField";
+    case mojom::VirtualizationInfo::SMTControl::kOn:
+      return "on";
+    case mojom::VirtualizationInfo::SMTControl::kOff:
+      return "off";
+    case mojom::VirtualizationInfo::SMTControl::kForceOff:
+      return "forceoff";
+    case mojom::VirtualizationInfo::SMTControl::kNotSupported:
+      return "notsupported";
+    case mojom::VirtualizationInfo::SMTControl::kNotImplemented:
+      return "notimplemented";
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -638,6 +683,8 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
 
   const auto& info = result->get_cpu_info();
 
+  LOG(INFO) << "Fetcher value: " << info->virtualization->has_kvm_device;
+
   base::Value output{base::Value::Type::DICTIONARY};
   auto* physical_cpus =
       output.SetKey("physical_cpus", base::Value{base::Value::Type::LIST});
@@ -668,6 +715,23 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
 
       logical_cpus->Append(std::move(logical_cpu_data));
     }
+    if (physical_cpu->flags) {
+      auto* cpu_flags = physical_cpu_data.SetKey(
+          "flags", base::Value{base::Value::Type::LIST});
+      for (const auto& flag : *(physical_cpu->flags)) {
+        cpu_flags->Append(std::move(flag));
+      }
+    }
+
+    if (!physical_cpu->virtualization.is_null()) {
+      auto* cpu_virtualization_info = physical_cpu_data.SetKey(
+          "cpu_virtualization", base::Value{base::Value::Type::DICTIONARY});
+      SET_DICT(type, physical_cpu->virtualization, cpu_virtualization_info);
+      SET_DICT(is_enabled, physical_cpu->virtualization,
+               cpu_virtualization_info);
+      SET_DICT(is_locked, physical_cpu->virtualization,
+               cpu_virtualization_info);
+    }
 
     // Optional field
     SET_DICT(model_name, physical_cpu, &physical_cpu_data);
@@ -690,6 +754,24 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
 
   SET_DICT(num_total_threads, info, &output);
   SET_DICT(architecture, info, &output);
+
+  auto* vulnerabilities = output.SetKey(
+      "vulnerabilities", base::Value{base::Value::Type::DICTIONARY});
+  for (const auto& vulnerability_key_value : *(info->vulnerabilities)) {
+    auto* vulnerability =
+        vulnerabilities->SetKey(vulnerability_key_value.first,
+                                base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(status, vulnerability_key_value.second, vulnerability);
+    SET_DICT(message, vulnerability_key_value.second, vulnerability);
+  }
+
+  if (info->virtualization) {
+    auto* virtualization_info = output.SetKey(
+        "virtualization", base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(has_kvm_device, info->virtualization, virtualization_info);
+    SET_DICT(is_smt_active, info->virtualization, virtualization_info);
+    SET_DICT(smt_control, info->virtualization, virtualization_info);
+  }
 
   if (info->keylocker_info) {
     auto* out_keylocker = output.SetKey(
