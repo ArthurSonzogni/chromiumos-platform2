@@ -48,6 +48,7 @@ using ::testing::AtLeast;
 using ::testing::Between;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::Property;
@@ -906,9 +907,10 @@ class StorageTest
     return signed_encryption_key;
   }
 
-  void DeliverKey() const {
+  void DeliverKey() {
     ASSERT_TRUE(is_encryption_enabled())
         << "Key can be delivered only when encryption is enabled";
+    key_delivery_count_.fetch_add(1u);
     storage_->UpdateEncryptionKey(signed_encryption_key_);
   }
 
@@ -934,6 +936,7 @@ class StorageTest
   SignedEncryptionInfo signed_encryption_key_;
   bool expect_to_need_key_{false};
   std::atomic<bool> key_delivery_failure_{false};
+  std::atomic<size_t> key_delivery_count_{0};
   scoped_refptr<test::TestCompressionModule> test_compression_module_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record
@@ -1005,7 +1008,7 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
     return;
   }
 
-  static constexpr auto kKeyRenewalTime = base::Milliseconds(100);
+  static constexpr auto kKeyRenewalTime = base::Seconds(5);
   CreateTestStorageOrDie(BuildTestStorageOptions(),
                          EncryptionModule::Create(kKeyRenewalTime));
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
@@ -1039,26 +1042,32 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   WriteStringOrDie(MANUAL_BATCH, kMoreData[1]);
   WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
 
-  // Wait to trigger encryption key request on the next upload.
-  // Make it happen before any periodic upload.
-  task_environment_.FastForwardBy(kKeyRenewalTime + base::Milliseconds(100));
+  // Uploader expectations set by CreateTestStorage are still active.
+  // They accept KEY_UPDATE upload with or without data.
+  const size_t old_key_delivery_count = key_delivery_count_.load();
 
-  // Set uploader expectations with encryption key request.
-  // Note that MANUAL has been replaced by KEY_DELIVERY.
+  // Wait to trigger encryption key request on the next upload.
+  task_environment_.FastForwardBy(kKeyRenewalTime + base::Seconds(1));
+
+  // Make sure at least one key delivery took place after the encryption key
+  // request was triggered above.
+  task_environment_.RunUntilIdle();
+  EXPECT_THAT(key_delivery_count_.load(), Gt(old_key_delivery_count));
+
+  // Set uploader expectations for MANUAL upload.
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
-              Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
-      .Times(AtLeast(1))
-      .WillRepeatedly(Invoke([&waiter,
-                              this](UploaderInterface::UploadReason reason) {
+              Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+      .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
         return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
             .Required(3, kMoreData[0])
             .Required(4, kMoreData[1])
             .Required(5, kMoreData[2])
             .Complete();
-      }));
+      }))
+      .RetiresOnSaturation();
 
-  // Trigger upload with key update after a long wait.
+  // Trigger upload to make sure data is present.
   EXPECT_OK(storage_->Flush(MANUAL_BATCH));
 }
 
