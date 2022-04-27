@@ -33,6 +33,15 @@ class Cr50Utils {
 
   // Check if cr50 factory mode is enabled.
   virtual bool IsFactoryModeEnabled() const = 0;
+
+  // Get cr50 board ID type.
+  virtual bool GetBoardIdType(std::string* board_id_type) const = 0;
+
+  // Get cr50 board ID flags.
+  virtual bool GetBoardIdFlags(std::string* board_id_flags) const = 0;
+
+  // Set cr50 board ID.
+  virtual bool SetBoardId(bool is_custom_label) const = 0;
 };
 
 }  // namespace rmad

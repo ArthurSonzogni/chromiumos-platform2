@@ -45,6 +45,14 @@ State: Locked
 ---
 Capabilities are default.
 )";
+constexpr char kGetBoardIdResponse[] = R"(
+BID_TYPE=5a5a4352
+BID_TYPE_INV=a5a5bcad
+BID_FLAGS=00007f80
+BID_RLZ=ZZCR
+)";
+constexpr char kExpectedBoardIdType[] = "5a5a4352";
+constexpr char kExpectedBoardIdFlags[] = "00007f80";
 
 }  // namespace
 
@@ -196,6 +204,62 @@ TEST_F(Cr50UtilsTest, DisableFactoryMode_AlreadyDisabled) {
   EXPECT_TRUE(cr50_utils->DisableFactoryMode());
 }
 
+TEST_F(Cr50UtilsTest, GetBoardIdType_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetBoardIdResponse), Return(true)));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string board_id_type;
+  EXPECT_TRUE(cr50_utils->GetBoardIdType(&board_id_type));
+  EXPECT_EQ(board_id_type, kExpectedBoardIdType);
+}
+
+TEST_F(Cr50UtilsTest, GetBoardIdType_Fail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string board_id_type;
+  EXPECT_FALSE(cr50_utils->GetBoardIdType(&board_id_type));
+}
+
+TEST_F(Cr50UtilsTest, GetBoardIdFlags_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetBoardIdResponse), Return(true)));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string board_id_flags;
+  EXPECT_TRUE(cr50_utils->GetBoardIdFlags(&board_id_flags));
+  EXPECT_EQ(board_id_flags, kExpectedBoardIdFlags);
+}
+
+TEST_F(Cr50UtilsTest, GetBoardIdFlags_Fail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string board_id_flags;
+  EXPECT_FALSE(cr50_utils->GetBoardIdFlags(&board_id_flags));
+}
+
+TEST_F(Cr50UtilsTest, SetBoardId_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(cr50_utils->SetBoardId(true));
+}
+
+TEST_F(Cr50UtilsTest, SetBoardId_Fail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(cr50_utils->SetBoardId(true));
+}
+
 namespace fake {
 
 class FakeCr50UtilsTest : public testing::Test {
@@ -302,6 +366,22 @@ TEST_F(FakeCr50UtilsTest, DisableFactoryMode_AlreadyDisabled) {
   ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
   ASSERT_TRUE(fake_cr50_utils_->DisableFactoryMode());
   ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
+}
+
+TEST_F(FakeCr50UtilsTest, GetBoardIdType) {
+  std::string board_id_type;
+  ASSERT_TRUE(fake_cr50_utils_->GetBoardIdType(&board_id_type));
+  ASSERT_EQ(board_id_type, kExpectedBoardIdType);
+}
+
+TEST_F(FakeCr50UtilsTest, GetBoardIdFlags) {
+  std::string board_id_flags;
+  ASSERT_TRUE(fake_cr50_utils_->GetBoardIdFlags(&board_id_flags));
+  ASSERT_EQ(board_id_flags, kExpectedBoardIdFlags);
+}
+
+TEST_F(FakeCr50UtilsTest, SetBoardId) {
+  ASSERT_TRUE(fake_cr50_utils_->SetBoardId(true));
 }
 
 }  // namespace fake

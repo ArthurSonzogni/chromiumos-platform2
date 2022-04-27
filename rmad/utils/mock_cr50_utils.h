@@ -23,6 +23,9 @@ class MockCr50Utils : public Cr50Utils {
   MOCK_METHOD(bool, EnableFactoryMode, (), (const, override));
   MOCK_METHOD(bool, DisableFactoryMode, (), (const, override));
   MOCK_METHOD(bool, IsFactoryModeEnabled, (), (const, override));
+  MOCK_METHOD(bool, GetBoardIdType, (std::string*), (const, override));
+  MOCK_METHOD(bool, GetBoardIdFlags, (std::string*), (const, override));
+  MOCK_METHOD(bool, SetBoardId, (bool), (const, override));
 };
 
 }  // namespace rmad

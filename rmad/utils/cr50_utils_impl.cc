@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 #include "rmad/utils/cmd_utils_impl.h"
 
@@ -26,6 +27,11 @@ const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                       "enable"};
 const std::vector<std::string> kDisableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                        "disable"};
+const std::vector<std::string> kGetBoardIdArgv{kGsctoolCmd, "-a", "-i", "-M"};
+
+constexpr char kSetBoardIdCmd[] = "/usr/share/cros/cr50-set-board-id.sh";
+constexpr char kBoardIdTypeRegexp[] = R"(BID_TYPE=([[:xdigit:]]{8}))";
+constexpr char kBoardIdFlagsRegexp[] = R"(BID_FLAGS=([[:xdigit:]]{8}))";
 
 }  // namespace
 
@@ -82,6 +88,56 @@ bool Cr50UtilsImpl::IsFactoryModeEnabled() const {
   std::string output;
   cmd_utils_->GetOutput(kCcdInfoArgv, &output);
   return output.find(kFactoryModeMatchStr) != std::string::npos;
+}
+
+bool Cr50UtilsImpl::GetBoardIdType(std::string* board_id_type) const {
+  std::string output;
+  if (!cmd_utils_->GetOutput(kGetBoardIdArgv, &output)) {
+    LOG(ERROR) << "Failed to get cr50 board ID";
+    LOG(ERROR) << output;
+    return false;
+  }
+  re2::StringPiece string_piece(output);
+  re2::RE2 regexp(kBoardIdTypeRegexp);
+  if (!RE2::PartialMatch(string_piece, regexp, board_id_type)) {
+    LOG(ERROR) << "Failed to parse cr50 board ID type";
+    LOG(ERROR) << output;
+    return false;
+  }
+  return true;
+}
+
+bool Cr50UtilsImpl::GetBoardIdFlags(std::string* board_id_flags) const {
+  std::string output;
+  if (!cmd_utils_->GetOutput(kGetBoardIdArgv, &output)) {
+    LOG(ERROR) << "Failed to get cr50 board ID flags";
+    LOG(ERROR) << output;
+    return false;
+  }
+  re2::StringPiece string_piece(output);
+  re2::RE2 regexp(kBoardIdFlagsRegexp);
+  if (!RE2::PartialMatch(string_piece, regexp, board_id_flags)) {
+    LOG(ERROR) << "Failed to parse cr50 board ID flags";
+    LOG(ERROR) << output;
+    return false;
+  }
+  return true;
+}
+
+bool Cr50UtilsImpl::SetBoardId(bool is_custom_label) const {
+  std::string output;
+  std::vector<std::string> argv{kSetBoardIdCmd};
+  if (is_custom_label) {
+    argv.push_back("whitelabel_pvt");
+  } else {
+    argv.push_back("pvt");
+  }
+  if (!cmd_utils_->GetOutput(argv, &output)) {
+    LOG(ERROR) << "Failed to set cr50 board ID";
+    LOG(ERROR) << output;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace rmad

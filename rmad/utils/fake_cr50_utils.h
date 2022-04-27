@@ -24,6 +24,9 @@ class FakeCr50Utils : public Cr50Utils {
   bool EnableFactoryMode() const override;
   bool DisableFactoryMode() const override;
   bool IsFactoryModeEnabled() const override;
+  bool GetBoardIdType(std::string* board_id_type) const override;
+  bool GetBoardIdFlags(std::string* board_id_flags) const override;
+  bool SetBoardId(bool is_custom_label) const override;
 
  private:
   base::FilePath working_dir_path_;

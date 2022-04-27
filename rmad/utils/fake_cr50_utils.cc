@@ -16,6 +16,8 @@ namespace {
 
 constexpr char kDefaultChallengeCode[] = "ABCDEFG";
 constexpr char kDefaultUnlockCode[] = "AAAAAAAA";
+constexpr char kDefaultBoardIdType[] = "5a5a4352";   // ZZCR.
+constexpr char kDefaultBoardIdFlags[] = "00007f80";  // PVT.
 
 }  // namespace
 
@@ -82,6 +84,20 @@ bool FakeCr50Utils::IsFactoryModeEnabled() const {
   const base::FilePath factory_mode_enabled_file_path =
       working_dir_path_.AppendASCII(kFactoryModeEnabledFilePath);
   return base::PathExists(factory_mode_enabled_file_path);
+}
+
+bool FakeCr50Utils::GetBoardIdType(std::string* board_id_type) const {
+  *board_id_type = kDefaultBoardIdType;
+  return true;
+}
+
+bool FakeCr50Utils::GetBoardIdFlags(std::string* board_id_flags) const {
+  *board_id_flags = kDefaultBoardIdFlags;
+  return true;
+}
+
+bool FakeCr50Utils::SetBoardId(bool is_custom_label) const {
+  return true;
 }
 
 }  // namespace fake
