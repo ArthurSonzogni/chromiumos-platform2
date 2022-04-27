@@ -72,8 +72,7 @@ char* const* Process::GetArguments() {
 
 void Process::BuildArgumentsArray() {
   for (std::string& argument : arguments_) {
-    // TODO(fdegros) Remove const_cast when using C++17
-    arguments_array_.push_back(const_cast<char*>(argument.data()));
+    arguments_array_.push_back(argument.data());
   }
 
   arguments_array_.push_back(nullptr);
