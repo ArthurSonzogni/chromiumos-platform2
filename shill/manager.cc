@@ -1869,6 +1869,10 @@ void Manager::SortServicesTask() {
     new_logical_connection->SetPriority(Connection::kDefaultPriority,
                                         is_primary_physical);
     auto device = FindDeviceFromService(new_logical);
+    // Whenever the primary logical device is portalled (regardless of whether
+    // it changed), restart portal detection. This will reset the backoff scheme
+    // on any scan or other change that triggers a sort. See b/230030693 for
+    // additional discussion.
     if (device && device->technology().IsPrimaryConnectivityTechnology() &&
         new_logical->IsPortalled()) {
       SLOG(this, 2)
