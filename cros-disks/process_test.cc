@@ -275,7 +275,7 @@ TEST_P(ProcessRunTest, WaitKilledBySigSys) {
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
   SandboxedProcess& process = *process_;
-  process.AddArgument("/bin/sh");
+  process.AddArgument("/bin/bash");
   process.AddArgument("-c");
 
   // Pipe to block the child process.
@@ -319,7 +319,7 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
   SandboxedProcess& process = *process_;
-  process.AddArgument("/bin/sh");
+  process.AddArgument("/bin/bash");
   process.AddArgument("-c");
 
   // Pipe to block the child process.
@@ -409,6 +409,25 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
   EXPECT_THAT(process.GetCapturedOutput(),
               UnorderedElementsAre("Line 1", "Line 2", "Line 3", "Line 4",
                                    "Line 5", "Line 6"));
+}
+
+// Tests Process when the child process closes its stdout and stderr shortly
+// before exiting.
+TEST_P(ProcessRunTest, ClosesStdOutBeforeExiting) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument(R"(
+      echo Hi
+      exec 1>&-;
+      exec 2>&-;
+      sleep 1;
+      exit 42;
+    )");
+
+  EXPECT_EQ(process.Run(), 42);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
+  EXPECT_THAT(process.GetCapturedOutput(), ElementsAre("Hi"));
 }
 
 TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
@@ -529,7 +548,7 @@ TEST_P(ProcessRunTest, WaitDoesNotBlockWhenReadingFromStdIn) {
 
 TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
   SandboxedProcess& process = *process_;
-  process.AddArgument("/bin/sh");
+  process.AddArgument("/bin/bash");
   process.AddArgument("-c");
 
   // Pipe to unblock the background process and allow it to finish.
@@ -583,7 +602,7 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
 
 TEST_P(ProcessRunTest, WaitDoesNotWaitForBackgroundProcessToFinish) {
   SandboxedProcess& process = *process_;
-  process.AddArgument("/bin/sh");
+  process.AddArgument("/bin/bash");
   process.AddArgument("-c");
 
   // Pipe to unblock the background process and allow it to finish.
