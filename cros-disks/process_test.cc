@@ -884,6 +884,47 @@ TEST(PidNamespaceRunAsRootTest, RepeatedSigTerm) {
   EXPECT_EQ(process.pid(), pid);
 }
 
+TEST(ProcessTerminationTest, RunAsRoot_InitTerminatesAfterDestroyingProcess) {
+  std::unique_ptr<SandboxedProcess> process =
+      std::make_unique<SandboxedProcess>();
+  process->NewPidNamespace();
+
+  process->AddArgument("/bin/sh");
+  process->AddArgument("-c");
+
+  // Pipe to block the child process.
+  SubprocessPipe to_block(SubprocessPipe::kParentToChild);
+
+  // Pipe to monitor the child process.
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
+
+  process->AddArgument(base::StringPrintf(
+      R"(
+        printf 'Begin\n' >&%d;
+        read line <&%d;
+        printf '%%s and End\n' "$line" >&%d;
+        exit 42;
+    )",
+      to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
+
+  process->PreserveFile(to_wait.child_fd.get());
+  process->PreserveFile(to_block.child_fd.get());
+
+  EXPECT_TRUE(process->Start());
+
+  // Close unused pipe ends.
+  to_block.child_fd.reset();
+  to_wait.child_fd.reset();
+
+  // Wait for child process to start.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
+
+  // Destroy the process object.
+  process.reset();
+
+  // Wait for child process to finish.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+}
 #endif
 
 }  // namespace cros_disks

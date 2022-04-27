@@ -184,6 +184,9 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
     // The sandboxed process will run in a PID namespace.
     PreserveFile(launcher_pipe_.child_fd.get());
 
+    SubprocessPipe termination_pipe(SubprocessPipe::kParentToChild);
+    PreserveFile(termination_pipe.child_fd.get());
+
     // Create child 'init' process in the PID namespace.
     child_pid = minijail_fork(jail_);
     if (child_pid < 0) {
@@ -195,13 +198,18 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
     if (child_pid == 0) {
       // In child 'init' process.
       SandboxedInit(base::BindOnce(Exec, args, env),
-                    std::move(launcher_pipe_.child_fd))
+                    std::move(launcher_pipe_.child_fd),
+                    std::move(termination_pipe.child_fd))
           .Run();
       NOTREACHED();
     } else {
       // In parent process.
       PCHECK(base::SetNonBlocking(launcher_pipe_.parent_fd.get()));
       launcher_pipe_.child_fd.reset();
+
+      DCHECK(!termination_fd_.is_valid());
+      termination_fd_ = std::move(termination_pipe.parent_fd);
+      DCHECK(termination_fd_.is_valid());
     }
   }
 

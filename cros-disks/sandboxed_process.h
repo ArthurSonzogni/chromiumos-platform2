@@ -17,6 +17,7 @@
 #include <base/files/file.h>
 
 #include "cros-disks/process.h"
+#include "cros-disks/sandboxed_init.h"
 
 struct minijail;
 
@@ -106,6 +107,13 @@ class SandboxedProcess : public Process {
 
   // Does this SandboxedProcess use a PID namespace?
   bool use_pid_namespace_ = false;
+
+  // Write end of the pipe used to terminate the init process inside the PID
+  // namespace. This end of the pipe is closed when the SandboxedProcess
+  // instance is destroyed, generating a SIGIO in the child init process, which
+  // triggers termination of init and all its nested children. Only used when
+  // |use_pid_namespace_| is true.
+  base::ScopedFD termination_fd_;
 };
 
 // Interface for creating preconfigured instances of |SandboxedProcess|.
