@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 
 namespace typecd {
 
@@ -16,7 +17,18 @@ CrosConfigUtil::CrosConfigUtil() {
 }
 
 bool CrosConfigUtil::APModeEntryDPOnly() {
-  // TODO(b/230384036): Use an actual pref to fill this out.
+  std::string dp_only;
+  if (!config_->GetString("/typecd", "mode-entry-dp-only", &dp_only)) {
+    LOG(INFO) << "Can't access DP-only config; assuming USB4 support.";
+    return false;
+  }
+
+  base::TrimWhitespaceASCII(dp_only, base::TRIM_TRAILING, &dp_only);
+  if (dp_only == "true") {
+    LOG(INFO) << "Restricting AP-driven mode entry to DisplayPort only.";
+    return true;
+  }
+
   return false;
 }
 
