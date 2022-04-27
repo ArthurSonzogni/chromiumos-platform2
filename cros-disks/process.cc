@@ -28,13 +28,6 @@
 namespace cros_disks {
 namespace {
 
-// Opens /dev/null. Dies in case of error.
-base::ScopedFD OpenNull() {
-  const int ret = open("/dev/null", O_WRONLY);
-  PCHECK(ret >= 0) << "Cannot open /dev/null";
-  return base::ScopedFD(ret);
-}
-
 // Creates a pipe holding the given string and returns a file descriptor to the
 // read end of this pipe. If the given string is too big to fit into the pipe's
 // buffer, it is truncated.
@@ -148,7 +141,7 @@ bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
 }
 
 bool Process::Start() {
-  base::ScopedFD out_child_fd = OpenNull();
+  base::ScopedFD out_child_fd;
 
   if (output_callback_) {
     SubprocessPipe out_pipe(SubprocessPipe::kChildToParent);
@@ -166,6 +159,9 @@ bool Process::Start() {
     DCHECK(out_fd_.is_valid());
 
     out_child_fd = std::move(out_pipe.child_fd);
+  } else {
+    out_child_fd.reset(dup(STDERR_FILENO));
+    PCHECK(out_child_fd.is_valid());
   }
 
   DCHECK(out_child_fd.is_valid());
