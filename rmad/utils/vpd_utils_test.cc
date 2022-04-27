@@ -240,7 +240,7 @@ TEST_F(VpdUtilsTest, SetWhitelabelTag_Success) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
-            "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "whitelabel_tag=abc"};
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "custom_label_tag=abc"};
         EXPECT_EQ(argv, expect);
         return true;
       });
@@ -352,7 +352,7 @@ TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Success) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
-            "/usr/sbin/vpd", "-i", "RO_VPD", "-d", "whitelabel_tag"};
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-d", "custom_label_tag"};
         EXPECT_EQ(argv, expect);
         return true;
       });
@@ -369,7 +369,7 @@ TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Failed) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
-            "/usr/sbin/vpd", "-i", "RO_VPD", "-d", "whitelabel_tag"};
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-d", "custom_label_tag"};
         EXPECT_EQ(argv, expect);
         return false;
       });

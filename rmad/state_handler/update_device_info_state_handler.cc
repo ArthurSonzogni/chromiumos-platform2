@@ -125,7 +125,10 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   if (!cbi_utils_->GetSku(&sku_id)) {
     LOG(WARNING) << "Failed to get original sku from cbi.";
   }
-  is_whitelabel_exist = vpd_utils_->GetWhitelabelTag(&whitelabel_tag);
+  // For backward compatibility, we should use cros_config to get the
+  // custom-label, which already handles it.
+  is_whitelabel_exist =
+      cros_config_utils_->GetCurrentWhitelabelTag(&whitelabel_tag);
   if (!cbi_utils_->GetDramPartNum(&dram_part_number)) {
     LOG(WARNING) << "Failed to get original dram part number from cbi.";
   }

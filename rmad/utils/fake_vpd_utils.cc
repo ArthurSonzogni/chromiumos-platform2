@@ -17,7 +17,7 @@
 namespace {
 
 constexpr char kVpdKeySerialNumber[] = "serial_number";
-constexpr char kVpdKeyWhitelabelTag[] = "whitelabel_tag";
+constexpr char kVpdKeyWhitelabelTag[] = "custom_label_tag";
 constexpr char kVpdKeyRegion[] = "region";
 constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
 constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";

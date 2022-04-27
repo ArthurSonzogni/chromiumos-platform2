@@ -26,14 +26,14 @@ constexpr char kCrosRootKey[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
 constexpr char kCrosIdentityKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
-constexpr char kCrosIdentityWhitelabelKey[] = "whitelabel-tag";
+constexpr char kCrosIdentityWhitelabelKey[] = "custom-label-tag";
 
 constexpr char kModelName[] = "TestModelName";
 
 constexpr int kSkuId = 1234567890;
 constexpr char kSkuIdStr[] = "1234567890";
 
-constexpr char kWhitelabelTag[] = "TestWhiteLabelTag";
+constexpr char kWhitelabelTag[] = "TestCustomLabelTag";
 
 constexpr char kJsonStoreFileName[] = "json_store_file";
 constexpr char kCrosConfigJson[] =
@@ -50,21 +50,21 @@ constexpr char kCrosConfigJson[] =
             "name": "TestModelName-1",
             "identity": {
               "sku-id": 1111111111,
-              "whitelabel-tag": "TestWhiteLabelTag-1"
+              "custom-label-tag": "TestCustomLabelTag-1"
             }
           },
           {
             "name": "TestModelName",
             "identity": {
               "sku-id": 1111111112,
-              "whitelabel-tag": "TestWhiteLabelTag"
+              "custom-label-tag": "TestCustomLabelTag"
             }
           },
           {
             "name": "TestModelName",
             "identity": {
               "sku-id": 1111111113,
-              "whitelabel-tag": "TestWhiteLabelTag-2"
+              "custom-label-tag": "TestCustomLabelTag-2"
             }
           }
         ]
@@ -73,7 +73,7 @@ constexpr char kCrosConfigJson[] =
 
 // The first option of the WL list is always an empty string.
 const std::vector<std::string> kTargetWhitelabelTagList = {
-    "TestWhiteLabelTag", "TestWhiteLabelTag-2"};
+    "TestCustomLabelTag", "TestCustomLabelTag-2"};
 const std::vector<int> kTargetSkuIdList = {1111111112, 1111111113, 1234567890};
 
 class CrosConfigUtilsImplTest : public testing::Test {

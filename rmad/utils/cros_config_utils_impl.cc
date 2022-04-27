@@ -34,7 +34,7 @@ constexpr char kCrosRootKey[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
 constexpr char kCrosIdentityKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
-constexpr char kCrosIdentityWhitelabelKey[] = "whitelabel-tag";
+constexpr char kCrosIdentityWhitelabelKey[] = "custom-label-tag";
 
 }  // namespace
 
