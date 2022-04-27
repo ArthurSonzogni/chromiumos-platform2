@@ -1408,7 +1408,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
     return;
 
   if (address.family() == IPAddress::kFamilyIPv6 &&
-      status.scope == RT_SCOPE_UNIVERSE) {
+      status.scope == RT_SCOPE_UNIVERSE && !(status.flags & IFA_F_PERMANENT)) {
     device->OnIPv6AddressChanged(GetPrimaryIPv6Address(interface_index));
   }
 
