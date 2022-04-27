@@ -67,7 +67,9 @@
           "signature-id": "some2"
         },
         "hardware-properties": {
-          "is-lid-convertible": true
+          "form-factor": "CONVERTIBLE",
+          "is-lid-convertible": true,
+          "recovery-input": "POWER_BUTTON"
         },
         "identity": {
           "platform-name": "Some",
@@ -174,7 +176,9 @@
           "signature-id": "another"
         },
         "hardware-properties": {
-          "is-lid-convertible": true
+          "form-factor": "CONVERTIBLE",
+          "is-lid-convertible": true,
+          "recovery-input": "KEYBOARD"
         },
         "identity": {
           "platform-name": "Some",

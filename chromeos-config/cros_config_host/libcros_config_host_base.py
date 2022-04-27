@@ -14,7 +14,7 @@ import sys
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
-from cros_config_schema import GetValidSchemaProperties
+from cros_config_schema import GetValidSchemaProperties, ValidationError
 sys.path.pop(0)
 
 # Represents a single symbolic link firmware file which needs to be installed:
@@ -344,6 +344,11 @@ class CrosConfigBaseImpl(object):
         self.GetFirmwareBuildTargets(target))
     result['GetFirmwareBuildCombinations'] = (
       self.GetFirmwareBuildCombinations(['coreboot', 'ec']))
+    for target_name in ['depthcharge', 'bmpblk']:
+      for target_value in self.GetFirmwareBuildTargets(target_name):
+        result[
+          'GetFirmwareRecoveryInput_%s_%s' % (target_name, target_value)] = (
+          self.GetFirmwareRecoveryInput(target_name, target_value))
     result['GetWallpaperFiles'] = self.GetWallpaperFiles()
     result['GetAutobrightnessFiles'] = self.GetAutobrightnessFiles()
 
@@ -646,3 +651,74 @@ class CrosConfigBaseImpl(object):
       referenced by all devices
     """
     return self._GetFiles('GetAutobrightnessFiles')
+
+  def GetFirmwareRecoveryInput(self, build_target_name, build_target_value):
+    """Gets the recovery input method for the given build target.
+    If the device config does not specify the firmware recovery input, it will
+    be inferred from the form factor.
+    If no recovery input is found, an empty string is returned
+
+    Args:
+      build_target_name: Build target name (e.g. "depthcharge")
+      build_target_value: Build target for the associated name
+
+    Returns:
+      Recovery input method string. Empty string if not determinable from
+      config.
+
+    Raises:
+      ValidationError if single build_target_value target is paired with
+      multiple recovery inputs
+    """
+    # Try to retrieve recovery-input first
+    methods = OrderedDict()
+    for device in self.GetDeviceConfigs():
+      key = device.GetProperties('/firmware/build-targets/%s' %
+        build_target_name)
+      # Skip targets that aren't specified in the JSON or don't match target
+      if not key or key != build_target_value:
+        continue
+
+      recovery_input = device.GetProperties(
+        '/hardware-properties/recovery-input')
+      if recovery_input:
+        if key in methods and recovery_input != methods[key]:
+          raise ValidationError('Colliding recovery input found for '
+                                'build_target_value target %s: %s, %s' %
+                                (key, recovery_input, methods[key]))
+        methods[key] = recovery_input
+
+    if build_target_value in methods:
+      return methods[build_target_value]
+
+    # recovery-input not set, auto-generate based on form factor
+    for device in self.GetDeviceConfigs():
+      key = device.GetProperties('/firmware/build-targets/%s' %
+        build_target_name)
+      # Skip targets that aren't specified in the JSON or don't match target
+      if not key or key != build_target_value:
+        continue
+
+      form_factor = device.GetProperties('/hardware-properties/form-factor')
+      mapping = {
+          'CLAMSHELL': 'KEYBOARD',
+          'CONVERTIBLE': 'KEYBOARD',
+          'DETACHABLE': 'POWER_BUTTON',
+          'CHROMEBASE': 'RECOVERY_BUTTON',
+          'CHROMEBOX': 'RECOVERY_BUTTON',
+          'CHROMEBIT': 'RECOVERY_BUTTON',
+          'CHROMESLATE': 'POWER_BUTTON',
+      }
+      if form_factor and form_factor in mapping:
+        generated_recovery = mapping[form_factor]
+        if key in methods and generated_recovery != methods[key]:
+          raise ValidationError('Colliding recovery input found for '
+                                'build_target_value target %s: %s, %s' %
+                                (key, generated_recovery, methods[key]))
+        methods[key] = generated_recovery
+
+    if build_target_value in methods:
+      return methods[build_target_value]
+
+    # No found or generated config
+    return ''

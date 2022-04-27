@@ -132,7 +132,7 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetFirmwareBuildTargets(self):
     config = CrosConfig(self.filepath)
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
-                             ['another', 'some'])
+                             ['another', 'badrecovery1', 'badrecovery2', 'some'])
     os.environ['FW_NAME'] = 'another'
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
                              ['another'])
@@ -174,6 +174,8 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.filepath)
     expected = OrderedDict(
         [('another', ['another', 'another']),
+         ('badrecovery1', ['badrecovery1', 'badrecovery1']),
+         ('badrecovery2', ['badrecovery2', 'badrecovery2']),
          ('some', ['some', 'some']),
          ('some2', [None, None])])
     result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
@@ -182,6 +184,8 @@ class CrosConfigHostTest(unittest.TestCase):
     # Unspecified targets should be represented as None.
     expected = OrderedDict(
         [('another', ['some/another']),
+         ('badrecovery1', [None]),
+         ('badrecovery2', [None]),
          ('some', [None]),
          ('some2', ['experimental/some2'])])
     result = config.GetFirmwareBuildCombinations(['zephyr-ec'])
@@ -192,6 +196,34 @@ class CrosConfigHostTest(unittest.TestCase):
     result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
     self.assertEqual(result, expected)
     del os.environ['FW_NAME']
+
+  def testFirmwareRecoveryInput(self):
+    """Test querying and generating recovery-input modes"""
+    config = CrosConfig(self.filepath)
+    # Use test config with recovery-input set to KEYBOARD
+    expected = 'KEYBOARD'
+    result = config.GetFirmwareRecoveryInput('depthcharge', 'another')
+    self.assertEqual(result, expected)
+
+    # Use test config with recovery-input set to POWER_BUTTON
+    # Manually set recovery-input differs from auto generate option
+    expected = 'POWER_BUTTON'
+    result = config.GetFirmwareRecoveryInput('zephyr-ec', 'experimental/some2')
+    self.assertEqual(result, expected)
+
+    # Use test config with form-factor set to CHROMEBOX
+    # and no recovery-input set (to generate it)
+    expected = 'RECOVERY_BUTTON'
+    result = config.GetFirmwareRecoveryInput('depthcharge', 'some')
+    self.assertEqual(result, expected)
+
+    # Test a clash in the specified recovery inputs
+    with self.assertRaises(Exception):
+      config.GetFirmwareRecoveryInput('depthcharge', 'badrecovery1')
+
+    # Test a clash in the auto generated recovery inputs
+    with self.assertRaises(Exception):
+      config.GetFirmwareRecoveryInput('depthcharge', 'badrecovery2')
 
   def testGetWallpaper(self):
     """Test that we can access the wallpaper information"""
@@ -305,6 +337,32 @@ class CrosConfigHostTest(unittest.TestCase):
                        pd_image_uri='',
                        sig_id='another',
                        brand_code='')),
+         ('badrecovery1',
+          FirmwareInfo(model='badrecovery1',
+                       shared_model='badrecovery1',
+                       key_id=None,
+                       have_image=True,
+                       bios_build_target='badrecovery1',
+                       ec_build_target='badrecovery1',
+                       main_image_uri='',
+                       main_rw_image_uri='',
+                       ec_image_uri='',
+                       pd_image_uri='',
+                       sig_id=None,
+                       brand_code='')),
+         ('badrecovery2',
+          FirmwareInfo(model='badrecovery2',
+                       shared_model='badrecovery2',
+                       key_id=None,
+                       have_image=True,
+                       bios_build_target='badrecovery2',
+                       ec_build_target='badrecovery2',
+                       main_image_uri='',
+                       main_rw_image_uri='',
+                       ec_image_uri='',
+                       pd_image_uri='',
+                       sig_id=None,
+                       brand_code='')),
          ('some',
           FirmwareInfo(model='some',
                        shared_model='some',
@@ -390,6 +448,10 @@ class CrosConfigHostTest(unittest.TestCase):
                 build_target='some',
                 image_uri='bcs://Some_EC.1111.11.1.tbz2')
         ],
+        'badrecovery1': [
+        ],
+        'badrecovery2': [
+        ],
         'another': [
             FirmwareImage(
                 type='ap',
@@ -420,6 +482,8 @@ class CrosConfigHostTest(unittest.TestCase):
         'whitelabel': 'some',
         'whitelabel-whitelabel1': 'some',
         'whitelabel-whitelabel2': 'some',
+        'badrecovery1': 'badrecovery1',
+        'badrecovery2': 'badrecovery2',
     }
 
     result = CrosConfig(self.filepath).GetFirmwareConfigsByDevice()

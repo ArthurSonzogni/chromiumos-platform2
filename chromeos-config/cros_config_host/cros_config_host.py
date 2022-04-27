@@ -305,6 +305,17 @@ def GetAutobrightnessFiles(config):
     print(files.dest)
 
 
+def GetFirmwareRecoveryInput(config, build_target_name, build_target_value):
+  """Print the recovery input method for firmware config
+
+  Args:
+    config: A CrosConfig instance
+    build_target_name: Build target name (e.g. "depthcharge")
+    build_target_value: Build target for the associated name
+  """
+  print(config.GetFirmwareRecoveryInput(build_target_name, build_target_value))
+
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -431,6 +442,16 @@ def GetParser(description):
       'get-autobrightness-files',
       help='Lists pairs of autobrightness files in sequence: first line is '
       'the relative source pathname, second line is the full install pathname')
+  # Parser: get-firmware-recovery-input
+  firmware_recovery_input_parser = subparsers.add_parser(
+      'get-firmware-recovery-input',
+      help='Gets the recovery input method for the given build target')
+  firmware_recovery_input_parser.add_argument(
+      'build_target_name',
+      help='Build target name')
+  firmware_recovery_input_parser.add_argument(
+      'build_target_value',
+      help='Build target value')
   return parser
 
 
@@ -501,6 +522,8 @@ def main(argv=None):
     GetWallpaperFiles(config)
   elif opts.subcommand == 'get-autobrightness-files':
     GetAutobrightnessFiles(config)
+  elif opts.subcommand == 'get-firmware-recovery-input':
+    GetFirmwareRecoveryInput(config, opts.build_target_name, opts.build_target_value)
 
 
 if __name__ == '__main__':

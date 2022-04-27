@@ -148,8 +148,19 @@ typeDefs:
     enum:
      - CHROMEBASE
      - CHROMEBIT
+     - CHROMESLATE
      - CHROMEBOOK
      - CHROMEBOX
+     - CLAMSHELL
+     - CONVERTIBLE
+     - DETACHABLE
+  recovery-input: &recovery-input
+    description: "Denotes the input method for entering device recovery."
+    type: string
+    enum:
+     - KEYBOARD
+     - POWER_BUTTON
+     - RECOVERY_BUTTON
   ath10k-wifi-transmit-power-chain: &ath10k-wifi-transmit-power-chain
     description: "[ath10k] WiFi power chain for use with QCA ath10k drivers. Limits
       in units of 0.25 dBm. 5g band power limit applies to all 5g bands."
@@ -1146,6 +1157,7 @@ properties:
                 stylus-category: *stylus-category
                 psu-type: *psu-type
                 form-factor: *form-factor
+                recovery-input: *recovery-input
               additionalProperties: false
             cros-healthd:
               type: object

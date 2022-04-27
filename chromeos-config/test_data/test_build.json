@@ -363,7 +363,9 @@
           "signature-id": "some2"
         },
         "hardware-properties": {
-          "is-lid-convertible": true
+          "form-factor": "CONVERTIBLE",
+          "is-lid-convertible": true,
+          "recovery-input": "POWER_BUTTON"
         },
         "identity": {
           "platform-name": "Some",
@@ -470,7 +472,9 @@
           "signature-id": "another"
         },
         "hardware-properties": {
-          "is-lid-convertible": true
+          "form-factor": "CONVERTIBLE",
+          "is-lid-convertible": true,
+          "recovery-input": "KEYBOARD"
         },
         "identity": {
           "platform-name": "Some",
@@ -583,6 +587,7 @@
           "signature-id": "whitelabel-whitelabel1"
         },
         "hardware-properties": {
+          "form-factor": "CHROMEBOX",
           "is-lid-convertible": false
         },
         "identity": {
@@ -679,6 +684,7 @@
           "signature-id": "whitelabel-whitelabel1"
         },
         "hardware-properties": {
+          "form-factor": "CHROMEBOX",
           "is-lid-convertible": false
         },
         "identity": {
@@ -775,6 +781,7 @@
           "signature-id": "whitelabel-whitelabel2"
         },
         "hardware-properties": {
+          "form-factor": "CHROMEBOX",
           "is-lid-convertible": false
         },
         "identity": {
@@ -871,6 +878,7 @@
           "signature-id": "whitelabel-whitelabel2"
         },
         "hardware-properties": {
+          "form-factor": "CHROMEBOX",
           "is-lid-convertible": false
         },
         "identity": {
@@ -923,6 +931,522 @@
           }
         },
         "wallpaper": "wallpaper-wl2"
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery1_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery1"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery1",
+            "depthcharge": "badrecovery1",
+            "ec": "badrecovery1",
+            "libpayload": "badrecovery1",
+            "u-boot": "badrecovery1"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL",
+          "recovery-input": "KEYBOARD"
+        },
+        "identity": {
+          "custom-label-tag": "BAD1",
+          "sku-id": 10
+        },
+        "name": "badrecovery1",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery1"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery1_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery1"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery1",
+            "depthcharge": "badrecovery1",
+            "ec": "badrecovery1",
+            "libpayload": "badrecovery1",
+            "u-boot": "badrecovery1"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL",
+          "recovery-input": "POWER_BUTTON"
+        },
+        "identity": {
+          "custom-label-tag": "BAD1",
+          "sku-id": 11
+        },
+        "name": "badrecovery1",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery1"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery1_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery1"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery1",
+            "depthcharge": "badrecovery1",
+            "ec": "badrecovery1",
+            "libpayload": "badrecovery1",
+            "u-boot": "badrecovery1"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL",
+          "recovery-input": "KEYBOARD"
+        },
+        "identity": {
+          "custom-label-tag": "BAD2",
+          "sku-id": 10
+        },
+        "name": "badrecovery1",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery1"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery1_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery1"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery1",
+            "depthcharge": "badrecovery1",
+            "ec": "badrecovery1",
+            "libpayload": "badrecovery1",
+            "u-boot": "badrecovery1"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL",
+          "recovery-input": "POWER_BUTTON"
+        },
+        "identity": {
+          "custom-label-tag": "BAD2",
+          "sku-id": 11
+        },
+        "name": "badrecovery1",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery1"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery2_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery2"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery2",
+            "depthcharge": "badrecovery2",
+            "ec": "badrecovery2",
+            "libpayload": "badrecovery2",
+            "u-boot": "badrecovery2"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL"
+        },
+        "identity": {
+          "custom-label-tag": "BAD3",
+          "sku-id": 12
+        },
+        "name": "badrecovery2",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery2"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery2_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery2"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery2",
+            "depthcharge": "badrecovery2",
+            "ec": "badrecovery2",
+            "libpayload": "badrecovery2",
+            "u-boot": "badrecovery2"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX"
+        },
+        "identity": {
+          "custom-label-tag": "BAD3",
+          "sku-id": 13
+        },
+        "name": "badrecovery2",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery2"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery2_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery2"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery2",
+            "depthcharge": "badrecovery2",
+            "ec": "badrecovery2",
+            "libpayload": "badrecovery2",
+            "u-boot": "badrecovery2"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL"
+        },
+        "identity": {
+          "custom-label-tag": "BAD4",
+          "sku-id": 12
+        },
+        "name": "badrecovery2",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery2"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "badrecovery2_cheets",
+            "metrics-tag": "abc123",
+            "product": "badrecovery2"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "coreboot": "badrecovery2",
+            "depthcharge": "badrecovery2",
+            "ec": "badrecovery2",
+            "libpayload": "badrecovery2",
+            "u-boot": "badrecovery2"
+          }
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX"
+        },
+        "identity": {
+          "custom-label-tag": "BAD4",
+          "sku-id": 13
+        },
+        "name": "badrecovery2",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "badrecovery2"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
       }
     ]
   }

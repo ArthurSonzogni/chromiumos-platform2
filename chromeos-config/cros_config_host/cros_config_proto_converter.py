@@ -699,16 +699,28 @@ def _build_hardware_properties(hw_topology):
   ]
 
   form_factor_names = {
-      topology_pb2.HardwareFeatures.FormFactor.CLAMSHELL: 'CHROMEBOOK',
-      topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE: 'CHROMEBOOK',
-      topology_pb2.HardwareFeatures.FormFactor.DETACHABLE: 'CHROMEBOOK',
+      topology_pb2.HardwareFeatures.FormFactor.CLAMSHELL: 'CLAMSHELL',
+      topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE: 'CONVERTIBLE',
+      topology_pb2.HardwareFeatures.FormFactor.DETACHABLE: 'DETACHABLE',
       topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE: 'CHROMEBASE',
       topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX: 'CHROMEBOX',
       topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT: 'CHROMEBIT',
-      topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE: 'CHROMEBOOK',
+      topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE: 'CHROMESLATE',
   }
   if form_factor in form_factor_names:
     result['form-factor'] = form_factor_names[form_factor]
+
+  recovery_input_names = {
+      topology_pb2.HardwareFeatures.FormFactor.KEYBOARD:
+          'KEYBOARD',
+      topology_pb2.HardwareFeatures.FormFactor.POWER_BUTTON:
+          'POWER_BUTTON',
+      topology_pb2.HardwareFeatures.FormFactor.RECOVERY_BUTTON:
+          'RECOVERY_BUTTON',
+  }
+  recovery_input = hw_topology.form_factor.hardware_feature.form_factor.recovery_input
+  if recovery_input and recovery_input in recovery_input_names:
+    _upsert(recovery_input_names[recovery_input], result, 'recovery-input')
 
   return result
 
