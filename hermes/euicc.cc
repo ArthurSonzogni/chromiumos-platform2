@@ -449,6 +449,14 @@ void Euicc::OnPendingProfilesReceived(
 
 void Euicc::SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result) {
   VLOG(2) << __func__ << " : is_test_mode" << is_test_mode;
+  if (!context_->lpa()->IsLpaIdle()) {
+    context_->executor()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Euicc::SetTestModeHelper, weak_factory_.GetWeakPtr(),
+                       is_test_mode, std::move(dbus_result)),
+        kLpaRetryDelay);
+    return;
+  }
   is_test_mode_ = is_test_mode;
   auto set_test_mode_internal = base::BindOnce(
       &Euicc::SetTestMode, weak_factory_.GetWeakPtr(), is_test_mode);
@@ -483,6 +491,14 @@ void Euicc::UseTestCerts(bool use_test_certs) {
 
 void Euicc::ResetMemoryHelper(DbusResult<> dbus_result, int reset_options) {
   VLOG(2) << __func__ << " : reset_options: " << reset_options;
+  if (!context_->lpa()->IsLpaIdle()) {
+    context_->executor()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Euicc::ResetMemoryHelper, weak_factory_.GetWeakPtr(),
+                       std::move(dbus_result), reset_options),
+        kLpaRetryDelay);
+    return;
+  }
   if (reset_options != lpa::data::reset_options::kDeleteOperationalProfiles &&
       reset_options !=
           lpa::data::reset_options::kDeleteFieldLoadedTestProfiles) {
@@ -516,7 +532,14 @@ void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
 
 void Euicc::IsTestEuicc(DbusResult<bool> dbus_result) {
   LOG(INFO) << __func__;
-
+  if (!context_->lpa()->IsLpaIdle()) {
+    context_->executor()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Euicc::IsTestEuicc, weak_factory_.GetWeakPtr(),
+                       std::move(dbus_result)),
+        kLpaRetryDelay);
+    return;
+  }
   auto get_euicc_info_1 =
       base::BindOnce(&Euicc::GetEuiccInfo1, weak_factory_.GetWeakPtr());
   context_->modem_control()->ProcessEuiccEvent(
