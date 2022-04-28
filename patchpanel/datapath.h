@@ -390,6 +390,13 @@ class Datapath {
                                  bool redirect_on_mark = false);
   bool ModifyDnsRedirectionSkipVpnRule(IpFamily family, const std::string& op);
 
+  // Create (or delete) rules to exclude DNS traffic with destination not equal
+  // to the proxy's IP in |rule|.
+  bool ModifyDnsExcludeDestinationRule(IpFamily family,
+                                       const DnsRedirectionRule& rule,
+                                       const std::string& op,
+                                       const std::string& chain);
+
   // Create (or delete) DNAT rules for redirecting DNS queries to a DNS proxy.
   bool ModifyDnsProxyDNAT(IpFamily family,
                           const DnsRedirectionRule& rule,

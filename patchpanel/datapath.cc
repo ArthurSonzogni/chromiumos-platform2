@@ -1013,7 +1013,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
 
   switch (rule.type) {
     case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
-      if (!ModifyDnsProxyDNAT(family, rule, "-I", rule.input_ifname,
+      if (!ModifyDnsProxyDNAT(family, rule, "-A", rule.input_ifname,
                               kRedirectDefaultDnsChain)) {
         LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
         return false;
@@ -1021,7 +1021,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       return true;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
-      if (!ModifyDnsProxyDNAT(family, rule, "-I", rule.input_ifname,
+      if (!ModifyDnsProxyDNAT(family, rule, "-A", rule.input_ifname,
                               kRedirectArcDnsChain)) {
         LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
         return false;
@@ -1036,7 +1036,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       }
 
       // Add DNS redirect rules for chrome traffic.
-      if (!ModifyChromeDnsRedirect(family, rule, "-I")) {
+      if (!ModifyChromeDnsRedirect(family, rule, "-A")) {
         LOG(ERROR) << "Failed to add chrome DNS DNAT rule";
         return false;
       }
@@ -1052,6 +1052,19 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       if (family == IpFamily::IPv6 &&
           !ModifyDnsProxyMasquerade(family, "-A", kSnatUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS MASQUERADE rule";
+        return false;
+      }
+      return true;
+    }
+    case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
+      if (!ModifyDnsExcludeDestinationRule(family, rule, "-I",
+                                           kRedirectChromeDnsChain)) {
+        LOG(ERROR) << "Failed to add Chrome DNS exclude rule";
+        return false;
+      }
+      if (!ModifyDnsExcludeDestinationRule(family, rule, "-I",
+                                           kRedirectUserDnsChain)) {
+        LOG(ERROR) << "Failed to add user DNS exclude rule";
         return false;
       }
       return true;
@@ -1099,6 +1112,13 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       if (family == IpFamily::IPv6) {
         ModifyDnsProxyMasquerade(family, "-D", kSnatUserDnsChain);
       }
+      break;
+    }
+    case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
+      ModifyDnsExcludeDestinationRule(family, rule, "-D",
+                                      kRedirectChromeDnsChain);
+      ModifyDnsExcludeDestinationRule(family, rule, "-D",
+                                      kRedirectUserDnsChain);
       break;
     }
     default:
@@ -1341,6 +1361,30 @@ bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
     args.push_back("ACCEPT");
     args.push_back("-w");
     if (!ModifyIptables(family, "mangle", args)) {
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool Datapath::ModifyDnsExcludeDestinationRule(IpFamily family,
+                                               const DnsRedirectionRule& rule,
+                                               const std::string& op,
+                                               const std::string& chain) {
+  bool success = true;
+  for (const auto& protocol : {"udp", "tcp"}) {
+    std::vector<std::string> args = {op, chain};
+    args.push_back("-p");
+    args.push_back(protocol);
+    args.push_back("!");
+    args.push_back("-d");
+    args.push_back(rule.proxy_address);
+    args.push_back("--dport");
+    args.push_back(kDefaultDnsPort);
+    args.push_back("-j");
+    args.push_back("RETURN");
+    args.push_back("-w");
+    if (!ModifyIptables(family, "nat", args)) {
       success = false;
     }
   }

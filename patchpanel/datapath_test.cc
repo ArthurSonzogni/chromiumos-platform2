@@ -1351,16 +1351,16 @@ TEST(DatapathTest, StartDnsRedirection_Default) {
   FakeSystem system;
 
   Verify_iptables(*runner, IPv4,
-                  "nat -I redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
+                  "nat -A redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -I redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
+                  "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
   Verify_iptables(*runner, IPv6,
-                  "nat -I redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
+                  "nat -A redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
   Verify_iptables(*runner, IPv6,
-                  "nat -I redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
+                  "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
 
   DnsRedirectionRule rule4 = {};
@@ -1383,16 +1383,16 @@ TEST(DatapathTest, StartDnsRedirection_Arc) {
   FakeSystem system;
 
   Verify_iptables(*runner, IPv4,
-                  "nat -I redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
+                  "nat -A redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -I redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
+                  "nat -A redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
   Verify_iptables(*runner, IPv6,
-                  "nat -I redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
+                  "nat -A redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
   Verify_iptables(*runner, IPv6,
-                  "nat -I redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
+                  "nat -A redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
 
   DnsRedirectionRule rule4 = {};
@@ -1416,32 +1416,32 @@ TEST(DatapathTest, StartDnsRedirection_User) {
 
   Verify_iptables(
       *runner, IPv4,
-      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables(
       *runner, IPv4,
-      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables(
       *runner, IPv4,
-      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(
       *runner, IPv4,
-      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables(
       *runner, IPv4,
-      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables(
       *runner, IPv4,
-      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner, IPv4,
@@ -1453,22 +1453,22 @@ TEST(DatapathTest, StartDnsRedirection_User) {
 
   Verify_iptables(
       *runner, IPv6,
-      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables(
       *runner, IPv6,
-      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(
       *runner, IPv6,
-      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables(
       *runner, IPv6,
-      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(*runner, IPv6,
@@ -1485,10 +1485,10 @@ TEST(DatapathTest, StartDnsRedirection_User) {
                   "--to-destination ::1 -w");
 
   Verify_iptables(*runner, Dual,
-                  "nat -I snat_chrome_dns -p udp --dport 53 -j "
+                  "nat -A snat_chrome_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
   Verify_iptables(*runner, Dual,
-                  "nat -I snat_chrome_dns -p tcp --dport 53 -j "
+                  "nat -A snat_chrome_dns -p tcp --dport 53 -j "
                   "MASQUERADE -w");
   Verify_iptables(
       *runner, Dual,
@@ -1510,6 +1510,50 @@ TEST(DatapathTest, StartDnsRedirection_User) {
   rule6.proxy_address = "::1";
   rule6.nameservers.emplace_back("2001:4860:4860::8888");
   rule6.nameservers.emplace_back("2001:4860:4860::8844");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.StartDnsRedirection(rule4);
+  datapath.StartDnsRedirection(rule6);
+}
+
+TEST(DatapathTest, StartDnsRedirection_ExcludeDestination) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IPv4,
+                  "nat -I redirect_chrome_dns -p udp ! -d 100.115.92.130 "
+                  "--dport 53 -j RETURN -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -I redirect_chrome_dns -p tcp ! -d 100.115.92.130 "
+                  "--dport 53 -j RETURN -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -I redirect_user_dns -p udp ! -d 100.115.92.130 --dport "
+                  "53 -j RETURN -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -I redirect_user_dns -p tcp ! -d 100.115.92.130 --dport "
+                  "53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -I redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -I redirect_chrome_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -I redirect_user_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -I redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
+
+  DnsRedirectionRule rule4 = {};
+  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
+  rule4.input_ifname = "";
+  rule4.proxy_address = "100.115.92.130";
+  DnsRedirectionRule rule6 = {};
+  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
+  rule6.input_ifname = "";
+  rule6.proxy_address = "::1";
 
   Datapath datapath(runner, firewall, &system);
   datapath.StartDnsRedirection(rule4);
@@ -1681,6 +1725,50 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   rule6.proxy_address = "::1";
   rule6.nameservers.emplace_back("2001:4860:4860::8888");
   rule6.nameservers.emplace_back("2001:4860:4860::8844");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.StopDnsRedirection(rule4);
+  datapath.StopDnsRedirection(rule6);
+}
+
+TEST(DatapathTest, StopDnsRedirection_ExcludeDestination) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IPv4,
+                  "nat -D redirect_chrome_dns -p udp ! -d 100.115.92.130 "
+                  "--dport 53 -j RETURN -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D redirect_chrome_dns -p tcp ! -d 100.115.92.130 "
+                  "--dport 53 -j RETURN -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D redirect_user_dns -p udp ! -d 100.115.92.130 --dport "
+                  "53 -j RETURN -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D redirect_user_dns -p tcp ! -d 100.115.92.130 --dport "
+                  "53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -D redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -D redirect_chrome_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -D redirect_user_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(
+      *runner, IPv6,
+      "nat -D redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
+
+  DnsRedirectionRule rule4 = {};
+  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
+  rule4.input_ifname = "";
+  rule4.proxy_address = "100.115.92.130";
+  DnsRedirectionRule rule6 = {};
+  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
+  rule6.input_ifname = "";
+  rule6.proxy_address = "::1";
 
   Datapath datapath(runner, firewall, &system);
   datapath.StopDnsRedirection(rule4);
