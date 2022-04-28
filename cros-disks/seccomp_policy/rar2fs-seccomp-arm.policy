@@ -64,6 +64,7 @@ set_tid_address: 1
 setfsgid32: 1
 setfsuid32: 1
 setgroups32: 1
+setitimer: 1
 setpgid: 1
 setresgid32: 1
 setresuid32: 1

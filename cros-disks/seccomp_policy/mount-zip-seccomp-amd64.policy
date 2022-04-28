@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 access: 1
+alarm: 1
 arch_prctl: 1
 brk: 1
 chdir: 1

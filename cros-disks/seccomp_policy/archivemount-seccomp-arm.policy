@@ -54,6 +54,7 @@ send: 1
 set_robust_list: 1
 set_tid_address: 1
 setgroups32: 1
+setitimer: 1
 setresgid32: 1
 setresuid32: 1
 setsid: 1
