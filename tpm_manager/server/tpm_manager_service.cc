@@ -17,6 +17,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
+#include <base/process/launch.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <crypto/sha2.h>
@@ -30,6 +31,9 @@ namespace {
 
 constexpr int kDictionaryAttackResetPeriodInHours = 1;
 constexpr base::TimeDelta kUploadAlertsPeriod = base::Hours(6);
+
+constexpr char kIsRunningFromInstaller[] = "is_running_from_installer";
+constexpr char kInstallerYes[] = "yes\n";
 
 #if USE_TPM2
 // Timeout waiting for Trunks daemon readiness.
@@ -72,6 +76,21 @@ int GetFingerprint(uint32_t family,
       static_cast<uint8_t>(hash[0]) | static_cast<uint8_t>(hash[1]) << 8 |
       static_cast<uint8_t>(hash[2]) << 16 | static_cast<uint8_t>(hash[3]) << 24;
   return result & 0x7fffffff;
+}
+
+bool IsRunningFromInstaller() {
+  if (USE_OS_INSTALL_SERVICE) {
+    std::string output;
+    if (!base::GetAppOutput({kIsRunningFromInstaller}, &output)) {
+      LOG(ERROR) << "Failed to run is_running_from_installer";
+    }
+
+    if (output == kInstallerYes) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace
@@ -274,17 +293,17 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
     return reply;
   }
 
-  if (!tpm_status_->IsTpmEnabled()) {
+  if (IsRunningFromInstaller() || !tpm_status_->IsTpmEnabled()) {
     LOG(WARNING) << __func__ << ": TPM is disabled.";
 
-#if USE_TPM_DYNAMIC
-    // Don't allow the TPM to be used when it is disabled. This is
-    // necessary because when the TPM is active but disabled, some
-    // operations like reading nvram spaces are still possible. But
-    // since the TPM is disabled, we can't assume that the data is valid
-    // in that case; it might come from an old install.
-    tpm_allowed_ = false;
-#endif
+    if (USE_TPM_INSECURE_FALLBACK) {
+      // Don't allow the TPM to be used when it is disabled. This is
+      // necessary because when the TPM is active but disabled, some
+      // operations like reading nvram spaces are still possible. But
+      // since the TPM is disabled, we can't assume that the data is valid
+      // in that case; it might come from an old install.
+      tpm_allowed_ = false;
+    }
 
     reply->set_enabled(false);
     reply->set_status(STATUS_SUCCESS);
@@ -379,6 +398,16 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
       LOG(WARNING) << __func__ << ": TPM initialization failed.";
       dictionary_attack_timer_.Reset();
       reply->set_status(STATUS_NOT_AVAILABLE);
+
+      if (USE_TPM_INSECURE_FALLBACK) {
+        // Don't allow the TPM to be used when we failed to take the ownership
+        // of it, because most of the security features would not work under
+        // this case.
+        tpm_allowed_ = false;
+        reply->set_enabled(false);
+        reply->set_status(STATUS_SUCCESS);
+      }
+
       return reply;
     }
     if (!already_owned) {

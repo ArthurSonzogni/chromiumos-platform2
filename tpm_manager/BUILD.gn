@@ -42,6 +42,7 @@ config("target_defaults") {
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
+    "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
     "USE_OS_INSTALL_SERVICE=${use.os_install_service}",
   ]
 }
