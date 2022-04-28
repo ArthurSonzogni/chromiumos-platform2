@@ -259,7 +259,7 @@ bool IsProcessorBlock(const std::string& block) {
 bool ParseProcessor(const std::string& processor,
                     int& processor_id,
                     int& physical_id,
-                    std::string* model_name) {
+                    std::string& model_name) {
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(processor, ':', '\n', &pairs);
   std::string processor_id_str;
@@ -272,7 +272,7 @@ bool ParseProcessor(const std::string& processor,
       base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
                                 &physical_id_str);
     else if (key_value.first.find(kModelNameKey) != std::string::npos)
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, model_name);
+      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &model_name);
   }
 
   // If the processor does not have a distinction between physical_id and
@@ -411,7 +411,7 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     int processor_id;
     int physical_id;
     std::string model_name;
-    if (!ParseProcessor(processor, processor_id, physical_id, &model_name)) {
+    if (!ParseProcessor(processor, processor_id, physical_id, model_name)) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kParseError,
           "Unable to parse processor string: " + processor));
