@@ -23,9 +23,10 @@ group("all") {
   }
   if (use.fuzzer) {
     deps += [
+      ":android_binary_xml_tokenizer_fuzzer",
+      ":android_xml_util_find_fingerprint_and_sdk_version_fuzzer",
       ":arc_property_util_expand_property_contents_fuzzer",
       ":arc_setup_util_find_all_properties_fuzzer",
-      ":arc_setup_util_find_fingerprint_and_sdk_version_fuzzer",
     ]
   }
 }
@@ -214,17 +215,26 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
-  executable("arc_setup_util_find_all_properties_fuzzer") {
-    sources = [ "arc_setup_util_find_all_properties_fuzzer.cc" ]
+  executable("android_binary_xml_tokenizer_fuzzer") {
+    sources = [ "android_binary_xml_tokenizer_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    deps = [ ":libarc_setup_static" ]
+    deps = [ "xml:libandroidxml" ]
   }
 
-  executable("arc_setup_util_find_fingerprint_and_sdk_version_fuzzer") {
-    sources = [ "arc_setup_util_find_fingerprint_and_sdk_version_fuzzer.cc" ]
+  executable("android_xml_util_find_fingerprint_and_sdk_version_fuzzer") {
+    sources = [ "android_xml_util_find_fingerprint_and_sdk_version_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ "xml:libandroidxml" ]
+  }
+
+  executable("arc_setup_util_find_all_properties_fuzzer") {
+    sources = [ "arc_setup_util_find_all_properties_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
