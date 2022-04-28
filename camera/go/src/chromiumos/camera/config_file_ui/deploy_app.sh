@@ -6,13 +6,16 @@
 
 # A script to pack the config_file_ui app and deploy it to a DUT.
 
+# shellcheck disable=SC2154
 if [[ "${CROS_WORKON_SRCROOT}" = "" ]]; then
   echo "This script must run inside the CrOS SDK"
   exit 1
 fi
 
 SCRIPT_ROOT="${CROS_WORKON_SRCROOT}/src/scripts"
+# shellcheck disable=SC1091
 . "${SCRIPT_ROOT}/common.sh" || exit 1
+# shellcheck disable=SC1091
 . "${SCRIPT_ROOT}/remote_access.sh" || exit 1
 
 #DEFINE_string remote "" "remote device to deploy to"
@@ -32,6 +35,7 @@ OUT_DIR="${GO_SRCROOT}/${PKG}/out"
 STATIC_DIRS="css js templates setting_files"
 APP_OUTPUT="${GO_SRCROOT}/${PKG}/app.sh"
 TAST_GOPATH="${CROS_WORKON_SRCROOT}/src/platform/tast"
+TAST_GOPATH="${TAST_GOPATH}:${CROS_WORKON_SRCROOT}/src/platform/tast-tests"
 
 cleanup() {
   cleanup_remote_access
@@ -45,7 +49,8 @@ build_gopkg() {
   rm -rf "${OUT_DIR}"
   mkdir -p "${OUT_DIR}"
   # TODO(jcliang): select the cross compiler based on the remote board.
-  GO111MODULE=off GOPATH="${GO_SRCROOT}/..:${TAST_GOPATH}" \
+  GO111MODULE=off GOPATH="${GO_SRCROOT}/..:${TAST_GOPATH}:/usr/lib/gopath" \
+  CGO_ENABLED=0 \
     x86_64-cros-linux-gnu-go build -o "${OUT_DIR}" "${PKG}"
 
   for d in ${STATIC_DIRS}; do
@@ -54,6 +59,7 @@ build_gopkg() {
 }
 
 pack() {
+# shellcheck disable=SC2016
   local app_head='#!/bin/bash
 cleanup() {
   rm -rf "${TMP}"
@@ -67,6 +73,7 @@ main() {
   pushd "${TMP}" || exit 1
   base64 -d << APP_EOF | tar -xj'
 
+# shellcheck disable=SC2016
   local app_tail='APP_EOF
   "${TMP}"/config_file_ui
   popd || exit 1

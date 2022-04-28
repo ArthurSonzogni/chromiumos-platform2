@@ -1,8 +1,7 @@
 {
   "name": "Auto-framing",
-  "key": "auto-framing",
+  "key": "auto_framing",
   "summary": "Auto-framing settings",
-  "default_config_file": "/etc/camera/auto_framing_config.json",
   "override_config_file": "/run/camera/auto_framing_config.json",
   "options": [
     {

@@ -2,7 +2,6 @@
   "name": "HDRnet",
   "key": "hdrnet",
   "summary": "Tuning options for HDRnet",
-  "default_config_file": "/etc/camera/hdrnet_config.json",
   "override_config_file": "/run/camera/hdrnet_config.json",
   "options": [
     {

@@ -1,8 +1,7 @@
 {
   "name": "Face Detection",
-  "key": "fd",
+  "key": "face_detection",
   "summary": "Tuning options for CrOS face detector",
-  "default_config_file": "/etc/camera/face_detection_config.json",
   "override_config_file": "/run/camera/face_detection_config.json",
   "options": [
     {

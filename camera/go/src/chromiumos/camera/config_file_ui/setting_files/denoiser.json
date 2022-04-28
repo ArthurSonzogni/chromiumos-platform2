@@ -2,7 +2,6 @@
   "name": "STDenoiser",
   "key": "denoiser",
   "summary": "Spatiotemporal denoiser settings",
-  "default_config_file": "/etc/camera/hdrnet_config.json",
   "override_config_file": "/run/camera/hdrnet_config.json",
   "options": [
     {

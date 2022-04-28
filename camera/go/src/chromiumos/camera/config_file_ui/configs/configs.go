@@ -5,14 +5,17 @@
 package configs
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"strconv"
 	"strings"
+	"time"
+
+	"chromiumos/tast/local/camera/features"
+	"chromiumos/tast/local/crosconfig"
 )
 
 // OptionType enumerates the list of supported config option types.
@@ -35,21 +38,21 @@ const (
 	// descriptor of type SelectionValueDescriptor.
 	Selection = "selection"
 
-	// Unknow means the type is unrecognized.
+	// Unknown means the type is unrecognized.
 	Unknown = "unknown"
 )
 
 // NumberValueDescriptor describes the value metadata of a number option.
 type NumberValueDescriptor struct {
-	Min  float64 `json:"min,omitempty"`
-	Max  float64 `json:"max,omitempty"`
-	Step float64 `json:"step,omitempty"`
+	Min  float64 `json:"min"`
+	Max  float64 `json:"max"`
+	Step float64 `json:"step"`
 }
 
 // Enum describes an enum value for a selection option.
 type Enum struct {
-	Desc      string  `json:"desc,omitempty"`
-	EnumValue float64 `json:"enum_value,omitempty"`
+	Desc      string  `json:"desc"`
+	EnumValue float64 `json:"enum_value"`
 }
 
 // SelectionValueDescriptor describes the value metadata of a selection option.
@@ -59,23 +62,22 @@ type SelectionValueDescriptor struct {
 
 // OptionDescriptor describes the general metadata of a config option.
 type OptionDescriptor struct {
-	Name            string      `json:"name,omitempty"`
-	Key             string      `json:"key,omitempty"`
-	Summary         string      `json:"summary,omitempty"`
-	Type            OptionType  `json:"type,omitempty"`
-	ValueDescriptor interface{} `json:"value_descriptor,omitempty"`
-	Default         interface{} `json:"default,omitempty"`
-	Value           interface{} `json:"value,omitempty"`
+	Name            string      `json:"name"`
+	Key             string      `json:"key"`
+	Summary         string      `json:"summary"`
+	Type            OptionType  `json:"type"`
+	ValueDescriptor interface{} `json:"value_descriptor"`
+	Default         interface{} `json:"default"`
+	Value           interface{} `json:"value"`
 }
 
 // ConfigDescriptor describes the metadata of a config setting.
 type ConfigDescriptor struct {
-	Name               string              `json:"name,omitempty"`
-	Key                string              `json:"key,omitempty"`
-	Summary            string              `json:"summary,omitempty"`
-	DefaultConfigFile  string              `json:"default_config_file,omitempty"`
-	OverrideConfigFile string              `json:"override_config_file,omitempty"`
-	Options            []*OptionDescriptor `json:"options,omitempty"`
+	Name               string              `json:"name"`
+	Key                string              `json:"key"`
+	Summary            string              `json:"summary"`
+	OverrideConfigFile string              `json:"override_config_file"`
+	Options            []*OptionDescriptor `json:"options"`
 }
 
 // validateOptionType validates the loaded JSON data in |opt.Type| and
@@ -259,9 +261,6 @@ func (conf *ConfigDescriptor) Validate() error {
 	if len(conf.Name) == 0 {
 		return fmt.Errorf("name must be set in the descriptor of %q", conf.Name)
 	}
-	if len(conf.DefaultConfigFile) == 0 {
-		return fmt.Errorf("default_config_file must be set in the descriptor of %q", conf.Name)
-	}
 	if len(conf.OverrideConfigFile) == 0 {
 		return fmt.Errorf("override_config_file must be set in the descriptor of %q", conf.Name)
 	}
@@ -317,8 +316,24 @@ func (conf *ConfigDescriptor) LoadDeviceSettings() error {
 		return nil
 	}
 
+	model, err := crosconfig.Get(context.Background(), "/", "name")
+	if err != nil {
+		return fmt.Errorf("failed to get device model: %s", err)
+	}
+	modelConf, err := features.NewModelConfig(model)
+	if err != nil {
+		return fmt.Errorf("failed to get feature profile for device model %s: %s", model, err)
+	}
+
+	if !modelConf.IsFeatureEnabled(conf.Key) {
+		log.Printf("%q not enabled in feature profile; skip", conf.Key)
+		return nil
+	}
+	log.Printf("Loading feature config for %q", conf.Key)
+
 	// Default config file is required.
-	if err := loadSettings(conf.DefaultConfigFile); err != nil {
+	defaultConfFile, err := modelConf.FeatureConfigFilePath(conf.Key)
+	if err := loadSettings(defaultConfFile); err != nil {
 		return err
 	}
 
@@ -334,57 +349,14 @@ func (conf *ConfigDescriptor) LoadDeviceSettings() error {
 // option key, or add new option values into the file. SaveDeviceSettings will
 // not remove option values in the config file that it does not recognize.
 func (conf *ConfigDescriptor) SaveDeviceSettings() error {
-	var loadSettings = func(file string) map[string]interface{} {
-		if _, err := os.Stat(file); errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		// Load the existing settings in the file.
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			log.Printf("failed to read existing settings from file %q", file)
-			return nil
-		}
-		settings := make(map[string]interface{})
-		if err := json.Unmarshal(data, &settings); err != nil {
-			log.Printf("failed to unmarshal existing settings from file %q", file)
-			return nil
-		}
-		return settings
+	c := make(features.FeatureConfig)
+	for _, opt := range conf.Options {
+		c[opt.Key] = opt.Value
 	}
-
-	var saveSettings = func(file string) error {
-		f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE, 0644)
-		if err != nil {
-			return fmt.Errorf("failed to open settings file %q: %w", file, err)
-		}
-		defer f.Close()
-
-		// Load the existing settings in the file.
-		settings := loadSettings(file)
-		if settings == nil {
-			// The file may not exist.
-			settings = make(map[string]interface{})
-		}
-
-		// Update the existing settings with our descriptor.
-		for _, opt := range conf.Options {
-			settings[opt.Key] = opt.Value
-		}
-		data, err := json.MarshalIndent(settings, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal settings %s: %w", settings, err)
-		}
-		length, err := f.Write(data)
-		if err != nil {
-			return fmt.Errorf("failed to write settings to %q: %w", file, err)
-		}
-		f.Truncate(int64(length))
-		log.Printf("Save device settings to file: %q", file)
-		return nil
-	}
-
-	if err := saveSettings(conf.OverrideConfigFile); err != nil {
-		return err
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := features.WriteFeatureConfig(ctx, c, conf.OverrideConfigFile, false); err != nil {
+		return fmt.Errorf("failed to write device settings: %s", err)
 	}
 	return nil
 }

@@ -2,7 +2,6 @@
   "name": "Gcam AE",
   "key": "gcam_ae",
   "summary": "Tuning options for Gcam AE",
-  "default_config_file": "/etc/camera/gcam_ae_config.json",
   "override_config_file": "/run/camera/gcam_ae_config.json",
   "options": [
     {
