@@ -2,10 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <limits.h>
+#include <stdlib.h>
+
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <vboot/crossystem.h>
 
 #include "vm_tools/common/pstore.h"
 #include "vm_tools/concierge/arc_vm.h"
@@ -32,6 +36,31 @@ constexpr char kRootfsPath[] = "/opt/google/vms/android/system.raw.img";
 
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
+
+// Returns |image_path| on production. Returns a canonicalized path of the image
+// file when in dev mode.
+base::FilePath GetImagePath(const base::FilePath& image_path,
+                            bool is_dev_mode) {
+  if (!is_dev_mode)
+    return image_path;
+
+  // When in dev mode, the Android images might be on the stateful partition and
+  // |kRootfsPath| might be a symlink to the stateful partition image file. In
+  // that case, we need to use the resolved path so that brillo::SafeFD calls
+  // can handle the path without errors. The same is true for vendor.raw.image
+  // too. On the other hand, when in production mode, we should NEVER do the
+  // special handling. In production, the images files in /opt should NEVER ever
+  // be a symlink.
+
+  // We cannot use base::NormalizeFilePath because the function fails
+  // if |path| points to a directory (for Windows compatibility.)
+  char buf[PATH_MAX] = {};
+  if (realpath(image_path.value().c_str(), buf))
+    return base::FilePath(buf);
+  if (errno != ENOENT)
+    PLOG(WARNING) << "Failed to resolve " << image_path.value();
+  return image_path;
+}
 
 // Returns true if the path is a valid demo image path.
 bool IsValidDemoImagePath(const base::FilePath& path) {
@@ -201,10 +230,14 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   if (rootfs_block_size) {
     config.block_size = rootfs_block_size;
   }
-  disks.push_back(Disk(base::FilePath(kRootfsPath), config));
+  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
+  disks.push_back(
+      Disk(GetImagePath(base::FilePath(kRootfsPath), is_dev_mode), config));
   for (const auto& disk : request.disks()) {
-    if (!base::PathExists(base::FilePath(disk.path()))) {
-      LOG(ERROR) << "Missing disk path: " << disk.path();
+    const base::FilePath path =
+        GetImagePath(base::FilePath(disk.path()), is_dev_mode);
+    if (!base::PathExists(path)) {
+      LOG(ERROR) << "Missing disk path: " << path;
       response.set_failure_reason("One or more disk paths do not exist");
       return response;
     }
@@ -213,7 +246,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     if (block_size) {
       config.block_size = block_size;
     }
-    disks.push_back(Disk(base::FilePath(disk.path()), config));
+    disks.push_back(Disk(path, config));
   }
 
   base::FilePath data_disk_path;
