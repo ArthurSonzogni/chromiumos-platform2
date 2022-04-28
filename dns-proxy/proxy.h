@@ -135,6 +135,17 @@ class Proxy : public brillo::DBusDaemon {
   // necessary to route corresponding DNS traffic to the DNS proxy.
   // |sa_family| values will be either AF_INET or AF_INET6, for IPv4 and IPv6
   // respectively.
+  // Calls from each DNS proxy types will result in a different rule:
+  // - System:
+  //   Rules to exclude traffic that is not using the underlying name
+  //   server (EXCLUDE_DESTINATION).
+  // - Default:
+  //   If |ifname| is empty, rules to redirect user traffic to the proxy
+  //   (USER).
+  //   If |ifname| is not empty, rules to redirect guests that track default
+  //   network to the proxy (DEFAULT).
+  // - ARC:
+  //   Rules to redirect ARC traffic to the proxy (ARC).
   void StartDnsRedirection(
       const std::string& ifname,
       sa_family_t sa_family,
@@ -231,7 +242,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, FeatureDisabled_LoginAfterLogout);
   FRIEND_TEST(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled);
   FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
-  FRIEND_TEST(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetsDnsRedirectionRule);
   FRIEND_TEST(ProxyTest,
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted);

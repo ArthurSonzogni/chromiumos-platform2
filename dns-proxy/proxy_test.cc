@@ -1137,7 +1137,7 @@ TEST_F(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN) {
   proxy.OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
+TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
@@ -1146,8 +1146,13 @@ TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  // System proxy must not request a redirect DNS rule.
-  EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
+  // System proxy requests a DnsRedirectionRule to exclude traffic destined not
+  // to the underlying network's name server.
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+                  _, "10.10.10.10", _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1173,6 +1178,11 @@ TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
   default_device.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
   default_device.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
                                                 "2001:4860:4860::8844"};
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+                  _, "10.10.10.10", _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&default_device);
