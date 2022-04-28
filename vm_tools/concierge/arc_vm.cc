@@ -79,7 +79,7 @@ constexpr char kApkCacheSharedDirTag[] = "apkcache";
 constexpr char kFontsSharedDir[] = "/usr/share/fonts";
 constexpr char kFontsSharedDirTag[] = "fonts";
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 constexpr char kLibSharedDir[] = "/lib64";
 constexpr char kUsrLibSharedDir[] = "/usr/lib64";
 #else
