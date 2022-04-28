@@ -427,4 +427,80 @@ TEST_F(PlatformTest, SetPermissionsOfExistentPath) {
   EXPECT_TRUE(CheckPermissions(path, mode));
 }
 
+TEST_F(PlatformTest, RunAsRootUnmount) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Create and mount a temporary file system.
+  const base::FilePath mount_path = temp_dir.GetPath();
+  EXPECT_EQ(platform_.Mount("source", mount_path.value(), "tmpfs", 0, ""),
+            MOUNT_ERROR_NONE);
+
+  // Should not be able to remove a mounted directory.
+  EXPECT_FALSE(platform_.RemoveEmptyDirectory(mount_path.value()));
+
+  // Add a file to this temporary file system.
+  const base::FilePath file_path = mount_path.Append("file");
+  EXPECT_FALSE(base::PathExists(file_path));
+  EXPECT_TRUE(base::WriteFile(file_path, "Some data"));
+  EXPECT_TRUE(base::PathExists(file_path));
+
+  // Unmount the temporary file system.
+  EXPECT_EQ(platform_.Unmount(mount_path.value(), 0), MOUNT_ERROR_NONE);
+
+  // The file in the temporary file system shouldn't be visible anymore.
+  EXPECT_FALSE(base::PathExists(file_path));
+
+  // Trying to unmount an existing but not mounted directory should fail.
+  EXPECT_TRUE(base::DirectoryExists(mount_path));
+  EXPECT_EQ(platform_.Unmount(mount_path.value(), 0),
+            MOUNT_ERROR_PATH_NOT_MOUNTED);
+
+  // Should be able to remove the directory now that it is unmounted.
+  EXPECT_TRUE(platform_.RemoveEmptyDirectory(mount_path.value()));
+
+  // Trying to unmount an absent directory should fail.
+  EXPECT_EQ(platform_.Unmount(mount_path.value(), 0),
+            MOUNT_ERROR_PATH_NOT_MOUNTED);
+}
+
+TEST_F(PlatformTest, RunAsRootUnmountForce) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Create and mount a temporary file system.
+  const base::FilePath mount_path = temp_dir.GetPath();
+  EXPECT_EQ(platform_.Mount("source", mount_path.value(), "tmpfs", 0, ""),
+            MOUNT_ERROR_NONE);
+
+  // Should not be able to remove a mounted directory.
+  EXPECT_FALSE(platform_.RemoveEmptyDirectory(mount_path.value()));
+
+  // Add a file to this temporary file system.
+  const base::FilePath file_path = mount_path.Append("file");
+  EXPECT_FALSE(base::PathExists(file_path));
+  base::File file(file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(file.IsValid());
+  EXPECT_TRUE(base::PathExists(file_path));
+  // Keep the file open.
+
+  // Try to unmount the temporary file system with default flags.
+  // This should fail since there is an open file.
+  EXPECT_EQ(platform_.Unmount(mount_path.value(), 0),
+            MOUNT_ERROR_PATH_ALREADY_MOUNTED);
+  EXPECT_FALSE(platform_.RemoveEmptyDirectory(mount_path.value()));
+
+  // Force-unmount the temporary file system.
+  EXPECT_EQ(platform_.Unmount(mount_path.value(), MNT_FORCE | MNT_DETACH),
+            MOUNT_ERROR_NONE);
+
+  // The file in the temporary file system shouldn't be visible anymore.
+  EXPECT_FALSE(base::PathExists(file_path));
+
+  // Can we still use the open file handle?
+  const base::StringPiece s = "Some data...";
+  EXPECT_TRUE(file.WriteAtCurrentPos(s.data(), s.size()));
+  EXPECT_EQ(file.GetLength(), s.size());
+}
+
 }  // namespace cros_disks
