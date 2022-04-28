@@ -145,7 +145,7 @@ std::vector<mojo_ipc::CpuTemperatureChannelPtr> GetCpuTemperatures(
 // Gets the time spent in each C-state for the logical processor whose ID is
 // |logical_id|. Returns std::nullopt if a required sysfs node was not found.
 std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
-    const base::FilePath& root_dir, const std::string logical_id) {
+    const base::FilePath& root_dir, int logical_id) {
   std::vector<mojo_ipc::CpuCStateInfoPtr> c_states;
   // Find all directories matching /sys/devices/system/cpu/cpuN/cpudidle/stateX.
   base::FileEnumerator c_state_it(
@@ -206,7 +206,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> GetNumTotalThreads(
 // Parses the contents of /proc/stat into a map of logical IDs to
 // ParsedStatContents. Returns std::nullopt if an error was encountered while
 // parsing.
-std::optional<std::map<std::string, ParsedStatContents>> ParseStatContents(
+std::optional<std::map<int, ParsedStatContents>> ParseStatContents(
     const std::string& stat_contents) {
   std::stringstream stat_sstream(stat_contents);
 
@@ -217,18 +217,20 @@ std::optional<std::map<std::string, ParsedStatContents>> ParseStatContents(
 
   // Parse lines of the format "cpu%d %d %d %d %d ...", where each line
   // corresponds to a separate logical CPU.
-  std::map<std::string, ParsedStatContents> parsed_contents;
-  std::string logical_cpu_id;
+  std::map<int, ParsedStatContents> parsed_contents;
+  int logical_cpu_id;
+  std::string logical_cpu_id_str;
   std::string user_time_str;
   std::string system_time_str;
   std::string idle_time_str;
   while (std::getline(stat_sstream, line) &&
-         RE2::PartialMatch(line, kRelativeStatFileRegex, &logical_cpu_id,
+         RE2::PartialMatch(line, kRelativeStatFileRegex, &logical_cpu_id_str,
                            &user_time_str, &system_time_str, &idle_time_str)) {
     ParsedStatContents contents;
     if (!base::StringToUint64(user_time_str, &contents.user_time_user_hz) ||
         !base::StringToUint64(system_time_str, &contents.system_time_user_hz) ||
-        !base::StringToUint64(idle_time_str, &contents.idle_time_user_hz)) {
+        !base::StringToUint64(idle_time_str, &contents.idle_time_user_hz) ||
+        !base::StringToInt(logical_cpu_id_str, &logical_cpu_id)) {
       return std::nullopt;
     }
     DCHECK_EQ(parsed_contents.count(logical_cpu_id), 0);
@@ -255,27 +257,43 @@ bool IsProcessorBlock(const std::string& block) {
 // Parses |processor| to obtain |processor_id|, |physical_id|, and |model_name|
 // if applicable. Returns true on success.
 bool ParseProcessor(const std::string& processor,
-                    std::string* processor_id,
-                    std::string* physical_id,
+                    int& processor_id,
+                    int& physical_id,
                     std::string* model_name) {
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(processor, ':', '\n', &pairs);
+  std::string processor_id_str;
+  std::string physical_id_str;
   for (const auto& key_value : pairs) {
     if (key_value.first.find(kProcessorIdKey) != std::string::npos)
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, processor_id);
+      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
+                                &processor_id_str);
     else if (key_value.first.find(kPhysicalIdKey) != std::string::npos)
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, physical_id);
+      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
+                                &physical_id_str);
     else if (key_value.first.find(kModelNameKey) != std::string::npos)
       base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, model_name);
   }
 
   // If the processor does not have a distinction between physical_id and
   // processor_id, make them the same value.
-  if (!processor_id->empty() && physical_id->empty()) {
-    *physical_id = *processor_id;
+  if (!processor_id_str.empty() && physical_id_str.empty()) {
+    physical_id_str = processor_id_str;
   }
 
-  return (!processor_id->empty() && !physical_id->empty());
+  if (!base::StringToInt(physical_id_str, &physical_id)) {
+    LOG(ERROR) << "physical id cannot be converted to integer: "
+               << physical_id_str;
+    return false;
+  }
+
+  if (!base::StringToInt(processor_id_str, &processor_id)) {
+    LOG(ERROR) << "processor id cannot be converted to integer: "
+               << processor_id_str;
+    return false;
+  }
+
+  return (!processor_id_str.empty() && !physical_id_str.empty());
 }
 
 void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
@@ -382,19 +400,18 @@ std::optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
 // the same |architecture|.
 mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     const std::vector<std::string>& processor_info,
-    const std::map<std::string, ParsedStatContents>&
-        logical_ids_to_stat_contents,
+    const std::map<int, ParsedStatContents>& logical_ids_to_stat_contents,
     const base::FilePath& root_dir,
     mojo_ipc::CpuArchitectureEnum architecture) {
-  std::map<std::string, mojo_ipc::PhysicalCpuInfoPtr> physical_cpus;
+  std::map<int, mojo_ipc::PhysicalCpuInfoPtr> physical_cpus;
   for (const auto& processor : processor_info) {
     if (!IsProcessorBlock(processor))
       continue;
 
-    std::string processor_id;
-    std::string physical_id;
+    int processor_id;
+    int physical_id;
     std::string model_name;
-    if (!ParseProcessor(processor, &processor_id, &physical_id, &model_name)) {
+    if (!ParseProcessor(processor, processor_id, physical_id, &model_name)) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kParseError,
           "Unable to parse processor string: " + processor));
@@ -422,9 +439,10 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     const auto parsed_stat_itr =
         logical_ids_to_stat_contents.find(processor_id);
     if (parsed_stat_itr == logical_ids_to_stat_contents.end()) {
-      return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kParseError,
-          "No parsed stat contents for logical ID: " + processor_id));
+      return mojo_ipc::CpuResult::NewError(
+          CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+                                 "No parsed stat contents for logical ID: " +
+                                     std::to_string(processor_id)));
     }
     logical_cpu.user_time_user_hz = parsed_stat_itr->second.user_time_user_hz;
     logical_cpu.system_time_user_hz =
@@ -496,8 +514,8 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
 }  // namespace
 
 base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
-                                      const std::string& logical_id) {
-  std::string logical_cpu_dir = "cpu" + logical_id;
+                                      int logical_id) {
+  std::string logical_cpu_dir = "cpu" + std::to_string(logical_id);
   std::string cpuidle_dirname = "cpuidle";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
@@ -507,8 +525,9 @@ base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
 // If the CPU has a governing policy, return that path, otherwise return the
 // cpufreq directory for the given logical CPU.
 base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
-                                       const std::string& logical_id) {
-  std::string cpufreq_policy_dir = "cpufreq/policy" + logical_id;
+                                       int logical_id) {
+  std::string cpufreq_policy_dir =
+      "cpufreq/policy" + std::to_string(logical_id);
 
   auto policy_path =
       root_dir.Append(kRelativeCpuDir).Append(cpufreq_policy_dir);
@@ -516,7 +535,7 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
     return policy_path;
   }
 
-  std::string logical_cpu_dir = "cpu" + logical_id;
+  std::string logical_cpu_dir = "cpu" + std::to_string(logical_id);
   std::string cpufreq_dirname = "cpufreq";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)

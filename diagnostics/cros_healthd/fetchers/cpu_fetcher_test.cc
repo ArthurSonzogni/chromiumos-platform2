@@ -45,9 +45,9 @@ struct ParseCpuArchitectureTestParams {
 
 // No other logical IDs should be used, or the logic for writing C-state files
 // will break.
-constexpr char kFirstLogicalId[] = "0";
-constexpr char kSecondLogicalId[] = "1";
-constexpr char kThirdLogicalId[] = "12";
+constexpr int kFirstLogicalId = 0;
+constexpr int kSecondLogicalId = 1;
+constexpr int kThirdLogicalId = 12;
 
 // First C-State directory to be written.
 constexpr char kFirstCStateDir[] = "state0";
@@ -312,7 +312,7 @@ class CpuFetcherTest : public testing::Test {
   }
 
   const std::vector<std::pair<std::string, uint64_t>>& GetCStateVector(
-      const std::string& logical_id) {
+      int logical_id) {
     if (logical_id == kFirstLogicalId) {
       return kFirstCStates;
     } else if (logical_id == kSecondLogicalId) {
@@ -359,7 +359,7 @@ class CpuFetcherTest : public testing::Test {
   // C-state directory.
   void WriteCStateData(
       const std::vector<std::pair<std::string, uint64_t>>& data,
-      const std::string& logical_id) {
+      int logical_id) {
     for (const auto& pair : data)
       WriteCStateFiles(logical_id, pair.first, std::to_string(pair.second));
   }
@@ -370,7 +370,7 @@ class CpuFetcherTest : public testing::Test {
   void WritePolicyData(const std::string cpuinfo_max_freq_contents,
                        const std::string scaling_max_freq_contents,
                        const std::string scaling_cur_freq_contents,
-                       const std::string& logical_id) {
+                       int logical_id) {
     WritePolicyFile(logical_id, kCpuinfoMaxFreqFileName,
                     cpuinfo_max_freq_contents);
 
@@ -382,7 +382,7 @@ class CpuFetcherTest : public testing::Test {
   }
 
   // Helper to write individual C-state files.
-  void WriteCStateFiles(const std::string& logical_id,
+  void WriteCStateFiles(int logical_id,
                         const std::string& name_contents,
                         const std::string& time_contents) {
     auto policy_dir = GetCStateDirectoryPath(root_dir(), logical_id);
@@ -399,7 +399,7 @@ class CpuFetcherTest : public testing::Test {
   }
 
   // Helper to write individual policy files.
-  void WritePolicyFile(const std::string& logical_id,
+  void WritePolicyFile(int logical_id,
                        const std::string& file_name,
                        const std::string& file_contents) {
     auto policy_dir = GetCpuFreqDirectoryPath(root_dir(), logical_id);
@@ -412,7 +412,7 @@ class CpuFetcherTest : public testing::Test {
   MockContext mock_context_;
   AsyncFetcher<CpuFetcher> cpu_fetcher_{&mock_context_};
   // Records the next C-state file to be written.
-  std::map<std::string, int> c_states_written = {
+  std::map<int, int> c_states_written = {
       {kFirstLogicalId, 0}, {kSecondLogicalId, 0}, {kThirdLogicalId, 0}};
   // C-state data for each of the three logical CPUs tested.
   const std::vector<std::pair<std::string, uint64_t>> kFirstCStates = {

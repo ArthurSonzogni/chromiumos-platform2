@@ -42,14 +42,14 @@ inline constexpr char kRelativeCpuDir[] = "sys/devices/system/cpu";
 // |logical_id|. On a real device, this will be
 // /sys/devices/system/cpu/cpu|logical_id|/cpuidle.
 base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
-                                      const std::string& logical_id);
+                                      int logical_id);
 
 // Returns an absolute path to the CPU freq directory for the logical CPU with
 // ID |logical_id|. On a real device, this will be
 // /sys/devices/system/cpu/cpufreq/policy|logical_id| if the CPU has a governing
 // policy, or /sys/devices/system/cpu/|logical_id|/cpufreq without.
 base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
-                                       const std::string& logical_id);
+                                       int logical_id);
 
 // The CpuFetcher class is responsible for gathering CPU info reported by
 // cros_healthd.
