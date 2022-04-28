@@ -542,14 +542,7 @@ class CrashSenderUtilTest : public testing::Test {
   bool SetConditions(BuildType build_type,
                      SessionType session_type,
                      MetricsFlag metrics_flag) {
-    return SetConditions(build_type, session_type, metrics_flag, false,
-                         metrics_lib_.get());
-  }
-  bool SetConditions(BuildType build_type,
-                     SessionType session_type,
-                     MetricsFlag metrics_flag,
-                     bool use_per_user) {
-    return SetConditions(build_type, session_type, metrics_flag, use_per_user,
+    return SetConditions(build_type, session_type, metrics_flag,
                          metrics_lib_.get());
   }
 
@@ -560,20 +553,11 @@ class CrashSenderUtilTest : public testing::Test {
                             SessionType session_type,
                             MetricsFlag metrics_flag,
                             MetricsLibraryMock* metrics_lib) {
-    return SetConditions(build_type, session_type, metrics_flag, false,
-                         metrics_lib);
-  }
-  static bool SetConditions(BuildType build_type,
-                            SessionType session_type,
-                            MetricsFlag metrics_flag,
-                            bool use_per_user,
-                            MetricsLibraryMock* metrics_lib) {
     if (!CreateLsbReleaseFile(build_type))
       return false;
 
     metrics_lib->set_guest_mode(session_type == kGuestMode);
     metrics_lib->set_metrics_enabled(metrics_flag == kMetricsEnabled);
-    metrics_lib->set_use_per_user(use_per_user);
 
     return true;
   }
@@ -1096,6 +1080,39 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
   EXPECT_FALSE(base::PathExists(good_meta_.ReplaceExtension(".processing")));
 
+
+  // Valid crash files should be kept in the guest mode.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+
+  // Valid crash files in the system directory should be ignored if metrics are
+  // disabled.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("delayed for system dir"));
+
+  // Valid crash files in the system directory should be sent if metrics are
+  // enabled and we're using per-user consent.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+}
+
+TEST_F(CrashSenderUtilTest, ChooseAction_UserDir) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kCryptohomeCrashDirectory).Append("fakehash");
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  std::string reason;
+  CrashInfo info;
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled,
                             raw_metrics_lib));
   EXPECT_CALL(
@@ -1105,24 +1122,6 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kRemove, sender.ChooseAction(good_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Crash reporting is disabled"));
   EXPECT_FALSE(base::PathExists(good_meta_.ReplaceExtension(".processing")));
-
-  // Valid crash files should be kept in the guest mode.
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
-                            raw_metrics_lib));
-  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
-
-  // Valid crash files in the system directory should be ignored if metrics are
-  // disabled.
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled, true,
-                            raw_metrics_lib));
-  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
-  EXPECT_THAT(reason, HasSubstr("delayed for system dir"));
-
-  // Valid crash files in the system directory should be sent if metrics are
-  // enabled and we're using per-user consent.
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled, true,
-                            raw_metrics_lib));
-  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
 }
 
 // Test that when force_upload_on_test_images is set, we set hwtest_suite_run.
@@ -1309,13 +1308,15 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
   EXPECT_TRUE(to_send.empty());
 
-  // All crash files should be removed if metrics are disabled.
+  // System crash files should not be removed if metrics are disabled.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled,
                             raw_metrics_lib));
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
-  EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
+  // Directory should still contain files, since it's the *system* directory...
+  EXPECT_FALSE(base::IsDirectoryEmpty(crash_directory));
+  // But to_send should still be empty.
   EXPECT_TRUE(to_send.empty());
 
   // Valid crash files should be kept in the guest mode, thus the directory
@@ -1636,7 +1637,9 @@ TEST_F(CrashSenderUtilTest, DoNotSkipConsentCheckWithoutCrashLoopMeta) {
   std::string reason;
   CrashInfo info;
 
-  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(good_meta_, &reason, &info));
+  // Ignore crashes without consent in the system directory in case a consenting
+  // user later logs back in.
+  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
 }
 
 enum MissingFile {

@@ -500,7 +500,6 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedRespectsMetricsLib) {
 
 TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsMetricsLib) {
   MetricsLibraryMock mock_metrics;
-  mock_metrics.set_use_per_user(true);
   mock_metrics.set_metrics_enabled(false);
 
   EXPECT_FALSE(IsBootFeedbackAllowed(&mock_metrics));
@@ -511,7 +510,6 @@ TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsMetricsLib) {
 
 TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsFile) {
   MetricsLibraryMock mock_metrics;
-  mock_metrics.set_use_per_user(true);
   mock_metrics.set_metrics_enabled(true);
   ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kBootConsentFile), "0"));
 

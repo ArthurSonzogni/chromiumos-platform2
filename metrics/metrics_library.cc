@@ -39,7 +39,6 @@ const char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
 const char kDaemonStoreConsentDir[] = "/run/daemon-store/uma-consent";
 const char kDaemonStoreConsentFile[] = "consent-enabled";
-const char kUsePerUserConsentFile[] = "/run/metrics/use-per-user-consent";
 const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
 const int kCrosEventHistogramMax = 100;
 
@@ -106,8 +105,7 @@ bool MetricsLibrary::cached_enabled_ = false;
 MetricsLibrary::MetricsLibrary()
     : uma_events_file_(base::FilePath(kUMAEventsPath)),
       consent_file_(base::FilePath(kConsentFile)),
-      daemon_store_dir_(kDaemonStoreConsentDir),
-      per_user_consent_file_(kUsePerUserConsentFile) {}
+      daemon_store_dir_(kDaemonStoreConsentDir) {}
 
 MetricsLibrary::~MetricsLibrary() {}
 
@@ -216,29 +214,19 @@ std::optional<bool> MetricsLibrary::ArePerUserMetricsEnabled() {
   return std::nullopt;
 }
 
-bool MetricsLibrary::UsePerUserMetricsConsent() {
-  return base::PathExists(per_user_consent_file_);
-}
-
 bool MetricsLibrary::AreMetricsEnabled() {
-  return AreMetricsEnabledWithPerUser(UsePerUserMetricsConsent());
-}
-
-bool MetricsLibrary::AreMetricsEnabledWithPerUser(bool per_user) {
   time_t this_check_time = time(nullptr);
   if (this_check_time != cached_enabled_time_) {
     cached_enabled_time_ = this_check_time;
 
-    if (per_user) {
-      std::optional<bool> user_consent = ArePerUserMetricsEnabled();
-      if (user_consent.has_value() && !user_consent.value()) {
-        // If the user consented, also make sure device owner opted in.
-        // (Theoretically, if device policy is off, the user shouldn't be *able*
-        // to opt in based on the current-as-of-2022-03 design, but add this as
-        // a secondary layer of defense.)
-        // If the user opted out, we opt out.
-        return false;
-      }
+    std::optional<bool> user_consent = ArePerUserMetricsEnabled();
+    if (user_consent.has_value() && !user_consent.value()) {
+      // If the user consented, also make sure device owner opted in.
+      // (Theoretically, if device policy is off, the user shouldn't be *able*
+      // to opt in based on the current-as-of-2022-03 design, but add this as
+      // a secondary layer of defense.)
+      // If the user opted out, we opt out.
+      return false;
     }
 
     if (!policy_provider_.get())

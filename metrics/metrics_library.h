@@ -22,7 +22,6 @@ class MetricsLibraryInterface {
  public:
   virtual void Init() = 0;  // TODO(chromium:940343): Remove this function.
   virtual bool AreMetricsEnabled() = 0;
-  virtual bool UsePerUserMetricsConsent() { return false; }
   virtual bool IsGuestMode() = 0;
   virtual bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets) = 0;
@@ -77,9 +76,6 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
-
-  // Same, but potentially checks the per-user consent state as well.
-  bool AreMetricsEnabledWithPerUser(bool per_user);
 
   // Chrome normally manages Enable/Disable state. These functions are
   // intended ONLY for use by devices which don't run Chrome (e.g. Onhub)
@@ -213,18 +209,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
                          int num_samples) override;
 #endif
 
-  // Determine whether to use per-user metrics consent.
-  // TODO(b/214111113): Enable by default when all CLs are ready to go.
-  bool UsePerUserMetricsConsent() override;
-
   void SetConsentFileForTest(const base::FilePath& consent_file);
 
   void SetDaemonStoreForTest(const base::FilePath& daemon_store) {
     daemon_store_dir_ = daemon_store;
-  }
-
-  void SetPerUserConsentForTest(const base::FilePath& per_user_consent_file) {
-    per_user_consent_file_ = per_user_consent_file;
   }
 
  private:
@@ -255,7 +243,6 @@ class MetricsLibrary : public MetricsLibraryInterface {
   base::FilePath uma_events_file_;
   base::FilePath consent_file_;
   base::FilePath daemon_store_dir_;
-  base::FilePath per_user_consent_file_;
 
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 };

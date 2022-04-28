@@ -174,16 +174,16 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueNoPolicyManaged) {
 
   // Per-user shouldn't affect that -- we haven't set per-user consent at all.
   ClearCachedEnabledTime();
-  EXPECT_TRUE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_TRUE(lib_.AreMetricsEnabled());
 
   // if per-user is enabled, should still be true.
   SetPerUserConsent(true);
   ClearCachedEnabledTime();
-  EXPECT_TRUE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_TRUE(lib_.AreMetricsEnabled());
   // But not if it's disabled.
   SetPerUserConsent(false);
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 }
 
 // Shouldn't check device policy if per-user consent is off.
@@ -192,7 +192,7 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyNoPerUser) {
   EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).Times(0);
 
   SetPerUserConsent(false);
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 }
 
 // MetricsEnabled policy not present, not enterprise managed
@@ -206,18 +206,18 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyUnmanaged) {
 
   // Per-user shouldn't affect that -- we haven't set per-user consent at all.
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 
   // Even if per-user is enabled, if device policy is not enabled we shouldn't
   // enable consent.
   SetPerUserConsent(true);
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 
   // Same if it's disabled.
   SetPerUserConsent(false);
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 }
 
 // MetricsEnabled policy set to false -> AreMetricsEnabled returns false.
@@ -228,16 +228,16 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledFalse) {
 
   // Per-user shouldn't affect that -- we haven't set per-user consent at all.
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
   // Even if per-user is enabled, if device policy is not false we shouldn't
   // enable consent.
   SetPerUserConsent(true);
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
   // Same if it's disabled.
   SetPerUserConsent(false);
   ClearCachedEnabledTime();
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 }
 
 // MetricsEnabled policy set to true -> AreMetricsEnabled returns true.
@@ -245,25 +245,14 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledTrue) {
   EXPECT_TRUE(lib_.AreMetricsEnabled());
   // Per-user shouldn't affect that -- we haven't set per-user consent at all.
   ClearCachedEnabledTime();
-  EXPECT_TRUE(lib_.AreMetricsEnabledWithPerUser(true));
+  EXPECT_TRUE(lib_.AreMetricsEnabled());
 }
 
 // MetricsEnabled policy set to true and user disabled
 // -> AreMetricsEnabled returns false.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledPerUserFalse) {
   SetPerUserConsent(false);
-  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
-}
-
-TEST_F(MetricsLibraryTest, UsePerUserMetrics) {
-  base::FilePath per_user_consent = test_dir_.Append("per_user_consent");
-  lib_.SetPerUserConsentForTest(per_user_consent);
-  EXPECT_FALSE(base::PathExists(per_user_consent));
-  EXPECT_FALSE(lib_.UsePerUserMetricsConsent());
-
-  EXPECT_EQ(0, WriteFile(per_user_consent, "", 0));
-  EXPECT_TRUE(base::PathExists(per_user_consent));
-  EXPECT_TRUE(lib_.UsePerUserMetricsConsent());
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
 }
 
 // Template SendEnumToUMA(name, T) correctly sets exclusive_max to kMaxValue+1.
