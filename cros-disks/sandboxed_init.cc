@@ -18,45 +18,70 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/scoped_clear_last_error.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
 
 namespace cros_disks {
 namespace {
 
-// Signal handler that forwards the received signal to all processes.
-void SigTerm(int sig) {
+[[noreturn]] void TerminateNow() {
+  RAW_LOG(INFO, "The 'init' process is terminating now");
+  _exit(128 + SIGKILL);
+}
+
+// SIGALRM handler.
+void SigAlarm(const int sig) {
+  RAW_CHECK(sig == SIGALRM);
+  TerminateNow();
+}
+
+void ScheduleTermination() {
+  if (getpid() != 1)
+    TerminateNow();
+
+  RAW_LOG(INFO, "The 'init' process is preparing to terminate soon...");
+
+  // This is running as the 'init' process of a PID namespace.
+  RAW_CHECK(signal(SIGTERM, SIG_IGN) != SIG_ERR);
+
+  // Send SIGTERM to all the processes in the PID namespace.
+  RAW_LOG(INFO, "The 'init' process is broadcasting SIGTERM...");
+  if (kill(-1, SIGTERM) < 0)
+    RAW_LOG(ERROR, "The 'init' process cannot broadcast SIGTERM");
+
+  // Set an alarm to terminate in a couple of seconds.
+  RAW_CHECK(signal(SIGALRM, &SigAlarm) != SIG_ERR);
+  RAW_CHECK(alarm(2) == 0);
+}
+
+// SIGTERM handler.
+void SigTerm(const int sig) {
+  const base::ScopedClearLastError guard;
   RAW_CHECK(sig == SIGTERM);
   RAW_LOG(INFO, "The 'init' process received SIGTERM");
-  if (kill(-1, SIGTERM) < 0) {
-    const int err = errno;
-    RAW_LOG(ERROR, "Cannot broadcast SIGTERM");
-    _exit(err + 64);
-  }
+  ScheduleTermination();
 }
 
 static int termination_fd = base::kInvalidFd;
 
-// SIGIO handler supporting termination pipe mechanism.
+// SIGIO handler.
 void SigIo(int sig) {
-  const int saved_errno = errno;
+  const base::ScopedClearLastError guard;
 
-  if (sig == SIGIO) {
+  if (char buffer; read(termination_fd, &buffer, sizeof(buffer)) < 0) {
+    RAW_CHECK(errno == EAGAIN);
+    if (sig == SIGIO)
+      RAW_LOG(INFO,
+              "The 'init' process received SIGIO but not because of the "
+              "termination pipe");
+    return;
+  }
+
+  if (sig == SIGIO)
     RAW_LOG(INFO, "The 'init' process received SIGIO");
-  }
 
-  if (char buffer; read(termination_fd, &buffer, sizeof(buffer)) >= 0) {
-    RAW_LOG(INFO,
-            "The write end of the termination pipe has been closed or written "
-            "to. Raising SIGKILL.");
-    raise(SIGKILL);
-  } else if (sig == SIGIO) {
-    RAW_LOG(INFO,
-            "False alarm: The 'init' process received SIGIO but not from the "
-            "termination pipe");
-  }
-
-  errno = saved_errno;
+  ScheduleTermination();
 }
 
 }  // namespace

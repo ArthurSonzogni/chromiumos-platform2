@@ -21,6 +21,8 @@
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 #include <chromeos/libminijail.h>
 
 #include <gmock/gmock.h>
@@ -749,7 +751,7 @@ INSTANTIATE_TEST_SUITE_P(ProcessRun,
                              }}),
                          PrintToStringParamName());
 
-// TODO(crbug.com/1023727) Make it work on ARM and ARM64.
+// TODO(crbug.com/1023727) Make PID namespace work on ARM and ARM64.
 #if defined(__x86_64__)
 INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
                          ProcessRunTest,
@@ -762,6 +764,126 @@ INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
                                return process;
                              }}),
                          PrintToStringParamName());
+
+// Tests that, when the 'launcher' process running in a PID namespace does not
+// terminate within the grace period when receiving a SIGTERM, then it is killed
+// by SIGKILL at the expiration of this grace period.
+TEST(PidNamespaceRunAsRootTest, LauncherDoesNotTerminateOnSigTerm) {
+  SandboxedProcess process;
+  process.NewPidNamespace();
+
+  process.AddArgument("/bin/bash");
+  process.AddArgument("-c");
+
+  // Pipe to block the 'launcher' process.
+  SubprocessPipe to_block(SubprocessPipe::kParentToChild);
+
+  // Pipe to monitor the 'launcher' process.
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
+
+  process.AddArgument(base::StringPrintf(
+      R"(
+        trap 'echo Received SIGTERM >&%d' SIGTERM
+        printf 'Begin\n' >&%d;
+        read line <&%d;
+        printf '%%s and End\n' "$line" >&%d;
+        exit 42;
+    )",
+      to_wait.child_fd.get(), to_wait.child_fd.get(), to_block.child_fd.get(),
+      to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_block.child_fd.get());
+
+  EXPECT_TRUE(process.Start());
+
+  // Close unused pipe ends.
+  to_block.child_fd.reset();
+  to_wait.child_fd.reset();
+
+  // Wait for 'launcher' process to start.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
+
+  // Send SIGTERM to 'init' process.
+  const pid_t pid = process.pid();
+  EXPECT_NE(pid, Process::kInvalidProcessId);
+  LOG(INFO) << "Sending SIGTERM to PID " << pid;
+  base::ElapsedTimer timer;
+  EXPECT_EQ(kill(pid, SIGTERM), 0);
+
+  // Wait for 'launcher' process to finish.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Received SIGTERM\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+  // It should have taken a bit more than 2 seconds (grace period) for the
+  // 'init' process to terminate, which would have killed the 'launcher' process
+  // too.
+  EXPECT_GT(timer.Elapsed(), base::Seconds(2));
+  EXPECT_EQ(process.pid(), pid);
+}
+
+// Tests that, when the 'launcher' process running in a PID namespace does not
+// terminate within the grace period when receiving a SIGTERM, then it is killed
+// by SIGKILL at the expiration of this grace period. Repeatedly sending SIGTERM
+// to the 'init' process does not speed up nor slow down the termination.
+TEST(PidNamespaceRunAsRootTest, RepeatedSigTerm) {
+  SandboxedProcess process;
+  process.NewPidNamespace();
+
+  process.AddArgument("/bin/bash");
+  process.AddArgument("-c");
+
+  // Pipe to block the 'launcher' process.
+  SubprocessPipe to_block(SubprocessPipe::kParentToChild);
+
+  // Pipe to monitor the 'launcher' process.
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
+
+  process.AddArgument(base::StringPrintf(
+      R"(
+        trap 'echo Received SIGTERM >&%d' SIGTERM
+        printf 'Begin\n' >&%d;
+        read line <&%d;
+        printf '%%s and End\n' "$line" >&%d;
+        exit 42;
+    )",
+      to_wait.child_fd.get(), to_wait.child_fd.get(), to_block.child_fd.get(),
+      to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_block.child_fd.get());
+
+  EXPECT_TRUE(process.Start());
+
+  // Close unused pipe ends.
+  to_block.child_fd.reset();
+  to_wait.child_fd.reset();
+
+  // Wait for 'launcher' process to start.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
+
+  // Repeatedly send SIGTERM to 'init' process.
+  const pid_t pid = process.pid();
+  EXPECT_NE(pid, Process::kInvalidProcessId);
+  base::ElapsedTimer timer;
+
+  while (!process.IsFinished()) {
+    LOG(INFO) << "Sending SIGTERM to PID " << pid;
+    EXPECT_EQ(kill(pid, SIGTERM), 0);
+    usleep(100'000);
+  }
+
+  // Wait for 'launcher' process to finish.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Received SIGTERM\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+  // It should have taken a bit more than 2 seconds (grace period) for the
+  // 'init' process to terminate, which would have killed the 'launcher' process
+  // too.
+  EXPECT_GT(timer.Elapsed(), base::Seconds(2));
+  EXPECT_EQ(process.pid(), pid);
+}
+
 #endif
 
 }  // namespace cros_disks
