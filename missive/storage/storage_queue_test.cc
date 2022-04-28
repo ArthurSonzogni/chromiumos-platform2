@@ -210,6 +210,7 @@ class StorageQueueTest
       std::move(processed_cb)
           .Run(mock_upload_->UploadGap(uploader_id, sequencing_id, count));
     }
+
     void DoUploadComplete(int64_t uploader_id, Status status) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
       upload_progress_.append("Complete: ")
