@@ -42,7 +42,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "biod.PREVIOUS",
     "bios_info",
     "bios_log",
-    "bios_times",
     "blkid",
     "bootstat_summary",
     "bt_usb_disconnects",

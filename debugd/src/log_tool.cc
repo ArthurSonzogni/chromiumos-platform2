@@ -162,6 +162,7 @@ const std::array kCommandLogs {
   Log{kFile, "bios_info", "/var/log/bios_info.txt"},
   Log{kCommand, "bios_log", "cat /sys/firmware/log "
     "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null"},
+  Log{kCommand, "bios_stacked_times", "cbmem -S", kRoot, kRoot},
   Log{kFile, "bios_times", "/var/log/bios_times.txt"},
   // Slow or non-responsive block devices could cause this command to stall. Use
   // a timeout to prevent this command from blocking log fetching. This command

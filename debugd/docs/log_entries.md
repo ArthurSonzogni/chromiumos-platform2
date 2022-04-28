@@ -73,7 +73,15 @@ Only includes audit events of type=SYSCALL and type=AVC (SELinux denials).
 
 ## bios_log
 
+## bios_stacked_times
+
+Same as bios_times, but in flame graph compatible stacked format and with enum
+names instead of human-readable descriptions.
+
 ## bios_times
+
+This entry contains timestamps of events saved by BIOS and its components.
+Timestamps are in human-readable form with description and value.
 
 ## blkid
 
