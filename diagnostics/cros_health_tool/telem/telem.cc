@@ -260,6 +260,19 @@ std::string EnumToString(mojom::ThunderboltSecurityLevel level) {
   }
 }
 
+std::optional<std::string> EnumToString(mojom::BluetoothDeviceType type) {
+  switch (type) {
+    case mojom::BluetoothDeviceType::kBrEdr:
+      return "BR/EDR";
+    case mojom::BluetoothDeviceType::kLe:
+      return "LE";
+    case mojom::BluetoothDeviceType::kDual:
+      return "DUAL";
+    default:
+      return std::nullopt;
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -274,7 +287,19 @@ void SetJsonDictValue(const std::string& key,
   } else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
+    // TODO(b/194872701)
+    // NOLINTNEXTLINE(readability/braces)
+  } else if constexpr (std::is_same_v<
+                           T, std::optional<std::vector<std::string>>>) {
+    if (value.has_value())
+      SetJsonDictValue(key, value.value(), output);
   } else if constexpr (std::is_same_v<T, mojom::NullableDoublePtr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
+  } else if constexpr (std::is_same_v<T, mojom::NullableInt16Ptr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
+  } else if constexpr (std::is_same_v<T, mojom::NullableUint16Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_same_v<T, mojom::NullableUint32Ptr>) {
@@ -291,6 +316,13 @@ void SetJsonDictValue(const std::string& key,
       SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_enum_v<T>) {
     SetJsonDictValue(key, EnumToString(value), output);
+    // TODO(b/194872701)
+    // NOLINTNEXTLINE(readability/braces)
+  } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+    base::Value* string_vector =
+        output->SetKey(key, base::Value{base::Value::Type::LIST});
+    for (const auto& s : value)
+      string_vector->Append(s);
   } else {
     output->SetKey(key, base::Value(value));
   }
@@ -537,7 +569,26 @@ void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
     SET_DICT(name, info, &data);
     SET_DICT(num_connected_devices, info, &data);
     SET_DICT(powered, info, &data);
-
+    auto* connected_devices =
+        data.SetKey("connected_devices", base::Value{base::Value::Type::LIST});
+    if (info->connected_devices.has_value()) {
+      for (const auto& device : info->connected_devices.value()) {
+        base::Value device_data{base::Value::Type::DICTIONARY};
+        SET_DICT(address, device, &device_data);
+        SET_DICT(name, device, &device_data);
+        SET_DICT(type, device, &device_data);
+        SET_DICT(appearance, device, &device_data);
+        SET_DICT(modalias, device, &device_data);
+        SET_DICT(rssi, device, &device_data);
+        SET_DICT(mtu, device, &device_data);
+        SET_DICT(uuids, device, &device_data);
+        connected_devices->Append(std::move(device_data));
+      }
+    }
+    SET_DICT(discoverable, info, &data);
+    SET_DICT(discovering, info, &data);
+    SET_DICT(uuids, info, &data);
+    SET_DICT(modalias, info, &data);
     adapters->Append(std::move(data));
   }
 
@@ -1069,12 +1120,7 @@ void DisplayGraphicsInfo(const mojom::GraphicsResultPtr& graphics_result) {
   SET_DICT(shading_version, gles_info, out_gles_info);
   SET_DICT(vendor, gles_info, out_gles_info);
   SET_DICT(renderer, gles_info, out_gles_info);
-
-  auto* gles_extensions =
-      out_gles_info->SetKey("extensions", base::Value{base::Value::Type::LIST});
-  for (const auto& ext : gles_info->extensions) {
-    gles_extensions->Append(ext);
-  }
+  SET_DICT(extensions, gles_info, out_gles_info);
 
   const auto& egl_info = info->egl_info;
   auto* out_egl_info =
@@ -1082,12 +1128,7 @@ void DisplayGraphicsInfo(const mojom::GraphicsResultPtr& graphics_result) {
   SET_DICT(version, egl_info, out_egl_info);
   SET_DICT(vendor, egl_info, out_egl_info);
   SET_DICT(client_api, egl_info, out_egl_info);
-
-  auto* egl_extensions =
-      out_egl_info->SetKey("extensions", base::Value{base::Value::Type::LIST});
-  for (const auto& ext : egl_info->extensions) {
-    egl_extensions->Append(ext);
-  }
+  SET_DICT(extensions, egl_info, out_egl_info);
 
   OutputJson(output);
 }
