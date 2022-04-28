@@ -7,6 +7,7 @@
 
 #include "rmad/rmad_interface.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -16,6 +17,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/timer/timer.h>
 
+#include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/power_manager_client.h"
@@ -49,11 +51,6 @@ class RmadInterfaceImpl final : public RmadInterface {
   ~RmadInterfaceImpl() override = default;
 
   bool SetUp() override;
-
-  void RegisterRequestQuitDaemonCallback(
-      base::RepeatingCallback<void()> callback) override {
-    request_quit_daemon_callback_ = std::move(callback);
-  }
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
@@ -103,6 +100,22 @@ class RmadInterfaceImpl final : public RmadInterface {
   void InitializeExternalUtils();
   bool WaitForServices();
 
+  // Wrapper to trigger D-Bus callbacks.
+  template <typename ReplyProtobufType>
+  void ReplyCallback(
+      base::OnceCallback<void(const ReplyProtobufType&, bool)> callback,
+      const ReplyProtobufType reply) {
+    // Quit the daemon if we are no longer in RMA, or the current state requires
+    // to restart the daemon.
+    bool quit_daemon = false;
+    if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED ||
+        std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
+                  current_state_case_) != kQuitDaemonStates.end()) {
+      quit_daemon = true;
+    }
+    std::move(callback).Run(reply, quit_daemon);
+  }
+
   // Get and initialize the state handler for |state case|, and store it to
   // |state_handler|. If there's no state handler for |state_case|, or the
   // initialization fails, return an error, and |state_handler| is unchanged.
@@ -140,9 +153,6 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool can_abort_;
-
-  // Callback for request quit the daemon.
-  base::RepeatingCallback<void()> request_quit_daemon_callback_;
 
   // Test mode. Use fake state handlers.
   bool test_mode_;

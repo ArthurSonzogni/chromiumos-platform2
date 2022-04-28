@@ -331,14 +331,7 @@ void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
 
 void RmadInterfaceImpl::GetCurrentState(GetStateCallback callback) {
   GetStateReply reply = GetCurrentStateInternal();
-
-  // Quit the daemon if we are no longer in RMA.
-  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
-    CHECK(!request_quit_daemon_callback_.is_null());
-    request_quit_daemon_callback_.Run();
-  }
-
-  std::move(callback).Run(reply);
+  ReplyCallback(std::move(callback), reply);
 }
 
 GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
@@ -365,17 +358,7 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
 void RmadInterfaceImpl::TransitionNextState(
     const TransitionNextStateRequest& request, GetStateCallback callback) {
   GetStateReply reply = TransitionNextStateInternal(request, false);
-
-  // Quit the daemon if we are no longer in RMA, or the state after the
-  // transition requires to restart the daemon.
-  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED ||
-      std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
-                current_state_case_) != kQuitDaemonStates.end()) {
-    CHECK(!request_quit_daemon_callback_.is_null());
-    request_quit_daemon_callback_.Run();
-  }
-
-  std::move(callback).Run(reply);
+  ReplyCallback(std::move(callback), reply);
 }
 
 GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
@@ -444,14 +427,6 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   // true, unless we restart the whole RMA process.
   can_abort_ &= next_state_handler->IsRepeatable();
 
-  // If the new state needs the daemon to quit and restart, request to quit the
-  // daemon here.
-  if (std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
-                current_state_case_) != kQuitDaemonStates.end()) {
-    CHECK(!request_quit_daemon_callback_.is_null());
-    request_quit_daemon_callback_.Run();
-  }
-
   reply.set_error(RMAD_ERROR_OK);
   reply.set_allocated_state(new RmadState(next_state_handler->GetState(true)));
   reply.set_can_go_back(CanGoBack());
@@ -461,14 +436,7 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
 
 void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
   GetStateReply reply = TransitionPreviousStateInternal();
-
-  // Quit the daemon if we are no longer in RMA.
-  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
-    CHECK(!request_quit_daemon_callback_.is_null());
-    request_quit_daemon_callback_.Run();
-  }
-
-  std::move(callback).Run(reply);
+  ReplyCallback(std::move(callback), reply);
 }
 
 GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
@@ -552,13 +520,7 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
     reply.set_error(RMAD_ERROR_ABORT_FAILED);
   }
 
-  // Quit the daemon if we are no longer in RMA.
-  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
-    CHECK(!request_quit_daemon_callback_.is_null());
-    request_quit_daemon_callback_.Run();
-  }
-
-  std::move(callback).Run(reply);
+  ReplyCallback(std::move(callback), reply);
 }
 
 void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
@@ -570,7 +532,8 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
     LOG(ERROR) << "Failed to generate logs";
     reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
   }
-  std::move(callback).Run(reply);
+
+  ReplyCallback(std::move(callback), reply);
 }
 
 void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
@@ -578,7 +541,7 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
   SaveLogReply reply;
   reply.set_error(RMAD_ERROR_OK);
   reply.set_save_path("fake_path");
-  std::move(callback).Run(reply);
+  ReplyCallback(std::move(callback), reply);
 }
 
 void RmadInterfaceImpl::RecordBrowserActionMetric(
@@ -605,7 +568,8 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
   } else {
     reply.set_error(RMAD_ERROR_CANNOT_RECORD_BROWSER_ACTION);
   }
-  std::move(callback).Run(reply);
+
+  ReplyCallback(std::move(callback), reply);
 }
 
 bool RmadInterfaceImpl::CanGoBack() const {

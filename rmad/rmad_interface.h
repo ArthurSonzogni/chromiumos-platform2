@@ -22,10 +22,6 @@ class RmadInterface {
   // initialized by the constructor but not fully set up.
   virtual bool SetUp() = 0;
 
-  // Register a callback for requesting to quit the daemon.
-  virtual void RegisterRequestQuitDaemonCallback(
-      base::RepeatingCallback<void()> callback) = 0;
-
   // Register a signal sender for specific states. Virtual functions cannot be
   // declared as template so we need to declare them one by one.
   virtual void RegisterSignalSender(
@@ -75,7 +71,7 @@ class RmadInterface {
 
   // Callback used by all state functions to return the current state to the
   // dbus service.
-  using GetStateCallback = base::OnceCallback<void(const GetStateReply&)>;
+  using GetStateCallback = base::OnceCallback<void(const GetStateReply&, bool)>;
 
   // Get the initialized current RmadState proto.
   virtual void GetCurrentState(GetStateCallback callback) = 0;
@@ -86,21 +82,21 @@ class RmadInterface {
   // Go back to the previous state if possible and return the RmadState proto.
   virtual void TransitionPreviousState(GetStateCallback callback) = 0;
 
-  using AbortRmaCallback = base::OnceCallback<void(const AbortRmaReply&)>;
+  using AbortRmaCallback = base::OnceCallback<void(const AbortRmaReply&, bool)>;
   // Cancel the RMA process if possible and reboot.
   virtual void AbortRma(AbortRmaCallback callback) = 0;
 
-  using GetLogCallback = base::OnceCallback<void(const GetLogReply&)>;
+  using GetLogCallback = base::OnceCallback<void(const GetLogReply&, bool)>;
   // Get the RMA logs.
   virtual void GetLog(GetLogCallback callback) = 0;
 
-  using SaveLogCallback = base::OnceCallback<void(const SaveLogReply&)>;
+  using SaveLogCallback = base::OnceCallback<void(const SaveLogReply&, bool)>;
   // Save the RMA logs.
   virtual void SaveLog(const std::string& diagnostics_log_path,
                        SaveLogCallback callback) = 0;
 
   using RecordBrowserActionMetricCallback =
-      base::OnceCallback<void(const RecordBrowserActionMetricReply&)>;
+      base::OnceCallback<void(const RecordBrowserActionMetricReply&, bool)>;
   // Record actions from Chrome.
   virtual void RecordBrowserActionMetric(
       const RecordBrowserActionMetricRequest& browser_action,

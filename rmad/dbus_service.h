@@ -96,7 +96,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   // Template for handling D-Bus methods with a request.
   template <typename RequestType, typename ReplyProtobufType>
   using HandlerFunction = void (RmadInterface::*)(
-      const RequestType&, base::OnceCallback<void(const ReplyProtobufType&)>);
+      const RequestType&,
+      base::OnceCallback<void(const ReplyProtobufType&, bool)>);
 
   template <typename RequestType,
             typename ReplyProtobufType,
@@ -108,13 +109,11 @@ class DBusService : public brillo::DBusServiceDaemon {
     if (!is_rma_required_) {
       ReplyProtobufType reply;
       reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-      RequestQuit();
-      SendReply(std::move(response), reply);
+      SendReply(std::move(response), reply, true);
     } else if (!SetUpInterface()) {
       ReplyProtobufType reply;
       reply.set_error(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
-      RequestQuit();
-      SendReply(std::move(response), reply);
+      SendReply(std::move(response), reply, true);
       return;
     } else {
       (rmad_interface_->*func)(
@@ -126,7 +125,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   // Template for handling D-Bus methods without a request.
   template <typename ReplyProtobufType>
   using HandlerFunctionEmptyRequest = void (RmadInterface::*)(
-      base::OnceCallback<void(const ReplyProtobufType&)>);
+      base::OnceCallback<void(const ReplyProtobufType&, bool)>);
 
   template <typename ReplyProtobufType,
             DBusService::HandlerFunctionEmptyRequest<ReplyProtobufType> func>
@@ -136,13 +135,11 @@ class DBusService : public brillo::DBusServiceDaemon {
     if (!is_rma_required_) {
       ReplyProtobufType reply;
       reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-      RequestQuit();
-      SendReply(std::move(response), reply);
+      SendReply(std::move(response), reply, true);
     } else if (!SetUpInterface()) {
       ReplyProtobufType reply;
       reply.set_error(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
-      RequestQuit();
-      SendReply(std::move(response), reply);
+      SendReply(std::move(response), reply, true);
     } else {
       (rmad_interface_->*func)(
           base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
@@ -157,17 +154,14 @@ class DBusService : public brillo::DBusServiceDaemon {
   template <typename ReplyProtobufType>
   void SendReply(
       std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response,
-      const ReplyProtobufType& reply) {
+      const ReplyProtobufType& reply,
+      bool quit_daemon) {
     response->Return(reply);
 
-    if (!is_rma_required_ || quit_requested_) {
+    if (quit_daemon) {
       PostQuitTask();
     }
   }
-
-  // Request to quit the daemon. This is used as a callback by the RMA
-  // interface.
-  void RequestQuit() { quit_requested_ = true; }
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();
@@ -210,8 +204,6 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool is_interface_set_up_;
   // Whether the device should trigger shimless RMA.
   bool is_rma_required_;
-  // Whether we should quit the daemon after handling a method.
-  bool quit_requested_;
 
   // Test mode daemon.
   bool test_mode_;

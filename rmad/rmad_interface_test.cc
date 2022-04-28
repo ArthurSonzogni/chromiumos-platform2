@@ -55,7 +55,7 @@ constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
 
 class RmadInterfaceImplTest : public testing::Test {
  public:
-  RmadInterfaceImplTest() : quit_daemon_requested_(false) {
+  RmadInterfaceImplTest() {
     welcome_proto_.set_allocated_welcome(new WelcomeState());
     components_repair_proto_.set_allocated_components_repair(
         new ComponentsRepairState());
@@ -208,8 +208,6 @@ class RmadInterfaceImplTest : public testing::Test {
     return mock_metrics_utils;
   }
 
-  void RequestQuitDaemon() { quit_daemon_requested_ = true; }
-
  protected:
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 
@@ -217,8 +215,6 @@ class RmadInterfaceImplTest : public testing::Test {
   RmadState components_repair_proto_;
   RmadState device_destination_proto_;
   base::ScopedTempDir temp_dir_;
-
-  bool quit_daemon_requested_;
 };
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
@@ -236,11 +232,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
 
   EXPECT_TRUE(cellular_disabled);
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -260,11 +257,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
 
   EXPECT_FALSE(cellular_disabled);
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -284,16 +282,12 @@ TEST_F(RmadInterfaceImplTest,
 
   EXPECT_FALSE(cellular_disabled);
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
     EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
+    EXPECT_TRUE(quit_daemon);
   };
-  rmad_interface.RegisterRequestQuitDaemonCallback(base::BindRepeating(
-      &RmadInterfaceImplTest::RequestQuitDaemon, base::Unretained(this)));
   rmad_interface.GetCurrentState(base::BindOnce(callback));
-
-  // Check that we request to quit the daemon.
-  EXPECT_TRUE(quit_daemon_requested_);
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
@@ -307,11 +301,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -328,11 +323,12 @@ TEST_F(RmadInterfaceImplTest,
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -362,11 +358,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -383,11 +380,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -404,11 +402,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -425,11 +424,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   // TODO(gavindodd): Use mock log to check for expected error.
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -447,11 +447,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -467,11 +468,12 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -488,9 +490,10 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
     EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
@@ -509,20 +512,22 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   EXPECT_EQ(true, rmad_interface.CanAbort());
 
   TransitionNextStateRequest request;
-  auto callback1 = [](const GetStateReply& reply) {
+  auto callback1 = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
   EXPECT_EQ(true, rmad_interface.CanAbort());
 
-  auto callback2 = [](const GetStateReply& reply) {
+  auto callback2 = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kDeviceDestination, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(false, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback2));
   EXPECT_EQ(false, rmad_interface.CanAbort());
@@ -541,7 +546,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   EXPECT_TRUE(rmad_interface.SetUp());
 
   TransitionNextStateRequest request;
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     FAIL() << "Unexpected call to callback";
   };
   EXPECT_DEATH(
@@ -562,11 +567,12 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
   EXPECT_TRUE(rmad_interface.SetUp());
 
   TransitionNextStateRequest request;
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_DEVICE_INFO_INVALID, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback));
 }
@@ -583,11 +589,12 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
@@ -604,11 +611,12 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
@@ -625,11 +633,12 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
@@ -647,11 +656,12 @@ TEST_F(RmadInterfaceImplTest,
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetStateReply& reply) {
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
@@ -671,18 +681,14 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
 
-  auto callback = [](const AbortRmaReply& reply) {
+  auto callback = [](const AbortRmaReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+    EXPECT_TRUE(quit_daemon);
   };
-  rmad_interface.RegisterRequestQuitDaemonCallback(base::BindRepeating(
-      &RmadInterfaceImplTest::RequestQuitDaemon, base::Unretained(this)));
   rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
-
-  // Check that we request to quit the daemon.
-  EXPECT_TRUE(quit_daemon_requested_);
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
@@ -700,18 +706,14 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
 
-  auto callback = [](const AbortRmaReply& reply) {
+  auto callback = [](const AbortRmaReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+    EXPECT_TRUE(quit_daemon);
   };
-  rmad_interface.RegisterRequestQuitDaemonCallback(base::BindRepeating(
-      &RmadInterfaceImplTest::RequestQuitDaemon, base::Unretained(this)));
   rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
-
-  // Check that we request to quit the daemon.
-  EXPECT_TRUE(quit_daemon_requested_);
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
@@ -729,8 +731,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
 
-  auto callback = [](const AbortRmaReply& reply) {
+  auto callback = [](const AbortRmaReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.AbortRma(base::BindOnce(callback));
 
@@ -749,8 +752,9 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const GetLogReply& reply) {
+  auto callback = [](const GetLogReply& reply, bool quit_daemon) {
     EXPECT_EQ("fake_log", reply.log());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetLog(base::BindOnce(callback));
 }
@@ -766,9 +770,10 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const SaveLogReply& reply) {
+  auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ("fake_path", reply.save_path());
+    EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.SaveLog("", base::BindOnce(callback));
 }
@@ -784,8 +789,10 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 
-  auto callback = [](const RecordBrowserActionMetricReply& reply) {
+  auto callback = [](const RecordBrowserActionMetricReply& reply,
+                     bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_FALSE(quit_daemon);
   };
   RecordBrowserActionMetricRequest request;
   request.set_diagnostics(true);

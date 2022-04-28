@@ -292,7 +292,6 @@ DBusService::DBusService(RmadInterface* rmad_interface)
       state_file_path_(kDefaultJsonStoreFilePath),
       is_external_utils_initialized_(false),
       is_interface_set_up_(false),
-      quit_requested_(false),
       test_mode_(false) {}
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
@@ -309,7 +308,6 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       crossystem_utils_(std::move(crossystem_utils)),
       is_external_utils_initialized_(true),
       is_interface_set_up_(false),
-      quit_requested_(false),
       test_mode_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
@@ -452,8 +450,6 @@ bool DBusService::SetUpInterface() {
 }
 
 void DBusService::SetUpInterfaceCallbacks() {
-  rmad_interface_->RegisterRequestQuitDaemonCallback(
-      base::BindRepeating(&DBusService::RequestQuit, base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpDisablePhysical,
       base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
@@ -494,7 +490,9 @@ void DBusService::SetUpInterfaceCallbacks() {
 
 void DBusService::HandleIsRmaRequiredMethod(
     std::unique_ptr<DBusMethodResponse<bool>> response) {
-  SendReply(std::move(response), is_rma_required_);
+  // Quit the daemon if we are not in RMA.
+  bool quit_daemon = !is_rma_required_;
+  SendReply(std::move(response), is_rma_required_, quit_daemon);
 }
 
 void DBusService::SendErrorSignal(RmadErrorCode error) {

@@ -51,9 +51,6 @@ class DBusServiceTest : public testing::Test {
         .WillRepeatedly(Return());
     EXPECT_CALL(*mock_exported_object_, Unregister()).WillRepeatedly(Return());
 
-    EXPECT_CALL(mock_rmad_service_, RegisterRequestQuitDaemonCallback(
-                                        A<base::RepeatingCallback<void()>>()))
-        .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(_, A<base::RepeatingCallback<void(bool)>>()))
@@ -301,7 +298,7 @@ TEST_F(DBusServiceTest, GetCurrentState_Success) {
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
         reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-        std::move(callback).Run(reply);
+        std::move(callback).Run(reply, false);
       }));
 
   GetStateReply reply;
@@ -338,7 +335,7 @@ TEST_F(DBusServiceTest, TransitionNextState) {
         RmadState* state = new RmadState();
         state->set_allocated_welcome(new WelcomeState());
         reply.set_allocated_state(state);
-        std::move(callback).Run(reply);
+        std::move(callback).Run(reply, false);
       }));
 
   TransitionNextStateRequest request;
@@ -354,7 +351,7 @@ TEST_F(DBusServiceTest, TransitionPreviousState) {
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
         reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
-        std::move(callback).Run(reply);
+        std::move(callback).Run(reply, false);
       }));
 
   GetStateReply reply;
@@ -369,7 +366,7 @@ TEST_F(DBusServiceTest, AbortRma) {
       .WillOnce(Invoke([](RmadInterface::AbortRmaCallback callback) {
         AbortRmaReply reply;
         reply.set_error(RMAD_ERROR_ABORT_FAILED);
-        std::move(callback).Run(reply);
+        std::move(callback).Run(reply, false);
       }));
 
   AbortRmaReply reply;
@@ -384,7 +381,7 @@ TEST_F(DBusServiceTest, GetLog) {
         GetLogReply reply;
         reply.set_error(RMAD_ERROR_OK);
         reply.set_log("RMA log");
-        std::move(callback).Run(reply);
+        std::move(callback).Run(reply, false);
       }));
 
   GetLogReply reply;
@@ -401,7 +398,7 @@ TEST_F(DBusServiceTest, SaveLog) {
         SaveLogReply reply;
         reply.set_error(RMAD_ERROR_OK);
         reply.set_save_path("/save/path");
-        std::move(callback).Run(reply);
+        std::move(callback).Run(reply, false);
       }));
 
   std::string request = "/diagnostics/log/path";

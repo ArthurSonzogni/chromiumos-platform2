@@ -20,10 +20,6 @@ class MockRmadInterface : public RmadInterface {
 
   MOCK_METHOD(bool, SetUp, (), (override));
   MOCK_METHOD(void,
-              RegisterRequestQuitDaemonCallback,
-              (base::RepeatingCallback<void()>),
-              (override));
-  MOCK_METHOD(void,
               RegisterSignalSender,
               (RmadState::StateCase, base::RepeatingCallback<void(bool)>),
               (override));
