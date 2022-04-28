@@ -302,12 +302,13 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
   // call `stat` on the found entries, and this fails if the entry is a FUSE
   // mount point for which the FUSE daemon is already dead.
   struct CloseDir {
-    void operator()(DIR* p) const { closedir(p); }
+    void operator()(DIR* const p) const { closedir(p); }
   };
 
   const std::unique_ptr<DIR, CloseDir> d(opendir(dir.c_str()));
   if (!d) {
     PLOG(ERROR) << "Cannot enumerate entries in " << quote(dir);
+    return false;
   }
 
   while (true) {

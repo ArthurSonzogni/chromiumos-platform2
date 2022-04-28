@@ -457,7 +457,9 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
             MOUNT_ERROR_PATH_NOT_MOUNTED);
 
   // Should be able to remove the directory now that it is unmounted.
+  EXPECT_TRUE(base::DirectoryExists(mount_path));
   EXPECT_TRUE(platform_.RemoveEmptyDirectory(mount_path.value()));
+  EXPECT_FALSE(base::DirectoryExists(mount_path));
 
   // Trying to unmount an absent directory should fail.
   EXPECT_EQ(platform_.Unmount(mount_path.value(), 0),
@@ -501,6 +503,70 @@ TEST_F(PlatformTest, RunAsRootUnmountForce) {
   const base::StringPiece s = "Some data...";
   EXPECT_TRUE(file.WriteAtCurrentPos(s.data(), s.size()));
   EXPECT_EQ(file.GetLength(), s.size());
+}
+
+TEST_F(PlatformTest, RunAsRootCleanUpStaleMountPoints) {
+  base::FilePath temp_dir_path;
+
+  {
+    // Create a temp dir.
+    base::ScopedTempDir temp_dir;
+    ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+    temp_dir_path = temp_dir.GetPath();
+
+    // Cleaning up an already empty dir should be Ok.
+    EXPECT_TRUE(platform_.CleanUpStaleMountPoints(temp_dir_path.value()));
+
+    // Add an empty dir to the temp dir.
+    const base::FilePath dir1 = temp_dir_path.Append("Dir 1");
+    EXPECT_TRUE(platform_.CreateDirectory(dir1.value()));
+    EXPECT_TRUE(base::PathExists(dir1));
+
+    // Add a stray file to the temp dir.
+    base::FilePath file_path1;
+    EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_path, &file_path1));
+    EXPECT_TRUE(base::PathExists(file_path1));
+
+    // Add a tmpfs to the temp dir.
+    const base::FilePath dir2 = temp_dir_path.Append("Dir 2");
+    EXPECT_TRUE(platform_.CreateDirectory(dir2.value()));
+    EXPECT_TRUE(base::PathExists(dir2));
+    EXPECT_EQ(platform_.Mount("source", dir2.value(), "tmpfs", 0, ""),
+              MOUNT_ERROR_NONE);
+
+    // Add a file to this temporary file system.
+    const base::FilePath file_path2 = dir2.Append("file");
+    EXPECT_FALSE(base::PathExists(file_path2));
+    base::File file(file_path2,
+                    base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+    EXPECT_TRUE(file.IsValid());
+    EXPECT_TRUE(base::PathExists(file_path2));
+    // Keep the file open.
+
+    // Add a non-empty dir to the temp dir.
+    const base::FilePath dir3 = temp_dir_path.Append("Dir 3");
+    EXPECT_TRUE(platform_.CreateDirectory(dir3.value()));
+    EXPECT_TRUE(base::PathExists(dir3));
+
+    base::FilePath file_path3;
+    EXPECT_TRUE(base::CreateTemporaryFileInDir(dir3, &file_path3));
+    EXPECT_TRUE(base::PathExists(file_path3));
+
+    // Cleaning up the mount paths should work.
+    EXPECT_TRUE(platform_.CleanUpStaleMountPoints(temp_dir_path.value()));
+    EXPECT_FALSE(base::PathExists(file_path2));
+    EXPECT_FALSE(base::PathExists(dir1));
+    EXPECT_FALSE(base::PathExists(dir2));
+
+    // The stray file and the non-empty dir have not been removed.
+    EXPECT_TRUE(base::PathExists(file_path1));
+    EXPECT_TRUE(base::DirectoryExists(dir3));
+    EXPECT_TRUE(base::PathExists(file_path3));
+  }
+
+  // Cannot clean up a non-existent directory.
+  EXPECT_FALSE(base::DirectoryExists(temp_dir_path));
+  EXPECT_FALSE(platform_.CleanUpStaleMountPoints(temp_dir_path.value()));
 }
 
 }  // namespace cros_disks
