@@ -802,17 +802,9 @@ static void sl_host_seat_get_host_touch(struct wl_client* client,
   host_touch->focus_resource = NULL;
 }
 
-static void sl_host_seat_release(struct wl_client* client,
-                                 struct wl_resource* resource) {
-  struct sl_host_seat* host =
-      static_cast<sl_host_seat*>(wl_resource_get_user_data(resource));
-
-  wl_seat_release(host->proxy);
-}
-
 static const struct wl_seat_interface sl_seat_implementation = {
     sl_host_seat_get_host_pointer, sl_host_seat_get_host_keyboard,
-    sl_host_seat_get_host_touch, sl_host_seat_release};
+    sl_host_seat_get_host_touch, ForwardRequest<wl_seat_release>};
 
 static void sl_seat_capabilities(void* data,
                                  struct wl_seat* seat,

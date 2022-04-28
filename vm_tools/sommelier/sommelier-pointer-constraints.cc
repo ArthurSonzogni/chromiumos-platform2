@@ -22,6 +22,7 @@
     struct wl_resource* resource;                                          \
     struct INTERFACE* proxy;                                               \
   };                                                                       \
+  MAP_STRUCTS(INTERFACE, sl_host_##NAME);                                  \
   static void sl_destroy_host_##NAME(struct wl_resource* resource) {       \
     struct sl_host_##NAME* host =                                          \
         static_cast<sl_host_##NAME*>(wl_resource_get_user_data(resource)); \
@@ -56,38 +57,18 @@ static void sl_locked_pointer_unlocked(
   zwp_locked_pointer_v1_send_unlocked(host->resource);
 }
 
-static void sl_locked_pointer_set_cursor_position_hint(
-    struct wl_client* client,
-    struct wl_resource* resource,
-    wl_fixed_t surface_x,
-    wl_fixed_t surface_y) {
-  struct sl_host_locked_pointer* host =
-      static_cast<sl_host_locked_pointer*>(wl_resource_get_user_data(resource));
-
-  zwp_locked_pointer_v1_set_cursor_position_hint(host->proxy, surface_x,
-                                                 surface_y);
-}  // NOLINT(whitespace/indent)
-
-static void sl_locked_pointer_set_region(struct wl_client* client,
-                                         struct wl_resource* resource,
-                                         struct wl_resource* region) {
-  struct sl_host_locked_pointer* host =
-      static_cast<sl_host_locked_pointer*>(wl_resource_get_user_data(resource));
-  struct sl_host_region* host_region =
-      region ? static_cast<sl_host_region*>(wl_resource_get_user_data(region))
-             : NULL;
-  zwp_locked_pointer_v1_set_region(host->proxy,
-                                   host_region ? host_region->proxy : NULL);
-}
-
 static struct zwp_locked_pointer_v1_listener sl_locked_pointer_listener = {
     sl_locked_pointer_locked,
     sl_locked_pointer_unlocked,
 };
 
 static struct zwp_locked_pointer_v1_interface sl_locked_pointer_implementation =
-    {sl_locked_pointer_destroy, sl_locked_pointer_set_cursor_position_hint,
-     sl_locked_pointer_set_region};
+    {
+        sl_locked_pointer_destroy,
+        ForwardRequest<zwp_locked_pointer_v1_set_cursor_position_hint>,
+        ForwardRequest<zwp_locked_pointer_v1_set_region,
+                       AllowNullResource::kYes>,
+};
 
 static void sl_confined_pointer_confined(
     void* data, struct zwp_confined_pointer_v1* confined_pointer) {
@@ -107,20 +88,6 @@ static void sl_confined_pointer_unconfined(
   zwp_confined_pointer_v1_send_unconfined(host->resource);
 }
 
-static void sl_confined_pointer_set_region(struct wl_client* client,
-                                           struct wl_resource* resource,
-                                           struct wl_resource* region) {
-  struct sl_host_confined_pointer* host =
-      static_cast<sl_host_confined_pointer*>(
-          wl_resource_get_user_data(resource));
-  struct sl_host_region* host_region =
-      region ? static_cast<sl_host_region*>(wl_resource_get_user_data(region))
-             : NULL;
-
-  zwp_confined_pointer_v1_set_region(host->proxy,
-                                     host_region ? host_region->proxy : NULL);
-}
-
 static struct zwp_confined_pointer_v1_listener sl_confined_pointer_listener = {
     sl_confined_pointer_confined,
     sl_confined_pointer_unconfined,
@@ -129,7 +96,8 @@ static struct zwp_confined_pointer_v1_listener sl_confined_pointer_listener = {
 static struct zwp_confined_pointer_v1_interface
     sl_confined_pointer_implementation = {
         sl_confined_pointer_destroy,
-        sl_confined_pointer_set_region,
+        ForwardRequest<zwp_confined_pointer_v1_set_region,
+                       AllowNullResource::kYes>,
 };
 
 static void sl_pointer_constraints_lock_pointer(struct wl_client* client,

@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <memory>
 
@@ -38,5 +39,100 @@ __attribute__((__format__(__printf__, 1, 0))) char* sl_xasprintf(
   }
 
 DEFAULT_DELETER_FDECL(struct wl_event_source);
+
+// Maps wl_ to sl_ types, e.g. WlToSl<wl_seat>::type == sl_host_seat.
+template <typename WaylandType>
+struct WlToSl;
+
+#define MAP_STRUCTS(WlType, SlType) \
+  template <>                       \
+  struct WlToSl<WlType> {           \
+    using type = SlType;            \
+  };
+
+// Convert a request argument of type InArg to type OutArg. InArg is the type
+// sommelier receives as a Wayland host. OutArg is the type used passed to the
+// real host compositor. For Wayland resources, these will be wl_resource* and
+// wl_..* (e.g. wl_surface*) respectively.
+template <typename InArg, typename OutArg>
+struct ConvertRequestArg {};
+
+template <>
+struct ConvertRequestArg<const char*, const char*> {
+  inline static const char* Convert(const char* arg) { return arg; }
+};
+template <>
+struct ConvertRequestArg<uint32_t, uint32_t> {
+  inline static uint32_t Convert(uint32_t arg) { return arg; }
+};
+template <>
+struct ConvertRequestArg<int32_t, int32_t> {
+  inline static int32_t Convert(int32_t arg) { return arg; }
+};
+
+template <typename OutArg>
+struct ConvertRequestArg<wl_resource*, OutArg*> {
+  static OutArg* Convert(wl_resource* resource) {
+    if (!resource)
+      return nullptr;
+    using SlType = typename WlToSl<OutArg>::type;
+    SlType* host = static_cast<SlType*>(wl_resource_get_user_data(resource));
+    return host ? host->proxy : nullptr;
+  }
+};
+
+template <typename T>
+inline bool IsNullWlResource(T arg) {
+  return false;
+}
+template <>
+inline bool IsNullWlResource(wl_resource* resource) {
+  return resource == nullptr;
+}
+
+enum class AllowNullResource {
+  kNo = 0,
+  kYes = 1,
+};
+
+// Invoke the given wl_ function with each arg converted. This helper struct is
+// so we can extract types from the wl_ function into a parameter pack for the
+// fold expression and not require them to be explicitly written out.
+template <typename... T>
+struct ForwardRequestHelper;
+template <typename... OutArgs>
+struct ForwardRequestHelper<void (*)(OutArgs...)> {
+  template <auto wl_function, AllowNullResource allow_null, typename... InArgs>
+  static void Forward(struct wl_client* client, InArgs... args) {
+    if (allow_null == AllowNullResource::kNo) {
+      if ((IsNullWlResource<InArgs>(args) || ...)) {
+        fprintf(stderr, "error: received unexpected null resource in: %s\n",
+                __PRETTY_FUNCTION__);
+        return;
+      }
+    }
+    wl_function(ConvertRequestArg<InArgs, OutArgs>::Convert(args)...);
+  }
+};
+
+// Wraps the function which dispatches an request to the host for use as
+// implementation for sommelier's implementation as a host. If null Wayland
+// resources should be allowed, AllowNullResource::kYes should be set,
+// otherwise the request will be considered invalid and dropped.
+// Example usage:
+// - ForwardRequest<wl_shell_surface_move>,
+// - ForwardRequest<wl_shell_surface_set_fullscreen, AllowNullResource::kYes>
+//
+// The first argument (receiving object) is guaranteed by Wayland to be
+// non-null but for code simplicity it is handled the same as the request
+// arguments, with null being allowed or disallowed based on |allow_null|.
+template <auto wl_function,
+          AllowNullResource allow_null = AllowNullResource::kNo,
+          typename... InArgs>
+void ForwardRequest(InArgs... args) {
+  ForwardRequestHelper<decltype(wl_function)>::template Forward<wl_function,
+                                                                allow_null>(
+      args...);
+}
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_

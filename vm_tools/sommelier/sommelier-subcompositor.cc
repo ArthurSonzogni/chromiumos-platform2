@@ -20,6 +20,7 @@ struct sl_host_subsurface {
   struct wl_resource* resource;
   struct wl_subsurface* proxy;
 };
+MAP_STRUCTS(wl_subsurface, sl_host_subsurface);
 
 static void sl_subsurface_destroy(struct wl_client* client,
                                   struct wl_resource* resource) {
@@ -39,48 +40,14 @@ static void sl_subsurface_set_position(struct wl_client* client,
   wl_subsurface_set_position(host->proxy, ix, iy);
 }
 
-static void sl_subsurface_place_above(struct wl_client* client,
-                                      struct wl_resource* resource,
-                                      struct wl_resource* sibling_resource) {
-  struct sl_host_subsurface* host =
-      static_cast<sl_host_subsurface*>(wl_resource_get_user_data(resource));
-  struct sl_host_surface* host_sibling = static_cast<sl_host_surface*>(
-      wl_resource_get_user_data(sibling_resource));
-
-  wl_subsurface_place_above(host->proxy, host_sibling->proxy);
-}
-
-static void sl_subsurface_place_below(struct wl_client* client,
-                                      struct wl_resource* resource,
-                                      struct wl_resource* sibling_resource) {
-  struct sl_host_subsurface* host =
-      static_cast<sl_host_subsurface*>(wl_resource_get_user_data(resource));
-  struct sl_host_surface* host_sibling = static_cast<sl_host_surface*>(
-      wl_resource_get_user_data(sibling_resource));
-
-  wl_subsurface_place_below(host->proxy, host_sibling->proxy);
-}
-
-static void sl_subsurface_set_sync(struct wl_client* client,
-                                   struct wl_resource* resource) {
-  struct sl_host_subsurface* host =
-      static_cast<sl_host_subsurface*>(wl_resource_get_user_data(resource));
-
-  wl_subsurface_set_sync(host->proxy);
-}
-
-static void sl_subsurface_set_desync(struct wl_client* client,
-                                     struct wl_resource* resource) {
-  struct sl_host_subsurface* host =
-      static_cast<sl_host_subsurface*>(wl_resource_get_user_data(resource));
-
-  wl_subsurface_set_desync(host->proxy);
-}
-
 static const struct wl_subsurface_interface sl_subsurface_implementation = {
-    sl_subsurface_destroy,     sl_subsurface_set_position,
-    sl_subsurface_place_above, sl_subsurface_place_below,
-    sl_subsurface_set_sync,    sl_subsurface_set_desync};
+    sl_subsurface_destroy,
+    sl_subsurface_set_position,
+    ForwardRequest<wl_subsurface_place_above>,
+    ForwardRequest<wl_subsurface_place_below>,
+    ForwardRequest<wl_subsurface_set_sync>,
+    ForwardRequest<wl_subsurface_set_desync>,
+};
 
 static void sl_destroy_host_subsurface(struct wl_resource* resource) {
   struct sl_host_subsurface* host =

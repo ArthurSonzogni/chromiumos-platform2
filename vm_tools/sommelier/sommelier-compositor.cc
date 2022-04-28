@@ -506,36 +506,6 @@ static void sl_host_surface_frame(struct wl_client* client,
                            host_callback);
 }
 
-static void sl_host_surface_set_opaque_region(
-    struct wl_client* client,
-    struct wl_resource* resource,
-    struct wl_resource* region_resource) {
-  struct sl_host_surface* host =
-      static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  struct sl_host_region* host_region =
-      region_resource ? static_cast<sl_host_region*>(
-                            wl_resource_get_user_data(region_resource))
-                      : NULL;
-
-  wl_surface_set_opaque_region(host->proxy,
-                               host_region ? host_region->proxy : NULL);
-}  // NOLINT(whitespace/indent)
-
-static void sl_host_surface_set_input_region(
-    struct wl_client* client,
-    struct wl_resource* resource,
-    struct wl_resource* region_resource) {
-  struct sl_host_surface* host =
-      static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  struct sl_host_region* host_region =
-      region_resource ? static_cast<sl_host_region*>(
-                            wl_resource_get_user_data(region_resource))
-                      : NULL;
-
-  wl_surface_set_input_region(host->proxy,
-                              host_region ? host_region->proxy : NULL);
-}  // NOLINT(whitespace/indent)
-
 static void copy_damaged_rect(sl_host_surface* host,
                               pixman_box32_t* rect,
                               double scale_x,
@@ -745,15 +715,6 @@ static void sl_host_surface_commit(struct wl_client* client,
   }
 }
 
-static void sl_host_surface_set_buffer_transform(struct wl_client* client,
-                                                 struct wl_resource* resource,
-                                                 int32_t transform) {
-  struct sl_host_surface* host =
-      static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-
-  wl_surface_set_buffer_transform(host->proxy, transform);
-}
-
 static void sl_host_surface_set_buffer_scale(struct wl_client* client,
                                              struct wl_resource* resource,
                                              int32_t scale) {
@@ -768,10 +729,10 @@ static const struct wl_surface_interface sl_surface_implementation = {
     sl_host_surface_attach,
     sl_host_surface_damage,
     sl_host_surface_frame,
-    sl_host_surface_set_opaque_region,
-    sl_host_surface_set_input_region,
+    ForwardRequest<wl_surface_set_opaque_region, AllowNullResource::kYes>,
+    ForwardRequest<wl_surface_set_input_region, AllowNullResource::kYes>,
     sl_host_surface_commit,
-    sl_host_surface_set_buffer_transform,
+    ForwardRequest<wl_surface_set_buffer_transform>,
     sl_host_surface_set_buffer_scale,
     sl_host_surface_damage_buffer};
 

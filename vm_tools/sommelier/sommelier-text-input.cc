@@ -22,130 +22,20 @@ struct sl_host_text_input {
   struct wl_resource* resource;
   struct zwp_text_input_v1* proxy;
 };
-
-static void sl_text_input_activate(struct wl_client* client,
-                                   struct wl_resource* resource,
-                                   struct wl_resource* seat,
-                                   struct wl_resource* surface) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-  struct sl_host_seat* host_seat =
-      static_cast<sl_host_seat*>(wl_resource_get_user_data(seat));
-  struct sl_host_surface* host_surface =
-      static_cast<sl_host_surface*>(wl_resource_get_user_data(surface));
-
-  zwp_text_input_v1_activate(host->proxy, host_seat->proxy,
-                             host_surface->proxy);
-}  // NOLINT(whitespace/indent)
-
-static void sl_text_input_deactivate(struct wl_client* client,
-                                     struct wl_resource* resource,
-                                     struct wl_resource* seat) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-  struct sl_host_seat* host_seat =
-      static_cast<sl_host_seat*>(wl_resource_get_user_data(seat));
-
-  zwp_text_input_v1_deactivate(host->proxy, host_seat->proxy);
-}
-
-static void sl_text_input_show_input_panel(struct wl_client* client,
-                                           struct wl_resource* resource) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_show_input_panel(host->proxy);
-}
-
-static void sl_text_input_hide_input_panel(struct wl_client* client,
-                                           struct wl_resource* resource) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_hide_input_panel(host->proxy);
-}
-
-static void sl_text_input_reset(struct wl_client* client,
-                                struct wl_resource* resource) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_reset(host->proxy);
-}
-
-static void sl_text_input_set_surrounding_text(struct wl_client* client,
-                                               struct wl_resource* resource,
-                                               const char* text,
-                                               uint32_t cursor,
-                                               uint32_t anchor) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_set_surrounding_text(host->proxy, text, cursor, anchor);
-}
-
-static void sl_text_input_set_content_type(struct wl_client* client,
-                                           struct wl_resource* resource,
-                                           uint32_t hint,
-                                           uint32_t purpose) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_set_content_type(host->proxy, hint, purpose);
-}
-
-static void sl_text_input_set_cursor_rectangle(struct wl_client* client,
-                                               struct wl_resource* resource,
-                                               int32_t x,
-                                               int32_t y,
-                                               int32_t width,
-                                               int32_t height) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_set_cursor_rectangle(host->proxy, x, y, width, height);
-}
-
-static void sl_text_input_set_preferred_language(struct wl_client* client,
-                                                 struct wl_resource* resource,
-                                                 const char* language) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_set_preferred_language(host->proxy, language);
-}
-
-static void sl_text_input_commit_state(struct wl_client* client,
-                                       struct wl_resource* resource,
-                                       uint32_t serial) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_commit_state(host->proxy, serial);
-}
-
-static void sl_text_input_invoke_action(struct wl_client* client,
-                                        struct wl_resource* resource,
-                                        uint32_t button,
-                                        uint32_t index) {
-  struct sl_host_text_input* host =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
-
-  zwp_text_input_v1_invoke_action(host->proxy, button, index);
-}
+MAP_STRUCTS(zwp_text_input_v1, sl_host_text_input);
 
 static const struct zwp_text_input_v1_interface sl_text_input_implementation = {
-    sl_text_input_activate,
-    sl_text_input_deactivate,
-    sl_text_input_show_input_panel,
-    sl_text_input_hide_input_panel,
-    sl_text_input_reset,
-    sl_text_input_set_surrounding_text,
-    sl_text_input_set_content_type,
-    sl_text_input_set_cursor_rectangle,
-    sl_text_input_set_preferred_language,
-    sl_text_input_commit_state,
-    sl_text_input_invoke_action,
+    ForwardRequest<zwp_text_input_v1_activate>,
+    ForwardRequest<zwp_text_input_v1_deactivate>,
+    ForwardRequest<zwp_text_input_v1_show_input_panel>,
+    ForwardRequest<zwp_text_input_v1_hide_input_panel>,
+    ForwardRequest<zwp_text_input_v1_reset>,
+    ForwardRequest<zwp_text_input_v1_set_surrounding_text>,
+    ForwardRequest<zwp_text_input_v1_set_content_type>,
+    ForwardRequest<zwp_text_input_v1_set_cursor_rectangle>,
+    ForwardRequest<zwp_text_input_v1_set_preferred_language>,
+    ForwardRequest<zwp_text_input_v1_commit_state>,
+    ForwardRequest<zwp_text_input_v1_invoke_action>,
 };
 
 static void sl_text_input_enter(void* data,

@@ -145,12 +145,14 @@ struct sl_host_surface {
   struct wl_list released_buffers;
   struct wl_list busy_buffers;
 };
+MAP_STRUCTS(wl_surface, sl_host_surface);
 
 struct sl_host_region {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct wl_region* proxy;
 };
+MAP_STRUCTS(wl_region, sl_host_region);
 
 struct sl_host_buffer {
   struct sl_context* ctx;
@@ -245,12 +247,14 @@ struct sl_host_output {
   int32_t logical_y;
   struct wl_list link;
 };
+MAP_STRUCTS(wl_output, sl_host_output);
 
 struct sl_host_seat {
   struct sl_seat* seat;
   struct wl_resource* resource;
   struct wl_seat* proxy;
 };
+MAP_STRUCTS(wl_seat, sl_host_seat);
 
 struct sl_accelerator {
   struct wl_list link;
@@ -468,7 +472,7 @@ void sl_gaming_seat_add_listener(struct sl_context* ctx);
 #endif
 
 #define sl_array_for_each(pos, array)                                   \
-  for (pos = static_cast<typeof(pos)>((array)->data);                   \
+  for (pos = static_cast<decltype(pos)>((array)->data);                 \
        (const char*)pos < ((const char*)(array)->data + (array)->size); \
        (pos)++)
 

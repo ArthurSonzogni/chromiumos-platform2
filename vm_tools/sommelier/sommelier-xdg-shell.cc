@@ -16,30 +16,35 @@ struct sl_host_xdg_shell {
   struct wl_resource* resource;
   struct xdg_wm_base* proxy;
 };
+MAP_STRUCTS(xdg_wm_base, sl_host_xdg_shell);
 
 struct sl_host_xdg_surface {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_surface* proxy;
 };
+MAP_STRUCTS(xdg_surface, sl_host_xdg_surface);
 
 struct sl_host_xdg_toplevel {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_toplevel* proxy;
 };
+MAP_STRUCTS(xdg_toplevel, sl_host_xdg_toplevel);
 
 struct sl_host_xdg_popup {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_popup* proxy;
 };
+MAP_STRUCTS(xdg_popup, sl_host_xdg_popup);
 
 struct sl_host_xdg_positioner {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_positioner* proxy;
 };
+MAP_STRUCTS(xdg_positioner, sl_host_xdg_positioner);
 
 static void sl_xdg_positioner_destroy(struct wl_client* client,
                                       struct wl_resource* resource) {
@@ -79,34 +84,6 @@ static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
   xdg_positioner_set_anchor_rect(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void sl_xdg_positioner_set_anchor(struct wl_client* client,
-                                         struct wl_resource* resource,
-                                         uint32_t anchor) {
-  struct sl_host_xdg_positioner* host =
-      static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
-
-  xdg_positioner_set_anchor(host->proxy, anchor);
-}
-
-static void sl_xdg_positioner_set_gravity(struct wl_client* client,
-                                          struct wl_resource* resource,
-                                          uint32_t gravity) {
-  struct sl_host_xdg_positioner* host =
-      static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
-
-  xdg_positioner_set_gravity(host->proxy, gravity);
-}
-
-static void sl_xdg_positioner_set_constraint_adjustment(
-    struct wl_client* client,
-    struct wl_resource* resource,
-    uint32_t constraint_adjustment) {
-  struct sl_host_xdg_positioner* host =
-      static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
-
-  xdg_positioner_set_constraint_adjustment(host->proxy, constraint_adjustment);
-}  // NOLINT(whitespace/indent)
-
 static void sl_xdg_positioner_set_offset(struct wl_client* client,
                                          struct wl_resource* resource,
                                          int32_t x,
@@ -123,9 +100,9 @@ static const struct xdg_positioner_interface sl_xdg_positioner_implementation =
     {sl_xdg_positioner_destroy,
      sl_xdg_positioner_set_size,
      sl_xdg_positioner_set_anchor_rect,
-     sl_xdg_positioner_set_anchor,
-     sl_xdg_positioner_set_gravity,
-     sl_xdg_positioner_set_constraint_adjustment,
+     ForwardRequest<xdg_positioner_set_anchor>,
+     ForwardRequest<xdg_positioner_set_gravity>,
+     ForwardRequest<xdg_positioner_set_constraint_adjustment>,
      sl_xdg_positioner_set_offset};
 
 static void sl_destroy_host_xdg_positioner(struct wl_resource* resource) {
@@ -142,20 +119,8 @@ static void sl_xdg_popup_destroy(struct wl_client* client,
   wl_resource_destroy(resource);
 }
 
-static void sl_xdg_popup_grab(struct wl_client* client,
-                              struct wl_resource* resource,
-                              struct wl_resource* seat_resource,
-                              uint32_t serial) {
-  struct sl_host_xdg_popup* host =
-      static_cast<sl_host_xdg_popup*>(wl_resource_get_user_data(resource));
-  struct sl_host_seat* host_seat =
-      static_cast<sl_host_seat*>(wl_resource_get_user_data(seat_resource));
-
-  xdg_popup_grab(host->proxy, host_seat->proxy, serial);
-}  // NOLINT(whitespace/indent)
-
 static const struct xdg_popup_interface sl_xdg_popup_implementation = {
-    sl_xdg_popup_destroy, sl_xdg_popup_grab};
+    sl_xdg_popup_destroy, ForwardRequest<xdg_popup_grab>};
 
 static void sl_xdg_popup_configure(void* data,
                                    struct xdg_popup* xdg_popup,
@@ -200,37 +165,6 @@ static void sl_xdg_toplevel_destroy(struct wl_client* client,
   wl_resource_destroy(resource);
 }
 
-static void sl_xdg_toplevel_set_parent(struct wl_client* client,
-                                       struct wl_resource* resource,
-                                       struct wl_resource* parent_resource) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-  struct sl_host_xdg_toplevel* host_parent =
-      parent_resource ? static_cast<sl_host_xdg_toplevel*>(
-                            wl_resource_get_user_data(parent_resource))
-                      : NULL;
-
-  xdg_toplevel_set_parent(host->proxy, host_parent ? host_parent->proxy : NULL);
-}
-
-static void sl_xdg_toplevel_set_title(struct wl_client* client,
-                                      struct wl_resource* resource,
-                                      const char* title) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_set_title(host->proxy, title);
-}
-
-static void sl_xdg_toplevel_set_app_id(struct wl_client* client,
-                                       struct wl_resource* resource,
-                                       const char* app_id) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_set_app_id(host->proxy, app_id);
-}
-
 static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
                                              struct wl_resource* resource,
                                              struct wl_resource* seat_resource,
@@ -250,111 +184,22 @@ static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
       host->proxy, host_seat ? host_seat->proxy : NULL, serial, x, y);
 }  // NOLINT(whitespace/indent)
 
-static void sl_xdg_toplevel_move(struct wl_client* client,
-                                 struct wl_resource* resource,
-                                 struct wl_resource* seat_resource,
-                                 uint32_t serial) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-  struct sl_host_seat* host_seat =
-      seat_resource
-          ? static_cast<sl_host_seat*>(wl_resource_get_user_data(seat_resource))
-          : NULL;
-
-  xdg_toplevel_move(host->proxy, host_seat ? host_seat->proxy : NULL, serial);
-}  // NOLINT(whitespace/indent)
-
-static void sl_xdg_toplevel_resize(struct wl_client* client,
-                                   struct wl_resource* resource,
-                                   struct wl_resource* seat_resource,
-                                   uint32_t serial,
-                                   uint32_t edges) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-  struct sl_host_seat* host_seat =
-      seat_resource
-          ? static_cast<sl_host_seat*>(wl_resource_get_user_data(seat_resource))
-          : NULL;
-
-  xdg_toplevel_resize(host->proxy, host_seat ? host_seat->proxy : NULL, serial,
-                      edges);
-}  // NOLINT(whitespace/indent)
-
-static void sl_xdg_toplevel_set_max_size(struct wl_client* client,
-                                         struct wl_resource* resource,
-                                         int32_t width,
-                                         int32_t height) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_set_max_size(host->proxy, width, height);
-}
-
-static void sl_xdg_toplevel_set_min_size(struct wl_client* client,
-                                         struct wl_resource* resource,
-                                         int32_t width,
-                                         int32_t height) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_set_min_size(host->proxy, width, height);
-}
-
-static void sl_xdg_toplevel_set_maximized(struct wl_client* client,
-                                          struct wl_resource* resource) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_set_maximized(host->proxy);
-}
-
-static void sl_xdg_toplevel_unset_maximized(struct wl_client* client,
-                                            struct wl_resource* resource) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_unset_maximized(host->proxy);
-}
-
-static void sl_xdg_toplevel_set_fullscreen(
-    struct wl_client* client,
-    struct wl_resource* resource,
-    struct wl_resource* output_resource) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-  struct sl_host_output* host_output =
-      output_resource ? static_cast<sl_host_output*>(
-                            wl_resource_get_user_data(output_resource))
-                      : NULL;
-
-  xdg_toplevel_set_fullscreen(host->proxy,
-                              host_output ? host_output->proxy : NULL);
-}  // NOLINT(whitespace/indent)
-
-static void sl_xdg_toplevel_unset_fullscreen(struct wl_client* client,
-                                             struct wl_resource* resource) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_unset_fullscreen(host->proxy);
-}
-
-static void sl_xdg_toplevel_set_minimized(struct wl_client* client,
-                                          struct wl_resource* resource) {
-  struct sl_host_xdg_toplevel* host =
-      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
-
-  xdg_toplevel_set_minimized(host->proxy);
-}
-
 static const struct xdg_toplevel_interface sl_xdg_toplevel_implementation = {
-    sl_xdg_toplevel_destroy,          sl_xdg_toplevel_set_parent,
-    sl_xdg_toplevel_set_title,        sl_xdg_toplevel_set_app_id,
-    sl_xdg_toplevel_show_window_menu, sl_xdg_toplevel_move,
-    sl_xdg_toplevel_resize,           sl_xdg_toplevel_set_max_size,
-    sl_xdg_toplevel_set_min_size,     sl_xdg_toplevel_set_maximized,
-    sl_xdg_toplevel_unset_maximized,  sl_xdg_toplevel_set_fullscreen,
-    sl_xdg_toplevel_unset_fullscreen, sl_xdg_toplevel_set_minimized};
+    sl_xdg_toplevel_destroy,
+    ForwardRequest<xdg_toplevel_set_parent, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_set_title>,
+    ForwardRequest<xdg_toplevel_set_app_id>,
+    sl_xdg_toplevel_show_window_menu,
+    ForwardRequest<xdg_toplevel_move, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_resize, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_set_max_size>,
+    ForwardRequest<xdg_toplevel_set_min_size>,
+    ForwardRequest<xdg_toplevel_set_maximized>,
+    ForwardRequest<xdg_toplevel_unset_maximized>,
+    ForwardRequest<xdg_toplevel_set_fullscreen, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_unset_fullscreen>,
+    ForwardRequest<xdg_toplevel_set_minimized>,
+};
 
 static void sl_xdg_toplevel_configure(void* data,
                                       struct xdg_toplevel* xdg_toplevel,
@@ -469,19 +314,10 @@ static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
   xdg_surface_set_window_geometry(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void sl_xdg_surface_ack_configure(struct wl_client* client,
-                                         struct wl_resource* resource,
-                                         uint32_t serial) {
-  struct sl_host_xdg_surface* host =
-      static_cast<sl_host_xdg_surface*>(wl_resource_get_user_data(resource));
-
-  xdg_surface_ack_configure(host->proxy, serial);
-}
-
 static const struct xdg_surface_interface sl_xdg_surface_implementation = {
     sl_xdg_surface_destroy, sl_xdg_surface_get_toplevel,
     sl_xdg_surface_get_popup, sl_xdg_surface_set_window_geometry,
-    sl_xdg_surface_ack_configure};
+    ForwardRequest<xdg_surface_ack_configure>};
 
 static void sl_xdg_surface_configure(void* data,
                                      struct xdg_surface* xdg_surface,
@@ -555,18 +391,9 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
   host_surface->has_role = 1;
 }
 
-static void sl_xdg_shell_pong(struct wl_client* client,
-                              struct wl_resource* resource,
-                              uint32_t serial) {
-  struct sl_host_xdg_shell* host =
-      static_cast<sl_host_xdg_shell*>(wl_resource_get_user_data(resource));
-
-  xdg_wm_base_pong(host->proxy, serial);
-}
-
 static const struct xdg_wm_base_interface sl_xdg_shell_implementation = {
     sl_xdg_shell_destroy, sl_xdg_shell_create_positioner,
-    sl_xdg_shell_get_xdg_surface, sl_xdg_shell_pong};
+    sl_xdg_shell_get_xdg_surface, ForwardRequest<xdg_wm_base_pong>};
 
 static void sl_xdg_shell_ping(void* data,
                               struct xdg_wm_base* xdg_shell,
