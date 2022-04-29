@@ -260,6 +260,24 @@ std::optional<std::map<int, ParsedStatContents>> ParseStatContents(
   return parsed_contents;
 }
 
+std::optional<std::map<int, ParsedStatContents>> GetParsedStatContents(
+    const base::FilePath& root_dir) {
+  std::string stat_contents;
+  auto stat_file = GetProcStatPath(root_dir);
+  if (!ReadFileToString(stat_file, &stat_contents)) {
+    LOG(ERROR) << "Unable to read stat file: " << stat_file.value();
+    return std::nullopt;
+  }
+
+  std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
+      ParseStatContents(stat_contents);
+  if (!parsed_stat_contents.has_value()) {
+    LOG(ERROR) << "Unable to parse stat contents: " << stat_contents;
+    return std::nullopt;
+  }
+  return parsed_stat_contents;
+}
+
 // Parses |block| to determine if the block parsed from /proc/cpuinfo is a
 // processor block.
 bool IsProcessorBlock(const std::string& block) {
@@ -526,20 +544,12 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     const std::vector<std::string>& processor_info,
     const base::FilePath& root_dir,
     mojo_ipc::CpuArchitectureEnum architecture) {
-  std::string stat_contents;
-  auto stat_file = GetProcStatPath(root_dir);
-  if (!ReadFileToString(stat_file, &stat_contents)) {
-    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read stat file: " + stat_file.value()));
-  }
-
   std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
-      ParseStatContents(stat_contents);
-  if (!parsed_stat_contents.has_value()) {
+      GetParsedStatContents(root_dir);
+  if (parsed_stat_contents == std::nullopt) {
     return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
         mojo_ipc::ErrorType::kParseError,
-        "Unable to parse stat contents: " + stat_contents));
+        "Unable to parse stat file: " + GetProcStatPath(root_dir).value()));
   }
 
   std::map<int, ParsedStatContents> logical_ids_to_stat_contents =
