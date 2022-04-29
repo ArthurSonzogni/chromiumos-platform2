@@ -44,14 +44,19 @@ power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromCountryCode(
   const struct {
     const std::string country_code;
     power_manager::CellularRegulatoryDomain domain;
-  } kRdCcMappings[] = {{"US", power_manager::CellularRegulatoryDomain::FCC},
-                       {"CA", power_manager::CellularRegulatoryDomain::ISED},
-                       {"UK", power_manager::CellularRegulatoryDomain::CE},
-                       {"JP", power_manager::CellularRegulatoryDomain::MIC},
-                       {"KR", power_manager::CellularRegulatoryDomain::KCC}};
+  } kRdCcMappings[] = {
+      {"US,IN", power_manager::CellularRegulatoryDomain::FCC},
+      {"CA", power_manager::CellularRegulatoryDomain::ISED},
+      {"CN,GB,FR,ES,IT,SE,DE,AT,BE,BA,BG,HR,CY,CZ,DK,EE,FI,FR,GF,GE,GI,GR,VA,"
+       "HU,IE,LV,LT,LU,MT,GP,MC,ME,NL,NC,PL,PT,RE,RO,SM,ST,SK,SI,WF",
+       power_manager::CellularRegulatoryDomain::CE},
+      {"JP", power_manager::CellularRegulatoryDomain::MIC},
+      {"KR", power_manager::CellularRegulatoryDomain::KCC}};
   std::string cc = base::ToUpperASCII(country_code);
   for (const auto& m : kRdCcMappings) {
-    if (m.country_code == cc)
+    const auto country_code = base::SplitString(
+        m.country_code, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    if (base::Contains(country_code, cc))
       return m.domain;
   }
   return power_manager::CellularRegulatoryDomain::UNKNOWN;
