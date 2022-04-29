@@ -48,7 +48,10 @@ generate_dbus_proxies("bluetooth-proxies") {
   proxy_path_in_mocks = "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
   sources = [
     "dbus_bindings/bluetooth/org.bluez.Adapter1.xml",
+    "dbus_bindings/bluetooth/org.bluez.AdminPolicyStatus1.xml",
+    "dbus_bindings/bluetooth/org.bluez.Battery1.xml",
     "dbus_bindings/bluetooth/org.bluez.Device1.xml",
+    "dbus_bindings/bluetooth/org.bluez.LEAdvertisingManager1.xml",
   ]
 }
 
