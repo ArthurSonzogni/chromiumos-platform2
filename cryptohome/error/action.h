@@ -11,10 +11,16 @@ namespace cryptohome {
 
 namespace error {
 
+// Note that entries in ErrorAction may be logged in Cryptohome*Error classes,
+// and as such should not be changed without removing the logging mentioned
+// above.
 enum class ErrorAction {
   // This entry is not used.
   kNull = 0,
 
+  // The entries below are specific actions on the Chromium side. See
+  // PrimaryAction enum in system_api/dbus/cryptohome/UserDataAuth.proto for
+  // documentation on each of the enums below.
   kCreateRequired = 301,
   kNotifyOldEncryption,
   kResumePreviousMigration,
@@ -23,6 +29,9 @@ enum class ErrorAction {
   kTpmLockout,
   kIncorrectAuth,
 
+  // The entries below are generic possible resolution to an issue. See
+  // PossibleAction enum in system_api/dbus/cryptohome/UserDataAuth.proto for
+  // documentation on each of the enums below.
   kRetry = 501,
   kReboot,
   kAuth,
