@@ -544,6 +544,15 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::GetTpmStatusTask(
       reply->set_status(STATUS_DEVICE_ERROR);
       return reply;
     }
+
+    if (ownership_status == TpmStatus::kTpmDisabled) {
+      LOG(WARNING) << __func__
+                   << ": TPM is disabled when we testing the ownership.";
+      reply->set_enabled(false);
+      reply->set_status(STATUS_SUCCESS);
+      return reply;
+    }
+
     reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
     LocalData local_data;
     if (local_data_store_ && local_data_store_->Read(&local_data)) {
