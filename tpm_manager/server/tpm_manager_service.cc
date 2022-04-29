@@ -402,7 +402,9 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
       if (USE_TPM_INSECURE_FALLBACK) {
         // Don't allow the TPM to be used when we failed to take the ownership
         // of it, because most of the security features would not work under
-        // this case.
+        // this case. And set the take ownership device error to make sure the
+        // enrollment screen would know the device failed to take the ownership.
+        take_ownership_device_error_ = true;
         tpm_allowed_ = false;
         reply->set_enabled(false);
         reply->set_status(STATUS_SUCCESS);
@@ -800,6 +802,11 @@ std::unique_ptr<TakeOwnershipReply> TpmManagerService::TakeOwnershipTask(
   VLOG(1) << __func__;
 
   auto reply = std::make_unique<TakeOwnershipReply>();
+
+  if (take_ownership_device_error_) {
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return reply;
+  }
 
   if (!tpm_allowed_) {
     reply->set_status(STATUS_NOT_AVAILABLE);

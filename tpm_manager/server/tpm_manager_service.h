@@ -388,6 +388,8 @@ class TpmManagerService : public TpmNvramInterface,
   bool perform_preinit_;
   // Whether the TPM is allowed to use or not.
   bool tpm_allowed_ = false;
+  // The take ownership should return device error directly or not.
+  bool take_ownership_device_error_ = false;
   // Origin task runner to run the task on origin thread.
   scoped_refptr<base::TaskRunner> origin_task_runner_;
   // Background thread to allow processing of potentially lengthy TPM requests
