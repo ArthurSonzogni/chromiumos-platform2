@@ -524,9 +524,27 @@ mojo_ipc::VirtualizationInfoPtr GetVirtualizationInfo(
 // the same |architecture|.
 mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     const std::vector<std::string>& processor_info,
-    const std::map<int, ParsedStatContents>& logical_ids_to_stat_contents,
     const base::FilePath& root_dir,
     mojo_ipc::CpuArchitectureEnum architecture) {
+  std::string stat_contents;
+  auto stat_file = GetProcStatPath(root_dir);
+  if (!ReadFileToString(stat_file, &stat_contents)) {
+    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kFileReadError,
+        "Unable to read stat file: " + stat_file.value()));
+  }
+
+  std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
+      ParseStatContents(stat_contents);
+  if (!parsed_stat_contents.has_value()) {
+    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kParseError,
+        "Unable to parse stat contents: " + stat_contents));
+  }
+
+  std::map<int, ParsedStatContents> logical_ids_to_stat_contents =
+      parsed_stat_contents.value();
+
   std::map<int, mojo_ipc::PhysicalCpuInfoPtr> physical_cpus;
   for (const auto& processor : processor_info) {
     if (!IsProcessorBlock(processor))
@@ -711,21 +729,6 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
                      weak_factory_.GetWeakPtr(),
                      /*all_callback_called=*/false)};
 
-  std::string stat_contents;
-  auto stat_file = GetProcStatPath(context_->root_dir());
-  if (!ReadFileToString(stat_file, &stat_contents)) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
-                   "Unable to read stat file: " + stat_file.value());
-    return;
-  }
-
-  const auto parsed_stat_contents = ParseStatContents(stat_contents);
-  if (!parsed_stat_contents.has_value()) {
-    LogAndSetError(mojo_ipc::ErrorType::kParseError,
-                   "Unable to parse stat contents: " + stat_contents);
-    return;
-  }
-
   std::string cpu_info_contents;
   auto cpu_info_file = GetProcCpuInfoPath(context_->root_dir());
   if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
@@ -737,9 +740,8 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
   std::vector<std::string> processor_info = base::SplitStringUsingSubstr(
       cpu_info_contents, "\n\n", base::KEEP_WHITESPACE,
       base::SPLIT_WANT_NONEMPTY);
-  mojo_ipc::CpuResultPtr cpu_result =
-      GetCpuInfoFromProcessorInfo(processor_info, parsed_stat_contents.value(),
-                                  context_->root_dir(), GetArchitecture());
+  mojo_ipc::CpuResultPtr cpu_result = GetCpuInfoFromProcessorInfo(
+      processor_info, context_->root_dir(), GetArchitecture());
   if (cpu_result->is_error()) {
     // TODO(b/230046339): Use LogAndSetError after refactor
     // GetCpuInfoFromProcessorInfo.
