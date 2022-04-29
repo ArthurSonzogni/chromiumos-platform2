@@ -376,6 +376,9 @@ void SetJsonDictValue(const std::string& key,
   } else if constexpr (std::is_same_v<T, mojom::NullableDoublePtr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
+  } else if constexpr (std::is_same_v<T, mojom::NullableUint8Ptr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_same_v<T, mojom::NullableInt16Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
@@ -662,6 +665,7 @@ void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
         SET_DICT(rssi, device, &device_data);
         SET_DICT(mtu, device, &device_data);
         SET_DICT(uuids, device, &device_data);
+        SET_DICT(battery_percentage, device, &device_data);
         connected_devices->Append(std::move(device_data));
       }
     }
@@ -669,6 +673,15 @@ void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
     SET_DICT(discovering, info, &data);
     SET_DICT(uuids, info, &data);
     SET_DICT(modalias, info, &data);
+    SET_DICT(service_allow_list, info, &data);
+    if (info->supported_capabilities) {
+      auto* out_capabilities = data.SetKey(
+          "supported_capabilities", base::Value{base::Value::Type::DICTIONARY});
+      SET_DICT(max_adv_len, info->supported_capabilities, out_capabilities);
+      SET_DICT(max_scn_rsp_len, info->supported_capabilities, out_capabilities);
+      SET_DICT(min_tx_power, info->supported_capabilities, out_capabilities);
+      SET_DICT(max_tx_power, info->supported_capabilities, out_capabilities);
+    }
     adapters->Append(std::move(data));
   }
 
