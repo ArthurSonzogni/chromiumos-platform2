@@ -59,15 +59,18 @@ constexpr char kNonIntegralFileContents[] = "Not an integer!";
 constexpr char kHardwareDescriptionCpuinfoContents[] =
     "Hardware\t: Rockchip (Device Tree)\nRevision\t: 0000\nSerial\t: "
     "0000000000000000\n\n";
-constexpr char kNoModelNameCpuinfoContents[] = "processor\t: 0\n\n";
+constexpr char kNoModelNameCpuinfoContents[] = "processor\t: 0\nflags\t:\n\n";
 constexpr char kNoPhysicalIdCpuinfoContents[] =
-    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\n\n"
-    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHzn\n\n"
-    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\n\n";
+    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\nflags\t:\n\n"
+    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHzn\nflags\t:\n\n"
+    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\nflags\t:\n\n";
 constexpr char kFakeCpuinfoContents[] =
-    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\nphysical id\t: 0\n\n"
-    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHz\nphysical id\t: 0\n\n"
-    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\nphysical id\t: 1\n\n";
+    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\nphysical id\t: "
+    "0\nflags\t:\n\n"
+    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHz\nphysical id\t: "
+    "0\nflags\t:\n\n"
+    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\nphysical id\t: "
+    "1\nflags\t:\n\n";
 constexpr char kFirstFakeModelName[] = "Dank CPU 1 @ 8.90GHz";
 constexpr char kSecondFakeModelName[] = "Dank CPU 2 @ 2.80GHz";
 
@@ -543,6 +546,50 @@ TEST_F(CpuFetcherTest, NoModelNameCpuinfoFile) {
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
   EXPECT_FALSE(
       cpu_result->get_cpu_info()->physical_cpus[0]->model_name.has_value());
+}
+
+// Test that we handle a cpuinfo file without any CPU Flags.
+TEST_F(CpuFetcherTest, NoCpuFlagsCpuinfoFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetProcCpuInfoPath(root_dir()),
+      "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\n\n"));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+}
+
+// Test that we handle a cpuinfo file with valid CPU Flags.
+TEST_F(CpuFetcherTest, ValidX86CpuFlagsCpuinfoFile) {
+  ASSERT_TRUE(
+      WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
+                                   "processor\t: 0\nmodel name\t: Dank CPU 1 @ "
+                                   "8.90GHz\nflags\t: f1 f2 f3\n\n"));
+
+  std::vector<std::string> expected{"f1", "f2", "f3"};
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->flags, expected);
+}
+
+// Test that we handle a cpuinfo file with valid CPU Flags.
+TEST_F(CpuFetcherTest, ValidArmCpuFlagsCpuinfoFile) {
+  ASSERT_TRUE(
+      WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
+                                   "processor\t: 0\nmodel name\t: Dank CPU 1 @ "
+                                   "8.90GHz\nFeatures\t: f1 f2 f3\n\n"));
+
+  std::vector<std::string> expected{"f1", "f2", "f3"};
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->flags, expected);
 }
 
 // Test that we have soc_id for Arm devices.

@@ -49,6 +49,8 @@ constexpr char kCStateDirectoryMatcher[] = "state*";
 constexpr char kModelNameKey[] = "model name";
 constexpr char kPhysicalIdKey[] = "physical id";
 constexpr char kProcessorIdKey[] = "processor";
+constexpr char kX86CpuFlagsKey[] = "flags";
+constexpr char kArmCpuFlagsKey[] = "Features";
 
 // Regex used to parse /proc/stat.
 constexpr char kRelativeStatFileRegex[] = R"(cpu(\d+)\s+(\d+) \d+ (\d+) (\d+))";
@@ -307,25 +309,36 @@ bool IsProcessorBlock(const std::string& block) {
   return false;
 }
 
-// Parses |processor| to obtain |processor_id|, |physical_id|, and |model_name|
-// if applicable. Returns true on success.
+// Parses |processor| to obtain |processor_id|, |physical_id|, |model_name| and
+// |cpu_flags| if applicable. Returns true on success.
 bool ParseProcessor(const std::string& processor,
                     int& processor_id,
                     int& physical_id,
-                    std::string& model_name) {
+                    std::string& model_name,
+                    std::vector<std::string>& cpu_flags) {
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(processor, ':', '\n', &pairs);
   std::string processor_id_str;
   std::string physical_id_str;
+  bool flags_found = false;
   for (const auto& key_value : pairs) {
-    if (key_value.first.find(kProcessorIdKey) != std::string::npos)
+    if (key_value.first.find(kProcessorIdKey) != std::string::npos) {
       base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
                                 &processor_id_str);
-    else if (key_value.first.find(kPhysicalIdKey) != std::string::npos)
+    } else if (key_value.first.find(kPhysicalIdKey) != std::string::npos) {
       base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
                                 &physical_id_str);
-    else if (key_value.first.find(kModelNameKey) != std::string::npos)
+    } else if (key_value.first.find(kModelNameKey) != std::string::npos) {
       base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &model_name);
+    } else if (key_value.first.find(kX86CpuFlagsKey) != std::string::npos ||
+               key_value.first.find(kArmCpuFlagsKey) != std::string::npos) {
+      std::string cpu_flags_str;
+      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
+                                &cpu_flags_str);
+      cpu_flags = base::SplitString(cpu_flags_str, " ", base::TRIM_WHITESPACE,
+                                    base::SPLIT_WANT_NONEMPTY);
+      flags_found = true;
+    }
   }
 
   // If the processor does not have a distinction between physical_id and
@@ -346,7 +359,12 @@ bool ParseProcessor(const std::string& processor,
     return false;
   }
 
-  return (!processor_id_str.empty() && !physical_id_str.empty());
+  if (!flags_found) {
+    LOG(ERROR) << "no cpu flags found";
+    return false;
+  }
+
+  return true;
 }
 
 void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
@@ -560,7 +578,9 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     int processor_id;
     int physical_id;
     std::string model_name;
-    if (!ParseProcessor(processor, processor_id, physical_id, model_name)) {
+    std::vector<std::string> cpu_flags;
+    if (!ParseProcessor(processor, processor_id, physical_id, model_name,
+                        cpu_flags)) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kParseError,
           "Unable to parse processor string: " + processor));
@@ -578,6 +598,8 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
       }
       if (!model_name.empty())
         physical_cpu->model_name = std::move(model_name);
+
+      physical_cpu->flags = std::move(cpu_flags);
 
       const auto result =
           physical_cpus.insert({physical_id, std::move(physical_cpu)});
