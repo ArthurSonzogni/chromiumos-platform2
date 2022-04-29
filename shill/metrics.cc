@@ -1419,6 +1419,14 @@ void Metrics::NotifyWiFiConnectionAttempt(
     LOG(ERROR) << "Failed to read timestamp";
     usecs = kWiFiStructuredMetricsErrorValue;
   }
+  metrics::structured::events::wi_fi_ap::WiFiAPInfo()
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetAPOUI(info.ap_oui)
+      .Record();
+  // TODO(b/230820059): Report the OUI as 0xFFFFFFFF until we've implemented
+  // an allowlist of sufficiently popular manufacturers that can be reported
+  // along the rest of the connection information.
+  int unknown_oui = 0xFFFFFFFF;
   metrics::structured::events::wi_fi::WiFiConnectionAttempt()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
@@ -1434,7 +1442,7 @@ void Metrics::NotifyWiFiConnectionAttempt(
       .SetSSIDProvisioningMode(info.provisioning_mode)
       .SetSSIDHidden(info.ssid_hidden)
       .SetBSSID(info.bssid)
-      .SetAPOUI(info.ap_oui)
+      .SetAPOUI(unknown_oui)
       .SetAP_80211krv_NLSSupport(
           info.ap_features.krv_info.neighbor_list_supported)
       .SetAP_80211krv_OTA_FTSupport(info.ap_features.krv_info.ota_ft_supported)

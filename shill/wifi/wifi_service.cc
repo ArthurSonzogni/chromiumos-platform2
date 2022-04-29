@@ -847,7 +847,6 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
           Metrics::ConvertEndPointFeatures(current_endpoint_.get());
     }
   }
-  info.ap_oui = 0xFFFFFFFF;
 
   return info;
 }
