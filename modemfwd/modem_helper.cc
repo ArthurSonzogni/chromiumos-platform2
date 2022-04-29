@@ -4,13 +4,18 @@
 
 #include "modemfwd/modem_helper.h"
 
+#include <linux/securebits.h>
+#include <sys/capability.h>
+
 #include <memory>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -19,6 +24,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <chromeos/switches/modemfwd_switches.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 namespace modemfwd {
 
@@ -30,15 +37,88 @@ constexpr char kPowerOverrideLockFilePath[] =
     "/run/lock/power_override/modemfwd.lock";
 
 constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
+constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy";
+
+// For security reasons, we want to apply security restrictions to helpers:
+// 1. We want to provide net admin capabilities only when necessary.
+// 2. We want to apply helper-specific seccomp filter.
+ScopedMinijail ConfigureSandbox(const HelperInfo& helper_info) {
+  ScopedMinijail j(minijail_new());
+
+  // Ensure no capability escalation occurs in the jail.
+  minijail_no_new_privs(j.get());
+
+  // Avoid setting securebits as we are running inside a minijail already.
+  // See b/112030238 for justification.
+  minijail_skip_setting_securebits(j.get(), SECURE_ALL_BITS | SECURE_ALL_LOCKS);
+
+  // Remove all capabilities if helper doesn't require cap_net_admin by setting
+  // sandboxed capabilities to 0. Only FM350 modem requires cap_net_admin.
+  if (!base::Contains(helper_info.executable_path.value(), "fm350")) {
+    LOG(INFO) << "Removing all capabilities from helper";
+    minijail_use_caps(j.get(), 0);
+  }
+
+  // Determine where this helper's seccomp policy would be. Expected location:
+  // /usr/share/policy/{modem_id}-helper-seccomp.policy
+  const base::FilePath helper_seccomp_policy_file(base::StringPrintf(
+      "%s/%s-seccomp.policy", kSeccompPolicyDirectory,
+      helper_info.executable_path.BaseName().value().c_str()));
+
+  // Apply seccomp filter, if it exists for this helper.
+  if (base::PathExists(helper_seccomp_policy_file)) {
+    LOG(INFO) << "Running helper with policy: "
+              << helper_seccomp_policy_file.value();
+    minijail_use_seccomp_filter(j.get());
+    minijail_parse_seccomp_filters(j.get(),
+                                   helper_seccomp_policy_file.value().c_str());
+  } else {
+    LOG(WARNING) << "No seccomp policy found for helper: "
+                 << helper_info.executable_path.BaseName().value();
+  }
+
+  return j;
+}
+
+int RunProcessInSandbox(const HelperInfo& helper_info,
+                        const std::vector<std::string>& formatted_args,
+                        int* child_stdout,
+                        int* child_stderr) {
+  pid_t pid = -1;
+  int child_stdin = -1;
+  std::vector<char*> args;
+
+  for (const std::string& argument : formatted_args)
+    args.push_back(const_cast<char*>(argument.c_str()));
+
+  args.push_back(nullptr);
+
+  // Create sandbox and run helper.
+  ScopedMinijail j = ConfigureSandbox(helper_info);
+  int ret = minijail_run_pid_pipes(j.get(), args[0], args.data(), &pid,
+                                   &child_stdin, child_stdout, child_stderr);
+
+  if (ret != 0) {
+    LOG(ERROR) << "Failed to run minijail: " << strerror(-ret);
+    return ret;
+  }
+
+  return minijail_wait(j.get());
+}
 
 bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
                               const std::vector<std::string>& arguments) {
-  brillo::ProcessImpl helper;
-  helper.AddArg(helper_info.executable_path.value());
+  int child_stdout = -1, child_stderr = -1;
+  std::vector<std::string> formatted_args;
+
+  formatted_args.push_back(helper_info.executable_path.value());
   for (const std::string& argument : arguments)
-    helper.AddArg("--" + argument);
+    formatted_args.push_back("--" + argument);
   for (const std::string& extra_argument : helper_info.extra_arguments)
-    helper.AddArg(extra_argument);
+    formatted_args.push_back(extra_argument);
+
+  int exit_code = RunProcessInSandbox(helper_info, formatted_args,
+                                      &child_stdout, &child_stderr);
 
   base::Time::Exploded time;
   base::Time::Now().LocalExplode(&time);
@@ -46,12 +126,19 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
       "%s/helper_log.%4u%02u%02u-%02u%02u%02u%03u", kModemfwdLogDirectory,
       time.year, time.month, time.day_of_month, time.hour, time.minute,
       time.second, time.millisecond);
-  helper.RedirectOutput(output_log_file);
 
-  int exit_code = helper.Run();
+  if (child_stdout != -1) {
+    base::File stdout_file = base::File(child_stdout);
+    base::File dest_stdout_file =
+        base::File(base::FilePath(output_log_file),
+                   base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+
+    base::CopyFileContents(stdout_file, dest_stdout_file);
+  }
+
   if (exit_code != 0) {
     LOG(ERROR) << "Failed to perform \"" << base::JoinString(arguments, " ")
-               << "\" on the modem";
+               << "\" on the modem with retcode " << exit_code;
     return false;
   }
 
@@ -61,39 +148,22 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
 bool RunHelperProcess(const HelperInfo& helper_info,
                       const std::vector<std::string>& arguments,
                       std::string* output) {
-  brillo::ProcessImpl helper;
-  helper.AddArg(helper_info.executable_path.value());
-  for (const std::string& argument : arguments)
-    helper.AddArg("--" + argument);
-  for (const std::string& extra_argument : helper_info.extra_arguments)
-    helper.AddArg(extra_argument);
+  int child_stdout = -1, child_stderr = -1;
+  std::vector<std::string> formatted_args;
 
-  // Set up output redirection, if requested. We keep the file open
-  // across the process lifetime to ensure nobody is swapping out the
-  // file from underneath us while the helper is running.
-  base::File output_base_file;
-  if (output) {
-    base::FilePath output_path;
-    FILE* output_file =
-        base::CreateAndOpenTemporaryStream(&output_path).release();
-    if (output_file == nullptr) {
-      LOG(ERROR) << "Failed to create tempfile for helper process output";
-      return false;
-    }
-    output_base_file = base::File(fileno(output_file));
+  formatted_args.push_back(helper_info.executable_path.value());
+  for (const std::string& argument : arguments)
+    formatted_args.push_back("--" + argument);
+  for (const std::string& extra_argument : helper_info.extra_arguments)
+    formatted_args.push_back(extra_argument);
+
+  int exit_code = RunProcessInSandbox(helper_info, formatted_args,
+                                      &child_stdout, &child_stderr);
+
+  if (output && child_stdout != -1) {
+    base::File output_base_file = base::File(child_stdout);
     DCHECK(output_base_file.IsValid());
 
-    helper.RedirectOutput(output_path.value());
-  }
-
-  helper.SetPgid(0);
-
-  int exit_code = helper.Run();
-
-  // Collect output if requested. Note that we only collect 1024 bytes of
-  // output here. We could read everything, but the API is simple enough
-  // that we shouldn't need more than this (at least for the time being).
-  if (output && output_base_file.IsValid()) {
     const int kBufSize = 1024;
     char buf[kBufSize];
     int bytes_read = output_base_file.ReadAtCurrentPos(buf, kBufSize);
@@ -103,7 +173,7 @@ bool RunHelperProcess(const HelperInfo& helper_info,
 
   if (exit_code != 0) {
     LOG(ERROR) << "Failed to perform \"" << base::JoinString(arguments, " ")
-               << "\" on the modem";
+               << "\" on the modem with retcode " << exit_code;
     return false;
   }
 
