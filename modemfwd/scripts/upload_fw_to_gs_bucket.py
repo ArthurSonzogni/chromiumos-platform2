@@ -25,6 +25,7 @@ class PackageType(Enum):
     L850_OEM_DIR_ONLY = 'l850-oem-dir'
     NL668_MAIN_FW = 'nl668-main-fw'
     FM101_MAIN_FW = 'fm101-main-fw'
+    FM350_MAIN_FW = 'fm350-main-fw'
 
     def __str__(self):
         return str(self.value)
@@ -35,6 +36,7 @@ FIBOCOM_TARBALL_PREFIX = 'cellular-firmware-fibocom-'
 L850_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'l850-'
 NL668_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'nl668-'
 FM101_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'fm101-'
+FM350_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'fm350-'
 
 OEM_FW_PREFIX = 'OEM_cust.'
 OEM_FW_POSTFIX = '_signed.fls3.xz'
@@ -198,6 +200,24 @@ class FM101MainFw(FwUploader):
         copy_tree(dir_path, os.path.join(target_path, self.basename))
         return True
 
+class FM350MainFw(FwUploader):
+    """Uploader class for FM350 main FW."""
+
+    def __init__(self, path, upload):
+        super().__init__(path, upload, None)
+        self.tarball_dir_name = FM350_TARBALL_PREFIX + self.basename
+
+    def validate(self):
+        if not os.path.isdir(self.path):
+            logging.error('The FM350 FW should be a directory')
+            return False
+        return True
+
+    def prepare_files(self, dir_path, target_path):
+        logging.info('Copying %s into %s', dir_path, target_path)
+        os.mkdir(os.path.join(target_path, self.basename))
+        copy_tree(dir_path, os.path.join(target_path, self.basename))
+        return True
 
 def parse_arguments(argv):
     """Parses command line arguments.
@@ -267,6 +287,8 @@ def main(argv):
         fw_uploader = NL668MainFw(opts.path, opts.upload)
     elif opts.type == PackageType.FM101_MAIN_FW:
         fw_uploader = FM101MainFw(opts.path, opts.upload)
+    elif opts.type == PackageType.FM350_MAIN_FW:
+        fw_uploader = FM350MainFw(opts.path, opts.upload)
 
     return fw_uploader.process_fw_and_upload(opts.keep_files)
 
