@@ -38,6 +38,7 @@ class Modem {
   virtual std::string GetOemFirmwareVersion() const = 0;
   virtual std::string GetCarrierFirmwareId() const = 0;
   virtual std::string GetCarrierFirmwareVersion() const = 0;
+  virtual std::string GetAssocFirmwareVersion(std::string) const = 0;
 
   // Tell ModemManager not to deal with this modem for a little while.
   virtual bool SetInhibited(bool inhibited) = 0;

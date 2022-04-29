@@ -47,17 +47,48 @@ bool ParseDevice(const Device& device,
     if (!compression.has_value())
       return false;
 
+    // Use relative paths since DLCs have no predefined path
     if (base::FilePath(main_firmware.filename()).IsAbsolute()) {
       LOG(ERROR) << "Main firmware should use relative path ("
                  << main_firmware.filename() << ").";
       return false;
     }
-    // Use relative paths since DLCs have no predefined path
-    main_firmware_infos.emplace(
-        main_firmware.version(),
-        std::make_unique<FirmwareFileInfo>(main_firmware.filename(),
-                                           main_firmware.version(),
-                                           compression.value()));
+
+    auto main_info = std::make_unique<FirmwareFileInfo>(
+        main_firmware.filename(), main_firmware.version(), compression.value());
+
+    // Add associated firmware for this main firmware, if it exists.
+    for (const AssociatedFirmware& assoc_firmware :
+         main_firmware.assoc_firmware()) {
+      if (assoc_firmware.filename().empty() || assoc_firmware.tag().empty() ||
+          assoc_firmware.version().empty() ||
+          !Compression_IsValid(assoc_firmware.compression())) {
+        LOG(ERROR) << "Found malformed associated firmware manifest entry";
+        return false;
+      }
+      auto assoc_compression =
+          ToFirmwareFileInfoCompression(assoc_firmware.compression());
+      if (!assoc_compression.has_value()) {
+        LOG(ERROR) << "Firmware entry " << assoc_firmware.tag()
+                   << " does not specify compression";
+        return false;
+      }
+
+      if (base::FilePath(assoc_firmware.filename()).IsAbsolute()) {
+        LOG(ERROR) << "Associated firmware should use relative path ("
+                   << assoc_firmware.filename() << ").";
+        return false;
+      }
+
+      auto assoc_info = std::make_unique<FirmwareFileInfo>(
+          assoc_firmware.filename(), assoc_firmware.version(),
+          assoc_compression.value());
+      out_cache->assoc_firmware[main_info.get()][assoc_firmware.tag()] =
+          assoc_info.get();
+      out_cache->all_files.push_back(std::move(assoc_info));
+    }
+
+    main_firmware_infos.emplace(main_firmware.version(), std::move(main_info));
   }
 
   // Main firmware is default for a device if:

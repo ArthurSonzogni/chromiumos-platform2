@@ -126,6 +126,15 @@ class ModemImpl : public Modem {
     return installed_firmware_.carrier_version;
   }
 
+  std::string GetAssocFirmwareVersion(std::string fw_tag) const override {
+    std::map<std::string, std::string>::const_iterator pos =
+        installed_firmware_.assoc_versions.find(fw_tag);
+    if (pos == installed_firmware_.assoc_versions.end())
+      return "";
+    else
+      return pos->second;
+  }
+
   bool SetInhibited(bool inhibited) override {
     if (!inhibitor_) {
       EVLOG(1) << "Inhibiting unavailable on this modem";
@@ -241,6 +250,8 @@ class StubModem : public Modem {
   std::string GetCarrierFirmwareId() const override { return ""; }
 
   std::string GetCarrierFirmwareVersion() const override { return ""; }
+
+  std::string GetAssocFirmwareVersion(std::string) const override { return ""; }
 
   bool SetInhibited(bool inhibited) override { return true; }
 

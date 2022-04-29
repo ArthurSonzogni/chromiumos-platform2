@@ -5,6 +5,7 @@
 #ifndef MODEMFWD_MODEM_HELPER_H_
 #define MODEMFWD_MODEM_HELPER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -19,16 +20,22 @@ struct FirmwareInfo {
   FirmwareInfo(const std::string& main_version,
                const std::string& oem_version,
                const std::string& carrier_uuid,
-               const std::string& carrier_version)
+               const std::string& carrier_version,
+               const std::map<std::string, std::string> assoc_versions)
       : main_version(main_version),
         oem_version(oem_version),
         carrier_uuid(carrier_uuid),
-        carrier_version(carrier_version) {}
+        carrier_version(carrier_version),
+        assoc_versions(assoc_versions) {}
 
   std::string main_version;
   std::string oem_version;
   std::string carrier_uuid;
   std::string carrier_version;
+
+  // Additional firmware payloads stored with
+  // Tag -> Version mapping
+  std::map<std::string, std::string> assoc_versions;
 };
 
 struct HelperInfo {

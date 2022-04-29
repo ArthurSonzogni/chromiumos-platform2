@@ -51,6 +51,9 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
         result.main_firmware = info;
       if (FindSpecificFirmware(cache.oem_firmware, kGenericCarrierId, &info))
         result.oem_firmware = info;
+      if (result.main_firmware.has_value())
+        FindAssociatedFirmware(cache, result.main_firmware.value().version,
+                               &result.assoc_firmware);
       return result;
     }
 
@@ -62,6 +65,12 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       result.main_firmware = info;
     if (FindFirmwareForCarrier(cache.oem_firmware, carrier_id, &info))
       result.oem_firmware = info;
+
+    // Add associated firmware.
+    if (result.main_firmware.has_value()) {
+      FindAssociatedFirmware(cache, result.main_firmware.value().version,
+                             &result.assoc_firmware);
+    }
 
     return result;
   }
@@ -133,6 +142,28 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
     *out_info = *it->second;
     return true;
+  }
+
+  void FindAssociatedFirmware(
+      const DeviceFirmwareCache& cache,
+      const std::string& main_version,
+      std::map<std::string, FirmwareFileInfo>* out_firmware) {
+    for (const auto& main_firmware : cache.main_firmware) {
+      FirmwareFileInfo* const main_info = main_firmware.second;
+      if (main_version != main_info->version)
+        continue;
+
+      auto it = cache.assoc_firmware.find(main_info);
+      if (it == cache.assoc_firmware.end())
+        return;
+
+      for (const auto& assoc_firmware_entry : it->second) {
+        (*out_firmware)[assoc_firmware_entry.first] =
+            *assoc_firmware_entry.second;
+      }
+
+      return;
+    }
   }
 
   std::unique_ptr<FirmwareIndex> index_;

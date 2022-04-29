@@ -5,6 +5,7 @@
 #ifndef MODEMFWD_FIRMWARE_DIRECTORY_H_
 #define MODEMFWD_FIRMWARE_DIRECTORY_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -22,6 +23,7 @@ class FirmwareDirectory {
     std::optional<FirmwareFileInfo> main_firmware;
     std::optional<FirmwareFileInfo> oem_firmware;
     std::optional<FirmwareFileInfo> carrier_firmware;
+    std::map<std::string, FirmwareFileInfo> assoc_firmware;
   };
 
   static const char kGenericCarrierId[];

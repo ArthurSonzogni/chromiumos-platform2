@@ -257,7 +257,7 @@ class ModemHelperImpl : public ModemHelper {
       else if (pair.first == kFwOem)
         out_info->oem_version = pair.second;
       else
-        LOG(WARNING) << "Unknown version '" << pair.first << "', skipping.";
+        out_info->assoc_versions.insert(pair);
     }
 
     return true;

@@ -47,6 +47,11 @@ struct DeviceFirmwareCache {
   CarrierIndex main_firmware;
   CarrierIndex carrier_firmware;
   CarrierIndex oem_firmware;
+
+  // Map of tag -> firmware files
+  using AssociatedFirmware = std::map<std::string, FirmwareFileInfo*>;
+  // Associated firmware should be keyed on a main firmware file.
+  std::map<FirmwareFileInfo*, AssociatedFirmware> assoc_firmware;
 };
 
 using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;

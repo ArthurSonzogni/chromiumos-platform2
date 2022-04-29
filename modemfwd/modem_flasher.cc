@@ -101,6 +101,18 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       flash_cfg.push_back(
           {kFwMain, firmware_file->path_on_filesystem(), file_info.version});
       flash_files[kFwMain] = std::move(firmware_file);
+
+      // If there are associated firmwares, we also need to prepare those.
+      for (const auto& assoc_entry : files.assoc_firmware) {
+        auto assoc_file = std::make_unique<FirmwareFile>();
+        if (!assoc_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                     assoc_entry.second))
+          return base::OnceClosure();
+        flash_cfg.push_back({assoc_entry.first,
+                             assoc_file->path_on_filesystem(),
+                             assoc_entry.second.version});
+        flash_files[assoc_entry.first] = std::move(assoc_file);
+      }
     }
   }
 
