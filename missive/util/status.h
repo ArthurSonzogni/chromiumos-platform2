@@ -46,7 +46,7 @@ enum Code : int32_t {
 };
 }  // namespace error
 
-class Status {
+class [[nodiscard]] Status {
  public:
   // Creates a "successful" status.
   Status();

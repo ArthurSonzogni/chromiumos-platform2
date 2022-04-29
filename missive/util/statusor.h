@@ -82,7 +82,7 @@ class StatusOrHelper {
 }  // namespace internal
 
 template <typename T>
-class StatusOr {
+class [[nodiscard]] StatusOr {
   template <typename U>
   friend class StatusOr;
 

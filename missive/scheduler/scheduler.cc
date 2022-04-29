@@ -123,7 +123,7 @@ class Scheduler::JobContext : public TaskRunnerContext<CompleteJobResponse> {
 
   void OnStart() override {
     if (job_ == nullptr) {
-      Status(error::INVALID_ARGUMENT, "Provided Job was null");
+      LOG(ERROR) << "Provided Job was null";
       return;
     }
     // Post task on an arbitrary thread, get back upon completion.
