@@ -541,7 +541,6 @@ mojo_ipc::VirtualizationInfoPtr GetVirtualizationInfo(
 // form the final CpuResultPtr. It's assumed that all CPUs on the device share
 // the same |architecture|.
 mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
-    const std::vector<std::string>& processor_info,
     const base::FilePath& root_dir,
     mojo_ipc::CpuArchitectureEnum architecture) {
   std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
@@ -554,6 +553,18 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
 
   std::map<int, ParsedStatContents> logical_ids_to_stat_contents =
       parsed_stat_contents.value();
+
+  std::string cpu_info_contents;
+  auto cpu_info_file = GetProcCpuInfoPath(root_dir);
+  if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
+    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kFileReadError,
+        "Unable to read CPU info file: " + cpu_info_file.value()));
+  }
+
+  std::vector<std::string> processor_info = base::SplitStringUsingSubstr(
+      cpu_info_contents, "\n\n", base::KEEP_WHITESPACE,
+      base::SPLIT_WANT_NONEMPTY);
 
   std::map<int, mojo_ipc::PhysicalCpuInfoPtr> physical_cpus;
   for (const auto& processor : processor_info) {
@@ -739,19 +750,8 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
                      weak_factory_.GetWeakPtr(),
                      /*all_callback_called=*/false)};
 
-  std::string cpu_info_contents;
-  auto cpu_info_file = GetProcCpuInfoPath(context_->root_dir());
-  if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
-                   "Unable to read CPU info file: " + cpu_info_file.value());
-    return;
-  }
-
-  std::vector<std::string> processor_info = base::SplitStringUsingSubstr(
-      cpu_info_contents, "\n\n", base::KEEP_WHITESPACE,
-      base::SPLIT_WANT_NONEMPTY);
-  mojo_ipc::CpuResultPtr cpu_result = GetCpuInfoFromProcessorInfo(
-      processor_info, context_->root_dir(), GetArchitecture());
+  mojo_ipc::CpuResultPtr cpu_result =
+      GetCpuInfoFromProcessorInfo(context_->root_dir(), GetArchitecture());
   if (cpu_result->is_error()) {
     // TODO(b/230046339): Use LogAndSetError after refactor
     // GetCpuInfoFromProcessorInfo.
