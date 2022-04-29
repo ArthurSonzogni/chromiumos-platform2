@@ -593,15 +593,17 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
     // exists. If not, make one.
     auto itr = physical_cpus.find(physical_id);
     if (itr == physical_cpus.end()) {
-      mojo_ipc::PhysicalCpuInfo physical_cpu;
+      mojo_ipc::PhysicalCpuInfoPtr physical_cpu =
+          mojo_ipc::PhysicalCpuInfo::New();
       if (model_name.empty()) {
         // It may be Arm CPU. We will return SoC model name instead.
         GetArmSoCModelName(root_dir, &model_name);
       }
       if (!model_name.empty())
-        physical_cpu.model_name = std::move(model_name);
+        physical_cpu->model_name = std::move(model_name);
+
       const auto result =
-          physical_cpus.insert({physical_id, physical_cpu.Clone()});
+          physical_cpus.insert({physical_id, std::move(physical_cpu)});
       DCHECK(result.second);
       itr = result.first;
     }
@@ -673,11 +675,8 @@ mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
   for (const auto& temperature : GetCpuTemperatures(root_dir))
     cpu_info.temperature_channels.push_back(temperature.Clone());
 
-  for (const auto& key_value : physical_cpus) {
-    // TODO(crbug/1143763): Change this to Clone() |key_value|.
-    cpu_info.physical_cpus.push_back(mojo_ipc::PhysicalCpuInfo::New(
-        std::move(key_value.second->model_name),
-        std::move(key_value.second->logical_cpus)));
+  for (auto& key_value : physical_cpus) {
+    cpu_info.physical_cpus.push_back(key_value.second.Clone());
   }
 
   cpu_info.virtualization = GetVirtualizationInfo(root_dir);
