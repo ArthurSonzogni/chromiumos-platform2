@@ -60,6 +60,7 @@ struct sl_window {
   xcb_window_t client_leader = XCB_WINDOW_NONE;
   int decorated = 0;
   char* name = nullptr;
+  bool has_net_wm_name = false;
   char* clazz = nullptr;
   char* startup_id = nullptr;
   std::string app_id_property;
@@ -81,6 +82,7 @@ struct sl_window {
 
 enum {
   PROPERTY_WM_NAME,
+  PROPERTY_NET_WM_NAME,
   PROPERTY_WM_CLASS,
   PROPERTY_WM_TRANSIENT_FOR,
   PROPERTY_WM_NORMAL_HINTS,

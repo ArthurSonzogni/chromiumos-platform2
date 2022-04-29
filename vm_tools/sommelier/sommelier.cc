@@ -999,6 +999,7 @@ static void sl_handle_map_request(struct sl_context* ctx,
     xcb_atom_t atom;
   } properties[] = {
       {PROPERTY_WM_NAME, XCB_ATOM_WM_NAME},
+      {PROPERTY_NET_WM_NAME, ctx->atoms[ATOM_NET_WM_NAME].value},
       {PROPERTY_WM_CLASS, XCB_ATOM_WM_CLASS},
       {PROPERTY_WM_TRANSIENT_FOR, XCB_ATOM_WM_TRANSIENT_FOR},
       {PROPERTY_WM_NORMAL_HINTS, XCB_ATOM_WM_NORMAL_HINTS},
@@ -1078,6 +1079,23 @@ static void sl_handle_map_request(struct sl_context* ctx,
 
     switch (properties[i].type) {
       case PROPERTY_WM_NAME:
+        // WM_NAME is only used for the window name if _NET_WM_NAME is not
+        // present or not yet processed, thus window->name is null.
+        if (!window->has_net_wm_name) {
+          window->name =
+              strndup(static_cast<char*>(xcb_get_property_value(reply)),
+                      xcb_get_property_value_length(reply));
+          value = window->name;
+        }
+        break;
+      case PROPERTY_NET_WM_NAME:
+        // _NET_WM_NAME is the preferred window name property. Remove any
+        // previously set window name.
+        if (window->name) {
+          free(window->name);
+          window->name = nullptr;
+        }
+        window->has_net_wm_name = true;
         window->name =
             strndup(static_cast<char*>(xcb_get_property_value(reply)),
                     xcb_get_property_value_length(reply));
@@ -1917,27 +1935,47 @@ static void sl_handle_property_notify(struct sl_context* ctx,
     perfetto_annotate_xcb_property_state(p, "event->state", event->state);
     perfetto_annotate_window(ctx, p, "event->window", event->window);
   });
-  if (event->atom == XCB_ATOM_WM_NAME) {
+  if (event->atom == XCB_ATOM_WM_NAME ||
+      event->atom == ctx->atoms[ATOM_NET_WM_NAME].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window)
+      return;
+
+    bool atom_is_net_wm_name =
+        event->atom == ctx->atoms[ATOM_NET_WM_NAME].value;
+
+    // If _NET_WM_NAME is set, ignore changes to WM_NAME.
+    if (!atom_is_net_wm_name && window->has_net_wm_name)
       return;
 
     if (window->name) {
       free(window->name);
       window->name = NULL;
+      window->has_net_wm_name = false;
     }
 
-    if (event->state != XCB_PROPERTY_DELETE) {
+    xcb_atom_t atom = XCB_ATOM_NONE;
+    if (event->state != XCB_PROPERTY_DELETE)
+      atom = event->atom;
+    else if (atom_is_net_wm_name)
+      // If _NET_WM_NAME is deleted, fall back to WM_NAME if it is set.
+      atom = XCB_ATOM_WM_NAME;
+
+    if (atom != XCB_ATOM_NONE) {
       xcb_get_property_reply_t* reply = xcb_get_property_reply(
           ctx->connection,
-          xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_NAME,
-                           XCB_ATOM_ANY, 0, 2048),
+          xcb_get_property(ctx->connection, 0, window->id, atom, XCB_ATOM_ANY,
+                           0, 2048),
           NULL);
       if (reply) {
         window->name =
             strndup(static_cast<char*>(xcb_get_property_value(reply)),
                     xcb_get_property_value_length(reply));
         free(reply);
+
+        if (atom == ctx->atoms[ATOM_NET_WM_NAME].value) {
+          window->has_net_wm_name = true;
+        }
       }
     }
 
