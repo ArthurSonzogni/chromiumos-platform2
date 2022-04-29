@@ -244,12 +244,12 @@ Steps:
 
 -   WP on, cannot update the touchpad FW over I2C
 
-        touchpad_updater -f FW_IMAGE
+        ec_touchpad_updater -f FW_IMAGE
 
 -   WP off (through servo or physically remove the screw), can update the
 touchpad FW over I2C:
 
-        touchpad_updater -f FW_IMAGE
+        ec_touchpad_updater -f FW_IMAGE
 
 ## Touchpad dimensions are correct
 
