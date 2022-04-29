@@ -10,11 +10,6 @@
 # opens the chrome://system page.
 . /usr/share/misc/chromeos-common.sh
 
-SSD_CMD_0="hdparm -I"
-SSD_CMD_1_NORMAL="smartctl -x"
-SSD_CMD_1_ALTERNATE="smartctl -a -f brief"
-SSD_CMD_MAX=1
-
 # This match SanDisk SSD U100/i100 with any size with version *.xx.* when x < 54
 # Seen Error with U100 10.52.01 / i100 CS.51.00 / U100 10.01.04.
 MODEL_IGNORELIST_0="SanDisk_SSD_[iU]100.*"
@@ -45,9 +40,6 @@ MMC_NAME_14="rel_sectors"
 MMC_NAME_15="serial"
 MMC_NAME_MAX=15
 
-NVME_CMD_0="smartctl -x"
-NVME_CMD_MAX=0
-
 UFS_DIR_NAME_0="string_descriptors"
 UFS_DIR_NAME_1="health_descriptor"
 UFS_DIR_NAME_2="device_descriptor"
@@ -68,6 +60,21 @@ UFS_DIR_NAME_MAX=8
 #   output of variable's evaluation
 expand_var() {
   eval "echo \"\${$1}\""
+}
+
+# echo_run - print command, and then execute it
+#
+# inputs:
+#   command to run
+#
+# outputs:
+#   result of the command execution
+echo_run() {
+  local ret=0
+  echo "$ $*"
+  "$@" || ret=$?
+  echo ""
+  return "${ret}"
 }
 
 # get_ssd_model - Return the model name of an ATA device.
@@ -137,26 +144,22 @@ is_ssd_ignorelist() {
 print_ssd_info() {
   # BUG: On some machines, smartctl -x causes SSD error (crbug.com/328587).
   # We need to check model and firmware version of the SSD to avoid this bug.
+  local hdparm_result
+  local model
+  local version
 
   # SSD model and firmware version is on the same line in hdparm result.
-  local hdparm_result="$(hdparm -i "/dev/$1" | grep "Model=")"
-  local model="$(get_ssd_model "${hdparm_result}")"
-  local version="$(get_ssd_version "${hdparm_result}")"
-  local ssd_cmd
-  local i
+  hdparm_result="$(hdparm -i "/dev/$1" | grep "Model=")"
+  model="$(get_ssd_model "${hdparm_result}")"
+  version="$(get_ssd_version "${hdparm_result}")"
+
+  echo_run hdparm -I "/dev/$1"
 
   if is_ssd_ignorelist "${model}" "${version}"; then
-    SSD_CMD_1=${SSD_CMD_1_ALTERNATE}
+    echo_run smartctl -a -f brief "/dev/$1"
   else
-    SSD_CMD_1=${SSD_CMD_1_NORMAL}
+    echo_run smartctl -x "/dev/$1"
   fi
-
-  for i in $(seq 0 "${SSD_CMD_MAX}"); do
-    ssd_cmd=$(expand_var "SSD_CMD_${i}")
-    echo "$ ${ssd_cmd} /dev/$1"
-    ${ssd_cmd} "/dev/$1"
-    echo ""
-  done
 }
 
 # print_mmc_info - Print eMMC device information
@@ -184,16 +187,7 @@ print_mmc_info() {
 # inputs:
 #   device name for instance nvme0n1.
 print_nvme_info() {
-  local nvme_cmd
-  local mvme_dev="/dev/$1"
-  local i
-
-  for i in $(seq 0 "${NVME_CMD_MAX}"); do
-    nvme_cmd=$(expand_var "NVME_CMD_${i}")
-    echo "$ ${nvme_cmd} ${mvme_dev}"
-    ${nvme_cmd} "${mvme_dev}"
-    echo ""
-  done
+  echo_run smartctl -x "/dev/$1"
 }
 
 # print_ufs_info - Print UFS device information
