@@ -489,6 +489,26 @@ bool HPS_impl::Reboot() {
   wake_lock_ = device_->CreateWakeLock();
   Sleep(kPowerOnDelay);
 
+  // On some units, HPS fails to start reliably after powering on. Detect and
+  // work around this by toggling the power gpio off and on again one extra
+  // time. See b/228917921.
+  if (!CheckMagic()) {
+    LOG(ERROR) << "Unable to read magic number after powering on, retrying...";
+    ShutDown();
+    wake_lock_ = device_->CreateWakeLock();
+    Sleep(kPowerOnDelay);
+    if (!CheckMagic()) {
+      hps_metrics_->SendHpsTurnOnResult(
+          HpsTurnOnResult::kPowerOnRecoveryFailed,
+          base::TimeTicks::Now() - this->boot_start_time_);
+      OnFatalError(FROM_HERE, "HPS device recovery failed");
+    } else {
+      LOG(INFO) << "HPS device recovered";
+      hps_metrics_->SendHpsTurnOnResult(
+          HpsTurnOnResult::kPowerOnRecoverySucceeded, base::TimeDelta());
+    }
+  }
+
   // Also send a reset cmd in case the kernel driver isn't present.
   if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
     OnFatalError(FROM_HERE, "Reboot failed");

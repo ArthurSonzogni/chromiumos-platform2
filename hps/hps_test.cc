@@ -356,6 +356,51 @@ TEST_F(HPSTest, NormalBoot) {
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
 }
 
+TEST_F(HPSTest, PowerOnRecoverySucceeded) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Make HPS initially fail to boot but recover after a power cycle.
+  fake_->SetPowerOnFailureCount(2);
+  EXPECT_CALL(
+      *metrics_,
+      SendHpsTurnOnResult(hps::HpsTurnOnResult::kPowerOnRecoverySucceeded, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
+      .Times(1);
+  hps_->Boot();
+}
+
+TEST_F(HPSTest, PowerOnRecoveryFailed) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Make HPS fail to boot enough times that hpsd gives up.
+  fake_->SetPowerOnFailureCount(3);
+
+  EXPECT_DEATH(
+      {
+        EXPECT_CALL(*metrics_,
+                    SendHpsTurnOnResult(
+                        hps::HpsTurnOnResult::kPowerOnRecoveryFailed, _))
+            .Times(1);
+        hps_->Boot();
+      },
+      "HPS device recovery failed");
+}
+
 /*
  * Test normal boot twice in a row, the device should boot if it is already
  * booted.

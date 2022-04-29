@@ -51,6 +51,8 @@ class FakeDev : public DevInterface {
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
   size_t BlockSizeBytes() override { return this->block_size_b_; }
+  std::unique_ptr<WakeLock> CreateWakeLock() override;
+
   void SkipBoot() { this->SetStage(Stage::kAppl); }
   void Set(Flags f) {
     this->flags_ |= static_cast<uint16_t>(1 << static_cast<int>(f));
@@ -69,10 +71,13 @@ class FakeDev : public DevInterface {
         (valid ? hps::RFeat::kValid : 0) | static_cast<uint8_t>(result);
   }
   size_t GetBankLen(hps::HpsBank bank);
+  void SetPowerOnFailureCount(int n) { power_on_failure_count_ = n; }
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
 
  private:
+  friend class FakeWakeLock;
+
   uint16_t ReadRegister(HpsReg r);
   void WriteRegister(HpsReg r, uint16_t v);
   bool WriteMemory(HpsBank bank, const uint8_t* mem, size_t len);
@@ -98,6 +103,8 @@ class FakeDev : public DevInterface {
   size_t block_size_b_ = 256;            // Write block size.
   uint16_t f0_result_ = 0;               // Register value for feature 0
   uint16_t f1_result_ = 0;               // Register value for feature 1
+  int wake_lock_count_ = 0;
+  int power_on_failure_count_ = 0;
 };
 
 }  // namespace hps

@@ -46,7 +46,9 @@ enum class HpsTurnOnResult {
   kSpiUpdateFailure = 11,
   kMcuUpdatedThenFailed = 12,
   kSpiUpdatedThenFailed = 13,
-  kMaxValue = kSpiUpdatedThenFailed,
+  kPowerOnRecoverySucceeded = 14,
+  kPowerOnRecoveryFailed = 15,
+  kMaxValue = kPowerOnRecoveryFailed,
 };
 
 class HpsMetricsInterface {

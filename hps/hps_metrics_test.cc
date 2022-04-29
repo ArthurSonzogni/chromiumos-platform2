@@ -70,6 +70,8 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
       HpsTurnOnResult::kSpiUpdateFailure,
       HpsTurnOnResult::kMcuUpdatedThenFailed,
       HpsTurnOnResult::kSpiUpdatedThenFailed,
+      HpsTurnOnResult::kPowerOnRecoverySucceeded,
+      HpsTurnOnResult::kPowerOnRecoveryFailed,
   };
   // Check that we have all the values of the enum
   ASSERT_EQ(all_results.size(),
@@ -86,6 +88,7 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
       case HpsTurnOnResult::kMcuVersionMismatch:
       case HpsTurnOnResult::kSpiNotVerified:
       case HpsTurnOnResult::kMcuNotVerified:
+      case HpsTurnOnResult::kPowerOnRecoverySucceeded:
         break;
       case HpsTurnOnResult::kStage1NotStarted:
       case HpsTurnOnResult::kApplNotStarted:
@@ -97,6 +100,7 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
       case HpsTurnOnResult::kSpiUpdateFailure:
       case HpsTurnOnResult::kMcuUpdatedThenFailed:
       case HpsTurnOnResult::kSpiUpdatedThenFailed:
+      case HpsTurnOnResult::kPowerOnRecoveryFailed:
         EXPECT_CALL(*GetMetricsLibraryMock(),
                     SendToUMA(kHpsBootFailedDuration, kDuration, _, _, _))
             .Times(1);

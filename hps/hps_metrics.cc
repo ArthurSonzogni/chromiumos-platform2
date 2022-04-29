@@ -73,6 +73,7 @@ bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result,
     case HpsTurnOnResult::kMcuVersionMismatch:
     case HpsTurnOnResult::kSpiNotVerified:
     case HpsTurnOnResult::kMcuNotVerified:
+    case HpsTurnOnResult::kPowerOnRecoverySucceeded:
       break;
     case HpsTurnOnResult::kStage1NotStarted:
     case HpsTurnOnResult::kApplNotStarted:
@@ -84,6 +85,7 @@ bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result,
     case HpsTurnOnResult::kSpiUpdateFailure:
     case HpsTurnOnResult::kMcuUpdatedThenFailed:
     case HpsTurnOnResult::kSpiUpdatedThenFailed:
+    case HpsTurnOnResult::kPowerOnRecoveryFailed:
       metrics_lib_->SendToUMA(kHpsBootFailedDuration,
                               static_cast<int>(duration.InMilliseconds()), 1,
                               kHpsBootMaxDurationMilliSeconds, 50);

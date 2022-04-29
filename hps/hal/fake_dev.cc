@@ -19,7 +19,25 @@
 
 namespace hps {
 
+class FakeWakeLock : public WakeLock {
+ public:
+  explicit FakeWakeLock(FakeDev& dev) : dev_(dev) { dev_.wake_lock_count_++; }
+
+  ~FakeWakeLock() override {
+    dev_.wake_lock_count_--;
+    DCHECK_GE(dev_.wake_lock_count_, 0);
+    if (!dev_.wake_lock_count_ && dev_.power_on_failure_count_)
+      dev_.power_on_failure_count_--;
+  }
+
+ private:
+  FakeDev& dev_;
+};
+
 bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
+  DCHECK(wake_lock_count_);
+  if (power_on_failure_count_)
+    return false;
   // Clear the whole buffer.
   memset(data, 0, len);
   if ((cmd & 0x80) != 0) {
@@ -40,6 +58,9 @@ bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
 }
 
 bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
+  DCHECK(wake_lock_count_);
+  if (power_on_failure_count_)
+    return false;
   if ((cmd & 0x80) != 0) {
     if (len != 0) {
       // Register write.
@@ -288,6 +309,10 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
 
 size_t FakeDev::GetBankLen(hps::HpsBank bank) {
   return this->bank_len_[bank];
+}
+
+std::unique_ptr<WakeLock> FakeDev::CreateWakeLock() {
+  return std::make_unique<FakeWakeLock>(*this);
 }
 
 }  // namespace hps
