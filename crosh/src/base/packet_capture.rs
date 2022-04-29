@@ -210,6 +210,9 @@ fn execute_packet_capture_helper(
         )
         .map_err(|err| {
             eprintln!("ERROR: Got unexpected result: {}", err);
+            if let Err(err) = copy(&mut read_pipe, &mut stdout()) {
+                eprintln!("ERROR: Failed to print the output: {}", err);
+            }
             STOP_FLAG.store(true, Ordering::Release);
             clear_signal_handlers(&[SIGINT]);
             dispatcher::Error::CommandReturnedError
