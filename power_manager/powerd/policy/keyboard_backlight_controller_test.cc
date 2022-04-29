@@ -123,6 +123,30 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     return percent;
   }
 
+  void CallSetKeyboardBacklightToggledOff(bool toggled_off) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kSetKeyboardBacklightToggledOffMethod);
+    dbus::MessageWriter(&method_call).AppendBool(toggled_off);
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
+  }
+
+  bool CallGetKeyboardBacklightToggledOff() {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kGetKeyboardBacklightToggledOffMethod);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    if (!response) {
+      ADD_FAILURE() << kGetKeyboardBrightnessPercentMethod << " call failed";
+      return false;
+    }
+
+    bool toggled_off = false;
+    if (!dbus::MessageReader(response.get()).PopBool(&toggled_off))
+      ADD_FAILURE() << "Bad " << kGetKeyboardBacklightToggledOffMethod
+                    << " arg";
+    return toggled_off;
+  }
+
   BacklightControllerStub display_backlight_controller_;
 
   // Max and initial brightness levels for |backlight_|.
@@ -737,6 +761,51 @@ TEST_F(KeyboardBacklightControllerTest, ForcedOff) {
   controller_.SetForcedOff(false);
   EXPECT_GT(backlight_.current_level(), 0);
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+}
+
+TEST_F(KeyboardBacklightControllerTest, ToggledOff) {
+  // Initial brightness is zero.
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+  ASSERT_EQ(backlight_.current_level(), 0);
+
+  // Increase the brightness twice, as if the user did two increases with the
+  // keyboard.
+  CallIncreaseKeyboardBrightness();
+  CallIncreaseKeyboardBrightness();
+  EXPECT_EQ(backlight_.current_level(), 40);
+
+  // Toggle KBL off, brightness should now be zero.
+  CallSetKeyboardBacklightToggledOff(true);
+  EXPECT_TRUE(CallGetKeyboardBacklightToggledOff());
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+
+  // Toggle KBL on, brightness should now be what it was before we toggled off.
+  CallSetKeyboardBacklightToggledOff(false);
+  EXPECT_FALSE(CallGetKeyboardBacklightToggledOff());
+  EXPECT_EQ(backlight_.current_level(), 40);
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+
+  // "Manually" turn the brightness all the way down.
+  while (backlight_.current_level() > 0) {
+    CallDecreaseKeyboardBrightness();
+  }
+  EXPECT_EQ(backlight_.current_level(), 0);
+
+  // Toggle KBL off, brightness should now be zero.
+  CallSetKeyboardBacklightToggledOff(true);
+  EXPECT_TRUE(CallGetKeyboardBacklightToggledOff());
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+
+  // Toggle KBL on, brightness should now be the value of the first user step,
+  // as if the user did one increase.
+  CallSetKeyboardBacklightToggledOff(false);
+  EXPECT_FALSE(CallGetKeyboardBacklightToggledOff());
+  EXPECT_EQ(backlight_.current_level(), 10);
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {

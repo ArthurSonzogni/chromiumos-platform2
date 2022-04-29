@@ -547,6 +547,11 @@ void KeyboardBacklightController::HandleGetBrightnessRequest(
 }
 
 void KeyboardBacklightController::HandleSetToggledOffRequest(bool toggled_off) {
+  // If going from toggled off to toggled on and user had brightness set to 0,
+  // toggle on via a brightness increase.
+  if (toggled_off_ && !toggled_off && user_step_index_ == 0)
+    return HandleIncreaseBrightnessRequest();
+
   SetToggledOff(toggled_off);
 }
 
