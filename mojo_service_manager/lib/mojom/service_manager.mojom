@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// API exposed by the Chrome OS mojo service manager.
+// API exposed by the ChromeOS mojo service manager.
 
 // NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
-// src/chromeos/services/mojo_service_manager/public/mojom/service_manager.mojom
+// src/chromeos/components/mojo_service_manager/mojom/mojo_service_manager.mojom
 
 module chromeos.mojo_service_manager.mojom;
 
