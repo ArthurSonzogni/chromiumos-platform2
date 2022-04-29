@@ -55,7 +55,7 @@ class ReportQueueImpl : public ReportQueue {
   void Flush(Priority priority, FlushCallback callback) override;
 
   // Dummy implementation for a regular queue.
-  base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
+  [[nodiscard]] base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
   PrepareToAttachActualQueue() const override;
 
  protected:
@@ -71,7 +71,8 @@ class ReportQueueImpl : public ReportQueue {
                            Priority priority,
                            EnqueueCallback callback) const;
 
-  reporting::Record AugmentRecord(base::StringPiece record_data) const;
+  [[nodiscard]] reporting::Record AugmentRecord(
+      base::StringPiece record_data) const;
 
   std::unique_ptr<ReportQueueConfiguration> config_;
   scoped_refptr<StorageModuleInterface> storage_;
@@ -94,7 +95,7 @@ class SpeculativeReportQueueImpl : public ReportQueue {
 
   // Provides a callback to attach initialized actual queue to the speculative
   // queue.
-  base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
+  [[nodiscard]] base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
   PrepareToAttachActualQueue() const override;
 
   // Substitutes actual queue to the speculative, when ready.
