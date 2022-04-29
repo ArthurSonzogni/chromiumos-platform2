@@ -672,6 +672,37 @@
   </event>
 </project>
 
+<project name="WiFiAP">
+  <owner>druth@google.com</owner>
+  <owner>matthewmwang@chromium.org</owner>
+  <owner>norvez@chromium.org</owner>
+  <owner>cros-network-metrics@google.com</owner>
+  <id>none</id>
+  <summary>
+    Information (e.g. OUI) about the AP we're connected to. Different project
+    from the main "WiFi" project to meet privacy requirements.
+  </summary>
+  <event name="WiFiAPInfo">
+    <summary>
+      Records information about the AP the device is attempting to connect to.
+    </summary>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="APOUI" type="int">
+      <summary>
+        OUI of the AP we're connecting to.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="WiFi">
   <owner>druth@google.com</owner>
   <owner>matthewmwang@chromium.org</owner>
