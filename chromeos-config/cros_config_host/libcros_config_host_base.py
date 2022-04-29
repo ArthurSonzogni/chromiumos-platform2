@@ -490,6 +490,20 @@ class CrosConfigBaseImpl(object):
     # image-name without also having a coreboot image
     return config.GetProperty('/firmware', 'image-name')
 
+  def _GetFirmwareFilter(self):
+    """Get the name of firmware build targets to filter on
+
+    Extract the comma-separated list of firmware targets from the FW_NAME
+    environment variable.
+
+    Returns:
+      A list of firmware build targets
+    """
+    fw_name = os.getenv('FW_NAME')
+    if fw_name:
+      return [s.strip() for s in fw_name.split(',')]
+    return []
+
   def GetFirmwareBuildTargets(self, target_type):
     """Returns a list of all firmware build-targets of the given target type.
 
@@ -499,7 +513,7 @@ class CrosConfigBaseImpl(object):
     Returns:
       A list of all build-targets of the given type, for all models.
     """
-    firmware_filter = os.getenv('FW_NAME')
+    firmware_filter = self._GetFirmwareFilter()
     build_targets = []
     for device in self.GetDeviceConfigs():
       device_targets = device.GetProperties('/firmware/build-targets')
@@ -509,7 +523,7 @@ class CrosConfigBaseImpl(object):
 
       key = self._GetFirmwareGroupingName(device)
 
-      if firmware_filter and key != firmware_filter:
+      if firmware_filter and key not in firmware_filter:
         continue
       if target_type in device_targets:
         build_targets.append(device_targets[target_type])
@@ -536,7 +550,7 @@ class CrosConfigBaseImpl(object):
     Raises:
       ValueError if a collision is encountered for named combinations.
     """
-    firmware_filter = os.getenv('FW_NAME')
+    firmware_filter = self._GetFirmwareFilter()
 
     combos = OrderedDict()
     for device in self.GetDeviceConfigs():
@@ -548,7 +562,7 @@ class CrosConfigBaseImpl(object):
 
       key = self._GetFirmwareGroupingName(device)
 
-      if firmware_filter and key != firmware_filter:
+      if firmware_filter and key not in firmware_filter:
         continue
 
       if key in combos and targets != combos[key]:
