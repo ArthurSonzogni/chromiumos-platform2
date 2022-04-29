@@ -20,6 +20,8 @@ class TRUNKS_EXPORT ResponseSerializer {
   // Serializes `rc` into a TPM command header.
   virtual void SerializeHeaderOnlyResponse(TPM_RC rc,
                                            std::string* response) = 0;
+
+  // Serializes the response for `TPM2_GetCapability`.
   virtual void SerializeResponseGetCapability(
       TPMI_YES_NO has_more,
       const TPMS_CAPABILITY_DATA& cap_data,
