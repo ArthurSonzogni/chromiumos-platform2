@@ -113,6 +113,7 @@ _IUSE = [
     'ondevice_speech',
     'ondevice_text_suggestions',
     'opengles',
+    'os_install_service',
     'passive_metrics',
     'pinweaver',
     'pinweaver_csme',

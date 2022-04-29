@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/process/launch.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
@@ -27,6 +28,30 @@ namespace {
 constexpr char kLogToStderrSwitch[] = "log_to_stderr";
 constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 
+constexpr char kIsRunningFromInstaller[] = "is_running_from_installer";
+constexpr char kInstallerYes[] = "yes\n";
+
+bool PreformPreinit() {
+  if (base::PathExists(base::FilePath(kNoPreinitFlagFile))) {
+    return false;
+  }
+
+  if (USE_OS_INSTALL_SERVICE) {
+    // We should not preinit the TPM if we are running the OS from the
+    // installer.
+    std::string output;
+    if (!base::GetAppOutput({kIsRunningFromInstaller}, &output)) {
+      LOG(ERROR) << "Failed to run is_running_from_installer";
+    }
+
+    if (output == kInstallerYes) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -39,7 +64,7 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(flags);
 
   tpm_manager::LocalDataStoreImpl local_data_store;
-  bool perform_preinit = !base::PathExists(base::FilePath(kNoPreinitFlagFile));
+  bool perform_preinit = PreformPreinit();
 
   std::unique_ptr<tpm_manager::TpmManagerService> tpm_manager_service{
       new tpm_manager::TpmManagerService(perform_preinit, &local_data_store)};
