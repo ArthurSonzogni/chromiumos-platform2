@@ -65,9 +65,6 @@ constexpr double kProgressFlushOutVpdCache = 0.7;
 constexpr double kProgressResetGbbFlags = 0.8;
 constexpr double kProgressSetBoardId = kProgressComplete;
 
-// crossystem HWWP property name.
-constexpr char kHwwpProperty[] = "wpsw_cur";
-
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kTestBoardIdType[] = "5a5a4352";  // ZZCR.
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
@@ -562,8 +559,7 @@ void ProvisionDeviceStateHandler::Reboot() {
 
 bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
   int hwwp_status;
-  return (crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
-          hwwp_status == 0);
+  return (crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0);
 }
 
 }  // namespace rmad

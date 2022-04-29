@@ -44,9 +44,6 @@ namespace {
 constexpr char kTestModelName[] = "TestModelName";
 constexpr uint32_t kTestSSFC = 0x1234;
 
-// crossystem HWWP property name.
-constexpr char kHwwpProperty[] = "wpsw_cur";
-
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kValidBoardIdType[] = "12345678";
 constexpr char kInvalidBoardIdType[] = "5a5a4352";  // ZZCR.
@@ -79,7 +76,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       bool set_ssfc = true,
       bool set_stable_dev_secret = true,
       bool flush_vpd = true,
-      bool hw_wp_enabled = false,
+      bool hwwp_enabled = false,
       bool reset_gbb_success = true,
       bool board_id_read_success = true,
       const std::string& board_id_type = kValidBoardIdType,
@@ -147,8 +144,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
-    ON_CALL(*mock_crossystem_utils, GetInt(Eq(kHwwpProperty), _))
-        .WillByDefault(DoAll(SetArgPointee<1>(hw_wp_enabled), Return(true)));
+    ON_CALL(*mock_crossystem_utils,
+            GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
+        .WillByDefault(DoAll(SetArgPointee<1>(hwwp_enabled), Return(true)));
 
     // Mock |IioSensorProbeUtils|.
     auto mock_iio_sensor_probe_utils =
