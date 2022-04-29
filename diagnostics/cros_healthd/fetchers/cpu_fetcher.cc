@@ -549,13 +549,11 @@ mojo_ipc::VirtualizationInfoPtr GetVirtualizationInfo(
 
   return virtualization;
 }
+}  // namespace
 
-// Aggregates data from |processor_info| and |logical_ids_to_stat_contents| to
-// form the final CpuResultPtr. It's assumed that all CPUs on the device share
-// the same |architecture|.
-mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
-    const base::FilePath& root_dir,
-    mojo_ipc::CpuArchitectureEnum architecture) {
+mojo_ipc::CpuResultPtr CpuFetcher::GetCpuInfoFromProcessorInfo() {
+  base::FilePath root_dir = context_->root_dir();
+
   std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
       GetParsedStatContents(root_dir);
   if (parsed_stat_contents == std::nullopt) {
@@ -666,7 +664,7 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     return mojo_ipc::CpuResult::NewError(std::move(thread_error.value()));
   }
 
-  cpu_info.architecture = architecture;
+  cpu_info.architecture = GetArchitecture();
   auto& keylocker_info = cpu_info.keylocker_info;
   auto error = FetchKeylockerInfo(root_dir, &keylocker_info);
   if (error.has_value())
@@ -698,8 +696,6 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
 
   return mojo_ipc::CpuResult::NewCpuInfo(cpu_info.Clone());
 }
-
-}  // namespace
 
 base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
                                       int logical_id) {
@@ -761,8 +757,7 @@ void CpuFetcher::FetchImpl(ResultCallback callback) {
                      weak_factory_.GetWeakPtr(),
                      /*all_callback_called=*/false)};
 
-  mojo_ipc::CpuResultPtr cpu_result =
-      GetCpuInfoFromProcessorInfo(context_->root_dir(), GetArchitecture());
+  mojo_ipc::CpuResultPtr cpu_result = GetCpuInfoFromProcessorInfo();
   if (cpu_result->is_error()) {
     // TODO(b/230046339): Use LogAndSetError after refactor
     // GetCpuInfoFromProcessorInfo.
