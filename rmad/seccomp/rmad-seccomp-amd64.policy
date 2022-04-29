@@ -29,8 +29,9 @@ fcntl: 1
 iopl: 1
 stat: 1
 
-# Required for base::ThreadPoolInstance::CreateAndStartWithDefaultParams.
-prctl: arg0 == PR_SET_NAME
+# PR_SET_NAME     for base::ThreadPoolInstance::CreateAndStartWithDefaultParams.
+# PR_SET_KEEPCAPS for /usr/share/vboot/bin/set_gbb_flags.sh.
+prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS
 execve: 1
 arch_prctl: 1
 unlink: 1
@@ -124,3 +125,5 @@ sysinfo: 1
 getgroups: 1
 getpgrp: 1
 sigaltstack: 1
+fadvise64: 1
+unlinkat: 1

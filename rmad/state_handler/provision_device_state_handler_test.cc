@@ -21,6 +21,7 @@
 #include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
+#include "rmad/utils/mock_cmd_utils.h"
 #include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
@@ -79,6 +80,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       bool set_stable_dev_secret = true,
       bool flush_vpd = true,
       bool hw_wp_enabled = false,
+      bool reset_gbb_success = true,
       bool board_id_read_success = true,
       const std::string& board_id_type = kValidBoardIdType,
       const std::string& board_id_flags = kPvtBoardIdFlags,
@@ -100,6 +102,11 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |CbiUtils|.
     auto mock_cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
     ON_CALL(*mock_cbi_utils, SetSSFC(_)).WillByDefault(Return(set_ssfc));
+
+    // Mock |CmdUtils|.
+    auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
+    ON_CALL(*mock_cmd_utils, GetOutput(_, _))
+        .WillByDefault(Return(reset_gbb_success));
 
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
@@ -174,8 +181,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     return base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, std::move(mock_power_manager_client),
-        std::move(mock_cbi_utils), std::move(mock_cr50_utils),
-        std::move(mock_cros_config_utils), std::move(mock_crossystem_utils),
+        std::move(mock_cbi_utils), std::move(mock_cmd_utils),
+        std::move(mock_cr50_utils), std::move(mock_cros_config_utils),
+        std::move(mock_crossystem_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_ssfc_utils),
         std::move(mock_vpd_utils));
   }
@@ -366,7 +374,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
       kPvtBoardIdFlags,
       {RMAD_COMPONENT_LID_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
@@ -436,7 +444,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
       kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
@@ -506,7 +514,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
       kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_LID_GYROSCOPE});
@@ -578,7 +586,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
       kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_BASE_GYROSCOPE});
@@ -900,9 +908,27 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_CannotReadBoardIdBlocking) {
+       GetNextStateCase_ResetGbbFlagsFailedBlocking) {
   auto handler =
       CreateStateHandler(true, true, true, true, true, true, false, false);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_GBB);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_CannotReadBoardIdBlocking) {
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, false);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -920,7 +946,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_InvalidBoardIdTypeBlocking) {
   auto handler = CreateStateHandler(true, true, true, true, true, true, false,
-                                    true, kInvalidBoardIdType);
+                                    true, true, kInvalidBoardIdType);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -936,9 +962,10 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_DefaultBoardId_NotCustomLabel_Success) {
-  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
-                                    true, kEmptyBoardIdType, kPvtBoardIdFlags);
+       GetNextStateCase_EmptyBoardIdType_NotCustomLabel_Success) {
+  auto handler =
+      CreateStateHandler(true, true, true, true, true, true, false, true, true,
+                         kEmptyBoardIdType, kPvtBoardIdFlags);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -952,9 +979,9 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_DefaultBoardId_CustomLabel_Success) {
+       GetNextStateCase_EmptyBoardIdType_CustomLabel_Success) {
   auto handler =
-      CreateStateHandler(true, true, true, true, true, true, false, true,
+      CreateStateHandler(true, true, true, true, true, true, false, true, true,
                          kEmptyBoardIdType, kCustomLabelPvtBoardIdFlags);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);

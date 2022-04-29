@@ -66,6 +66,8 @@ void EnterMinijail() {
   minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
   minijail_bind(j.get(), "/sys/bus", "/sys/bus", 0);
 
+  minijail_bind(j.get(), "/usr/share/vboot", "/usr/share/vboot", 0);
+
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
   minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/rma-data",

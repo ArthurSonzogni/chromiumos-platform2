@@ -20,6 +20,7 @@
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils.h"
+#include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/crossystem_utils.h"
@@ -41,13 +42,15 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cbi_utils_|, |cr50_utils_|, |cros_config_utils_|,
-  // |power_manager_client_|, |ssfc_utils_|, and |vpd_utils_| for testing.
+  // Used to inject mock |cbi_utils_|, |cmd_utils_|, |cr50_utils_|,
+  // |cros_config_utils_|, |power_manager_client_|, |ssfc_utils_|, and
+  // |vpd_utils_| for testing.
   ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
+      std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
@@ -97,6 +100,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   ProvisionStatus status_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CbiUtils> cbi_utils_;
+  std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
