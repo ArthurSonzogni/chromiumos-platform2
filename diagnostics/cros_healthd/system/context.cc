@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
+#include <fwupd/dbus-proxies.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
@@ -33,6 +34,8 @@
 
 namespace diagnostics {
 namespace {
+
+constexpr char kFwupdServiceName[] = "org.freedesktop.fwupd";
 
 mojo::PendingRemote<mojom::Executor> SendInvitationAndConnectToExecutor(
     mojo::PlatformChannelEndpoint endpoint) {
@@ -84,6 +87,8 @@ std::unique_ptr<Context> Context::Create(
       std::make_unique<org::chromium::debugdProxy>(dbus_bus);
   context->debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
       std::make_unique<org::chromium::debugdProxy>(dbus_bus));
+  context->fwupd_proxy_ = std::make_unique<org::freedesktop::fwupdProxy>(
+      dbus_bus, kFwupdServiceName);
   context->powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
   context->tpm_manager_proxy_ =
       std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
@@ -141,6 +146,10 @@ org::chromium::debugdProxyInterface* Context::debugd_proxy() const {
 
 org::chromium::cras::ControlProxyInterface* Context::cras_proxy() const {
   return cras_proxy_.get();
+}
+
+org::freedesktop::fwupdProxyInterface* Context::fwupd_proxy() const {
+  return fwupd_proxy_.get();
 }
 
 DebugdAdapter* Context::debugd_adapter() const {

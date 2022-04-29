@@ -10,6 +10,7 @@
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
+#include <fwupd/dbus-proxy-mocks.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
@@ -25,6 +26,8 @@ MockContext::MockContext() {
       testing::StrictMock<org::chromium::cras::ControlProxyMock>>();
   debugd_proxy_ =
       std::make_unique<testing::StrictMock<org::chromium::debugdProxyMock>>();
+  fwupd_proxy_ =
+      std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
   debugd_adapter_ = std::make_unique<testing::StrictMock<MockDebugdAdapter>>();
   internal_service_factory_relay_ =
       std::make_unique<MockMojoRelay<chromeos::cros_healthd::internal::mojom::
@@ -80,6 +83,11 @@ org::chromium::cras::ControlProxyMock* MockContext::mock_cras_proxy() const {
   return static_cast<
       testing::StrictMock<org::chromium::cras::ControlProxyMock>*>(
       cras_proxy_.get());
+}
+
+org::freedesktop::fwupdProxyMock* MockContext::mock_fwupd_proxy() const {
+  return static_cast<testing::StrictMock<org::freedesktop::fwupdProxyMock>*>(
+      fwupd_proxy_.get());
 }
 
 MockDebugdAdapter* MockContext::mock_debugd_adapter() const {

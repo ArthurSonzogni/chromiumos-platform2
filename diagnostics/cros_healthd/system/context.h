@@ -45,6 +45,10 @@ namespace cras {
 class ControlProxyInterface;
 }  // namespace cras
 }  // namespace chromium
+
+namespace freedesktop {
+class fwupdProxyInterface;
+}  // namespace freedesktop
 }  // namespace org
 
 namespace diagnostics {
@@ -89,6 +93,9 @@ class Context {
   // Use the object returned by cras_proxy() to communicate with cras daemon
   // through dbus.
   org::chromium::cras::ControlProxyInterface* cras_proxy() const;
+  // Use the object returned by fwupd_proxy() to communicate with fwupd through
+  // dbus.
+  org::freedesktop::fwupdProxyInterface* fwupd_proxy() const;
   // Use the object returned by debugd_adapter() to make calls to debugd.
   // Example: cros_healthd calls out to debugd with async callbacks when it
   // needs to trigger nvme self-test or collect data like progress info.
@@ -156,6 +163,7 @@ class Context {
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
+  std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
   std::unique_ptr<MojoRelay<chromeos::cros_healthd::internal::mojom::
                                 CrosHealthdInternalServiceFactory>>
       internal_service_factory_relay_;

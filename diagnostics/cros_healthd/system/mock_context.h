@@ -38,6 +38,10 @@ namespace cras {
 class ControlProxyMock;
 }  // namespace cras
 }  // namespace chromium
+
+namespace freedesktop {
+class fwupdProxyMock;
+}  // namespace freedesktop
 }  // namespace org
 
 namespace diagnostics {
@@ -61,6 +65,7 @@ class MockContext final : public Context {
   brillo::FakeCrosConfig* fake_cros_config() const;
   org::chromium::debugdProxyMock* mock_debugd_proxy() const;
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
+  org::freedesktop::fwupdProxyMock* mock_fwupd_proxy() const;
   MockDebugdAdapter* mock_debugd_adapter() const;
   MockMojoRelay<chromeos::cros_healthd::internal::mojom::
                     CrosHealthdInternalServiceFactory>*
