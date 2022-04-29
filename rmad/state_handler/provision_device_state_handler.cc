@@ -29,10 +29,12 @@
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
+#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/fake_cbi_utils.h"
+#include "rmad/utils/fake_cr50_utils.h"
 #include "rmad/utils/fake_cros_config_utils.h"
 #include "rmad/utils/fake_crossystem_utils.h"
 #include "rmad/utils/fake_iio_sensor_probe_utils.h"
@@ -54,13 +56,18 @@ constexpr double kProgressFailedBlocking = -2.0;
 constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetDestination = 0.3;
 constexpr double kProgressGetModelName = 0.5;
-constexpr double kProgressGetSSFC = 0.7;
-constexpr double kProgressWriteSSFC = 0.8;
-constexpr double kProgressUpdateStableDeviceSecret = 0.9;
-constexpr double kProgressFlushOutVpdCache = kProgressComplete;
+constexpr double kProgressGetSSFC = 0.6;
+constexpr double kProgressWriteSSFC = 0.7;
+constexpr double kProgressUpdateStableDeviceSecret = 0.8;
+constexpr double kProgressFlushOutVpdCache = 0.9;
+constexpr double kProgressSetBoardId = kProgressComplete;
 
 // crossystem HWWP property name.
 constexpr char kHwwpProperty[] = "wpsw_cur";
+
+constexpr char kEmptyBoardIdType[] = "ffffffff";
+constexpr char kTestBoardIdType[] = "5a5a4352";  // ZZCR.
+constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
 
 }  // namespace
 
@@ -77,6 +84,7 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
           daemon_callback,
           std::make_unique<fake::FakePowerManagerClient>(working_dir_path),
           std::make_unique<fake::FakeCbiUtils>(working_dir_path),
+          std::make_unique<fake::FakeCr50Utils>(working_dir_path),
           std::make_unique<fake::FakeCrosConfigUtils>(),
           std::make_unique<fake::FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<fake::FakeIioSensorProbeUtils>(),
@@ -94,6 +102,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
@@ -109,6 +118,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
+    std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
@@ -117,6 +127,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
+      cr50_utils_(std::move(cr50_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
@@ -373,8 +384,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressGetDestination,
-               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+               kProgressGetDestination);
 
   std::string model_name;
   if (!cros_config_utils_->GetModelName(&model_name)) {
@@ -385,8 +395,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressGetModelName,
-               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+               kProgressGetModelName);
 
   bool need_to_update_ssfc = false;
   uint32_t ssfc;
@@ -397,7 +406,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressGetSSFC, ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+               kProgressGetSSFC);
 
   if (need_to_update_ssfc && !cbi_utils_->SetSSFC(ssfc)) {
     if (IsHwwpDisabled()) {
@@ -431,8 +440,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
       return;
     }
     UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-                 kProgressUpdateStableDeviceSecret,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+                 kProgressUpdateStableDeviceSecret);
     // TODO(genechang): Reset fingerprint sensor here."
   }
 
@@ -449,9 +457,53 @@ void ProvisionDeviceStateHandler::RunProvision() {
     }
     return;
   }
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressFlushOutVpdCache);
+
+  // Set cr50 board ID if it is not set yet.
+  std::string board_id_type, board_id_flags;
+  if (!cr50_utils_->GetBoardIdType(&board_id_type)) {
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+    return;
+  }
+  if (board_id_type == kEmptyBoardIdType) {
+    bool is_custom_label = false;
+    if (cr50_utils_->GetBoardIdFlags(&board_id_flags) &&
+        board_id_flags == kCustomLabelPvtBoardIdFlags) {
+      is_custom_label = true;
+      // TODO(chenghan): Custom label board ID flags should not be used on a
+      //                 non custom label device, but technically cr50 still
+      //                 works. Record a metric for it.
+      if (!cros_config_utils_->IsCustomLabel()) {
+        LOG(ERROR) << "Cr50 board ID flags for custom label should not be used "
+                   << "on a non custom label device";
+      }
+    } else {
+      // TODO(chenghan): This is a security violation. Record a metric for it.
+      LOG(ERROR) << "Cr50 board ID type is empty in RMA";
+    }
+    if (!cr50_utils_->SetBoardId(is_custom_label)) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+      return;
+    }
+  } else if (board_id_type == kTestBoardIdType) {
+    // TODO(chenghan): Test board ID is not allowed in RMA. Record a metrics for
+    //                 it.
+    LOG(ERROR) << "Cr50 board ID type cannot be ZZCR in RMA";
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+    return;
+  }
+
+  // TODO(chenghan): Clear GBB.
+
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
-               kProgressFlushOutVpdCache,
-               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+               kProgressSetBoardId);
 }
 
 void ProvisionDeviceStateHandler::UpdateStatus(ProvisionStatus::Status status,

@@ -25,6 +25,7 @@ source_set("libutils") {
     "cmd_utils_impl.cc",
     "component_utils.cc",
     "cr50_utils_impl.cc",
+    "cros_config_utils.cc",
     "cros_config_utils_impl.cc",
     "crossystem_utils_impl.cc",
     "dbus_utils.cc",

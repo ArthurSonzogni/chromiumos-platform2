@@ -51,15 +51,20 @@ mount: 1
 geteuid: 1
 sendmsg: 1
 
-# CROS_EC_DEV_IOCRDMEM    = 0xc0103a01
-# CROS_EC_DEV_IOCXCMD     = 0xc0283a00
-# CROS_EC_DEV_IOCRDMEM_V2 = 0xc108ec01
-# CROS_EC_DEV_IOCXCMD_V2  = 0xc014ec00
+# CROS_EC_DEV_IOCRDMEM                      = 0xc0103a01
+# CROS_EC_DEV_IOCXCMD                       = 0xc0283a00
+# CROS_EC_DEV_IOCRDMEM_V2                   = 0xc108ec01
+# CROS_EC_DEV_IOCXCMD_V2                    = 0xc014ec00
+# _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) = 0xc0283a00
+#
+# Driver type 0x3a (":") = CROS_EC_DEV_IOC
+# (Old iotcl format, used by ChromeOS 3.18 and older)
+#
 # Please refer to src/platform/ec/util/cros_ec_dev.h for more info
 ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
        arg1 == SIOCSIFFLAGS || arg1 == 0xc0103a01 || \
        arg1 == 0xc0283a00 || arg1 == 0xc108ec01 || \
-       arg1 == 0xc014ec00
+       arg1 == 0xc014ec00 || arg1 == 0xc0283a00
 set_tid_address: 1
 poll: 1
 pipe: 1
@@ -116,3 +121,6 @@ eventfd2: 1
 memfd_create: 1
 fdatasync: 1
 sysinfo: 1
+getgroups: 1
+getpgrp: 1
+sigaltstack: 1

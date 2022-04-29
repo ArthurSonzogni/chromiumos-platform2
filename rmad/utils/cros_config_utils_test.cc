@@ -71,6 +71,41 @@ constexpr char kCrosConfigJson[] =
       }
     })";
 
+constexpr char kCrosConfigJson2[] =
+    R"({
+      "chromeos": {
+        "configs": [
+          {
+            "name": "TestModelName",
+            "identity": {
+              "sku-id": 1234567890
+            }
+          },
+          {
+            "name": "TestModelName-1",
+            "identity": {
+              "sku-id": 1111111111,
+              "custom-label-tag": "TestCustomLabelTag-1"
+            }
+          },
+          {
+            "name": "TestModelName-1",
+            "identity": {
+              "sku-id": 1111111112,
+              "custom-label-tag": "TestCustomLabelTag"
+            }
+          },
+          {
+            "name": "TestModelName-1",
+            "identity": {
+              "sku-id": 1111111113,
+              "custom-label-tag": "TestCustomLabelTag-2"
+            }
+          }
+        ]
+      }
+    })";
+
 // The first option of the WL list is always an empty string.
 const std::vector<std::string> kTargetCustomLabelTagList = {
     "TestCustomLabelTag", "TestCustomLabelTag-2"};
@@ -99,6 +134,19 @@ class CrosConfigUtilsImplTest : public testing::Test {
     fake_cros_config->SetString(
         std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
         kCrosIdentityCustomLabelTagKey, kCustomLabelTag);
+
+    return std::make_unique<CrosConfigUtilsImpl>(
+        cros_config_path.MaybeAsASCII(), std::move(fake_cros_config));
+  }
+
+  std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtilsWithoutCustomLabel() {
+    auto cros_config_path = CreateInputFile(
+        kJsonStoreFileName, kCrosConfigJson2, std::size(kCrosConfigJson2) - 1);
+    auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
+    fake_cros_config->SetString(kCrosRootKey, kCrosModelNameKey, kModelName);
+    fake_cros_config->SetString(
+        std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
+        kCrosIdentitySkuKey, kSkuIdStr);
 
     return std::make_unique<CrosConfigUtilsImpl>(
         cros_config_path.MaybeAsASCII(), std::move(fake_cros_config));
@@ -148,6 +196,26 @@ TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTagList_Success) {
   std::vector<std::string> custom_label_tag_list;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
   EXPECT_EQ(custom_label_tag_list, kTargetCustomLabelTagList);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetEmptyCustomLabelTagList_Success) {
+  auto cros_config_utils = CreateCrosConfigUtilsWithoutCustomLabel();
+
+  std::vector<std::string> custom_label_tag_list;
+  EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
+  EXPECT_TRUE(custom_label_tag_list.empty());
+}
+
+TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_True) {
+  auto cros_config_utils = CreateCrosConfigUtils();
+
+  EXPECT_TRUE(cros_config_utils->IsCustomLabel());
+}
+
+TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_False) {
+  auto cros_config_utils = CreateCrosConfigUtilsWithoutCustomLabel();
+
+  EXPECT_FALSE(cros_config_utils->IsCustomLabel());
 }
 
 namespace fake {
@@ -218,6 +286,10 @@ TEST_F(FakeCrosConfigUtilsTest, GetCustomLabelTagList_Success) {
 
 TEST_F(FakeCrosConfigUtilsTest, GetCustomLabelTagList_Nullptr) {
   EXPECT_DEATH(fake_cros_config_utils_->GetCustomLabelTagList(nullptr), "");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, IsCustomLabelTag_Success) {
+  EXPECT_TRUE(fake_cros_config_utils_->IsCustomLabel());
 }
 
 }  // namespace fake

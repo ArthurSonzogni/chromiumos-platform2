@@ -21,6 +21,7 @@
 #include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
+#include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
@@ -44,6 +45,12 @@ constexpr uint32_t kTestSSFC = 0x1234;
 
 // crossystem HWWP property name.
 constexpr char kHwwpProperty[] = "wpsw_cur";
+
+constexpr char kEmptyBoardIdType[] = "ffffffff";
+constexpr char kValidBoardIdType[] = "12345678";
+constexpr char kInvalidBoardIdType[] = "5a5a4352";  // ZZCR.
+constexpr char kPvtBoardIdFlags[] = "00007f80";
+constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
 
 }  // namespace
 
@@ -72,6 +79,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       bool set_stable_dev_secret = true,
       bool flush_vpd = true,
       bool hw_wp_enabled = false,
+      bool board_id_read_success = true,
+      const std::string& board_id_type = kValidBoardIdType,
+      const std::string& board_id_flags = kPvtBoardIdFlags,
       const std::set<RmadComponent>& probed_components = {
           RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
           RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE}) {
@@ -88,46 +98,74 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         .WillByDefault(DoAll(Assign(&reboot_called_, true), Return(true)));
 
     // Mock |CbiUtils|.
-    auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
+    auto mock_cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
+    ON_CALL(*mock_cbi_utils, SetSSFC(_)).WillByDefault(Return(set_ssfc));
+
+    // Mock |Cr50Utils|.
+    auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
+    if (board_id_read_success) {
+      ON_CALL(*mock_cr50_utils, GetBoardIdType(_))
+          .WillByDefault(DoAll(SetArgPointee<0>(board_id_type), Return(true)));
+      ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
+          .WillByDefault(DoAll(SetArgPointee<0>(board_id_flags), Return(true)));
+    } else {
+      ON_CALL(*mock_cr50_utils, GetBoardIdType(_)).WillByDefault(Return(false));
+      ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
+          .WillByDefault(Return(false));
+    }
+    ON_CALL(*mock_cr50_utils, SetBoardId(_))
+        .WillByDefault(
+            Invoke([board_id_type, board_id_flags](bool is_custom_label) {
+              if (board_id_type != kEmptyBoardIdType) {
+                return false;
+              }
+              if (is_custom_label) {
+                return (board_id_flags == kCustomLabelPvtBoardIdFlags);
+              }
+              return (board_id_flags == kPvtBoardIdFlags);
+            }));
 
     // Mock |CrosConfigUtils|.
-    auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    auto mock_cros_config_utils =
+        std::make_unique<NiceMock<MockCrosConfigUtils>>();
     if (get_model_name) {
-      ON_CALL(*cros_config_utils, GetModelName(_))
+      ON_CALL(*mock_cros_config_utils, GetModelName(_))
           .WillByDefault(DoAll(SetArgPointee<0>(std::string(kTestModelName)),
                                Return(true)));
     } else {
-      ON_CALL(*cros_config_utils, GetModelName(_)).WillByDefault(Return(false));
+      ON_CALL(*mock_cros_config_utils, GetModelName(_))
+          .WillByDefault(Return(false));
     }
 
     // Mock |CrosSystemUtils|.
-    auto crossystem_utils = std::make_unique<NiceMock<MockCrosSystemUtils>>();
-    ON_CALL(*crossystem_utils, GetInt(Eq(kHwwpProperty), _))
+    auto mock_crossystem_utils =
+        std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    ON_CALL(*mock_crossystem_utils, GetInt(Eq(kHwwpProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(hw_wp_enabled), Return(true)));
 
     // Mock |IioSensorProbeUtils|.
-    auto iio_sensor_probe_utils =
+    auto mock_iio_sensor_probe_utils =
         std::make_unique<NiceMock<MockIioSensorProbeUtils>>();
-    ON_CALL(*iio_sensor_probe_utils, Probe())
+    ON_CALL(*mock_iio_sensor_probe_utils, Probe())
         .WillByDefault(Return(probed_components));
 
     // Mock |SsfcUtils|.
-    auto ssfc_utils = std::make_unique<NiceMock<MockSsfcUtils>>();
+    auto mock_ssfc_utils = std::make_unique<NiceMock<MockSsfcUtils>>();
     if (need_update_ssfc) {
-      ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
+      ON_CALL(*mock_ssfc_utils, GetSSFC(_, _, _))
           .WillByDefault(DoAll(SetArgPointee<1>(true),
                                SetArgPointee<2>(kTestSSFC), Return(get_ssfc)));
-      ON_CALL(*cbi_utils, SetSSFC(_)).WillByDefault(Return(set_ssfc));
     } else {
-      ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
+      ON_CALL(*mock_ssfc_utils, GetSSFC(_, _, _))
           .WillByDefault(DoAll(SetArgPointee<1>(false), Return(true)));
     }
 
     // Mock |VpdUtils|.
-    auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
-    ON_CALL(*vpd_utils, SetStableDeviceSecret(_))
+    auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
+    ON_CALL(*mock_vpd_utils, SetStableDeviceSecret(_))
         .WillByDefault(Return(set_stable_dev_secret));
-    ON_CALL(*vpd_utils, FlushOutRoVpdCache()).WillByDefault(Return(flush_vpd));
+    ON_CALL(*mock_vpd_utils, FlushOutRoVpdCache())
+        .WillByDefault(Return(flush_vpd));
 
     // Register signal callback.
     daemon_callback_->SetProvisionSignalCallback(
@@ -136,9 +174,10 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     return base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, std::move(mock_power_manager_client),
-        std::move(cbi_utils), std::move(cros_config_utils),
-        std::move(crossystem_utils), std::move(iio_sensor_probe_utils),
-        std::move(ssfc_utils), std::move(vpd_utils));
+        std::move(mock_cbi_utils), std::move(mock_cr50_utils),
+        std::move(mock_cros_config_utils), std::move(mock_crossystem_utils),
+        std::move(mock_iio_sensor_probe_utils), std::move(mock_ssfc_utils),
+        std::move(mock_vpd_utils));
   }
 
   void RunHandlerTaskRunner(
@@ -327,7 +366,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false,
+      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_LID_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -396,7 +436,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false,
+      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -465,7 +506,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false,
+      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -536,7 +578,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, false,
+      true, true, true, true, true, true, false, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_BASE_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -852,6 +895,75 @@ TEST_F(ProvisionDeviceStateHandlerTest,
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
   EXPECT_EQ(status_history_.back().error(),
             ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_CannotReadBoardIdBlocking) {
+  auto handler =
+      CreateStateHandler(true, true, true, true, true, true, false, false);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_InvalidBoardIdTypeBlocking) {
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, kInvalidBoardIdType);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_DefaultBoardId_NotCustomLabel_Success) {
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, kEmptyBoardIdType, kPvtBoardIdFlags);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_DefaultBoardId_CustomLabel_Success) {
+  auto handler =
+      CreateStateHandler(true, true, true, true, true, true, false, true,
+                         kEmptyBoardIdType, kCustomLabelPvtBoardIdFlags);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
   RunHandlerTaskRunner(handler);
 }
