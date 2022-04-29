@@ -12,12 +12,9 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "biod/cros_fp_biometrics_manager.h"
 #include "biod/power_button_filter.h"
-#include "biod/proto_bindings/constants.pb.h"
-#include "biod/proto_bindings/messages.pb.h"
 #include "biod/utils.h"
 
 namespace biod {
@@ -29,15 +26,6 @@ using brillo::dbus_utils::ExportedObjectManager;
 using brillo::dbus_utils::ExportedProperty;
 using brillo::dbus_utils::ExportedPropertySet;
 using dbus::ObjectPath;
-
-namespace dbus_constants {
-const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-const char kSessionStateStarted[] = "started";
-constexpr char kSessionStateStopped[] = "stopped";
-constexpr char kDBusErrorNoReply[] = "org.freedesktop.DBus.Error.NoReply";
-constexpr char kDBusErrorServiceUnknown[] =
-    "org.freedesktop.DBus.Error.ServiceUnknown";
-}  // namespace dbus_constants
 
 namespace errors {
 const char kDomain[] = "biod";
@@ -430,6 +418,9 @@ BiometricsDaemon::BiometricsDaemon() {
   CHECK(power_button_filter) << "Failed to initialize PowerButtonFilter.";
   auto biod_storage =
       std::make_unique<BiodStorage>(biod::kCrosFpBiometricsManagerName);
+
+  session_state_manager_ = std::make_unique<SessionStateManager>(bus_.get());
+
   auto cros_fp_bio = std::make_unique<CrosFpBiometricsManager>(
       std::move(power_button_filter), std::move(cros_fp_device),
       std::move(biod_metrics),
@@ -444,120 +435,36 @@ BiometricsDaemon::BiometricsDaemon() {
     LOG(INFO) << "No CrosFpBiometricsManager detected.";
   }
 
-  session_manager_proxy_ = bus_->GetObjectProxy(
-      login_manager::kSessionManagerServiceName,
-      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
-
-  if (RetrievePrimarySession()) {
-    for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-      biometrics_manager_wrapper->get().SetDiskAccesses(true);
-      biometrics_manager_wrapper->get().ReadRecordsForSingleUser(primary_user_);
-      biometrics_manager_wrapper->RefreshRecordObjects();
-    }
-  }
-
-  session_manager_proxy_->ConnectToSignal(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionStateChangedSignal,
-      base::BindRepeating(&BiometricsDaemon::OnSessionStateChanged,
-                          base::Unretained(this)),
-      base::BindOnce(&LogOnSignalConnected));
+  session_state_manager_->AddObserver(this);
+  session_state_manager_->RefreshPrimaryUser();
 
   CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
-bool BiometricsDaemon::RetrievePrimarySession() {
-  dbus::ScopedDBusError error;
-  primary_user_.clear();
-  dbus::MethodCall method_call(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerRetrievePrimarySession);
-
-  std::unique_ptr<dbus::Response> response =
-      session_manager_proxy_->CallMethodAndBlockWithErrorDetails(
-          &method_call, dbus_constants::kDbusTimeoutMs, &error);
-  if (error.is_set()) {
-    std::string error_name = error.name();
-    LOG(ERROR) << "Calling "
-               << login_manager::kSessionManagerRetrievePrimarySession
-               << " from " << login_manager::kSessionManagerInterface
-               << " interface finished with " << error_name << " error.";
-
-    if (error_name == dbus_constants::kDBusErrorNoReply) {
-      LOG(FATAL) << "Timeout while getting primary session";
-    } else if (error_name == dbus_constants::kDBusErrorServiceUnknown) {
-      LOG(FATAL) << "Can't find " << login_manager::kSessionManagerServiceName
-                 << " service. Maybe session_manager is not running?";
-    } else {
-      LOG(FATAL) << "Error details: " << error.message();
+void BiometricsDaemon::OnUserLoggedIn(const std::string& sanitized_username,
+                                      bool is_new_login) {
+  for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+    if (!biometrics_manager_wrapper->get().ResetSensor()) {
+      LOG(ERROR) << "Failed to reset biometric sensor type: "
+                 << biometrics_manager_wrapper->get().GetType();
+    }
+    biometrics_manager_wrapper->get().SetDiskAccesses(true);
+    biometrics_manager_wrapper->get().ReadRecordsForSingleUser(
+        sanitized_username);
+    biometrics_manager_wrapper->RefreshRecordObjects();
+    if (is_new_login) {
+      biometrics_manager_wrapper->get().SendStatsOnLogin();
     }
   }
-
-  if (!response.get()) {
-    LOG(ERROR) << "Cannot retrieve username for primary session.";
-    return false;
-  }
-  dbus::MessageReader response_reader(response.get());
-  std::string username;
-  if (!response_reader.PopString(&username)) {
-    LOG(ERROR) << "Primary session username bad format.";
-    return false;
-  }
-  std::string sanitized_username;
-  if (!response_reader.PopString(&sanitized_username)) {
-    LOG(ERROR) << "Primary session sanitized username bad format.";
-    return false;
-  }
-  if (sanitized_username.empty()) {
-    LOG(INFO) << "Primary session does not exist.";
-    return false;
-  }
-  LOG(INFO) << "Primary user updated to " << LogSafeID(sanitized_username)
-            << ".";
-  primary_user_.assign(sanitized_username);
-  return true;
 }
 
-void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
-  dbus::MessageReader signal_reader(signal);
-
-  std::string state;
-
-  CHECK(signal_reader.PopString(&state));
-  LOG(INFO) << "Session state changed to " << state << ".";
-
-  if (state == dbus_constants::kSessionStateStarted) {
-    // If a primary session doesn't exist, we can safely reset the sensors
-    // before loading in templates. But if one exists, we should leave the
-    // sensors as is.
-    if (!primary_user_.empty()) {
-      LOG(INFO) << "Primary user already exists. Not updating primary user.";
-      return;
-    }
-    for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-      if (!biometrics_manager_wrapper->get().ResetSensor()) {
-        LOG(ERROR) << "Failed to reset biometric sensor type: "
-                   << biometrics_manager_wrapper->get().GetType();
-      }
-    }
-    if (RetrievePrimarySession()) {
-      for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-        biometrics_manager_wrapper->get().SetDiskAccesses(true);
-        biometrics_manager_wrapper->get().ReadRecordsForSingleUser(
-            primary_user_);
-        biometrics_manager_wrapper->RefreshRecordObjects();
-        biometrics_manager_wrapper->get().SendStatsOnLogin();
-      }
-    }
-  } else if (state == dbus_constants::kSessionStateStopped) {
-    // Assuming that log out will always log out all users at the same time.
-    for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-      biometrics_manager_wrapper->get().SetDiskAccesses(false);
-      biometrics_manager_wrapper->get().RemoveRecordsFromMemory();
-      biometrics_manager_wrapper->RefreshRecordObjects();
-    }
-    primary_user_.clear();
+void BiometricsDaemon::OnUserLoggedOut() {
+  // Assuming that log out will always log out all users at the same time.
+  for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+    biometrics_manager_wrapper->get().SetDiskAccesses(false);
+    biometrics_manager_wrapper->get().RemoveRecordsFromMemory();
+    biometrics_manager_wrapper->RefreshRecordObjects();
   }
 }
 }  // namespace biod

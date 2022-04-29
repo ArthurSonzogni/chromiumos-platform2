@@ -19,6 +19,7 @@
 #include <dbus/object_proxy.h>
 
 #include "biod/biometrics_manager.h"
+#include "biod/session_state_manager.h"
 
 namespace biod {
 
@@ -112,28 +113,22 @@ class BiometricsManagerWrapper {
   std::unique_ptr<brillo::dbus_utils::DBusObject> auth_session_dbus_object_;
 };
 
-class BiometricsDaemon {
+class BiometricsDaemon : public SessionStateManagerInterface::Observer {
  public:
   BiometricsDaemon();
   BiometricsDaemon(const BiometricsDaemon&) = delete;
   BiometricsDaemon& operator=(const BiometricsDaemon&) = delete;
 
+  // SessionStateManagerInterface::Observer
+  void OnUserLoggedIn(const std::string& sanitized_username,
+                      bool is_new_login) override;
+  void OnUserLoggedOut() override;
+
  private:
-  // Query session manager for the current primary user. Return true and update
-  // primary_user_if primary user exists. Otherwise return false.
-  bool RetrievePrimarySession();
-
-  // Read or delete records in memory when users log in or out.
-  void OnSessionStateChanged(dbus::Signal* signal);
-
   scoped_refptr<dbus::Bus> bus_;
+  std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
   std::vector<std::unique_ptr<BiometricsManagerWrapper>> biometrics_managers_;
-
-  // Proxy for dbus communication with session manager / login.
-  scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
-  // Sanitized username of the primary user. Empty if no primary user present.
-  std::string primary_user_;
 };
 }  // namespace biod
 
