@@ -68,6 +68,9 @@ class ModemFlasher {
       should_flash_oem_fw_ = true;
     }
 
+    // Used to determine if any FW was installed before reporting metrics.
+    bool fw_flashed_ = false;
+
    private:
     // Unlike carrier firmware, we should usually successfully flash the main
     // firmware at most once per boot. In the past vendors have failed to
@@ -95,6 +98,11 @@ class ModemFlasher {
     static const int kDefaultTries = 2;
     int tries_ = kDefaultTries;
   };
+
+  // Notify UpdateFirmwareComplete failure and reset the |fw_flashed_| flag.
+  void ProcessFailedToPrepareFirmwareFile(const base::Location& code_location,
+                                          FlashState* flash_state,
+                                          const std::string& firmware_path);
 
   std::unique_ptr<Journal> journal_;
 

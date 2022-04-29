@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <cros_config/cros_config.h>
@@ -160,22 +161,26 @@ int Daemon::OnInit() {
   metrics_ = std::make_unique<Metrics>(std::move(metrics_library));
   metrics_->Init();
 
-  notification_mgr_ =
-      std::make_unique<NotificationManager>(dbus_adaptor_.get());
+  notification_mgr_ = std::make_unique<NotificationManager>(dbus_adaptor_.get(),
+                                                            metrics_.get());
   if (!base::DirectoryExists(helper_dir_path_)) {
-    LOG(ERROR) << "Supplied modem-specific helper directory "
-               << helper_dir_path_.value() << " does not exist";
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
-        kErrorResultInitFailure);
+    auto err = Error::Create(
+        FROM_HERE, kErrorResultInitFailure,
+        base::StringPrintf(
+            "Supplied modem-specific helper directory %s does not exist",
+            helper_dir_path_.value().c_str()));
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
     return EX_UNAVAILABLE;
   }
 
   helper_directory_ =
       CreateModemHelperDirectory(helper_dir_path_, GetModemFirmwareVariant());
   if (!helper_directory_) {
-    LOG(ERROR) << "No suitable helpers found in " << helper_dir_path_.value();
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
-        kErrorResultInitFailure);
+    auto err =
+        Error::Create(FROM_HERE, kErrorResultInitFailure,
+                      base::StringPrintf("No suitable helpers found in %s",
+                                         helper_dir_path_.value().c_str()));
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
     return EX_UNAVAILABLE;
   }
 
@@ -184,10 +189,11 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
 
   if (!base::DirectoryExists(fw_manifest_dir_path_)) {
-    LOG(ERROR) << "Supplied firmware directory "
-               << fw_manifest_dir_path_.value() << " does not exist";
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
-        kErrorResultInitFailure);
+    auto err = Error::Create(
+        FROM_HERE, kErrorResultInitFailure,
+        base::StringPrintf("Supplied firmware directory %s does not exist",
+                           fw_manifest_dir_path_.value().c_str()));
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
     return EX_UNAVAILABLE;
   }
 
@@ -202,9 +208,10 @@ int Daemon::SetupFirmwareDirectory() {
   fw_index_ = ParseFirmwareManifestV2(
       fw_manifest_dir_path_.Append(kManifestName), dlc_per_variant);
   if (!fw_index_) {
-    LOG(ERROR) << "Could not load firmware manifest directory (bad manifest?)";
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
-        kErrorResultInitManifestFailure);
+    auto err = Error::Create(
+        FROM_HERE, kErrorResultInitManifestFailure,
+        "Could not load firmware manifest directory (bad manifest?)");
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
     return EX_UNAVAILABLE;
   }
 
@@ -255,9 +262,9 @@ void Daemon::CompleteInitialization() {
   auto journal = OpenJournal(journal_file_path_, fw_manifest_directory_.get(),
                              helper_directory_.get());
   if (!journal) {
-    LOG(ERROR) << "Could not open journal file";
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
-        kErrorResultInitJournalFailure);
+    auto err = Error::Create(FROM_HERE, kErrorResultInitJournalFailure,
+                             "Could not open journal file");
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
     QuitWithExitCode(EX_UNAVAILABLE);
   }
 
@@ -313,7 +320,7 @@ void Daemon::OnModemCarrierIdReady(
 
   if (IsAutoUpdateDisabledByPref()) {
     LOG(INFO) << "Update disabled by pref";
-    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess();
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false);
     return;
   }
 

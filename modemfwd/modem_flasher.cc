@@ -12,9 +12,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/switches/modemfwd_switches.h>
 #include <dbus/modemfwd/dbus-constants.h>
 
+#include "modemfwd/error.h"
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
@@ -48,6 +50,18 @@ ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
       firmware_directory_(firmware_directory),
       notification_mgr_(notification_mgr) {}
 
+void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
+    const base::Location& code_location,
+    FlashState* flash_state,
+    const std::string& firmware_path) {
+  auto err =
+      Error::Create(code_location, kErrorResultFailedToPrepareFirmwareFile,
+                    base::StringPrintf("Failed to prepare firmware file: %s",
+                                       firmware_path.c_str()));
+  notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+  flash_state->fw_flashed_ = false;
+}
+
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
                                                    const std::string& variant) {
   firmware_directory_->OverrideVariantForTesting(variant);
@@ -58,10 +72,13 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {
-    LOG(ERROR) << "Modem with equipment ID \"" << equipment_id
-               << "\" failed to flash too many times; not flashing";
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
-        kErrorResultFlashFailure);
+    auto err = Error::Create(
+        FROM_HERE, kErrorResultFlashFailure,
+        base::StringPrintf("Modem with equipment ID \"%s\" failed to flash too "
+                           "many times; not flashing",
+                           equipment_id.c_str()));
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    flash_state->fw_flashed_ = false;
     return base::OnceClosure();
   }
 
@@ -93,8 +110,11 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
-                                      file_info))
+                                      file_info)) {
+        ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
+                                           file_info.firmware_path);
         return base::OnceClosure();
+      }
 
       // We found different firmware!
       // record to flash the main firmware binary.
@@ -106,8 +126,11 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       for (const auto& assoc_entry : files.assoc_firmware) {
         auto assoc_file = std::make_unique<FirmwareFile>();
         if (!assoc_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
-                                     assoc_entry.second))
+                                     assoc_entry.second)) {
+          ProcessFailedToPrepareFirmwareFile(
+              FROM_HERE, flash_state, assoc_entry.second.firmware_path, err);
           return base::OnceClosure();
+        }
         flash_cfg.push_back({assoc_entry.first,
                              assoc_file->path_on_filesystem(),
                              assoc_entry.second.version});
@@ -127,8 +150,11 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
-                                      file_info))
+                                      file_info)) {
+        ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
+                                           file_info.firmware_path);
         return base::OnceClosure();
+      }
 
       flash_cfg.push_back(
           {kFwOem, firmware_file->path_on_filesystem(), file_info.version});
@@ -166,8 +192,11 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
         carrier_fw_version != file_info.version) {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
-                                      file_info))
+                                      file_info)) {
+        ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
+                                           file_info.firmware_path);
         return base::OnceClosure();
+      }
 
       flash_cfg.push_back(
           {kFwCarrier, firmware_file->path_on_filesystem(), file_info.version});
@@ -191,7 +220,9 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   if (flash_cfg.empty()) {
     // This message is used by tests to track the end of flashing.
     LOG(INFO) << "The modem already has the correct firmware installed";
-    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess();
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(
+        flash_state->fw_flashed_);
+    flash_state->fw_flashed_ = false;
     return base::OnceClosure();
   }
   std::vector<std::string> fw_types;
@@ -204,8 +235,13 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   if (!modem->FlashFirmwares(flash_cfg)) {
     flash_state->OnFlashFailed();
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
+    auto err = Error::Create(FROM_HERE, kErrorResultFailureReturnedByHelper,
+                             "Helper failed to flash firmware files");
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    flash_state->fw_flashed_ = false;
     return base::OnceClosure();
   }
+  flash_state->fw_flashed_ = true;
 
   for (const auto& info : flash_cfg) {
     std::string fw_type = info.fw_type;

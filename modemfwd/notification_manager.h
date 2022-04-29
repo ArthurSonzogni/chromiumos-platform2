@@ -10,16 +10,18 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
+#include "modemfwd/metrics.h"
 
 namespace modemfwd {
 
 class NotificationManager {
  public:
-  explicit NotificationManager(org::chromium::ModemfwdAdaptor* dbus_adaptor);
+  explicit NotificationManager(org::chromium::ModemfwdAdaptor* dbus_adaptor,
+                               Metrics* metrics);
   virtual ~NotificationManager() = default;
 
-  virtual void NotifyUpdateFirmwareCompletedSuccess();
-  virtual void NotifyUpdateFirmwareCompletedFailure(const std::string& error);
+  virtual void NotifyUpdateFirmwareCompletedSuccess(bool fw_installed);
+  virtual void NotifyUpdateFirmwareCompletedFailure(const brillo::Error*);
 
  protected:
   NotificationManager() = default;
@@ -27,6 +29,7 @@ class NotificationManager {
  private:
   // Owned by Daemon
   org::chromium::ModemfwdAdaptor* dbus_adaptor_;
+  Metrics* metrics_;
 };
 
 }  // namespace modemfwd

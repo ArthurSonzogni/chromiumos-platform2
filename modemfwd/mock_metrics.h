@@ -26,6 +26,11 @@ class MockMetrics : public Metrics {
               (override));
 
   MOCK_METHOD(void,
+              SendFwInstallResult,
+              (metrics::FwInstallResult result),
+              (override));
+
+  MOCK_METHOD(void,
               SendFwUpdateLocation,
               (metrics::FwUpdateLocation location),
               (override));

@@ -19,6 +19,7 @@ namespace metrics {
 extern const char kMetricDlcInstallResult[];
 extern const char kMetricDlcUninstallResult[];
 extern const char kMetricFwUpdateLocation[];
+extern const char kMetricFwInstallResult[];
 
 // IMPORTANT: Please read this before making any changes to the file:
 // - Never change existing numerical values on the enums, because the same
@@ -67,6 +68,18 @@ enum class FwUpdateLocation {
   kNumConstants
 };
 
+enum class FwInstallResult {
+  kUnknownError = 0,
+  kSuccess = 1,
+  kInitFailure = 2,
+  kInitManifestFailure = 3,
+  kFailedToPrepareFirmwareFile = 4,
+  kFlashFailure = 5,
+  kFailureReturnedByHelper = 6,
+  kInitJournalFailure = 7,
+  kNumConstants
+};
+
 }  // namespace metrics
 
 // Performs UMA metrics logging for the modemfw daemon.
@@ -95,6 +108,12 @@ class Metrics {
   // Sends the |FwUpdateLocation| value.
   virtual void SendFwUpdateLocation(metrics::FwUpdateLocation location);
 
+  // Sends the |FwInstallResult::kSuccess| value.
+  void SendFwInstallResultSuccess();
+
+  // Sends the |FwInstallResult| value that corresponds to |err|.
+  void SendFwInstallResultFailure(const brillo::Error* err);
+
  protected:
   // For testing.
   Metrics() = default;
@@ -103,6 +122,9 @@ class Metrics {
 
   // Sends the value for |DlcUninstallResult|.
   virtual void SendDlcUninstallResult(metrics::DlcUninstallResult result);
+
+  // Sends the value for |FwInstallResult|.
+  virtual void SendFwInstallResult(metrics::FwInstallResult result);
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
@@ -113,6 +135,9 @@ class Metrics {
   typedef std::map<std::string, metrics::DlcUninstallResult>
       DlcUninstallResultMap;
   static DlcUninstallResultMap uninstall_result_;
+  // Map error codes to |FwInstallResult| values.
+  typedef std::map<std::string, metrics::FwInstallResult> FwInstallResultMap;
+  static FwInstallResultMap fw_install_result_;
 
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;

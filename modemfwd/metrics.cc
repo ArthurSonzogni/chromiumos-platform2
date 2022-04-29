@@ -13,16 +13,38 @@
 
 using modemfwd::metrics::DlcInstallResult;
 using modemfwd::metrics::DlcUninstallResult;
+using modemfwd::metrics::FwInstallResult;
 using modemfwd::metrics::FwUpdateLocation;
 using std::string;
 
 namespace modemfwd {
+
+namespace {
+
+template <typename MetricEnum>
+MetricEnum GetMetricFromInnerErrorCode(
+    const brillo::Error* err, std::map<std::string, MetricEnum>& result_map) {
+  MetricEnum res = MetricEnum::kUnknownError;
+  const brillo::Error* err_it = err;
+  // Iterate over all errors in the chain and get the deepest error that has a
+  // match in the metrics map.
+  while (err_it) {
+    auto it = result_map.find(err_it->GetCode());
+    if (it != result_map.end())
+      res = it->second;
+    err_it = err_it->GetInnerError();
+  }
+  return res;
+}
+
+}  // namespace
 
 namespace metrics {
 
 const char kMetricDlcInstallResult[] = "Platform.Modemfwd.DlcInstallResult";
 const char kMetricDlcUninstallResult[] = "Platform.Modemfwd.DlcUninstallResult";
 const char kMetricFwUpdateLocation[] = "Platform.Modemfwd.FWUpdateLocation";
+const char kMetricFwInstallResult[] = "Platform.Modemfwd.FWInstallResult";
 
 }  // namespace metrics
 
@@ -72,7 +94,18 @@ Metrics::DlcUninstallResultMap Metrics::uninstall_result_ = {
      DlcUninstallResult::kUnexpectedEmptyVariant},
 };
 
-// TODO(b/225970571): Add metrics for UpdateFirmwareCompleted
+Metrics::FwInstallResultMap Metrics::fw_install_result_ = {
+    {kErrorResultInitFailure, FwInstallResult::kInitFailure},  // dbus error
+    {kErrorResultInitManifestFailure,
+     FwInstallResult::kInitManifestFailure},  // dbus error
+    {kErrorResultFailedToPrepareFirmwareFile,
+     FwInstallResult::kFailedToPrepareFirmwareFile},             // dbus error
+    {kErrorResultFlashFailure, FwInstallResult::kFlashFailure},  // dbus error
+    {kErrorResultFailureReturnedByHelper,
+     FwInstallResult::kFailureReturnedByHelper},  // dbus error
+    {kErrorResultInitJournalFailure,
+     FwInstallResult::kInitJournalFailure},  // dbus error
+};
 
 void Metrics::Init() {
   metrics_library_->Init();
@@ -83,17 +116,8 @@ void Metrics::SendDlcInstallResultSuccess() {
 }
 
 void Metrics::SendDlcInstallResultFailure(const brillo::Error* err) {
-  DlcInstallResult res = DlcInstallResult::kUnknownError;
   DCHECK(err);
-  // Iterate over all errors in the chain and get the deepest error that has a
-  // match in the metrics map.
-  const brillo::Error* err_it = err;
-  while (err_it) {
-    auto it = install_result_.find(err_it->GetCode());
-    if (it != install_result_.end())
-      res = it->second;
-    err_it = err_it->GetInnerError();
-  }
+  DlcInstallResult res = GetMetricFromInnerErrorCode(err, install_result_);
   SendDlcInstallResult(res);
 }
 
@@ -109,17 +133,8 @@ void Metrics::SendDlcUninstallResultSuccess() {
 }
 
 void Metrics::SendDlcUninstallResultFailure(const brillo::Error* err) {
-  DlcUninstallResult res = DlcUninstallResult::kUnknownError;
   DCHECK(err);
-  // Iterate over all errors in the chain and get the deepest error that has a
-  // match in the metrics map.
-  const brillo::Error* err_it = err;
-  while (err_it) {
-    auto it = uninstall_result_.find(err_it->GetCode());
-    if (it != uninstall_result_.end())
-      res = it->second;
-    err_it = err_it->GetInnerError();
-  }
+  DlcUninstallResult res = GetMetricFromInnerErrorCode(err, uninstall_result_);
   SendDlcUninstallResult(res);
 }
 
@@ -138,4 +153,20 @@ void Metrics::SendFwUpdateLocation(FwUpdateLocation location) {
       static_cast<int>(FwUpdateLocation::kNumConstants));
 }
 
+void Metrics::SendFwInstallResultSuccess() {
+  SendFwInstallResult(FwInstallResult::kSuccess);
+}
+
+void Metrics::SendFwInstallResultFailure(const brillo::Error* err) {
+  DCHECK(err);
+  FwInstallResult res = GetMetricFromInnerErrorCode(err, fw_install_result_);
+  SendFwInstallResult(res);
+}
+
+void Metrics::SendFwInstallResult(FwInstallResult result) {
+  ELOG(INFO) << "SendFwInstallResult:" << static_cast<int>(result);
+  metrics_library_->SendEnumToUMA(
+      metrics::kMetricFwInstallResult, static_cast<int>(result),
+      static_cast<int>(FwInstallResult::kNumConstants));
+}
 }  // namespace modemfwd

@@ -11,16 +11,21 @@
 namespace modemfwd {
 
 NotificationManager::NotificationManager(
-    org::chromium::ModemfwdAdaptor* dbus_adaptor)
-    : dbus_adaptor_(dbus_adaptor) {}
+    org::chromium::ModemfwdAdaptor* dbus_adaptor, Metrics* metrics)
+    : dbus_adaptor_(dbus_adaptor), metrics_(metrics) {}
 
-void NotificationManager::NotifyUpdateFirmwareCompletedSuccess() {
+void NotificationManager::NotifyUpdateFirmwareCompletedSuccess(
+    bool fw_installed) {
   dbus_adaptor_->SendUpdateFirmwareCompletedSignal(true, "");
+  if (fw_installed)
+    metrics_->SendFwInstallResultSuccess();
 }
 
 void NotificationManager::NotifyUpdateFirmwareCompletedFailure(
-    const std::string& error) {
-  dbus_adaptor_->SendUpdateFirmwareCompletedSignal(false, error);
+    const brillo::Error* error) {
+  DCHECK(error);
+  dbus_adaptor_->SendUpdateFirmwareCompletedSignal(false, error->GetCode());
+  metrics_->SendFwInstallResultFailure(error);
 }
 
 }  // namespace modemfwd

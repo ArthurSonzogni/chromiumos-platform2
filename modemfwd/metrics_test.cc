@@ -13,6 +13,7 @@
 
 using modemfwd::metrics::DlcInstallResult;
 using modemfwd::metrics::DlcUninstallResult;
+using modemfwd::metrics::FwInstallResult;
 using modemfwd::metrics::FwUpdateLocation;
 
 namespace modemfwd {
@@ -378,4 +379,77 @@ TEST_F(MetricsTest, SendFwUpdateLocation) {
   EXPECT_EQ(3, static_cast<int>(FwUpdateLocation::kNumConstants));
 }
 
+TEST_F(MetricsTest, SendFwInstallResultSuccess) {
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult, 1 /*kSuccess*/,
+                            static_cast<int>(FwInstallResult::kNumConstants)));
+  metrics_->SendFwInstallResultSuccess();
+}
+
+TEST_F(MetricsTest, SendFwInstallResult_UnknownError) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(metrics::kMetricFwInstallResult, 0 /*kUnknownError*/,
+                    static_cast<int>(FwInstallResult::kNumConstants)))
+      .Times(2);
+  auto err = brillo::Error::Create(FROM_HERE, "domain", "some error", "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  err = brillo::Error::Create(FROM_HERE, "dbus",
+                              "org.chromium.ModemfwdInterface.INTERNAL", "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+}
+
+TEST_F(MetricsTest, SendFwInstallResult_Failures) {
+  const int num_consts = static_cast<int>(FwInstallResult::kNumConstants);
+
+  EXPECT_CALL(*metrics_library_, SendEnumToUMA(metrics::kMetricFwInstallResult,
+                                               2 /*kInitFailure*/, num_consts));
+  auto err =
+      brillo::Error::Create(FROM_HERE, "dbus", kErrorResultInitFailure, "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult,
+                            3 /*kInitManifestFailure*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, "dbus",
+                              kErrorResultInitManifestFailure, "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult,
+                            4 /*kFailedToPrepareFirmwareFile*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, "dbus",
+                              kErrorResultFailedToPrepareFirmwareFile, "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult,
+                            5 /*kFlashFailure*/, num_consts));
+  err =
+      brillo::Error::Create(FROM_HERE, "dbus", kErrorResultFlashFailure, "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult,
+                            6 /*kFailureReturnedByHelper*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, "dbus",
+                              kErrorResultFailureReturnedByHelper, "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult,
+                            7 /*kInitJournalFailure*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, "dbus", kErrorResultInitJournalFailure,
+                              "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  // Check that all values were tested.
+  EXPECT_EQ(8, static_cast<int>(FwInstallResult::kNumConstants));
+}
 }  // namespace modemfwd
