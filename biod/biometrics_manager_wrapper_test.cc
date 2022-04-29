@@ -20,6 +20,7 @@
 #include <biod/biometrics_daemon.h>
 #include <biod/mock_biometrics_manager.h>
 #include <biod/mock_biometrics_manager_record.h>
+#include <biod/mock_session_state_manager.h>
 
 namespace biod {
 namespace {
@@ -76,6 +77,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
     object_manager_ =
         std::make_unique<brillo::dbus_utils::MockExportedObjectManager>(
             bus_, dbus::ObjectPath(kBiodServicePath));
+    session_manager_ = std::make_unique<MockSessionStateManager>();
 
     mock_bio_path_ = dbus::ObjectPath(
         base::StringPrintf("%s/%s", kBiodServicePath, "MockBiometricsManager"));
@@ -85,7 +87,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
 
     wrapper_.emplace(
         std::move(mock_biometrics_manager), object_manager_.get(),
-        mock_bio_path_,
+        session_manager_.get(), mock_bio_path_,
         sequencer->GetHandler("Failed to register BiometricsManager", false));
   }
 
@@ -98,6 +100,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
   dbus::ObjectPath mock_bio_path_;
   std::map<std::string, scoped_refptr<dbus::MockExportedObject>>
       exported_objects_;
+  std::unique_ptr<MockSessionStateManager> session_manager_;
   std::optional<BiometricsManagerWrapper> wrapper_;
   BiometricsManager::EnrollScanDoneCallback on_enroll_scan_done;
   BiometricsManager::AuthScanDoneCallback on_auth_scan_done;
@@ -282,14 +285,15 @@ std::unique_ptr<dbus::Response> BiometricsManagerWrapperTest::GetRecordsForUser(
   writer.AppendString(user_id);
 
   auto response = CallMethod(&get_records_for_user);
-  EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_METHOD_RETURN);
-  dbus::MessageReader reader(response.get());
-  dbus::MessageReader array_reader(nullptr);
-  reader.PopArray(&array_reader);
-  dbus::ObjectPath object_path;
-  while (array_reader.HasMoreData()) {
-    array_reader.PopObjectPath(&object_path);
-    paths->emplace_back(std::move(object_path));
+  if (response->GetMessageType() == dbus::Message::MESSAGE_METHOD_RETURN) {
+    dbus::MessageReader reader(response.get());
+    dbus::MessageReader array_reader(nullptr);
+    reader.PopArray(&array_reader);
+    dbus::ObjectPath object_path;
+    while (array_reader.HasMoreData()) {
+      array_reader.PopObjectPath(&object_path);
+      paths->emplace_back(std::move(object_path));
+    }
   }
 
   return response;
@@ -301,6 +305,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSession) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -326,6 +331,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionThenCancel) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -354,6 +360,8 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollSessionFinish) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -384,6 +392,8 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollSessionSignal) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -430,6 +440,8 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollSessionRefreshRecords) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -472,6 +484,18 @@ TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionFailed) {
   auto enroll_session = BiometricsManager::EnrollSession();
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+
+  auto response = StartEnrollSession(kUserID, kLabel, &object_path);
+  EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
+}
+
+TEST_F(BiometricsManagerWrapperTest,
+       TestStartEnrollSessionFailedNoPrimaryUser) {
+  dbus::ObjectPath object_path;
+  EXPECT_CALL(*bio_manager_, StartEnrollSession).Times(0);
+  // Empty string means that primary user is not set.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
@@ -483,6 +507,7 @@ TEST_F(BiometricsManagerWrapperTest, TestOnSessionFailedEndsEnrollSession) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -509,6 +534,7 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollOnSessionFailedSendSignal) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -532,6 +558,7 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollSessionOwnerDies) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -558,6 +585,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSession) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -582,6 +610,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionThenEnd) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -610,6 +639,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionSuccess) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -641,6 +671,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionSuccessSignal) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -689,6 +720,17 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailed) {
   auto auth_session = BiometricsManager::AuthSession();
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+
+  auto response = StartAuthSession(&object_path);
+  EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailedNoPrimaryUser) {
+  dbus::ObjectPath object_path;
+  EXPECT_CALL(*bio_manager_, StartAuthSession).Times(0);
+  // Empty string means that primary user is not set.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
@@ -700,6 +742,7 @@ TEST_F(BiometricsManagerWrapperTest, TestOnSessionFailedEndsAuthSession) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -726,6 +769,7 @@ TEST_F(BiometricsManagerWrapperTest, TestAuthOnSessionFailedSendsSignal) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -749,6 +793,7 @@ TEST_F(BiometricsManagerWrapperTest, TestAuthSessionOwnerDies) {
       bio_manager_->session_weak_factory_.GetWeakPtr());
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -769,7 +814,17 @@ TEST_F(BiometricsManagerWrapperTest, TestAuthSessionOwnerDies) {
   EXPECT_CALL(*bio_manager_, EndAuthSession).Times(0);
 }
 
+TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjectsNoPrimaryUser) {
+  // Empty string means that primary user is not set.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
+  EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(0);
+  EXPECT_CALL(*object_manager_, ClaimInterface).Times(0);
+
+  wrapper_->RefreshRecordObjects();
+}
+
 TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjectsNoRecords) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
   EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(1);
   EXPECT_CALL(*object_manager_, ClaimInterface).Times(0);
 
@@ -784,6 +839,8 @@ TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjects) {
 
   std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
   records.emplace_back(std::move(record));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
   EXPECT_CALL(*bio_manager_, GetLoadedRecords)
       .WillOnce(Return(ByMove(std::move(records))));
 
@@ -812,6 +869,8 @@ TEST_F(BiometricsManagerWrapperTest, TestGetRecordsForUser) {
 
   std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
   records.emplace_back(std::move(record));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
   EXPECT_CALL(*bio_manager_, GetLoadedRecords)
       .WillOnce(Return(ByMove(std::move(records))));
 
@@ -829,11 +888,21 @@ TEST_F(BiometricsManagerWrapperTest, TestGetRecordsForUser) {
   EXPECT_EQ(paths.size(), 0);
 }
 
+TEST_F(BiometricsManagerWrapperTest, TestGetRecordsForUserNoPrimaryUser) {
+  std::vector<dbus::ObjectPath> paths;
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
+
+  auto response = GetRecordsForUser(kUserID, &paths);
+  EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
+}
+
 TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjectsClearsRecords) {
   auto record = std::make_unique<MockBiometricsManagerRecord>();
   std::string record_id(kRecordID);
   EXPECT_CALL(*record, GetId).WillRepeatedly(ReturnRef(record_id));
   EXPECT_CALL(*record, GetUserId).WillRepeatedly(Return(kUserID));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
 
   // Load one record.
   std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
@@ -860,7 +929,54 @@ TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjectsClearsRecords) {
   EXPECT_EQ(paths.size(), 0);
 }
 
+TEST_F(BiometricsManagerWrapperTest,
+       TestRefreshRecordObjectsNoPrimaryUserClearsRecords) {
+  auto record = std::make_unique<MockBiometricsManagerRecord>();
+  std::string record_id(kRecordID);
+  EXPECT_CALL(*record, GetId).WillRepeatedly(ReturnRef(record_id));
+  EXPECT_CALL(*record, GetUserId).WillRepeatedly(Return(kUserID));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
+
+  // Load one record.
+  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
+  records.emplace_back(std::move(record));
+  EXPECT_CALL(*bio_manager_, GetLoadedRecords)
+      .WillOnce(Return(ByMove(std::move(records))));
+  wrapper_->RefreshRecordObjects();
+
+  // Get object path to loaded record.
+  dbus::ObjectPath record_path(mock_bio_path_.value() + "/Record" + kRecordID);
+  std::vector<dbus::ObjectPath> paths;
+  GetRecordsForUser(kUserID, &paths);
+  EXPECT_EQ(paths, std::vector{record_path});
+
+  // Refresh record objects when primary user is not available.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillRepeatedly(Return(""));
+  EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(0);
+  wrapper_->RefreshRecordObjects();
+
+  // Check if there are no loaded records.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
+  paths.clear();
+  GetRecordsForUser(kUserID, &paths);
+  EXPECT_EQ(paths.size(), 0);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestDestroyAllRecordsFailedNoPrimaryUser) {
+  // Empty string means that primary user is not set.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
+  EXPECT_CALL(*bio_manager_, DestroyAllRecords).Times(0);
+  dbus::MethodCall destroy_all_records(
+      kBiometricsManagerInterface, kBiometricsManagerDestroyAllRecordsMethod);
+
+  auto response = CallMethod(&destroy_all_records);
+  EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
+}
+
 TEST_F(BiometricsManagerWrapperTest, TestDestroyAllRecordsFailed) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
   EXPECT_CALL(*bio_manager_, DestroyAllRecords).WillOnce(Return(false));
   dbus::MethodCall destroy_all_records(
       kBiometricsManagerInterface, kBiometricsManagerDestroyAllRecordsMethod);
@@ -870,6 +986,8 @@ TEST_F(BiometricsManagerWrapperTest, TestDestroyAllRecordsFailed) {
 }
 
 TEST_F(BiometricsManagerWrapperTest, TestDestroyAllRecords) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
   EXPECT_CALL(*bio_manager_, DestroyAllRecords).WillOnce(Return(true));
   // Expect refreshing records.
   EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(1);

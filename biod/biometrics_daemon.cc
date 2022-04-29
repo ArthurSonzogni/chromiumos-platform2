@@ -36,9 +36,11 @@ const char kInvalidArguments[] = "invalid_arguments";
 BiometricsManagerWrapper::BiometricsManagerWrapper(
     std::unique_ptr<BiometricsManager> biometrics_manager,
     ExportedObjectManager* object_manager,
+    SessionStateManagerInterface* session_state_manager,
     ObjectPath object_path,
     const AsyncEventSequencer::CompletionAction& completion_callback)
     : biometrics_manager_(std::move(biometrics_manager)),
+      session_state_manager_(session_state_manager),
       dbus_object_(object_manager, object_manager->GetBus(), object_path),
       object_path_(std::move(object_path)),
       enroll_session_object_path_(object_path_.value() + "/EnrollSession"),
@@ -265,6 +267,15 @@ bool BiometricsManagerWrapper::StartEnrollSession(
     const std::string& user_id,
     const std::string& label,
     ObjectPath* enroll_session_path) {
+  if (session_state_manager_->GetPrimaryUser().empty()) {
+    LOG(WARNING) << message->GetSender() << " tried to start EnrollSession "
+                 << "when primary user is not set";
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
+                                   errors::kInternalError,
+                                   "Primary user is not set");
+    return false;
+  }
+
   BiometricsManager::EnrollSession enroll_session =
       biometrics_manager_->StartEnrollSession(user_id, label);
   if (!enroll_session) {
@@ -293,6 +304,22 @@ bool BiometricsManagerWrapper::StartEnrollSession(
 bool BiometricsManagerWrapper::GetRecordsForUser(brillo::ErrorPtr* error,
                                                  const std::string& user_id,
                                                  std::vector<ObjectPath>* out) {
+  // Technically, it's fine to call GetRecordsForUser when primary user is not
+  // available - we will just return an empty vector. This situation can occur
+  // when Chrome asks for the list of records before session_manager sends
+  // information that user logged in. In that case, print warning and return
+  // error so we can determine if that was the reason why unlock using
+  // fingerprint is not available despite the fact that records were loaded
+  // correctly.
+  if (session_state_manager_->GetPrimaryUser().empty()) {
+    LOG(WARNING) << "GetRecordsForUser called when primary user is not "
+                 << "available.";
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
+                                   errors::kInternalError,
+                                   "Primary user is not set");
+    return false;
+  }
+
   for (const auto& record : records_) {
     if (record->GetUserId() == user_id)
       out->emplace_back(record->path());
@@ -301,6 +328,14 @@ bool BiometricsManagerWrapper::GetRecordsForUser(brillo::ErrorPtr* error,
 }
 
 bool BiometricsManagerWrapper::DestroyAllRecords(brillo::ErrorPtr* error) {
+  if (session_state_manager_->GetPrimaryUser().empty()) {
+    LOG(WARNING) << "DestroyAllRecords called when primary user is not set";
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
+                                   errors::kInternalError,
+                                   "Primary user is not set");
+    return false;
+  }
+
   if (!biometrics_manager_->DestroyAllRecords()) {
     *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
@@ -314,6 +349,15 @@ bool BiometricsManagerWrapper::DestroyAllRecords(brillo::ErrorPtr* error) {
 bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
                                                 dbus::Message* message,
                                                 ObjectPath* auth_session_path) {
+  if (session_state_manager_->GetPrimaryUser().empty()) {
+    LOG(WARNING) << message->GetSender() << " tried to start AuthSession when "
+                 << "primary user is not set";
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
+                                   errors::kInternalError,
+                                   "Primary user is not set");
+    return false;
+  }
+
   BiometricsManager::AuthSession auth_session =
       biometrics_manager_->StartAuthSession();
   if (!auth_session) {
@@ -379,6 +423,12 @@ bool BiometricsManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
 
 void BiometricsManagerWrapper::RefreshRecordObjects() {
   records_.clear();
+
+  // There is nothing to do when user is not logged in.
+  if (session_state_manager_->GetPrimaryUser().empty()) {
+    return;
+  }
+
   std::vector<std::unique_ptr<BiometricsManagerRecord>> records =
       biometrics_manager_->GetLoadedRecords();
 
@@ -426,7 +476,8 @@ BiometricsDaemon::BiometricsDaemon() {
   if (cros_fp_bio) {
     biometrics_managers_.emplace_back(
         std::make_unique<BiometricsManagerWrapper>(
-            std::move(cros_fp_bio), object_manager_.get(), cros_fp_bio_path,
+            std::move(cros_fp_bio), object_manager_.get(),
+            session_state_manager_.get(), cros_fp_bio_path,
             sequencer->GetHandler(
                 "Failed to register CrosFpBiometricsManager object", true)));
   } else {

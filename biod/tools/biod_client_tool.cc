@@ -172,9 +172,11 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
 
     std::unique_ptr<dbus::Response> response =
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
-    CHECK(response);
 
     std::vector<RecordProxy> records;
+    if (!response)
+      return records;
+
     dbus::MessageReader response_reader(response.get());
     dbus::MessageReader records_reader(nullptr);
     CHECK(response_reader.PopArray(&records_reader));

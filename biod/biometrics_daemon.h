@@ -28,6 +28,7 @@ class BiometricsManagerWrapper {
   BiometricsManagerWrapper(
       std::unique_ptr<BiometricsManager> biometrics_manager,
       brillo::dbus_utils::ExportedObjectManager* object_manager,
+      SessionStateManagerInterface* session_state_manager,
       dbus::ObjectPath object_path,
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
           completion_callback);
@@ -96,6 +97,7 @@ class BiometricsManagerWrapper {
   bool AuthSessionEnd(brillo::ErrorPtr* error);
 
   std::unique_ptr<BiometricsManager> biometrics_manager_;
+  SessionStateManagerInterface* session_state_manager_;
 
   brillo::dbus_utils::DBusObject dbus_object_;
   dbus::ObjectPath object_path_;
@@ -128,6 +130,9 @@ class BiometricsDaemon : public SessionStateManagerInterface::Observer {
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
+  // BiometricsManagerWrapper holds raw pointers to SessionStateManager and
+  // ExportedObjectManager so it must be placed after them to make sure that
+  // pointers remain valid (destruction order is correct).
   std::vector<std::unique_ptr<BiometricsManagerWrapper>> biometrics_managers_;
 };
 }  // namespace biod
