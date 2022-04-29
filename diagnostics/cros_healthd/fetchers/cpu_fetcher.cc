@@ -278,6 +278,19 @@ std::optional<std::map<int, ParsedStatContents>> GetParsedStatContents(
   return parsed_stat_contents;
 }
 
+std::optional<std::vector<std::string>> GetProcCpuInfoContent(
+    const base::FilePath& root_dir) {
+  std::string cpu_info_contents;
+  auto cpu_info_file = GetProcCpuInfoPath(root_dir);
+  if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
+    return std::nullopt;
+  }
+
+  return base::SplitStringUsingSubstr(cpu_info_contents, "\n\n",
+                                      base::KEEP_WHITESPACE,
+                                      base::SPLIT_WANT_NONEMPTY);
+}
+
 // Parses |block| to determine if the block parsed from /proc/cpuinfo is a
 // processor block.
 bool IsProcessorBlock(const std::string& block) {
@@ -554,17 +567,15 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
   std::map<int, ParsedStatContents> logical_ids_to_stat_contents =
       parsed_stat_contents.value();
 
-  std::string cpu_info_contents;
-  auto cpu_info_file = GetProcCpuInfoPath(root_dir);
-  if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
-    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read CPU info file: " + cpu_info_file.value()));
+  std::optional<std::vector<std::string>> processor_info_opt =
+      GetProcCpuInfoContent(root_dir);
+  if (processor_info_opt == std::nullopt) {
+    return mojo_ipc::CpuResult::NewError(
+        CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+                               "Unable to read CPU info file: " +
+                                   GetProcCpuInfoPath(root_dir).value()));
   }
-
-  std::vector<std::string> processor_info = base::SplitStringUsingSubstr(
-      cpu_info_contents, "\n\n", base::KEEP_WHITESPACE,
-      base::SPLIT_WANT_NONEMPTY);
+  const std::vector<std::string>& processor_info = processor_info_opt.value();
 
   std::map<int, mojo_ipc::PhysicalCpuInfoPtr> physical_cpus;
   for (const auto& processor : processor_info) {
