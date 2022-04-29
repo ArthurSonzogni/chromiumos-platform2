@@ -180,5 +180,12 @@ TEST_F(CollectionTest, AddAttrInvalidValueTag) {
   EXPECT_EQ(err, Code::kInvalidValueTag);
 }
 
+TEST(ToStrView, ValueTag) {
+  EXPECT_EQ(ToStrView(ValueTag::keyword), "keyword");
+  EXPECT_EQ(ToStrView(ValueTag::delete_attribute), "delete-attribute");
+  EXPECT_EQ(ToStrView(ValueTag::enum_), "enum");
+  EXPECT_EQ(ToStrView(ValueTag::nameWithoutLanguage), "nameWithoutLanguage");
+}
+
 }  // namespace
 }  // namespace ipp

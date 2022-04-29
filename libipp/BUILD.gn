@@ -54,6 +54,7 @@ install_config("install_pkgconfig") {
 
 install_config("install_headers") {
   sources = [
+    "attribute.h",
     "frame.h",
     "ipp.h",
     "ipp_attribute.h",

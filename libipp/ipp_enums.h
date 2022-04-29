@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace ipp {
 // This is part of libipp library. See ipp.h for information how to use it.
@@ -3909,6 +3910,7 @@ IPP_EXPORT std::string ToString(AttrName, int value);
 
 IPP_EXPORT std::string ToString(GroupTag v);
 IPP_EXPORT std::string ToString(AttrName v);
+IPP_EXPORT std::string_view ToStrView(AttrName v);
 IPP_EXPORT std::string ToString(E_auth_info_required v);
 IPP_EXPORT std::string ToString(E_baling_type v);
 IPP_EXPORT std::string ToString(E_baling_when v);

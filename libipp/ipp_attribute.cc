@@ -538,6 +538,63 @@ std::string ToString(AttrType at) {
   return "";
 }
 
+std::string_view ToStrView(ValueTag tag) {
+  switch (tag) {
+    case ValueTag::unsupported:
+      return std::string_view("unsupported");
+    case ValueTag::unknown:
+      return std::string_view("unknown");
+    case ValueTag::no_value:
+      return std::string_view("no-value");
+    case ValueTag::not_settable:
+      return std::string_view("not-settable");
+    case ValueTag::delete_attribute:
+      return std::string_view("delete-attribute");
+    case ValueTag::admin_define:
+      return std::string_view("admin-define");
+    case ValueTag::integer:
+      return std::string_view("integer");
+    case ValueTag::boolean:
+      return std::string_view("boolean");
+    case ValueTag::enum_:
+      return std::string_view("enum");
+    case ValueTag::octetString:
+      return std::string_view("octetString");
+    case ValueTag::dateTime:
+      return std::string_view("dateTime");
+    case ValueTag::resolution:
+      return std::string_view("resolution");
+    case ValueTag::rangeOfInteger:
+      return std::string_view("rangeOfInteger");
+    case ValueTag::collection:
+      return std::string_view("collection");
+    case ValueTag::textWithLanguage:
+      return std::string_view("textWithLanguage");
+    case ValueTag::nameWithLanguage:
+      return std::string_view("nameWithLanguage");
+    case ValueTag::textWithoutLanguage:
+      return std::string_view("textWithoutLanguage");
+    case ValueTag::nameWithoutLanguage:
+      return std::string_view("nameWithoutLanguage");
+    case ValueTag::keyword:
+      return std::string_view("keyword");
+    case ValueTag::uri:
+      return std::string_view("uri");
+    case ValueTag::uriScheme:
+      return std::string_view("uriScheme");
+    case ValueTag::charset:
+      return std::string_view("charset");
+    case ValueTag::naturalLanguage:
+      return std::string_view("naturalLanguage");
+    case ValueTag::mimeMediaType:
+      return std::string_view("mimeMediaType");
+  }
+  if (IsValid(tag)) {
+    return std::string_view("<unknown_ValueTag>");
+  }
+  return std::string_view("<invalid_ValueTag>");
+}
+
 std::string ToString(bool v) {
   return (v ? "true" : "false");
 }
@@ -697,6 +754,15 @@ Attribute::Attribute(Collection* owner, AttrName name)
     assert(GetOwner() == owner);
 }
 
+std::string_view Attribute::Name() const {
+  std::string_view s = ToStrView(name_);
+  if (!s.empty()) {
+    return s;
+  }
+  const Collection* coll = GetOwner();
+  return std::string_view(coll->unknown_names.at(name_));
+}
+
 size_t Attribute::GetSize() const {
   Collection* coll = GetOwner();
   const AttrDef def = coll->GetAttributeDefinition(name_);
@@ -724,6 +790,10 @@ size_t Attribute::GetSize() const {
       return ReadValueConstPtr<std::vector<Collection*>>(&it->second)->size();
   }
   return 0;
+}
+
+size_t Attribute::Size() const {
+  return GetSize();
 }
 
 void Attribute::Resize(size_t new_size) {

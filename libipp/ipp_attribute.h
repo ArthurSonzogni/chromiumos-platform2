@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -69,7 +70,7 @@ enum class ValueTag : uint8_t {
   // All tags from the range 0x10-0x1f are valid.
   unsupported = 0x10,       // [rfc8010]
   unknown = 0x12,           // [rfc8010]
-  no_value_ = 0x13,         // [rfc8010]
+  no_value = 0x13,          // [rfc8010]
   not_settable = 0x15,      // [rfc3380]
   delete_attribute = 0x16,  // [rfc3380]
   admin_define = 0x17,      // [rfc3380]
@@ -175,6 +176,7 @@ struct DateTime {
 // string if given value is not defined.
 IPP_EXPORT std::string ToString(AttrState value);
 IPP_EXPORT std::string ToString(AttrType value);
+IPP_EXPORT std::string_view ToStrView(ValueTag tag);
 IPP_EXPORT std::string ToString(bool value);
 IPP_EXPORT std::string ToString(int value);
 IPP_EXPORT std::string ToString(const Resolution& value);
@@ -394,6 +396,7 @@ class IPP_EXPORT Attribute {
   }
 
   // Returns an attribute's name as a non-empty string.
+  // This method is deprecated, use Name() instead.
   std::string GetName() const {
     const std::string s = ToString(name_);
     if (!s.empty()) {
@@ -403,9 +406,13 @@ class IPP_EXPORT Attribute {
     return coll->unknown_names.at(name_);
   }
 
+  // Returns an attribute's name. It is always a non-empty string.
+  std::string_view Name() const;
+
   // Returns the current number of elements (values or Collections).
   // (IsASet() == false) => always returns 0 or 1.
-  size_t GetSize() const;
+  size_t GetSize() const;  // This one is deprecated.
+  size_t Size() const;
 
   // Resizes the attribute (changes the number of stored values/collections).
   // (IsASet() == false) and (new_size > 1) => does nothing.

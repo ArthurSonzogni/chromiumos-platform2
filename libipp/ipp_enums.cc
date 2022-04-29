@@ -4532,6 +4532,9 @@ std::string ToString(GroupTag v) {
 std::string ToString(AttrName v) {
   return kAllEnums[2].str(static_cast<uint16_t>(v));
 }
+std::string_view ToStrView(AttrName v) {
+  return kAllEnums[2].str(static_cast<uint16_t>(v));
+}
 std::string ToString(E_auth_info_required v) {
   return kAllEnums[3].str(static_cast<uint16_t>(v));
 }

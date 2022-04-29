@@ -22,7 +22,7 @@ void TestNewAttribute(Attribute* attr,
                       bool is_a_set,
                       AttrType type) {
   EXPECT_TRUE(attr != nullptr);
-  EXPECT_EQ(attr->GetName(), name);
+  EXPECT_EQ(attr->Name(), name);
   if (attr->GetNameAsEnum() != AttrName::_unknown) {
     EXPECT_EQ(ToString(attr->GetNameAsEnum()), name);
   }
@@ -30,7 +30,7 @@ void TestNewAttribute(Attribute* attr,
   EXPECT_EQ(attr->GetType(), type);
   // default state after creation
   EXPECT_EQ(attr->GetState(), AttrState::unset);
-  EXPECT_EQ(attr->GetSize(), 0);
+  EXPECT_EQ(attr->Size(), 0);
 }
 
 class TestSubcollection : public Collection {
@@ -94,10 +94,10 @@ TEST(attribute, SetOfValues) {
   coll.attr2.Set({r1, r2, r3});
   EXPECT_EQ(coll.attr2.Get(), std::vector<RangeOfInteger>({r1, r2, r3}));
   EXPECT_EQ(coll.attr2.GetState(), AttrState::set);
-  EXPECT_EQ(coll.attr2.GetSize(), 3);
+  EXPECT_EQ(coll.attr2.Size(), 3);
   coll.attr2.Resize(2);
   EXPECT_EQ(coll.attr2.Get(), std::vector<RangeOfInteger>({r1, r2}));
-  EXPECT_EQ(coll.attr2.GetSize(), 2);
+  EXPECT_EQ(coll.attr2.Size(), 2);
 }
 
 TEST(attribute, OpenSetOfValues) {
@@ -109,12 +109,12 @@ TEST(attribute, OpenSetOfValues) {
   EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"11", "22", "33", "aaa",
                                                         "bbb", "44", "55"}));
   EXPECT_EQ(coll.attr3.GetState(), AttrState::set);
-  EXPECT_EQ(coll.attr3.GetSize(), 7);
+  EXPECT_EQ(coll.attr3.Size(), 7);
   coll.attr3.Resize(2);
   EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"11", "22"}));
-  EXPECT_EQ(coll.attr3.GetSize(), 2);
+  EXPECT_EQ(coll.attr3.Size(), 2);
   coll.attr3.Set(std::vector<std::string>({"xx", "yy", "zz"}));
-  EXPECT_EQ(coll.attr3.GetSize(), 3);
+  EXPECT_EQ(coll.attr3.Size(), 3);
   EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"xx", "yy", "zz"}));
 }
 
@@ -135,7 +135,7 @@ TEST(attribute, SetOfCollections) {
                    AttrType::collection);
   coll.attr5[3].hi.SetState(AttrState::not_settable);
   EXPECT_EQ(coll.attr5.GetState(), AttrState::set);
-  EXPECT_EQ(coll.attr5.GetSize(), 4);
+  EXPECT_EQ(coll.attr5.Size(), 4);
   EXPECT_EQ(coll.attr5[3].hi.GetState(), AttrState::not_settable);
 }
 
