@@ -47,7 +47,8 @@ std::optional<std::string> DlcHelper::GetRootPath(const std::string& dlc_id,
 
   if (state.state() != dlcservice::DlcState_State_INSTALLED) {
     *out_error = dlc_id + " was not installed, its state is: " +
-                 std::to_string(state.state());
+                 std::to_string(state.state()) +
+                 " with last error: " + state.last_error_code();
     return std::nullopt;
   }
 
