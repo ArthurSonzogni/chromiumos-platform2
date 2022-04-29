@@ -22,6 +22,7 @@ inline constexpr char kDefaultJsonStoreFilePath[] =
 inline constexpr char kDefaultUnencryptedPreservePath[] =
     "/mnt/stateful_partition/unencrypted/preserve";
 inline constexpr char kTestDirPath[] = ".test";
+inline constexpr char kTestDeviceTagFilePath[] = ".test_device";
 
 // Files for pre-stop script to read.
 inline constexpr char kPowerwashRequestFilePath[] = ".powerwash_request";

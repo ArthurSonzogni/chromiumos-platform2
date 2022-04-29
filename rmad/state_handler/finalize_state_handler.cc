@@ -5,21 +5,33 @@
 #include "rmad/state_handler/finalize_state_handler.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 
+#include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/fake_cr50_utils.h"
 #include "rmad/utils/fake_crossystem_utils.h"
 #include "rmad/utils/fake_flashrom_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
+
+namespace {
+
+constexpr char kEmptyBoardIdType[] = "ffffffff";
+constexpr char kTestBoardIdType[] = "5a5a4352";             // ZZCR.
+constexpr char kPvtBoardIdFlags[] = "00007f80";             // pvt.
+constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";  // customlabel_pvt.
+
+}  // namespace
 
 namespace rmad {
 
@@ -32,6 +44,7 @@ FakeFinalizeStateHandler::FakeFinalizeStateHandler(
     : FinalizeStateHandler(
           json_store,
           daemon_callback,
+          working_dir_path,
           std::make_unique<FakeCr50Utils>(working_dir_path),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<FakeFlashromUtils>()) {}
@@ -41,7 +54,8 @@ FakeFinalizeStateHandler::FakeFinalizeStateHandler(
 FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback) {
+    : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(kDefaultWorkingDirPath) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
@@ -50,10 +64,12 @@ FinalizeStateHandler::FinalizeStateHandler(
 FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
@@ -177,7 +193,38 @@ void FinalizeStateHandler::FinalizeTask() {
     return;
   }
 
-  // TODO(chenghan): Check cr50 data (e.g. board ID) and GBB flags.
+  status_.set_progress(0.9);
+
+  // Make sure cr50 board ID type and board ID flags are set.
+  if (std::string board_id_type; !cr50_utils_->GetBoardIdType(&board_id_type) ||
+                                 board_id_type == kEmptyBoardIdType ||
+                                 board_id_type == kTestBoardIdType) {
+    LOG(ERROR) << "Cr50 board ID type is invalid: " << board_id_type;
+    if (base::PathExists(
+            working_dir_path_.AppendASCII(kTestDeviceTagFilePath))) {
+      LOG(INFO) << "Cr50 board ID check bypassed";
+    } else {
+      status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+      status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+      return;
+    }
+  }
+  if (std::string board_id_flags;
+      !cr50_utils_->GetBoardIdFlags(&board_id_flags) ||
+      (board_id_flags != kPvtBoardIdFlags &&
+       board_id_flags != kCustomLabelPvtBoardIdFlags)) {
+    LOG(ERROR) << "Cr50 board ID flags is invalid: " << board_id_flags;
+    if (base::PathExists(
+            working_dir_path_.AppendASCII(kTestDeviceTagFilePath))) {
+      LOG(INFO) << "Cr50 board ID flags check bypassed";
+    } else {
+      status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+      status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+      return;
+    }
+  }
+
+  // TODO(chenghan): Check GBB flags.
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
   status_.set_progress(1);
   status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);

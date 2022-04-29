@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
@@ -28,10 +29,11 @@ class FinalizeStateHandler : public BaseStateHandler {
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                                 scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
-  // |flashrom_utils_| for testing.
+  // Used to inject |working_dir_path_|, and mocked |cr50_utils_|,
+  // |crossystem_utils_| and |flashrom_utils_| for testing.
   FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                        scoped_refptr<DaemonCallback> daemon_callback,
+                       const base::FilePath& working_dir_path,
                        std::unique_ptr<Cr50Utils> cr50_utils,
                        std::unique_ptr<CrosSystemUtils> crossystem_utils,
                        std::unique_ptr<FlashromUtils> flashrom_utils);
@@ -55,7 +57,9 @@ class FinalizeStateHandler : public BaseStateHandler {
   void StartFinalize();
   void FinalizeTask();
 
+  base::FilePath working_dir_path_;
   FinalizeStatus status_;
+
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;

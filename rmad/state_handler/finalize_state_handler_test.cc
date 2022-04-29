@@ -11,9 +11,11 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -32,6 +34,15 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
 
+namespace {
+
+constexpr char kValidBoardIdType[] = "12345678";
+constexpr char kInvalidBoardIdType[] = "ffffffff";
+constexpr char kValidBoardIdFlags[] = "00007f80";
+constexpr char kInvalidBoardIdFlags[] = "00007f7f";
+
+}  // namespace
+
 namespace rmad {
 
 class FinalizeStateHandlerTest : public StateHandlerTest {
@@ -48,11 +59,17 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
   scoped_refptr<FinalizeStateHandler> CreateStateHandler(
       const std::vector<int>& wp_status_list,
       bool enable_swwp_success,
-      bool disable_factory_mode_success) {
+      bool disable_factory_mode_success,
+      const std::string& board_id_type,
+      const std::string& board_id_flags) {
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, DisableFactoryMode())
         .WillByDefault(Return(disable_factory_mode_success));
+    ON_CALL(*mock_cr50_utils, GetBoardIdType(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(board_id_type), Return(true)));
+    ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(board_id_flags), Return(true)));
 
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
@@ -77,8 +94,9 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
                             base::Unretained(&signal_sender_)));
 
     return base::MakeRefCounted<FinalizeStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_cr50_utils),
-        std::move(mock_crossystem_utils), std::move(mock_flashrom_utils));
+        json_store_, daemon_callback_, GetTempDirPath(),
+        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
+        std::move(mock_flashrom_utils));
   }
 
  protected:
@@ -91,7 +109,8 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Success) {
-  auto handler = CreateStateHandler({0, 1}, true, true);
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdFlags,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
@@ -106,7 +125,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Success) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Success) {
-  auto handler = CreateStateHandler({1, 1}, false, true);
+  auto handler = CreateStateHandler({1, 1}, false, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
@@ -121,7 +141,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Success) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
-  auto handler = CreateStateHandler({0}, false, true);
+  auto handler = CreateStateHandler({0}, false, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
@@ -137,7 +158,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
-  auto handler = CreateStateHandler({0}, true, false);
+  auto handler = CreateStateHandler({0}, true, false, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
@@ -153,7 +175,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
-  auto handler = CreateStateHandler({0, 0}, true, true);
+  auto handler = CreateStateHandler({0, 0}, true, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
@@ -168,8 +191,81 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
+TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
+  auto handler = CreateStateHandler({0, 1}, true, true, kInvalidBoardIdType,
+                                    kValidBoardIdFlags);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
+      .WillOnce(Invoke([](const FinalizeStatus& status) {
+        EXPECT_EQ(status.status(),
+                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+        EXPECT_EQ(status.progress(), 0.9);
+        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+      }));
+  handler->RunState();
+  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
+  auto handler = CreateStateHandler({0, 1}, true, true, kInvalidBoardIdType,
+                                    kValidBoardIdFlags);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Bypass board ID check.
+  EXPECT_TRUE(
+      brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDeviceTagFilePath)));
+
+  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
+      .WillOnce(Invoke([](const FinalizeStatus& status) {
+        EXPECT_EQ(status.status(),
+                  FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
+        EXPECT_EQ(status.progress(), 1);
+        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
+      }));
+  handler->RunState();
+  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdType,
+                                    kInvalidBoardIdFlags);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
+      .WillOnce(Invoke([](const FinalizeStatus& status) {
+        EXPECT_EQ(status.status(),
+                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+        EXPECT_EQ(status.progress(), 0.9);
+        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+      }));
+  handler->RunState();
+  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdType,
+                                    kInvalidBoardIdFlags);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Bypass board ID check.
+  EXPECT_TRUE(
+      brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDeviceTagFilePath)));
+
+  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
+      .WillOnce(Invoke([](const FinalizeStatus& status) {
+        EXPECT_EQ(status.status(),
+                  FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
+        EXPECT_EQ(status.progress(), 1);
+        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
+      }));
+  handler->RunState();
+  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+}
+
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler({0, 1}, true, true);
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   task_environment_.RunUntilIdle();
@@ -184,7 +280,8 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
-  auto handler = CreateStateHandler({0, 1}, true, true);
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
@@ -200,7 +297,8 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler({0, 1}, true, true);
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   task_environment_.RunUntilIdle();
@@ -213,7 +311,8 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler({0, 1}, true, true);
+  auto handler = CreateStateHandler({0, 1}, true, true, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   task_environment_.RunUntilIdle();
@@ -228,7 +327,8 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
-  auto handler = CreateStateHandler({0, 0}, true, false);
+  auto handler = CreateStateHandler({0, 0}, true, false, kValidBoardIdType,
+                                    kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   task_environment_.RunUntilIdle();
