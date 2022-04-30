@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   logging::InitLogging(settings);
 
   if (getuid() != 0) {
-    LOG(ERROR) << "clobber-state must be run as root";
+    LOG(ERROR) << argv[0] << " must be run as root";
     return 1;
   }
 
