@@ -614,6 +614,9 @@ disk_nvme_upgrade() {
   elif [ "${rc}" -ne 0 ]; then
     log_msg "Unable to activate ${fw_file} to ${device}"
     return "${rc}"
+  elif echo "${fw_options}" | grep -q "bh799"; then
+    # BH799 report the firmware has been updated, but it needs a reset.
+    "${FLAGS_nvme}" reset "/dev/${device}"
   fi
 }
 
