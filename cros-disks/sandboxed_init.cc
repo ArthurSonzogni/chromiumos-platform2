@@ -32,6 +32,7 @@ namespace {
 
 // SIGALRM handler.
 void SigAlarm(const int sig) {
+  RAW_LOG(INFO, "The 'init' process's grace period expired");
   RAW_CHECK(sig == SIGALRM);
   TerminateNow();
 }
@@ -51,6 +52,7 @@ void ScheduleTermination() {
     RAW_LOG(ERROR, "The 'init' process cannot broadcast SIGTERM");
 
   // Set an alarm to terminate in a couple of seconds.
+  RAW_LOG(INFO, "The 'init' process is entering a grace period of 2 seconds");
   RAW_CHECK(signal(SIGALRM, &SigAlarm) != SIG_ERR);
   RAW_CHECK(alarm(2) == 0);
 }
@@ -65,23 +67,24 @@ void SigTerm(const int sig) {
 
 static int termination_fd = base::kInvalidFd;
 
-// SIGIO handler.
-void SigIo(int sig) {
-  const base::ScopedClearLastError guard;
-
+// Check if the termination pipe has some data or if its write end has been
+// closed.
+bool ShouldTerminate() {
   if (char buffer; read(termination_fd, &buffer, sizeof(buffer)) < 0) {
     RAW_CHECK(errno == EAGAIN);
-    if (sig == SIGIO)
-      RAW_LOG(INFO,
-              "The 'init' process received SIGIO but not because of the "
-              "termination pipe");
-    return;
+    return false;
   }
 
-  if (sig == SIGIO)
-    RAW_LOG(INFO, "The 'init' process received SIGIO");
+  return true;
+}
 
-  ScheduleTermination();
+// SIGIO handler.
+void SigIo(const int sig) {
+  const base::ScopedClearLastError guard;
+  RAW_CHECK(sig == SIGIO);
+  RAW_LOG(INFO, "The 'init' process received SIGIO");
+  if (ShouldTerminate())
+    ScheduleTermination();
 }
 
 }  // namespace
@@ -114,48 +117,33 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   // Set an identifiable process name.
-  if (prctl(PR_SET_NAME, "cros-disks-INIT") < 0)
-    PLOG(WARNING) << "Cannot set init's process name";
+  PCHECK(prctl(PR_SET_NAME, "cros-disks-init") >= 0);
 
   // Set up the SIGTERM signal handler.
-  if (signal(SIGTERM, SigTerm) == SIG_ERR)
-    PLOG(FATAL) << "Cannot install SIGTERM signal handler";
+  PCHECK(signal(SIGTERM, SigTerm) != SIG_ERR);
 
   // Set up the SIGPIPE signal handler. Since we write to the control pipe, we
   // don't want this 'init' process to be killed by a SIGPIPE.
-  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
-    PLOG(FATAL) << "Cannot install SIGPIPE signal handler";
+  PCHECK(signal(SIGPIPE, SIG_IGN) != SIG_ERR);
 
   if (termination_fd_.is_valid()) {
     // Save termination_fd to global variable to it's accessible from the signal
     // handler.
     termination_fd = termination_fd_.get();
 
-    // Set up the SIGIO signal handler.
-    if (signal(SIGIO, SigIo) == SIG_ERR) {
-      PLOG(FATAL) << "Cannot install SIGIO signal handler";
-    }
-
-    // Set init as the owner of the kill pipe.
-    if (fcntl(termination_fd_.get(), F_SETOWN, getpid()) < 0) {
-      PLOG(FATAL) << "Cannot own the termination pipe";
-    }
-
-    // Set O_ASYNC and O_NONBLOCK flag on kill pipe.
-    if (fcntl(termination_fd_.get(), F_SETFL, O_ASYNC | O_NONBLOCK) < 0) {
-      PLOG(FATAL) << "Cannot set O_ASYNC and O_NONBLOCK on the kill pipe";
-    }
-
-    // Call SigIo manually to kill init if the write end of termination pipe is
-    // already closed.
-    SigIo(-1);
+    // Set up the SIGIO signal handler to monitor termination_fd.
+    PCHECK(signal(SIGIO, SigIo) != SIG_ERR);
+    PCHECK(fcntl(termination_fd, F_SETOWN, getpid()) >= 0);
+    PCHECK(fcntl(termination_fd, F_SETFL, O_ASYNC | O_NONBLOCK) >= 0);
+    if (ShouldTerminate())
+      TerminateNow();
   }
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
   const pid_t launcher_pid = StartLauncher();
 
   DCHECK(ctrl_fd_.is_valid());
-  CHECK(base::SetNonBlocking(ctrl_fd_.get()));
+  PCHECK(base::SetNonBlocking(ctrl_fd_.get()));
 
   // Close stdin and stdout. Keep stderr open, so that error messages can still
   // be logged.
@@ -172,15 +160,13 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     const pid_t pid = HANDLE_EINTR(wait(&wstatus));
 
     if (pid < 0) {
-      if (errno == ECHILD) {
-        // No more child. By then, we should have closed the control pipe.
-        DCHECK(!ctrl_fd_.is_valid());
-        VLOG(2) << "The 'init' process is finishing with exit code "
-                << last_failure_code;
-        _exit(last_failure_code);
-      }
+      PCHECK(errno == ECHILD);
 
-      PLOG(FATAL) << "The 'init' process cannot wait for child processes";
+      // No more child. By then, we should have closed the control pipe.
+      DCHECK(!ctrl_fd_.is_valid());
+      VLOG(2) << "The 'init' process is finishing with exit code "
+              << last_failure_code;
+      _exit(last_failure_code);
     }
 
     // A child process finished.
@@ -215,7 +201,7 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
 
 pid_t SandboxedInit::StartLauncher() {
   const pid_t launcher_pid = fork();
-  PLOG_IF(FATAL, launcher_pid < 0) << "Cannot create 'launcher' process";
+  PCHECK(launcher_pid >= 0);
 
   if (launcher_pid > 0) {
     // In parent (ie 'init') process.
