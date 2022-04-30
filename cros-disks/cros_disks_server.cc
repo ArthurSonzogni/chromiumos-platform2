@@ -311,7 +311,10 @@ void CrosDisksServer::OnSessionStopped() {
 }
 
 void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
+  LOG(INFO) << "Dispatching device event " << event;
   switch (event.event_type) {
+    case DeviceEvent::kIgnored:
+      break;
     case DeviceEvent::kDeviceAdded:
       SendDeviceAddedSignal(event.device_path);
       break;
@@ -329,8 +332,6 @@ void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
       break;
     case DeviceEvent::kDiskRemoved:
       SendDiskRemovedSignal(event.device_path);
-      break;
-    default:
       break;
   }
 }

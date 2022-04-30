@@ -6,6 +6,7 @@
 #define CROS_DISKS_DEVICE_EVENT_H_
 
 #include <list>
+#include <ostream>
 #include <string>
 
 namespace cros_disks {
@@ -37,6 +38,9 @@ struct DeviceEvent {
   EventType event_type;
   std::string device_path;
 };
+
+std::ostream& operator<<(std::ostream& out, DeviceEvent::EventType type);
+std::ostream& operator<<(std::ostream& out, const DeviceEvent& event);
 
 using DeviceEventList = std::list<DeviceEvent>;
 
