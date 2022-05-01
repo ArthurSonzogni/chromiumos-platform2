@@ -496,6 +496,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("reven_branding"))
     builder->AddArg("--reven-branding");
 
+  // Enable mojo service manager.
+  if (builder->UseFlagIsSet("mojo_service_manager"))
+    builder->AddArg("--enable-mojo-service-manager");
+
   SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
 }
