@@ -232,7 +232,7 @@ TEST_F(SandboxedInitTest, CtrlPipeIsClosed) {
   EXPECT_EQ("", Read(out_));
 
   // Wait for the 'init' process to finish.
-  EXPECT_EQ(128 + SIGABRT, WaitForInit());
+  EXPECT_EQ(12, WaitForInit());
 }
 
 TEST_F(SandboxedInitTest, TerminationPipeIsClosed) {
