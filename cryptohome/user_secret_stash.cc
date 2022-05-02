@@ -200,10 +200,10 @@ GetKeyBlocksFromSerializableStructs(
 // `iv`, `tag`, `wrapped_key_blocks`, `created_on_os_version`; on failure,
 // returns false.
 bool GetContainerFromFlatbuffer(
-    const brillo::SecureBlob& flatbuffer,
-    brillo::SecureBlob* ciphertext,
-    brillo::SecureBlob* iv,
-    brillo::SecureBlob* tag,
+    const brillo::Blob& flatbuffer,
+    brillo::Blob* ciphertext,
+    brillo::Blob* iv,
+    brillo::Blob* tag,
     std::map<std::string, UserSecretStash::WrappedKeyBlock>* wrapped_key_blocks,
     std::string* created_on_os_version) {
   std::optional<UserSecretStashContainer> deserialized =
@@ -320,9 +320,10 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
 
   // Attempt the unwrapping.
   brillo::SecureBlob main_key;
-  if (!AesGcmDecrypt(wrapped_key_block.encrypted_key, /*ad=*/std::nullopt,
-                     wrapped_key_block.gcm_tag, wrapping_key,
-                     wrapped_key_block.iv, &main_key)) {
+  if (!AesGcmDecrypt(
+          brillo::SecureBlob(wrapped_key_block.encrypted_key),
+          /*ad=*/std::nullopt, brillo::SecureBlob(wrapped_key_block.gcm_tag),
+          wrapping_key, brillo::SecureBlob(wrapped_key_block.iv), &main_key)) {
     LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
     return std::nullopt;
   }
@@ -385,14 +386,14 @@ std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom(
 
 // static
 std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
-    const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key) {
+    const brillo::Blob& flatbuffer, const brillo::SecureBlob& main_key) {
   if (main_key.size() != kAesGcm256KeySize) {
     LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
                << main_key.size() << ", expected: " << kAesGcm256KeySize;
     return nullptr;
   }
 
-  brillo::SecureBlob ciphertext, iv, gcm_tag;
+  brillo::Blob ciphertext, iv, gcm_tag;
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
   std::string created_on_os_version;
   if (!GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
@@ -408,15 +409,16 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
 
 // static
 std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
-    const brillo::SecureBlob& ciphertext,
-    const brillo::SecureBlob& iv,
-    const brillo::SecureBlob& gcm_tag,
+    const brillo::Blob& ciphertext,
+    const brillo::Blob& iv,
+    const brillo::Blob& gcm_tag,
     const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
     const std::string& created_on_os_version,
     const brillo::SecureBlob& main_key) {
   brillo::SecureBlob serialized_uss_payload;
-  if (!AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, gcm_tag, main_key, iv,
-                     &serialized_uss_payload)) {
+  if (!AesGcmDecrypt(brillo::SecureBlob(ciphertext), /*ad=*/std::nullopt,
+                     brillo::SecureBlob(gcm_tag), main_key,
+                     brillo::SecureBlob(iv), &serialized_uss_payload)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash payload";
     return nullptr;
   }
@@ -458,11 +460,11 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
 // static
 std::unique_ptr<UserSecretStash>
 UserSecretStash::FromEncryptedContainerWithWrappingKey(
-    const brillo::SecureBlob& flatbuffer,
+    const brillo::Blob& flatbuffer,
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key,
     brillo::SecureBlob* main_key) {
-  brillo::SecureBlob ciphertext, iv, gcm_tag;
+  brillo::Blob ciphertext, iv, gcm_tag;
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
   std::string created_on_os_version;
   if (!GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
@@ -559,17 +561,19 @@ bool UserSecretStash::AddWrappedMainKey(
   }
 
   // Perform the wrapping.
-  WrappedKeyBlock wrapped_key_block;
-  wrapped_key_block.encryption_algorithm =
-      UserSecretStashEncryptionAlgorithm::AES_GCM_256;
-  if (!AesGcmEncrypt(main_key, /*ad=*/std::nullopt, wrapping_key,
-                     &wrapped_key_block.iv, &wrapped_key_block.gcm_tag,
-                     &wrapped_key_block.encrypted_key)) {
+  brillo::SecureBlob iv, gcm_tag, encrypted_key;
+  if (!AesGcmEncrypt(main_key, /*ad=*/std::nullopt, wrapping_key, &iv, &gcm_tag,
+                     &encrypted_key)) {
     LOG(ERROR) << "Failed to wrap UserSecretStash main key.";
     return false;
   }
 
-  wrapped_key_blocks_[wrapping_id] = std::move(wrapped_key_block);
+  wrapped_key_blocks_[wrapping_id] = WrappedKeyBlock{
+      .encryption_algorithm = UserSecretStashEncryptionAlgorithm::AES_GCM_256,
+      .encrypted_key = brillo::Blob(encrypted_key.begin(), encrypted_key.end()),
+      .iv = brillo::Blob(iv.begin(), iv.end()),
+      .gcm_tag = brillo::Blob(gcm_tag.begin(), gcm_tag.end()),
+  };
   return true;
 }
 
@@ -584,7 +588,7 @@ bool UserSecretStash::RemoveWrappedMainKey(const std::string& wrapping_id) {
   return true;
 }
 
-std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
+std::optional<brillo::Blob> UserSecretStash::GetEncryptedContainer(
     const brillo::SecureBlob& main_key) {
   UserSecretStashPayload payload = {
       .fek = file_system_keyset_.Key().fek,
@@ -622,9 +626,9 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
 
   UserSecretStashContainer container = {
       .encryption_algorithm = UserSecretStashEncryptionAlgorithm::AES_GCM_256,
-      .ciphertext = ciphertext,
-      .iv = iv,
-      .gcm_tag = tag,
+      .ciphertext = brillo::Blob(ciphertext.begin(), ciphertext.end()),
+      .iv = brillo::Blob(iv.begin(), iv.end()),
+      .gcm_tag = brillo::Blob(tag.begin(), tag.end()),
       .created_on_os_version = created_on_os_version_,
   };
   // Note: It can happen that the USS container is created with empty
@@ -642,7 +646,7 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
     });
   }
 
-  std::optional<brillo::SecureBlob> serialized_contaner = container.Serialize();
+  std::optional<brillo::Blob> serialized_contaner = container.Serialize();
   if (!serialized_contaner.has_value()) {
     LOG(ERROR) << "Failed to serialize UserSecretStashContainer";
     return std::nullopt;

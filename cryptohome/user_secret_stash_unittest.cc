@@ -33,8 +33,8 @@ namespace cryptohome {
 
 namespace {
 
-static bool FindBlobInBlob(const brillo::SecureBlob& haystack,
-                           const brillo::SecureBlob& needle) {
+bool FindBlobInBlob(const brillo::Blob& haystack,
+                    const brillo::SecureBlob& needle) {
   return std::search(haystack.begin(), haystack.end(), needle.begin(),
                      needle.end()) != haystack.end();
 }
@@ -143,7 +143,7 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
 
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
@@ -157,7 +157,7 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", {0xAA, 0xBB}));
 
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
@@ -175,19 +175,19 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
 // but we verify to be resilient against accidental or intentional file
 // corruption.
 TEST_F(UserSecretStashTest, DecryptErrorEmptyBuf) {
-  EXPECT_FALSE(
-      UserSecretStash::FromEncryptedContainer(brillo::SecureBlob(), kMainKey));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      /*flatbuffer=*/brillo::Blob(), kMainKey));
 }
 
 // Test that deserialization fails on a corrupted flatbuffer. Normally this
 // never occurs, but we verify to be resilient against accidental or intentional
 // file corruption.
 TEST_F(UserSecretStashTest, DecryptErrorCorruptedBuf) {
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
-  brillo::SecureBlob corrupted_uss_container = *uss_container;
+  brillo::Blob corrupted_uss_container = *uss_container;
   for (uint8_t& byte : corrupted_uss_container)
     byte ^= 1;
 
@@ -197,7 +197,7 @@ TEST_F(UserSecretStashTest, DecryptErrorCorruptedBuf) {
 
 // Test that decryption fails on an empty decryption key.
 TEST_F(UserSecretStashTest, DecryptErrorEmptyKey) {
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
@@ -207,7 +207,7 @@ TEST_F(UserSecretStashTest, DecryptErrorEmptyKey) {
 
 // Test that decryption fails on a decryption key of a wrong size.
 TEST_F(UserSecretStashTest, DecryptErrorKeyBadSize) {
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
@@ -220,7 +220,7 @@ TEST_F(UserSecretStashTest, DecryptErrorKeyBadSize) {
 
 // Test that decryption fails on a wrong decryption key.
 TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
@@ -243,7 +243,8 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
   EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2));
 
   // Do the serialization-deserialization roundtrip with the USS.
-  auto uss_container = stash_->GetEncryptedContainer(kMainKey);
+  std::optional<brillo::Blob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
   std::unique_ptr<UserSecretStash> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
@@ -268,7 +269,7 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey));
 
   // Encrypt the USS.
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
 
@@ -322,7 +323,7 @@ TEST_F(UserSecretStashTest, OsVersionStays) {
       "OS\nCHROMEOS_RELEASE_VERSION=22222.0.2028_01_01_9999\n";
 
   // Create and encrypt the USS on the version 1.
-  std::optional<brillo::SecureBlob> uss_container;
+  std::optional<brillo::Blob> uss_container;
   {
     base::test::ScopedChromeOSVersionInfo scoped_version1(
         kLsbRelease1, /*lsb_release_time=*/base::Time());
@@ -362,7 +363,7 @@ TEST_F(UserSecretStashTest, MissingOsVersion) {
   EXPECT_TRUE(stash->GetCreatedOnOsVersion().empty());
 
   // Do a encrypt-decrypt roundtrip and verify the OS version is still empty.
-  std::optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_TRUE(uss_container.has_value());
   std::unique_ptr<UserSecretStash> stash2 =
@@ -398,7 +399,7 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
   // |stash_|.
   void UpdateBindingStrusts() {
     // Encrypt the USS.
-    std::optional<brillo::SecureBlob> uss_container =
+    std::optional<brillo::Blob> uss_container =
         stash_->GetEncryptedContainer(kMainKey);
     ASSERT_TRUE(uss_container);
 
@@ -421,19 +422,18 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
   }
 
   // Converts |uss_container_struct_| => "container flatbuffer".
-  brillo::SecureBlob GetFlatbufferFromUssContainerStruct() const {
-    std::optional<brillo::SecureBlob> serialized =
-        uss_container_struct_.Serialize();
+  brillo::Blob GetFlatbufferFromUssContainerStruct() const {
+    std::optional<brillo::Blob> serialized = uss_container_struct_.Serialize();
     if (!serialized.has_value()) {
-      ADD_FAILURE() << "Failed to serialized UserSecretStashContainer";
-      return brillo::SecureBlob();
+      ADD_FAILURE() << "Failed to serialize UserSecretStashContainer";
+      return brillo::Blob();
     }
     return serialized.value();
   }
 
   // Converts |uss_payload_struct_| => "payload flatbuffer" =>
   // UserSecretStashContainer => "container flatbuffer".
-  brillo::SecureBlob GetFlatbufferFromUssPayloadStruct() const {
+  brillo::Blob GetFlatbufferFromUssPayloadStruct() const {
     return GetFlatbufferFromUssPayloadBlob(PackUssPayloadStruct());
   }
 
@@ -442,7 +442,7 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
     std::optional<brillo::SecureBlob> serialized =
         uss_payload_struct_.Serialize();
     if (!serialized.has_value()) {
-      ADD_FAILURE() << "Failed to serialized UserSecretStashPayload";
+      ADD_FAILURE() << "Failed to serialize UserSecretStashPayload";
       return brillo::SecureBlob();
     }
     return serialized.value();
@@ -450,7 +450,7 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
 
   // Converts "payload flatbuffer" => UserSecretStashContainer => "container
   // flatbuffer".
-  brillo::SecureBlob GetFlatbufferFromUssPayloadBlob(
+  brillo::Blob GetFlatbufferFromUssPayloadBlob(
       const brillo::SecureBlob& uss_payload) const {
     // Encrypt the packed |uss_payload_struct_|.
     brillo::SecureBlob iv, tag, ciphertext;
@@ -460,16 +460,17 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
     // Create a copy of |uss_container_struct_|, with the encrypted blob
     // replaced.
     UserSecretStashContainer new_uss_container_struct = uss_container_struct_;
-    new_uss_container_struct.ciphertext = ciphertext;
-    new_uss_container_struct.iv = iv;
-    new_uss_container_struct.gcm_tag = tag;
+    new_uss_container_struct.ciphertext =
+        brillo::Blob(ciphertext.begin(), ciphertext.end());
+    new_uss_container_struct.iv = brillo::Blob(iv.begin(), iv.end());
+    new_uss_container_struct.gcm_tag = brillo::Blob(tag.begin(), tag.end());
 
     // Pack |new_uss_container_struct|.
-    std::optional<brillo::SecureBlob> serialized =
+    std::optional<brillo::Blob> serialized =
         new_uss_container_struct.Serialize();
     if (!serialized.has_value()) {
       ADD_FAILURE() << "Failed to seralize the USS container";
-      return brillo::SecureBlob();
+      return brillo::Blob();
     }
     return serialized.value();
   }

@@ -975,7 +975,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
                                      wrapping_key.value()));
-  std::optional<brillo::SecureBlob> encrypted_uss =
+  std::optional<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.has_value());
   EXPECT_TRUE(user_secret_stash_storage_.Persist(encrypted_uss.value(),
@@ -1051,7 +1051,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
                                      wrapping_key.value()));
-  std::optional<brillo::SecureBlob> encrypted_uss =
+  std::optional<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.has_value());
   EXPECT_TRUE(user_secret_stash_storage_.Persist(encrypted_uss.value(),

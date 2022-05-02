@@ -26,12 +26,12 @@ class UserSecretStashStorage final {
   // Persists the serialized USS container, as created by
   // `UserSecretStash::GetEncryptedContainer()`, in the given user's directory
   // in the shadow root. Returns false on failure.
-  bool Persist(const brillo::SecureBlob& uss_container_flatbuffer,
+  bool Persist(const brillo::Blob& uss_container_flatbuffer,
                const std::string& obfuscated_username);
   // Loads the serialized USS container flatbuffer (to be used with
   // `UserSecretStash::FromEncryptedContainer()`) from the given user's
   // directory in the shadow root. Returns nullopt on failure.
-  std::optional<brillo::SecureBlob> LoadPersisted(
+  std::optional<brillo::Blob> LoadPersisted(
       const std::string& obfuscated_username);
 
  private:

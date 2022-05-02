@@ -13,7 +13,9 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
 
-using brillo::SecureBlob;
+using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::BlobToString;
 using testing::_;
 using testing::Return;
 
@@ -34,23 +36,23 @@ class UserSecretStashStorageTest : public ::testing::Test {
 TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
   // Write the USS.
   EXPECT_TRUE(
-      uss_storage_.Persist(SecureBlob(kUssContainer), kObfuscatedUsername));
+      uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername));
   EXPECT_TRUE(platform_.FileExists(UserSecretStashPath(kObfuscatedUsername)));
 
   // Load the USS and check it didn't change.
-  std::optional<SecureBlob> loaded_uss_container =
+  std::optional<Blob> loaded_uss_container =
       uss_storage_.LoadPersisted(kObfuscatedUsername);
-  ASSERT_TRUE(loaded_uss_container);
-  EXPECT_EQ(loaded_uss_container->to_string(), kUssContainer);
+  ASSERT_TRUE(loaded_uss_container.has_value());
+  EXPECT_EQ(BlobToString(loaded_uss_container.value()), kUssContainer);
 }
 
 // Test that the persisting fails when the USS file writing fails.
 TEST_F(UserSecretStashStorageTest, PersistFailure) {
-  EXPECT_CALL(platform_, WriteSecureBlobToFileAtomicDurable(
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(
                              UserSecretStashPath(kObfuscatedUsername), _, _))
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(
-      uss_storage_.Persist(SecureBlob(kUssContainer), kObfuscatedUsername));
+      uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername));
 }
 
 // Test that the loading fails when the USS file doesn't exist.

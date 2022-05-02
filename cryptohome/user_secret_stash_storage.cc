@@ -26,9 +26,9 @@ UserSecretStashStorage::UserSecretStashStorage(Platform* platform)
 UserSecretStashStorage::~UserSecretStashStorage() = default;
 
 bool UserSecretStashStorage::Persist(
-    const brillo::SecureBlob& uss_container_flatbuffer,
+    const brillo::Blob& uss_container_flatbuffer,
     const std::string& obfuscated_username) {
-  if (!platform_->WriteSecureBlobToFileAtomicDurable(
+  if (!platform_->WriteFileAtomicDurable(
           UserSecretStashPath(obfuscated_username), uss_container_flatbuffer,
           kUserSecretStashFilePermissions)) {
     LOG(ERROR) << "Failed to store the UserSecretStash file for "
@@ -38,11 +38,11 @@ bool UserSecretStashStorage::Persist(
   return true;
 }
 
-std::optional<brillo::SecureBlob> UserSecretStashStorage::LoadPersisted(
+std::optional<brillo::Blob> UserSecretStashStorage::LoadPersisted(
     const std::string& obfuscated_username) {
-  brillo::SecureBlob uss_container_flatbuffer;
-  if (!platform_->ReadFileToSecureBlob(UserSecretStashPath(obfuscated_username),
-                                       &uss_container_flatbuffer)) {
+  brillo::Blob uss_container_flatbuffer;
+  if (!platform_->ReadFile(UserSecretStashPath(obfuscated_username),
+                           &uss_container_flatbuffer)) {
     LOG(ERROR) << "Failed to load the UserSecretStash file for "
                << obfuscated_username;
     return std::nullopt;

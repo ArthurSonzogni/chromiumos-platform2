@@ -1221,7 +1221,7 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   }
 
   // 4. Encrypt the updated USS.
-  std::optional<brillo::SecureBlob> encrypted_uss_container =
+  std::optional<brillo::Blob> encrypted_uss_container =
       user_secret_stash_->GetEncryptedContainer(
           user_secret_stash_main_key_.value());
   if (!encrypted_uss_container.has_value()) {
@@ -1320,7 +1320,7 @@ CryptohomeStatus AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // 2. Load the USS container with the encrypted payload.
-  std::optional<brillo::SecureBlob> encrypted_uss =
+  std::optional<brillo::Blob> encrypted_uss =
       user_secret_stash_storage_->LoadPersisted(obfuscated_username_);
   if (!encrypted_uss.has_value()) {
     LOG(ERROR) << "Failed to load the user secret stash";

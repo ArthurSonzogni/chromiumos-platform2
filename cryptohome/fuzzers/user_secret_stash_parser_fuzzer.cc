@@ -52,7 +52,7 @@ struct ScopedOpensslErrorClearer {
 
 // Generates mutated blobs of the USS container and the USS main key.
 void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
-                             SecureBlob* mutated_uss_container,
+                             Blob* mutated_uss_container,
                              SecureBlob* mutated_uss_main_key) {
   // Create USS payload.
   UserSecretStashPayload uss_payload_struct;
@@ -105,25 +105,22 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
   UserSecretStashContainer uss_container_struct;
   uss_container_struct.encryption_algorithm =
       cryptohome::UserSecretStashEncryptionAlgorithm::AES_GCM_256;
-  uss_container_struct.ciphertext = SecureBlob(
+  uss_container_struct.ciphertext =
       MutateBlob(Blob(ciphertext.begin(), ciphertext.end()),
-                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider));
-  uss_container_struct.iv = SecureBlob(
+                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider);
+  uss_container_struct.iv =
       MutateBlob(Blob(iv.begin(), iv.end()),
-                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider));
+                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider);
   uss_container_struct.gcm_tag =
-      SecureBlob(MutateBlob(Blob(tag.begin(), tag.end()), /*min_length=*/0,
-                            /*max_length=*/1000, fuzzed_data_provider));
+      MutateBlob(Blob(tag.begin(), tag.end()), /*min_length=*/0,
+                 /*max_length=*/1000, fuzzed_data_provider);
 
   // Serialize the USS container to flatbuffer and mutate it.
-  std::optional<SecureBlob> uss_container_optional =
-      uss_container_struct.Serialize();
-  CHECK(uss_container_optional.has_value());
-  Blob uss_container(uss_container_optional.value().begin(),
-                     uss_container_optional.value().end());
+  std::optional<Blob> uss_container = uss_container_struct.Serialize();
+  CHECK(uss_container.has_value());
   *mutated_uss_container =
-      SecureBlob(MutateBlob(uss_container, /*min_length=*/0,
-                            /*max_length=*/1000, fuzzed_data_provider));
+      MutateBlob(uss_container.value(), /*min_length=*/0,
+                 /*max_length=*/1000, fuzzed_data_provider);
 
   // Mutate the USS main key.
   *mutated_uss_main_key =
@@ -170,7 +167,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   FuzzedDataProvider fuzzed_data_provider(data, size);
 
-  SecureBlob mutated_uss_container, mutated_uss_main_key;
+  Blob mutated_uss_container;
+  SecureBlob mutated_uss_main_key;
   PrepareMutatedArguments(&fuzzed_data_provider, &mutated_uss_container,
                           &mutated_uss_main_key);
 
@@ -182,7 +180,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (stash) {
     // If the USS was decrypted successfully, its reencryption must succeed as
     // well.
-    std::optional<SecureBlob> reencrypted =
+    std::optional<Blob> reencrypted =
         stash->GetEncryptedContainer(mutated_uss_main_key);
     CHECK(reencrypted);
 
