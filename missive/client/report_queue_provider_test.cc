@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/task/thread_pool.h>
+#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -93,6 +94,43 @@ TEST_F(ReportQueueProviderTest, CreateAndGetQueue) {
   const auto res = e.result();
   EXPECT_OK(res) << res;
   report_queue_provider_test_helper::SetForTesting(nullptr);
+}
+
+TEST_F(ReportQueueProviderTest,
+       CreateReportQueueWithEncryptedReportingPipelineDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      ReportQueueProvider::kEncryptedReportingPipeline);
+
+  // Create configuration
+  auto config_result = ReportQueueConfiguration::Create(
+      EventType::kDevice, destination_, policy_checker_callback_);
+  ASSERT_OK(config_result);
+
+  test::TestEvent<ReportQueueProvider::CreateReportQueueResponse> event;
+  ReportQueueProvider::CreateQueue(std::move(config_result.ValueOrDie()),
+                                   event.cb());
+  const auto result = event.result();
+
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
+}
+
+TEST_F(ReportQueueProviderTest,
+       CreateSpeculativeReportQueueWithEncryptedReportingPipelineDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      ReportQueueProvider::kEncryptedReportingPipeline);
+
+  // Create configuration
+  auto config_result = ReportQueueConfiguration::Create(
+      EventType::kDevice, destination_, policy_checker_callback_);
+  ASSERT_OK(config_result);
+
+  const auto result = ReportQueueProvider::CreateSpeculativeQueue(
+      std::move(config_result.ValueOrDie()));
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
 }
 
 }  // namespace
