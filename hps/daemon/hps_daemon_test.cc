@@ -413,6 +413,35 @@ TEST_F(HpsDaemonTest, AverageFilter) {
   result = hps_daemon_->GetResultHpsSense(&error, &value);
   EXPECT_TRUE(result);
   EXPECT_EQ(value.value(), HpsResult::POSITIVE);
+  EXPECT_EQ(value.inference_result(), 0);
+  EXPECT_FALSE(value.inference_result_valid());
+}
+
+TEST_F(HpsDaemonTest, ReportRawResults) {
+  feature_config_.set_allocated_average_filter_config(
+      new FeatureConfig_AverageFilterConfig());
+  feature_config_.mutable_average_filter_config()->set_average_window_size(2);
+  feature_config_.set_report_raw_results(true);
+
+  FeatureResult feature_result{.inference_result = 100, .valid = true};
+  {
+    InSequence sequence;
+    EXPECT_CALL(*mock_hps_, Boot());
+    EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result));
+  }
+
+  brillo::ErrorPtr error;
+  bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
+  EXPECT_TRUE(result);
+  task_environment_.FastForwardBy(kPollTime);
+
+  HpsResultProto value;
+  result = hps_daemon_->GetResultHpsSense(&error, &value);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(value.inference_result(), feature_result.inference_result);
+  EXPECT_TRUE(value.inference_result_valid());
 }
 
 TEST_F(HpsDaemonTest, ResetFilterOnResume) {

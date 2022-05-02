@@ -7,6 +7,7 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 #include <base/sequence_checker.h>
 #include <base/timer/timer.h>
@@ -17,6 +18,9 @@
 #include <dbus_adaptors/org.chromium.Hps.h>
 
 namespace hps {
+
+using FeatureCallback =
+    base::RepeatingCallback<void(const std::vector<uint8_t>&)>;
 
 class DBusAdaptor : public org::chromium::HpsAdaptor,
                     public org::chromium::HpsInterface {
@@ -54,7 +58,7 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
   bool EnableFeature(brillo::ErrorPtr* error,
                      const hps::FeatureConfig& config,
                      uint8_t feature,
-                     StatusCallback callback);
+                     FeatureCallback callback);
   bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature);
   bool GetFeatureResult(brillo::ErrorPtr* error,
                         HpsResultProto* result,
@@ -62,26 +66,32 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
 
   class FeatureState {
    public:
-    void Enable(const FeatureConfig&, StatusCallback);
+    void Enable(const FeatureConfig&, FeatureCallback);
     void Disable();
     void DidCommit();
     void DidShutDown();
+    HpsResult ProcessResult(FeatureResult);
+    void Serialize(HpsResultProto&);
 
     bool enabled() const { return enabled_; }
     bool enabled_in_hps() const { return enabled_in_hps_; }
     bool needs_commit() const { return enabled_ != enabled_in_hps_; }
-    Filter* filter() const {
+    const Filter* filter() const {
       DCHECK(enabled_);
       return filter_.get();
     }
 
    private:
+    void OnFilteredResult(HpsResult);
+    void SerializeInternal(HpsResultProto&, HpsResult);
+
     bool enabled_ = false;  // Whether the user wants the feature on or off.
     bool enabled_in_hps_ = false;  // Whether the feature is on or off in HPS.
 
     FeatureConfig config_;
     std::unique_ptr<Filter> filter_;
-    StatusCallback callback_;
+    FeatureCallback callback_;
+    FeatureResult raw_result_{};  // Most recent (unfiltered) inference result.
   };
 
   brillo::dbus_utils::DBusObject dbus_object_;

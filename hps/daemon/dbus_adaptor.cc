@@ -34,13 +34,14 @@ std::vector<uint8_t> HpsResultToSerializedBytes(HpsResult result) {
 }  // namespace
 
 void DBusAdaptor::FeatureState::Enable(const FeatureConfig& config,
-                                       StatusCallback callback) {
+                                       FeatureCallback callback) {
   DCHECK(!enabled_);
   DCHECK(!enabled_in_hps_);
   DCHECK(!callback.is_null());
   enabled_ = true;
   config_ = config;
   callback_ = std::move(callback);
+  raw_result_ = {};
 }
 
 void DBusAdaptor::FeatureState::Disable() {
@@ -48,23 +49,58 @@ void DBusAdaptor::FeatureState::Disable() {
   DCHECK(enabled_in_hps_);
   enabled_ = false;
   config_ = {};
-  callback_ = StatusCallback{};
+  callback_ = FeatureCallback{};
+  raw_result_ = {};
 }
 
 void DBusAdaptor::FeatureState::DidCommit() {
   enabled_in_hps_ = enabled_;
   if (enabled_) {
     DCHECK(!callback_.is_null());
-    filter_ = CreateFilter(config_, callback_);
+    auto callback = base::BindRepeating(
+        &DBusAdaptor::FeatureState::OnFilteredResult, base::Unretained(this));
+    filter_ = CreateFilter(config_, std::move(callback));
   } else {
     DCHECK(callback_.is_null());
     filter_.reset();
   }
 }
 
+void DBusAdaptor::FeatureState::OnFilteredResult(HpsResult result) {
+  DCHECK(callback_);
+  HpsResultProto result_proto;
+  SerializeInternal(result_proto, result);
+  std::vector<uint8_t> serialized;
+  serialized.resize(result_proto.ByteSizeLong());
+  result_proto.SerializeToArray(serialized.data(),
+                                static_cast<int>(serialized.size()));
+  callback_.Run(std::move(serialized));
+}
+
 void DBusAdaptor::FeatureState::DidShutDown() {
   enabled_in_hps_ = false;
   filter_.reset();
+}
+
+HpsResult DBusAdaptor::FeatureState::ProcessResult(FeatureResult result) {
+  DCHECK(enabled_);
+  raw_result_ = result;
+  return filter_->ProcessResult(result.inference_result, result.valid);
+}
+
+void DBusAdaptor::FeatureState::Serialize(HpsResultProto& result_proto) {
+  DCHECK(filter_);
+  SerializeInternal(result_proto, filter_->GetCurrentResult());
+}
+
+void DBusAdaptor::FeatureState::SerializeInternal(HpsResultProto& result_proto,
+                                                  HpsResult value) {
+  DCHECK(enabled_);
+  result_proto.set_value(value);
+  if (config_.report_raw_results()) {
+    result_proto.set_inference_result(raw_result_.inference_result);
+    result_proto.set_inference_result_valid(raw_result_.valid);
+  }
 }
 
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
@@ -92,13 +128,12 @@ void DBusAdaptor::PollTask() {
   CommitState();
 
   for (uint8_t i = 0; i < kFeatures; ++i) {
-    const auto& feature = features_[i];
+    auto& feature = features_[i];
     if (feature.enabled()) {
       FeatureResult result = this->hps_->Result(i);
       DCHECK(feature.filter());
       DCHECK(!feature.needs_commit());
-      const auto res = feature.filter()->ProcessResult(result.inference_result,
-                                                       result.valid);
+      const auto res = feature.ProcessResult(result);
       VLOG(2) << "Poll: Feature: " << static_cast<int>(i)
               << " Valid: " << result.valid
               << " Result: " << static_cast<int>(result.inference_result)
@@ -196,7 +231,7 @@ bool DBusAdaptor::CommitState() {
 bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error,
                                 const hps::FeatureConfig& config,
                                 uint8_t feature,
-                                StatusCallback callback) {
+                                FeatureCallback callback) {
   CHECK_LT(feature, kFeatures);
   if (features_[feature].enabled()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -232,8 +267,7 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
 
     return false;
   }
-  DCHECK(features_[feature].filter());
-  result->set_value(features_[feature].filter()->GetCurrentResult());
+  features_[feature].Serialize(*result);
   return true;
 }
 

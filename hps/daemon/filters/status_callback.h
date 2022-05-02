@@ -11,8 +11,7 @@
 namespace hps {
 
 // This callback is invoked whenever a filter changes state.
-using StatusCallback =
-    base::RepeatingCallback<void(const std::vector<uint8_t>&)>;
+using StatusCallback = base::RepeatingCallback<void(HpsResult)>;
 
 }  // namespace hps
 

@@ -36,7 +36,8 @@ std::unique_ptr<Filter> CreateFilter(const hps::FeatureConfig& config,
       filter = std::make_unique<AverageFilter>(config.average_filter_config());
       break;
   }
-  return std::make_unique<FilterWatcher>(std::move(filter), std::move(signal));
+  return std::make_unique<FilterWatcher>(std::move(filter), std::move(signal),
+                                         config.report_raw_results());
 }
 
 }  // namespace hps

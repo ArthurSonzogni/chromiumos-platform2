@@ -33,16 +33,11 @@ TEST(HpsFilterTest, ThresholdFilterTest) {
 TEST(HpsFilterTest, FilterWatcherTest) {
   HpsResult cb_result;
   StatusCallback callback =
-      base::BindLambdaForTesting([&](const std::vector<uint8_t>& bytes) {
-        // Gets HpsResult from a serialized bytes of HpsResultProto.
-        HpsResultProto result_proto;
-        result_proto.ParseFromArray(bytes.data(),
-                                    static_cast<int>(bytes.size()));
-        cb_result = result_proto.value();
-      });
+      base::BindLambdaForTesting([&](HpsResult result) { cb_result = result; });
 
   auto filter = std::make_unique<ThresholdFilter>(kThreshold);
-  FilterWatcher watcher(std::move(filter), callback);
+  FilterWatcher watcher(std::move(filter), callback,
+                        /*passthrough_mode=*/false);
 
   EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, true), HpsResult::NEGATIVE);
   EXPECT_EQ(watcher.ProcessResult(kThreshold + 1, true), HpsResult::POSITIVE);
@@ -52,6 +47,22 @@ TEST(HpsFilterTest, FilterWatcherTest) {
 
   EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, false), HpsResult::UNKNOWN);
   EXPECT_EQ(cb_result, HpsResult::UNKNOWN);
+}
+
+TEST(HpsFilterTest, FilterWatcherPassthroughTest) {
+  HpsResult cb_result;
+  StatusCallback callback =
+      base::BindLambdaForTesting([&](HpsResult result) { cb_result = result; });
+
+  auto filter = std::make_unique<ThresholdFilter>(kThreshold);
+  FilterWatcher watcher(std::move(filter), callback, /*passthrough_mode=*/true);
+
+  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, true), HpsResult::NEGATIVE);
+  EXPECT_EQ(watcher.ProcessResult(kThreshold + 1, true), HpsResult::POSITIVE);
+  EXPECT_EQ(cb_result, HpsResult::POSITIVE);
+  cb_result = HpsResult::UNKNOWN;
+  EXPECT_EQ(watcher.ProcessResult(kThreshold + 1, true), HpsResult::POSITIVE);
+  EXPECT_EQ(cb_result, HpsResult::POSITIVE);
 }
 
 TEST(HpsFilterTest, ConsecutiveResultsFilterTest) {
