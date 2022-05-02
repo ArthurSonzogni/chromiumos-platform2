@@ -189,10 +189,12 @@ void IPAddress::SetAddressToDefault() {
 }
 
 bool IPAddress::IntoString(std::string* address_string) const {
+  if (!IsValid()) {
+    return false;
+  }
   // Noting that INET6_ADDRSTRLEN > INET_ADDRSTRLEN
   char address_buf[INET6_ADDRSTRLEN];
-  if (GetLength() != GetAddressLength(family_) ||
-      !inet_ntop(family_, GetConstData(), address_buf, sizeof(address_buf))) {
+  if (!inet_ntop(family_, GetConstData(), address_buf, sizeof(address_buf))) {
     return false;
   }
   *address_string = address_buf;

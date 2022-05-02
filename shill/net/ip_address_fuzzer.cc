@@ -61,7 +61,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     addr3.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
   }
 
-  IPAddress::GetPrefixLengthFromMask(family, str);
+  IPAddress(str).IntoString(&out);
+  IPAddress(family, bytestring).IntoString(&out);
+
+  IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, str);
   IPAddress::GetAddressMaskFromPrefix(family, prefixlen);
 
   return 0;

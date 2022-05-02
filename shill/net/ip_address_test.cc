@@ -190,6 +190,14 @@ TEST_F(IPAddressTest, HasSameAddressAs) {
   EXPECT_TRUE(address0.HasSameAddressAs(address2));
 }
 
+TEST_F(IPAddressTest, InvalidAddress) {
+  EXPECT_EQ("<unknown>", IPAddress().ToString());
+  EXPECT_EQ("<unknown>", IPAddress(0).ToString());
+  EXPECT_EQ("<unknown>", IPAddress(IPAddress::kFamilyIPv4).ToString());
+  EXPECT_EQ("<unknown>", IPAddress(IPAddress::kFamilyIPv6).ToString());
+  EXPECT_EQ("<unknown>", IPAddress("notanaddress").ToString());
+}
+
 struct PrefixMapping {
   PrefixMapping() : family(IPAddress::kFamilyUnknown), prefix(0) {}
   PrefixMapping(IPAddress::Family family_in,
