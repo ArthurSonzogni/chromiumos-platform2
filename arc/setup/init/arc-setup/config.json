@@ -1,5 +1,4 @@
 {
   "ANDROID_DEBUGGABLE": false,
-  "USE_ESDFS": false,
   "WRITABLE_MOUNT": false
 }

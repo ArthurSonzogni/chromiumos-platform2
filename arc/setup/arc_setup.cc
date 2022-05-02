@@ -976,16 +976,11 @@ void ArcSetup::SetUpSdcard() {
   const base::FilePath host_downloads_directory =
       arc_paths_->user_directory.Append("MyFiles").Append("Downloads");
 
-  const bool is_esdfs_supported = config_.GetBoolOrDie("USE_ESDFS");
-
   // Get the container's user namespace file descriptor.
   const int container_pid = config_.GetIntOrDie("CONTAINER_PID");
   base::ScopedFD container_userns_fd(HANDLE_EINTR(
       open(base::StringPrintf("/proc/%d/ns/user", container_pid).c_str(),
            O_RDONLY)));
-
-  // SetUpSdcard can only be called from arc-sdcard is USE_ESDFS is enabled.
-  CHECK(is_esdfs_supported);
 
   // Installd setups up the user data directory skeleton on first-time boot.
   // Wait for setup

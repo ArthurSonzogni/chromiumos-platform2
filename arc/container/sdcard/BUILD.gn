@@ -4,9 +4,6 @@
 
 group("all") {
   deps = [ ":generate_squashfs" ]
-  if (!use.esdfs) {
-    deps += [ ":install_arc_sdcard_conf" ]
-  }
 }
 
 action("mkdir_squashfs_source_dir") {
@@ -65,9 +62,4 @@ action("generate_squashfs") {
     "/Downloads d 700 0 0",
   ]
   deps = [ ":mkdir_squashfs_source_dir" ]
-}
-
-install_config("install_arc_sdcard_conf") {
-  sources = [ "arc-sdcard.conf" ]
-  install_path = "/etc/init"
 }
