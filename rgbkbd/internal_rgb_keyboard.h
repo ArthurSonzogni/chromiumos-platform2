@@ -20,6 +20,7 @@ class InternalRgbKeyboard : public RgbKeyboard {
 
   bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) override;
   bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) override;
+  bool GetRgbKeyboardCapabilities() override;
 };
 
 }  // namespace rgbkbd

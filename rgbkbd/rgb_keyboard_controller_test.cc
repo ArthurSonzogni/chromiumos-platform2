@@ -85,9 +85,10 @@ class RgbKeyboardControllerTest : public testing::Test {
 };
 
 // TODO(michaelcheco): Update when we are able to test the real implementation.
-TEST_F(RgbKeyboardControllerTest, GetRgbKeyboardCapabilitiesReturnsNone) {
+TEST_F(RgbKeyboardControllerTest,
+       GetRgbKeyboardCapabilitiesReturnsIndividualKey) {
   EXPECT_EQ(controller_->GetRgbKeyboardCapabilities(),
-            static_cast<uint32_t>(RgbKeyboardCapabilities::kNone));
+            static_cast<uint32_t>(RgbKeyboardCapabilities::kIndividualKey));
 }
 
 TEST_F(RgbKeyboardControllerTest, SetCapsLockState) {
