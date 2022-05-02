@@ -47,12 +47,15 @@ class Process {
   void SetStdIn(std::string input) { input_ = std::move(input); }
 
   // Callback called when a line of message is captured from the process stdout
-  // or stderr. The final linefeed character '\n' is stripped.
+  // or stderr. The final linefeed character '\n' is stripped from the passed
+  // string.
   using OutputCallback = base::RepeatingCallback<void(base::StringPiece)>;
 
-  // Sets the output callback to call when the process writes messages its
+  // Sets the output callback to call when the process writes messages to its
   // stdout or stderr.
-  void SetOutputCallback(OutputCallback callback);
+  void SetOutputCallback(OutputCallback callback) {
+    output_callback_ = std::move(callback);
+  }
 
   // Callback called when the 'launcher' process finished.
   using LauncherExitCallback = base::OnceCallback<void(int exit_code)>;

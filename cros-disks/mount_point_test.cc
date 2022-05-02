@@ -4,8 +4,10 @@
 
 #include "cros-disks/mount_point.h"
 
+#include <limits>
 #include <utility>
 
+#include <base/test/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -154,6 +156,64 @@ TEST_F(MountPointTest, CreateUnmounted) {
   EXPECT_EQ(data_.source, mount_point->source());
   EXPECT_EQ(data_.filesystem_type, mount_point->fstype());
   EXPECT_EQ(data_.flags, mount_point->flags());
+}
+
+TEST_F(MountPointTest, ParseProgressMessage) {
+  int percent = -1;
+  EXPECT_FALSE(MountPoint::ParseProgressMessage("", &percent));
+  EXPECT_FALSE(MountPoint::ParseProgressMessage("x", &percent));
+  EXPECT_EQ(percent, -1);
+
+  EXPECT_FALSE(MountPoint::ParseProgressMessage("%", &percent));
+  EXPECT_FALSE(MountPoint::ParseProgressMessage(" %", &percent));
+  EXPECT_FALSE(MountPoint::ParseProgressMessage("x%", &percent));
+
+  percent = -1;
+  EXPECT_TRUE(MountPoint::ParseProgressMessage("0%", &percent));
+  EXPECT_EQ(percent, 0);
+
+  percent = -1;
+  EXPECT_TRUE(MountPoint::ParseProgressMessage("Whatever 1%", &percent));
+  EXPECT_EQ(percent, 1);
+
+  percent = -1;
+  EXPECT_TRUE(MountPoint::ParseProgressMessage("Whatever 99%", &percent));
+  EXPECT_EQ(percent, 99);
+
+  percent = -1;
+  EXPECT_TRUE(MountPoint::ParseProgressMessage("Whatever 100%", &percent));
+  EXPECT_EQ(percent, 100);
+
+  percent = -1;
+  EXPECT_FALSE(MountPoint::ParseProgressMessage("Whatever 101%", &percent));
+  EXPECT_EQ(percent, 101);
+
+  percent = -1;
+  EXPECT_FALSE(MountPoint::ParseProgressMessage("Whatever 9999999999999999999%",
+                                                &percent));
+  EXPECT_EQ(percent, std::numeric_limits<int>::max());
+}
+
+TEST_F(MountPointTest, ProgressCallback) {
+  const std::unique_ptr<MountPoint> mount_point =
+      MountPoint::CreateUnmounted(data_);
+  mount_point->OnProgress("Loading 1%");
+  mount_point->OnProgress("Loading 2%");
+  std::vector<int> progress_percents;
+  mount_point->SetProgressCallback(base::BindLambdaForTesting(
+      [&progress_percents, want_mount_point = mount_point.get()](
+          const MountPoint* const got_mount_point) {
+        EXPECT_EQ(want_mount_point, got_mount_point);
+        progress_percents.push_back(got_mount_point->progress_percent());
+      }));
+  mount_point->OnProgress("Loading 3%");
+  mount_point->OnProgress("Loading 99%");
+  mount_point->OnProgress("");
+  mount_point->OnProgress("%");
+  mount_point->OnProgress("xx%");
+  mount_point->OnProgress("Ignored 1");
+  mount_point->OnProgress("Loading 100%");
+  EXPECT_THAT(progress_percents, ElementsAre(3, 99, 100));
 }
 
 }  // namespace cros_disks

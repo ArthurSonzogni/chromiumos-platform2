@@ -88,6 +88,9 @@ class MountManager {
   using MountCallback = base::OnceCallback<void(const std::string& mount_path,
                                                 MountErrorType error)>;
 
+  // Callback called when the FUSE 'launcher' process is signaling progress.
+  using ProgressCallback = MountPoint::ProgressCallback;
+
   // Mounts |source| as |filesystem_type| with |options|. If "remount"
   // option exists in |options|, attempts to remount |source| to the mount
   // path which it's currently mounted to. Otherwise, attempts to mount a new
@@ -95,11 +98,12 @@ class MountManager {
   // obtain a suggested mount path. If an error occurs and
   // |ShouldReserveMountPathOnError()| returns true for that type of error, the
   // mount path is reserved and |mount_path| is set to the reserved mount path.
-  // On completion or on error, |callback| is called.
+  // On completion or on error, |mount_callback| is called.
   void Mount(const std::string& source,
              const std::string& filesystem_type,
              std::vector<std::string> options,
-             MountCallback callback);
+             MountCallback mount_callback,
+             ProgressCallback progress_callback = {});
 
   // Unmounts |path|, which can be a source path or a mount path. If the mount
   // path is reserved during Mount(), this method releases the reserved mount
@@ -125,7 +129,8 @@ class MountManager {
   void MountNewSource(const std::string& source,
                       const std::string& filesystem_type,
                       std::vector<std::string> options,
-                      MountCallback callback);
+                      MountCallback mount_callback,
+                      ProgressCallback progress_callback);
 
   // Remounts |source| on |mount_path| as |filesystem_type| with |options|.
   MountErrorType Remount(const std::string& source,
@@ -188,7 +193,7 @@ class MountManager {
                                           base::FilePath* mount_path);
 
   // Called when the FUSE launcher process finishes.
-  void OnLauncherExit(MountCallback callback,
+  void OnLauncherExit(MountCallback mount_callback,
                       const base::FilePath& mount_path,
                       base::WeakPtr<const MountPoint> mount_point,
                       MountErrorType error);

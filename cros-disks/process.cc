@@ -115,12 +115,6 @@ char* const* Process::GetEnvironment() {
   return environment_array_.data();
 }
 
-void Process::SetOutputCallback(OutputCallback callback) {
-  DCHECK(!output_callback_);
-  output_callback_ = std::move(callback);
-  DCHECK(output_callback_);
-}
-
 void Process::OnLauncherExit() {
   if (!IsFinished()) {
     LOG(WARNING) << "Spurious call to OnLauncherExit";

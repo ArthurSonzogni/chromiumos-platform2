@@ -16,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest_prod.h>
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/process.h"
@@ -94,6 +95,12 @@ class MountPoint final {
     DCHECK(launcher_exit_callback_);
   }
 
+  // Callback called when the FUSE 'launcher' process is signaling progress.
+  using ProgressCallback = base::RepeatingCallback<void(const MountPoint*)>;
+  void SetProgressCallback(ProgressCallback callback) {
+    progress_callback_ = std::move(callback);
+  }
+
   // Sets the source and source type.
   void SetSource(std::string source, MountSourceType source_type) {
     data_.source = std::move(source);
@@ -112,6 +119,7 @@ class MountPoint final {
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
   bool is_mounted() const { return is_mounted_; }
   Process* process() const { return process_.get(); }
+  int progress_percent() const { return progress_percent_; }
 
  private:
   // Converts the FUSE launcher's exit code into a MountErrorType.
@@ -119,6 +127,19 @@ class MountPoint final {
 
   // Called when the 'launcher' process finished.
   void OnLauncherExit(int exit_code);
+
+  // Called every time the 'launcher' process prints a (potential) progress
+  // message.
+  void OnProgress(base::StringPiece message);
+
+  // Parses a (potential) progress message. Returns true if the message was
+  // correctly parsed. Stores the progress percentage into |*percent|.
+  // A progress message is considered valid if:
+  // 1. It ends with a percent sign %
+  // 2. The percent sign is preceded by at least one digit.
+  // 3. The sequence of digits before the percent sign form a number between 0
+  //    and 100 (included).
+  static bool ParseProgressMessage(base::StringPiece message, int* percent);
 
   // Mount point data.
   MountPointData data_;
@@ -143,6 +164,12 @@ class MountPoint final {
   // Callback called when the FUSE 'launcher' process finished.
   LauncherExitCallback launcher_exit_callback_;
 
+  // Progress percent.
+  int progress_percent_ = 0;
+
+  // Callback called when the FUSE 'launcher' process reports progress.
+  ProgressCallback progress_callback_;
+
   // Is this mount point actually mounted?
   bool is_mounted_ = true;
 
@@ -150,6 +177,9 @@ class MountPoint final {
   bool must_remove_dir_ = platform_ != nullptr;
 
   base::WeakPtrFactory<MountPoint> weak_factory_{this};
+
+  FRIEND_TEST(MountPointTest, ParseProgressMessage);
+  FRIEND_TEST(MountPointTest, ProgressCallback);
 };
 
 }  // namespace cros_disks

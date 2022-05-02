@@ -9,6 +9,8 @@
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
@@ -116,6 +118,37 @@ void MountPoint::OnLauncherExit(const int exit_code) {
     std::move(launcher_exit_callback_).Run(data_.error);
 }
 
+bool MountPoint::ParseProgressMessage(base::StringPiece message,
+                                      int* const percent) {
+  if (message.empty() || message.back() != '%')
+    return false;
+
+  // |message| ends with a percent sign '%'
+  message.remove_suffix(1);
+
+  // Extract the number before the percent sign.
+  base::StringPiece::size_type i = message.size();
+  while (i > 0 && base::IsAsciiDigit(message[i - 1]))
+    i--;
+  message.remove_prefix(i);
+
+  DCHECK(percent);
+  return base::StringToInt(message, percent) && *percent >= 0 &&
+         *percent <= 100;
+}
+
+void MountPoint::OnProgress(const base::StringPiece message) {
+  int percent;
+  if (!ParseProgressMessage(message, &percent))
+    return;
+
+  LOG(INFO) << "MountPoint::OnProgress: " << percent << "% for "
+            << quote(data_.mount_path);
+  progress_percent_ = percent;
+  if (progress_callback_)
+    progress_callback_.Run(this);
+}
+
 void MountPoint::SetProcess(std::unique_ptr<Process> process,
                             Metrics* const metrics,
                             std::string metrics_name,
@@ -136,6 +169,8 @@ void MountPoint::SetProcess(std::unique_ptr<Process> process,
 
   process_->SetLauncherExitCallback(
       base::BindOnce(&MountPoint::OnLauncherExit, GetWeakPtr()));
+  process_->SetOutputCallback(
+      base::BindRepeating(&MountPoint::OnProgress, GetWeakPtr()));
 }
 
 }  // namespace cros_disks

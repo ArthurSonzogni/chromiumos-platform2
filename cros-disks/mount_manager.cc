@@ -79,8 +79,9 @@ void MountManager::StopSession() {
 void MountManager::Mount(const std::string& source,
                          const std::string& filesystem_type,
                          std::vector<std::string> options,
-                         MountCallback callback) {
-  DCHECK(callback);
+                         MountCallback mount_callback,
+                         ProgressCallback progress_callback) {
+  DCHECK(mount_callback);
 
   // Source is not necessary a path, but if it is let's resolve it to
   // some real underlying object.
@@ -91,7 +92,7 @@ void MountManager::Mount(const std::string& source,
 
   if (real_path.empty()) {
     LOG(ERROR) << "Cannot mount an invalid path: " << redact(source);
-    std::move(callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT);
+    std::move(mount_callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT);
     return;
   }
 
@@ -100,12 +101,12 @@ void MountManager::Mount(const std::string& source,
     std::string mount_path;
     const MountErrorType error =
         Remount(real_path, filesystem_type, std::move(options), &mount_path);
-    return std::move(callback).Run(mount_path, error);
+    return std::move(mount_callback).Run(mount_path, error);
   }
 
   // Mount a new drive.
   MountNewSource(real_path, filesystem_type, std::move(options),
-                 std::move(callback));
+                 std::move(mount_callback), std::move(progress_callback));
 }
 
 MountErrorType MountManager::Remount(const std::string& source,
@@ -134,13 +135,14 @@ MountErrorType MountManager::Remount(const std::string& source,
 void MountManager::MountNewSource(const std::string& source,
                                   const std::string& filesystem_type,
                                   std::vector<std::string> options,
-                                  MountCallback callback) {
-  DCHECK(callback);
+                                  MountCallback mount_callback,
+                                  ProgressCallback progress_callback) {
+  DCHECK(mount_callback);
 
   if (const MountPoint* const mp = FindMountBySource(source)) {
     LOG(ERROR) << redact(source) << " is already mounted on "
                << redact(mp->path());
-    return std::move(callback).Run(mp->path().value(), mp->error());
+    return std::move(mount_callback).Run(mp->path().value(), mp->error());
   }
 
   // Extract the mount label string from the passed options.
@@ -156,7 +158,7 @@ void MountManager::MountNewSource(const std::string& source,
   base::FilePath mount_path;
   if (const MountErrorType error =
           CreateMountPathForSource(source, label, &mount_path))
-    return std::move(callback).Run("", error);
+    return std::move(mount_callback).Run("", error);
 
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
@@ -183,7 +185,7 @@ void MountManager::MountNewSource(const std::string& source,
 
     if (!ShouldReserveMountPathOnError(error)) {
       platform_->RemoveEmptyDirectory(mount_path.value());
-      return std::move(callback).Run("", error);
+      return std::move(mount_callback).Run("", error);
     }
 
     DCHECK(!mount_point);
@@ -210,25 +212,26 @@ void MountManager::MountNewSource(const std::string& source,
                        base::Unretained(this), process->GetProgramName(),
                        mount_path, mount_point->GetWeakPtr()));
 
-    DCHECK(callback);
+    DCHECK(mount_callback);
     mount_point->SetLauncherExitCallback(base::BindOnce(
         &MountManager::OnLauncherExit, base::Unretained(this),
-        std::move(callback), mount_path, mount_point->GetWeakPtr()));
+        std::move(mount_callback), mount_path, mount_point->GetWeakPtr()));
+    mount_point->SetProgressCallback(std::move(progress_callback));
   } else {
     // There is no FUSE process.
-    std::move(callback).Run(mount_path.value(), error);
+    std::move(mount_callback).Run(mount_path.value(), error);
   }
 
   mount_points_.push_back(std::move(mount_point));
 }
 
 void MountManager::OnLauncherExit(
-    MountCallback callback,
+    MountCallback mount_callback,
     const base::FilePath& mount_path,
     const base::WeakPtr<const MountPoint> mount_point,
     const MountErrorType error) {
-  DCHECK(callback);
-  std::move(callback).Run(mount_path.value(), error);
+  DCHECK(mount_callback);
+  std::move(mount_callback).Run(mount_path.value(), error);
 
   if (!mount_point)
     return;
