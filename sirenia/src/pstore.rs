@@ -13,6 +13,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Context, Result};
 use data_model::{volatile_memory::VolatileMemory, DataInit};
+use libsirenia::linux::kmsg;
 use sys_util::{error, info, MappedRegion, MemoryMapping};
 
 const RAMOOPS_UNBIND: &str = "/sys/devices/platform/ramoops.0/driver/unbind";
@@ -23,8 +24,10 @@ const RAMOOPS_DEFAULT_REGION_SIZE: usize = 0x20000;
 const PSTORE_CONSOLE_FILENAME: &str = "console-ramoops-0";
 const PSTORE_PMSG_FILENAME: &str = "pmsg-ramoops-0";
 
+const HYPERVISOR_DMESG_TAIL_BYTES: usize = 10 * 1024;
+
 /// Copy contents of emulated pstore to RAMOOPS memory.
-pub fn save_pstore(pstore_path: &str) -> Result<()> {
+pub fn save_pstore(pstore_path: &str, append_dmesg: bool) -> Result<()> {
     // Unbind the hypervisor ramoops driver so that it doesn't clobber our
     // writes. If this fails, we continue anyway since the dmesg buffer will
     // still be preserved as long as the hypervisor does not crash.
@@ -37,7 +40,12 @@ pub fn save_pstore(pstore_path: &str) -> Result<()> {
     let ramoops = mmap_ramoops()?;
     ramoops
         .read_to_memory(0, &pstore_fd, ramoops.size())
-        .context("Failed to copy emulated pstore to ramoops memory")
+        .context("Failed to copy emulated pstore to ramoops memory")?;
+
+    if append_dmesg {
+        append_hypervisor_dmesg(&ramoops).context("Failed to append dmesg to ramoops")?;
+    }
+    Ok(())
 }
 
 fn unbind_ramoops() -> Result<()> {
@@ -109,6 +117,42 @@ fn get_ramoops_region_size(name: &str) -> usize {
                 error!("Error: {}", e);
                 RAMOOPS_DEFAULT_REGION_SIZE
             }),
+    }
+}
+
+#[allow(dead_code)]
+struct RamoopsOffsets {
+    dmesg_size: usize,
+    console_size: usize,
+    console_offset: usize,
+    ftrace_size: usize,
+    ftrace_offset: usize,
+    pmsg_size: usize,
+    pmsg_offset: usize,
+}
+
+impl RamoopsOffsets {
+    fn new(ramoops_size: usize) -> RamoopsOffsets {
+        let console_size = get_ramoops_region_size("console");
+        let ftrace_size = get_ramoops_region_size("ftrace");
+        let pmsg_size = get_ramoops_region_size("pmsg");
+        let dmesg_size = ramoops_size - console_size - ftrace_size - pmsg_size;
+        let console_offset = dmesg_size;
+        let ftrace_offset = console_offset + console_size;
+        let pmsg_offset = ftrace_offset + ftrace_size;
+        info!(
+            "pstore offsets: console={:#x} ftrace={:#x} pmsg={:#x}",
+            console_offset, ftrace_offset, pmsg_offset
+        );
+        RamoopsOffsets {
+            dmesg_size,
+            console_size,
+            console_offset,
+            ftrace_size,
+            ftrace_offset,
+            pmsg_size,
+            pmsg_offset,
+        }
     }
 }
 
@@ -187,42 +231,68 @@ pub fn restore_pstore(pstore_path: &str) -> Result<()> {
     let emulated_pstore =
         MemoryMapping::from_fd(&outputf, ramoops.size()).context("Failed to mmap pstore file")?;
 
-    let console_size = get_ramoops_region_size("console");
-    let ftrace_size = get_ramoops_region_size("ftrace");
-    let pmsg_size = get_ramoops_region_size("pmsg");
-    let dmesg_size = ramoops.size() - console_size - ftrace_size - pmsg_size;
-    let console_offset = dmesg_size;
-    let ftrace_offset = console_offset + console_size;
-    let pmsg_offset = ftrace_offset + ftrace_size;
-    info!(
-        "pstore offsets: console={:#x} ftrace={:#x} pmsg={:#x}",
-        console_offset, ftrace_offset, pmsg_offset
-    );
+    let offsets = RamoopsOffsets::new(ramoops.size());
 
     // Copy the dmesg regions as-is from hardware ramoops to pstore file since
     // they are not being written to. For the rest of the regions, copy from
     // files in /sys/fs/pstore.
     ramoops
-        .get_slice(0, dmesg_size)?
-        .copy_to_volatile_slice(emulated_pstore.get_slice(0, dmesg_size)?);
+        .get_slice(0, offsets.dmesg_size)?
+        .copy_to_volatile_slice(emulated_pstore.get_slice(0, offsets.dmesg_size)?);
 
     // For everything except dmesg, use the files in /sys/fs/pstore.
     // TODO(b/221453622): Handle ftrace buffers.
     restore_pstore_region(
         &emulated_pstore,
-        console_offset,
-        console_size,
+        offsets.console_offset,
+        offsets.console_size,
         PSTORE_CONSOLE_FILENAME,
     )?;
     restore_pstore_region(
         &emulated_pstore,
-        pmsg_offset,
-        pmsg_size,
+        offsets.pmsg_offset,
+        offsets.pmsg_size,
         PSTORE_PMSG_FILENAME,
     )?;
     emulated_pstore
         .msync()
         .context("Unable to sync pstore file")
+}
+
+/// Copy the tail of dmesg into the ramoops console buffer.
+///
+/// This causes hypervisor logs to be included in kernel crash reports.
+pub fn append_hypervisor_dmesg(ramoops: &MemoryMapping) -> Result<()> {
+    let dmesg = kmsg::kmsg_tail(HYPERVISOR_DMESG_TAIL_BYTES)?;
+    // Make the string longer to account for newlines and escaped chars.
+    let mut output = String::with_capacity(HYPERVISOR_DMESG_TAIL_BYTES + 512);
+    output.push_str("\n--------[ hypervisor log ]--------\n");
+    for line in dmesg {
+        output.push_str(line.as_str());
+        output.push('\n');
+    }
+
+    let offsets = RamoopsOffsets::new(ramoops.size());
+    let mut header: RamoopsRegionHeader = ramoops.read_obj(offsets.console_offset)?;
+
+    let data = output.as_bytes();
+    let console_start_offset = offsets.console_offset + RAMOOPS_REGION_HEADER_SIZE;
+    let copied = ramoops.write_slice(data, console_start_offset + (header.start as usize))?;
+    if copied < data.len() {
+        // wraparound at the end of the buffer
+        let remaining = ramoops.write_slice(&data[copied..], console_start_offset)?;
+        header.start = remaining as u32;
+    } else {
+        header.start += copied as u32;
+    }
+    header.size = cmp::min(
+        offsets.console_size - RAMOOPS_REGION_HEADER_SIZE,
+        (header.size as usize) + data.len(),
+    ) as u32;
+    ramoops.write_obj(header, offsets.console_offset)?;
+
+    info!("Appended {} bytes to ramoops console log", data.len());
+    Ok(())
 }
 
 #[cfg(test)]

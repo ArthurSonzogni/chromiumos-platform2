@@ -41,7 +41,7 @@ use libsirenia::{
         events::{
             AddEventSourceMutator, ComboMutator, CopyFdEventSource, EventMultiplexer, Mutator,
         },
-        kmsg::{self, SyslogForwarderMut},
+        kmsg::{self, SyslogForwarderMut, KMSG_PATH},
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
     rpc::{ConnectionHandler, RpcDispatcher, TransportServer},
@@ -74,11 +74,11 @@ const SYSLOG_PATH_SHORT_NAME: &str = "L";
 const PSTORE_PATH_LONG_NAME: &str = "pstore-path";
 const SAVE_PSTORE_LONG_NAME: &str = "save-pstore";
 const RESTORE_PSTORE_LONG_NAME: &str = "restore-pstore";
+const SAVE_HYPERVISOR_DMESG: &str = "save-hypervisor-dmesg";
 const MMS_BRIDGE_SHORT_NAME: &str = "M";
 const LOG_TO_STDERR_LONG_NAME: &str = "log-to-stderr";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
-const KMSG_PATH: &str = "/dev/kmsg";
 
 /* Holds the trichechus-relevant information for a TEEApp. */
 struct TeeApp {
@@ -815,25 +815,30 @@ fn main() -> Result<()> {
         LOG_TO_STDERR_LONG_NAME,
         "write log messages to stderr in addition to syslog.",
     );
+    opts.optflag(
+        "",
+        SAVE_HYPERVISOR_DMESG,
+        "add hypervisor dmesg to pstore console log.",
+    );
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
     let log_to_stderr = matches.opt_present(LOG_TO_STDERR_LONG_NAME);
 
-    if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
+    if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
         init_logging(log_to_stderr)?;
-        if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
-            return pstore::save_pstore(&pstore_path);
+        if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
+            return pstore::save_pstore(&pstore_path, matches.opt_present(SAVE_HYPERVISOR_DMESG));
+        } else if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
+            return pstore::restore_pstore(&pstore_path);
         } else {
-            bail!("{} is required for saving pstore", PSTORE_PATH_LONG_NAME);
+            bail!("pstore path given but no action selected");
         }
     }
 
-    if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
-        init_logging(log_to_stderr)?;
-        if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
-            return pstore::restore_pstore(&pstore_path);
-        } else {
-            bail!("{} is required for restoring pstore", PSTORE_PATH_LONG_NAME);
-        }
+    if matches.opt_present(SAVE_PSTORE_LONG_NAME)
+        || matches.opt_present(RESTORE_PSTORE_LONG_NAME)
+        || matches.opt_present(SAVE_HYPERVISOR_DMESG)
+    {
+        bail!("{} is required for pstore actions", PSTORE_PATH_LONG_NAME);
     }
 
     // TODO derive main secret from the platform and GSC.
