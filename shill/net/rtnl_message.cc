@@ -224,9 +224,10 @@ std::string GetRouteProtocol(uint8_t protocol) {
 }
 
 std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
-  RTNLAttrMap attrs;
-  ByteString attr_bytes(reinterpret_cast<const char*>(data), len);
+  const auto* attr_data = reinterpret_cast<const char*>(data);
+  int attr_len = len;
 
+  RTNLAttrMap attrs;
   while (data && RTA_OK(data, len)) {
     attrs[data->rta_type] = ByteString(
         reinterpret_cast<unsigned char*>(RTA_DATA(data)), RTA_PAYLOAD(data));
@@ -236,7 +237,8 @@ std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
   }
 
   if (len) {
-    LOG(ERROR) << "Error parsing RTNL attributes <" << attr_bytes.HexEncode()
+    LOG(ERROR) << "Error parsing RTNL attributes <"
+               << ByteString(attr_data, attr_len).HexEncode()
                << ">, trailing length: " << len;
     return nullptr;
   }
