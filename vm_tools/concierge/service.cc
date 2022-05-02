@@ -204,10 +204,18 @@ constexpr gid_t kCrosvmUGid = 299;
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmInitialThrottle30Feature{
     "CrOSLateBootArcVmInitial30Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const VariationsFeature kArcVmInitialThrottle40Feature{
+    "CrOSLateBootArcVmInitial40Throttle", FEATURE_DISABLED_BY_DEFAULT};
 const VariationsFeature kArcVmInitialThrottle50Feature{
     "CrOSLateBootArcVmInitial50Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const VariationsFeature kArcVmInitialThrottle60Feature{
+    "CrOSLateBootArcVmInitial60Throttle", FEATURE_DISABLED_BY_DEFAULT};
 const VariationsFeature kArcVmInitialThrottle70Feature{
     "CrOSLateBootArcVmInitial70Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const VariationsFeature kArcVmInitialThrottle80Feature{
+    "CrOSLateBootArcVmInitial80Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const VariationsFeature kArcVmInitialThrottle90Feature{
+    "CrOSLateBootArcVmInitial90Throttle", FEATURE_DISABLED_BY_DEFAULT};
 
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
@@ -4359,13 +4367,25 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
 }
 
 int Service::GetCpuQuota() {
-  // We need 3 distinct boolean Features because platform2/ does not have
-  // Chromium's base::FeatureParam<> equivalent.
+  // We need many distinct boolean Features because platform2/ does not have
+  // Chromium's base::FeatureParam<> equivalent. b/228328530
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle90Feature)) {
+    return 90;
+  }
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle80Feature)) {
+    return 80;
+  }
   if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle70Feature)) {
     return 70;
   }
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle60Feature)) {
+    return 60;
+  }
   if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle50Feature)) {
     return 50;
+  }
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle40Feature)) {
+    return 40;
   }
   if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle30Feature)) {
     return 30;
