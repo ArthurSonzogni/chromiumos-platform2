@@ -1184,8 +1184,6 @@ bool ArcSetup::InstallLinksToHostSideCode() {
 
 void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
-  const bool disable_system_default_app =
-      config_.GetBoolOrDie("DISABLE_SYSTEM_DEFAULT_APP");
 
   const bool disable_media_store_maintenance =
       config_.GetBoolOrDie("DISABLE_MEDIA_STORE_MAINTENANCE");
@@ -1252,7 +1250,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   LOG(INFO) << "arc_file_picker is " << arc_file_picker;
   const int arc_custom_tabs = config_.GetIntOrDie("ARC_CUSTOM_TABS_EXPERIMENT");
   LOG(INFO) << "arc_custom_tabs is " << arc_custom_tabs;
-  LOG(INFO) << "System default app is " << !disable_system_default_app;
   LOG(INFO) << "MediaStore maintenance is " << !disable_media_store_maintenance;
 
   bool arc_generate_pai;
@@ -1325,7 +1322,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "%s" /* Dalvik memory profile */
       "%s" /* Disable MediaStore maintenance */
       "%s" /* Disable download provider */
-      "androidboot.disable_system_default_app=%d "
       "%s" /* PAI Generation */
       "androidboot.boottime_offset=%" PRId64
       " " /* in nanoseconds */
@@ -1340,7 +1336,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetDalvikMemoryProfileParam(dalvik_memory_profile).c_str(),
       GetDisableMediaStoreMaintenance(disable_media_store_maintenance).c_str(),
       GetDisableDownloadProvider(disable_download_provider).c_str(),
-      disable_system_default_app, GetGeneratePaiParam(arc_generate_pai).c_str(),
+      GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
       USE_IIOSERVICE, enable_notifications_refresh, enable_tts_caching,
       enable_consumer_auto_update_toggle);

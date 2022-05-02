@@ -518,11 +518,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    StartArcInstanceExpectationsBuilder& SetDisableSystemDefaultApp(bool v) {
-      disable_system_default_app_ = v;
-      return *this;
-    }
-
     StartArcInstanceExpectationsBuilder& SetDisableMediaStoreMaintenance(
         bool v) {
       disable_media_store_maintenance_ = v;
@@ -587,8 +582,6 @@ class SessionManagerImplTest : public ::testing::Test,
               std::to_string(arc_file_picker_experiment_),
           "ARC_CUSTOM_TABS_EXPERIMENT=" +
               std::to_string(arc_custom_tab_experiment_),
-          "DISABLE_SYSTEM_DEFAULT_APP=" +
-              std::to_string(disable_system_default_app_),
           "DISABLE_MEDIA_STORE_MAINTENANCE=" +
               std::to_string(disable_media_store_maintenance_),
           "DISABLE_DOWNLOAD_PROVIDER=" +
@@ -647,7 +640,6 @@ class SessionManagerImplTest : public ::testing::Test,
     bool arc_file_picker_experiment_ = false;
     bool arc_custom_tab_experiment_ = false;
 
-    bool disable_system_default_app_ = false;
     bool disable_media_store_maintenance_ = false;
     bool disable_download_provider_ = false;
     bool disable_ureadahead_ = false;
@@ -2754,25 +2746,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithManagementTransition) {
       impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(android_container_.running());
-}
-
-TEST_F(SessionManagerImplTest, DisableSystemDefaultApp) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  StartArcMiniContainerRequest request;
-  request.set_disable_system_default_app(true);
-
-  // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetDisableSystemDefaultApp(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
 }
 
 TEST_F(SessionManagerImplTest, DisableMediaStoreMaintenance) {

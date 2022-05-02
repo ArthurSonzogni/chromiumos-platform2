@@ -55,7 +55,8 @@ message StartArcMiniContainerRequest {
 
   // Option to disable by hiding default apps shipped on the system image.
   // To be used locally in development that involves overriding these apps.
-  optional bool disable_system_default_app = 8 [default = false];
+  optional bool disable_system_default_app = 8
+      [default = false, deprecated = true];
 
   // Optional mode for dalvik memory profile.
   optional DalvikMemoryProfile dalvik_memory_profile = 9

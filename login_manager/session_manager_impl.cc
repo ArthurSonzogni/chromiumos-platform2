@@ -1446,8 +1446,6 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          request.arc_file_picker_experiment()),
       base::StringPrintf("ARC_CUSTOM_TABS_EXPERIMENT=%d",
                          request.arc_custom_tabs_experiment()),
-      base::StringPrintf("DISABLE_SYSTEM_DEFAULT_APP=%d",
-                         request.disable_system_default_app()),
       base::StringPrintf("DISABLE_MEDIA_STORE_MAINTENANCE=%d",
                          request.disable_media_store_maintenance()),
       base::StringPrintf("DISABLE_DOWNLOAD_PROVIDER=%d",

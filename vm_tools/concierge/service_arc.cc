@@ -130,7 +130,6 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.arcvm_metrics_mem_psi_period=",
       "androidboot.arcvm_ureadahead_mode=",
       "androidboot.arcvm_virtio_blk_data=",
-      "androidboot.disable_system_default_app=",
       "androidboot.enable_notifications_refresh=",
       "androidboot.host_is_in_vm=",
       "androidboot.iioservice_present=",
