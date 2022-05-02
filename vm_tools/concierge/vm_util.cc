@@ -52,6 +52,9 @@ constexpr char kAndroidGidMap[] =
     "0 655360 1065,1065 20119 1,1066 656426 3934,5000 600 50,5050 660410 "
     "1994950";
 
+constexpr char kFontsSharedDir[] = "/usr/share/fonts";
+constexpr char kFontsSharedDirTag[] = "fonts";
+
 // Examples of the format of the given string can be seen at the enum
 // UsbControlResponseType definition.
 bool ParseUsbControlResponse(base::StringPiece s,
@@ -708,6 +711,11 @@ std::string CreateSharedDataParam(
     }
   }
   return result;
+}
+
+std::string CreateFontsSharedDataParam() {
+  return CreateSharedDataParam(base::FilePath(kFontsSharedDir),
+                               kFontsSharedDirTag, true, false, true, {});
 }
 
 void ArcVmCPUTopology::CreateAffinity(void) {

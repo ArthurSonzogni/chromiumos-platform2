@@ -188,6 +188,9 @@ std::string CreateSharedDataParam(const base::FilePath& data_dir,
                                   bool posix_acl,
                                   const std::vector<uid_t>& privileged_uids);
 
+// Creates the font-specific shared data parameter for crosvm.
+std::string CreateFontsSharedDataParam();
+
 class ArcVmCPUTopology {
  public:
   ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus);

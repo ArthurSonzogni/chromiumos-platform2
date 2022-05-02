@@ -76,9 +76,6 @@ constexpr char kTestHarnessSharedDirTag[] = "testharness";
 constexpr char kApkCacheSharedDir[] = "/run/arcvm/apkcache";
 constexpr char kApkCacheSharedDirTag[] = "apkcache";
 
-constexpr char kFontsSharedDir[] = "/usr/share/fonts";
-constexpr char kFontsSharedDirTag[] = "fonts";
-
 #if defined(__x86_64__) || defined(__aarch64__)
 constexpr char kLibSharedDir[] = "/lib64";
 constexpr char kUsrLibSharedDir[] = "/usr/lib64";
@@ -267,9 +264,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath apkcache_dir(kApkCacheSharedDir);
   std::string shared_apkcache = CreateSharedDataParam(
       apkcache_dir, kApkCacheSharedDirTag, true, false, true, {});
-  const base::FilePath fonts_dir(kFontsSharedDir);
-  std::string shared_fonts = CreateSharedDataParam(
-      fonts_dir, kFontsSharedDirTag, true, false, true, {});
+  std::string shared_fonts = CreateFontsSharedDataParam();
   const base::FilePath lib_dir(kLibSharedDir);
   std::string shared_lib =
       CreateSharedDataParam(lib_dir, kLibSharedDirTag, true, false, true, {});

@@ -84,6 +84,7 @@
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_launch_interface.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
+#include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 using std::string;
@@ -1808,6 +1809,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       .SetInitrd(std::move(image_spec.initrd))
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
+      .AppendSharedDir(CreateFontsSharedDataParam())
       .EnableSmt(false /* enable */)
       .SetGpuCachePath(std::move(gpu_cache_spec.device))
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
