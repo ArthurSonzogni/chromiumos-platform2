@@ -744,8 +744,11 @@ const char kEapSubjectAlternativeNameMatchTypeURI[] = "URI";
 
 // WiFi Device kLinkStatisticsProperty sub-property names.
 const char kAverageReceiveSignalDbmProperty[] = "AverageReceiveSignalDbm";
+const char kByteReceiveSuccessesProperty[] = "ByteReceiveSuccesses";
+const char kByteTransmitSuccessesProperty[] = "ByteTransmitSuccesses";
 const char kInactiveTimeMillisecondsProperty[] = "InactiveTimeMilliseconds";
 const char kLastReceiveSignalDbmProperty[] = "LastReceiveSignalDbm";
+const char kPacketReceiveDropProperty[] = "PacketReceiveDrops";
 const char kPacketReceiveSuccessesProperty[] = "PacketReceiveSuccesses";
 const char kPacketTransmitFailuresProperty[] = "PacketTransmitFailures";
 const char kPacketTransmitSuccessesProperty[] = "PacketTrasmitSuccesses";

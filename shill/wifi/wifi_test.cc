@@ -1038,6 +1038,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                 SendNl80211Message(
                     IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY),
                     _, _, _));
+    EXPECT_CALL(netlink_manager_,
+                SendNl80211Message(
+                    IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION),
+                    _, _, _))
+        .Times(AtLeast(0));
 
     wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(nullptr, ResultCallback());
@@ -1229,6 +1234,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
     wifi_->HandleNetlinkBroadcast(netlink_message);
+  }
+
+  void RetrieveLinkStatistics(WiFi::NetworkEvent event) {
+    wifi_->RetrieveLinkStatistics(event);
   }
 
   bool ScanFailedCallbackIsCancelled() {
@@ -3883,21 +3892,15 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   NiceScopedMockLog log;
 
-  // There is no current_service_.
+  // It is not L2 connected.
   EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
-  SetCurrentService(nullptr);
-  RequestStationInfo();
-
-  // current_service_ is not connected.
-  EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(false));
-  SetCurrentService(service);
-  EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
+  ReportStateChanged(WPASupplicant::kInterfaceStateAuthenticating);
   RequestStationInfo();
 
   // Endpoint does not exist in endpoint_by_rpcid_.
-  EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   SetSupplicantBSS(
       RpcIdentifier("/some/path/that/does/not/exist/in/endpoint_by_rpcid"));
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_CALL(
       log,
       Log(_, _, HasSubstr("Can't get endpoint for current supplicant BSS")));
@@ -5256,6 +5259,73 @@ TEST_F(WiFiMainTest, AddCredTriggersInterworkingSelect) {
   EXPECT_TRUE(AddCred(cred0));
   // The addition of a set of credentials schedules an interworking selection.
   EXPECT_TRUE(NeedInterworkingSelect());
+}
+
+TEST_F(WiFiMainTest, NetworkEventTransition) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  SetCurrentService(service);
+  RpcIdentifier connected_bss = GetSupplicantBSS();
+  SetSupplicantBSS(connected_bss);
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+
+  old_rtnl_link_stats64 stats;
+  NewStationMessage new_station;
+  new_station.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
+  new_station.attributes()->SetRawAttributeValue(
+      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
+  new_station.attributes()->CreateNestedAttribute(NL80211_ATTR_STA_INFO,
+                                                  "Station Info");
+  AttributeListRefPtr station_info;
+  new_station.attributes()->GetNestedAttributeList(NL80211_ATTR_STA_INFO,
+                                                   &station_info);
+  station_info->CreateU32Attribute(NL80211_STA_INFO_RX_PACKETS,
+                                   kPacketReceiveSuccessesProperty);
+  station_info->SetU32AttributeValue(NL80211_STA_INFO_RX_PACKETS, 200);
+  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL,
+                                  kLastReceiveSignalDbmProperty);
+  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, -20);
+  new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
+
+  // Test DHCP failure
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kIPConfigurationStart);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
+      .Times(0);
+  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
+                       HasSubstr(kPacketReceiveSuccessesProperty)))
+      .Times(0);
+  ReportReceivedStationInfo(new_station);
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kDHCPFailure);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
+      .Times(1);
+  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
+                       HasSubstr(kPacketReceiveSuccessesProperty)))
+      .Times(1);
+  ReportReceivedStationInfo(new_station);
+
+  // Test portal detection failure
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kNetworkValidationStart);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
+      .Times(0);
+  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
+                       HasSubstr(kPacketReceiveSuccessesProperty)))
+      .Times(0);
+  ReportReceivedStationInfo(new_station);
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kNetworkValidationFailure);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
+      .Times(1);
+  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
+  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
+                       HasSubstr(kPacketReceiveSuccessesProperty)))
+      .Times(1);
+  ReportReceivedStationInfo(new_station);
 }
 
 }  // namespace shill

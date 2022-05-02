@@ -73,6 +73,7 @@
 // description of the same interface is in
 // third_party/wpa_supplicant/doc/dbus.doxygen.
 
+#include <linux/nl80211.h>
 #include <time.h>
 
 #include <map>
@@ -92,6 +93,7 @@
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
+#include "shill/net/rtnl_link_stats.h"
 #include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -117,6 +119,66 @@ class WiFiService;
 // WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
+  // Enum corresponding to various network layer events defined in the
+  // base Device class. This enum is used for labelling link statistics obtained
+  // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
+  // these events.
+  enum class NetworkEvent {
+    kUnknown,
+    // IPv4 and IPv6 dynamic configuration is starting for this network. This
+    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
+    // and to the start of IPv6 SLAAC in the kernel.
+    kIPConfigurationStart,
+    // The network is connected and one of IPv4 or IPv6 is provisioned. This
+    // corresponds to the beginning of the first network validation event if
+    // PortalDetector is used for validating the network Internet access.
+    kConnected,
+    // A roaming event is triggering a DHCP renew.
+    kDHCPRenewOnRoam,
+    // DHCPv4 lease acquisation has successfully completed.
+    kDHCPSuccess,
+    // DHCPv4 lease acquisation has failed. This event happens whenever the
+    // DHCPController instance associated with the network invokes its
+    // FailureCallback.
+    kDHCPFailure,
+    // IPv6 SLAAC has completed successfully. On IPv4-only networks where IPv6
+    // is not available, there is no timeout event of failure event recorded.
+    kSlaacFinished,
+    // A network validation attempt by PortalDetector is starting.
+    kNetworkValidationStart,
+    // A network validation attempt has completed and verified Internet
+    // connectivity.
+    kNetworkValidationSuccess,
+    // A network validation attempt has completed but Internet connectivity
+    // was not verified.
+    kNetworkValidationFailure,
+  };
+
+  struct Nl80211LinkStatistics {
+    uint32_t rx_packets_success;
+    uint32_t tx_packets_success;
+    uint32_t rx_bytes_success;
+    uint32_t tx_bytes_success;
+    uint32_t tx_packets_failure;
+    uint32_t tx_retries;
+    uint64_t rx_packets_dropped;
+    int32_t last_rx_signal_dbm;
+    int32_t avg_rx_signal_dbm;
+  };
+
+  struct WiFiLinkStatistics {
+    // rtnl link statistics
+    old_rtnl_link_stats64 rtnl_link_statistics;
+    // nl80211 station information
+    Nl80211LinkStatistics nl80211_link_statistics;
+    // The NetworkEvent at which the snapshot of WiFiLinkStatistics was made
+    NetworkEvent rtnl_network_event;
+    NetworkEvent nl80211_network_event;
+    // The timestamp at which the snapshot of WiFiLinkStatistics was made
+    base::Time rtnl_timestamp;
+    base::Time nl80211_timestamp;
+  };
+
   using FreqSet = std::set<uint32_t>;
 
   WiFi(Manager* manager,
@@ -243,6 +305,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Ensures a scan, then calls the manager's ConnectToBestServices method.
   void EnsureScanAndConnectToBestService(Error* error);
+
+  // Process old_rtnl_link_stats64 information
+  void OnReceivedRtnlLinkStatistics(old_rtnl_link_stats64& stats);
 
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
@@ -662,40 +727,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNetworkValidationSuccess() override;
   void OnNetworkValidationFailure() override;
 
-  // Enum corresponding to various network layer events defined in the
-  // base Device class. This enum is used for labelling link statistics obtained
-  // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
-  // these events.
-  enum class NetworkEvent {
-    kUnknown,
-    // IPv4 and IPv6 dynamic configuration is starting for this network. This
-    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
-    // and to the start of IPv6 SLAAC in the kernel.
-    kIPConfigurationStart,
-    // The network is connected and one of IPv4 or IPv6 is provisioned. This
-    // corresponds to the beginning of the first network validation event if
-    // PortalDetector is used for validating the network Internet access.
-    kConnected,
-    // A roaming event is triggering a DHCP renew.
-    kDHCPRenewOnRoam,
-    // DHCPv4 lease acquisation has successfully completed.
-    kDHCPSuccess,
-    // DHCPv4 lease acquisation has failed. This event happens whenever the
-    // DHCPController instance associated with the network invokes its
-    // FailureCallback.
-    kDHCPFailure,
-    // IPv6 SLAAC has completed successfully. On IPv4-only networks where IPv6
-    // is not available, there is no timeout event of failure event recorded.
-    kSlaacFinished,
-    // A network validation attempt by PortalDetector is starting.
-    kNetworkValidationStart,
-    // A network validation attempt has completed and verified Internet
-    // connectivity.
-    kNetworkValidationSuccess,
-    // A network validation attempt has completed but Internet connectivity
-    // was not verified.
-    kNetworkValidationFailure,
-  };
   void RetrieveLinkStatistics(NetworkEvent event);
 
   // Returns true iff the WiFi device is connected to the current service.
@@ -916,6 +947,15 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Used to report the current state of our wireless link.
   KeyValueStore link_statistics_;
+
+  // Used for the diagnosis during DHCP and captive portal detection.
+  // The snapshot of WiFi link statistics is updated if the network event is not
+  // kUnknown. The difference between the current and the previous snapshots is
+  // printed to the log on NetworkEvent kDHCPFailure, kNetworkValidationFailure.
+  WiFiLinkStatistics last_wifi_link_statistics_;
+
+  NetworkEvent current_rtnl_network_event_;
+  NetworkEvent current_nl80211_network_event_;
 
   // Wiphy interface index of this WiFi device.
   uint32_t wiphy_index_;

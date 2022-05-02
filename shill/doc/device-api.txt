@@ -575,6 +575,16 @@ Properties	string Address [readonly]
 				Reports the running average of signal
 				strength to the connected AP.
 
+				uint32 ByteReceiveSuccesses
+
+				Total received bytes from this station
+				on driver layer
+
+				uint32 ByteTransmitSuccesses
+
+				Total transmitted bytes to this station
+				on driver layer
+
 				uint32 InactiveTimeMilliseconds
 
 				Reports the time in milliseconds since
@@ -584,6 +594,11 @@ Properties	string Address [readonly]
 
 				Reports the signal strength of the last
 				received packet.
+
+				uint64 PacketReceiveDrops
+
+				RX packets dropped for unspecified reasons
+				on driver layer
 
 				uint32 PacketReceiveSuccesses
 

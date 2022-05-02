@@ -1531,6 +1531,14 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
                 << "transmit: " << stats.tx_bytes << ".";
   infos_[interface_index].rx_bytes = stats.rx_bytes;
   infos_[interface_index].tx_bytes = stats.tx_bytes;
+
+#if !defined(DISABLE_WIFI)
+  DeviceRefPtr device = GetDevice(interface_index);
+  if (device && device->technology() == Technology::kWiFi) {
+    (reinterpret_cast<WiFi*>(device.get()))
+        ->OnReceivedRtnlLinkStatistics(stats);
+  }
+#endif  // !DISABLE_WIFI
 }
 
 void DeviceInfo::RequestLinkStatistics() {
