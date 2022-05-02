@@ -136,6 +136,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       const std::map<std::string, std::string>& options) override;
   std::string Smartctl(const std::string& option) override;
   std::string Mmc(const std::string& option) override;
+  std::string Ufs(const std::string& option) override;
   std::string Nvme(const std::string& option) override;
   std::string NvmeLog(const uint32_t page_id,
                       const uint32_t length,

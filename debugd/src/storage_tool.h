@@ -29,6 +29,7 @@ class StorageTool : public SubprocessTool {
                    const base::FilePath vendFile,
                    std::string* errorMsg);
   std::string Mmc(const std::string& option);
+  std::string Ufs(const std::string& option);
   std::string Nvme(const std::string& option);
   std::string NvmeLog(const uint32_t& page_id,
                       const uint32_t& length,

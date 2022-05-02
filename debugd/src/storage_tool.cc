@@ -34,6 +34,7 @@ const char kSmartctl[] = "/usr/sbin/smartctl";
 const char kBadblocks[] = "/sbin/badblocks";
 const char kMmc[] = "/usr/bin/mmc";
 const char kNvme[] = "/usr/sbin/nvme";
+const char kSgSendDiag[] = "/usr/bin/sg_senddiag";
 
 }  // namespace
 
@@ -203,6 +204,32 @@ std::string StorageTool::Mmc(const std::string& option) {
 
   const base::FilePath rootdev = GetRootDevice();
   process.AddArg(rootdev.value());
+  process.Run();
+  std::string output;
+  process.GetOutput(&output);
+  return output;
+}
+
+std::string StorageTool::Ufs(const std::string& option) {
+  ProcessWithOutput process;
+  process.DisableSandbox();
+  if (!process.Init())
+    return "<process init failed>";
+
+  const base::FilePath rootdev = GetRootDevice();
+
+  if (option == "info") {
+    process.AddArg(kSmartctl);
+    process.AddArg("--all");
+    process.AddArg(rootdev.value());
+  } else if (option == "short_self_test") {
+    process.AddArg(kSgSendDiag);
+    process.AddArg("--test");
+    process.AddArg(rootdev.value());
+  } else {
+    return "<Option not supported>";
+  }
+
   process.Run();
   std::string output;
   process.GetOutput(&output);

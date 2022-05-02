@@ -274,6 +274,10 @@ std::string DebugdDBusAdaptor::Mmc(const std::string& option) {
   return storage_tool_->Mmc(option);
 }
 
+std::string DebugdDBusAdaptor::Ufs(const std::string& option) {
+  return storage_tool_->Ufs(option);
+}
+
 std::string DebugdDBusAdaptor::Nvme(const std::string& option) {
   return storage_tool_->Nvme(option);
 }
