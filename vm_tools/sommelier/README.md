@@ -184,7 +184,7 @@ the "launcher" button during normal usage. The "launcher" button event is
 forwarded to Linux programs by default so it won’t work when a Linux program
 has keyboard focus unless this shortcut is explicitly listed as an accelerator.
 
-Sommelier provides the `--accelerator=ACCELERATORS` flag for this purpose.
+Sommelier provides the `--accelerators=ACCELERATORS` flag for this purpose.
 `ACCELERATORS` is a comma separated list of accelerators that shouldn’t be
 forwarded to the Linux program but instead handled by the host compositor.
 Each accelerator can contain a list of modifiers (e.g. `<Control><Alt>`) and
