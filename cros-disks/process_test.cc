@@ -783,14 +783,13 @@ TEST(PidNamespaceRunAsRootTest, LauncherDoesNotTerminateOnSigTerm) {
 
   process.AddArgument(base::StringPrintf(
       R"(
-        trap 'echo Received SIGTERM >&%d' SIGTERM
+        trap 'echo Launcher process ignored a SIGTERM' SIGTERM
         printf 'Begin\n' >&%d;
         read line <&%d;
         printf '%%s and End\n' "$line" >&%d;
         exit 42;
     )",
-      to_wait.child_fd.get(), to_wait.child_fd.get(), to_block.child_fd.get(),
-      to_wait.child_fd.get()));
+      to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
 
   process.PreserveFile(to_wait.child_fd.get());
   process.PreserveFile(to_block.child_fd.get());
@@ -812,7 +811,6 @@ TEST(PidNamespaceRunAsRootTest, LauncherDoesNotTerminateOnSigTerm) {
   EXPECT_EQ(kill(pid, SIGTERM), 0);
 
   // Wait for 'launcher' process to finish.
-  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Received SIGTERM\n");
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
   // It should have taken a bit more than 2 seconds (grace period) for the
@@ -841,14 +839,13 @@ TEST(PidNamespaceRunAsRootTest, RepeatedSigTerm) {
 
   process.AddArgument(base::StringPrintf(
       R"(
-        trap 'echo Received SIGTERM >&%d' SIGTERM
+        trap 'echo Launcher process ignored a SIGTERM' SIGTERM
         printf 'Begin\n' >&%d;
         read line <&%d;
         printf '%%s and End\n' "$line" >&%d;
         exit 42;
     )",
-      to_wait.child_fd.get(), to_wait.child_fd.get(), to_block.child_fd.get(),
-      to_wait.child_fd.get()));
+      to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
 
   process.PreserveFile(to_wait.child_fd.get());
   process.PreserveFile(to_block.child_fd.get());
@@ -874,7 +871,6 @@ TEST(PidNamespaceRunAsRootTest, RepeatedSigTerm) {
   }
 
   // Wait for 'launcher' process to finish.
-  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Received SIGTERM\n");
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
   EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
   // It should have taken a bit more than 2 seconds (grace period) for the
