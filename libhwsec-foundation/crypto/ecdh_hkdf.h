@@ -9,6 +9,8 @@
 #include "libhwsec-foundation/crypto/hkdf.h"
 
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
+#include <openssl/ec.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 
@@ -25,11 +27,10 @@ namespace hwsec_foundation {
 //    <=> (others_priv_key * (G * own_priv_key)).x
 //          = ((G * others_priv_key) * own_priv_key).x
 // where G is a EC group generator.
-bool HWSEC_FOUNDATION_EXPORT
+crypto::ScopedEC_POINT HWSEC_FOUNDATION_EXPORT
 ComputeEcdhSharedSecretPoint(const EllipticCurve& ec,
-                             const brillo::SecureBlob& others_pub_key,
-                             const brillo::SecureBlob& own_priv_key,
-                             brillo::SecureBlob* shared_secret_point_blob);
+                             const EC_POINT& others_pub_key,
+                             const BIGNUM& own_priv_key);
 
 // Computes ECDH shared secret from the shared secret point. Returns nullptr if
 // error occurred. The formula for shared secret:
@@ -40,7 +41,7 @@ ComputeEcdhSharedSecretPoint(const EllipticCurve& ec,
 // https://github.com/google/tink/blob/1.5/cc/subtle/subtle_util_boringssl.cc
 bool HWSEC_FOUNDATION_EXPORT
 ComputeEcdhSharedSecret(const EllipticCurve& ec,
-                        const brillo::SecureBlob& shared_secret_point_blob,
+                        const EC_POINT& shared_secret_point,
                         brillo::SecureBlob* shared_secret);
 
 // Computes `symmetric_key` as:
@@ -66,7 +67,7 @@ ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
 //     hkdf_salt)
 bool HWSEC_FOUNDATION_EXPORT
 GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
-                             const brillo::SecureBlob& shared_secret_point_blob,
+                             const EC_POINT& shared_secret_point,
                              const brillo::SecureBlob& source_pub_key,
                              const brillo::SecureBlob& hkdf_info_suffix,
                              const brillo::SecureBlob& hkdf_salt,

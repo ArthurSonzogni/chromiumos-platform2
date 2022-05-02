@@ -34,30 +34,37 @@ TEST(EcdhHkdfTest, CompareEcdhHkdfSymmetricKeys) {
   brillo::SecureBlob salt;
   ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kSaltHex, &salt));
 
-  brillo::SecureBlob rec_pub_key;
-  brillo::SecureBlob rec_priv_key;
-  brillo::SecureBlob eph_pub_key;
-  brillo::SecureBlob eph_priv_key;
   brillo::SecureBlob symmetric_key1;
   brillo::SecureBlob symmetric_key2;
 
-  ASSERT_TRUE(ec->GenerateKeysAsSecureBlobs(&rec_pub_key, &rec_priv_key,
-                                            context.get()));
-  ASSERT_TRUE(ec->GenerateKeysAsSecureBlobs(&eph_pub_key, &eph_priv_key,
-                                            context.get()));
-  brillo::SecureBlob shared_secret_point_sender;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(*ec, rec_pub_key, eph_priv_key,
-                                           &shared_secret_point_sender));
-  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(*ec, shared_secret_point_sender,
-                                           eph_pub_key, info, salt, kHkdfHash,
-                                           kEcdhHkdfKeySize, &symmetric_key1));
+  crypto::ScopedEC_KEY rec_key_pair = ec->GenerateKey(context.get());
+  const BIGNUM* rec_priv_key = EC_KEY_get0_private_key(rec_key_pair.get());
+  ASSERT_TRUE(rec_priv_key);
+  const EC_POINT* rec_pub_key = EC_KEY_get0_public_key(rec_key_pair.get());
+  ASSERT_TRUE(rec_pub_key);
+  crypto::ScopedEC_KEY eph_key_pair = ec->GenerateKey(context.get());
+  ASSERT_TRUE(eph_key_pair);
+  const BIGNUM* eph_priv_key = EC_KEY_get0_private_key(eph_key_pair.get());
+  ASSERT_TRUE(eph_priv_key);
+  const EC_POINT* eph_pub_key = EC_KEY_get0_public_key(eph_key_pair.get());
+  ASSERT_TRUE(eph_pub_key);
+  brillo::SecureBlob eph_pub_key_blob;
+  ASSERT_TRUE(
+      ec->PointToSecureBlob(*eph_pub_key, &eph_pub_key_blob, context.get()));
 
-  brillo::SecureBlob shared_secret_point_recipient;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(*ec, eph_pub_key, rec_priv_key,
-                                           &shared_secret_point_recipient));
-  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(*ec, shared_secret_point_recipient,
-                                           eph_pub_key, info, salt, kHkdfHash,
-                                           kEcdhHkdfKeySize, &symmetric_key2));
+  crypto::ScopedEC_POINT shared_secret_point_sender =
+      ComputeEcdhSharedSecretPoint(*ec, *rec_pub_key, *eph_priv_key);
+  ASSERT_TRUE(shared_secret_point_sender);
+  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(
+      *ec, *shared_secret_point_sender, eph_pub_key_blob, info, salt, kHkdfHash,
+      kEcdhHkdfKeySize, &symmetric_key1));
+
+  crypto::ScopedEC_POINT shared_secret_point_recipient =
+      ComputeEcdhSharedSecretPoint(*ec, *eph_pub_key, *rec_priv_key);
+  ASSERT_TRUE(shared_secret_point_recipient);
+  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(
+      *ec, *shared_secret_point_recipient, eph_pub_key_blob, info, salt,
+      kHkdfHash, kEcdhHkdfKeySize, &symmetric_key2));
 
   EXPECT_EQ(symmetric_key1.size(), kAesGcm256KeySize);
   EXPECT_EQ(symmetric_key2.size(), kAesGcm256KeySize);
@@ -78,23 +85,27 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   brillo::SecureBlob salt;
   ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kSaltHex, &salt));
 
-  brillo::SecureBlob rec_pub_key;
-  brillo::SecureBlob rec_priv_key;
-  brillo::SecureBlob eph_pub_key;
-  brillo::SecureBlob eph_priv_key;
+  crypto::ScopedEC_KEY rec_key_pair = ec->GenerateKey(context.get());
+  const BIGNUM* rec_priv_key = EC_KEY_get0_private_key(rec_key_pair.get());
+  ASSERT_TRUE(rec_priv_key);
+  const EC_POINT* rec_pub_key = EC_KEY_get0_public_key(rec_key_pair.get());
+  ASSERT_TRUE(rec_pub_key);
+  crypto::ScopedEC_KEY eph_key_pair = ec->GenerateKey(context.get());
+  const BIGNUM* eph_priv_key = EC_KEY_get0_private_key(eph_key_pair.get());
+  ASSERT_TRUE(eph_priv_key);
+  const EC_POINT* eph_pub_key = EC_KEY_get0_public_key(eph_key_pair.get());
+  ASSERT_TRUE(eph_pub_key);
+  brillo::SecureBlob eph_pub_key_blob;
+  ASSERT_TRUE(
+      ec->PointToSecureBlob(*eph_pub_key, &eph_pub_key_blob, context.get()));
   brillo::SecureBlob aes_gcm_key1;
   brillo::SecureBlob aes_gcm_key2;
 
-  ASSERT_TRUE(ec->GenerateKeysAsSecureBlobs(&rec_pub_key, &rec_priv_key,
-                                            context.get()));
-  ASSERT_TRUE(ec->GenerateKeysAsSecureBlobs(&eph_pub_key, &eph_priv_key,
-                                            context.get()));
-  brillo::SecureBlob shared_secret_point_sender;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(*ec, rec_pub_key, eph_priv_key,
-                                           &shared_secret_point_sender));
-  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(*ec, shared_secret_point_sender,
-                                           eph_pub_key, info, salt, kHkdfHash,
-                                           kEcdhHkdfKeySize, &aes_gcm_key1));
+  crypto::ScopedEC_POINT shared_secret_point_sender =
+      ComputeEcdhSharedSecretPoint(*ec, *rec_pub_key, *eph_priv_key);
+  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(
+      *ec, *shared_secret_point_sender, eph_pub_key_blob, info, salt, kHkdfHash,
+      kEcdhHkdfKeySize, &aes_gcm_key1));
 
   brillo::SecureBlob iv(kAesGcmIVSize);
   brillo::SecureBlob tag(kAesGcmTagSize);
@@ -105,12 +116,11 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, aes_gcm_key1, &iv,
                             &tag, &ciphertext));
 
-  brillo::SecureBlob shared_secret_point_recipient;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(*ec, eph_pub_key, rec_priv_key,
-                                           &shared_secret_point_recipient));
-  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(*ec, shared_secret_point_recipient,
-                                           eph_pub_key, info, salt, kHkdfHash,
-                                           kEcdhHkdfKeySize, &aes_gcm_key2));
+  crypto::ScopedEC_POINT shared_secret_point_recipient =
+      ComputeEcdhSharedSecretPoint(*ec, *eph_pub_key, *rec_priv_key);
+  ASSERT_TRUE(GenerateEcdhHkdfSymmetricKey(
+      *ec, *shared_secret_point_recipient, eph_pub_key_blob, info, salt,
+      kHkdfHash, kEcdhHkdfKeySize, &aes_gcm_key2));
 
   // Symmetric keys generated for sender and recipient should be equal.
   EXPECT_EQ(aes_gcm_key1, aes_gcm_key2);

@@ -16,44 +16,27 @@
 
 namespace hwsec_foundation {
 
-bool ComputeEcdhSharedSecretPoint(
+crypto::ScopedEC_POINT ComputeEcdhSharedSecretPoint(
     const EllipticCurve& ec,
-    const brillo::SecureBlob& others_pub_key,
-    const brillo::SecureBlob& own_priv_key,
-    brillo::SecureBlob* shared_secret_point_blob) {
+    const EC_POINT& others_pub_key,
+    const BIGNUM& own_priv_key) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
-    return false;
-  }
-  crypto::ScopedEC_POINT pub_point =
-      ec.SecureBlobToPoint(others_pub_key, context.get());
-  if (!pub_point) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
-    return false;
-  }
-  crypto::ScopedBIGNUM priv_scalar = SecureBlobToBigNum(own_priv_key);
-  if (!priv_scalar) {
-    LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
-    return false;
+    return nullptr;
   }
   crypto::ScopedEC_POINT shared_secret_point =
-      ec.Multiply(*pub_point, *priv_scalar, context.get());
+      ec.Multiply(others_pub_key, own_priv_key, context.get());
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to perform scalar multiplication";
-    return false;
-  }
-  if (!ec.PointToSecureBlob(*shared_secret_point, shared_secret_point_blob,
-                            context.get())) {
-    LOG(ERROR) << "Failed to convert shared_secret_point to a SecureBlob";
-    return false;
+    return nullptr;
   }
 
-  return true;
+  return shared_secret_point;
 }
 
 bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
-                             const brillo::SecureBlob& shared_secret_point_blob,
+                             const EC_POINT& shared_secret_point,
                              brillo::SecureBlob* shared_secret) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context) {
@@ -61,20 +44,13 @@ bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
     return false;
   }
 
-  crypto::ScopedEC_POINT shared_secret_point =
-      ec.SecureBlobToPoint(shared_secret_point_blob, context.get());
-  if (!shared_secret_point) {
-    LOG(ERROR)
-        << "Failed to convert shared_secret_point SecureBlob to EC_POINT";
-    return false;
-  }
   // Get shared point's affine X coordinate.
   crypto::ScopedBIGNUM shared_x = CreateBigNum();
   if (!shared_x) {
     LOG(ERROR) << "Failed to allocate BIGNUM";
     return false;
   }
-  if (!ec.GetAffineCoordinates(*shared_secret_point, context.get(),
+  if (!ec.GetAffineCoordinates(shared_secret_point, context.get(),
                                shared_x.get(),
                                /*y=*/nullptr)) {
     LOG(ERROR) << "Failed to get shared_secret_point x coordinate";
@@ -103,17 +79,16 @@ bool ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
               symmetric_key);
 }
 
-bool GenerateEcdhHkdfSymmetricKey(
-    const EllipticCurve& ec,
-    const brillo::SecureBlob& shared_secret_point_blob,
-    const brillo::SecureBlob& source_pub_key,
-    const brillo::SecureBlob& hkdf_info_suffix,
-    const brillo::SecureBlob& hkdf_salt,
-    HkdfHash hkdf_hash,
-    size_t symmetric_key_len,
-    brillo::SecureBlob* symmetric_key) {
+bool GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
+                                  const EC_POINT& shared_secret_point,
+                                  const brillo::SecureBlob& source_pub_key,
+                                  const brillo::SecureBlob& hkdf_info_suffix,
+                                  const brillo::SecureBlob& hkdf_salt,
+                                  HkdfHash hkdf_hash,
+                                  size_t symmetric_key_len,
+                                  brillo::SecureBlob* symmetric_key) {
   brillo::SecureBlob shared_secret;
-  if (!ComputeEcdhSharedSecret(ec, shared_secret_point_blob, &shared_secret)) {
+  if (!ComputeEcdhSharedSecret(ec, shared_secret_point, &shared_secret)) {
     LOG(ERROR) << "Failed to compute shared secret";
     return false;
   }

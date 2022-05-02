@@ -156,17 +156,11 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   const EC_POINT* others_pub_key =
       EC_KEY_get0_public_key(others_key_pair.get());
   ASSERT_TRUE(others_pub_key);
-  brillo::SecureBlob others_pub_point_blob;
-  ASSERT_TRUE(ec_256_->PointToSecureBlob(
-      *others_pub_key, &others_pub_point_blob, context_.get()));
 
   // Calculate expected shared point
-  brillo::SecureBlob expected_shared_secret;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(
-      ec_256_.value(), others_pub_point_blob, own_priv_point_blob,
-      &expected_shared_secret));
-  crypto::ScopedEC_POINT expected_shared_secret_point =
-      ec_256_->SecureBlobToPoint(expected_shared_secret, context_.get());
+  crypto::ScopedEC_POINT expected_shared_secret = ComputeEcdhSharedSecretPoint(
+      ec_256_.value(), *others_pub_key, *own_priv_key);
+  ASSERT_TRUE(expected_shared_secret);
 
   // Set up mock expectations
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, auth_value, _, _))
@@ -177,8 +171,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
           ec_256_.value(), own_priv_point_blob, auth_value, *others_pub_key);
   EXPECT_NE(shared_secret_point, nullptr);
-  EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point,
-                                *expected_shared_secret_point, context_.get()));
+  EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point, *expected_shared_secret,
+                                context_.get()));
 }
 
 TEST_F(RecoveryCryptoTpm1BackendTest,
@@ -259,17 +253,6 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   const EC_POINT* others_pub_key =
       EC_KEY_get0_public_key(others_key_pair.get());
   ASSERT_TRUE(others_pub_key);
-  brillo::SecureBlob others_pub_point_blob;
-  ASSERT_TRUE(ec_256_->PointToSecureBlob(
-      *others_pub_key, &others_pub_point_blob, context_.get()));
-
-  // Calculate expected shared point
-  brillo::SecureBlob expected_shared_secret;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(
-      ec_256_.value(), others_pub_point_blob, own_priv_point_blob,
-      &expected_shared_secret));
-  crypto::ScopedEC_POINT expected_shared_secret_point =
-      ec_256_->SecureBlobToPoint(expected_shared_secret, context_.get());
 
   // Set up mock expectations
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, auth_value, _, _))
@@ -299,17 +282,11 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   const EC_POINT* others_pub_key =
       EC_KEY_get0_public_key(others_key_pair.get());
   ASSERT_TRUE(others_pub_key);
-  brillo::SecureBlob others_pub_point_blob;
-  ASSERT_TRUE(ec_256_->PointToSecureBlob(
-      *others_pub_key, &others_pub_point_blob, context_.get()));
 
   // Calculate expected shared point
-  brillo::SecureBlob expected_shared_secret;
-  ASSERT_TRUE(ComputeEcdhSharedSecretPoint(
-      ec_256_.value(), others_pub_point_blob, own_priv_point_blob,
-      &expected_shared_secret));
-  crypto::ScopedEC_POINT expected_shared_secret_point =
-      ec_256_->SecureBlobToPoint(expected_shared_secret, context_.get());
+  crypto::ScopedEC_POINT expected_shared_secret = ComputeEcdhSharedSecretPoint(
+      ec_256_.value(), *others_pub_key, *own_priv_key);
+  ASSERT_TRUE(expected_shared_secret);
 
   // Set up mock expectations
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, _, _, _)).Times(Exactly(0));
@@ -319,8 +296,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
           ec_256_.value(), own_priv_point_blob,
           /*auth_value=*/std::nullopt, *others_pub_key);
   EXPECT_NE(nullptr, shared_secret_point);
-  EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point,
-                                *expected_shared_secret_point, context_.get()));
+  EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point, *expected_shared_secret,
+                                context_.get()));
 }
 
 }  // namespace cryptorecovery

@@ -62,13 +62,6 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
  private:
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
                      RecoveryCryptoTpmBackend* tpm_backend);
-  // Encrypts mediator share and stores as `encrypted_ms` with
-  // embedded ephemeral public key, AES-GCM tag and iv. Returns false if error
-  // occurred.
-  bool EncryptMediatorShare(const brillo::SecureBlob& mediator_pub_key,
-                            const brillo::SecureBlob& mediator_share,
-                            EncryptedMediatorShare* encrypted_ms,
-                            BN_CTX* context) const;
   bool GenerateRecoveryKey(const crypto::ScopedEC_POINT& recovery_pub_point,
                            const crypto::ScopedEC_KEY& dealer_key_pair,
                            brillo::SecureBlob* recovery_key) const;
@@ -77,10 +70,9 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                             brillo::SecureBlob* ephemeral_inv_pub_key) const;
   bool GenerateHsmAssociatedData(const brillo::SecureBlob& channel_pub_key,
                                  const brillo::SecureBlob& rsa_pub_key,
+                                 const crypto::ScopedEC_KEY& publisher_key_pair,
                                  const OnboardingMetadata& onboarding_metadata,
-                                 brillo::SecureBlob* hsm_associated_data,
-                                 brillo::SecureBlob* publisher_priv_key,
-                                 brillo::SecureBlob* publisher_pub_key) const;
+                                 brillo::SecureBlob* hsm_associated_data) const;
 
   hwsec_foundation::EllipticCurve ec_;
   RecoveryCryptoTpmBackend* const tpm_backend_;

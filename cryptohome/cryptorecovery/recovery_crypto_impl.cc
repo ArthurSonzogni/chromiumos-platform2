@@ -33,9 +33,11 @@ using ::hwsec_foundation::CreateBigNum;
 using ::hwsec_foundation::CreateBigNumContext;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::EllipticCurve;
+using ::hwsec_foundation::GenerateEcdhHkdfSymmetricKey;
 using ::hwsec_foundation::HkdfHash;
 using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::ScopedBN_CTX;
+using ::hwsec_foundation::SecureBlobToBigNum;
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -149,53 +151,6 @@ RecoveryCryptoImpl::RecoveryCryptoImpl(EllipticCurve ec,
 }
 
 RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;
-
-bool RecoveryCryptoImpl::EncryptMediatorShare(
-    const brillo::SecureBlob& mediator_pub_key,
-    const brillo::SecureBlob& mediator_share,
-    RecoveryCrypto::EncryptedMediatorShare* encrypted_ms,
-    BN_CTX* context) const {
-  brillo::SecureBlob ephemeral_priv_key;
-  if (!ec_.GenerateKeysAsSecureBlobs(&encrypted_ms->ephemeral_pub_key,
-                                     &ephemeral_priv_key, context)) {
-    LOG(ERROR) << "Failed to generate EC keys for mediator share encryption";
-    return false;
-  }
-
-  brillo::SecureBlob shared_secret_point;
-  if (!ComputeEcdhSharedSecretPoint(ec_, mediator_pub_key, ephemeral_priv_key,
-                                    &shared_secret_point)) {
-    LOG(ERROR) << "Failed to compute shared point from mediator_pub_key and "
-                  "ephemeral_priv_key";
-    return false;
-  }
-  brillo::SecureBlob aes_gcm_key;
-  // |hkdf_salt| can be empty here because the input already has a high entropy.
-  // Bruteforce attacks are not an issue here and as we generate an ephemeral
-  // key as input to HKDF the output will already be non-deterministic.
-  if (!GenerateEcdhHkdfSymmetricKey(
-          ec_, shared_secret_point, encrypted_ms->ephemeral_pub_key,
-          GetMediatorShareHkdfInfo(), /*hkdf_salt=*/brillo::SecureBlob(),
-          kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for mediator share "
-                  "encryption";
-    return false;
-  }
-
-  // Dispose shared_secret_point after used
-  shared_secret_point.clear();
-  // Dispose private key.
-  ephemeral_priv_key.clear();
-
-  if (!AesGcmEncrypt(mediator_share, /*ad=*/std::nullopt, aes_gcm_key,
-                     &encrypted_ms->iv, &encrypted_ms->tag,
-                     &encrypted_ms->encrypted_data)) {
-    LOG(ERROR) << "Failed to perform AES-GCM encryption of the mediator share";
-    return false;
-  }
-
-  return true;
-}
 
 bool RecoveryCryptoImpl::GenerateRecoveryKey(
     const crypto::ScopedEC_POINT& recovery_pub_point,
@@ -356,28 +311,21 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
                   "channel_priv_key";
     return false;
   }
-  brillo::SecureBlob shared_secret_point_blob;
-  if (!ec_.PointToSecureBlob(*shared_secret_point, &shared_secret_point_blob,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert shared_secret_point to a SecureBlob";
-    return false;
-  }
   brillo::SecureBlob aes_gcm_key;
   // The static nature of `channel_pub_key` (G*s) and `epoch_pub_key` (G*r)
   // requires the need to utilize a randomized salt value in the HKDF
   // computation.
-  if (!GenerateEcdhHkdfSymmetricKey(
-          ec_, shared_secret_point_blob, channel_pub_key,
-          GetRequestPayloadPlainTextHkdfInfo(), request_ad.request_payload_salt,
-          kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, *shared_secret_point, channel_pub_key,
+                                    GetRequestPayloadPlainTextHkdfInfo(),
+                                    request_ad.request_payload_salt, kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for recovery "
                   "request plain text encryption";
     return false;
   }
 
-  // Dispose shared_secret_point_blob after used
+  // Dispose shared_secret_point after used
   shared_secret_point.reset();
-  shared_secret_point_blob.clear();
 
   brillo::SecureBlob ephemeral_inverse_pub_key;
   if (!GenerateEphemeralKey(ephemeral_pub_key, &ephemeral_inverse_pub_key)) {
@@ -440,12 +388,6 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
-  // Generate dealer key pair.
-  crypto::ScopedEC_KEY dealer_key_pair = ec_.GenerateKey(context.get());
-  if (!dealer_key_pair) {
-    LOG(ERROR) << "Failed to generate dealer key pair";
-    return false;
-  }
   // Generate two shares and a secret equal to the sum.
   // Loop until the sum of two shares is non-zero (modulo order).
   crypto::ScopedEC_KEY destination_share_key_pair =
@@ -528,18 +470,27 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
+  crypto::ScopedEC_KEY publisher_key_pair = ec_.GenerateKey(context.get());
+  if (!publisher_key_pair) {
+    LOG(ERROR) << "Failed to generate publisher key pair";
+    return false;
+  }
+
   // Construct associated data for HSM payload: AD = CBOR({publisher_pub_key,
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
-  brillo::SecureBlob publisher_priv_key;
-  brillo::SecureBlob publisher_pub_key;
   if (!GenerateHsmAssociatedData(*channel_pub_key, rsa_public_key_der,
-                                 onboarding_metadata,
-                                 &hsm_payload->associated_data,
-                                 &publisher_priv_key, &publisher_pub_key)) {
+                                 publisher_key_pair, onboarding_metadata,
+                                 &hsm_payload->associated_data)) {
     LOG(ERROR) << "Failed to generate HSM associated data cbor";
     return false;
   }
 
+  // Generate dealer key pair.
+  crypto::ScopedEC_KEY dealer_key_pair = ec_.GenerateKey(context.get());
+  if (!dealer_key_pair) {
+    LOG(ERROR) << "Failed to generate dealer key pair";
+    return false;
+  }
   // Construct plain text for HSM payload PT = CBOR({dealer_pub_key,
   // mediator_share, kav}).
   const EC_POINT* dealer_pub_point =
@@ -571,22 +522,49 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
-  brillo::SecureBlob shared_secret_point;
-  if (!ComputeEcdhSharedSecretPoint(ec_, mediator_pub_key, publisher_priv_key,
-                                    &shared_secret_point)) {
-    LOG(ERROR) << "Failed to compute shared point from mediator_pub_key and "
+  // Generate symmetric key for encrypting PT from (G*h)*u (where G*h is the
+  // mediator public key provided as input, and u is the publisher private key).
+  crypto::ScopedEC_POINT mediator_pub_point =
+      ec_.SecureBlobToPoint(mediator_pub_key, context.get());
+  if (!mediator_pub_point) {
+    LOG(ERROR) << "Failed to convert mediator_pub_key to EC_POINT";
+    return false;
+  }
+  const BIGNUM* publisher_priv_key =
+      EC_KEY_get0_private_key(publisher_key_pair.get());
+  if (!publisher_priv_key) {
+    LOG(ERROR) << "Failed to get publisher_priv_key from publisher_key_pair";
+    return false;
+  }
+  crypto::ScopedEC_POINT shared_secret_point = ComputeEcdhSharedSecretPoint(
+      ec_, *mediator_pub_point, *publisher_priv_key);
+  if (!shared_secret_point) {
+    LOG(ERROR) << "Failed to compute shared point from mediator_pub_point and "
                   "publisher_priv_key";
     return false;
   }
+  const EC_POINT* publisher_pub_key =
+      EC_KEY_get0_public_key(publisher_key_pair.get());
+  if (!publisher_pub_key) {
+    LOG(ERROR) << "Failed to get publisher_pub_key from publisher_key_pair";
+    return false;
+  }
+  brillo::SecureBlob publisher_pub_key_blob;
+  if (!ec_.PointToSecureBlob(*publisher_pub_key, &publisher_pub_key_blob,
+                             context.get())) {
+    LOG(ERROR) << "Failed to convert publisher_pub_key to a SecureBlob";
+    return false;
+  }
+
   brillo::SecureBlob aes_gcm_key;
   // |hkdf_salt| can be empty here because the input already has a high entropy.
   // Bruteforce attacks are not an issue here and as we generate an ephemeral
   // key as input to HKDF the output will already be non-deterministic.
-  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, publisher_pub_key,
-                                    GetMediatorShareHkdfInfo(),
-                                    /*hkdf_salt=*/brillo::SecureBlob(),
-                                    kHkdfHash, kAesGcm256KeySize,
-                                    &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(
+          ec_, *shared_secret_point, publisher_pub_key_blob,
+          GetMediatorShareHkdfInfo(),
+          /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash, kAesGcm256KeySize,
+          &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for HSM plain text "
                   "encryption";
     return false;
@@ -602,12 +580,11 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Cleanup: all intermediate secrets must be securely disposed at the end of
   // HSM payload generation.
   aes_gcm_key.clear();
-  shared_secret_point.clear();
+  shared_secret_point.reset();
   plain_text_cbor.clear();
   mediator_share.clear();
   dealer_pub_key.clear();
-  publisher_pub_key.clear();
-  publisher_priv_key.clear();
+  publisher_key_pair.reset();
 
   GenerateRecoveryKey(recovery_pub_point, dealer_key_pair, recovery_key);
   return true;
@@ -751,11 +728,11 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
   brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfSymmetricKey(
-          ec_, shared_secret_point_blob, epoch_pub_key,
-          GetResponsePayloadPlainTextHkdfInfo(),
-          response_ad.response_payload_salt, RecoveryCrypto::kHkdfHash,
-          kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, *shared_secret_point, epoch_pub_key,
+                                    GetResponsePayloadPlainTextHkdfInfo(),
+                                    response_ad.response_payload_salt,
+                                    RecoveryCrypto::kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for response "
                   "plain text decryption";
     return false;
@@ -785,20 +762,12 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
 bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
     const brillo::SecureBlob& channel_pub_key,
     const brillo::SecureBlob& rsa_pub_key,
+    const crypto::ScopedEC_KEY& publisher_key_pair,
     const OnboardingMetadata& onboarding_metadata,
-    brillo::SecureBlob* hsm_associated_data,
-    brillo::SecureBlob* publisher_priv_key,
-    brillo::SecureBlob* publisher_pub_key) const {
+    brillo::SecureBlob* hsm_associated_data) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
-    return false;
-  }
-
-  // Generate publisher key pair.
-  crypto::ScopedEC_KEY publisher_key_pair = ec_.GenerateKey(context.get());
-  if (!publisher_key_pair) {
-    LOG(ERROR) << "Failed to generate publisher key pair";
     return false;
   }
 
@@ -810,24 +779,15 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
     LOG(ERROR) << "Failed to get publisher_pub_point";
     return false;
   }
-  if (!ec_.PointToSecureBlob(*publisher_pub_point, publisher_pub_key,
+  brillo::SecureBlob publisher_pub_key;
+  if (!ec_.PointToSecureBlob(*publisher_pub_point, &publisher_pub_key,
                              context.get())) {
     LOG(ERROR) << "Failed to convert publisher_pub_key to a SecureBlob";
     return false;
   }
-  const BIGNUM* publisher_priv_secret =
-      EC_KEY_get0_private_key(publisher_key_pair.get());
-  if (!publisher_priv_secret) {
-    LOG(ERROR) << "Failed to get publisher_priv_secret";
-    return false;
-  }
-  if (!BigNumToSecureBlob(*publisher_priv_secret, ec_.ScalarSizeInBytes(),
-                          publisher_priv_key)) {
-    LOG(ERROR) << "Failed to convert publisher_priv_key to a SecureBlob";
-    return false;
-  }
+
   HsmAssociatedData hsm_ad;
-  hsm_ad.publisher_pub_key = *publisher_pub_key;
+  hsm_ad.publisher_pub_key = publisher_pub_key;
   hsm_ad.channel_pub_key = channel_pub_key;
   hsm_ad.rsa_public_key = rsa_pub_key;
   hsm_ad.onboarding_meta_data = onboarding_metadata;

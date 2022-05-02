@@ -37,6 +37,7 @@ using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::EllipticCurve;
 using hwsec_foundation::ScopedBN_CTX;
+using hwsec_foundation::SecureBlobToBigNum;
 
 namespace {
 // Size of the auth_value blob to be randomly generated.
@@ -151,26 +152,19 @@ RecoveryCryptoTpm1BackendImpl::GenerateDiffieHellmanSharedSecret(
     return nullptr;
   }
 
-  // Convert the other party's public key from EC_POINT to SecureBlob
-  brillo::SecureBlob others_pub_point_blob;
-  if (!ec.PointToSecureBlob(others_pub_point, &others_pub_point_blob,
-                            context.get())) {
-    LOG(ERROR) << "Failed to convert others_pub_point_blob to a SecureBlob";
+  crypto::ScopedBIGNUM unencrypted_own_priv_key_bn =
+      SecureBlobToBigNum(unencrypted_own_priv_key);
+  if (!unencrypted_own_priv_key_bn) {
+    LOG(ERROR) << "Failed to convert unencrypted_own_priv_key to BIGNUM";
     return nullptr;
   }
   // Calculate the shared secret from one's own private key and the other
   // party's public key
-  brillo::SecureBlob point_dh_blob;
-  if (!ComputeEcdhSharedSecretPoint(ec, others_pub_point_blob,
-                                    unencrypted_own_priv_key, &point_dh_blob)) {
-    LOG(ERROR) << "Failed to compute shared point from mediator_pub_key and "
-                  "publisher_priv_key";
-    return nullptr;
-  }
-  crypto::ScopedEC_POINT point_dh =
-      ec.SecureBlobToPoint(point_dh_blob, context.get());
+  crypto::ScopedEC_POINT point_dh = ComputeEcdhSharedSecretPoint(
+      ec, others_pub_point, *unencrypted_own_priv_key_bn);
   if (!point_dh) {
-    LOG(ERROR) << "Failed to convert point_dh_blob to EC_POINT";
+    LOG(ERROR) << "Failed to compute shared point from others_pub_point and "
+                  "unencrypted_own_priv_key_bn";
     return nullptr;
   }
 
