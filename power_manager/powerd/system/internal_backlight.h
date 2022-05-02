@@ -77,7 +77,7 @@ class InternalBacklight : public BacklightInterface {
   // |current_brightness_level_|, also writing to |bl_power_path_| if necessary.
   // Called by SetBrightnessLevel() and HandleTransitionTimeout(). Returns true
   // on success.
-  bool WriteBrightness(int64_t new_level);
+  virtual bool WriteBrightness(int64_t new_level);
 
   // Sets the brightness level appropriately for the current point in the
   // transition.  When the transition is done, stops |transition_timer_|.
@@ -101,10 +101,6 @@ class InternalBacklight : public BacklightInterface {
   // details.
   base::FilePath bl_power_path_;
 
-  // Cached maximum and last-set brightness levels.
-  int64_t max_brightness_level_;
-  int64_t current_brightness_level_;
-
   // Scale of the brightness curve (linear, non-linear or unknown).
   BrightnessScale brightness_scale_;
 
@@ -121,6 +117,13 @@ class InternalBacklight : public BacklightInterface {
   // Start and end brightness level for the current transition.
   int64_t transition_start_level_;
   int64_t transition_end_level_;
+
+ protected:
+  bool DoSetBrightnessLevel(int64_t level, base::TimeDelta interval);
+
+  // Cached maximum and last-set brightness levels.
+  int64_t max_brightness_level_;
+  int64_t current_brightness_level_;
 };
 
 }  // namespace system

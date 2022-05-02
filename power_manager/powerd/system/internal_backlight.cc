@@ -38,11 +38,11 @@ const char InternalBacklight::kScaleFilename[] = "scale";
 
 InternalBacklight::InternalBacklight()
     : clock_(new Clock),
-      max_brightness_level_(0),
-      current_brightness_level_(0),
       brightness_scale_(BrightnessScale::kUnknown),
       transition_start_level_(0),
-      transition_end_level_(0) {}
+      transition_end_level_(0),
+      max_brightness_level_(0),
+      current_brightness_level_(0) {}
 
 InternalBacklight::~InternalBacklight() {}
 
@@ -129,13 +129,8 @@ int64_t InternalBacklight::GetCurrentBrightnessLevel() {
   return current_brightness_level_;
 }
 
-bool InternalBacklight::SetBrightnessLevel(int64_t level,
-                                           base::TimeDelta interval) {
-  if (brightness_path_.empty()) {
-    LOG(ERROR) << "Cannot find backlight brightness file.";
-    return false;
-  }
-
+bool InternalBacklight::DoSetBrightnessLevel(int64_t level,
+                                             base::TimeDelta interval) {
   if (level == current_brightness_level_) {
     CancelTransition();
     return true;
@@ -156,6 +151,16 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
     transition_timer_start_time_ = transition_start_time_;
   }
   return true;
+}
+
+bool InternalBacklight::SetBrightnessLevel(int64_t level,
+                                           base::TimeDelta interval) {
+  if (brightness_path_.empty()) {
+    LOG(ERROR) << "Cannot find backlight brightness file.";
+    return false;
+  }
+
+  return DoSetBrightnessLevel(level, interval);
 }
 
 BacklightInterface::BrightnessScale InternalBacklight::GetBrightnessScale() {

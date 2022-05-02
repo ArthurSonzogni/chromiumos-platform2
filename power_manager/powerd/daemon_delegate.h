@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <libec/charge_control_set_command.h>
+#include <libec/ec_usb_endpoint.h>
 
 namespace power_manager {
 
@@ -115,6 +116,11 @@ class DaemonDelegate {
                                    const std::string& udev_subsystem,
                                    const base::FilePath& base_path,
                                    const std::string& pattern) = 0;
+
+  virtual std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() = 0;
+
+  virtual std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
+      ec::EcUsbEndpointInterface* endpoint) = 0;
 
   virtual std::unique_ptr<policy::BacklightController>
   CreateInternalBacklightController(

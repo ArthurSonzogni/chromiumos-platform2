@@ -42,6 +42,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
+#include "power_manager/powerd/system/ec_keyboard_backlight.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
@@ -87,6 +88,9 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
         passed_keyboard_backlight_(new system::BacklightStub(
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
+        passed_ec_usb_endpoint_(new ec::EcUsbEndpointStub()),
+        passed_ec_keyboard_backlight_(new system::BacklightStub(
+            100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
         passed_external_backlight_controller_(
             new policy::BacklightControllerStub()),
         passed_internal_backlight_controller_(
@@ -125,6 +129,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         display_power_setter_(passed_display_power_setter_.get()),
         internal_backlight_(passed_internal_backlight_.get()),
         keyboard_backlight_(passed_keyboard_backlight_.get()),
+        ec_keyboard_backlight_(passed_ec_keyboard_backlight_.get()),
         external_backlight_controller_(
             passed_external_backlight_controller_.get()),
         internal_backlight_controller_(
@@ -315,7 +320,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       policy::BacklightController* display_backlight_controller,
       LidState initial_lid_state,
       TabletMode initial_tablet_mode) override {
-    EXPECT_EQ(keyboard_backlight_, backlight);
+    if (ec_keyboard_backlight_enabled_) {
+      EXPECT_EQ(ec_keyboard_backlight_, backlight);
+    } else {
+      EXPECT_EQ(keyboard_backlight_, backlight);
+    }
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(
         !sensor ||
@@ -326,6 +335,18 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(input_watcher_->QueryLidState(), initial_lid_state);
     EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_keyboard_backlight_controller_);
+  }
+  std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() override {
+    return std::move(passed_ec_usb_endpoint_);
+  }
+  bool ec_keyboard_backlight_enabled_ = false;
+  std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
+      ec::EcUsbEndpointInterface* endpoint) override {
+    if (ec_keyboard_backlight_enabled_) {
+      return std::move(passed_ec_keyboard_backlight_);
+    } else {
+      return nullptr;
+    }
   }
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
       PrefsInterface* prefs, system::UdevInterface* udev) override {
@@ -527,6 +548,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::DisplayPowerSetterStub> passed_display_power_setter_;
   std::unique_ptr<system::BacklightStub> passed_internal_backlight_;
   std::unique_ptr<system::BacklightStub> passed_keyboard_backlight_;
+  std::unique_ptr<ec::EcUsbEndpointInterface> passed_ec_usb_endpoint_;
+  std::unique_ptr<system::BacklightStub> passed_ec_keyboard_backlight_;
   std::unique_ptr<policy::BacklightControllerStub>
       passed_external_backlight_controller_;
   std::unique_ptr<policy::BacklightControllerStub>
@@ -570,6 +593,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::DisplayPowerSetterStub* display_power_setter_;
   system::BacklightStub* internal_backlight_;
   system::BacklightStub* keyboard_backlight_;
+  system::BacklightStub* ec_keyboard_backlight_;
   policy::BacklightControllerStub* external_backlight_controller_;
   policy::BacklightControllerStub* internal_backlight_controller_;
   policy::BacklightControllerStub* keyboard_backlight_controller_;
@@ -760,6 +784,11 @@ TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
   // notification about it changing.
   EXPECT_EQ(0, internal_backlight_controller_->tablet_mode_changes().size());
   EXPECT_EQ(0, keyboard_backlight_controller_->tablet_mode_changes().size());
+}
+
+TEST_F(DaemonTest, EcKeyboardBacklightEnabled) {
+  ec_keyboard_backlight_enabled_ = true;
+  Init();
 }
 
 TEST_F(DaemonTest, ForceBacklightsOff) {

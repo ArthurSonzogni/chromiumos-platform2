@@ -29,6 +29,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/vcsid.h>
 #include <cros_config/cros_config.h>
+#include <libec/ec_usb_endpoint.h>
 #include <metrics/metrics_library.h>
 #if USE_IIOSERVICE
 #include <mojo/core/embedder/embedder.h>
@@ -59,6 +60,7 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
+#include "power_manager/powerd/system/ec_keyboard_backlight.h"
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_file.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_mojo.h"
@@ -198,6 +200,22 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto backlight = std::make_unique<system::PluggableInternalBacklight>();
     backlight->Init(udev, udev_subsystem, base_path, pattern);
     return backlight;
+  }
+
+  std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() override {
+    auto endpoint = std::make_unique<ec::EcUsbEndpoint>();
+    return endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)
+               ? std::move(endpoint)
+               : std::unique_ptr<ec::EcUsbEndpoint>();
+  }
+
+  std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
+      ec::EcUsbEndpointInterface* endpoint) override {
+    auto backlight = std::make_unique<system::EcKeyboardBacklight>();
+    return backlight->Init(endpoint)
+               ? std::move(backlight)
+               // Return nullptr
+               : std::unique_ptr<system::BacklightInterface>();
   }
 
   std::unique_ptr<policy::BacklightController>

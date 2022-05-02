@@ -20,6 +20,7 @@
 #if USE_IIOSERVICE
 #include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
 #endif  // USE_IIOSERVICE
+#include <libec/ec_usb_endpoint.h>
 #include <ml/dbus-proxies.h>
 #include "ml/proto_bindings/ranker_example.pb.h"
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -362,6 +363,7 @@ class Daemon :
       ambient_light_sensor_watcher_;
   std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
       external_ambient_light_sensor_factory_;
+  std::unique_ptr<ec::EcUsbEndpointInterface> ec_usb_endpoint_;
   std::unique_ptr<system::DisplayWatcherInterface> display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterInterface> display_power_setter_;
   std::unique_ptr<system::BacklightInterface> display_backlight_;
