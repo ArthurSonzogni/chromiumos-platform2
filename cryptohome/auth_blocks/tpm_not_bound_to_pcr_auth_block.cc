@@ -60,6 +60,14 @@ TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
 CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
                                                const AuthBlockState& state,
                                                KeyBlobs* key_out_data) {
+  if (!auth_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing user_input";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoUserInputInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
   const TpmNotBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state =
             std::get_if<TpmNotBoundToPcrAuthBlockState>(&state.state))) {
@@ -147,6 +155,14 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
 CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
                                                AuthBlockState* auth_block_state,
                                                KeyBlobs* key_blobs) {
+  if (!user_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing user_input";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoUserInputInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);

@@ -519,6 +519,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionLoadUSSFailedInLoadUSS = 346,
   /* ./auth_session.cc */
   kLocAuthSessionDecryptUSSFailedInLoadUSS = 347,
+  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  kLocTpmNotBoundToPcrAuthBlockNoUserInputInDerive = 348,
+  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  kLocTpmNotBoundToPcrAuthBlockNoUserInputInCreate = 349,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

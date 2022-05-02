@@ -222,7 +222,7 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   EXPECT_EQ(aes_skey, aes_skey_result);
 }
 
-TEST(TpmNotBoundToPcrTest, CreateFailTest) {
+TEST(TpmNotBoundToPcrTest, CreateFailTpm) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
@@ -244,6 +244,22 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
   EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
             auth_block.Create(user_input, &auth_state, &vkk_data)
                 ->local_crypto_error());
+}
+
+// Test the Create operation fails when there's no user_input provided.
+TEST(TpmNotBoundToPcrTest, CreateFailNoUserInput) {
+  // Prepare.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  AuthInput auth_input;
+
+  // Test.
+  AuthBlockState auth_state;
+  KeyBlobs vkk_data;
+  EXPECT_EQ(auth_block.Create(auth_input, &auth_state, &vkk_data)
+                ->local_crypto_error(),
+            CryptoError::CE_OTHER_CRYPTO);
 }
 
 // Check required field |salt| in TpmNotBoundToPcrAuthBlockState.
@@ -284,6 +300,30 @@ TEST(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
   EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
             auth_block.Derive(auth_input, auth_state, &key_blobs)
                 ->local_crypto_error());
+}
+
+// Test TpmNotBoundToPcrAuthBlock derive fails when there's no user_input
+// provided.
+TEST(TpmNotBoundToPcrTest, DeriveFailureNoUserInput) {
+  brillo::SecureBlob tpm_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  AuthBlockState auth_state;
+  TpmBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.salt = salt;
+  state.tpm_key = tpm_key;
+  state.extended_tpm_key = tpm_key;
+  auth_state.state = std::move(state);
+
+  AuthInput auth_input;
+  KeyBlobs key_blobs;
+  EXPECT_EQ(auth_block.Derive(auth_input, auth_state, &key_blobs)
+                ->local_crypto_error(),
+            CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
