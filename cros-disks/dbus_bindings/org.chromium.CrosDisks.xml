@@ -104,8 +104,19 @@
     <signal name="DiskChanged">
       <arg name="disk" type="s" direction="out" />
     </signal>
+    <signal name="MountProgress">
+      <arg name="percent" type="u" direction="out" />
+      <arg name="source_path" type="s" direction="out" />
+      <arg name="source_type" type="u" direction="out" />
+      <arg name="mount_path" type="s" direction="out" />
+    </signal>
     <signal name="MountCompleted">
       <arg name="status" type="u" direction="out" />
+      <arg name="source_path" type="s" direction="out" />
+      <arg name="source_type" type="u" direction="out" />
+      <arg name="mount_path" type="s" direction="out" />
+    </signal>
+    <signal name="Unmounted">
       <arg name="source_path" type="s" direction="out" />
       <arg name="source_type" type="u" direction="out" />
       <arg name="mount_path" type="s" direction="out" />
