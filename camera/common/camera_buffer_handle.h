@@ -50,6 +50,9 @@ typedef struct camera_buffer_handle {
   buffer_handle_t self = reinterpret_cast<buffer_handle_t>(this);
   // The modifier of the buffer.
   uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+  // The HAL usage flags (GRALLOC_*) that the buffer was allocated/imported
+  // with.
+  int hal_usage_flags = 0;
 
   camera_buffer_handle() {
     for (auto& fd : fds) {

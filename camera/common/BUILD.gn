@@ -127,7 +127,6 @@ generate_pkg_config("libcros_camera_device_config_pkg_config") {
 source_set("base") {
   sources = [
     "//camera/common/camera_buffer_manager_impl.cc",
-    "//camera/common/camera_buffer_manager_internal.cc",
     "//camera/common/camera_buffer_pool.cc",
     "//camera/common/camera_buffer_utils.cc",
     "//camera/common/camera_hal3_helpers.cc",
@@ -150,7 +149,10 @@ source_set("base") {
   ]
 
   pkg_deps = [ "re2" ]
-  deps = [ ":tracing" ]
+  deps = [
+    ":tracing",
+    "//camera/hardware_buffer",
+  ]
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]

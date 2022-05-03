@@ -116,7 +116,7 @@ using ScopedBufferHandle =
 
 class CROS_CAMERA_EXPORT CameraBufferManager {
  public:
-  // Gets the singleton instance.  Returns nullptr if any error occurrs during
+  // Gets the singleton instance.  Returns nullptr if any error occurs during
   // instance creation.
   static CameraBufferManager* GetInstance();
 

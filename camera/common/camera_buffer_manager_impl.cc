@@ -6,8 +6,12 @@
 
 #include "common/camera_buffer_manager_impl.h"
 
+#include <cerrno>
+#include <map>
+#include <utility>
 #include <vector>
 
+#include <gbm.h>
 #include <linux/videodev2.h>
 #include <sys/mman.h>
 
@@ -19,14 +23,15 @@
 #include <system/graphics.h>
 
 #include "common/camera_buffer_handle.h"
-#include "common/camera_buffer_manager_internal.h"
 #include "cros-camera/common.h"
+#include "hardware_buffer/allocator.h"
+#include "hardware_buffer/minigbm_allocator.h"
 
 namespace cros {
 
 namespace {
 
-std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
+std::map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
     {HAL_PIXEL_FORMAT_BLOB, {DRM_FORMAT_R8}},
     {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
      {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888, DRM_FORMAT_MTISP_SXYZW10}},
@@ -39,33 +44,33 @@ std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
     {HAL_PIXEL_FORMAT_Y8, {DRM_FORMAT_R8}},
 };
 
-uint32_t GetGbmUseFlags(uint32_t hal_format, uint32_t usage) {
-  uint32_t flags = 0;
+uint32_t GetGbmUseFlags(uint32_t hal_format, uint32_t hal_usage) {
+  uint32_t gbm_flags = 0;
   if (hal_format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
-      !(usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
+      !(hal_usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
     // The default GBM flags for non-private-reprocessing camera buffers.
-    flags = GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
+    gbm_flags = GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
   }
 
-  if (usage & GRALLOC_USAGE_HW_CAMERA_READ) {
-    flags |= GBM_BO_USE_CAMERA_READ;
+  if (hal_usage & GRALLOC_USAGE_HW_CAMERA_READ) {
+    gbm_flags |= GBM_BO_USE_CAMERA_READ;
   }
-  if (usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
-    flags |= GBM_BO_USE_CAMERA_WRITE;
+  if (hal_usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
+    gbm_flags |= GBM_BO_USE_CAMERA_WRITE;
   }
-  if (usage & GRALLOC_USAGE_HW_TEXTURE) {
-    flags |= GBM_BO_USE_TEXTURING;
+  if (hal_usage & GRALLOC_USAGE_HW_TEXTURE) {
+    gbm_flags |= GBM_BO_USE_TEXTURING;
   }
-  if (usage & GRALLOC_USAGE_HW_RENDER) {
-    flags |= GBM_BO_USE_RENDERING;
+  if (hal_usage & GRALLOC_USAGE_HW_RENDER) {
+    gbm_flags |= GBM_BO_USE_RENDERING;
   }
-  if (usage & GRALLOC_USAGE_HW_COMPOSER) {
-    flags |= GBM_BO_USE_SCANOUT | GBM_BO_USE_TEXTURING;
+  if (hal_usage & GRALLOC_USAGE_HW_COMPOSER) {
+    gbm_flags |= GBM_BO_USE_SCANOUT | GBM_BO_USE_TEXTURING;
   }
-  if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
-    flags |= GBM_BO_USE_HW_VIDEO_ENCODER;
+  if (hal_usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+    gbm_flags |= GBM_BO_USE_HW_VIDEO_ENCODER;
   }
-  return flags;
+  return gbm_flags;
 }
 
 bool IsMatchingFormat(int32_t hal_pixel_format, uint32_t drm_format) {
@@ -266,9 +271,11 @@ void ScopedMapping::Invalidate() {
 
 // static
 CameraBufferManager* CameraBufferManager::GetInstance() {
-  static base::NoDestructor<CameraBufferManagerImpl> instance;
-  if (!instance->gbm_device_) {
-    LOGF(ERROR) << "Failed to create GBM device for CameraBufferManager";
+  static base::NoDestructor<CameraBufferManagerImpl> instance(
+      cros::CreateMinigbmAllocator());
+  if (!instance->allocator_) {
+    LOGF(ERROR)
+        << "Failed to create the buffer allocator for CameraBufferManager";
     return nullptr;
   }
   return instance.get();
@@ -543,93 +550,86 @@ uint32_t CameraBufferManager::GetDrmPixelFormat(buffer_handle_t buffer) {
   return handle->drm_format;
 }
 
-CameraBufferManagerImpl::CameraBufferManagerImpl()
-    : gbm_device_(internal::CreateGbmDevice()) {}
-
-CameraBufferManagerImpl::~CameraBufferManagerImpl() {
-  if (gbm_device_) {
-    close(gbm_device_get_fd(gbm_device_));
-    gbm_device_destroy(gbm_device_);
-  }
-}
+CameraBufferManagerImpl::CameraBufferManagerImpl(
+    std::unique_ptr<Allocator> gbm_allocator)
+    : allocator_(std::move(gbm_allocator)) {}
 
 int CameraBufferManagerImpl::Allocate(size_t width,
                                       size_t height,
-                                      uint32_t format,
-                                      uint32_t usage,
+                                      uint32_t hal_format,
+                                      uint32_t hal_usage,
                                       buffer_handle_t* out_buffer,
                                       uint32_t* out_stride) {
   base::AutoLock l(lock_);
 
-  uint32_t gbm_flags;
-  uint32_t drm_format = ResolveFormat(format, usage, &gbm_flags);
+  uint32_t gbm_flags = 0;
+  uint32_t drm_format = ResolveFormat(hal_format, hal_usage, &gbm_flags);
   if (!drm_format) {
     return -EINVAL;
   }
 
-  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
-  buffer_context->bo =
-      gbm_bo_create(gbm_device_, width, height, drm_format, gbm_flags);
-  if (!buffer_context->bo) {
+  BufferContext context = {
+      .bo = allocator_->CreateBo(width, height, drm_format, gbm_flags)};
+  if (!context.bo) {
     LOGF(ERROR) << "Failed to create GBM bo";
     return -ENOMEM;
   }
 
-  std::unique_ptr<camera_buffer_handle_t> handle(new camera_buffer_handle_t());
+  auto handle = std::make_unique<camera_buffer_handle_t>();
   handle->base.version = sizeof(handle->base);
   handle->base.numInts = kCameraBufferHandleNumInts;
   handle->base.numFds = kCameraBufferHandleNumFds;
   handle->magic = kCameraBufferMagic;
-  handle->buffer_id = reinterpret_cast<uint64_t>(buffer_context->bo);
+  handle->buffer_id = context.bo->GetId();
   handle->drm_format = drm_format;
-  handle->hal_pixel_format = format;
+  handle->hal_pixel_format = hal_format;
+  handle->hal_usage_flags = hal_usage;
   handle->width = width;
   handle->height = height;
-  size_t num_planes = gbm_bo_get_plane_count(buffer_context->bo);
-  for (size_t i = 0; i < num_planes; ++i) {
-    handle->fds[i] = gbm_bo_get_plane_fd(buffer_context->bo, i);
-    handle->strides[i] = gbm_bo_get_stride_for_plane(buffer_context->bo, i);
-    handle->offsets[i] = gbm_bo_get_offset(buffer_context->bo, i);
+  auto desc = context.bo->Describe();
+  for (size_t i = 0; i < desc.num_planes; ++i) {
+    handle->fds[i] = context.bo->GetPlaneFd(i);
+    handle->strides[i] = desc.planes[i].row_stride;
+    handle->offsets[i] = desc.planes[i].offset;
   }
-  handle->modifier = gbm_bo_get_modifier(buffer_context->bo);
+  handle->modifier = desc.format_modifier;
 
-  if (num_planes == 1) {
+  if (desc.num_planes == 1) {
     *out_stride = handle->strides[0];
   } else {
     *out_stride = 0;
   }
   *out_buffer = reinterpret_cast<buffer_handle_t>(handle.release());
-  buffer_context->usage = 1;
-  buffer_context_[*out_buffer] = std::move(buffer_context);
+
+  context.refcount = 1;
+  buffers_[*out_buffer] = std::move(context);
   return 0;
 }
 
 // static
-ScopedBufferHandle CameraBufferManager::AllocateScopedBuffer(size_t width,
-                                                             size_t height,
-                                                             uint32_t format,
-                                                             uint32_t usage) {
+ScopedBufferHandle CameraBufferManager::AllocateScopedBuffer(
+    size_t width, size_t height, uint32_t hal_format, uint32_t hal_usage) {
   auto* buf_mgr = CameraBufferManager::GetInstance();
   ScopedBufferHandle buffer(new buffer_handle_t(nullptr));
   uint32_t stride;
-  if (buf_mgr->Allocate(width, height, format, usage, buffer.get(), &stride) !=
-      0) {
+  if (buf_mgr->Allocate(width, height, hal_format, hal_usage, buffer.get(),
+                        &stride) != 0) {
     LOGF(ERROR) << "Failed to allocate buffer";
     return nullptr;
   }
-  VLOGF(1) << "Buffer allocated -";
-  VLOGF(1) << "\tplanes: " << CameraBufferManager::GetNumPlanes(*buffer);
-  VLOGF(1) << "\twidth: " << CameraBufferManager::GetWidth(*buffer);
-  VLOGF(1) << "\theight: " << CameraBufferManager::GetHeight(*buffer);
-  VLOGF(1) << "\tformat: "
-           << FormatToString(CameraBufferManager::GetDrmPixelFormat(*buffer));
+  DVLOGF(1) << "Buffer allocated -";
+  DVLOGF(1) << "\tplanes: " << CameraBufferManager::GetNumPlanes(*buffer);
+  DVLOGF(1) << "\twidth: " << CameraBufferManager::GetWidth(*buffer);
+  DVLOGF(1) << "\theight: " << CameraBufferManager::GetHeight(*buffer);
+  DVLOGF(1) << "\tformat: "
+            << FormatToString(CameraBufferManager::GetDrmPixelFormat(*buffer));
   for (size_t i = 0; i < CameraBufferManager::GetNumPlanes(*buffer); ++i) {
-    VLOGF(1) << "\tplane" << i
-             << " fd: " << CameraBufferManager::GetPlaneFd(*buffer, i);
-    VLOGF(1) << "\tplane" << i
-             << " offset: " << CameraBufferManager::GetPlaneOffset(*buffer, i);
-    VLOGF(1) << "\tplane" << i
-             << " stride: " << CameraBufferManager::GetPlaneStride(*buffer, i);
+    DVLOGF(1) << "\tplane" << i
+              << " fd: " << CameraBufferManager::GetPlaneFd(*buffer, i);
+    DVLOGF(1) << "\tplane" << i
+              << " offset: " << CameraBufferManager::GetPlaneOffset(*buffer, i);
+    DVLOGF(1) << "\tplane" << i
+              << " stride: " << CameraBufferManager::GetPlaneStride(*buffer, i);
   }
   return buffer;
 }
@@ -653,45 +653,44 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
 
   base::AutoLock l(lock_);
 
-  auto context_it = buffer_context_.find(buffer);
-  if (context_it != buffer_context_.end()) {
-    context_it->second->usage++;
+  auto context_it = buffers_.find(buffer);
+  if (context_it != buffers_.end()) {
+    ++context_it->second.refcount;
     return 0;
   }
 
-  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
-
   // Import the buffer if we haven't done so.
-  struct gbm_import_fd_modifier_data import_data;
-  memset(&import_data, 0, sizeof(import_data));
-  import_data.width = handle->width;
-  import_data.height = handle->height;
-  import_data.format = handle->drm_format;
-  import_data.modifier = handle->modifier;
   uint32_t num_planes = GetNumPlanes(buffer);
-  if (num_planes <= 0) {
+  if (num_planes == 0) {
     return -EINVAL;
   }
-
-  import_data.num_fds = num_planes;
+  ImportData data = {
+      .desc = {
+          .drm_format = handle->drm_format,
+          .width = static_cast<int>(handle->width),
+          .height = static_cast<int>(handle->height),
+          .gbm_flags = GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
+                       GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN,
+          .num_planes = static_cast<int>(num_planes),
+          .format_modifier = handle->modifier,
+      }};
   for (size_t i = 0; i < num_planes; ++i) {
-    import_data.fds[i] = handle->fds[i];
-    import_data.strides[i] = handle->strides[i];
-    import_data.offsets[i] = handle->offsets[i];
+    // GBM doesn't need plane size and pixel_stride to import a BO.
+    data.desc.planes[i] = {
+        .offset = static_cast<int>(handle->offsets[i]),
+        .row_stride = static_cast<int>(handle->strides[i]),
+    };
+    data.plane_fd[i] = handle->fds[i];
   }
 
-  uint32_t usage = GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
-                   GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
-  buffer_context->bo = gbm_bo_import(gbm_device_, GBM_BO_IMPORT_FD_MODIFIER,
-                                     &import_data, usage);
-  if (!buffer_context->bo) {
+  BufferContext context = {.bo = allocator_->ImportBo(data), .refcount = 1};
+  if (!context.bo) {
     LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
                 << handle->buffer_id;
     return -EIO;
   }
 
-  buffer_context->usage = 1;
-  buffer_context_[buffer] = std::move(buffer_context);
+  buffers_[buffer] = std::move(context);
   return 0;
 }
 
@@ -703,28 +702,20 @@ int CameraBufferManagerImpl::Deregister(buffer_handle_t buffer) {
 
   base::AutoLock l(lock_);
 
-  auto context_it = buffer_context_.find(buffer);
-  if (context_it == buffer_context_.end()) {
+  auto context_it = buffers_.find(buffer);
+  if (context_it == buffers_.end()) {
     LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
     return -EINVAL;
   }
-  auto buffer_context = context_it->second.get();
-  if (!--buffer_context->usage) {
-    // Unmap all the existing mapping of bo.
-    for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
-      if (it->second->bo == buffer_context->bo) {
-        it = buffer_info_.erase(it);
-      } else {
-        ++it;
-      }
-    }
-    buffer_context_.erase(context_it);
+  --context_it->second.refcount;
+  if (context_it->second.refcount == 0) {
+    buffers_.erase(context_it);
   }
   return 0;
 }
 
 int CameraBufferManagerImpl::Lock(buffer_handle_t buffer,
-                                  uint32_t flags,
+                                  uint32_t hal_usage,
                                   uint32_t x,
                                   uint32_t y,
                                   uint32_t width,
@@ -743,8 +734,13 @@ int CameraBufferManagerImpl::Lock(buffer_handle_t buffer,
                 << handle->buffer_id;
     return -EINVAL;
   }
+  if ((hal_usage & handle->hal_usage_flags) != hal_usage) {
+    LOGF(ERROR) << "Incompatible usage flags: " << hal_usage
+                << " (original usage flags: " << handle->hal_usage_flags << ")";
+    return -EINVAL;
+  }
 
-  *out_addr = Map(buffer, flags, 0);
+  *out_addr = Map(buffer, hal_usage, 0);
   if (*out_addr == MAP_FAILED) {
     return -EINVAL;
   }
@@ -752,7 +748,7 @@ int CameraBufferManagerImpl::Lock(buffer_handle_t buffer,
 }
 
 int CameraBufferManagerImpl::LockYCbCr(buffer_handle_t buffer,
-                                       uint32_t flags,
+                                       uint32_t hal_usage,
                                        uint32_t x,
                                        uint32_t y,
                                        uint32_t width,
@@ -771,11 +767,16 @@ int CameraBufferManagerImpl::LockYCbCr(buffer_handle_t buffer,
                 << handle->buffer_id;
     return -EINVAL;
   }
+  if ((hal_usage & handle->hal_usage_flags) != hal_usage) {
+    LOGF(ERROR) << "Incompatible usage flags: " << hal_usage
+                << " (original usage flags: " << handle->hal_usage_flags << ")";
+    return -EINVAL;
+  }
 
   DCHECK_LE(num_planes, 3u);
   std::vector<uint8_t*> addr(num_planes);
   for (size_t i = 0; i < num_planes; ++i) {
-    void* a = Map(buffer, flags, i);
+    void* a = Map(buffer, hal_usage, i);
     if (a == MAP_FAILED) {
       return -EINVAL;
     }
@@ -837,27 +838,26 @@ int CameraBufferManagerImpl::Unlock(buffer_handle_t buffer) {
 }
 
 uint32_t CameraBufferManagerImpl::ResolveDrmFormat(uint32_t hal_format,
-                                                   uint32_t usage) {
+                                                   uint32_t hal_usage) {
   uint32_t unused_gbm_flags;
-  return ResolveFormat(hal_format, usage, &unused_gbm_flags);
+  return ResolveFormat(hal_format, hal_usage, &unused_gbm_flags);
 }
 
 uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
-                                                uint32_t usage,
+                                                uint32_t hal_usage,
                                                 uint32_t* gbm_flags) {
-  uint32_t gbm_usage = GetGbmUseFlags(hal_format, usage);
+  uint32_t gbm_usage = GetGbmUseFlags(hal_format, hal_usage);
   uint32_t drm_format = 0;
-  if (usage & GRALLOC_USAGE_FORCE_I420) {
+  if (hal_usage & GRALLOC_USAGE_FORCE_I420) {
     CHECK_EQ(hal_format, HAL_PIXEL_FORMAT_YCbCr_420_888);
     *gbm_flags = gbm_usage;
     return DRM_FORMAT_YUV420;
   }
 
   if (hal_format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
-      (usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
+      (hal_usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
     // Check which private format the graphics backend support.
-    if (gbm_device_is_format_supported(gbm_device_, DRM_FORMAT_MTISP_SXYZW10,
-                                       gbm_usage)) {
+    if (allocator_->IsFormatSupported(DRM_FORMAT_MTISP_SXYZW10, gbm_usage)) {
       *gbm_flags = gbm_usage;
       return DRM_FORMAT_MTISP_SXYZW10;
     }
@@ -871,16 +871,16 @@ uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
   }
 
   for (uint32_t format : kSupportedHalFormats[hal_format]) {
-    if (gbm_device_is_format_supported(gbm_device_, format, gbm_usage)) {
+    if (allocator_->IsFormatSupported(format, gbm_usage)) {
       drm_format = format;
       break;
     }
   }
 
-  if (drm_format == 0 && usage & GRALLOC_USAGE_HW_COMPOSER) {
+  if (drm_format == 0 && hal_usage & GRALLOC_USAGE_HW_COMPOSER) {
     gbm_usage &= ~GBM_BO_USE_SCANOUT;
     for (uint32_t format : kSupportedHalFormats[hal_format]) {
-      if (gbm_device_is_format_supported(gbm_device_, format, gbm_usage)) {
+      if (allocator_->IsFormatSupported(format, gbm_usage)) {
         drm_format = format;
         break;
       }
@@ -898,7 +898,7 @@ uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
 }
 
 void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
-                                   uint32_t flags,
+                                   uint32_t hal_usage,
                                    uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
@@ -914,52 +914,38 @@ void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
     return MAP_FAILED;
   }
 
-  VLOGF(2) << "buffer info:";
-  VLOGF(2) << "\tfd: " << handle->fds[plane];
-  VLOGF(2) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
-  VLOGF(2) << "\tformat: " << FormatToString(handle->drm_format);
-  VLOGF(2) << "\twidth: " << handle->width;
-  VLOGF(2) << "\theight: " << handle->height;
-  VLOGF(2) << "\tstride: " << handle->strides[plane];
-  VLOGF(2) << "\toffset: " << handle->offsets[plane];
+  DVLOGF(2) << "buffer info:";
+  DVLOGF(2) << "\tfd: " << handle->fds[plane];
+  DVLOGF(2) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
+  DVLOGF(2) << "\tformat: " << FormatToString(handle->drm_format);
+  DVLOGF(2) << "\twidth: " << handle->width;
+  DVLOGF(2) << "\theight: " << handle->height;
+  DVLOGF(2) << "\tstride: " << handle->strides[plane];
+  DVLOGF(2) << "\toffset: " << handle->offsets[plane];
 
   base::AutoLock l(lock_);
 
-  auto key = MappedDmaBufInfoCache::key_type(buffer, plane);
-  auto info_cache = buffer_info_.find(key);
-  if (info_cache == buffer_info_.end()) {
-    // We haven't mapped |plane| of |buffer| yet.
-    std::unique_ptr<MappedDmaBufInfo> info(new MappedDmaBufInfo);
-    auto context_it = buffer_context_.find(buffer);
-    if (context_it == buffer_context_.end()) {
-      LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
-                  << " is not registered";
-      return MAP_FAILED;
-    }
-    info->bo = context_it->second->bo;
-    // Since |flags| is reserved we don't expect user to pass any non-zero
-    // value, we simply override |flags| here.
-    flags = GBM_BO_TRANSFER_READ_WRITE;
-    uint32_t stride;
-    info->addr = gbm_bo_map2(info->bo, 0, 0, handle->width, handle->height,
-                             flags, &stride, &info->map_data, plane);
-    if (info->addr == MAP_FAILED) {
-      PLOGF(ERROR) << "Failed to map buffer";
-      return MAP_FAILED;
-    }
-    info->usage = 1;
-    buffer_info_[key] = std::move(info);
-  } else {
-    // We have mapped |plane| on |buffer| before: we can simply call
-    // gbm_bo_map() on the existing bo.
-    DCHECK(buffer_context_.find(buffer) != buffer_context_.end());
-    info_cache->second->usage++;
+  auto context_it = buffers_.find(buffer);
+  if (context_it == buffers_.end()) {
+    LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
+                << " is not registered";
+    return MAP_FAILED;
   }
-  struct MappedDmaBufInfo* info = buffer_info_[key].get();
-  VLOGF(2) << "Plane " << plane << " of DMA-buf 0x" << std::hex
-           << handle->buffer_id << " mapped to "
-           << reinterpret_cast<uintptr_t>(info->addr);
-  return info->addr;
+
+  // Always map the whole buffer.
+  auto& bo = context_it->second.bo;
+  if (!bo->BeginCpuAccess(SyncType::kSyncReadWrite, plane)) {
+    LOGF(ERROR) << "Failed to sync buffer for CPU access";
+    return MAP_FAILED;
+  }
+  if (!bo->Map(plane)) {
+    LOGF(ERROR) << "Failed to map buffer";
+    return MAP_FAILED;
+  }
+  void* addr = bo->GetPlaneAddr(plane);
+  DVLOGF(2) << "Plane " << plane << " of DMA-buf 0x" << std::hex
+            << handle->buffer_id << " mapped to " << addr;
+  return addr;
 }
 
 int CameraBufferManagerImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
@@ -969,18 +955,20 @@ int CameraBufferManagerImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
   }
 
   base::AutoLock l(lock_);
-  auto key = MappedDmaBufInfoCache::key_type(buffer, plane);
-  auto info_cache = buffer_info_.find(key);
-  if (info_cache == buffer_info_.end()) {
-    LOGF(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
-                << handle->buffer_id << " was not mapped";
+
+  auto context_it = buffers_.find(buffer);
+  if (context_it == buffers_.end()) {
+    LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
+                << " is not registered";
     return -EINVAL;
   }
-  auto& info = info_cache->second;
-  if (!--info->usage) {
-    buffer_info_.erase(info_cache);
+
+  auto& bo = context_it->second.bo;
+  bo->Unmap(plane);
+  if (!bo->EndCpuAccess(SyncType::kSyncReadWrite, plane)) {
+    LOGF(ERROR) << "Failed to sync buffer after CPU access";
+    return -EINVAL;
   }
-  VLOGF(2) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";
   return 0;
 }
 
