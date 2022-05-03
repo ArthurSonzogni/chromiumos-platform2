@@ -1495,6 +1495,40 @@ TEST(TpmEccAuthBlockTest, CreateRetryFailTest) {
                 ->local_crypto_error());
 }
 
+// Test the Create operation fails when there's no user_input provided.
+TEST(TpmEccAuthBlockTest, CreateFailNoUserInput) {
+  // Prepare.
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  AuthInput auth_input = {.obfuscated_username = obfuscated_username};
+
+  // Test.
+  AuthBlockState auth_state;
+  KeyBlobs vkk_data;
+  EXPECT_EQ(auth_block.Create(auth_input, &auth_state, &vkk_data)
+                ->local_crypto_error(),
+            CryptoError::CE_OTHER_CRYPTO);
+}
+
+// Test the Create operation fails when there's no obfuscated_username provided.
+TEST(TpmEccAuthBlockTest, CreateFailNoObfuscated) {
+  // Prepare.
+  brillo::SecureBlob user_input(20, 'C');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  AuthInput auth_input = {.user_input = user_input};
+
+  // Test.
+  AuthBlockState auth_state;
+  KeyBlobs vkk_data;
+  EXPECT_EQ(auth_block.Create(auth_input, &auth_state, &vkk_data)
+                ->local_crypto_error(),
+            CryptoError::CE_OTHER_CRYPTO);
+}
+
 // Test SealToPcr in TpmEccAuthBlock::Create failed as expected.
 TEST(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
   // Set up inputs to the test.
@@ -1677,6 +1711,22 @@ TEST(TpmEccAuthBlockTest, DeriveRetryTest) {
   EXPECT_NE(key_out_data.vkk_iv, std::nullopt);
   EXPECT_NE(key_out_data.vkk_key, std::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
+}
+
+// Test TpmEccAuthBlock::Derive failure when there's no auth_input provided.
+TEST(TpmEccAuthBlockTest, DeriveFailNoAuthInput) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  EXPECT_EQ(auth_block.Derive(auth_input, auth_state, &key_out_data)
+                ->local_crypto_error(),
+            CryptoError::CE_OTHER_CRYPTO);
 }
 
 // Test GetEccAuthValue in TpmEccAuthBlock::Derive failed as expected.

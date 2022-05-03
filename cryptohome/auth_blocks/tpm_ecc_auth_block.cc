@@ -342,6 +342,21 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
 CryptoStatus TpmEccAuthBlock::Create(const AuthInput& auth_input,
                                      AuthBlockState* auth_block_state,
                                      KeyBlobs* key_blobs) {
+  if (!auth_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing user_input";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockNoUserInputInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+  if (!auth_input.obfuscated_username.has_value()) {
+    LOG(ERROR) << "Missing obfuscated_username";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockNoUsernameInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
   return TryCreate(auth_input, auth_block_state, key_blobs,
                    kTryCreateMaxRetryCount);
 }
@@ -349,6 +364,14 @@ CryptoStatus TpmEccAuthBlock::Create(const AuthInput& auth_input,
 CryptoStatus TpmEccAuthBlock::Derive(const AuthInput& auth_input,
                                      const AuthBlockState& state,
                                      KeyBlobs* key_out_data) {
+  if (!auth_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing user_input";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockNoUserInputInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
   const TpmEccAuthBlockState* auth_state;
   if (!(auth_state = std::get_if<TpmEccAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
