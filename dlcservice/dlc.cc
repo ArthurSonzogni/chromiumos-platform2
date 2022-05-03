@@ -585,12 +585,14 @@ bool DlcBase::CancelInstall(const ErrorPtr& err_in, ErrorPtr* err) {
 
 bool DlcBase::Mount(ErrorPtr* err) {
   string mount_point;
+  // TODO(kimjae): Make this async as well as the top level DLC operations.
   if (!SystemState::Get()->image_loader()->LoadDlcImage(
           id_, package_,
           SystemState::Get()->active_boot_slot() == BootSlot::Slot::A
               ? imageloader::kSlotNameA
               : imageloader::kSlotNameB,
-          &mount_point, nullptr)) {
+          &mount_point, nullptr,
+          /*timeout_ms=*/60 * 1000)) {
     *err =
         Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
                               "Imageloader is unavailable for LoadDlcImage().");
