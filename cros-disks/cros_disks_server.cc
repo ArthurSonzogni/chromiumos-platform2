@@ -205,6 +205,10 @@ CrosDisksServer::EnumerateMountEntries() {
   std::vector<DBusMountEntry> dbus_mount_entries;
   for (const auto& manager : mount_managers_) {
     for (const auto& mount_entry : manager->GetMountEntries()) {
+      // Skip in-progress mount points.
+      if (mount_entry.error_type == MOUNT_ERROR_IN_PROGRESS)
+        continue;
+
       dbus_mount_entries.push_back(
           std::make_tuple(static_cast<uint32_t>(mount_entry.error_type),
                           mount_entry.source_path,
