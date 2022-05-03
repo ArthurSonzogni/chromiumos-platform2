@@ -83,10 +83,7 @@ static_library("verification") {
 }
 
 static_library("encryption_test_support") {
-  sources = [
-    "scoped_encryption_feature.cc",
-    "test_encryption_module.cc",
-  ]
+  sources = [ "test_encryption_module.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":decryption",

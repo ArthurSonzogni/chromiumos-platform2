@@ -19,15 +19,14 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/feature_list.h>
 #include <base/task/thread_pool.h>
+#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "missive/compression/compression_module.h"
-#include "missive/compression/scoped_compression_feature.h"
 #include "missive/compression/test_compression_module.h"
-#include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_interface.h"
@@ -128,6 +127,10 @@ class TestUploadClient : public UploaderInterface {
 class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
  public:
   void SetUp() override {
+    // Enable compression.
+    scoped_feature_list_.InitFromCommandLine(
+        {CompressionModule::kCompressReportingFeature}, {});
+
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     options_.set_directory(base::FilePath(location_.GetPath()));
   }
@@ -210,8 +213,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
-  test::ScopedCompressionFeature compression_feature_{/*enable=*/true};
+  base::test::ScopedFeatureList scoped_feature_list_;
   base::ScopedTempDir location_;
   StorageOptions options_;
   scoped_refptr<test::TestEncryptionModule> test_encryption_module_;

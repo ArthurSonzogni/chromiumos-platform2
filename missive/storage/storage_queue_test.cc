@@ -27,9 +27,7 @@
 
 #include "missive/compression/compression_module.h"
 #include "missive/compression/decompression.h"
-#include "missive/compression/scoped_compression_feature.h"
 #include "missive/compression/test_compression_module.h"
-#include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_interface.h"
@@ -649,8 +647,6 @@ class StorageQueueTest
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
       base::SequencedTaskRunnerHandle::Get()};
 
-  test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
-  test::ScopedCompressionFeature compression_feature_{/*enable=*/true};
   base::ScopedTempDir location_;
   StorageOptions options_;
   scoped_refptr<test::TestEncryptionModule> test_encryption_module_;

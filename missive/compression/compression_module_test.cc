@@ -20,13 +20,13 @@
 #include <base/feature_list.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/thread_pool.h>
+#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <snappy.h>
 
-#include "missive/compression/scoped_compression_feature.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/test_support_callbacks.h"
 
@@ -48,12 +48,27 @@ class CompressionModuleTest : public ::testing::Test {
     return output;
   }
 
+  void EnableCompression() {
+    // Enable compression.
+    scoped_feature_list_.InitFromCommandLine(
+        {CompressionModule::kCompressReportingFeature}, {});
+  }
+
+  void DisableCompression() {
+    // Disable compression.
+    scoped_feature_list_.InitFromCommandLine(
+        {}, {CompressionModule::kCompressReportingFeature});
+  }
+
   scoped_refptr<CompressionModule> compression_module_;
   base::test::TaskEnvironment task_environment_{};
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(CompressionModuleTest, CompressRecordSnappy) {
-  test::ScopedCompressionFeature compression_feature{/*enable=*/true};
+  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
       CompressionModule::Create(0, CompressionInformation::COMPRESSION_SNAPPY);
 
@@ -87,7 +102,7 @@ TEST_F(CompressionModuleTest, CompressRecordSnappy) {
 }
 
 TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
-  test::ScopedCompressionFeature compression_feature{/*enable=*/true};
+  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
       CompressionModule::Create(512,
                                 CompressionInformation::COMPRESSION_SNAPPY);
@@ -120,7 +135,7 @@ TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
 
 TEST_F(CompressionModuleTest, CompressRecordCompressionDisabled) {
   // Disable compression feature
-  test::ScopedCompressionFeature compression_feature{/*disable=*/false};
+  DisableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
       CompressionModule::Create(0, CompressionInformation::COMPRESSION_SNAPPY);
 
@@ -148,7 +163,7 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionDisabled) {
 }
 
 TEST_F(CompressionModuleTest, CompressRecordCompressionNone) {
-  test::ScopedCompressionFeature compression_feature{/*enable=*/true};
+  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
       CompressionModule::Create(0, CompressionInformation::COMPRESSION_NONE);
 

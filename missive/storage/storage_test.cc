@@ -18,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
+#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/threading/sequence_bound.h>
 #include <crypto/sha2.h>
@@ -30,7 +31,6 @@
 #include "missive/encryption/encryption.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/encryption_module_interface.h"
-#include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
@@ -214,8 +214,8 @@ class StorageTest
       expect_to_need_key_ = true;
     } else {
       // Disable encryption.
-      scoped_encryption_feature_ =
-          std::make_unique<test::ScopedEncryptionFeature>(false);
+      scoped_feature_list_.InitFromCommandLine(
+          {}, {EncryptionModuleInterface::kEncryptedReporting});
     }
     test_compression_module_ =
         base::MakeRefCounted<test::TestCompressionModule>();
@@ -924,7 +924,7 @@ class StorageTest
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
       base::SequencedTaskRunnerHandle::Get()};
 
-  std::unique_ptr<test::ScopedEncryptionFeature> scoped_encryption_feature_;
+  base::test::ScopedFeatureList scoped_feature_list_;
 
   uint8_t signature_verification_public_key_[kKeySize];
   uint8_t signing_private_key_[kSignKeySize];

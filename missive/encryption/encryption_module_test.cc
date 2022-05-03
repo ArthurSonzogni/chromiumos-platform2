@@ -17,6 +17,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/feature_list.h>
 #include <base/task/thread_pool.h>
+#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
@@ -26,7 +27,6 @@
 #include "missive/encryption/encryption.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
-#include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/status.h"
@@ -129,9 +129,6 @@ class EncryptionModuleTest : public ::testing::Test {
 
   scoped_refptr<EncryptionModuleInterface> encryption_module_;
   scoped_refptr<test::Decryptor> decryptor_;
-
- private:
-  test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
 };
 
 TEST_F(EncryptionModuleTest, EncryptAndDecrypt) {
@@ -163,7 +160,9 @@ TEST_F(EncryptionModuleTest, EncryptionDisabled) {
   constexpr char kTestString[] = "ABCDEF";
 
   // Disable encryption for this test.
-  test::ScopedEncryptionFeature encryption_feature_{/*enable=*/false};
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitFromCommandLine(
+      {}, {EncryptionModuleInterface::kEncryptedReporting});
 
   // Encrypt the test string.
   const auto encrypted_result = EncryptSync(kTestString);

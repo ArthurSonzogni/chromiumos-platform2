@@ -18,7 +18,6 @@
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider_test_helper.h"
-#include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 

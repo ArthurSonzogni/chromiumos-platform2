@@ -30,7 +30,6 @@ static_library("compression_module") {
 static_library("compression_test_support") {
   sources = [
     "decompression.cc",
-    "scoped_compression_feature.cc",
     "test_compression_module.cc",
   ]
   configs += [ ":target_defaults" ]
