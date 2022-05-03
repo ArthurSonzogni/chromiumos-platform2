@@ -5,10 +5,12 @@
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -22,8 +24,24 @@ namespace {
 constexpr char kKeyIdentity[] = "identity";
 constexpr char kKeyOwn[] = "own";
 constexpr char kKeyRequest[] = "request";
+constexpr std::array<const char*, 3> kExpectedKeys = {kKeyIdentity, kKeyOwn,
+                                                      kKeyRequest};
 // The json option for parsing policy files.
 constexpr int kJSONOption = base::JSON_ALLOW_TRAILING_COMMAS;
+
+bool ValidateDictKeys(const base::Value& value) {
+  if (!value.is_dict()) {
+    LOG(ERROR) << "Expected dict, got: " << value;
+    return false;
+  }
+  for (auto item : value.DictItems()) {
+    if (!base::Contains(kExpectedKeys, item.first)) {
+      LOG(ERROR) << "Got an unexpected field: " << item.first;
+      return false;
+    }
+  }
+  return true;
+}
 
 bool ParseOptionalStringListByKey(const base::Value& value,
                                   base::StringPiece key,
@@ -125,6 +143,9 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
   }
   ServicePolicyMap result;
   for (const auto& policy : value.GetList()) {
+    if (!ValidateDictKeys(policy))
+      return std::nullopt;
+
     std::string identity;
     if (!GetStringByKey(policy, kKeyIdentity, &identity))
       return std::nullopt;

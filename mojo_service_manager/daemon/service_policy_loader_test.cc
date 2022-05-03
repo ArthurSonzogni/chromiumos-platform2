@@ -78,9 +78,17 @@ TEST_F(ServicePolicyLoaderTest, Parse) {
 }
 
 TEST_F(ServicePolicyLoaderTest, Invalid) {
-  // Policy should be a list, not dict.
+  // Policy list should be a list, not dict.
   EXPECT_FALSE(ParseServicePolicyFromString(R"JSON(
       {}
+    )JSON"));
+  // Policy should be a dict, not int.
+  EXPECT_FALSE(ParseServicePolicyFromString(R"JSON(
+      [42]
+    )JSON"));
+  // Found an unexpected field.
+  EXPECT_FALSE(ParseServicePolicyFromString(R"JSON(
+      [{"identity": "user_a", "own":["ServiceA"], "unexpected":[]}]
     )JSON"));
   // Identity should be a string, not dict.
   EXPECT_FALSE(ParseServicePolicyFromString(R"JSON(
