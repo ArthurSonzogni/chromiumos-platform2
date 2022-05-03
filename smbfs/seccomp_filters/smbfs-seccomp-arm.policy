@@ -114,6 +114,7 @@ socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6 || \
 socketpair: 1
 stat64: 1
 statx: 1
+tgkill: 1
 ugetrlimit: 1
 umask: 1
 uname: 1

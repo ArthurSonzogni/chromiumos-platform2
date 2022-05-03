@@ -106,6 +106,7 @@ socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6 || \
         arg0 == AF_NETLINK && arg2 == 0
 socketpair: 1
 stat: 1
+tgkill: 1
 umask: 1
 uname: 1
 unlink: 1
