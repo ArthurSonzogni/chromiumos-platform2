@@ -41,9 +41,7 @@ class FUSEMountManager : public MountManager {
   // identifying FUSE module and what instance to mount.
   bool CanMount(const std::string& source) const override;
 
-  // Returns the type of mount sources supported by the manager.
-  MountSourceType GetMountSourceType() const override {
-    // TODO(crbug.com/831491): Introduce generic "FUSE" storage.
+  MountSourceType GetMountSourceType() const final {
     return MOUNT_SOURCE_NETWORK_STORAGE;
   }
 

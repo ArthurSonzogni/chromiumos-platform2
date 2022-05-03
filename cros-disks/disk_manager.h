@@ -52,8 +52,7 @@ class DiskManager : public MountManager {
   // Returns true if mounting |source_path| is supported.
   bool CanMount(const std::string& source_path) const override;
 
-  // Returns the type of mount sources supported by the manager.
-  MountSourceType GetMountSourceType() const override {
+  MountSourceType GetMountSourceType() const final {
     return MOUNT_SOURCE_REMOVABLE_DEVICE;
   }
 
