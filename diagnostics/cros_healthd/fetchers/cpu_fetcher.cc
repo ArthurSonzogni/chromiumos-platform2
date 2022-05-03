@@ -611,7 +611,7 @@ bool CpuFetcher::FetchPhysicalCpus() {
   }
 
   for (auto& key_value : physical_cpus) {
-    cpu_info_->physical_cpus.push_back(key_value.second.Clone());
+    cpu_info_->physical_cpus.push_back(std::move(key_value.second));
   }
 
   return true;
