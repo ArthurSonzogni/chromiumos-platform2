@@ -103,22 +103,21 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
                              const EC_POINT& point2,
                              BN_CTX* context) const;
 
-  // Converts SecureBlob to EC_POINT. Returns nullptr if error occurred.
-  // The expected format of SecureBlob is OpenSSL octet form (a binary encoding
-  // of the EC_POINT structure as defined in RFC5480).
-  // The method returns an error if resulting point is not on a curve or at
-  // infinity.
-  crypto::ScopedEC_POINT SecureBlobToPoint(const brillo::SecureBlob& blob,
-                                           BN_CTX* context) const;
+  // Returns a EC_KEY object with public key set to provided `point`.
+  // Returns nullptr if error occurred.
+  crypto::ScopedEC_KEY PointToEccKey(const EC_POINT& point) const;
 
-  // Converts EC_POINT to SecureBlob. Input point must be finite and on a curve.
-  // Returns false if error occurred, otherwise stores resulting blob in
-  // `result`. The output blob is a point converted to OpenSSL uncompressed
-  // octet form (a binary encoding of the EC_POINT structure as defined in
-  // RFC5480).
-  bool PointToSecureBlob(const EC_POINT& point,
-                         brillo::SecureBlob* result,
-                         BN_CTX* context) const;
+  // Converts the ECC public key in provided `key` to the DER-encoded X.509
+  // SubjectPublicKeyInfo format. Returns false if error occurred, otherwise
+  // stores resulting blob in `result`.
+  bool EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
+                       brillo::SecureBlob* result,
+                       BN_CTX* context) const;
+
+  // Converts `blob` from DER encoded SubjectPublicKeyInfo format to ECC public
+  // key and returns it as EC_POINT. Returns nullptr if error occurred.
+  crypto::ScopedEC_POINT DecodeFromSpkiDer(
+      const brillo::SecureBlob& public_key_spki_der, BN_CTX* context) const;
 
   // Generates EC_KEY. This method should be preferred over generating private
   // and public key separately, that is, private key using `RandomNonZeroScalar`
@@ -126,9 +125,10 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   // should be equivalent. Returns nullptr if error occurred.
   crypto::ScopedEC_KEY GenerateKey(BN_CTX* context) const;
 
-  // Generates pair EC_KEY and converts a pair of public and  them to secure
-  // blobs, Returns false if error occurred.
-  bool GenerateKeysAsSecureBlobs(brillo::SecureBlob* public_key,
+  // Generates a pair of public (in DER-encoded X.509
+  // SubjectPublicKeyInfo format) and private keys. Returns false if error
+  // occurred.
+  bool GenerateKeysAsSecureBlobs(brillo::SecureBlob* public_key_spki_der,
                                  brillo::SecureBlob* private_key,
                                  BN_CTX* context) const;
 
@@ -151,12 +151,6 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   explicit EllipticCurve(CurveType curve,
                          crypto::ScopedEC_GROUP group,
                          crypto::ScopedBIGNUM order);
-
-  // Converts point to buffer of bytes in OpenSSL octet form.
-  // Returns length of buffer stored in `ret_buf` or zero if error occurred.
-  size_t PointToBuf(const EC_POINT& point,
-                    crypto::ScopedOpenSSLBytes* ret_buf,
-                    BN_CTX* context) const;
 
   CurveType curve_;
   crypto::ScopedEC_GROUP group_;

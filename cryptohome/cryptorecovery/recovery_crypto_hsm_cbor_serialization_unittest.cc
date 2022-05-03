@@ -582,8 +582,11 @@ TEST_F(RecoveryRequestCborHelperTest, GeneratePlainText) {
   BN_set_negative(scalar.get(), 1);
   crypto::ScopedEC_POINT inverse_point =
       ec_->MultiplyWithGenerator(*scalar, context_.get());
-  ASSERT_TRUE(ec_->PointToSecureBlob(*inverse_point, &ephemeral_inverse_key,
-                                     context_.get()));
+  ASSERT_TRUE(inverse_point);
+  crypto::ScopedEC_KEY inverse_key = ec_->PointToEccKey(*inverse_point);
+  ASSERT_TRUE(inverse_key);
+  ASSERT_TRUE(ec_->EncodeToSpkiDer(inverse_key, &ephemeral_inverse_key,
+                                   context_.get()));
 
   brillo::SecureBlob cbor_output;
   RecoveryRequestPlainText plain_text;

@@ -66,8 +66,8 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                            const crypto::ScopedEC_KEY& dealer_key_pair,
                            brillo::SecureBlob* recovery_key) const;
   // Generate ephemeral public and inverse public keys {G*x, G*-x}
-  bool GenerateEphemeralKey(brillo::SecureBlob* ephemeral_pub_key,
-                            brillo::SecureBlob* ephemeral_inv_pub_key) const;
+  bool GenerateEphemeralKey(brillo::SecureBlob* ephemeral_spki_der,
+                            brillo::SecureBlob* ephemeral_inv_spki_der) const;
   bool GenerateHsmAssociatedData(const brillo::SecureBlob& channel_pub_key,
                                  const brillo::SecureBlob& rsa_pub_key,
                                  const crypto::ScopedEC_KEY& publisher_key_pair,

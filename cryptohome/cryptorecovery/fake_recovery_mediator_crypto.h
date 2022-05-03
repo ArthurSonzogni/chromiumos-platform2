@@ -94,13 +94,6 @@ class FakeRecoveryMediatorCrypto {
       const HsmPayload& hsm_payload,
       CryptoRecoveryRpcResponse* recovery_response_proto) const;
 
-  // Decrypts `mediator_share` using `mediator_priv_key` from
-  // `encrypted_mediator_share`. Returns false if error occurred.
-  bool DecryptMediatorShare(
-      const brillo::SecureBlob& mediator_priv_key,
-      const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
-      brillo::SecureBlob* mediator_share) const;
-
   // Decrypt `cipher_text` from `hsm_payload' using provided
   // `mediator_priv_key`.
   bool DecryptHsmPayloadPlainText(const brillo::SecureBlob& mediator_priv_key,

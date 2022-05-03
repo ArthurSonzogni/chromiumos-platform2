@@ -51,9 +51,8 @@ SecureBlob GeneratePublicKey() {
     return SecureBlob();
   }
   SecureBlob result;
-  if (!ec->PointToSecureBlob(*EC_KEY_get0_public_key(key.get()), &result,
-                             context.get())) {
-    ADD_FAILURE() << "PointToSecureBlob failed";
+  if (!ec->EncodeToSpkiDer(key, &result, context.get())) {
+    ADD_FAILURE() << "EncodeToSpkiDer failed";
     return SecureBlob();
   }
   return result;

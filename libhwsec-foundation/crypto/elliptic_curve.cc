@@ -10,7 +10,10 @@
 
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <openssl/bn.h>
+#include <openssl/ec.h>
 #include <openssl/obj_mac.h>
+#include <openssl/x509.h>
 
 #include "libhwsec-foundation/crypto/big_num_util.h"
 #include "libhwsec-foundation/crypto/error_util.h"
@@ -265,54 +268,81 @@ crypto::ScopedEC_POINT EllipticCurve::Add(const EC_POINT& point1,
   return result;
 }
 
-crypto::ScopedEC_POINT EllipticCurve::SecureBlobToPoint(
-    const brillo::SecureBlob& blob, BN_CTX* context) const {
-  crypto::ScopedEC_POINT result = CreatePoint();
-  if (!result) {
-    // The error is already logged by CreatePoint().
+crypto::ScopedEC_KEY EllipticCurve::PointToEccKey(const EC_POINT& point) const {
+  crypto::ScopedEC_Key key(EC_KEY_new());
+  if (!key) {
+    LOG(ERROR) << "Failed to allocate EC_KEY structure: " << GetOpenSSLErrors();
     return nullptr;
   }
-  if (EC_POINT_oct2point(group_.get(), result.get(), blob.data(), blob.size(),
-                         context) != 1) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT: "
-               << GetOpenSSLErrors();
+
+  if (EC_KEY_set_group(key.get(), group_.get()) != 1) {
+    LOG(ERROR) << "Failed to set EC group: " << GetOpenSSLErrors();
     return nullptr;
   }
-  if (!IsPointValidAndFinite(*result, context)) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT: resulting point "
-                  "is invalid or infinite";
+
+  if (!EC_KEY_set_public_key(key.get(), &point)) {
+    LOG(ERROR) << "Failed to set public key: " << GetOpenSSLErrors();
     return nullptr;
   }
-  return result;
+
+  // EC_KEY_check_key performs various sanity checks on the EC_KEY object to
+  // confirm that it is valid.
+  if (!EC_KEY_check_key(key.get())) {
+    LOG(ERROR) << "Failed to create valid key:" << GetOpenSSLErrors();
+    return nullptr;
+  }
+
+  return key;
 }
 
-size_t EllipticCurve::PointToBuf(const EC_POINT& point,
-                                 crypto::ScopedOpenSSLBytes* ret_buf,
-                                 BN_CTX* context) const {
+bool EllipticCurve::EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
+                                    brillo::SecureBlob* result,
+                                    BN_CTX* context) const {
+  if (!IsPointValidAndFinite(*EC_KEY_get0_public_key(key.get()), context)) {
+    LOG(ERROR) << "Failed to EncodeToSpkiDer: input point is invalid or "
+                  "infinite";
+    return false;
+  }
+
   unsigned char* buf = nullptr;
-  size_t buf_len = EC_POINT_point2buf(
-      group_.get(), &point, POINT_CONVERSION_UNCOMPRESSED, &buf, context);
-  ret_buf->reset(buf);
-  return buf_len;
-}
-
-bool EllipticCurve::PointToSecureBlob(const EC_POINT& point,
-                                      brillo::SecureBlob* result,
-                                      BN_CTX* context) const {
-  if (!IsPointValidAndFinite(point, context)) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob: input point is "
-                  "invalid or infinite";
-    return false;
-  }
-  crypto::ScopedOpenSSLBytes buf;
-  size_t buf_len = PointToBuf(point, &buf, context);
-  if (buf_len == 0) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob: "
+  int buf_len = i2d_EC_PUBKEY(key.get(), &buf);
+  if (buf_len <= 0) {
+    LOG(ERROR) << "Failed to encode public key to SubjectPublicKeyInfo format: "
                << GetOpenSSLErrors();
     return false;
   }
-  result->assign(buf.get(), buf.get() + buf_len);
+  crypto::ScopedOpenSSLBytes scoped_buffer(buf);
+  result->assign(buf, buf + buf_len);
   return true;
+}
+
+crypto::ScopedEC_POINT EllipticCurve::DecodeFromSpkiDer(
+    const brillo::SecureBlob& public_key_spki_der, BN_CTX* context) const {
+  crypto::ScopedEC_KEY ecc;
+
+  const unsigned char* data_start = public_key_spki_der.data();
+  ecc.reset(d2i_EC_PUBKEY(nullptr, &data_start, public_key_spki_der.size()));
+  if (!ecc) {
+    LOG(ERROR)
+        << "Failed to decode public key from SubjectPublicKeyInfo format: "
+        << GetOpenSSLErrors();
+    return nullptr;
+  }
+
+  crypto::ScopedEC_POINT result(
+      EC_POINT_dup(EC_KEY_get0_public_key(ecc.get()), group_.get()));
+  if (!result) {
+    LOG(ERROR) << "Failed to get public key: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+
+  if (!IsPointValidAndFinite(*result, context)) {
+    LOG(ERROR) << "DecodeFromSpkiDer failed: input point is invalid or "
+                  "infinite";
+    return nullptr;
+  }
+
+  return result;
 }
 
 crypto::ScopedEC_Key EllipticCurve::GenerateKey(BN_CTX* context) const {
@@ -332,17 +362,17 @@ crypto::ScopedEC_Key EllipticCurve::GenerateKey(BN_CTX* context) const {
   return key;
 }
 
-bool EllipticCurve::GenerateKeysAsSecureBlobs(brillo::SecureBlob* public_key,
-                                              brillo::SecureBlob* private_key,
-                                              BN_CTX* context) const {
+bool EllipticCurve::GenerateKeysAsSecureBlobs(
+    brillo::SecureBlob* public_key_spki_der,
+    brillo::SecureBlob* private_key,
+    BN_CTX* context) const {
   crypto::ScopedEC_Key key = GenerateKey(context);
   if (!key) {
     LOG(ERROR) << "Failed to generate EC_KEY";
     return false;
   }
-  if (!PointToSecureBlob(*EC_KEY_get0_public_key(key.get()), public_key,
-                         context)) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+  if (!EncodeToSpkiDer(key, public_key_spki_der, context)) {
+    LOG(ERROR) << "Failed to convert EC_POINT to SubjectPublicKeyInfo";
     return false;
   }
   if (!BigNumToSecureBlob(*EC_KEY_get0_private_key(key.get()),

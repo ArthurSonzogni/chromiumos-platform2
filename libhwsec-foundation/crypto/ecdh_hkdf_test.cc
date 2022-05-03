@@ -50,7 +50,7 @@ TEST(EcdhHkdfTest, CompareEcdhHkdfSymmetricKeys) {
   ASSERT_TRUE(eph_pub_key);
   brillo::SecureBlob eph_pub_key_blob;
   ASSERT_TRUE(
-      ec->PointToSecureBlob(*eph_pub_key, &eph_pub_key_blob, context.get()));
+      ec->EncodeToSpkiDer(eph_key_pair, &eph_pub_key_blob, context.get()));
 
   crypto::ScopedEC_POINT shared_secret_point_sender =
       ComputeEcdhSharedSecretPoint(*ec, *rec_pub_key, *eph_priv_key);
@@ -97,7 +97,7 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   ASSERT_TRUE(eph_pub_key);
   brillo::SecureBlob eph_pub_key_blob;
   ASSERT_TRUE(
-      ec->PointToSecureBlob(*eph_pub_key, &eph_pub_key_blob, context.get()));
+      ec->EncodeToSpkiDer(eph_key_pair, &eph_pub_key_blob, context.get()));
   brillo::SecureBlob aes_gcm_key1;
   brillo::SecureBlob aes_gcm_key2;
 

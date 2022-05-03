@@ -86,17 +86,6 @@ class RecoveryCryptoTpmBackend {
 // in a successful recovery `destination_dh` should be equal to `publisher_dh`.
 class RecoveryCrypto {
  public:
-  // Mediator share is encrypted using AES-GCM with symmetric key derived from
-  // ECDH+HKDF over mediator public key and ephemeral public key.
-  // Ephemeral public key `ephemeral_pub_key`, AES-GCM `tag` and `iv` are stored
-  // in the structure as they are necessary to perform decryption.
-  struct EncryptedMediatorShare {
-    brillo::SecureBlob tag;
-    brillo::SecureBlob iv;
-    brillo::SecureBlob ephemeral_pub_key;
-    brillo::SecureBlob encrypted_data;
-  };
-
   // Constant value of hkdf_info for mediator share. Must be kept in sync with
   // the server.
   static const char kMediatorShareHkdfInfoValue[];

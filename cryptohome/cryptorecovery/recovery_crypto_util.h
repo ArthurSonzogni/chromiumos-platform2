@@ -66,11 +66,8 @@ struct OnboardingMetadata {
 };
 
 // `associated_data` for the HSM payload.
-// `publisher_pub_key` and `channel_pub_key` are elliptic curve points
-// encoded in OpenSSL octet form (a binary encoding of the EC_POINT
-// structure as defined in RFC5480).
-// TODO(mslus): exact format of rsa_public_key used for TPM 1.2 is
-// to be defined.
+// `publisher_pub_key` and `channel_pub_key` are elliptic curve points in
+// DER-encoded X.509 SubjectPublicKeyInfo format.
 struct HsmAssociatedData {
   // G*u, one of the keys that will be used for HSM payload decryption.
   brillo::SecureBlob publisher_pub_key;
@@ -85,10 +82,9 @@ struct HsmAssociatedData {
 };
 
 // Plain text for the HSM payload.
-// `dealer_pub_key` is an elliptic curve point encoded in OpenSSL octet form (a
-// binary encoding of the EC_POINT structure as defined in RFC5480).
-// `mediator_share` and `key_auth_value` are BIGNUMs encoded in big-endian
-// form.
+// `dealer_pub_key` is an elliptic curve point in DER-encoded X.509
+// SubjectPublicKeyInfo format. `mediator_share` and `key_auth_value` are
+// BIGNUMs encoded in big-endian form.
 struct HsmPlainText {
   // Secret share of the Mediator (b1).
   brillo::SecureBlob mediator_share;
@@ -154,8 +150,8 @@ struct RecoveryRequestAssociatedData {
 };
 
 // Plain text for the Request payload.
-// `ephemeral_pub_inv_key` is an elliptic curve point encoded in OpenSSL octet
-// form (a binary encoding of the EC_POINT structure as defined in RFC5480).
+// `ephemeral_pub_inv_key` is an elliptic curve point in DER-encoded X.509
+// SubjectPublicKeyInfo format.
 struct RecoveryRequestPlainText {
   // Ephemeral inverse key (G*-x) that is added to mediator DH (G*ab1) by the
   // Mediator service.
@@ -183,9 +179,9 @@ struct HsmResponseAssociatedData {
 };
 
 // Plain text for the Response payload.
-// `dealer_pub_key` and `mediated_point` are elliptic curve points encoded in
-// OpenSSL octet form (a binary encoding of the EC_POINT structure as defined in
-// RFC5480). `key_auth_value` is BIGNUM encoded in big-endian form.
+// `dealer_pub_key` and `mediated_point` are elliptic curve points in
+// DER-encoded X.509 SubjectPublicKeyInfo format. `key_auth_value` is BIGNUM
+// encoded in big-endian form.
 struct HsmResponsePlainText {
   // Mediated mediator share (b1) sent back to the Chromebook.
   brillo::SecureBlob mediated_point;

@@ -18,6 +18,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/crypto/error_util.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -201,9 +202,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     return false;
   }
   brillo::SecureBlob dealer_pub_key;
-  if (!ec_.PointToSecureBlob(*dealer_pub_point, &dealer_pub_key,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert dealer_pub_key to a SecureBlob";
+  if (!ec_.EncodeToSpkiDer(dealer_key_pair, &dealer_pub_key, context.get())) {
+    LOG(ERROR) << "Failed to convert dealer_pub_key to SubjectPublicKeyInfo";
     return false;
   }
   if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
@@ -217,8 +217,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
 }
 
 bool RecoveryCryptoImpl::GenerateEphemeralKey(
-    brillo::SecureBlob* ephemeral_pub_key,
-    brillo::SecureBlob* ephemeral_inv_pub_key) const {
+    brillo::SecureBlob* ephemeral_spki_der,
+    brillo::SecureBlob* ephemeral_inv_spki_der) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -240,8 +240,14 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
                   "ephemeral_priv_key_bn";
     return false;
   }
-  if (!ec_.PointToSecureBlob(*ephemeral_pub_point, ephemeral_pub_key,
-                             context.get())) {
+  crypto::ScopedEC_KEY ephemeral_pub_key =
+      ec_.PointToEccKey(*ephemeral_pub_point);
+  if (!ephemeral_pub_key) {
+    LOG(ERROR) << "Failed to convert ephemeral_pub_point to an EC_KEY";
+    return false;
+  }
+  if (!ec_.EncodeToSpkiDer(ephemeral_pub_key, ephemeral_spki_der,
+                           context.get())) {
     LOG(ERROR) << "Failed to convert ephemeral_pub_point to a SecureBlob";
     return false;
   }
@@ -250,8 +256,14 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
     LOG(ERROR) << "Failed to invert the ephemeral_pub_point";
     return false;
   }
-  if (!ec_.PointToSecureBlob(*ephemeral_pub_point, ephemeral_inv_pub_key,
-                             context.get())) {
+  crypto::ScopedEC_KEY ephemeral_inv_pub_key =
+      ec_.PointToEccKey(*ephemeral_pub_point);
+  if (!ephemeral_inv_pub_key) {
+    LOG(ERROR) << "Failed to convert ephemeral_inv_pub_key to an EC_KEY";
+    return false;
+  }
+  if (!ec_.EncodeToSpkiDer(ephemeral_inv_pub_key, ephemeral_inv_spki_der,
+                           context.get())) {
     LOG(ERROR)
         << "Failed to convert inverse ephemeral_pub_point to a SecureBlob";
     return false;
@@ -293,7 +305,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
                        epoch_response.epoch_pub_key().end());
 
   crypto::ScopedEC_POINT epoch_pub_point =
-      ec_.SecureBlobToPoint(epoch_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(epoch_pub_key, context.get());
   if (!epoch_pub_point) {
     LOG(ERROR) << "Failed to convert epoch_pub_key SecureBlob to EC_POINT";
     return false;
@@ -449,15 +461,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     LOG(ERROR) << "Failed to generate channel key pair";
     return false;
   }
-  const EC_POINT* channel_pub_point =
-      EC_KEY_get0_public_key(channel_key_pair.get());
-  if (!channel_pub_point) {
-    LOG(ERROR) << "Failed to get channel_pub_point";
-    return false;
-  }
-  if (!ec_.PointToSecureBlob(*channel_pub_point, channel_pub_key,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert channel_pub_key to a SecureBlob";
+  if (!ec_.EncodeToSpkiDer(channel_key_pair, channel_pub_key, context.get())) {
+    LOG(ERROR) << "Failed to convert channel_pub_key to SubjectPublicKeyInfo";
     return false;
   }
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
@@ -500,9 +505,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
   brillo::SecureBlob dealer_pub_key;
-  if (!ec_.PointToSecureBlob(*dealer_pub_point, &dealer_pub_key,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert dealer_pub_key to a SecureBlob";
+  if (!ec_.EncodeToSpkiDer(dealer_key_pair, &dealer_pub_key, context.get())) {
+    LOG(ERROR) << "Failed to convert dealer_pub_key to SubjectPublicKeyInfo";
     return false;
   }
   brillo::SecureBlob mediator_share;
@@ -525,7 +529,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Generate symmetric key for encrypting PT from (G*h)*u (where G*h is the
   // mediator public key provided as input, and u is the publisher private key).
   crypto::ScopedEC_POINT mediator_pub_point =
-      ec_.SecureBlobToPoint(mediator_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(mediator_pub_key, context.get());
   if (!mediator_pub_point) {
     LOG(ERROR) << "Failed to convert mediator_pub_key to EC_POINT";
     return false;
@@ -543,16 +547,10 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
                   "publisher_priv_key";
     return false;
   }
-  const EC_POINT* publisher_pub_key =
-      EC_KEY_get0_public_key(publisher_key_pair.get());
-  if (!publisher_pub_key) {
-    LOG(ERROR) << "Failed to get publisher_pub_key from publisher_key_pair";
-    return false;
-  }
   brillo::SecureBlob publisher_pub_key_blob;
-  if (!ec_.PointToSecureBlob(*publisher_pub_key, &publisher_pub_key_blob,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert publisher_pub_key to a SecureBlob";
+  if (!ec_.EncodeToSpkiDer(publisher_key_pair, &publisher_pub_key_blob,
+                           context.get())) {
+    LOG(ERROR) << "Failed to convert publisher_pub_key to SubjectPublicKeyInfo";
     return false;
   }
 
@@ -603,20 +601,20 @@ bool RecoveryCryptoImpl::RecoverDestination(
     return false;
   }
   crypto::ScopedEC_POINT dealer_pub_point =
-      ec_.SecureBlobToPoint(dealer_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(dealer_pub_key, context.get());
   if (!dealer_pub_point) {
     LOG(ERROR) << "Failed to convert dealer_pub_point SecureBlob to EC_POINT";
     return false;
   }
   crypto::ScopedEC_POINT mediated_point =
-      ec_.SecureBlobToPoint(mediated_publisher_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(mediated_publisher_pub_key, context.get());
   if (!mediated_point) {
     LOG(ERROR) << "Failed to convert mediated_point SecureBlob to EC_POINT";
     return false;
   }
   // Performs addition of mediated_point and ephemeral_pub_point.
   crypto::ScopedEC_POINT ephemeral_pub_point =
-      ec_.SecureBlobToPoint(ephemeral_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(ephemeral_pub_key, context.get());
   if (!ephemeral_pub_point) {
     LOG(ERROR)
         << "Failed to convert ephemeral_pub_point SecureBlob to EC_POINT";
@@ -703,7 +701,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   }
   brillo::SecureBlob epoch_pub_key(epoch_response.epoch_pub_key());
   crypto::ScopedEC_POINT epoch_pub_point =
-      ec_.SecureBlobToPoint(epoch_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(epoch_pub_key, context.get());
   if (!epoch_pub_point) {
     LOG(ERROR) << "Failed to convert epoch_pub_key SecureBlob to EC_POINT";
     return false;
@@ -722,9 +720,12 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
   brillo::SecureBlob shared_secret_point_blob;
-  if (!ec_.PointToSecureBlob(*shared_secret_point, &shared_secret_point_blob,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert shared_secret_point to a SecureBlob";
+  crypto::ScopedEC_KEY shared_secret_key =
+      ec_.PointToEccKey(*shared_secret_point);
+  if (!ec_.EncodeToSpkiDer(shared_secret_key, &shared_secret_point_blob,
+                           context.get())) {
+    LOG(ERROR)
+        << "Failed to convert shared_secret_point to SubjectPublicKeyInfo";
     return false;
   }
   brillo::SecureBlob aes_gcm_key;
@@ -773,16 +774,10 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
 
   // Construct associated data for HSM payload: AD = CBOR({publisher_pub_key,
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
-  const EC_POINT* publisher_pub_point =
-      EC_KEY_get0_public_key(publisher_key_pair.get());
-  if (!publisher_pub_point) {
-    LOG(ERROR) << "Failed to get publisher_pub_point";
-    return false;
-  }
   brillo::SecureBlob publisher_pub_key;
-  if (!ec_.PointToSecureBlob(*publisher_pub_point, &publisher_pub_key,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert publisher_pub_key to a SecureBlob";
+  if (!ec_.EncodeToSpkiDer(publisher_key_pair, &publisher_pub_key,
+                           context.get())) {
+    LOG(ERROR) << "Failed to convert publisher_pub_key to SubjectPublicKeyInfo";
     return false;
   }
 

@@ -94,15 +94,17 @@ bool GenerateRecoveryRequestProto(
 // production! Keys were generated at random using
 // EllipticCurve::GenerateKeysAsSecureBlobs method and converted to hex.
 static const char kFakeMediatorPublicKeyHex[] =
-    "041C66FD08151D1C34EA5003F7C24557D2E4802535AA4F65EDBE3CD495CFE060387D00D5D2"
-    "5D859B26C5134F1AD00F2230EAB72A47F46DF23407CF68FB18C509DE";
+    "3059301306072A8648CE3D020106082A8648CE3D030107034200041C66FD08151D1C34EA50"
+    "03F7C24557D2E4802535AA4F65EDBE3CD495CFE060387D00D5D25D859B26C5134F1AD00F22"
+    "30EAB72A47F46DF23407CF68FB18C509DE";
 static const char kFakeMediatorPrivateKeyHex[] =
     "B7A01DA624ECF448D9F7E1B07236EA2930A17C9A31AD60E43E01A8FEA934AB1C";
 static const char kFakeEpochPrivateKeyHex[] =
     "2DC064DBE7473CE2E617C689E3D1D71568E1B09EA6CEC5CB4463A66C06F1B535";
 static const char kFakeEpochPublicKeyHex[] =
-    "045D8393CDEF671228CB0D8454BBB6F2AAA18E05834BB6DBBD05721FC81ED3BED33D08A8EF"
-    "D44F6786CAE7ADEB8E26A355CD9714F59C78F063A3CA3A7D74877A8A";
+    "3059301306072A8648CE3D020106082A8648CE3D030107034200045D8393CDEF671228CB0D"
+    "8454BBB6F2AAA18E05834BB6DBBD05721FC81ED3BED33D08A8EFD44F6786CAE7ADEB8E26A3"
+    "55CD9714F59C78F063A3CA3A7D74877A8A";
 
 std::unique_ptr<FakeRecoveryMediatorCrypto>
 FakeRecoveryMediatorCrypto::Create() {
@@ -190,55 +192,6 @@ bool FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
   return true;
 }
 
-bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
-    const brillo::SecureBlob& mediator_priv_key,
-    const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
-    brillo::SecureBlob* mediator_share) const {
-  ScopedBN_CTX context = CreateBigNumContext();
-  if (!context.get()) {
-    LOG(ERROR) << "Failed to allocate BN_CTX structure";
-    return false;
-  }
-
-  crypto::ScopedBIGNUM mediator_priv_key_bn =
-      SecureBlobToBigNum(mediator_priv_key);
-  if (!mediator_priv_key_bn) {
-    LOG(ERROR) << "Failed to convert mediator_priv_key to BIGNUM";
-    return false;
-  }
-  crypto::ScopedEC_POINT ephemeral_pub_key = ec_.SecureBlobToPoint(
-      encrypted_mediator_share.ephemeral_pub_key, context.get());
-  if (!ephemeral_pub_key) {
-    LOG(ERROR) << "Failed to convert ephemeral_pub_key SecureBlob to EC_POINT";
-    return false;
-  }
-  crypto::ScopedEC_POINT shared_secret_point = ComputeEcdhSharedSecretPoint(
-      ec_, *ephemeral_pub_key, *mediator_priv_key_bn);
-  if (!shared_secret_point) {
-    LOG(ERROR) << "Failed to compute shared_secret_point";
-    return false;
-  }
-  brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfSymmetricKey(
-          ec_, *shared_secret_point, encrypted_mediator_share.ephemeral_pub_key,
-          GetMediatorShareHkdfInfo(),
-          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
-          kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for mediator "
-                  "share decryption";
-    return false;
-  }
-
-  if (!AesGcmDecrypt(encrypted_mediator_share.encrypted_data,
-                     /*ad=*/std::nullopt, encrypted_mediator_share.tag,
-                     aes_gcm_key, encrypted_mediator_share.iv,
-                     mediator_share)) {
-    LOG(ERROR) << "Failed to perform AES-GCM decryption";
-    return false;
-  }
-
-  return true;
-}
 
 bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     const brillo::SecureBlob& mediator_priv_key,
@@ -264,7 +217,7 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     return false;
   }
   crypto::ScopedEC_POINT publisher_pub_key =
-      ec_.SecureBlobToPoint(publisher_pub_key_blob, context.get());
+      ec_.DecodeFromSpkiDer(publisher_pub_key_blob, context.get());
   if (!publisher_pub_key) {
     LOG(ERROR) << "Failed to convert publisher_pub_key_blob to EC_POINT";
     return false;
@@ -333,7 +286,7 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     return false;
   }
   crypto::ScopedEC_POINT channel_pub_key =
-      ec_.SecureBlobToPoint(channel_pub_key_blob, context.get());
+      ec_.DecodeFromSpkiDer(channel_pub_key_blob, context.get());
   if (!channel_pub_key) {
     LOG(ERROR) << "Failed to convert channel_pub_key_blob to EC_POINT";
     return false;
@@ -397,7 +350,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
   crypto::ScopedEC_POINT dealer_pub_point =
-      ec_.SecureBlobToPoint(hsm_plain_text.dealer_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(hsm_plain_text.dealer_pub_key, context.get());
   if (!dealer_pub_point) {
     LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
     return false;
@@ -412,7 +365,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   }
   // Perform addition of mediator_dh_point and ephemeral_pub_inv_key.
   crypto::ScopedEC_POINT ephemeral_pub_inv_point =
-      ec_.SecureBlobToPoint(ephemeral_pub_inv_key, context.get());
+      ec_.DecodeFromSpkiDer(ephemeral_pub_inv_key, context.get());
   if (!ephemeral_pub_inv_point) {
     LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
     return false;
@@ -423,8 +376,9 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     LOG(ERROR) << "Failed to add mediator_dh_point and ephemeral_pub_inv_point";
     return false;
   }
-  if (!ec_.PointToSecureBlob(*mediated_point, &mediator_dh, context.get())) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+  crypto::ScopedEC_KEY mediated_key = ec_.PointToEccKey(*mediated_point);
+  if (!ec_.EncodeToSpkiDer(mediated_key, &mediator_dh, context.get())) {
+    LOG(ERROR) << "Failed to encode EC_POINT to SubjectPublicKeyInfo";
     return false;
   }
 
@@ -464,7 +418,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
   crypto::ScopedEC_POINT channel_pub_key =
-      ec_.SecureBlobToPoint(channel_pub_key_blob, context.get());
+      ec_.DecodeFromSpkiDer(channel_pub_key_blob, context.get());
   if (!channel_pub_key) {
     LOG(ERROR) << "Failed to convert channel_pub_key_blob to EC_POINT";
     return false;
