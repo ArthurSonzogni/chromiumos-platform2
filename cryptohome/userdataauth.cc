@@ -4385,4 +4385,16 @@ void UserDataAuth::GetAuthSessionStatusImpl(
   }
 }
 
+bool UserDataAuth::GetRecoveryRequest(
+    user_data_auth::GetRecoveryRequestRequest request,
+    base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
+        on_done) {
+  AssertOnMountThread();
+  // TODO(b/227752412): Implement GetRecoveryRequest.
+  user_data_auth::GetRecoveryRequestReply reply;
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 }  // namespace cryptohome
