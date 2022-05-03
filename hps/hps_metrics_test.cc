@@ -115,8 +115,7 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
 
 // Without a SendImageValidity call, no metric is sent
 TEST_F(HpsMetricsTest, ValidityNopTest) {
-  // An extra cycle is required to fire the Report callback b/218422987
-  task_environment_.FastForwardBy(kAccumulatePeriod + kUpdatePeriod);
+  task_environment_.FastForwardBy(kAccumulatePeriod);
 }
 
 // Test with 50% valid images
@@ -128,8 +127,7 @@ TEST_F(HpsMetricsTest, ValidityTest) {
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(kHpsImageInvalidity, 500, _, _, _))
       .Times(1);
-  // An extra cycle is required to fire the Report callback b/218422987
-  task_environment_.FastForwardBy(kAccumulatePeriod + kUpdatePeriod);
+  task_environment_.FastForwardBy(kAccumulatePeriod);
 }
 
 // Test with 1 invalid image
@@ -142,8 +140,7 @@ TEST_F(HpsMetricsTest, ValidityOneTest) {
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(kHpsImageInvalidity, 1, _, _, _))
       .Times(1);
-  // An extra cycle is required to fire the Report callback b/218422987
-  task_environment_.FastForwardBy(kAccumulatePeriod + kUpdatePeriod);
+  task_environment_.FastForwardBy(kAccumulatePeriod);
 }
 
 }  // namespace hps
