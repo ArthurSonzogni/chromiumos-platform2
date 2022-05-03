@@ -68,17 +68,6 @@ bool RetrieveSanitizedPrimaryUsername(std::string* out_sanitized_username) {
 bool FindARCVMPstorePath(base::FilePath* out_path) {
   DCHECK(out_path);
 
-  // Before users logged in to Chrome OS, mini-ARCVM uses
-  // /run/arcvm/arcvm.pstore for the path.
-  base::FilePath nonuser_pstore_path(vm_tools::kArcVmPstorePath);
-  if (base::PathExists(nonuser_pstore_path)) {
-    *out_path = nonuser_pstore_path;
-    return true;
-  }
-
-  // /run/arcvm/arcvm.pstore is moved to /home/root/<hash>/crosvm/*.pstore by
-  // arcvm-forward-pstore service after users logged in and mini-ARCVM is
-  // upgraded.
   std::string sanitized_primary_username;
   if (!RetrieveSanitizedPrimaryUsername(&sanitized_primary_username)) {
     LOG(ERROR) << "Failed to get primary username";
@@ -93,8 +82,7 @@ bool FindARCVMPstorePath(base::FilePath* out_path) {
     return true;
   }
 
-  LOG(ERROR) << "The .pstore file doesn't exist at both "
-             << vm_tools::kArcVmPstorePath << " and " << cryptohome_pstore_path;
+  LOG(ERROR) << "The .pstore file doesn't exist at " << cryptohome_pstore_path;
   return false;
 }
 

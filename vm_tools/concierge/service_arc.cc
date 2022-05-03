@@ -12,6 +12,7 @@
 #include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
 
+#include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/service.h"
@@ -38,6 +39,12 @@ constexpr char kRootfsPath[] = "/opt/google/vms/android/system.raw.img";
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 
+constexpr char kArcVmName[] = "arcvm";
+// /home/root/<hash>/crosvm is bind-mounted to /run/daemon-store/crosvm on
+// sign-in.
+constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
+constexpr char kPstoreExtension[] = ".pstore";
+
 // Returns |image_path| on production. Returns a canonicalized path of the image
 // file when in dev mode.
 base::FilePath GetImagePath(const base::FilePath& image_path,
@@ -61,6 +68,13 @@ base::FilePath GetImagePath(const base::FilePath& image_path,
   if (errno != ENOENT)
     PLOG(WARNING) << "Failed to resolve " << image_path.value();
   return image_path;
+}
+
+base::FilePath GetPstoreDest(const std::string& owner_id) {
+  return base::FilePath(kCryptohomeRoot)
+      .Append(owner_id)
+      .Append(vm_tools::GetEncodedName(kArcVmName))
+      .AddExtension(kPstoreExtension);
 }
 
 // Returns true if the path is a valid demo image path.
@@ -340,6 +354,8 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     }
   }
 
+  const auto pstore_path = GetPstoreDest(request.owner_id());
+
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
     LOG(WARNING) << "Android data directory does not exist";
@@ -401,8 +417,9 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
                          base::FilePath(kArcvmVcpuCpuCgroup).value())
       .AppendCustomParam("--android-fstab", kFstabPath)
       .AppendCustomParam(
-          "--pstore", base::StringPrintf("path=%s,size=%" PRId64,
-                                         kArcVmPstorePath, kArcVmRamoopsSize))
+          "--pstore",
+          base::StringPrintf("path=%s,size=%" PRId64,
+                             pstore_path.value().c_str(), kArcVmRamoopsSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
       .AppendSharedDir(shared_stub)
