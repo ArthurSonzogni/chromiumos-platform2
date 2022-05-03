@@ -2201,7 +2201,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
       .WillOnce(Return(false));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
@@ -2309,7 +2309,7 @@ TEST_F(UserDataAuthTest,
       .WillOnce(Return(false));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
@@ -2881,7 +2881,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
         .WillOnce(Return(false));
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
     EXPECT_CALL(*session_, MountVault(_, _, _))
-        .WillOnce(Return(MOUNT_ERROR_NONE));
+        .WillOnce(ReturnError<CryptohomeMountError>());
     return true;
   }));
   bool called = false;
@@ -2939,7 +2939,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
       .WillOnce(Return(false));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
 
   bool called = false;
   user_data_auth::CryptohomeErrorCode error_code =

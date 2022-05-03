@@ -2288,12 +2288,13 @@ MountStatus UserDataAuth::AttemptUserMount(
 
   if (mount_args.is_ephemeral) {
     user_session->SetCredentials(credentials);
-    MountError err = user_session->MountEphemeral(credentials.username());
-    // TODO(b/230715712): Migrate UserSession and wrap the error.
+    MountStatus err = user_session->MountEphemeral(credentials.username());
+    if (err.ok())
+      return OkStatus<CryptohomeMountError>();
     return MakeStatus<CryptohomeMountError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocUserDataAuthEphemeralFailedInAttemptUserMountCred),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}), err);
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthEphemeralFailedInAttemptUserMountCred))
+        .Wrap(std::move(err));
   }
 
   MountError error = MOUNT_ERROR_NONE;
@@ -2344,21 +2345,18 @@ MountStatus UserDataAuth::AttemptUserMount(
 
   low_disk_space_handler_->disk_cleanup()->FreeDiskSpaceDuringLogin(
       obfuscated_username);
-  MountError mount_error = user_session->MountVault(
+  MountStatus mount_status = user_session->MountVault(
       credentials.username(), FileSystemKeyset(*vk.get()),
       MountArgsToVaultOptions(mount_args));
-  // TODO(b/230715712): Migrate user session and wrap the error.
-  if (mount_error == MOUNT_ERROR_NONE) {
+  if (mount_status.ok()) {
     // Store the credentials in the cache to use on session unlock.
     user_session->SetCredentials(credentials);
     return OkStatus<CryptohomeMountError>();
   }
   return MakeStatus<CryptohomeMountError>(
-      CRYPTOHOME_ERR_LOC(
-          kLocUserDataAuthMountVaultFailedInAttemptUserMountCred),
-      ErrorActionSet(
-          {ErrorAction::kRetry, ErrorAction::kAuth, ErrorAction::kDeleteVault}),
-      mount_error);
+             CRYPTOHOME_ERR_LOC(
+                 kLocUserDataAuthMountVaultFailedInAttemptUserMountCred))
+      .Wrap(std::move(mount_status));
 }
 
 MountStatus UserDataAuth::AttemptUserMount(
@@ -2376,11 +2374,11 @@ MountStatus UserDataAuth::AttemptUserMount(
   if (mount_args.is_ephemeral) {
     // Store the credentials in the cache to use on session unlock.
     user_session->SetCredentials(auth_session);
-    MountError err = user_session->MountEphemeral(auth_session->username());
-    // TODO(b/230715712): Migrate UserSession and wrap the error.
+    MountStatus err = user_session->MountEphemeral(auth_session->username());
     return MakeStatus<CryptohomeMountError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthEphemeralFailedInAttemptUserMountAS),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}), err);
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthEphemeralFailedInAttemptUserMountAS))
+        .Wrap(std::move(err));
   }
 
   // Cannot proceed with mount if the AuthSession is not authenticated yet.
@@ -2392,18 +2390,19 @@ MountStatus UserDataAuth::AttemptUserMount(
         MOUNT_ERROR_FATAL);
   }
 
-  MountError error = user_session->MountVault(
+  MountStatus mount_status = user_session->MountVault(
       auth_session->username(), auth_session->file_system_keyset(),
       MountArgsToVaultOptions(mount_args));
 
-  if (error == MOUNT_ERROR_NONE) {
+  if (mount_status.ok()) {
     // Store the credentials in the cache to use on session unlock.
     user_session->SetCredentials(auth_session);
     return OkStatus<CryptohomeMountError>();
   }
   return MakeStatus<CryptohomeMountError>(
-      CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountVaultFailedInAttemptUserMountAS),
-      ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault}), error);
+             CRYPTOHOME_ERR_LOC(
+                 kLocUserDataAuthMountVaultFailedInAttemptUserMountAS))
+      .Wrap(std::move(mount_status));
 }
 
 bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,
@@ -4245,10 +4244,14 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareEphemeralVaultImpl(
   const std::string& obfuscated_username = auth_session->obfuscated_username();
   PreMountHook(obfuscated_username);
   ReportTimerStart(kMountExTimer);
-  MountError mount_error = session->MountEphemeral(auth_session->username());
+  MountStatus mount_status = session->MountEphemeral(auth_session->username());
   ReportTimerStop(kMountExTimer);
-  PostMountHook(session, mount_error);
-  return MountErrorToCryptohomeError(mount_error);
+  if (mount_status.ok()) {
+    PostMountHook(session, MOUNT_ERROR_NONE);
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  }
+  PostMountHook(session, mount_status->mount_error());
+  return MountErrorToCryptohomeError(mount_status->mount_error());
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::PreparePersistentVaultImpl(
@@ -4278,18 +4281,23 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PreparePersistentVaultImpl(
 
   PreMountHook(obfuscated_username);
   ReportTimerStart(kMountExTimer);
-  MountError mount_error =
+  MountStatus mount_status =
       session->MountVault(auth_session->username(),
                           auth_session->file_system_keyset(), vault_options);
-  if (mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
+  if (!mount_status.ok() &&
+      mount_status->mount_error() == MOUNT_ERROR_TPM_COMM_ERROR) {
     LOG(WARNING) << "TPM communication error. Retrying.";
-    mount_error =
+    mount_status =
         session->MountVault(auth_session->username(),
                             auth_session->file_system_keyset(), vault_options);
   }
   ReportTimerStop(kMountExTimer);
-  PostMountHook(session, mount_error);
-  return MountErrorToCryptohomeError(mount_error);
+  if (mount_status.ok()) {
+    PostMountHook(session, MOUNT_ERROR_NONE);
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  }
+  PostMountHook(session, mount_status->mount_error());
+  return MountErrorToCryptohomeError(mount_status->mount_error());
 }
 
 CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(

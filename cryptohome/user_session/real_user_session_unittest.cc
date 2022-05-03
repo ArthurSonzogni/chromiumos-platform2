@@ -190,8 +190,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // TEST
 
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].name, fs_keyset, options));
+  EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
 
   // VERIFY
   // Vault created.
@@ -228,8 +227,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // TEST
 
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].name, fs_keyset, options));
+  EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
 
   // VERIFY
   // Vault still exists when tried to remount with no create.
@@ -272,6 +270,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
     bool is_enterprise;
     std::string owner;
     std::string user;
+    bool ok;
     MountError expected_result;
   };
 
@@ -281,6 +280,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
           .is_enterprise = false,
           .owner = "",
           .user = "some_user",
+          .ok = false,
           .expected_result = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
       },
       {
@@ -288,13 +288,14 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
           .is_enterprise = false,
           .owner = "owner",
           .user = "some_user",
-          .expected_result = MOUNT_ERROR_NONE,
+          .ok = true,
       },
       {
           .name = "NotEnterprise_Owner_OwnerLogin_Error",
           .is_enterprise = false,
           .owner = "owner",
           .user = "owner",
+          .ok = false,
           .expected_result = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
       },
       {
@@ -302,29 +303,32 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
           .is_enterprise = true,
           .owner = "",
           .user = "some_user",
-          .expected_result = MOUNT_ERROR_NONE,
+          .ok = true,
       },
       {
           .name = "Enterprise_Owner_UserLogin_OK",
           .is_enterprise = true,
           .owner = "owner",
           .user = "some_user",
-          .expected_result = MOUNT_ERROR_NONE,
+          .ok = true,
       },
       {
           .name = "Enterprise_Owner_OwnerLogin_OK",
           .is_enterprise = true,
           .owner = "owner",
           .user = "owner",
-          .expected_result = MOUNT_ERROR_NONE,
+          .ok = true,
       },
   };
 
   for (const auto& test_case : test_cases) {
     PreparePolicy(test_case.is_enterprise, test_case.owner);
-    ASSERT_THAT(session_->MountEphemeral(test_case.user),
-                test_case.expected_result)
-        << "Test case: " << test_case.name;
+    MountStatus status = session_->MountEphemeral(test_case.user);
+    ASSERT_EQ(status.ok(), test_case.ok) << "Test case: " << test_case.name;
+    if (!test_case.ok) {
+      ASSERT_EQ(status->mount_error(), test_case.expected_result)
+          << "Test case: " << test_case.name;
+    }
   }
 }
 
@@ -345,8 +349,7 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].name, fs_keyset, options));
+  EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
   const std::string message(kWebAuthnSecretHmacMessage);
   auto expected_webauthn_secret = std::make_unique<brillo::SecureBlob>(
       HmacSha256(brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
@@ -403,8 +406,7 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   FileSystemKeyset fs_keyset(*vk_status.value().get());
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].name, fs_keyset, options));
+  EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
 
   // The WebAuthn secret isn't stored when mounting.
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);

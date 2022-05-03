@@ -62,7 +62,7 @@ RealUserSession::RealUserSession(
       pkcs11_token_factory_(pkcs11_token_factory),
       mount_(mount) {}
 
-MountError RealUserSession::MountVault(
+MountStatus RealUserSession::MountVault(
     const std::string username,
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
@@ -70,7 +70,11 @@ MountError RealUserSession::MountVault(
 
   error = mount_->MountCryptohome(username, fs_keyset, vault_options);
   if (error != MOUNT_ERROR_NONE) {
-    return error;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountVault),
+        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
+                        ErrorAction::kDeleteVault, ErrorAction::kPowerwash}),
+        error);
   }
 
   obfuscated_username_ = SanitizeUserName(username);
@@ -84,12 +88,15 @@ MountError RealUserSession::MountVault(
   PrepareWebAuthnSecretHash(fs_keyset.Key().fek, fs_keyset.Key().fnek);
   PrepareHibernateSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
-  return MOUNT_ERROR_NONE;
+  return OkStatus<CryptohomeMountError>();
 }
 
-MountError RealUserSession::MountEphemeral(const std::string username) {
+MountStatus RealUserSession::MountEphemeral(const std::string username) {
   if (homedirs_->IsOrWillBeOwner(username)) {
-    return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserSessionOwnerNotSupportedInMountEphemeral),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER);
   }
 
   MountError error = mount_->MountEphemeralCryptohome(username);
@@ -97,9 +104,14 @@ MountError RealUserSession::MountEphemeral(const std::string username) {
     pkcs11_token_ = pkcs11_token_factory_->New(
         username_, homedirs_->GetChapsTokenDir(username_),
         brillo::SecureBlob());
+    return OkStatus<CryptohomeMountError>();
   }
 
-  return error;
+  return MakeStatus<CryptohomeMountError>(
+      CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountEphemeral),
+      ErrorActionSet(
+          {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
+      error);
 }
 
 MountStatus RealUserSession::MountGuest() {

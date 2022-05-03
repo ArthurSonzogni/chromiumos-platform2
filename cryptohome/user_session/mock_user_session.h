@@ -39,13 +39,13 @@ class MockUserSession : public UserSession {
       (const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
        MigrationType),
       (override));
-  MOCK_METHOD(MountError,
+  MOCK_METHOD(MountStatus,
               MountVault,
               (const std::string,
                const FileSystemKeyset&,
                const CryptohomeVault::Options&),
               (override));
-  MOCK_METHOD(MountError, MountEphemeral, (const std::string), (override));
+  MOCK_METHOD(MountStatus, MountEphemeral, (const std::string), (override));
   MOCK_METHOD(MountStatus, MountGuest, (), (override));
   MOCK_METHOD(bool, Unmount, (), (override));
   MOCK_METHOD(base::Value, GetStatus, (), (const, override));

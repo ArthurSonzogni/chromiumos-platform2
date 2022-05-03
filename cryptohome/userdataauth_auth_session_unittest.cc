@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -47,6 +48,7 @@ using base::test::TaskEnvironment;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using error::CryptohomeMountError;
+using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::status::OkStatus;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
@@ -216,7 +218,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountEphemeral(kUsername))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
 
   ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
@@ -238,7 +240,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, IsEphemeral()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
@@ -256,7 +258,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session3, MountVault(kUsername3, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername3, brillo::SecureBlob(kPassword3));
@@ -292,7 +294,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
@@ -327,7 +329,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
@@ -344,7 +346,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session3, MountVault(kUsername3, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername3, brillo::SecureBlob(kPassword3));
