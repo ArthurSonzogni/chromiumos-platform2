@@ -34,7 +34,9 @@ CryptohomeError::MakeStatusTrait::operator()(
 
 StatusChain<CryptohomeError> CryptohomeError::MakeStatusTrait::Unactioned::Wrap(
     hwsec_foundation::status::StatusChain<CryptohomeError> status) && {
-  return NewStatus<CryptohomeError>(loc_, NoErrorAction(), ec_)
+  return NewStatus<CryptohomeError>(
+             loc_, NoErrorAction(),
+             ec_.has_value() ? ec_ : status->local_legacy_error())
       .Wrap(std::move(status));
 }
 
