@@ -5,61 +5,57 @@
 #ifndef RUNTIME_PROBE_DAEMON_H_
 #define RUNTIME_PROBE_DAEMON_H_
 
+#include <memory>
+
 #include <brillo/daemons/dbus_daemon.h>
-#include <dbus/exported_object.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_method_response.h>
+#include <brillo/dbus/dbus_object.h>
 
+// Include the protobuf before generated D-Bus adaptors to ensure the protobuf
+// messages are defined before adaptors.
+// TODO(crbug.com/1255584): Includes headers in alphabetical order.
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
-
-namespace dbus {
-class MethodCall;
-}  // namespace dbus
+#include "runtime_probe/dbus_adaptors/org.chromium.RuntimeProbe.h"  // NOLINT(build/include_alpha)
+#include "runtime_probe/probe_config_loader.h"
 
 namespace runtime_probe {
 
-class Daemon : public brillo::DBusDaemon {
+// Implementation of the runtime_probe D-Bus methods.
+// Daemon class for the runtime_probe D-Bus service daemon.
+class Daemon : public brillo::DBusServiceDaemon,
+               public org::chromium::RuntimeProbeAdaptor,
+               public org::chromium::RuntimeProbeInterface {
  public:
-  Daemon();
-  ~Daemon() override;
+  explicit Daemon(ProbeConfigLoader* config_loader);
+  Daemon(const Daemon&) = delete;
+  Daemon& operator=(const Daemon&) = delete;
 
- protected:
-  // brillo::DBusDaemon:
-  int OnInit() override;
+  ~Daemon() override = default;
+
+  template <typename... Types>
+  using DBusCallback = typename std::unique_ptr<
+      brillo::dbus_utils::DBusMethodResponse<Types...>>;
+
+  // org::chromium::RuntimeProbeInterface overrides.
+  void ProbeCategories(DBusCallback<ProbeResult> cb,
+                       const ProbeRequest& request) override;
+  void GetKnownComponents(DBusCallback<GetKnownComponentsResult> cb,
+                          const GetKnownComponentsRequest& request) override;
 
  private:
-  // This function initializes the D-Bus service. Since we expect requests
-  // from client occurs as soon as the D-Bus channel is up, this
-  // initialization should be the last thing that happens in Daemon::OnInit().
-  void InitDBus();
+  // brillo::DBusServiceDaemon overrides.
+  int OnInit() override;
 
-  // Sugar wrapper for packing protocol buffer with error handling.
-  void SendMessage(const google::protobuf::Message& reply,
-                   dbus::MethodCall* method_call,
-                   dbus::ExportedObject::ResponseSender response_sender);
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  // Handler of org.chromium.RuntimeProbe.ProbeCategories method calls.
-  void ProbeCategories(dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender response_sender);
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
-  // Handler of org.chromium.RuntimeProbe.GetKnownComponents method calls.
-  // Get known components from probe config.
-  void GetKnownComponents(dbus::MethodCall* method_call,
-                          dbus::ExportedObject::ResponseSender response_sender);
-
-  // Schedule an asynchronous D-Bus shutdown and exit the daemon.
-  void PostQuitTask();
-
-  // Underlying function that performs D-Bus shutdown. This QuitDaemonInternal()
-  // is *not* expected to be invoked while we're still processing the method
-  // call, because it will create racing on variable |bus_| (i.e.: freed before
-  // other usage depends on it.)
-  void QuitDaemonInternal();
-
-  // Because members are destructed in reverse-order that they appear in the
-  // class definition. Member variables should appear before the WeakPtrFactory,
-  // to ensure hat any WeakPtrs are invalidated before its members variable's
-  // destructors are executed, making them invalid.
-  base::WeakPtrFactory<Daemon> weak_ptr_factory_{this};
+  // Dependent classes.
+  ProbeConfigLoader* const config_loader_;
 };
 
 }  // namespace runtime_probe
+
 #endif  // RUNTIME_PROBE_DAEMON_H_

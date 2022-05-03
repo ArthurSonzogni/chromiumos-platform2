@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -50,6 +51,10 @@ source_set("lib") {
     "//runtime_probe/system",
     "//runtime_probe/utils",
   ]
+  if (!use.factory_runtime_probe) {
+    sources += [ "daemon.cc" ]
+    deps += [ ":dbus-adaptors" ]
+  }
 }
 
 executable("runtime_probe") {
@@ -59,8 +64,6 @@ executable("runtime_probe") {
   if (use.factory_runtime_probe) {
     output_name = "factory_runtime_probe"
     install_path = "bin"
-  } else {
-    sources += [ "daemon.cc" ]
   }
 }
 
@@ -88,6 +91,10 @@ if (use.test) {
       "//runtime_probe/functions:test",
       "//runtime_probe/utils:test",
     ]
+    if (!use.factory_runtime_probe) {
+      sources += [ "daemon_test.cc" ]
+      deps += [ ":dbus-adaptors" ]
+    }
   }
 }
 
@@ -129,4 +136,10 @@ if (use.factory_runtime_probe) {
              "--output-path",
            ] + outputs
   }
+}
+
+generate_dbus_adaptors("dbus-adaptors") {
+  sources = [ "dbus_bindings/org.chromium.RuntimeProbe.xml" ]
+  dbus_adaptors_out_dir = "include/runtime_probe/dbus_adaptors"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
 }

@@ -87,7 +87,8 @@ int RunAsDaemon() {
 
   LOG(INFO) << "Starting Runtime Probe. Running in daemon mode";
   runtime_probe::ContextRuntimeImpl context;
-  runtime_probe::Daemon daemon;
+  runtime_probe::ProbeConfigLoaderImpl config_loader;
+  runtime_probe::Daemon daemon{&config_loader};
   return daemon.Run();
 }
 
@@ -105,15 +106,14 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   runtime_probe::ContextRuntimeImpl context;
 #endif
 
-  const auto probe_config_loader =
-      std::make_unique<runtime_probe::ProbeConfigLoaderImpl>();
+  runtime_probe::ProbeConfigLoaderImpl probe_config_loader;
 
   std::optional<runtime_probe::ProbeConfigData> probe_config_data;
   if (config_file_path == "") {
-    probe_config_data = probe_config_loader->LoadDefault();
+    probe_config_data = probe_config_loader.LoadDefault();
   } else {
     probe_config_data =
-        probe_config_loader->LoadFromFile(base::FilePath{config_file_path});
+        probe_config_loader.LoadFromFile(base::FilePath{config_file_path});
   }
   if (!probe_config_data) {
     LOG(ERROR) << "Failed to load probe config";
