@@ -12,8 +12,15 @@
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "base/check.h"
+#include "base/files/file_path.h"
 #include "rgbkbd/internal_rgb_keyboard.h"
 #include "rgbkbd/keyboard_backlight_logger.h"
+
+namespace {
+
+constexpr char kLogFilePathForTesting[] = "/run/rgbkbd/log";
+
+}  // namespace
 
 namespace rgbkbd {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
@@ -49,7 +56,8 @@ void DBusAdaptor::SetRainbowMode() {
 void DBusAdaptor::SetTestingMode(bool enable_testing) {
   if (enable_testing) {
     if (!logger_keyboard_) {
-      logger_keyboard_ = std::make_unique<KeyboardBacklightLogger>();
+      logger_keyboard_ = std::make_unique<KeyboardBacklightLogger>(
+          base::FilePath(kLogFilePathForTesting));
     }
     rgb_keyboard_controller_.SetKeyboardClient(logger_keyboard_.get());
   } else {

@@ -70,7 +70,8 @@ std::vector<KeyColor> GetRainbowModeColorsWithoutCapsLockKeys() {
 class RgbKeyboardControllerTest : public testing::Test {
  public:
   RgbKeyboardControllerTest() {
-    logger_ = std::make_unique<KeyboardBacklightLogger>();
+    logger_ = std::make_unique<KeyboardBacklightLogger>(kTempLogFilePath);
+
     controller_ = std::make_unique<RgbKeyboardControllerImpl>(logger_.get());
   }
 

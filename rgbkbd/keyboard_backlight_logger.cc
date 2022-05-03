@@ -15,13 +15,8 @@
 
 namespace rgbkbd {
 
-namespace {
-
-const char kTempLogFilePath[] = "/tmp/rgbkbd_log";
-
-}  // namespace
-
-KeyboardBacklightLogger::KeyboardBacklightLogger() {
+KeyboardBacklightLogger::KeyboardBacklightLogger(const base::FilePath& path)
+    : log_path_(path) {
   if (!InitializeFile()) {
     LOG(ERROR) << "Failed to initially create or open log file.";
   }
@@ -49,14 +44,12 @@ RgbKeyboardCapabilities KeyboardBacklightLogger::GetRgbKeyboardCapabilities() {
 }
 
 bool KeyboardBacklightLogger::InitializeFile() {
-  const base::FilePath path(kTempLogFilePath);
-
   // If the file exists, delete it to start fresh.
-  base::DeleteFile(path);
+  base::DeleteFile(log_path_);
 
   // Create the file.
   file_ = std::make_unique<base::File>(
-      path,
+      log_path_,
       base::File::Flags::FLAG_WRITE | base::File::Flags::FLAG_CREATE_ALWAYS);
 
   if (!file_->IsValid()) {

@@ -25,7 +25,8 @@ const char kTempLogFilePath[] = "/tmp/rgbkbd_log";
 class KeyboardBacklightLoggerTest : public testing::Test {
  public:
   KeyboardBacklightLoggerTest() {
-    logger_ = std::make_unique<KeyboardBacklightLogger>();
+    logger_ = std::make_unique<KeyboardBacklightLogger>(
+        base::FilePath(kTempLogFilePath));
   }
 
   KeyboardBacklightLoggerTest(const KeyboardBacklightLoggerTest&) = delete;
