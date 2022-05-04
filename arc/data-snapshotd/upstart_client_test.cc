@@ -89,7 +89,8 @@ class UpstartClientTest : public testing::Test {
 TEST_F(UpstartClientTest, StartWorkerDaemon) {
   ExpectCall(UpstartClient::start_method_for_testing(), kFakeEnvironment);
   upstart_client()->StartWorkerDaemon(
-      kFakeEnvironment, base::Bind([](bool success) { EXPECT_TRUE(success); }));
+      kFakeEnvironment,
+      base::BindOnce([](bool success) { EXPECT_TRUE(success); }));
 }
 
 TEST_F(UpstartClientTest, StopWorkerDaemon) {

@@ -194,7 +194,7 @@ class DBusAdaptorTest : public testing::Test {
     auto* worker_bridge = CreateWorkerBridge();
     std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<bool>> response(
         new brillo::dbus_utils::MockDBusMethodResponse<bool>(nullptr));
-    response->set_return_callback(base::Bind(
+    response->set_return_callback(base::BindRepeating(
         [](bool expected_result, const bool& success) {
           EXPECT_EQ(expected_result, success);
         },
@@ -210,7 +210,7 @@ class DBusAdaptorTest : public testing::Test {
     std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<bool, bool>>
         response(new brillo::dbus_utils::MockDBusMethodResponse<bool, bool>(
             nullptr));
-    response->set_return_callback(base::Bind(
+    response->set_return_callback(base::BindRepeating(
         [](bool expected_result, bool expected_last, const bool& success,
            const bool& last) {
           EXPECT_EQ(expected_result, success);

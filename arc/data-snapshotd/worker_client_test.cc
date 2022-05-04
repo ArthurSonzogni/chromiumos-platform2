@@ -121,16 +121,16 @@ class WorkerClientTest : public testing::TestWithParam<bool> {
 TEST_P(WorkerClientTest, WaitForServiceToBeAvailable) {
   ExpectWaitForServiceToBeAvailable(result());
   worker_client()->WaitForServiceToBeAvailable(
-      base::Bind([](bool expected_result,
-                    bool success) { EXPECT_EQ(expected_result, success); },
-                 result()));
+      base::BindOnce([](bool expected_result,
+                        bool success) { EXPECT_EQ(expected_result, success); },
+                     result()));
 }
 
 TEST_F(WorkerClientTest, TakeSnapshotEmptyResponse) {
   ExpectTakeSnapshot(kFakeAccountID, kFakePrivateKey, kFakePublicKey, nullptr);
   worker_client()->TakeSnapshot(
       kFakeAccountID, kFakePrivateKey, kFakePublicKey,
-      base::Bind([](bool success) { EXPECT_FALSE(success); }));
+      base::BindOnce([](bool success) { EXPECT_FALSE(success); }));
 }
 
 TEST_P(WorkerClientTest, TakeSnapshot) {
@@ -142,16 +142,16 @@ TEST_P(WorkerClientTest, TakeSnapshot) {
                      response.get());
   worker_client()->TakeSnapshot(
       kFakeAccountID, kFakePrivateKey, kFakePublicKey,
-      base::Bind([](bool expected_result,
-                    bool success) { EXPECT_EQ(expected_result, success); },
-                 result()));
+      base::BindOnce([](bool expected_result,
+                        bool success) { EXPECT_EQ(expected_result, success); },
+                     result()));
 }
 
 TEST_F(WorkerClientTest, LoadSnapshotEmptyResponse) {
   ExpectLoadSnapshot(kFakeAccountID, nullptr);
   worker_client()->LoadSnapshot(
       kFakeAccountID,
-      base::Bind([](bool success, bool last) { EXPECT_FALSE(success); }));
+      base::BindOnce([](bool success, bool last) { EXPECT_FALSE(success); }));
 }
 
 TEST_F(WorkerClientTest, LoadSnapshotIncompleteFailure) {
@@ -160,7 +160,7 @@ TEST_F(WorkerClientTest, LoadSnapshotIncompleteFailure) {
 
   ExpectLoadSnapshot(kFakeAccountID, response.get());
   worker_client()->LoadSnapshot(kFakeAccountID,
-                                base::Bind([](bool success, bool last) {
+                                base::BindOnce([](bool success, bool last) {
                                   EXPECT_FALSE(success);
                                   EXPECT_FALSE(last);
                                 }));
@@ -168,7 +168,7 @@ TEST_F(WorkerClientTest, LoadSnapshotIncompleteFailure) {
   writer.AppendBool(true /* success */);
   ExpectLoadSnapshot(kFakeAccountID, response.get());
   worker_client()->LoadSnapshot(kFakeAccountID,
-                                base::Bind([](bool success, bool last) {
+                                base::BindOnce([](bool success, bool last) {
                                   EXPECT_FALSE(success);
                                   EXPECT_FALSE(last);
                                 }));
@@ -182,7 +182,7 @@ TEST_P(WorkerClientTest, LoadSnapshot) {
 
   ExpectLoadSnapshot(kFakeAccountID, response.get());
   worker_client()->LoadSnapshot(kFakeAccountID,
-                                base::Bind(
+                                base::BindOnce(
                                     [](bool expected_result, bool expected_last,
                                        bool success, bool last) {
                                       EXPECT_EQ(expected_result, success);
