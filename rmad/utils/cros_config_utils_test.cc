@@ -26,14 +26,14 @@ constexpr char kCrosRootKey[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
 constexpr char kCrosIdentityKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
-constexpr char kCrosIdentityWhitelabelKey[] = "custom-label-tag";
+constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
 constexpr char kModelName[] = "TestModelName";
 
 constexpr int kSkuId = 1234567890;
 constexpr char kSkuIdStr[] = "1234567890";
 
-constexpr char kWhitelabelTag[] = "TestCustomLabelTag";
+constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 
 constexpr char kJsonStoreFileName[] = "json_store_file";
 constexpr char kCrosConfigJson[] =
@@ -72,7 +72,7 @@ constexpr char kCrosConfigJson[] =
     })";
 
 // The first option of the WL list is always an empty string.
-const std::vector<std::string> kTargetWhitelabelTagList = {
+const std::vector<std::string> kTargetCustomLabelTagList = {
     "TestCustomLabelTag", "TestCustomLabelTag-2"};
 const std::vector<int> kTargetSkuIdList = {1111111112, 1111111113, 1234567890};
 
@@ -98,7 +98,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
         kCrosIdentitySkuKey, kSkuIdStr);
     fake_cros_config->SetString(
         std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
-        kCrosIdentityWhitelabelKey, kWhitelabelTag);
+        kCrosIdentityCustomLabelTagKey, kCustomLabelTag);
 
     return std::make_unique<CrosConfigUtilsImpl>(
         cros_config_path.MaybeAsASCII(), std::move(fake_cros_config));
@@ -118,12 +118,12 @@ TEST_F(CrosConfigUtilsImplTest, GetModelName_Success) {
   EXPECT_EQ(model_name, kModelName);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetWhitelabelTag_Success) {
+TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  std::string whitelabel_tag;
-  EXPECT_TRUE(cros_config_utils->GetCurrentWhitelabelTag(&whitelabel_tag));
-  EXPECT_EQ(whitelabel_tag, kWhitelabelTag);
+  std::string custom_label_tag;
+  EXPECT_TRUE(cros_config_utils->GetCurrentCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, kCustomLabelTag);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
@@ -142,12 +142,12 @@ TEST_F(CrosConfigUtilsImplTest, GetSkuIdList_Success) {
   EXPECT_EQ(sku_id_list, kTargetSkuIdList);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetWhitelabelTagList_Success) {
+TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTagList_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  std::vector<std::string> whitelabel_tag_list;
-  EXPECT_TRUE(cros_config_utils->GetWhitelabelTagList(&whitelabel_tag_list));
-  EXPECT_EQ(whitelabel_tag_list, kTargetWhitelabelTagList);
+  std::vector<std::string> custom_label_tag_list;
+  EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
+  EXPECT_EQ(custom_label_tag_list, kTargetCustomLabelTagList);
 }
 
 namespace fake {
@@ -185,14 +185,15 @@ TEST_F(FakeCrosConfigUtilsTest, GetCurrentSkuId_Nullptr) {
   EXPECT_DEATH(fake_cros_config_utils_->GetCurrentSkuId(nullptr), "");
 }
 
-TEST_F(FakeCrosConfigUtilsTest, GetCurrentWhitelabelTag_Success) {
-  std::string wl_tag;
-  EXPECT_TRUE(fake_cros_config_utils_->GetCurrentWhitelabelTag(&wl_tag));
-  EXPECT_EQ(wl_tag, "fake_whitelabel_1");
+TEST_F(FakeCrosConfigUtilsTest, GetCurrentCustomLabelTag_Success) {
+  std::string custom_label_tag;
+  EXPECT_TRUE(
+      fake_cros_config_utils_->GetCurrentCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, "fake_custom_label_1");
 }
 
-TEST_F(FakeCrosConfigUtilsTest, GetCurrentWhitelabelTag_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetCurrentWhitelabelTag(nullptr), "");
+TEST_F(FakeCrosConfigUtilsTest, GetCurrentCustomLabelTag_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetCurrentCustomLabelTag(nullptr), "");
 }
 
 TEST_F(FakeCrosConfigUtilsTest, GetSkuIdList_Success) {
@@ -206,16 +207,17 @@ TEST_F(FakeCrosConfigUtilsTest, GetSkuIdList_Nullptr) {
   EXPECT_DEATH(fake_cros_config_utils_->GetSkuIdList(nullptr), "");
 }
 
-TEST_F(FakeCrosConfigUtilsTest, GetWhitelabelTagList_Success) {
-  std::vector<std::string> wl_tag_list;
-  const std::vector<std::string> expected_wl_tag_list = {"fake_whitelabel_1",
-                                                         "fake_whitelabel_2"};
-  EXPECT_TRUE(fake_cros_config_utils_->GetWhitelabelTagList(&wl_tag_list));
-  EXPECT_EQ(wl_tag_list, expected_wl_tag_list);
+TEST_F(FakeCrosConfigUtilsTest, GetCustomLabelTagList_Success) {
+  std::vector<std::string> custom_label_tag_list;
+  const std::vector<std::string> expected_custom_label_tag_list = {
+      "fake_custom_label_1", "fake_custom_label_2"};
+  EXPECT_TRUE(
+      fake_cros_config_utils_->GetCustomLabelTagList(&custom_label_tag_list));
+  EXPECT_EQ(custom_label_tag_list, expected_custom_label_tag_list);
 }
 
-TEST_F(FakeCrosConfigUtilsTest, GetWhitelabelTagList_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetWhitelabelTagList(nullptr), "");
+TEST_F(FakeCrosConfigUtilsTest, GetCustomLabelTagList_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetCustomLabelTagList(nullptr), "");
 }
 
 }  // namespace fake

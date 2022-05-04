@@ -20,7 +20,7 @@ namespace {
 const char kVpdCmdPath[] = "/usr/sbin/vpd";
 
 constexpr char kVpdKeySerialNumber[] = "serial_number";
-constexpr char kVpdKeyWhitelabelTag[] = "custom_label_tag";
+constexpr char kVpdKeyCustomLabelTag[] = "custom_label_tag";
 constexpr char kVpdKeyRegion[] = "region";
 constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
 constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";
@@ -50,10 +50,10 @@ bool VpdUtilsImpl::GetSerialNumber(std::string* serial_number) const {
   return GetRoVpd(kVpdKeySerialNumber, serial_number);
 }
 
-bool VpdUtilsImpl::GetWhitelabelTag(std::string* whitelabel_tag) const {
-  CHECK(whitelabel_tag);
+bool VpdUtilsImpl::GetCustomLabelTag(std::string* custom_label_tag) const {
+  CHECK(custom_label_tag);
 
-  return GetRoVpd(kVpdKeyWhitelabelTag, whitelabel_tag);
+  return GetRoVpd(kVpdKeyCustomLabelTag, custom_label_tag);
 }
 
 bool VpdUtilsImpl::GetRegion(std::string* region) const {
@@ -109,8 +109,8 @@ bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
   return true;
 }
 
-bool VpdUtilsImpl::SetWhitelabelTag(const std::string& whitelabel_tag) {
-  cache_ro_[kVpdKeyWhitelabelTag] = whitelabel_tag;
+bool VpdUtilsImpl::SetCustomLabelTag(const std::string& custom_label_tag) {
+  cache_ro_[kVpdKeyCustomLabelTag] = custom_label_tag;
   return true;
 }
 
@@ -140,9 +140,9 @@ bool VpdUtilsImpl::SetStableDeviceSecret(
   return true;
 }
 
-bool VpdUtilsImpl::RemoveWhitelabelTag() {
-  cache_ro_.erase(kVpdKeyWhitelabelTag);
-  return DelRoVpd(kVpdKeyWhitelabelTag);
+bool VpdUtilsImpl::RemoveCustomLabelTag() {
+  cache_ro_.erase(kVpdKeyCustomLabelTag);
+  return DelRoVpd(kVpdKeyCustomLabelTag);
 }
 
 bool VpdUtilsImpl::FlushOutRoVpdCache() {

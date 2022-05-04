@@ -19,8 +19,8 @@ class VpdUtils {
   // Get the serial number of the device from vpd.
   virtual bool GetSerialNumber(std::string* serial_number) const = 0;
 
-  // Get the whitelabel tag of the device from vpd.
-  virtual bool GetWhitelabelTag(std::string* whitelabel_tag) const = 0;
+  // Get custom-label-tag of the device from vpd.
+  virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
 
   // Get the region of the device from vpd.
   virtual bool GetRegion(std::string* region) const = 0;
@@ -44,9 +44,9 @@ class VpdUtils {
   // Return true if it succeeds, otherwise return false.
   virtual bool SetSerialNumber(const std::string& serial_number) = 0;
 
-  // Save the whitelabel tag in the cache until flush is called and set to vpd.
+  // Save custom-label-tag in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.
-  virtual bool SetWhitelabelTag(const std::string& whitelabel_tag) = 0;
+  virtual bool SetCustomLabelTag(const std::string& custom_label_tag) = 0;
 
   // Save the region tag in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.
@@ -66,9 +66,9 @@ class VpdUtils {
   virtual bool SetStableDeviceSecret(
       const std::string& stable_device_secret) = 0;
 
-  // Remove whitelabel tag from the cache and the vpd.
+  // Remove custom-label-tag from the cache and the vpd.
   // Return true if it succeeds, otherwise return false.
-  virtual bool RemoveWhitelabelTag() = 0;
+  virtual bool RemoveCustomLabelTag() = 0;
 
   // Since setting the value to vpd requires a lot of overhead, we cache all
   // (key, value) pairs and then flush it all at once.

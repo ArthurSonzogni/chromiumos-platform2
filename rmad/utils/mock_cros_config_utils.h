@@ -21,10 +21,13 @@ class MockCrosConfigUtils : public CrosConfigUtils {
 
   MOCK_METHOD(bool, GetModelName, (std::string*), (const, override));
   MOCK_METHOD(bool, GetCurrentSkuId, (int*), (const, override));
-  MOCK_METHOD(bool, GetCurrentWhitelabelTag, (std::string*), (const, override));
+  MOCK_METHOD(bool,
+              GetCurrentCustomLabelTag,
+              (std::string*),
+              (const, override));
   MOCK_METHOD(bool, GetSkuIdList, (std::vector<int>*), (const override));
   MOCK_METHOD(bool,
-              GetWhitelabelTagList,
+              GetCustomLabelTagList,
               (std::vector<std::string>*),
               (const override));
 };

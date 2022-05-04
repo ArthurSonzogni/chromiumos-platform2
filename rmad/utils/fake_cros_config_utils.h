@@ -20,10 +20,10 @@ class FakeCrosConfigUtils : public CrosConfigUtils {
 
   bool GetModelName(std::string* model_name) const override;
   bool GetCurrentSkuId(int* sku) const override;
-  bool GetCurrentWhitelabelTag(std::string* whitelabel_tag) const override;
+  bool GetCurrentCustomLabelTag(std::string* custom_label_tag) const override;
   bool GetSkuIdList(std::vector<int>* sku_list) const override;
-  bool GetWhitelabelTagList(
-      std::vector<std::string>* whitelabel_tag_list) const override;
+  bool GetCustomLabelTagList(
+      std::vector<std::string>* custom_label_tag_list) const override;
 };
 
 }  // namespace fake

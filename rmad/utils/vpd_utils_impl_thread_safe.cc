@@ -18,11 +18,11 @@ bool VpdUtilsImplThreadSafe::GetSerialNumber(std::string* serial_number) const {
   return VpdUtilsImpl::GetSerialNumber(serial_number);
 }
 
-bool VpdUtilsImplThreadSafe::GetWhitelabelTag(
-    std::string* whitelabel_tag) const {
+bool VpdUtilsImplThreadSafe::GetCustomLabelTag(
+    std::string* custom_label_tag) const {
   base::AutoLock scoped_lock(lock_);
 
-  return VpdUtilsImpl::GetWhitelabelTag(whitelabel_tag);
+  return VpdUtilsImpl::GetCustomLabelTag(custom_label_tag);
 }
 
 bool VpdUtilsImplThreadSafe::GetRegion(std::string* region) const {
@@ -59,11 +59,11 @@ bool VpdUtilsImplThreadSafe::SetSerialNumber(const std::string& serial_number) {
   return VpdUtilsImpl::SetSerialNumber(serial_number);
 }
 
-bool VpdUtilsImplThreadSafe::SetWhitelabelTag(
-    const std::string& whitelabel_tag) {
+bool VpdUtilsImplThreadSafe::SetCustomLabelTag(
+    const std::string& custom_label_tag) {
   base::AutoLock scoped_lock(lock_);
 
-  return VpdUtilsImpl::SetWhitelabelTag(whitelabel_tag);
+  return VpdUtilsImpl::SetCustomLabelTag(custom_label_tag);
 }
 
 bool VpdUtilsImplThreadSafe::SetRegion(const std::string& region) {
@@ -93,10 +93,10 @@ bool VpdUtilsImplThreadSafe::SetStableDeviceSecret(
   return VpdUtilsImpl::SetStableDeviceSecret(stable_device_secret);
 }
 
-bool VpdUtilsImplThreadSafe::RemoveWhitelabelTag() {
+bool VpdUtilsImplThreadSafe::RemoveCustomLabelTag() {
   base::AutoLock scoped_lock(lock_);
 
-  return VpdUtilsImpl::RemoveWhitelabelTag();
+  return VpdUtilsImpl::RemoveCustomLabelTag();
 }
 
 bool VpdUtilsImplThreadSafe::FlushOutRoVpdCache() {

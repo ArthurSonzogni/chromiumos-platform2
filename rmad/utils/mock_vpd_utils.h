@@ -21,7 +21,7 @@ class MockVpdUtils : public VpdUtils {
   ~MockVpdUtils() override = default;
 
   MOCK_METHOD(bool, GetSerialNumber, (std::string*), (const, override));
-  MOCK_METHOD(bool, GetWhitelabelTag, (std::string*), (const, override));
+  MOCK_METHOD(bool, GetCustomLabelTag, (std::string*), (const, override));
   MOCK_METHOD(bool, GetRegion, (std::string*), (const, override));
   MOCK_METHOD(bool,
               GetCalibbias,
@@ -33,7 +33,7 @@ class MockVpdUtils : public VpdUtils {
               (const, override));
   MOCK_METHOD(bool, GetStableDeviceSecret, (std::string*), (const, override));
   MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
-  MOCK_METHOD(bool, SetWhitelabelTag, (const std::string&), (override));
+  MOCK_METHOD(bool, SetCustomLabelTag, (const std::string&), (override));
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
   MOCK_METHOD(bool,
               SetCalibbias,
@@ -44,7 +44,7 @@ class MockVpdUtils : public VpdUtils {
               (const std::string&, const std::string&),
               (override));
   MOCK_METHOD(bool, SetStableDeviceSecret, (const std::string&), (override));
-  MOCK_METHOD(bool, RemoveWhitelabelTag, (), (override));
+  MOCK_METHOD(bool, RemoveCustomLabelTag, (), (override));
   MOCK_METHOD(bool, FlushOutRoVpdCache, (), (override));
   MOCK_METHOD(bool, FlushOutRwVpdCache, (), (override));
   MOCK_METHOD(void, ClearRoVpdCache, (), (override));

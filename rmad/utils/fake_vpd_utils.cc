@@ -17,7 +17,7 @@
 namespace {
 
 constexpr char kVpdKeySerialNumber[] = "serial_number";
-constexpr char kVpdKeyWhitelabelTag[] = "custom_label_tag";
+constexpr char kVpdKeyCustomLabelTag[] = "custom_label_tag";
 constexpr char kVpdKeyRegion[] = "region";
 constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
 constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";
@@ -41,12 +41,12 @@ bool FakeVpdUtils::GetSerialNumber(std::string* serial_number) const {
   return json_store_->GetValue(kVpdKeySerialNumber, serial_number);
 }
 
-bool FakeVpdUtils::GetWhitelabelTag(std::string* whitelabel_tag) const {
-  CHECK(whitelabel_tag);
+bool FakeVpdUtils::GetCustomLabelTag(std::string* custom_label_tag) const {
+  CHECK(custom_label_tag);
 
-  // We can allow whitelabel-tag to be empty.
-  if (!json_store_->GetValue(kVpdKeyWhitelabelTag, whitelabel_tag)) {
-    *whitelabel_tag = "";
+  // We can allow custom_label-tag to be empty.
+  if (!json_store_->GetValue(kVpdKeyCustomLabelTag, custom_label_tag)) {
+    *custom_label_tag = "";
   }
 
   return true;
@@ -95,8 +95,8 @@ bool FakeVpdUtils::SetSerialNumber(const std::string& serial_number) {
   return json_store_->SetValue(kVpdKeySerialNumber, serial_number);
 }
 
-bool FakeVpdUtils::SetWhitelabelTag(const std::string& whitelabel_tag) {
-  return json_store_->SetValue(kVpdKeyWhitelabelTag, whitelabel_tag);
+bool FakeVpdUtils::SetCustomLabelTag(const std::string& custom_label_tag) {
+  return json_store_->SetValue(kVpdKeyCustomLabelTag, custom_label_tag);
 }
 
 bool FakeVpdUtils::SetRegion(const std::string& region) {
@@ -122,8 +122,8 @@ bool FakeVpdUtils::SetStableDeviceSecret(
   return json_store_->SetValue(kVpdKeyStableDeviceSecret, stable_device_secret);
 }
 
-bool FakeVpdUtils::RemoveWhitelabelTag() {
-  return json_store_->SetValue(kVpdKeyWhitelabelTag, "");
+bool FakeVpdUtils::RemoveCustomLabelTag() {
+  return json_store_->SetValue(kVpdKeyCustomLabelTag, "");
 }
 
 bool FakeVpdUtils::FlushOutRoVpdCache() {

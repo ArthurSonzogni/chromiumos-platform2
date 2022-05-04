@@ -59,32 +59,32 @@ TEST_F(VpdUtilsTest, GetSerialNumber_Nullptr) {
   EXPECT_DEATH(vpd_utils->GetSerialNumber(nullptr), "");
 }
 
-TEST_F(VpdUtilsTest, GetWhitelabelTag_Success) {
+TEST_F(VpdUtilsTest, GetCustomLabelTag_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(DoAll(SetArgPointee<1>("abc"), Return(true)));
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string wl_tag;
-  EXPECT_TRUE(vpd_utils->GetWhitelabelTag(&wl_tag));
-  EXPECT_EQ(wl_tag, "abc");
+  std::string custom_label_tag;
+  EXPECT_TRUE(vpd_utils->GetCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, "abc");
 }
 
-TEST_F(VpdUtilsTest, GetWhitelabelTag_Empty) {
+TEST_F(VpdUtilsTest, GetCustomLabelTag_Empty) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string wl_tag;
-  EXPECT_FALSE(vpd_utils->GetWhitelabelTag(&wl_tag));
-  EXPECT_EQ(wl_tag, "");
+  std::string custom_label_tag;
+  EXPECT_FALSE(vpd_utils->GetCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, "");
 }
 
-TEST_F(VpdUtilsTest, GetWhitelabelTag_Nullptr) {
+TEST_F(VpdUtilsTest, GetCustomLabelTag_Nullptr) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_DEATH(vpd_utils->GetWhitelabelTag(nullptr), "");
+  EXPECT_DEATH(vpd_utils->GetCustomLabelTag(nullptr), "");
 }
 
 TEST_F(VpdUtilsTest, GetRegion_Success) {
@@ -234,7 +234,7 @@ TEST_F(VpdUtilsTest, SetSerialNumber_Success) {
   EXPECT_EQ(serial_number, "abc");
 }
 
-TEST_F(VpdUtilsTest, SetWhitelabelTag_Success) {
+TEST_F(VpdUtilsTest, SetCustomLabelTag_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
@@ -246,10 +246,10 @@ TEST_F(VpdUtilsTest, SetWhitelabelTag_Success) {
       });
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string wl_tag;
-  EXPECT_TRUE(vpd_utils->SetWhitelabelTag("abc"));
-  EXPECT_TRUE(vpd_utils->GetWhitelabelTag(&wl_tag));
-  EXPECT_EQ(wl_tag, "abc");
+  std::string custom_label_tag;
+  EXPECT_TRUE(vpd_utils->SetCustomLabelTag("abc"));
+  EXPECT_TRUE(vpd_utils->GetCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, "abc");
 }
 
 TEST_F(VpdUtilsTest, SetRegion_Success) {
@@ -345,7 +345,7 @@ TEST_F(VpdUtilsTest, SetStableDeviceSecret_Success) {
   EXPECT_EQ(stable_dev_secret, "abc");
 }
 
-TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Success) {
+TEST_F(VpdUtilsTest, RemoveCustomLabelTag_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
   // The command can be in either order.
@@ -359,10 +359,10 @@ TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Success) {
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
   std::string stable_dev_secret;
-  EXPECT_TRUE(vpd_utils->RemoveWhitelabelTag());
+  EXPECT_TRUE(vpd_utils->RemoveCustomLabelTag());
 }
 
-TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Failed) {
+TEST_F(VpdUtilsTest, RemoveCustomLabelTag_Failed) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
   // The command can be in either order.
@@ -376,7 +376,7 @@ TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Failed) {
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
   std::string stable_dev_secret;
-  EXPECT_FALSE(vpd_utils->RemoveWhitelabelTag());
+  EXPECT_FALSE(vpd_utils->RemoveCustomLabelTag());
 }
 
 TEST_F(VpdUtilsTest, FlushRoSuccess) {
@@ -494,21 +494,21 @@ TEST_F(FakeVpdUtilsTest, GetSerialNumber_Nullptr) {
   EXPECT_DEATH(fake_vpd_utils_->GetSerialNumber(nullptr), "");
 }
 
-TEST_F(FakeVpdUtilsTest, SetWhitelabelTag_Success_GetWhitelabelTag_Success) {
-  EXPECT_TRUE(fake_vpd_utils_->SetWhitelabelTag("fake_whitelabel_tag"));
-  std::string whitelabel_tag;
-  EXPECT_TRUE(fake_vpd_utils_->GetWhitelabelTag(&whitelabel_tag));
-  EXPECT_EQ(whitelabel_tag, "fake_whitelabel_tag");
+TEST_F(FakeVpdUtilsTest, SetCustomLabelTag_Success_GetCustomLabelTag_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetCustomLabelTag("fake_custom_label_tag"));
+  std::string custom_label_tag;
+  EXPECT_TRUE(fake_vpd_utils_->GetCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, "fake_custom_label_tag");
 }
 
-TEST_F(FakeVpdUtilsTest, GetWhitelabelTag_Empty) {
-  std::string whitelabel_tag;
-  EXPECT_TRUE(fake_vpd_utils_->GetWhitelabelTag(&whitelabel_tag));
-  EXPECT_EQ(whitelabel_tag, "");
+TEST_F(FakeVpdUtilsTest, GetCustomLabelTag_Empty) {
+  std::string custom_label_tag;
+  EXPECT_TRUE(fake_vpd_utils_->GetCustomLabelTag(&custom_label_tag));
+  EXPECT_EQ(custom_label_tag, "");
 }
 
-TEST_F(FakeVpdUtilsTest, GetWhitelabelTag_Nullptr) {
-  EXPECT_DEATH(fake_vpd_utils_->GetWhitelabelTag(nullptr), "");
+TEST_F(FakeVpdUtilsTest, GetCustomLabelTag_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetCustomLabelTag(nullptr), "");
 }
 
 TEST_F(FakeVpdUtilsTest, SetRegion_Success_GetRegion_Success) {

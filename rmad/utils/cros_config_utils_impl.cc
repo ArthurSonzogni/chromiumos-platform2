@@ -34,7 +34,7 @@ constexpr char kCrosRootKey[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
 constexpr char kCrosIdentityKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
-constexpr char kCrosIdentityWhitelabelKey[] = "custom-label-tag";
+constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
 }  // namespace
 
@@ -68,13 +68,13 @@ bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) const {
   return base::StringToInt(sku_id_str, sku_id);
 }
 
-bool CrosConfigUtilsImpl::GetCurrentWhitelabelTag(
-    std::string* whitelabel_tag) const {
-  DCHECK(whitelabel_tag);
+bool CrosConfigUtilsImpl::GetCurrentCustomLabelTag(
+    std::string* custom_label_tag) const {
+  DCHECK(custom_label_tag);
 
   return cros_config_->GetString(
       std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
-      kCrosIdentityWhitelabelKey, whitelabel_tag);
+      kCrosIdentityCustomLabelTagKey, custom_label_tag);
 }
 
 bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) const {
@@ -96,23 +96,23 @@ bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) const {
   return true;
 }
 
-bool CrosConfigUtilsImpl::GetWhitelabelTagList(
-    std::vector<std::string>* whitelabel_tag_list) const {
-  DCHECK(whitelabel_tag_list);
+bool CrosConfigUtilsImpl::GetCustomLabelTagList(
+    std::vector<std::string>* custom_label_tag_list) const {
+  DCHECK(custom_label_tag_list);
 
   std::vector<base::Value> values;
-  if (!GetMatchedItemsFromIdentity(kCrosIdentityWhitelabelKey, &values)) {
+  if (!GetMatchedItemsFromIdentity(kCrosIdentityCustomLabelTagKey, &values)) {
     return false;
   }
 
-  whitelabel_tag_list->clear();
+  custom_label_tag_list->clear();
   for (auto& value : values) {
     if (value.is_string()) {
-      whitelabel_tag_list->push_back(value.GetString());
+      custom_label_tag_list->push_back(value.GetString());
     }
   }
 
-  sort(whitelabel_tag_list->begin(), whitelabel_tag_list->end());
+  sort(custom_label_tag_list->begin(), custom_label_tag_list->end());
   return true;
 }
 

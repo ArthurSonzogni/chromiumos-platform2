@@ -13,10 +13,10 @@ namespace {
 
 constexpr char kFakeModelName[] = "fake_model";
 constexpr int kFakeSkuId = 1;
-constexpr char kFakeWhitelabelTag[] = "fake_whitelabel_1";
+constexpr char kFakeCustomLabelTag[] = "fake_custom_label_1";
 const std::vector<int> kFakeSkuIdList = {1, 2, 3, 4};
-const std::vector<std::string> kFakeWhitelabelTagList = {"fake_whitelabel_1",
-                                                         "fake_whitelabel_2"};
+const std::vector<std::string> kFakeCustomLabelTagList = {
+    "fake_custom_label_1", "fake_custom_label_2"};
 
 }  // namespace
 
@@ -35,10 +35,10 @@ bool FakeCrosConfigUtils::GetCurrentSkuId(int* sku_id) const {
   return true;
 }
 
-bool FakeCrosConfigUtils::GetCurrentWhitelabelTag(
-    std::string* whitelabel_tag) const {
-  CHECK(whitelabel_tag);
-  *whitelabel_tag = kFakeWhitelabelTag;
+bool FakeCrosConfigUtils::GetCurrentCustomLabelTag(
+    std::string* custom_label_tag) const {
+  CHECK(custom_label_tag);
+  *custom_label_tag = kFakeCustomLabelTag;
   return true;
 }
 
@@ -48,10 +48,10 @@ bool FakeCrosConfigUtils::GetSkuIdList(std::vector<int>* sku_id_list) const {
   return true;
 }
 
-bool FakeCrosConfigUtils::GetWhitelabelTagList(
-    std::vector<std::string>* whitelabel_tag_list) const {
-  CHECK(whitelabel_tag_list);
-  *whitelabel_tag_list = kFakeWhitelabelTagList;
+bool FakeCrosConfigUtils::GetCustomLabelTagList(
+    std::vector<std::string>* custom_label_tag_list) const {
+  CHECK(custom_label_tag_list);
+  *custom_label_tag_list = kFakeCustomLabelTagList;
   return true;
 }
 

@@ -26,7 +26,7 @@ class VpdUtilsImpl : public VpdUtils {
   ~VpdUtilsImpl() override;
 
   bool GetSerialNumber(std::string* serial_number) const override;
-  bool GetWhitelabelTag(std::string* whitelabel_tag) const override;
+  bool GetCustomLabelTag(std::string* custom_label_tag) const override;
   bool GetRegion(std::string* region) const override;
   bool GetCalibbias(const std::vector<std::string>& entries,
                     std::vector<int>* calibbias) const override;
@@ -34,13 +34,13 @@ class VpdUtilsImpl : public VpdUtils {
                            std::string* gbind) const override;
   bool GetStableDeviceSecret(std::string* stable_device_secret) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
-  bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
+  bool SetCustomLabelTag(const std::string& custom_label_tag) override;
   bool SetRegion(const std::string& region) override;
   bool SetCalibbias(const std::map<std::string, int>& calibbias) override;
   bool SetRegistrationCode(const std::string& ubind,
                            const std::string& gbind) override;
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
-  bool RemoveWhitelabelTag() override;
+  bool RemoveCustomLabelTag() override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
   void ClearRoVpdCache() override;

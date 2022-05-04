@@ -100,18 +100,18 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   std::string serial_number;
   std::string region;
   uint64_t sku_id;
-  bool is_whitelabel_exist;
-  std::string whitelabel_tag;
+  bool is_custom_label_exist;
+  std::string custom_label_tag;
   std::string dram_part_number;
 
   std::vector<std::string> region_list;
   std::vector<int> sku_id_list;
-  std::vector<std::string> whitelabel_tag_list;
+  std::vector<std::string> custom_label_tag_list;
 
   // We reserve -1 for unmatched indexes.
   int32_t region_index = -1;
   int32_t sku_index = -1;
-  int32_t whitelabel_index = -1;
+  int32_t custom_label_index = -1;
 
   bool mlb_repair;
 
@@ -127,8 +127,8 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
   // For backward compatibility, we should use cros_config to get the
   // custom-label, which already handles it.
-  is_whitelabel_exist =
-      cros_config_utils_->GetCurrentWhitelabelTag(&whitelabel_tag);
+  is_custom_label_exist =
+      cros_config_utils_->GetCurrentCustomLabelTag(&custom_label_tag);
   if (!cbi_utils_->GetDramPartNum(&dram_part_number)) {
     LOG(WARNING) << "Failed to get original dram part number from cbi.";
   }
@@ -153,20 +153,20 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     sku_index = std::distance(sku_id_list.begin(), it);
   }
 
-  if (!cros_config_utils_->GetWhitelabelTagList(&whitelabel_tag_list)) {
-    LOG(ERROR) << "Failed to get the list of possible whitelabel-tags "
+  if (!cros_config_utils_->GetCustomLabelTagList(&custom_label_tag_list)) {
+    LOG(ERROR) << "Failed to get the list of possible custom-label-tags "
                   "to initialize the handler.";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
-  if (is_whitelabel_exist) {
-    if (auto it = std::find(whitelabel_tag_list.begin(),
-                            whitelabel_tag_list.end(), whitelabel_tag);
-        it != whitelabel_tag_list.end()) {
-      whitelabel_index = std::distance(whitelabel_tag_list.begin(), it);
+  if (is_custom_label_exist) {
+    if (auto it = std::find(custom_label_tag_list.begin(),
+                            custom_label_tag_list.end(), custom_label_tag);
+        it != custom_label_tag_list.end()) {
+      custom_label_index = std::distance(custom_label_tag_list.begin(), it);
     }
-    if (whitelabel_index == -1) {
-      LOG(WARNING) << "We found an unmatched whitelabel in vpd.";
-      vpd_utils_->RemoveWhitelabelTag();
+    if (custom_label_index == -1) {
+      LOG(WARNING) << "We found an unmatched custom-label-tag in vpd.";
+      vpd_utils_->RemoveCustomLabelTag();
     }
   }
 
@@ -179,7 +179,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_original_serial_number(serial_number);
   update_dev_info->set_original_region_index(region_index);
   update_dev_info->set_original_sku_index(sku_index);
-  update_dev_info->set_original_whitelabel_index(whitelabel_index);
+  update_dev_info->set_original_whitelabel_index(custom_label_index);
   update_dev_info->set_original_dram_part_number(dram_part_number);
 
   for (auto region_option : region_list) {
@@ -192,8 +192,8 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     update_dev_info->add_sku_list(static_cast<uint64_t>(sku_option));
   }
 
-  for (auto whitelabel_option : whitelabel_tag_list) {
-    update_dev_info->add_whitelabel_list(whitelabel_option);
+  for (auto custom_label_option : custom_label_tag_list) {
+    update_dev_info->add_whitelabel_list(custom_label_option);
   }
 
   update_dev_info->set_mlb_repair(mlb_repair);
@@ -251,7 +251,7 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
   }
   if (original_device_info.original_whitelabel_index() !=
       device_info.original_whitelabel_index()) {
-    LOG(ERROR) << "The read-only |original whitelabel number| of "
+    LOG(ERROR) << "The read-only |original custom-label-tag index| of "
                   "|update device info| is changed.";
     return false;
   }
@@ -278,8 +278,9 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
 
   if (!IsRepeatedFieldSame(original_device_info.whitelabel_list(),
                            device_info.whitelabel_list())) {
-    LOG(ERROR) << "The read-only |whitelabel list| of |update device info| "
-                  "is changed.";
+    LOG(ERROR)
+        << "The read-only |custom-label-tag list| of |update device info| "
+           "is changed.";
     return false;
   }
 
@@ -301,10 +302,11 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
     return false;
   }
 
-  // We can allow empty whitelabel-tag, so we reserved negative index for
-  // empty string of whitelabel-tag.
+  // We can allow empty custom-label-tag, so we reserved negative index for
+  // empty string of custom-label-tag.
   if (device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
-    LOG(ERROR) << "It is a wrong |whitelabel index| of |whitelabel list|.";
+    LOG(ERROR)
+        << "It is a wrong |custom-label-tag index| of |custom-label-tag list|.";
     return false;
   }
 
@@ -329,15 +331,16 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  // If the model does not have whitelabel, we also need to set it to an empty
-  // string.
-  std::string whitelabel = "";
+  // The default custom-label-tag is always an empty string.
+  std::string custom_label_tag = "";
   if (device_info.whitelabel_index() >= 0) {
-    whitelabel = device_info.whitelabel_list(device_info.whitelabel_index());
+    custom_label_tag =
+        device_info.whitelabel_list(device_info.whitelabel_index());
   }
+  // We need to set the custom-label-tag when the model has it.
   if (!device_info.whitelabel_list().empty() &&
-      !vpd_utils_->SetWhitelabelTag(whitelabel)) {
-    LOG(ERROR) << "Failed to save whitelabel to vpd cache.";
+      !vpd_utils_->SetCustomLabelTag(custom_label_tag)) {
+    LOG(ERROR) << "Failed to save custom_label_tag to vpd cache.";
     return false;
   }
 
