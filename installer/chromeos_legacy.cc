@@ -202,8 +202,12 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
     return false;
   }
 
+  // TODO(tbrandston): EFI boot entry management should fail installs but not
+  // updates. Until b/190430369 is fixed, however, there are some devices that
+  // will fail to install because they can't read existing Windows EFI entries.
+  // As a temporary workaround treat all boot entry management as "best effort".
   if (!UpdateEfiBootEntries(install_config))
-    return false;
+    LOG(INFO) << "Ignorning failed EFI management.";
 
   // We finished.
   return true;
