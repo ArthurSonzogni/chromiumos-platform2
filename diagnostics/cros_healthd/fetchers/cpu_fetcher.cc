@@ -310,7 +310,8 @@ bool IsProcessorBlock(const std::string& block) {
 }
 
 // Parses |processor| to obtain |processor_id|, |physical_id|, |model_name| and
-// |cpu_flags| if applicable. Returns true on success.
+// |cpu_flags| if applicable. Returns true on success. |model_name| may be empty
+// depending on the CPU architecture, and it is considered as success.
 bool ParseProcessor(const std::string& processor,
                     int& processor_id,
                     int& physical_id,
