@@ -50,13 +50,15 @@ bool Service::Initialize(scoped_refptr<dbus::Bus> bus) {
       bus->GetExportedObject(dbus::ObjectPath(kArcObbMounterServicePath));
   if (!exported_object_->ExportMethodAndBlock(
           kArcObbMounterInterface, kMountObbMethod,
-          base::Bind(&Service::MountObb, weak_ptr_factory_.GetWeakPtr()))) {
+          base::BindRepeating(&Service::MountObb,
+                              weak_ptr_factory_.GetWeakPtr()))) {
     LOG(ERROR) << "Failed to export MountObb method.";
     return false;
   }
   if (!exported_object_->ExportMethodAndBlock(
           kArcObbMounterInterface, kUnmountObbMethod,
-          base::Bind(&Service::UnmountObb, weak_ptr_factory_.GetWeakPtr()))) {
+          base::BindRepeating(&Service::UnmountObb,
+                              weak_ptr_factory_.GetWeakPtr()))) {
     LOG(ERROR) << "Failed to export UnmountObb method.";
     return false;
   }

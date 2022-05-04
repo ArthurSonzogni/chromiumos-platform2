@@ -48,7 +48,7 @@ class Volume {
     Time last_modification;
   };
 
-  using ReadDirectoryCallback = base::Callback<bool(
+  using ReadDirectoryCallback = base::RepeatingCallback<bool(
       const base::StringPiece16& name, const DirectoryEntry& entry)>;
 
   // Object to read the contents of a file.
@@ -73,7 +73,6 @@ class Volume {
     const int64_t file_size_;      // Size of the file being read.
     int64_t current_offset_;       // Current offset within the file being read.
     int64_t current_cluster_;      // Current cluster in the image file.
-
   };
 
   Volume();
