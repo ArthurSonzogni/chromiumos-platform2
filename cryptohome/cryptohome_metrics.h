@@ -490,6 +490,8 @@ inline constexpr char kCryptohomeErrorAllLocations[] =
 
 // List of possible results of fetching the USS experiment config. If fetching
 // or parsing failed the status is kError.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class FetchUssExperimentConfigStatus {
   kEnabled = 0,
   kDisabled = 1,
@@ -502,6 +504,8 @@ enum class FetchUssExperimentConfigStatus {
 // config fetcher. If the enable/disable behavior is overridden this will not be
 // reported. kNotFound means that the config fetching failed or haven't
 // completed by the time AuthSession checks the flag.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class UssExperimentFlag {
   kEnabled = 0,
   kDisabled = 1,
