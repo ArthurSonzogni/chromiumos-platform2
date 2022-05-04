@@ -38,6 +38,24 @@ class BackendTpm1 : public Backend {
     Status Prepare() override;
   };
 
+  class SealingTpm1 : public Sealing, public SubClassHelper<BackendTpm1> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<brillo::Blob> Seal(
+        const OperationPolicySetting& policy,
+        const brillo::SecureBlob& unsealed_data) override;
+    StatusOr<std::optional<ScopedKey>> PreloadSealedData(
+        const OperationPolicy& policy,
+        const brillo::Blob& sealed_data) override;
+    StatusOr<brillo::SecureBlob> Unseal(const OperationPolicy& policy,
+                                        const brillo::Blob& sealed_data,
+                                        UnsealOptions options) override;
+
+   private:
+    StatusOr<ScopedTssKey> GetAuthValueKey(
+        const brillo::SecureBlob& auth_value);
+  };
+
   class KeyManagermentTpm1 : public KeyManagerment,
                              public SubClassHelper<BackendTpm1> {
    public:
@@ -139,7 +157,7 @@ class BackendTpm1 : public Backend {
   DAMitigation* GetDAMitigation() override { return nullptr; }
   Storage* GetStorage() override { return nullptr; }
   RoData* GetRoData() override { return nullptr; }
-  Sealing* GetSealing() override { return nullptr; }
+  Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override { return nullptr; }
   Deriving* GetDeriving() override { return nullptr; }
   Encryption* GetEncryption() override { return nullptr; }
@@ -159,6 +177,7 @@ class BackendTpm1 : public Backend {
   std::optional<TssTpmContext> tss_user_context_cache_;
 
   StateTpm1 state_{*this};
+  SealingTpm1 sealing_{*this};
   KeyManagermentTpm1 key_managerment_{*this};
   ConfigTpm1 config_{*this};
   RandomTpm1 random_{*this};

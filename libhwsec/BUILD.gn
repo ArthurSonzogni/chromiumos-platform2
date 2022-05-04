@@ -136,6 +136,7 @@ source_set("hardware_abstraction_library") {
       "backend/tpm1/config.cc",
       "backend/tpm1/key_managerment.cc",
       "backend/tpm1/random.cc",
+      "backend/tpm1/sealing.cc",
       "backend/tpm1/state.cc",
     ]
     libs += [ "tspi" ]
@@ -221,6 +222,7 @@ if (use.test) {
         "backend/tpm1/config_test.cc",
         "backend/tpm1/key_managerment_test.cc",
         "backend/tpm1/random_test.cc",
+        "backend/tpm1/sealing_test.cc",
         "backend/tpm1/state_test.cc",
         "error/tpm1_error_test.cc",
         "overalls/overalls_api_test.cc",
