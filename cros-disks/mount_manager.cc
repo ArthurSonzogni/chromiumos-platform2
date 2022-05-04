@@ -253,8 +253,7 @@ MountErrorType MountManager::Unmount(const std::string& path) {
       mount_point->is_mounted())
     return error;
 
-  const bool removed = RemoveMount(mount_point);
-  DCHECK(removed);
+  RemoveMount(mount_point);
   return MOUNT_ERROR_NONE;
 }
 
