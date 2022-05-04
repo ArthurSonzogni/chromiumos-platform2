@@ -17,3 +17,5 @@ To add a new analytics resource:
 
    Feel free to replace `base::Minutes(10)` above with any reasonable time
    interval.
+
+See `ResourceCollectorStorage` for an example.

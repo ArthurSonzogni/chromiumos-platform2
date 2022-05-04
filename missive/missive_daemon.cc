@@ -18,6 +18,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "missive/analytics/resource_collector_storage.h"
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
@@ -41,14 +42,18 @@ namespace {
 constexpr const char kReportingDirectory[] = "/var/cache/reporting";
 const CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
-constexpr const size_t kCompressionThreshold = 512;
+constexpr const size_t kCompressionThreshold = 512U;
 
 }  // namespace
 
 MissiveDaemon::MissiveDaemon()
     : brillo::DBusServiceDaemon(::missive::kMissiveServiceName),
       org::chromium::MissivedAdaptor(this),
-      upload_client_(UploadClient::Create()) {}
+      upload_client_(UploadClient::Create()) {
+  analytics_registry_.Add(
+      "Storage", std::make_unique<analytics::ResourceCollectorStorage>(
+                     base::Minutes(10), base::FilePath(kReportingDirectory)));
+}
 
 MissiveDaemon::~MissiveDaemon() = default;
 
