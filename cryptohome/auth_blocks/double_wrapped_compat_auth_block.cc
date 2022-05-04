@@ -28,9 +28,10 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
-    Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager)
+    hwsec::CryptohomeFrontend* hwsec,
+    CryptohomeKeysManager* cryptohome_keys_manager)
     : SyncAuthBlock(kDoubleWrapped),
-      tpm_auth_block_(tpm, cryptohome_keys_manager),
+      tpm_auth_block_(hwsec, cryptohome_keys_manager),
       lib_scrypt_compat_auth_block_() {}
 
 CryptoStatus DoubleWrappedCompatAuthBlock::Create(

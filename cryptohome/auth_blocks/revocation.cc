@@ -82,9 +82,9 @@ bool DeriveSecret(const brillo::SecureBlob& key,
 
 }  // namespace
 
-bool IsRevocationSupported(Tpm* tpm) {
-  return tpm->GetLECredentialBackend() &&
-         tpm->GetLECredentialBackend()->IsSupported();
+bool IsRevocationSupported(hwsec::CryptohomeFrontend* hwsec) {
+  hwsec::StatusOr<bool> enabled = hwsec->IsPinWeaverEnabled();
+  return enabled.ok() && *enabled;
 }
 
 CryptoError Create(LECredentialManager* le_manager,

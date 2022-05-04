@@ -12,6 +12,7 @@
 
 #include <base/gtest_prod_util.h>
 #include <base/threading/thread.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
@@ -24,7 +25,7 @@ namespace cryptohome {
 
 class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
  public:
-  TpmBoundToPcrAuthBlock(Tpm* tpm,
+  TpmBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                          CryptohomeKeysManager* cryptohome_keys_manager);
   TpmBoundToPcrAuthBlock(const TpmBoundToPcrAuthBlock&) = delete;
   TpmBoundToPcrAuthBlock& operator=(const TpmBoundToPcrAuthBlock&) = delete;
@@ -46,7 +47,7 @@ class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
                                     brillo::SecureBlob* vkk_iv,
                                     brillo::SecureBlob* vkk_key) const;
 
-  Tpm* tpm_;
+  hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;
 

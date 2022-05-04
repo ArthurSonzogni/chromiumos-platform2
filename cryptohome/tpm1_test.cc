@@ -8,13 +8,16 @@
 
 #include <iterator>
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/test_utils/tpm1/test_fixture.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -43,7 +46,7 @@ namespace cryptohome {
 
 class TpmImplTest : public ::hwsec::Tpm1HwsecTest {
  public:
-  TpmImplTest() = default;
+  TpmImplTest() : tpm_(std::make_unique<hwsec::MockCryptohomeFrontend>()) {}
   ~TpmImplTest() override = default;
 
   void SetUp() override {

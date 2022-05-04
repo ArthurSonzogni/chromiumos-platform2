@@ -42,30 +42,22 @@ using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
-namespace {
-
-cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoTpmBackend(
-    Tpm* tpm) {
-  cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend =
-      tpm->GetRecoveryCryptoBackend();
-  if (!tpm_backend) {
-    LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
-    return nullptr;
-  }
-  return tpm_backend;
-}
-
-}  // namespace
-
-CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(Tpm* tpm)
-    : CryptohomeRecoveryAuthBlock(tpm, nullptr) {}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
-    Tpm* tpm, LECredentialManager* le_manager)
+    hwsec::CryptohomeFrontend* hwsec,
+    cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend)
+    : CryptohomeRecoveryAuthBlock(hwsec, tpm_backend, nullptr) {}
+
+CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
+    hwsec::CryptohomeFrontend* hwsec,
+    cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+    LECredentialManager* le_manager)
     : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery),
-      tpm_(tpm),
+      hwsec_(hwsec),
+      tpm_backend_(tpm_backend),
       le_manager_(le_manager) {
-  DCHECK(tpm_);
+  DCHECK(hwsec_);
+  DCHECK(tpm_backend_);
 }
 
 CryptoStatus CryptohomeRecoveryAuthBlock::Create(
@@ -84,7 +76,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(tpm_));
+      RecoveryCryptoImpl::Create(tpm_backend_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
@@ -153,7 +145,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
 
-  if (revocation::IsRevocationSupported(tpm_)) {
+  if (revocation::IsRevocationSupported(hwsec_)) {
     DCHECK(le_manager_);
     RevocationState revocation_state;
     CryptoError err =
@@ -225,7 +217,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob salt = auth_state->salt.value();
 
   std::unique_ptr<RecoveryCryptoImpl> recovery =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(tpm_));
+      RecoveryCryptoImpl::Create(tpm_backend_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
@@ -277,7 +269,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   key_blobs->chaps_iv = vkk_iv;
 
   if (state.revocation_state.has_value()) {
-    DCHECK(revocation::IsRevocationSupported(tpm_));
+    DCHECK(revocation::IsRevocationSupported(hwsec_));
     DCHECK(le_manager_);
     CryptoError crypto_err = revocation::Derive(
         le_manager_, state.revocation_state.value(), key_blobs);

@@ -336,26 +336,27 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 
     case AuthBlockType::kDoubleWrappedCompat:
       return std::make_unique<DoubleWrappedCompatAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kTpmEcc:
       return std::make_unique<TpmEccAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kTpmBoundToPcr:
       return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kTpmNotBoundToPcr:
       return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kLibScryptCompat:
       return std::make_unique<LibScryptCompatAuthBlock>();
 
     case AuthBlockType::kCryptohomeRecovery:
       return std::make_unique<CryptohomeRecoveryAuthBlock>(
-          crypto_->tpm(), crypto_->le_manager());
+          crypto_->tpm()->GetHwsec(),
+          crypto_->tpm()->GetRecoveryCryptoBackend(), crypto_->le_manager());
 
     case AuthBlockType::kScrypt:
       return std::make_unique<ScryptAuthBlock>();
@@ -390,8 +391,8 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     case AuthBlockType::kChallengeCredential:
       if (IsChallengeCredentialReady()) {
         return std::make_unique<AsyncChallengeCredentialAuthBlock>(
-            crypto_->tpm(), challenge_credentials_helper_,
-            std::move(key_challenge_service_), username_.value());
+            challenge_credentials_helper_, std::move(key_challenge_service_),
+            username_.value());
       }
       LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
                     "KeyChallengeService, or account id in AuthBlockUtility";
@@ -405,22 +406,22 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     case AuthBlockType::kDoubleWrappedCompat:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<DoubleWrappedCompatAuthBlock>(
-              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kTpmEcc:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmEccAuthBlock>(
-              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kTpmBoundToPcr:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmBoundToPcrAuthBlock>(
-              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kTpmNotBoundToPcr:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmNotBoundToPcrAuthBlock>(
-              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kLibScryptCompat:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(

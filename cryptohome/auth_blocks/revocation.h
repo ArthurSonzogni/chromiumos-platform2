@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_REVOCATION_H_
 #define CRYPTOHOME_AUTH_BLOCKS_REVOCATION_H_
 
+#include <libhwsec/frontend/cryptohome/frontend.h>
+
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/key_objects.h"
@@ -14,7 +16,7 @@
 namespace cryptohome {
 namespace revocation {
 
-bool IsRevocationSupported(Tpm* tpm);
+bool IsRevocationSupported(hwsec::CryptohomeFrontend* hwsec);
 
 // Derives a new key from `in_out_key_blobs.vkk_key` and saves it back to
 // `in_out_key_blobs.vkk_key`. Saves information that is required for key

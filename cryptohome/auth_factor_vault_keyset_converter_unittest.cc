@@ -19,6 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
@@ -35,6 +36,9 @@
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnOk;
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::NiceMock;
 
 namespace {
@@ -73,6 +77,20 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     // Setup salt for brillo functions.
     EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsEnabled())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsReady())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetManufacturer())
+        .WillRepeatedly(ReturnValue(0x43524f53));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetAuthValue(_, _))
+        .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+        .WillRepeatedly(ReturnValue(brillo::Blob()));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
+        .WillRepeatedly(ReturnValue(brillo::Blob()));
+
     crypto_.Init(&tpm_, &cryptohome_keys_manager_);
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());

@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/platform.h"
@@ -18,7 +19,10 @@ namespace cryptohome {
 
 class CryptohomeKeyLoader {
  public:
-  CryptohomeKeyLoader(Tpm* tpm, Platform* platform, const base::FilePath& path);
+  CryptohomeKeyLoader(hwsec::CryptohomeFrontend* frontend,
+                      Platform* platform,
+                      hwsec::KeyAlgoType key_algo,
+                      const base::FilePath& path);
   CryptohomeKeyLoader(const CryptohomeKeyLoader&) = delete;
   CryptohomeKeyLoader& operator=(const CryptohomeKeyLoader&) = delete;
 
@@ -26,27 +30,33 @@ class CryptohomeKeyLoader {
 
   virtual bool HasCryptohomeKey();
 
-  virtual TpmKeyHandle GetCryptohomeKey();
-
-  virtual bool ReloadCryptohomeKey();
+  virtual hwsec::Key GetCryptohomeKey();
 
   virtual void Init();
 
  protected:
-  Tpm* GetTpm() { return tpm_; }
+  // constructor for mock testing purpose.
+  CryptohomeKeyLoader()
+      : hwsec_(nullptr),
+        platform_(nullptr),
+        key_algo_(hwsec::KeyAlgoType::kRsa),
+        cryptohome_key_path_() {}
 
  private:
-  virtual bool CreateCryptohomeKey(brillo::SecureBlob* wrapped_key) = 0;
-  bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
+  hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult>
+  CreateCryptohomeKey();
 
-  hwsec::Status LoadCryptohomeKey(ScopedKeyHandle* key_handle);
+  hwsec::Status SaveCryptohomeKey(const brillo::Blob& wrapped_key);
 
-  bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
+  hwsec::StatusOr<hwsec::ScopedKey> LoadCryptohomeKey();
 
-  Tpm* tpm_ = nullptr;
-  Platform* platform_ = nullptr;
+  hwsec::StatusOr<hwsec::ScopedKey> LoadOrCreateCryptohomeKey();
+
+  hwsec::CryptohomeFrontend* const hwsec_;
+  Platform* const platform_;
+  const hwsec::KeyAlgoType key_algo_;
   const base::FilePath cryptohome_key_path_;
-  ScopedKeyHandle cryptohome_key_;
+  std::optional<hwsec::ScopedKey> cryptohome_key_;
 };
 
 }  // namespace cryptohome

@@ -84,14 +84,13 @@ class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
     auto mock_key_challenge_service =
         std::make_unique<NiceMock<MockKeyChallengeService>>();
     auth_block_ = std::make_unique<AsyncChallengeCredentialAuthBlock>(
-        &tpm_, &challenge_credentials_helper_,
-        std::move(mock_key_challenge_service), kFakeAccountId);
+        &challenge_credentials_helper_, std::move(mock_key_challenge_service),
+        kFakeAccountId);
   }
 
  protected:
   base::test::TaskEnvironment task_environment_;
 
-  NiceMock<MockTpm> tpm_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   const std::string kFakeAccountId = "account_id";
   std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;

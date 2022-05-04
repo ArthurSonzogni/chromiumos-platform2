@@ -131,17 +131,17 @@ class FallbackVaultKeyset : public VaultKeyset {
 
     if (use_tpm && with_user_auth && has_ecc_key) {
       return std::make_unique<TpmEccAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
     }
 
     if (use_tpm && with_user_auth && !has_ecc_key) {
       return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
     }
 
     if (use_tpm && !with_user_auth) {
       return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
     }
 
     return std::make_unique<LibScryptCompatAuthBlock>();

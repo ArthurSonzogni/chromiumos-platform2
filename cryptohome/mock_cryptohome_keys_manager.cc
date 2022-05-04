@@ -10,10 +10,9 @@ using testing::Return;
 namespace cryptohome {
 
 MockCryptohomeKeysManager::MockCryptohomeKeysManager()
-    : CryptohomeKeysManager(nullptr, nullptr) {
+    : CryptohomeKeysManager() {
   ON_CALL(*this, Init()).WillByDefault(Return());
   ON_CALL(*this, HasAnyCryptohomeKey()).WillByDefault(Return(true));
-  ON_CALL(*this, ReloadAllCryptohomeKeys()).WillByDefault(Return(true));
   ON_CALL(*this, GetKeyLoader(_))
       .WillByDefault(Return(&mock_cryptohome_key_loader_));
 }

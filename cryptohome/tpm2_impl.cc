@@ -27,6 +27,7 @@
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm2_error.h>
 #include <libhwsec/status.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
@@ -179,10 +180,16 @@ std::map<uint32_t, std::string> ToStrPcrMap(
 }
 }  // namespace
 
-Tpm2Impl::Tpm2Impl(TrunksFactory* factory,
+Tpm2Impl::Tpm2Impl()
+    : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
+      hwsec_(hwsec_factory_->GetCryptohomeFrontend()) {}
+
+Tpm2Impl::Tpm2Impl(std::unique_ptr<hwsec::CryptohomeFrontend> hwsec,
+                   trunks::TrunksFactory* factory,
                    tpm_manager::TpmManagerUtility* tpm_manager_utility)
     : tpm_manager_utility_(tpm_manager_utility),
-      has_external_trunks_context_(true) {
+      has_external_trunks_context_(true),
+      hwsec_(std::move(hwsec)) {
   external_trunks_context_.factory = factory;
   external_trunks_context_.tpm_state = factory->GetTpmState();
   external_trunks_context_.tpm_utility = factory->GetTpmUtility();
@@ -923,8 +930,7 @@ hwsec::Status Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
   return nullptr;
 }
 
-void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
-                         TpmStatusInfo* status) {
+void Tpm2Impl::GetStatus(std::optional<hwsec::Key> key, TpmStatusInfo* status) {
   memset(status, 0, sizeof(TpmStatusInfo));
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -956,25 +962,26 @@ void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
     SecureBlob data(16);
     SecureBlob password(16);
     SecureBlob salt(8);
-    SecureBlob data_out(16);
     memset(data.data(), 'A', data.size());
     memset(password.data(), 'B', password.size());
     memset(salt.data(), 'C', salt.size());
-    memset(data_out.data(), 'D', data_out.size());
-    SecureBlob aes_key;
-    PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
-    if (hwsec::Status err =
-            EncryptBlob(key.value(), data, aes_key, &data_out)) {
-      LOG(ERROR) << __func__ << ": Failed to encrypt blob: " << err;
+
+    hwsec::StatusOr<brillo::Blob> data_out =
+        GetHwsec()->Encrypt(key.value(), data);
+    if (!data_out.ok()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to encrypt blob: " << data_out.status();
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (hwsec::Status err =
-            DecryptBlob(key.value(), data_out, aes_key, &data)) {
-      LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << err;
+    hwsec::StatusOr<brillo::SecureBlob> data_final =
+        GetHwsec()->Decrypt(key.value(), *data_out);
+    if (!data_final.ok()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to decrypt blob: " << data_final.status();
       return;
     }
     status->can_decrypt = true;
@@ -1348,6 +1355,10 @@ std::map<uint32_t, brillo::Blob> Tpm2Impl::GetPcrMap(
   }
 
   return pcr_map;
+}
+
+hwsec::CryptohomeFrontend* Tpm2Impl::GetHwsec() {
+  return hwsec_.get();
 }
 
 }  // namespace cryptohome

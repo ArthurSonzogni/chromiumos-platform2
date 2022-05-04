@@ -29,16 +29,13 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 AsyncChallengeCredentialAuthBlock::AsyncChallengeCredentialAuthBlock(
-    Tpm* tpm,
     ChallengeCredentialsHelper* challenge_credentials_helper,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const std::string& account_id)
     : AuthBlock(kSignatureChallengeProtected),
-      tpm_(tpm),
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_(std::move(key_challenge_service)),
       account_id_(account_id) {
-  CHECK(tpm_);
   CHECK(challenge_credentials_helper_);
   CHECK(key_challenge_service_);
 }

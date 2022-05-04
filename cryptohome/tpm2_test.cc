@@ -29,6 +29,7 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -107,11 +108,15 @@ class Tpm2Test : public testing::Test {
     factory_.set_hmac_session(&mock_hmac_session_);
     factory_.set_policy_session(&mock_policy_session_);
     factory_.set_trial_session(&mock_trial_session_);
-    tpm_ = std::make_unique<Tpm2Impl>(&factory_, &mock_tpm_manager_utility_);
+    auto hwsec = std::make_unique<hwsec::MockCryptohomeFrontend>();
+    hwsec_ = hwsec.get();
+    tpm_ = std::make_unique<Tpm2Impl>(std::move(hwsec), &factory_,
+                                      &mock_tpm_manager_utility_);
   }
 
  protected:
   std::unique_ptr<Tpm2Impl> tpm_;
+  hwsec::MockCryptohomeFrontend* hwsec_;
   NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
   NiceMock<trunks::MockBlobParser> mock_blob_parser_;
   NiceMock<trunks::MockTpm> mock_tpm_;

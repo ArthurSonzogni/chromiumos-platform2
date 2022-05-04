@@ -33,6 +33,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm1_error.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/overalls/overalls_api.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -161,7 +162,19 @@ const TSS_RESULT kKeyNotFoundError = (TSS_E_PS_KEY_NOTFOUND | TSS_LAYER_TCS);
 
 TpmImpl::TpmImpl()
     : srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
-      owner_password_() {
+      owner_password_(),
+      hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
+      hwsec_(hwsec_factory_->GetCryptohomeFrontend()) {
+  TSS_HCONTEXT context_handle = ConnectContext();
+  if (context_handle) {
+    tpm_context_.reset(0, context_handle);
+  }
+}
+
+TpmImpl::TpmImpl(std::unique_ptr<hwsec::CryptohomeFrontend> hwsec)
+    : srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
+      owner_password_(),
+      hwsec_(std::move(hwsec)) {
   TSS_HCONTEXT context_handle = ConnectContext();
   if (context_handle) {
     tpm_context_.reset(0, context_handle);
@@ -255,7 +268,7 @@ bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
   return true;
 }
 
-void TpmImpl::GetStatus(std::optional<TpmKeyHandle> key_handle,
+void TpmImpl::GetStatus(std::optional<hwsec::Key> key_handle,
                         TpmStatusInfo* status) {
   memset(status, 0, sizeof(TpmStatusInfo));
   status->this_instance_has_context = (tpm_context_.value() != 0);
@@ -310,25 +323,26 @@ void TpmImpl::GetStatus(std::optional<TpmKeyHandle> key_handle,
     SecureBlob data(16);
     SecureBlob password(16);
     SecureBlob salt(8);
-    SecureBlob data_out(16);
     memset(data.data(), 'A', data.size());
     memset(password.data(), 'B', password.size());
     memset(salt.data(), 'C', salt.size());
-    memset(data_out.data(), 'D', data_out.size());
-    SecureBlob key;
-    PasskeyToAesKey(password, salt, 13, &key, NULL);
-    if (hwsec::Status err =
-            EncryptBlob(key_handle.value(), data, key, &data_out)) {
-      LOG(ERROR) << __func__ << ": Failed to encrypt blob: " << err;
+
+    hwsec::StatusOr<brillo::Blob> data_out =
+        GetHwsec()->Encrypt(key_handle.value(), data);
+    if (!data_out.ok()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to encrypt blob: " << data_out.status();
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (hwsec::Status err =
-            DecryptBlob(key_handle.value(), data_out, key, &data)) {
-      LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << err;
+    hwsec::StatusOr<brillo::SecureBlob> data_final =
+        GetHwsec()->Decrypt(key_handle.value(), *data_out);
+    if (!data_final.ok()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to decrypt blob: " << data_final.status();
       return;
     }
     status->can_decrypt = true;
@@ -1897,6 +1911,10 @@ hwsec::Status TpmImpl::GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
   // For TPM1.2, the |auth_value| should be the same as |pass_blob|.
   *auth_value = pass_blob;
   return nullptr;
+}
+
+hwsec::CryptohomeFrontend* TpmImpl::GetHwsec() {
+  return hwsec_.get();
 }
 
 }  // namespace cryptohome

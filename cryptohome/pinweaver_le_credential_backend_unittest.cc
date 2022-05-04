@@ -4,14 +4,23 @@
 
 #include "cryptohome/pinweaver_le_credential_backend.h"
 
+#include <memory>
 #include <string>
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <tpm_manager/client/mock_tpm_manager_utility.h>
+#include <trunks/mock_authorization_delegate.h>
+#include <trunks/mock_hmac_session.h>
+#include <trunks/mock_tpm_utility.h>
 #include <trunks/pinweaver.pb.h>
 #include <trunks/tpm_pinweaver.h>
+#include <trunks/trunks_factory_for_test.h>
 
 #include "cryptohome/tpm2_impl.h"
+
+using testing::NiceMock;
 
 namespace cryptohome {
 
@@ -97,8 +106,15 @@ class MetadataBuilder {
 TEST(PinweaverLECredentialBackend, NeedsPCRBinding) {
   // The field valid_pcr_value_t was added in 0.1
   // Version 0.0 should always return true
+  trunks::TrunksFactoryForTest trunks_factory;
+  NiceMock<trunks::MockTpmUtility> mock_tpm_utility;
+  NiceMock<trunks::MockHmacSession> mock_hmac_session;
+  NiceMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility;
+  trunks_factory.set_tpm_utility(&mock_tpm_utility);
+  trunks_factory.set_hmac_session(&mock_hmac_session);
+  Tpm2Impl tpm(std::make_unique<hwsec::MockCryptohomeFrontend>(),
+               &trunks_factory, &mock_tpm_manager_utility);
 
-  Tpm2Impl tpm;
   PinweaverLECredentialBackend backend(&tpm);
 
   {
@@ -146,7 +162,15 @@ TEST(PinweaverLECredentialBackend, NeedsPCRBinding) {
 TEST(PinweaverLECredentialBackend, GetWrongAuthAttempts) {
   // No changes should affect GetWrongAuthAttempts
 
-  Tpm2Impl tpm;
+  trunks::TrunksFactoryForTest trunks_factory;
+  NiceMock<trunks::MockTpmUtility> mock_tpm_utility;
+  NiceMock<trunks::MockHmacSession> mock_hmac_session;
+  NiceMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility;
+  trunks_factory.set_tpm_utility(&mock_tpm_utility);
+  trunks_factory.set_hmac_session(&mock_hmac_session);
+  Tpm2Impl tpm(std::make_unique<hwsec::MockCryptohomeFrontend>(),
+               &trunks_factory, &mock_tpm_manager_utility);
+
   PinweaverLECredentialBackend backend(&tpm);
 
   {

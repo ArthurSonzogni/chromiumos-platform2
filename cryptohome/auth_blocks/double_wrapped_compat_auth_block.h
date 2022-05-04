@@ -22,7 +22,7 @@ class CryptohomeKeysManager;
 
 class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
  public:
-  DoubleWrappedCompatAuthBlock(Tpm* tpm,
+  DoubleWrappedCompatAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                                CryptohomeKeysManager* cryptohome_keys_manager);
   DoubleWrappedCompatAuthBlock(const DoubleWrappedCompatAuthBlock&) = delete;
   DoubleWrappedCompatAuthBlock& operator=(const DoubleWrappedCompatAuthBlock&) =

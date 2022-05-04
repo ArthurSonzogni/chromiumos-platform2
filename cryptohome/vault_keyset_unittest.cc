@@ -53,6 +53,7 @@ using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::SecureBlobToHex;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::OkStatus;
 
 using ::testing::_;
@@ -641,23 +642,23 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
   ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
-TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
-  // Test to have Decrypt() fail because of CE_TPM_COMM_ERROR.
+TEST_F(VaultKeysetTest, DecryptTPMReboot) {
+  // Test to have Decrypt() fail because of CE_TPM_REBOOT.
   // Setup
-  auto mock_loader = std::make_unique<MockCryptohomeKeyLoader>();
-  MockCryptohomeKeyLoader* mock_loader_ptr = mock_loader.get();
-  std::vector<
-      std::pair<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>>
-      mock_loaders;
-  mock_loaders.push_back(
-      std::make_pair(CryptohomeKeyType::kRSA, std::move(mock_loader)));
-  auto cryptohome_keys_manager =
-      std::make_unique<CryptohomeKeysManager>(std::move(mock_loaders));
-
-  crypto_.Init(&tpm_, cryptohome_keys_manager.get());
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  crypto_.Init(&tpm_, &cryptohome_keys_manager);
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), GetManufacturer())
+      .WillRepeatedly(ReturnValue(0x43524f53));
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), GetAuthValue(_, _))
+      .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+      .WillRepeatedly(ReturnValue(brillo::Blob()));
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
+      .WillRepeatedly(ReturnValue(brillo::Blob()));
 
   SecureBlob bytes;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
@@ -680,16 +681,17 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
 
-  EXPECT_CALL(*mock_loader_ptr, HasCryptohomeKey())
+  EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
+              HasCryptohomeKey())
       .WillRepeatedly(Return(false));
 
   // DecryptVaultKeyset within Decrypt fails
-  // and passes error CryptoError::CE_TPM_COMM_ERROR
+  // and passes error CryptoError::CE_TPM_REBOOT
   // Decrypt -> DecryptVaultKeyset -> Derive
   // -> CheckTPMReadiness -> HasCryptohomeKey(fails and error propagates up)
   CryptoStatus status = new_keyset.Decrypt(key, false);
   ASSERT_FALSE(status.ok());
-  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_COMM_ERROR);
+  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_REBOOT);
 }
 
 TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {

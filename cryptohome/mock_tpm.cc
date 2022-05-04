@@ -48,6 +48,7 @@ MockTpm::MockTpm() {
       .WillByDefault(ReturnError<TPMErrorBase>());
   ON_CALL(*this, GetEccAuthValue(_, _, _))
       .WillByDefault(ReturnError<TPMErrorBase>());
+  ON_CALL(*this, GetHwsec()).WillByDefault(Return(&hwsec_));
 }
 
 MockTpm::~MockTpm() {}

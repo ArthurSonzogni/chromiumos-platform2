@@ -9,8 +9,13 @@
 #include <utility>
 #include <vector>
 
-#include "cryptohome/mock_cryptohome_key_loader.h"
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/mock_cryptohome_key_loader.h"
+#include "cryptohome/mock_platform.h"
+
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::AtMost;
 using ::testing::Invoke;
@@ -36,10 +41,13 @@ class CryptohomeKeysManagerTest : public ::testing::Test {
   }
 
   void InitKeysManager() {
-    cryptohome_keys_manager_ =
-        std::make_unique<CryptohomeKeysManager>(std::move(mock_loaders_));
+    cryptohome_keys_manager_ = std::make_unique<CryptohomeKeysManager>(
+        &hwsec_, std::move(mock_loaders_));
   }
 
+ protected:
+  hwsec::MockCryptohomeFrontend hwsec_;
+  MockPlatform platform_;
   std::unique_ptr<CryptohomeKeysManager> cryptohome_keys_manager_;
 
  private:
@@ -47,6 +55,15 @@ class CryptohomeKeysManagerTest : public ::testing::Test {
       std::pair<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>>
       mock_loaders_;
 };
+
+TEST_F(CryptohomeKeysManagerTest, Constructor) {
+  EXPECT_CALL(hwsec_, GetSupportedAlgo())
+      .WillOnce(ReturnValue(absl::flat_hash_set<hwsec::KeyAlgoType>(
+          {hwsec::KeyAlgoType::kRsa, hwsec::KeyAlgoType::kEcc})));
+
+  cryptohome_keys_manager_ =
+      std::make_unique<CryptohomeKeysManager>(&hwsec_, &platform_);
+}
 
 TEST_F(CryptohomeKeysManagerTest, GetKeyLoaderSuccess) {
   MockCryptohomeKeyLoader* mock_rsa_loader =
@@ -95,32 +112,6 @@ TEST_F(CryptohomeKeysManagerTest, Init) {
   EXPECT_CALL(*mock_rsa_loader, Init()).Times(1);
   EXPECT_CALL(*mock_ecc_loader, Init()).Times(1);
   cryptohome_keys_manager_->Init();
-}
-
-TEST_F(CryptohomeKeysManagerTest, ReloadAllCryptohomeKeys) {
-  MockCryptohomeKeyLoader* mock_rsa_loader =
-      AddMockLoader(CryptohomeKeyType::kRSA);
-  MockCryptohomeKeyLoader* mock_ecc_loader =
-      AddMockLoader(CryptohomeKeyType::kECC);
-  InitKeysManager();
-  EXPECT_CALL(*mock_rsa_loader, ReloadCryptohomeKey()).WillOnce(Return(true));
-  EXPECT_CALL(*mock_ecc_loader, ReloadCryptohomeKey()).WillOnce(Return(true));
-  EXPECT_TRUE(cryptohome_keys_manager_->ReloadAllCryptohomeKeys());
-}
-
-TEST_F(CryptohomeKeysManagerTest, ReloadAllCryptohomeKeysFail) {
-  MockCryptohomeKeyLoader* mock_rsa_loader =
-      AddMockLoader(CryptohomeKeyType::kRSA);
-  MockCryptohomeKeyLoader* mock_ecc_loader =
-      AddMockLoader(CryptohomeKeyType::kECC);
-  InitKeysManager();
-  EXPECT_CALL(*mock_rsa_loader, ReloadCryptohomeKey())
-      .Times(AtMost(1))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_ecc_loader, ReloadCryptohomeKey())
-      .Times(AtMost(1))
-      .WillRepeatedly(Return(false));
-  EXPECT_FALSE(cryptohome_keys_manager_->ReloadAllCryptohomeKeys());
 }
 
 TEST_F(CryptohomeKeysManagerTest, HasAnyCryptohomeKey) {

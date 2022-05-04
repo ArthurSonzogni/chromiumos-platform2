@@ -46,7 +46,6 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptohome_rsa_key_loader.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
@@ -376,7 +375,7 @@ bool UserDataAuth::Initialize() {
   // before Initialize() is called.
   if (!cryptohome_keys_manager_) {
     default_cryptohome_keys_manager_.reset(
-        new CryptohomeKeysManager(tpm_, platform_));
+        new CryptohomeKeysManager(tpm_->GetHwsec(), platform_));
     cryptohome_keys_manager_ = default_cryptohome_keys_manager_.get();
   }
 

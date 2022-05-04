@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_AUTH_BLOCK_H_
 
+#include <libhwsec/frontend/cryptohome/frontend.h>
+
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto.h"
@@ -20,9 +22,14 @@ namespace cryptohome {
 class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
  public:
   // the `tpm` pointer must outlive `this`
-  explicit CryptohomeRecoveryAuthBlock(Tpm* tpm);
-  explicit CryptohomeRecoveryAuthBlock(Tpm* tpm,
-                                       LECredentialManager* le_manager);
+  explicit CryptohomeRecoveryAuthBlock(
+      hwsec::CryptohomeFrontend* hwsec,
+      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend);
+  explicit CryptohomeRecoveryAuthBlock(
+      hwsec::CryptohomeFrontend* hwsec,
+      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+      LECredentialManager* le_manager);
+
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
   CryptohomeRecoveryAuthBlock& operator=(const CryptohomeRecoveryAuthBlock&) =
       delete;
@@ -43,9 +50,10 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
                       KeyBlobs* key_blobs) override;
 
  private:
-  Tpm* const tpm_;
+  hwsec::CryptohomeFrontend* const hwsec_;
+  cryptorecovery::RecoveryCryptoTpmBackend* const tpm_backend_;
   // Low Entropy credentials manager, needed for revocation support.
-  LECredentialManager* le_manager_;
+  LECredentialManager* const le_manager_;
 };
 
 }  // namespace cryptohome

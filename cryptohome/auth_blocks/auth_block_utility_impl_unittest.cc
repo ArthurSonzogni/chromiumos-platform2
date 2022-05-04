@@ -17,6 +17,8 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -52,6 +54,8 @@ using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnValue;
+using ::hwsec_foundation::status::StatusChainOr;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
@@ -81,6 +85,10 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
         &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     system_salt_ =
         brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
+    ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, GetPubkeyHash(_))
+        .WillByDefault(ReturnValue(brillo::BlobFromString("public key hash")));
   }
 
  protected:
@@ -89,6 +97,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   brillo::SecureBlob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockTpm> tpm_;
+  hwsec::MockCryptohomeFrontend& hwsec_ = *tpm_.get_mock_hwsec();
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -184,14 +193,12 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
   brillo::SecureBlob auth_value(256, 'a');
-  EXPECT_CALL(tpm_, GetAuthValue(_, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key),
-                      SetArgPointee<2>(auth_value),
-                      ReturnError<TPMErrorBase>()));
-  EXPECT_CALL(tpm_, SealToPcrWithAuthorization(_, auth_value, _, _))
-      .Times(Exactly(2));
-  ON_CALL(tpm_, SealToPcrWithAuthorization(_, _, _, _))
-      .WillByDefault(ReturnError<TPMErrorBase>());
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+      .WillOnce(
+          DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)));
+  EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _)).Times(Exactly(2));
+  ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+      .WillByDefault(ReturnValue(brillo::Blob()));
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
@@ -227,9 +234,11 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
-  EXPECT_CALL(tpm_, PreloadSealedData(_, _)).Times(Exactly(1));
-  EXPECT_CALL(tpm_, GetAuthValue(_, _, _)).Times(Exactly(1));
-  EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, _, _, _)).Times(Exactly(1));
+  EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+      .WillOnce(ReturnValue(brillo::SecureBlob()));
+  EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
+      .WillOnce(ReturnValue(brillo::SecureBlob()));
 
   TpmBoundToPcrAuthBlockState tpm_state = {.scrypt_derived = true,
                                            .salt = salt,
@@ -259,8 +268,8 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
   brillo::SecureBlob aes_key;
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
-  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
-      .WillOnce(DoAll(SaveArg<2>(&aes_key), ReturnError<TPMErrorBase>()));
+  brillo::Blob encrypt_out(64, 'X');
+  EXPECT_CALL(hwsec_, Encrypt(_, _)).WillOnce(ReturnValue(encrypt_out));
 
   // Test
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
@@ -290,12 +299,19 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
   // Setup test inputs and the mock expectations.
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
-  brillo::SecureBlob tpm_key(20, 'B');
+  brillo::SecureBlob tpm_key;
   brillo::SecureBlob salt(system_salt_);
   brillo::SecureBlob aes_key(32);
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
   ASSERT_TRUE(DeriveSecretsScrypt(passkey, salt, {&aes_key}));
-  EXPECT_CALL(tpm_, DecryptBlob(_, tpm_key, aes_key, _)).Times(Exactly(1));
+
+  brillo::Blob encrypt_out(64, 'X');
+  EXPECT_TRUE(hwsec_foundation::ObscureRsaMessage(
+      brillo::SecureBlob(encrypt_out.begin(), encrypt_out.end()), aes_key,
+      &tpm_key));
+
+  EXPECT_CALL(hwsec_, Decrypt(_, encrypt_out))
+      .WillOnce(ReturnValue(brillo::SecureBlob()));
 
   TpmNotBoundToPcrAuthBlockState tpm_state = {
       .scrypt_derived = true, .salt = salt, .tpm_key = tpm_key};
@@ -323,20 +339,14 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
 
   brillo::SecureBlob scrypt_derived_key;
   brillo::SecureBlob auth_value(32, 'a');
-  Tpm::TpmVersionInfo version_info;
-  version_info.manufacturer = 0x43524f53;
-  EXPECT_CALL(tpm_, GetVersionInfo(_))
-      .WillOnce(DoAll(SetArgPointee<0>(version_info), Return(true)));
-  EXPECT_CALL(tpm_, GetEccAuthValue(_, _, _))
+  EXPECT_CALL(hwsec_, GetManufacturer()).WillOnce(ReturnValue(0x43524f53));
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
       .Times(Exactly(5))
-      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key),
-                      SetArgPointee<2>(auth_value),
-                      ReturnError<TPMErrorBase>()))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
-  EXPECT_CALL(tpm_, SealToPcrWithAuthorization(_, auth_value, _, _))
-      .WillOnce(ReturnError<TPMErrorBase>())
-      .WillOnce(ReturnError<TPMErrorBase>());
+      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)))
+      .WillRepeatedly(ReturnValue(auth_value));
+  EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _))
+      .WillOnce(ReturnValue(brillo::Blob()))
+      .WillOnce(ReturnValue(brillo::Blob()));
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
@@ -367,19 +377,17 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob salt(system_salt_);
-  brillo::SecureBlob fake_hash(32, 'C');
+  brillo::SecureBlob fake_hash("public key hash");
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
-  EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(fake_hash), ReturnError<TPMErrorBase>()));
-  EXPECT_CALL(tpm_, PreloadSealedData(_, _)).Times(Exactly(1));
-  EXPECT_CALL(tpm_, GetEccAuthValue(_, _, _)).Times(Exactly(5));
+  EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+      .Times(Exactly(5))
+      .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
 
   brillo::SecureBlob fake_hvkkm(32, 'D');
-  EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, _, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<4>(fake_hvkkm), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
+      .WillOnce(ReturnValue(fake_hvkkm));
 
   TpmEccAuthBlockState tpm_state;
   tpm_state.salt = salt;
@@ -743,14 +751,12 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
   brillo::SecureBlob auth_value(256, 'a');
-  EXPECT_CALL(tpm_, GetAuthValue(_, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key),
-                      SetArgPointee<2>(auth_value),
-                      ReturnError<TPMErrorBase>()));
-  EXPECT_CALL(tpm_, SealToPcrWithAuthorization(_, auth_value, _, _))
-      .Times(Exactly(2));
-  ON_CALL(tpm_, SealToPcrWithAuthorization(_, _, _, _))
-      .WillByDefault(ReturnError<TPMErrorBase>());
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+      .WillOnce(
+          DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)));
+  EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _)).Times(Exactly(2));
+  ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+      .WillByDefault(ReturnValue(brillo::Blob()));
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
@@ -793,9 +799,11 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
-  EXPECT_CALL(tpm_, PreloadSealedData(_, _)).Times(Exactly(1));
-  EXPECT_CALL(tpm_, GetAuthValue(_, _, _)).Times(Exactly(1));
-  EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, _, _, _)).Times(Exactly(1));
+  EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+      .WillOnce(ReturnValue(brillo::SecureBlob()));
+  EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
+      .WillOnce(ReturnValue(brillo::SecureBlob()));
 
   TpmBoundToPcrAuthBlockState tpm_state = {.scrypt_derived = true,
                                            .salt = salt,

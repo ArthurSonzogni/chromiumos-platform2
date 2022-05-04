@@ -26,7 +26,6 @@ namespace cryptohome {
 class AsyncChallengeCredentialAuthBlock : public AuthBlock {
  public:
   AsyncChallengeCredentialAuthBlock(
-      Tpm* tpm,
       ChallengeCredentialsHelper* challenge_credentials_helper,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       const std::string& account_id);
@@ -56,7 +55,6 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
       TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
           result);
 
-  Tpm* const tpm_;
   ChallengeCredentialsHelper* const challenge_credentials_helper_;
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
   const std::string account_id_;

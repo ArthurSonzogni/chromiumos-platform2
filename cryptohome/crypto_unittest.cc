@@ -45,6 +45,7 @@ using ::hwsec_foundation::SecureBlobToHexToBuffer;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::Sha256;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
@@ -179,9 +180,11 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
-  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
+  EXPECT_CALL(*tpm.get_mock_hwsec(), GetAuthValue(_, _))
+      .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
       .Times(2)  // Once for each valid PCR state.
-      .WillRepeatedly(DoAll(SaveArg<0>(&vkk_key), ReturnError<TPMErrorBase>()));
+      .WillRepeatedly(DoAll(SaveArg<2>(&vkk_key), ReturnValue(brillo::Blob())));
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -189,12 +192,16 @@ TEST_F(CryptoTest, TpmStepTest) {
   EXPECT_CALL(cryptohome_keys_manager, HasAnyCryptohomeKey()).Times(0);
   EXPECT_CALL(cryptohome_keys_manager, Init())
       .Times(AtLeast(1));  // One by crypto.Init()
-  SecureBlob blob("public key hash");
-  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+  Blob blob = brillo::BlobFromString("public key hash");
+  EXPECT_CALL(*tpm.get_mock_hwsec(), GetPubkeyHash(_))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
-      .WillRepeatedly(
-          DoAll(SetArgPointee<1>(blob), ReturnError<TPMErrorBase>()));
+      .WillRepeatedly(DoAll(ReturnValue(blob)));
+  EXPECT_CALL(tpm, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), IsEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), IsReady())
+      .WillRepeatedly(ReturnValue(true));
 
   crypto.Init(&tpm, &cryptohome_keys_manager);
 
@@ -210,9 +217,10 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), PreloadSealedData(_))
+      .WillOnce(ReturnValue(std::nullopt));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), UnsealWithCurrentUser(_, _, _))
+      .WillOnce(ReturnValue(vkk_key));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -247,10 +255,11 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
 
   SecureBlob vkk_key;
+  Blob encrypt_out(64, 'X');
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_1_2));
-  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _))
+  EXPECT_CALL(*tpm.get_mock_hwsec(), Encrypt(_, _))
       .Times(1)
-      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), ReturnError<TPMErrorBase>()));
+      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), ReturnValue(encrypt_out)));
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -258,12 +267,17 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   EXPECT_CALL(cryptohome_keys_manager, HasAnyCryptohomeKey()).Times(0);
   EXPECT_CALL(cryptohome_keys_manager, Init())
       .Times(AtLeast(1));  // One by crypto.Init()
-  SecureBlob blob("public key hash");
-  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+
+  Blob blob = brillo::BlobFromString("public key hash");
+  EXPECT_CALL(*tpm.get_mock_hwsec(), GetPubkeyHash(_))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
-      .WillRepeatedly(
-          DoAll(SetArgPointee<1>(blob), ReturnError<TPMErrorBase>()));
+      .WillRepeatedly(DoAll(ReturnValue(blob)));
+  EXPECT_CALL(tpm, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), IsEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), IsReady())
+      .WillRepeatedly(ReturnValue(true));
 
   crypto.Init(&tpm, &cryptohome_keys_manager);
 
@@ -279,8 +293,8 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(vkk_key), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), Decrypt(_, encrypt_out))
+      .WillOnce(ReturnValue(vkk_key));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -313,7 +327,11 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
 
-  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _)).Times(2);
+  EXPECT_CALL(*tpm.get_mock_hwsec(), GetAuthValue(_, _))
+      .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+      .Times(2)  // Once for each valid PCR state.
+      .WillRepeatedly(ReturnValue(brillo::Blob()));
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -321,12 +339,16 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   EXPECT_CALL(cryptohome_keys_manager, HasAnyCryptohomeKey()).Times(0);
   EXPECT_CALL(cryptohome_keys_manager, Init())
       .Times(AtLeast(1));  // One by crypto.Init()
-  SecureBlob blob("public key hash");
-  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+  Blob blob = brillo::BlobFromString("public key hash");
+  EXPECT_CALL(*tpm.get_mock_hwsec(), GetPubkeyHash(_))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
-      .WillRepeatedly(
-          DoAll(SetArgPointee<1>(blob), ReturnError<TPMErrorBase>()));
+      .WillRepeatedly(DoAll(ReturnValue(blob)));
+  EXPECT_CALL(tpm, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), IsEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), IsReady())
+      .WillRepeatedly(ReturnValue(true));
   crypto.Init(&tpm, &cryptohome_keys_manager);
 
   VaultKeyset vault_keyset;
@@ -342,8 +364,9 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   // UnsealWithAuthorization operation will fail.
-  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+  EXPECT_CALL(*tpm.get_mock_hwsec(), PreloadSealedData(_))
+      .WillOnce(ReturnValue(std::nullopt));
+  EXPECT_CALL(*tpm.get_mock_hwsec(), UnsealWithCurrentUser(_, _, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   ASSERT_FALSE(

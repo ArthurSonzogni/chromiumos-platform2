@@ -3,44 +3,61 @@
 // found in the LICENSE file.
 
 #include "cryptohome/cryptohome_keys_manager.h"
+
 #include <memory>
 
-#include "cryptohome/cryptohome_ecc_key_loader.h"
-#include "cryptohome/cryptohome_key_loader.h"
-#include "cryptohome/cryptohome_rsa_key_loader.h"
-
 #include <base/logging.h>
+
+#include "cryptohome/cryptohome_key_loader.h"
 
 namespace cryptohome {
 
 namespace {
 
-using KeyLoaderCreator =
-    std::unique_ptr<CryptohomeKeyLoader> (*)(Tpm* tpm, Platform* platform);
+constexpr char kDefaultCryptohomeRsaKeyFile[] = "/home/.shadow/cryptohome.key";
+constexpr char kDefaultCryptohomeEccKeyFile[] =
+    "/home/.shadow/cryptohome.ecc.key";
 
-template <typename T>
-std::unique_ptr<CryptohomeKeyLoader> MakeUniqueKeyLoader(Tpm* tpm,
-                                                         Platform* platform) {
-  return std::make_unique<T>(tpm, platform);
-}
-
-struct KeyLoaderPair {
-  CryptohomeKeyType type;
-  KeyLoaderCreator creator;
+struct KeyLoaderInfo {
+  hwsec::KeyAlgoType hwsec_type;
+  CryptohomeKeyType cryptohome_type;
+  const char* file_path;
 };
 
-KeyLoaderPair kKeyLoaderPairs[] = {
-    {CryptohomeKeyType::kRSA, MakeUniqueKeyLoader<CryptohomeRsaKeyLoader>},
-#if USE_TPM2
-    {CryptohomeKeyType::kECC, MakeUniqueKeyLoader<CryptohomeEccKeyLoader>},
-#endif
+KeyLoaderInfo kKeyLoadersList[] = {
+    KeyLoaderInfo{
+        .hwsec_type = hwsec::KeyAlgoType::kRsa,
+        .cryptohome_type = CryptohomeKeyType::kRSA,
+        .file_path = kDefaultCryptohomeRsaKeyFile,
+    },
+    KeyLoaderInfo{
+        .hwsec_type = hwsec::KeyAlgoType::kEcc,
+        .cryptohome_type = CryptohomeKeyType::kECC,
+        .file_path = kDefaultCryptohomeEccKeyFile,
+    },
 };
 
 }  // namespace
 
-CryptohomeKeysManager::CryptohomeKeysManager(Tpm* tpm, Platform* platform) {
-  for (const KeyLoaderPair& pair : kKeyLoaderPairs) {
-    key_loaders_[pair.type] = pair.creator(tpm, platform);
+CryptohomeKeysManager::CryptohomeKeysManager(hwsec::CryptohomeFrontend* hwsec,
+                                             Platform* platform)
+    : hwsec_(hwsec) {
+  CHECK(hwsec);
+
+  hwsec::StatusOr<absl::flat_hash_set<hwsec::KeyAlgoType>> algos =
+      hwsec_->GetSupportedAlgo();
+  if (!algos.ok()) {
+    LOG(ERROR) << "Failed to get supported algorithms: " << algos.status();
+    return;
+  }
+
+  for (const KeyLoaderInfo& info : kKeyLoadersList) {
+    if (algos->count(info.hwsec_type) == 1) {
+      key_loaders_[info.cryptohome_type] =
+          std::make_unique<CryptohomeKeyLoader>(hwsec_, platform,
+                                                info.hwsec_type,
+                                                base::FilePath(info.file_path));
+    }
   }
 }
 
@@ -57,17 +74,6 @@ CryptohomeKeyLoader* CryptohomeKeysManager::GetKeyLoader(
     return iter->second.get();
   }
   return nullptr;
-}
-
-bool CryptohomeKeysManager::ReloadAllCryptohomeKeys() {
-  for (auto& loader : key_loaders_) {
-    if (!loader.second->ReloadCryptohomeKey()) {
-      LOG(ERROR) << "Failed to reload cryptohome key "
-                 << static_cast<int>(loader.first);
-      return false;
-    }
-  }
-  return true;
 }
 
 bool CryptohomeKeysManager::HasAnyCryptohomeKey() {

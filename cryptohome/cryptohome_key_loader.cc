@@ -9,106 +9,115 @@
 #include <base/logging.h>
 #include <libhwsec/status.h>
 
-using brillo::SecureBlob;
+using brillo::Blob;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
-using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
 namespace cryptohome {
 
-CryptohomeKeyLoader::CryptohomeKeyLoader(Tpm* tpm,
+CryptohomeKeyLoader::CryptohomeKeyLoader(hwsec::CryptohomeFrontend* hwsec,
                                          Platform* platform,
+                                         hwsec::KeyAlgoType key_algo,
                                          const base::FilePath& path)
-    : tpm_(tpm), platform_(platform), cryptohome_key_path_(path) {}
-
-bool CryptohomeKeyLoader::SaveCryptohomeKey(const SecureBlob& wrapped_key) {
-  bool ok = platform_->WriteSecureBlobToFileAtomicDurable(cryptohome_key_path_,
-                                                          wrapped_key, 0600);
-  if (!ok)
-    LOG(ERROR) << "Error writing key file of desired size: "
-               << wrapped_key.size();
-  return ok;
+    : hwsec_(hwsec),
+      platform_(platform),
+      key_algo_(key_algo),
+      cryptohome_key_path_(path) {
+  CHECK(hwsec_);
+  CHECK(platform_);
 }
 
-hwsec::Status CryptohomeKeyLoader::LoadCryptohomeKey(
-    ScopedKeyHandle* key_handle) {
-  CHECK(key_handle);
+hwsec::Status CryptohomeKeyLoader::SaveCryptohomeKey(const Blob& wrapped_key) {
+  if (!platform_->WriteFileAtomic(cryptohome_key_path_, wrapped_key, 0600)) {
+    return MakeStatus<TPMError>("Error writing key file",
+                                TPMRetryAction::kNoRetry);
+  }
+  return hwsec::OkStatus();
+}
 
+hwsec::StatusOr<hwsec::ScopedKey> CryptohomeKeyLoader::LoadCryptohomeKey() {
   // Load the key from the key file.
-  SecureBlob raw_key;
-  if (!platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
-    return CreateError<TPMError>("Failed to read cryptohome key from file",
-                                 TPMRetryAction::kNoRetry);
+  Blob raw_key;
+  if (!platform_->ReadFile(cryptohome_key_path_, &raw_key)) {
+    return MakeStatus<TPMError>("Failed to read cryptohome key from file",
+                                TPMRetryAction::kNoRetry);
   }
 
-  if (hwsec::Status err = tpm_->LoadWrappedKey(raw_key, key_handle)) {
-    return WrapError<TPMError>(std::move(err), "Failed to load wrapped key");
+  hwsec::StatusOr<hwsec::ScopedKey> key = hwsec_->LoadKey(raw_key);
+  if (!key.ok()) {
+    return MakeStatus<TPMError>("Failed to load wrapped key")
+        .Wrap(std::move(key).status());
   }
 
-  return nullptr;
+  return key;
 }
 
-bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
-    ScopedKeyHandle* key_handle) {
-  CHECK(key_handle);
+hwsec::StatusOr<hwsec::ScopedKey>
+CryptohomeKeyLoader::LoadOrCreateCryptohomeKey() {
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsReady();
 
-  if (!GetTpm()->IsEnabled() || !GetTpm()->IsOwned()) {
-    LOG(WARNING) << "Canceled loading cryptohome key - TPM is not ready.";
-    return false;
+  if (!is_ready.ok()) {
+    return MakeStatus<TPMError>("Failed to get hwsec state")
+        .Wrap(std::move(is_ready).status());
+  }
+
+  if (!*is_ready) {
+    return MakeStatus<TPMError>(
+        "Canceled loading cryptohome key - TPM is not ready",
+        TPMRetryAction::kNoRetry);
   }
 
   // Try to load the cryptohome key.
-  if (hwsec::Status err = LoadCryptohomeKey(key_handle)) {
-    if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
+  hwsec::StatusOr<hwsec::ScopedKey> key = LoadCryptohomeKey();
+  if (!key.ok()) {
+    if (key.status()->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
       // The key couldn't be loaded, and it wasn't due to a transient error,
       // so we must create the key.
-      SecureBlob wrapped_key;
-      if (CreateCryptohomeKey(&wrapped_key)) {
-        if (!SaveCryptohomeKey(wrapped_key)) {
-          LOG(ERROR) << "Couldn't save cryptohome key";
-          return false;
-        }
-        LOG(INFO) << "Created new cryptohome key.";
-        err = LoadCryptohomeKey(key_handle);
+      hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> result =
+          CreateCryptohomeKey();
+      if (!result.ok()) {
+        return MakeStatus<TPMError>("Failed to create cryptohome key")
+            .Wrap(std::move(result).status());
       }
+
+      if (hwsec::Status err = SaveCryptohomeKey(result->key_blob); !err.ok()) {
+        return MakeStatus<TPMError>("Failed to save cryptohome key")
+            .Wrap(std::move(err));
+      }
+
+      return std::move(result->key);
     }
-    if (err) {
-      LOG(ERROR) << "Failed to load or create cryptohome key: " << err;
-      return false;
-    }
+
+    return MakeStatus<TPMError>("Failed to load cryptohome key")
+        .Wrap(std::move(key).status());
   }
-  return true;
+
+  return key;
+}
+
+hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult>
+CryptohomeKeyLoader::CreateCryptohomeKey() {
+  return hwsec_->CreateCryptohomeKey(key_algo_);
 }
 
 bool CryptohomeKeyLoader::HasCryptohomeKey() {
   return cryptohome_key_.has_value();
 }
 
-TpmKeyHandle CryptohomeKeyLoader::GetCryptohomeKey() {
-  return cryptohome_key_.value();
-}
-
-bool CryptohomeKeyLoader::ReloadCryptohomeKey() {
-  CHECK(HasCryptohomeKey());
-  // Release the handle first, we know this handle doesn't contain a loaded key
-  // since ReloadCryptohomeKey only called after we failed to use it.
-  // Otherwise we may flush the newly loaded key and fail to use it again,
-  // if it is loaded to the same handle.
-  // TODO(crbug.com/687330): change to closing the handle and ignoring errors
-  // once checking for stale virtual handles is implemented in trunksd.
-  cryptohome_key_.release();
-  if (hwsec::Status err = LoadCryptohomeKey(&cryptohome_key_)) {
-    LOG(ERROR) << "Error reloading Cryptohome key: " << err;
-    return false;
-  }
-  return true;
+hwsec::Key CryptohomeKeyLoader::GetCryptohomeKey() {
+  return cryptohome_key_->GetKey();
 }
 
 void CryptohomeKeyLoader::Init() {
-  if (!LoadOrCreateCryptohomeKey(&cryptohome_key_)) {
-    LOG(ERROR) << __func__ << ": failed to load or create cryptohome key";
+  hwsec::StatusOr<hwsec::ScopedKey> key = LoadOrCreateCryptohomeKey();
+  if (!key.ok()) {
+    LOG(ERROR) << "Failed to load or create cryptohome key: " << key.status();
+    return;
   }
+
+  cryptohome_key_ = std::move(*key);
 }
 
 }  // namespace cryptohome

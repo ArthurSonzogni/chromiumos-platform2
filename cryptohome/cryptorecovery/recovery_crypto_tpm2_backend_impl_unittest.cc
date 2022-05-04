@@ -5,10 +5,12 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -47,7 +49,9 @@ class RecoveryCryptoTpm2BackendTest : public testing::Test {
   RecoveryCryptoTpm2BackendTest() {
     trunks_factory_.set_tpm_utility(&mock_tpm_utility_);
     trunks_factory_.set_hmac_session(&mock_hmac_session_);
-    tpm_ = std::make_unique<Tpm2Impl>(&trunks_factory_,
+    auto hwsec = std::make_unique<hwsec::MockCryptohomeFrontend>();
+    hwsec_ = hwsec.get();
+    tpm_ = std::make_unique<Tpm2Impl>(std::move(hwsec), &trunks_factory_,
                                       &mock_tpm_manager_utility_);
     recovery_crypto_tpm2_backend_ = tpm_->GetRecoveryCryptoBackend();
   }
@@ -66,6 +70,7 @@ class RecoveryCryptoTpm2BackendTest : public testing::Test {
 
  protected:
   std::unique_ptr<cryptohome::Tpm2Impl> tpm_;
+  hwsec::MockCryptohomeFrontend* hwsec_;
   cryptorecovery::RecoveryCryptoTpmBackend* recovery_crypto_tpm2_backend_;
   NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;

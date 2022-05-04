@@ -15,24 +15,18 @@ namespace hwsec {
 
 class MockFrontend {
  public:
-  MockFrontend() {
-    auto mock_backend = std::make_unique<MockBackend>();
-    mock_backend_ = mock_backend.get();
-    middleware_owner_ = std::make_unique<MiddlewareOwner>(
-        std::move(mock_backend),
-        base::SequencedTaskRunnerHandle::IsSet()
-            ? base::SequencedTaskRunnerHandle::Get()
-            : nullptr,
-        base::PlatformThread::CurrentId());
-  }
+  MockFrontend() {}
   virtual ~MockFrontend() = default;
 
-  MockBackend* GetMockBackend() { return mock_backend_; }
-  MiddlewareOwner* GetMiddlewareOwner() { return middleware_owner_.get(); }
-
- private:
-  MockBackend* mock_backend_;
-  std::unique_ptr<MiddlewareOwner> middleware_owner_;
+  MiddlewareDerivative GetFakeMiddlewareDerivative() {
+    return MiddlewareDerivative{
+        .task_runner = base::SequencedTaskRunnerHandle::IsSet()
+                           ? base::SequencedTaskRunnerHandle::Get()
+                           : nullptr,
+        .thread_id = base::PlatformThread::CurrentId(),
+        .middleware = nullptr,
+    };
+  }
 };
 
 }  // namespace hwsec

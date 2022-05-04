@@ -10,10 +10,12 @@
 #include <unistd.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
 
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/tpm.h"
@@ -24,7 +26,9 @@ class StubTpm : public Tpm {
  public:
   using SecureBlob = brillo::SecureBlob;
 
-  StubTpm() {}
+  StubTpm()
+      : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
+        hwsec_(hwsec_factory_->GetCryptohomeFrontend()) {}
   ~StubTpm() override {}
 
   // See tpm.h for comments
@@ -55,6 +59,7 @@ class StubTpm : public Tpm {
     return hwsec_foundation::error::CreateError<hwsec::TPMError>(
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
+  hwsec::CryptohomeFrontend* GetHwsec() override { return hwsec_.get(); }
 
   hwsec::Status SealToPcrWithAuthorization(
       const SecureBlob& plaintext,
@@ -141,7 +146,7 @@ class StubTpm : public Tpm {
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   void CloseHandle(TpmKeyHandle key_handle) override{};
-  void GetStatus(std::optional<TpmKeyHandle> key,
+  void GetStatus(std::optional<hwsec::Key> key,
                  TpmStatusInfo* status) override {}
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
@@ -196,6 +201,10 @@ class StubTpm : public Tpm {
       bool use_extended_pcr) const override {
     return {};
   }
+
+ private:
+  std::unique_ptr<hwsec::Factory> hwsec_factory_;
+  std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
 };
 
 }  // namespace cryptohome

@@ -17,10 +17,8 @@ class MockCryptohomeKeyLoader : public CryptohomeKeyLoader {
   ~MockCryptohomeKeyLoader();
 
   MOCK_METHOD(bool, HasCryptohomeKey, (), (override));
-  MOCK_METHOD(TpmKeyHandle, GetCryptohomeKey, (), (override));
-  MOCK_METHOD(bool, ReloadCryptohomeKey, (), (override));
+  MOCK_METHOD(hwsec::Key, GetCryptohomeKey, (), (override));
   MOCK_METHOD(void, Init, (), (override));
-  MOCK_METHOD(bool, CreateCryptohomeKey, (brillo::SecureBlob*), (override));
 };
 
 }  // namespace cryptohome

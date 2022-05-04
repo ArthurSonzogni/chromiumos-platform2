@@ -15,6 +15,7 @@
 
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
+#include <libhwsec/factory/factory.h>
 #include <libhwsec/status.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -55,9 +56,11 @@ class Tpm2Impl : public Tpm {
     std::unique_ptr<trunks::TpmUtility> tpm_utility;
   };
 
-  Tpm2Impl() = default;
-  // Does not take ownership of pointers.
-  Tpm2Impl(trunks::TrunksFactory* factory,
+  Tpm2Impl();
+
+  // Test purpose constructor.
+  Tpm2Impl(std::unique_ptr<hwsec::CryptohomeFrontend> hwsec,
+           trunks::TrunksFactory* factory,
            tpm_manager::TpmManagerUtility* tpm_manager_utility);
   Tpm2Impl(const Tpm2Impl&) = delete;
   Tpm2Impl& operator=(const Tpm2Impl&) = delete;
@@ -126,8 +129,7 @@ class Tpm2Impl : public Tpm {
   hwsec::Status LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
                                ScopedKeyHandle* key_handle) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
-  void GetStatus(std::optional<TpmKeyHandle> key,
-                 TpmStatusInfo* status) override;
+  void GetStatus(std::optional<hwsec::Key> key, TpmStatusInfo* status) override;
   hwsec::Status IsSrkRocaVulnerable(bool* result) override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
@@ -183,6 +185,8 @@ class Tpm2Impl : public Tpm {
   hwsec::Status GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
                                 const brillo::SecureBlob& pass_blob,
                                 brillo::SecureBlob* auth_value) override;
+
+  hwsec::CryptohomeFrontend* GetHwsec() override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
@@ -242,6 +246,9 @@ class Tpm2Impl : public Tpm {
 #endif
   SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
   cryptorecovery::RecoveryCryptoTpm2BackendImpl recovery_crypto_backend_{this};
+
+  std::unique_ptr<hwsec::Factory> hwsec_factory_;
+  std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
 };
 
 }  // namespace cryptohome

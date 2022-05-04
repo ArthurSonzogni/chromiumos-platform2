@@ -47,6 +47,7 @@ using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -83,6 +84,20 @@ class AuthSessionTest : public ::testing::Test {
   void SetUp() override {
     EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsEnabled())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsReady())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetManufacturer())
+        .WillRepeatedly(ReturnValue(0x43524f53));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetAuthValue(_, _))
+        .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+        .WillRepeatedly(ReturnValue(brillo::Blob()));
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
+        .WillRepeatedly(ReturnValue(brillo::Blob()));
+
     crypto_.Init(&tpm_, &cryptohome_keys_manager_);
   }
 

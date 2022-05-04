@@ -30,9 +30,9 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
-TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
+TpmAuthBlockUtils::TpmAuthBlockUtils(hwsec::CryptohomeFrontend* hwsec,
                                      CryptohomeKeyLoader* cryptohome_key_loader)
-    : tpm_(tpm), cryptohome_key_loader_(cryptohome_key_loader) {}
+    : hwsec_(hwsec), cryptohome_key_loader_(cryptohome_key_loader) {}
 
 CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(const hwsec::Status& err) {
   hwsec::TPMRetryAction action = err->ToTPMRetryAction();
@@ -69,41 +69,24 @@ bool TpmAuthBlockUtils::TPMErrorIsRetriable(const hwsec::Status& err) {
 
 CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
     const brillo::SecureBlob& hash) const {
-  brillo::SecureBlob pub_key_hash;
-  if (hwsec::Status err = tpm_->GetPublicKeyHash(
-          cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash)) {
-    if (TPMErrorIsRetriable(err)) {
-      if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
-        LOG(ERROR) << "Unable to reload key.";
-        ReportCryptohomeError(kCannotReadTpmPublicKey);
-        return MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocTpmAuthBlockUtilsCryptohomeKeyLoadFailedInPubkeyHash),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-            CryptoError::CE_NO_PUBLIC_KEY_HASH);
-      } else {
-        err = tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
-                                     &pub_key_hash);
-      }
-    }
-    if (err) {
-      LOG(ERROR) << "Unable to get the cryptohome public key from the TPM: "
-                 << err;
-      ReportCryptohomeError(kCannotReadTpmPublicKey);
-      return MakeStatus<CryptohomeCryptoError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocTpmAuthBlockUtilsGetPubkeyFailedInPubkeyHash),
-                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                                 ErrorAction::kReboot,
-                                 ErrorAction::kPowerwash}))
-          .Wrap(TPMErrorToCryptohomeCryptoError(std::move(err)));
-    }
+  hwsec::StatusOr<brillo::Blob> pub_key_hash =
+      hwsec_->GetPubkeyHash(cryptohome_key_loader_->GetCryptohomeKey());
+  if (!pub_key_hash.ok()) {
+    LOG(ERROR) << "Unable to get the cryptohome public key from the TPM: "
+               << pub_key_hash.status();
+    ReportCryptohomeError(kCannotReadTpmPublicKey);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmAuthBlockUtilsGetPubkeyFailedInPubkeyHash),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                               ErrorAction::kReboot, ErrorAction::kPowerwash}))
+        .Wrap(
+            TPMErrorToCryptohomeCryptoError(std::move(pub_key_hash).status()));
   }
 
-  if ((hash.size() != pub_key_hash.size()) ||
-      (brillo::SecureMemcmp(hash.data(), pub_key_hash.data(),
-                            pub_key_hash.size()))) {
+  if ((hash.size() != pub_key_hash->size()) ||
+      (brillo::SecureMemcmp(hash.data(), pub_key_hash->data(),
+                            pub_key_hash->size()))) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsHashIncorrectInPubkeyHash),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
@@ -131,7 +114,11 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
   // it means the TPM has been cleared since the last login, and is not
   // re-owned.  In this case, the SRK is cleared and we cannot recover the
   // keyset.
-  if (tpm_->IsEnabled() && !tpm_->IsOwned()) {
+  hwsec::StatusOr<bool> is_enabled = hwsec_->IsEnabled();
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsReady();
+  bool enabled = is_enabled.ok() && *is_enabled;
+  bool ready = is_ready.ok() && *is_ready;
+  if (enabled && !ready) {
     LOG(ERROR) << "Fatal error--the TPM is enabled but not owned, and this "
                << "keyset was wrapped by the TPM.  It is impossible to "
                << "recover this keyset.";
@@ -156,7 +143,7 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
             kLocTpmAuthBlockUtilsNoCryptohomeKeyInCheckReadiness),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                         ErrorAction::kReboot, ErrorAction::kPowerwash}),
-        CryptoError::CE_TPM_COMM_ERROR);
+        CryptoError::CE_TPM_REBOOT);
   }
 
   // This is a validity check that the keys still match.

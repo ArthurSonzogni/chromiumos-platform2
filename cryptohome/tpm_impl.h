@@ -19,6 +19,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm1_backend_impl.h"
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
@@ -30,6 +31,9 @@ namespace cryptohome {
 class TpmImpl : public Tpm {
  public:
   TpmImpl();
+
+  // Test purpose constructor.
+  explicit TpmImpl(std::unique_ptr<hwsec::CryptohomeFrontend> hwsec);
   TpmImpl(const TpmImpl&) = delete;
   TpmImpl& operator=(const TpmImpl&) = delete;
 
@@ -100,8 +104,7 @@ class TpmImpl : public Tpm {
   hwsec::Status LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
                                ScopedKeyHandle* key_handle) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
-  void GetStatus(std::optional<TpmKeyHandle> key,
-                 TpmStatusInfo* status) override;
+  void GetStatus(std::optional<hwsec::Key> key, TpmStatusInfo* status) override;
   hwsec::Status IsSrkRocaVulnerable(bool* result) override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
@@ -178,6 +181,8 @@ class TpmImpl : public Tpm {
   hwsec::Status GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
                                 const brillo::SecureBlob& pass_blob,
                                 brillo::SecureBlob* auth_value) override;
+
+  hwsec::CryptohomeFrontend* GetHwsec() override;
 
  private:
   // Returns the owner password if this instance was used to take ownership.
@@ -320,6 +325,9 @@ class TpmImpl : public Tpm {
 
   // Cache of TPM version info, std::nullopt if cache doesn't exist.
   std::optional<TpmVersionInfo> version_info_;
+
+  std::unique_ptr<hwsec::Factory> hwsec_factory_;
+  std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
 };
 
 }  // namespace cryptohome

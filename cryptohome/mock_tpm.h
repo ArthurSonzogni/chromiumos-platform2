@@ -16,6 +16,7 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/status.h>
 #include <gmock/gmock.h>
 
@@ -127,7 +128,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD(void, CloseHandle, (TpmKeyHandle), (override));
   MOCK_METHOD(void,
               GetStatus,
-              (std::optional<TpmKeyHandle>, TpmStatusInfo*),
+              (std::optional<hwsec::Key>, TpmStatusInfo*),
               (override));
   MOCK_METHOD(hwsec::Status, IsSrkRocaVulnerable, (bool*), (override));
   MOCK_METHOD(bool,
@@ -178,6 +179,11 @@ class MockTpm : public Tpm {
                const brillo::SecureBlob& pass_blob,
                brillo::SecureBlob* auth_value),
               (override));
+  MOCK_METHOD(hwsec::CryptohomeFrontend*, GetHwsec, (), (override));
+
+  testing::NiceMock<hwsec::MockCryptohomeFrontend>* get_mock_hwsec() {
+    return &hwsec_;
+  }
 
  private:
   hwsec::Status XorDecrypt(TpmKeyHandle _key,
@@ -219,6 +225,7 @@ class MockTpm : public Tpm {
     return true;
   }
 
+  testing::NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   std::set<uint32_t> extended_pcrs_;
 };
 }  // namespace cryptohome

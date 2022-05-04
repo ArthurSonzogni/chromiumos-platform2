@@ -22,6 +22,7 @@
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>
+#include <libhwsec/factory/factory.h>
 #include <libhwsec/status.h>
 #include <openssl/rsa.h>
 
@@ -441,7 +442,7 @@ class Tpm {
   // Parameters
   //   key - The optional key to check for encryption/decryption
   //   status (OUT) - The TpmStatusInfo structure containing the results
-  virtual void GetStatus(std::optional<TpmKeyHandle> key,
+  virtual void GetStatus(std::optional<hwsec::Key> key,
                          TpmStatusInfo* status) = 0;
 
   // Returns whether the TPM SRK is vulnerable to the ROCA vulnerability.
@@ -549,6 +550,9 @@ class Tpm {
   virtual hwsec::Status GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
                                         const brillo::SecureBlob& pass_blob,
                                         brillo::SecureBlob* auth_value) = 0;
+
+  // Get the hwsec abstraction frontend.
+  virtual hwsec::CryptohomeFrontend* GetHwsec() = 0;
 
  private:
   static Tpm* singleton_;

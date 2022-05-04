@@ -14,6 +14,7 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -38,8 +39,9 @@ using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::kDefaultAesKeySize;
 using hwsec_foundation::kDefaultLegacyPasswordRounds;
-using hwsec_foundation::kTpmDecryptMaxRetries;
+using hwsec_foundation::ObscureRsaMessage;
 using hwsec_foundation::PasskeyToAesKey;
+using hwsec_foundation::UnobscureRsaMessage;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -47,13 +49,14 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
-    Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager)
+    hwsec::CryptohomeFrontend* hwsec,
+    CryptohomeKeysManager* cryptohome_keys_manager)
     : SyncAuthBlock(kTpmBackedNonPcrBound),
-      tpm_(tpm),
+      hwsec_(hwsec),
       cryptohome_key_loader_(
           cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)),
-      utils_(tpm, cryptohome_key_loader_) {
-  CHECK(tpm != nullptr);
+      utils_(hwsec, cryptohome_key_loader_) {
+  CHECK(hwsec_ != nullptr);
   CHECK(cryptohome_key_loader_ != nullptr);
 }
 
@@ -197,48 +200,41 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
   // encrypted blob in tpm_key, which is stored in the serialized vault
   // keyset.
-  for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
-    hwsec::Status err =
-        tpm_->EncryptBlob(cryptohome_key_loader_->GetCryptohomeKey(),
-                          local_blob, aes_skey, &tpm_key);
-    if (err == nullptr) {
-      break;
-    }
-
-    if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err)) {
-      LOG(ERROR) << "Failed to wrap vkk with creds: " << err;
-      return MakeStatus<CryptohomeCryptoError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocTpmNotBoundToPcrAuthBlockEncryptFailedInCreate),
-                 ErrorActionSet({ErrorAction::kReboot,
-                                 ErrorAction::kDevCheckUnexpectedState}))
-          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(err)));
-    }
-
-    // If the error is retriable, reload the key first.
-    if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
-      LOG(ERROR) << "Unable to reload Cryptohome key while createing "
-                    "TpmNotBoundToPcrAuthBlock:"
-                 << err;
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocTpmNotBoundToPcrAuthBlockReloadKeyFailedInCreate),
-          ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_TPM_REBOOT);
-    }
+  hwsec::Key cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
+  hwsec::StatusOr<brillo::Blob> result =
+      hwsec_->Encrypt(cryptohome_key, local_blob);
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to wrap vkk with creds: " << result.status();
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmNotBoundToPcrAuthBlockEncryptFailedInCreate),
+               ErrorActionSet({ErrorAction::kReboot,
+                               ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(result).status()));
+  }
+  if (!ObscureRsaMessage(brillo::SecureBlob(result->begin(), result->end()),
+                         aes_skey, &tpm_key)) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocTpmNotBoundToPcrAuthBlockObscureMessageFailedInCreate),
+        ErrorActionSet(
+            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_TPM_REBOOT);
   }
 
   TpmNotBoundToPcrAuthBlockState auth_state;
   // Allow this to fail.  It is not absolutely necessary; it allows us to
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
-  brillo::SecureBlob pub_key_hash;
-  hwsec::Status err = tpm_->GetPublicKeyHash(
-      cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash);
-  if (err != nullptr) {
-    LOG(ERROR) << "Failed to get tpm public key hash: " << err;
+  hwsec::StatusOr<brillo::Blob> pub_key_hash =
+      hwsec_->GetPubkeyHash(cryptohome_key);
+  if (!pub_key_hash.ok()) {
+    LOG(ERROR) << "Failed to get tpm public key hash: "
+               << pub_key_hash.status();
   } else {
-    auth_state.tpm_public_key_hash = pub_key_hash;
+    auth_state.tpm_public_key_hash =
+        brillo::SecureBlob(pub_key_hash->begin(), pub_key_hash->end());
   }
 
   auth_state.scrypt_derived = true;
@@ -266,7 +262,6 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     brillo::SecureBlob* vkk_key) const {
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
-  brillo::SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
   unsigned int rounds = tpm_state.password_rounds.has_value()
                             ? tpm_state.password_rounds.value()
                             : kDefaultLegacyPasswordRounds;
@@ -284,40 +279,34 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL);
   }
 
-  for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
-    hwsec::Status err =
-        tpm_->DecryptBlob(cryptohome_key_loader_->GetCryptohomeKey(), tpm_key,
-                          aes_skey, &local_vault_key);
-    if (err == nullptr) {
-      break;
-    }
-
-    if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err)) {
-      LOG(ERROR) << "Failed to unwrap VKK with creds: " << err;
-      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
-      return MakeStatus<CryptohomeCryptoError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocTpmNotBoundToPcrAuthBlockDecryptFailedInDecrypt),
-                 ErrorActionSet({ErrorAction::kReboot,
-                                 ErrorAction::kDevCheckUnexpectedState,
-                                 ErrorAction::kAuth}),
-                 CryptoError::CE_TPM_REBOOT)
-          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(err)));
-    }
-
-    // If the error is retriable, reload the key first.
-    if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
-      LOG(ERROR) << "Unable to reload Cryptohome key while decrypting "
-                    "TpmNotBoundToPcrAuthBlock:"
-                 << err;
-      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocTpmNotBoundToPcrAuthBlockReloadKeyFailedInDecrypt),
-          ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_TPM_REBOOT);
-    }
+  brillo::SecureBlob unobscure_key;
+  if (!UnobscureRsaMessage(tpm_key, aes_skey, &unobscure_key)) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocTpmNotBoundToPcrAuthBlockUnobscureMessageFailedInDecrypt),
+        ErrorActionSet(
+            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_TPM_REBOOT);
   }
+
+  brillo::SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
+  brillo::Blob encrypted_key(unobscure_key.begin(), unobscure_key.end());
+
+  hwsec::Key cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
+  hwsec::StatusOr<brillo::SecureBlob> result =
+      hwsec_->Decrypt(cryptohome_key, encrypted_key);
+  if (!result.ok()) {
+    ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmNotBoundToPcrAuthBlockDecryptFailedInDecrypt),
+               ErrorActionSet({ErrorAction::kReboot,
+                               ErrorAction::kDevCheckUnexpectedState,
+                               ErrorAction::kAuth}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(result).status()));
+  }
+  local_vault_key = std::move(*result);
 
   // TODO(zuan): Handle cases in which all retries failed.
 
