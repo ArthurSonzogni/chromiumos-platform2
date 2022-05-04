@@ -23,6 +23,19 @@ namespace biod {
  */
 std::string LogSafeID(const std::string& id);
 
+/**
+ * @brief Callback invoked when signal is connected
+ *
+ * This function is compatible with |on_connected_callback| argument
+ * in ConnectToSignal() DBus method.
+ *
+ * @param interface_name Name of the interface which provides the signal.
+ * @param signal_name Name of the signal we are connecting to.
+ * @param success Indicates if connection was established.
+ */
+void LogOnSignalConnected(const std::string& interface_name,
+                          const std::string& signal_name,
+                          bool success);
 }  // namespace biod
 
 #endif  // BIOD_UTILS_H_

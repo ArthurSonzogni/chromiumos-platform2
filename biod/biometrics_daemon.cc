@@ -45,14 +45,6 @@ const char kInternalError[] = "internal_error";
 const char kInvalidArguments[] = "invalid_arguments";
 }  // namespace errors
 
-void LogOnSignalConnected(const std::string& interface_name,
-                          const std::string& signal_name,
-                          bool success) {
-  if (!success)
-    LOG(ERROR) << "Failed to connect to signal " << signal_name
-               << " of interface " << interface_name;
-}
-
 BiometricsManagerWrapper::BiometricsManagerWrapper(
     std::unique_ptr<BiometricsManager> biometrics_manager,
     ExportedObjectManager* object_manager,
