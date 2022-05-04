@@ -30,8 +30,9 @@ namespace {
 
 class MethodCallHandlers {
  public:
-  typedef base::Callback<void(dbus::MethodCall* method_call,
-                              dbus::ExportedObject::ResponseSender sender)>
+  typedef base::RepeatingCallback<void(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender sender)>
       Handler;
 
   MethodCallHandlers() {}
@@ -254,8 +255,8 @@ TEST_F(EasyUnlockTest, GenerateEcP256KeyPair) {
   method_call.SetSerial(231);
   method_call_handlers_->CallGenerateEcP256KeyPair(
       &method_call,
-      base::Bind(&EasyUnlockTest::VerifyGenerateEcP256KeyPairResponse,
-                 base::Unretained(this)));
+      base::BindOnce(&EasyUnlockTest::VerifyGenerateEcP256KeyPairResponse,
+                     base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, WrapPublicKeyRSA) {
@@ -271,8 +272,9 @@ TEST_F(EasyUnlockTest, WrapPublicKeyRSA) {
   writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(public_key.data()),
                             public_key.length());
   method_call_handlers_->CallWrapPublicKey(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                               base::Unretained(this), "public_key_RSA_key"));
+      &method_call,
+      base::BindOnce(&EasyUnlockTest::VerifyDataResponse,
+                     base::Unretained(this), "public_key_RSA_key"));
 }
 
 TEST_F(EasyUnlockTest, WrapPublicKeyRSA_IUnvalid_UnknownAlgorithm) {
@@ -288,8 +290,8 @@ TEST_F(EasyUnlockTest, WrapPublicKeyRSA_IUnvalid_UnknownAlgorithm) {
   writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(public_key.data()),
                             public_key.length());
   method_call_handlers_->CallWrapPublicKey(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, PerformECDHKeyAgreement) {
@@ -310,7 +312,7 @@ TEST_F(EasyUnlockTest, PerformECDHKeyAgreement) {
 
   method_call_handlers_->CallPerformECDHKeyAgreement(
       &method_call,
-      base::Bind(
+      base::BindOnce(
           &EasyUnlockTest::VerifyDataResponse, base::Unretained(this),
           "secret_key:{private_key:private_key_1,public_key:public_key_2}"));
 }
@@ -361,8 +363,8 @@ TEST_F(EasyUnlockTest, CreateSecureMessage) {
       "}";
 
   method_call_handlers_->CallCreateSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                               base::Unretained(this), expected_response));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyDataResponse,
+                                   base::Unretained(this), expected_response));
 }
 
 TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_MissingParameter) {
@@ -395,8 +397,8 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_MissingParameter) {
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
   method_call_handlers_->CallCreateSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownEncryptionType) {
@@ -433,8 +435,8 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownEncryptionType) {
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
   method_call_handlers_->CallCreateSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownSignatureType) {
@@ -471,8 +473,8 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownSignatureType) {
   writer.AppendString("UNKOWN");
 
   method_call_handlers_->CallCreateSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, UnwrapSecureMessage) {
@@ -506,8 +508,8 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage) {
       "}";
 
   method_call_handlers_->CallUnwrapSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                               base::Unretained(this), expected_response));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyDataResponse,
+                                   base::Unretained(this), expected_response));
 }
 
 TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownEncryptionType) {
@@ -532,8 +534,8 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownEncryptionType) {
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
   method_call_handlers_->CallUnwrapSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownSignatureType) {
@@ -558,8 +560,8 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownSignatureType) {
   writer.AppendString("UNKNOWN");
 
   method_call_handlers_->CallUnwrapSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_MissingParam) {
@@ -580,8 +582,8 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_MissingParam) {
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
   method_call_handlers_->CallUnwrapSecureMessage(
-      &method_call, base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
-                               base::Unretained(this)));
+      &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
+                                   base::Unretained(this)));
 }
 
 }  // namespace
