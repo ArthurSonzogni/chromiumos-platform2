@@ -122,7 +122,7 @@ bool CreatePipe(const base::FilePath& path) {
   }
   // base::Unretained is safe since the closure will be run before |tmp_path|
   // goes out of scope.
-  base::ScopedClosureRunner unlink_fifo(base::Bind(
+  base::ScopedClosureRunner unlink_fifo(base::BindOnce(
       base::IgnoreResult(&unlink), base::Unretained(tmp_path.value().c_str())));
   if (chown(tmp_path.value().c_str(), kShellUgid, kShellUgid) == -1) {
     PLOG(ERROR) << "Failed to chown FIFO at " << tmp_path.value()
