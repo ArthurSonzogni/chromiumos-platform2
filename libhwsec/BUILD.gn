@@ -116,6 +116,7 @@ config("libhwsec_tpm2_config") {
 
 source_set("hardware_abstraction_library") {
   sources = [
+    "factory/factory_impl.cc",
     "frontend/cryptohome/frontend_impl.cc",
     "middleware/middleware.cc",
     "proxy/proxy.cc",
