@@ -16,14 +16,38 @@ extern "C" CFeatureLibrary CFeatureLibraryNew() {
       feature::PlatformFeatures::New(bus).release());
 }
 
-void CFeatureLibraryDelete(CFeatureLibrary handle) {
-  auto* library = reinterpret_cast<feature::PlatformFeatures*>(handle);
+extern "C" void CFeatureLibraryDelete(CFeatureLibrary handle) {
+  auto* library = reinterpret_cast<feature::PlatformFeaturesInterface*>(handle);
   library->ShutdownBus();
   delete library;
 }
 
 extern "C" int CFeatureLibraryIsEnabledBlocking(
     CFeatureLibrary handle, const struct VariationsFeature* const feature) {
-  auto* library = reinterpret_cast<feature::PlatformFeatures*>(handle);
+  auto* library = reinterpret_cast<feature::PlatformFeaturesInterface*>(handle);
   return library->IsEnabledBlocking(*feature);
+}
+
+extern "C" CFeatureLibrary FakeCFeatureLibraryNew() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+
+  return reinterpret_cast<CFeatureLibrary>(
+      new feature::FakePlatformFeatures(bus));
+}
+
+extern "C" void FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
+                                              const char* const feature,
+                                              int enabled) {
+  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
+      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
+  library->SetEnabled(feature, enabled);
+}
+
+extern "C" void FakeCFeatureLibraryClearEnabled(CFeatureLibrary handle,
+                                                const char* const feature) {
+  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
+      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
+  library->ClearEnabled(feature);
 }

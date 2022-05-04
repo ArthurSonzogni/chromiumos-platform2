@@ -54,6 +54,18 @@ void FEATURE_EXPORT CFeatureLibraryDelete(CFeatureLibrary handle);
 int FEATURE_EXPORT CFeatureLibraryIsEnabledBlocking(
     CFeatureLibrary handle, const struct VariationsFeature* const feature);
 
+// C wrapper for `new FakePlatformFeatures()`
+CFeatureLibrary FEATURE_EXPORT FakeCFeatureLibraryNew();
+
+// C wrapper for FakePlatformFeatures::SetEnabled()
+void FEATURE_EXPORT FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
+                                                  const char* const feature,
+                                                  int enabled);
+
+// C wrapper for FakePlatformFeatures::ClearEnabled()
+void FEATURE_EXPORT FakeCFeatureLibraryClearEnabled(CFeatureLibrary handle,
+                                                    const char* const feature);
+
 #if defined(__cplusplus)
 }  // extern "C"
 #endif

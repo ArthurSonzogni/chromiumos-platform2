@@ -121,4 +121,49 @@ bool PlatformFeatures::CheckFeatureIdentity(const VariationsFeature& feature) {
   return it->second == &feature;
 }
 
+void PlatformFeatures::ShutdownBus() {
+  bus_->ShutdownAndBlock();
+}
+
+// FakePlatformFeatures
+void FakePlatformFeatures::IsEnabled(const VariationsFeature& feature,
+                                     IsEnabledCallback callback) {
+  base::AutoLock auto_lock(enabled_lock_);
+  bus_->AssertOnOriginThread();
+  auto it = enabled_.find(feature.name);
+  bool enabled = feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
+  if (it != enabled_.end()) {
+    enabled = it->second;
+  }
+  bus_->GetOriginTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), enabled));
+}
+
+bool FakePlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
+  base::AutoLock auto_lock(enabled_lock_);
+  auto it = enabled_.find(feature.name);
+  if (it != enabled_.end()) {
+    return it->second;
+  }
+  return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
+}
+
+void FakePlatformFeatures::SetEnabled(const std::string& feature,
+                                      bool enabled) {
+  base::AutoLock auto_lock(enabled_lock_);
+  enabled_[feature] = enabled;
+}
+
+void FakePlatformFeatures::ClearEnabled(const std::string& feature) {
+  base::AutoLock auto_lock(enabled_lock_);
+  auto it = enabled_.find(feature);
+  if (it != enabled_.end()) {
+    enabled_.erase(it);
+  }
+}
+
+void FakePlatformFeatures::ShutdownBus() {
+  bus_->ShutdownAndBlock();
+}
+
 }  // namespace feature

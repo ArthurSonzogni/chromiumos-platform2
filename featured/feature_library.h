@@ -52,6 +52,10 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
   virtual bool IsEnabledBlocking(const VariationsFeature& feature) = 0;
+
+  // Shutdown the bus object, if any. Used for C API, or when destroying it and
+  // the bus is no longer owned.
+  virtual void ShutdownBus() = 0;
 };
 
 class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
@@ -68,9 +72,7 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
 
   bool IsEnabledBlocking(const VariationsFeature& feature) override;
 
-  // Shutdown the system bus. Used for C API, or when destroying it and the bus
-  // is no longer owned.
-  void ShutdownBus() { bus_->ShutdownAndBlock(); }
+  void ShutdownBus() override;
 
  protected:
   explicit PlatformFeatures(scoped_refptr<dbus::Bus> bus,
@@ -108,31 +110,30 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   base::WeakPtrFactory<PlatformFeatures> weak_ptr_factory_{this};
 };
 
-// Fake class for testing, which just returns a specified value.
+// Fake class for testing, which returns a specified value for each feature.
 class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
  public:
-  explicit FakePlatformFeatures(scoped_refptr<dbus::Bus> bus, bool enabled)
-      : bus_(bus), enabled_(enabled) {}
+  explicit FakePlatformFeatures(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
 
   FakePlatformFeatures(const FakePlatformFeatures&) = delete;
   FakePlatformFeatures& operator=(const FakePlatformFeatures&) = delete;
 
   void IsEnabled(const VariationsFeature& feature,
-                 IsEnabledCallback callback) override {
-    bus_->AssertOnOriginThread();
-    bus_->GetOriginTaskRunner()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), enabled_));
-  }
+                 IsEnabledCallback callback) override;
 
-  bool IsEnabledBlocking(const VariationsFeature& feature) override {
-    return enabled_;
-  }
+  bool IsEnabledBlocking(const VariationsFeature& feature) override;
 
-  void SetEnabled(bool enabled) { enabled_ = enabled; }
+  void SetEnabled(const std::string& feature, bool enabled);
+
+  void ClearEnabled(const std::string& feature);
+
+  void ShutdownBus() override;
 
  private:
   scoped_refptr<dbus::Bus> bus_;
-  bool enabled_ = false;
+
+  base::Lock enabled_lock_;
+  std::map<std::string, bool> enabled_;
 };
 }  // namespace feature
 
