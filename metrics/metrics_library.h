@@ -122,7 +122,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // 100 is high).
   //
   // The new metric must be documented in
-  // //tools/metrics/histograms/histograms.xml in the Chromium repository.
+  // //tools/metrics/histograms/metadata/platform/histograms.xml in the Chromium
+  // repository.
   bool SendToUMA(const std::string& name,
                  int sample,
                  int min,

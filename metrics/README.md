@@ -34,8 +34,21 @@ UMA. In order to use the library in a module, you need to do the following:
   `$SYSROOT/usr/include/` when the metrics library is built and installed.
 
 - The API is documented in [metrics_library.h](./metrics_library.h).  Before
-  using the API methods, a MetricsLibrary object needs to be constructed and
-  initialized through its Init method.
+  using the API methods, a MetricsLibrary object needs to be constructed. A
+  quick example:
+
+  ```c++
+  MetricsLibrary metrics;
+  bool result = metrics.SendToUMA(
+                 /*name=*/"Platform.MyModule.MyLabel",
+                 /*sample=*/3,
+                 /*min=*/1,
+                 /*max=*/10,
+                 /*num_buckets=*/10);
+  if (!result) {
+    LOG(ERROR) << "Failed to send to UMA";
+  }
+  ```
 
   For more information on the C API, see
   [c_metrics_library.h](./c_metrics_library.h).
