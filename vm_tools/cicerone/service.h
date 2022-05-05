@@ -506,7 +506,7 @@ class Service final {
                       O* output_proto) {
     DCHECK(sequence_checker_.CalledOnValidSequence());
     CHECK(output_proto);
-    output_proto->set_error(1);
+    output_proto->set_error(255);
     VirtualMachine* vm;
     std::string owner_id;
     std::string vm_name;
@@ -535,15 +535,18 @@ class Service final {
     std::unique_ptr<dbus::Response> dbus_response =
         vm_disk_management_service_proxy_->CallMethodAndBlock(
             &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-
+    if (!dbus_response) {
+      LOG(ERROR) << input_proto->GetTypeName() + " call failed";
+      return false;
+    }
     dbus::MessageReader reader(dbus_response.get());
     O response;
     if (!reader.PopArrayOfBytesAsProto(&response)) {
-      LOG(ERROR) << "Unable to parse GetDiskInfoReponse from response";
-      output_proto->set_error(1);
-    } else {
-      *output_proto = response;
+      LOG(ERROR) << "Unable to parse " << output_proto->GetTypeName()
+                 << " from response";
+      return false;
     }
+    *output_proto = response;
     return true;
   }
 
