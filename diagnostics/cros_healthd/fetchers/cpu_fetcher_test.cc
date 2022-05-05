@@ -872,6 +872,8 @@ TEST_F(CpuFetcherTest, ParseVulnerabilityMessageForStatus) {
            mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
           {"KVM: Mitigation: KVM mitigation",
            mojo_ipc::VulnerabilityInfo::Status::kMitigation},
+          {"Processor vulnerable",
+           mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
           {"Random unrecognized message",
            mojo_ipc::VulnerabilityInfo::Status::kUnrecognized}};
 

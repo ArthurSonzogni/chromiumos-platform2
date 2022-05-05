@@ -71,6 +71,8 @@ const char kKeylockerAeskl[] = "aeskl";
 constexpr char kKvmPrefix[] = "KVM: ";
 constexpr char kNotAffectedPattern[] = "Not affected";
 constexpr char kVulnerablePattern[] = "Vulnerable";
+// https://github.com/torvalds/linux/blob/df0cc57e057f18e44dac8e6c18aba47ab53202f9/arch/x86/kernel/cpu/bugs.c#L1649
+constexpr char kProcessorVulnerablePattern[] = "Processor vulnerable";
 constexpr char kMitigationPattern[] = "Mitigation";
 constexpr char kUnknownPattern[] = "Unknown";
 
@@ -708,7 +710,6 @@ mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
   // status correctly.
   //
   // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/multihit.html
-  // https://github.com/torvalds/linux/blob/df0cc57e057f18e44dac8e6c18aba47ab53202f9/arch/x86/kernel/cpu/bugs.c#L1649
   std::string message_no_prefix = message;
   if (base::StartsWith(message, kKvmPrefix)) {
     message_no_prefix = message.substr(sizeof(kKvmPrefix) - 1);
@@ -717,7 +718,8 @@ mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
   if (message_no_prefix == kNotAffectedPattern) {
     return mojo_ipc::VulnerabilityInfo::Status::kNotAffected;
   }
-  if (base::StartsWith(message_no_prefix, kVulnerablePattern)) {
+  if (base::StartsWith(message_no_prefix, kVulnerablePattern) ||
+      message_no_prefix == kProcessorVulnerablePattern) {
     return mojo_ipc::VulnerabilityInfo::Status::kVulnerable;
   }
   if (base::StartsWith(message_no_prefix, kMitigationPattern)) {
