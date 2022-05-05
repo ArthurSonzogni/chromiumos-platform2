@@ -139,6 +139,14 @@ class BackendTpm1 : public Backend {
     StatusOr<brillo::SecureBlob> RandomSecureBlob(size_t size) override;
   };
 
+  class PinWeaverTpm1 : public PinWeaver, public SubClassHelper<BackendTpm1> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<bool> IsEnabled() override;
+    StatusOr<uint8_t> GetVersion() override;
+    StatusOr<brillo::Blob> SendCommand(const brillo::Blob& command) override;
+  };
+
   BackendTpm1(Proxy& proxy, MiddlewareDerivative middleware_derivative);
 
   ~BackendTpm1() override;
@@ -174,7 +182,7 @@ class BackendTpm1 : public Backend {
   SessionManagerment* GetSessionManagerment() override { return nullptr; }
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
-  PinWeaver* GetPinWeaver() override { return nullptr; }
+  PinWeaver* GetPinWeaver() override { return &pinweaver_; }
   Vendor* GetVendor() override { return nullptr; }
 
   Proxy& proxy_;
@@ -190,6 +198,7 @@ class BackendTpm1 : public Backend {
   KeyManagermentTpm1 key_managerment_{*this};
   ConfigTpm1 config_{*this};
   RandomTpm1 random_{*this};
+  PinWeaverTpm1 pinweaver_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 
