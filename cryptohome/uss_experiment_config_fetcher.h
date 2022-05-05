@@ -56,6 +56,17 @@ class UssExperimentConfigFetcher {
                       brillo::http::RequestID request_id,
                       std::unique_ptr<brillo::http::Response> response);
 
+  // Called when fetching the config failed. If haven't exceed the retry count
+  // limit, retry after 1 second. Otherwise report that fetching failed.
+  void RetryFetch(FetchSuccessCallback success_callback);
+  void RetryFetchOnGetError(FetchSuccessCallback success_callback,
+                            brillo::http::RequestID request_id,
+                            const brillo::Error* error);
+
+  // Called when fetching and parsing the config succeeded. Set the USS
+  // experiment flag and report metrics.
+  void SetUssExperimentFlag(int last_invalid, double population);
+
   void SetReleaseTrackForTesting(std::string track);
 
   void SetTransportForTesting(
@@ -65,6 +76,8 @@ class UssExperimentConfigFetcher {
       std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
           manager_proxy);
 
+  // Retry count of fetching the config.
+  int retries_ = 0;
   // Used for determining the channel as different channel will have different
   // configs.
   std::string chromeos_release_track_;

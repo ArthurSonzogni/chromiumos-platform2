@@ -489,13 +489,17 @@ inline constexpr char kCryptohomeErrorAllLocations[] =
     "Cryptohome.Error.AllLocations";
 
 // List of possible results of fetching the USS experiment config. If fetching
-// or parsing failed the status is kError.
+// failed, the status is kFetchError. If parsing failed, the status is
+// kParseError.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class FetchUssExperimentConfigStatus {
   kEnabled = 0,
   kDisabled = 1,
-  kError = 2,
+  // kError = 2, // no longer used, separated into kFetchError and kParseError
+  kFetchError = 3,
+  kParseError = 4,
+  kNoReleaseTrack = 5,
   kMaxValue,
 };
 
@@ -760,6 +764,9 @@ void DisableErrorMetricsReporting();
 // Reports the result of fetching the USS experiment config.
 void ReportFetchUssExperimentConfigStatus(
     FetchUssExperimentConfigStatus status);
+
+// Reports the number of retries when fetching the USS experiment config.
+void ReportFetchUssExperimentConfigRetries(int retries);
 
 // Reports the result of reading the USS experiment flag.
 void ReportUssExperimentFlag(UssExperimentFlag flag);

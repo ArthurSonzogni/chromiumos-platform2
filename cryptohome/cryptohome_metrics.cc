@@ -112,6 +112,8 @@ constexpr char kLegacyCodePathUsageHistogramPrefix[] =
 constexpr char kVaultKeysetMetric[] = "Cryptohome.VaultKeysetMetric";
 constexpr char kFetchUssExperimentConfigStatus[] =
     "Cryptohome.UssExperiment.FetchUssExperimentConfigStatus";
+constexpr char kFetchUssExperimentConfigRetries[] =
+    "Cryptohome.UssExperiment.FetchUssExperimentConfigRetries";
 constexpr char kUssExperimentFlag[] =
     "Cryptohome.UssExperiment.UssExperimentFlag";
 
@@ -793,6 +795,12 @@ void ReportFetchUssExperimentConfigStatus(
   g_metrics->SendEnumToUMA(
       kFetchUssExperimentConfigStatus, static_cast<int>(status),
       static_cast<int>(FetchUssExperimentConfigStatus::kMaxValue));
+}
+
+void ReportFetchUssExperimentConfigRetries(int retries) {
+  constexpr int kMin = 0, kMax = 9, kNumBuckets = 10;
+  g_metrics->SendToUMA(kFetchUssExperimentConfigRetries, retries, kMin, kMax,
+                       kNumBuckets);
 }
 
 void ReportUssExperimentFlag(UssExperimentFlag flag) {

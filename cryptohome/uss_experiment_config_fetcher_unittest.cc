@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/test/task_environment.h>
 #include <brillo/http/http_transport_fake.h>
 #include <brillo/mime_utils.h>
 #include <gmock/gmock.h>
@@ -47,6 +48,8 @@ constexpr char kDefaultConfig[] = R"(
 
 constexpr char kInvalidConfig[] = "not a json file";
 
+constexpr char kFakeErrMessage[] = "error";
+
 // This is what the kConnectionState property will get set to for mocked
 // calls into shill flimflam manager.
 std::string* g_connection_state;
@@ -78,10 +81,24 @@ class UssExperimentConfigFetcherTest : public ::testing::Test {
     fetcher_->SetProxyForTesting(std::move(mock_proxy));
   }
 
+  void TearDown() override {
+    EXPECT_EQ(expected_success_count_, actual_success_count_);
+  }
+
   void AddSimpleReplyHandler(int status_code, const std::string& reply_text) {
     fake_transport_->AddSimpleReplyHandler(
         kGstaticUrlPrefix, brillo::http::request_type::kGet, status_code,
         reply_text, brillo::mime::application::kJson);
+  }
+
+  void SetCreateConnectionError() {
+    brillo::ErrorPtr error;
+    brillo::Error::AddTo(&error, FROM_HERE, "", "", kFakeErrMessage);
+    fake_transport_->SetCreateConnectionError(std::move(error));
+  }
+
+  void ClearCreateConnectionError() {
+    fake_transport_->SetCreateConnectionError(brillo::ErrorPtr());
   }
 
   void OnManagerPropertyChangeRegistration() {
@@ -104,31 +121,47 @@ class UssExperimentConfigFetcherTest : public ::testing::Test {
 
   void FetchAndExpectSuccessWith(int expected_last_invalid,
                                  double expected_population) {
-    bool called = false;
-    fetcher_->Fetch(base::BindRepeating(
-        [](bool* called, int expected_last_invalid, double expected_population,
-           int last_invalid, double population) {
-          *called = true;
-          EXPECT_EQ(expected_last_invalid, last_invalid);
-          EXPECT_DOUBLE_EQ(expected_population, population);
-        },
-        &called, expected_last_invalid, expected_population));
-    EXPECT_TRUE(called);
+    expected_success_count_++;
+    fetcher_->Fetch(
+        base::BindRepeating(&UssExperimentConfigFetcherTest::OnFetchSuccess,
+                            weak_ptr_factory_.GetWeakPtr(),
+                            expected_last_invalid, expected_population));
   }
 
   void FetchAndExpectError() {
-    bool called = false;
     fetcher_->Fetch(
-        base::BindRepeating([](bool* called, int last_invalid,
-                               double population) { *called = true; },
-                            &called));
-    EXPECT_FALSE(called);
+        base::BindRepeating(&UssExperimentConfigFetcherTest::OnFetchSuccess,
+                            weak_ptr_factory_.GetWeakPtr(),
+                            /*expected_last_invalid=*/std::nullopt,
+                            /*expected_population=*/std::nullopt));
   }
 
-  std::string initial_connection_state_;
-  std::unique_ptr<UssExperimentConfigFetcher> fetcher_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::shared_ptr<brillo::http::fake::Transport> fake_transport_;
   ManagerProxyMock* mock_proxy_;
+
+ private:
+  // If expected_* is nullopt, we don't check the actual value of the fetched
+  // fields.
+  void OnFetchSuccess(std::optional<int> expected_last_invalid,
+                      std::optional<double> expected_population,
+                      int last_invalid,
+                      double population) {
+    actual_success_count_++;
+    if (expected_last_invalid.has_value()) {
+      EXPECT_EQ(expected_last_invalid.value(), last_invalid);
+    }
+    if (expected_population.has_value()) {
+      EXPECT_DOUBLE_EQ(expected_population.value(), population);
+    }
+  }
+
+  int expected_success_count_ = 0;
+  int actual_success_count_ = 0;
+  std::string initial_connection_state_;
+  std::unique_ptr<UssExperimentConfigFetcher> fetcher_;
+  base::WeakPtrFactory<UssExperimentConfigFetcherTest> weak_ptr_factory_{this};
 };
 
 TEST_F(UssExperimentConfigFetcherTest, OnlineWhenFirstConnected) {
@@ -189,6 +222,37 @@ TEST_F(UssExperimentConfigFetcherTest, FetchAndParseConfigError) {
   FetchAndExpectError();
 
   EXPECT_EQ(fake_transport_->GetRequestCount(), 1);
+}
+
+TEST_F(UssExperimentConfigFetcherTest, FetchErrorReachRetryLimit) {
+  AddSimpleReplyHandler(brillo::http::status_code::NotFound, "");
+
+  SetReleaseTrack("stable-channel");
+  FetchAndExpectError();
+  task_environment_.FastForwardUntilNoTasksRemain();
+
+  EXPECT_EQ(fake_transport_->GetRequestCount(), 10);
+}
+
+TEST_F(UssExperimentConfigFetcherTest, FetchErrorRetrySuccess) {
+  SetReleaseTrack("stable-channel");
+  // First simulate a connection error. The first fetch attempt should fail.
+  SetCreateConnectionError();
+  FetchAndExpectSuccessWith(4, 0.01);
+
+  // Clear the connection error, but simulate a ServiceUnavailable. This should
+  // fail the first retry.
+  ClearCreateConnectionError();
+  AddSimpleReplyHandler(brillo::http::status_code::ServiceUnavailable, "");
+  task_environment_.FastForwardBy(base::Seconds(1));
+
+  // Now set the server to return a valid response. This should make the second
+  // retry succeed.
+  AddSimpleReplyHandler(brillo::http::status_code::Ok, kDefaultConfig);
+  task_environment_.FastForwardBy(base::Seconds(1));
+
+  // Connection error will not count as a request.
+  EXPECT_EQ(fake_transport_->GetRequestCount(), 2);
 }
 
 }  // namespace cryptohome

@@ -12,6 +12,7 @@
 #include <base/rand_util.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/values.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
@@ -34,34 +35,11 @@ constexpr char kDefaultConfigKey[] = "default";
 constexpr char kConfigPopulationKey[] = "population";
 constexpr char kConfigLastInvalidKey[] = "last_invalid";
 
+constexpr char kMaxRetries = 9;
+
 void LogUssExperimentConfig(int last_invalid, double population) {
   LOG(INFO) << "USS experiment config fetched from server: last_inavlid = "
             << last_invalid << ", population = " << population;
-}
-
-void SetUssExperimentFlag(int last_invalid, double population) {
-  LogUssExperimentConfig(last_invalid, population);
-
-  bool enabled;
-  if (last_invalid >= UserSecretStashExperimentVersion()) {
-    enabled = false;
-  } else {
-    // `population` is directly interpreted as the probability to enable the
-    // experiment. This will result in roughly `population` portion of the total
-    // population enabling the experiment.
-    enabled = base::RandDouble() < population;
-  }
-
-  FetchUssExperimentConfigStatus status =
-      enabled ? FetchUssExperimentConfigStatus::kEnabled
-              : FetchUssExperimentConfigStatus::kDisabled;
-  ReportFetchUssExperimentConfigStatus(status);
-
-  SetUserSecretStashExperimentFlag(enabled);
-}
-
-void ReportFetchError() {
-  ReportFetchUssExperimentConfigStatus(FetchUssExperimentConfigStatus::kError);
 }
 
 }  // namespace
@@ -126,7 +104,8 @@ void UssExperimentConfigFetcher::OnManagerPropertyChange(
 
   if (base::EqualsCaseInsensitiveASCII(connection_state,
                                        kConnectionStateOnline)) {
-    Fetch(base::BindRepeating(&SetUssExperimentFlag));
+    Fetch(base::BindRepeating(&UssExperimentConfigFetcher::SetUssExperimentFlag,
+                              weak_factory_.GetWeakPtr()));
   }
 }
 
@@ -142,9 +121,8 @@ void UssExperimentConfigFetcher::Fetch(
       kGstaticUrlPrefix, {}, transport_,
       base::BindRepeating(&UssExperimentConfigFetcher::OnFetchSuccess,
                           weak_factory_.GetWeakPtr(), success_callback),
-      base::BindRepeating([](brillo::http::RequestID, const brillo::Error*) {
-        ReportFetchError();
-      }));
+      base::BindRepeating(&UssExperimentConfigFetcher::RetryFetchOnGetError,
+                          weak_factory_.GetWeakPtr(), success_callback));
 }
 
 void UssExperimentConfigFetcher::OnFetchSuccess(
@@ -155,14 +133,15 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
   // determine which channel we are in to parse corresponding config fields.
   if (chromeos_release_track_.empty()) {
     LOG(WARNING) << "Failed to determine which channel the device is in.";
-    ReportFetchError();
+    ReportFetchUssExperimentConfigStatus(
+        FetchUssExperimentConfigStatus::kNoReleaseTrack);
     return;
   }
 
   int status_code = response->GetStatusCode();
   if (status_code != brillo::http::status_code::Ok) {
     LOG(WARNING) << "Fetch USS config failed with status code: " << status_code;
-    ReportFetchError();
+    RetryFetch(success_callback);
     return;
   }
 
@@ -172,7 +151,8 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
       brillo::http::ParseJsonResponse(response.get(), nullptr, &error);
   if (error || !json.has_value()) {
     LOG(WARNING) << "The fetched USS config is not a valid json file.";
-    ReportFetchError();
+    ReportFetchUssExperimentConfigStatus(
+        FetchUssExperimentConfigStatus::kParseError);
     return;
   }
 
@@ -204,16 +184,66 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
   if (!last_invalid.has_value()) {
     LOG(WARNING)
         << "Failed to parse `last_inavlid` field in the fetched USS config.";
-    ReportFetchError();
+    ReportFetchUssExperimentConfigStatus(
+        FetchUssExperimentConfigStatus::kParseError);
     return;
   }
   if (!population.has_value()) {
     LOG(WARNING)
         << "Failed to parse `population` field in the fetched USS config.";
-    ReportFetchError();
+    ReportFetchUssExperimentConfigStatus(
+        FetchUssExperimentConfigStatus::kParseError);
     return;
   }
   success_callback.Run(*last_invalid, *population);
+}
+
+void UssExperimentConfigFetcher::RetryFetchOnGetError(
+    FetchSuccessCallback success_callback,
+    brillo::http::RequestID,
+    const brillo::Error* error) {
+  LOG(ERROR) << "GET USS config failed: " << error->GetMessage();
+  RetryFetch(success_callback);
+}
+
+void UssExperimentConfigFetcher::RetryFetch(
+    FetchSuccessCallback success_callback) {
+  if (retries_ == kMaxRetries) {
+    LOG(ERROR) << "Retry attempt limit reached for fetching USS config, "
+                  "reporting fetch error.";
+    ReportFetchUssExperimentConfigStatus(
+        FetchUssExperimentConfigStatus::kFetchError);
+    return;
+  }
+  retries_++;
+  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&UssExperimentConfigFetcher::Fetch,
+                     weak_factory_.GetWeakPtr(), success_callback),
+      base::Seconds(1));
+}
+
+void UssExperimentConfigFetcher::SetUssExperimentFlag(int last_invalid,
+                                                      double population) {
+  LogUssExperimentConfig(last_invalid, population);
+
+  bool enabled;
+  if (last_invalid >= UserSecretStashExperimentVersion()) {
+    enabled = false;
+  } else {
+    // `population` is directly interpreted as the probability to enable the
+    // experiment. This will result in roughly `population` portion of the total
+    // population enabling the experiment.
+    enabled = base::RandDouble() < population;
+  }
+
+  FetchUssExperimentConfigStatus status =
+      enabled ? FetchUssExperimentConfigStatus::kEnabled
+              : FetchUssExperimentConfigStatus::kDisabled;
+  ReportFetchUssExperimentConfigStatus(status);
+  ReportFetchUssExperimentConfigRetries(retries_);
+
+  SetUserSecretStashExperimentFlag(enabled);
 }
 
 void UssExperimentConfigFetcher::SetReleaseTrackForTesting(std::string track) {
