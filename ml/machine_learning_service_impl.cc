@@ -478,9 +478,14 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
   // TODO(claudiomagni): When Language Packs is complete, deprecate the first
   // case and only use Language Packs.
   if (is_handwriting_enabled || is_language_packs_enabled) {
-    LoadHandwritingLibAndRecognizer<HandwritingRecognizer>(
-        std::move(spec), std::move(receiver), std::move(callback),
+    // TODO(honglinyu): when Web Platform HWR's `HandwritingModelConstraint`
+    // also contains the `library_dlc_path` field, we will not need to pass in
+    // the `lib_path` separately because it is already in `spec`. Now this
+    // needed to share the template function `LoadHandwritingLibAndRecognizer`.
+    const std::string lib_path = spec->library_dlc_path.value_or(
         ml::HandwritingLibrary::kHandwritingDefaultInstallDir);
+    LoadHandwritingLibAndRecognizer<HandwritingRecognizer>(
+        std::move(spec), std::move(receiver), std::move(callback), lib_path);
     return;
   }
 
