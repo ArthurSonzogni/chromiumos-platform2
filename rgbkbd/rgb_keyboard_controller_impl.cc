@@ -16,11 +16,10 @@ RgbKeyboardControllerImpl::RgbKeyboardControllerImpl(RgbKeyboard* keyboard)
 RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
-  // TODO(michaelcheco): Update to support RgbKeyboardCapabilities::kFiveZone
-  const bool supported = keyboard_->GetRgbKeyboardCapabilities();
-  keyboard_capabilities_ = supported ? RgbKeyboardCapabilities::kIndividualKey
-                                     : RgbKeyboardCapabilities::kNone;
-  return static_cast<uint32_t>(keyboard_capabilities_);
+  if (!capabilities_.has_value()) {
+    capabilities_ = keyboard_->GetRgbKeyboardCapabilities();
+  }
+  return static_cast<uint32_t>(capabilities_.value());
 }
 
 void RgbKeyboardControllerImpl::SetKeyColor(const KeyColor& key_color) {

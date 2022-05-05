@@ -5,6 +5,7 @@
 #ifndef RGBKBD_KEYBOARD_BACKLIGHT_LOGGER_H_
 #define RGBKBD_KEYBOARD_BACKLIGHT_LOGGER_H_
 
+#include <dbus/rgbkbd/dbus-constants.h>
 #include <memory>
 
 #include <stdint.h>
@@ -24,7 +25,7 @@ class KeyboardBacklightLogger : public RgbKeyboard {
 
   bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) override;
   bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) override;
-  bool GetRgbKeyboardCapabilities() override;
+  RgbKeyboardCapabilities GetRgbKeyboardCapabilities() override;
 
   // Clears log.
   bool ResetLog();

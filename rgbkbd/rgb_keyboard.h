@@ -5,6 +5,8 @@
 #ifndef RGBKBD_RGB_KEYBOARD_H_
 #define RGBKBD_RGB_KEYBOARD_H_
 
+#include <dbus/rgbkbd/dbus-constants.h>
+
 namespace rgbkbd {
 
 // Base interface class that exposes the API to interact with the keyboard's RGB
@@ -16,7 +18,7 @@ class RgbKeyboard {
 
   virtual bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) = 0;
   virtual bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) = 0;
-  virtual bool GetRgbKeyboardCapabilities() = 0;
+  virtual RgbKeyboardCapabilities GetRgbKeyboardCapabilities() = 0;
 };
 
 }  // namespace rgbkbd

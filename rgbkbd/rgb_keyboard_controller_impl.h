@@ -7,6 +7,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
+
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "rgbkbd/rgb_keyboard.h"
@@ -101,8 +103,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   Color GetColorForBackgroundType() const;
   Color GetCurrentCapsLockColor() const;
 
-  RgbKeyboardCapabilities keyboard_capabilities_ =
-      RgbKeyboardCapabilities::kNone;
+  std::optional<RgbKeyboardCapabilities> capabilities_;
   RgbKeyboard* keyboard_;
   Color background_color_;
   bool caps_lock_enabled_ = false;

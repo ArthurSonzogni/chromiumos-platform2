@@ -75,9 +75,13 @@ bool InternalRgbKeyboard::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
   return success;
 }
 
-bool InternalRgbKeyboard::GetRgbKeyboardCapabilities() {
+RgbKeyboardCapabilities InternalRgbKeyboard::GetRgbKeyboardCapabilities() {
   LOG(INFO) << "Checking RgbKeyboardCapabilities by trying to set all keys to "
             << CreateRgbLogString(/*r=*/0, /*g=*/0, /*b=*/0);
-  return SetAllKeyColors(/*r=*/0, /*g=*/0, /*b=*/0);
+  const bool success = SetAllKeyColors(/*r=*/0, /*g=*/0, /*b=*/0);
+  // TODO(michaelcheco): Update to support
+  // RgbKeyboardCapabilities::kIndividualKey
+  return success ? RgbKeyboardCapabilities::kFiveZone
+                 : RgbKeyboardCapabilities::kNone;
 }
 }  // namespace rgbkbd

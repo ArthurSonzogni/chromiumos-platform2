@@ -5,6 +5,7 @@
 #ifndef RGBKBD_INTERNAL_RGB_KEYBOARD_H_
 #define RGBKBD_INTERNAL_RGB_KEYBOARD_H_
 
+#include <dbus/rgbkbd/dbus-constants.h>
 #include <stdint.h>
 
 #include "rgbkbd/rgb_keyboard.h"
@@ -20,7 +21,7 @@ class InternalRgbKeyboard : public RgbKeyboard {
 
   bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) override;
   bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) override;
-  bool GetRgbKeyboardCapabilities() override;
+  RgbKeyboardCapabilities GetRgbKeyboardCapabilities() override;
 };
 
 }  // namespace rgbkbd
