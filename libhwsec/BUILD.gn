@@ -134,6 +134,7 @@ source_set("hardware_abstraction_library") {
     sources += [
       "backend/tpm1/backend.cc",
       "backend/tpm1/config.cc",
+      "backend/tpm1/deriving.cc",
       "backend/tpm1/key_managerment.cc",
       "backend/tpm1/random.cc",
       "backend/tpm1/sealing.cc",
@@ -146,6 +147,7 @@ source_set("hardware_abstraction_library") {
     sources += [
       "backend/tpm2/backend.cc",
       "backend/tpm2/config.cc",
+      "backend/tpm2/deriving.cc",
       "backend/tpm2/key_managerment.cc",
       "backend/tpm2/random.cc",
       "backend/tpm2/sealing.cc",
@@ -220,6 +222,7 @@ if (use.test) {
       sources += [
         "backend/tpm1/backend_test.cc",
         "backend/tpm1/config_test.cc",
+        "backend/tpm1/deriving_test.cc",
         "backend/tpm1/key_managerment_test.cc",
         "backend/tpm1/random_test.cc",
         "backend/tpm1/sealing_test.cc",
@@ -233,6 +236,7 @@ if (use.test) {
     if (use.tpm2) {
       sources += [
         "backend/tpm2/config_test.cc",
+        "backend/tpm2/deriving_test.cc",
         "backend/tpm2/key_managerment_test.cc",
         "backend/tpm2/random_test.cc",
         "backend/tpm2/sealing_test.cc",

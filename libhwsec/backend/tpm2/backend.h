@@ -50,6 +50,20 @@ class BackendTpm2 : public Backend {
                                         UnsealOptions options) override;
   };
 
+  class DerivingTpm2 : public Deriving, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<brillo::Blob> Derive(Key key, const brillo::Blob& blob) override;
+    StatusOr<brillo::SecureBlob> SecureDerive(
+        Key key, const brillo::SecureBlob& blob) override;
+
+   private:
+    StatusOr<brillo::SecureBlob> DeriveRsaKey(const KeyTpm2& key_data,
+                                              const brillo::SecureBlob& blob);
+    StatusOr<brillo::SecureBlob> DeriveEccKey(const KeyTpm2& key_data,
+                                              const brillo::SecureBlob& blob);
+  };
+
   class KeyManagermentTpm2 : public KeyManagerment,
                              public SubClassHelper<BackendTpm2> {
    public:
@@ -155,7 +169,7 @@ class BackendTpm2 : public Backend {
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override { return nullptr; }
-  Deriving* GetDeriving() override { return nullptr; }
+  Deriving* GetDeriving() override { return &deriving_; }
   Encryption* GetEncryption() override { return nullptr; }
   Signing* GetSigning() override { return nullptr; }
   KeyManagerment* GetKeyManagerment() override { return &key_managerment_; }
@@ -171,6 +185,7 @@ class BackendTpm2 : public Backend {
 
   StateTpm2 state_{*this};
   SealingTpm2 sealing_{*this};
+  DerivingTpm2 deriving_{*this};
   KeyManagermentTpm2 key_managerment_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
