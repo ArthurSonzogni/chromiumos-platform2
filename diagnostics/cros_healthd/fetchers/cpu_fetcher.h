@@ -61,6 +61,11 @@ base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
 base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
                                        int logical_id);
 
+// Returns the parsed vulnerability status from reading the vulnerability
+// message. This function is exported for testing.
+chromeos::cros_healthd::mojom::VulnerabilityInfo::Status
+GetVulnerabilityStatusFromMessage(const std::string& message);
+
 // The CpuFetcher class is responsible for gathering CPU info reported by
 // cros_healthd.
 class CpuFetcher final

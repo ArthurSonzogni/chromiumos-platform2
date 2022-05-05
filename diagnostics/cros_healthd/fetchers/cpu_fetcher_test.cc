@@ -848,21 +848,6 @@ TEST_F(CpuFetcherTest, NormalVulnerabilityFile) {
   expected["Vulnerability3"] = mojo_ipc::VulnerabilityInfo::New(
       mojo_ipc::VulnerabilityInfo::Status::kMitigation,
       "Mitigation: Fake Mitigation Effect");
-  SetVulnerabiility("Vulnerability4", "Vulnerable: Vulnerable with message");
-  expected["Vulnerability4"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kVulnerable,
-      "Vulnerable: Vulnerable with message");
-  SetVulnerabiility("Vulnerability5", "Unknown: Unknown status");
-  expected["Vulnerability5"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kUnknown, "Unknown: Unknown status");
-  SetVulnerabiility("Vulnerability6", "KVM: Vulnerable: KVM vulnerability");
-  expected["Vulnerability6"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kVulnerable,
-      "KVM: Vulnerable: KVM vulnerability");
-  SetVulnerabiility("Vulnerability7", "KVM: Mitigation: KVM mitigation");
-  expected["Vulnerability7"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kMitigation,
-      "KVM: Mitigation: KVM mitigation");
 
   auto cpu_result = FetchCpuInfo();
   ASSERT_TRUE(cpu_result->is_cpu_info());
@@ -871,14 +856,29 @@ TEST_F(CpuFetcherTest, NormalVulnerabilityFile) {
   EXPECT_EQ(cpu_info->vulnerabilities, expected);
 }
 
-// Test that we handle incorrectly formatted vulnerability content.
-TEST_F(CpuFetcherTest, IncorrectlyFormattedVulnerabilityFile) {
-  SetVulnerabiility("BadVulnerability", "wrong format");
+// Test that we can parse status from vulnerability messages correctly.
+TEST_F(CpuFetcherTest, ParseVulnerabilityMessageForStatus) {
+  std::vector<std::pair<std::string, mojo_ipc::VulnerabilityInfo::Status>>
+      message_to_expected_status = {
+          {"Not affected", mojo_ipc::VulnerabilityInfo::Status::kNotAffected},
+          {"Vulnerable", mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+          {"Mitigation: Fake Mitigation Effect",
+           mojo_ipc::VulnerabilityInfo::Status::kMitigation},
+          {"Vulnerable: Vulnerable with message",
+           mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+          {"Unknown: Unknown status",
+           mojo_ipc::VulnerabilityInfo::Status::kUnknown},
+          {"KVM: Vulnerable: KVM vulnerability",
+           mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+          {"KVM: Mitigation: KVM mitigation",
+           mojo_ipc::VulnerabilityInfo::Status::kMitigation},
+          {"Random unrecognized message",
+           mojo_ipc::VulnerabilityInfo::Status::kUnrecognized}};
 
-  auto cpu_result = FetchCpuInfo();
-
-  ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  for (const auto& message_status : message_to_expected_status) {
+    ASSERT_EQ(GetVulnerabilityStatusFromMessage(message_status.first),
+              message_status.second);
+  }
 }
 
 // Test that we handle missing kvm file.

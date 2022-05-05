@@ -464,33 +464,8 @@ std::optional<VulnerabilityInfoMap> GetVulnerabilities(
       return std::nullopt;
     }
 
-    // Messages in the |iTLB multihit| vulnerability takes a different form with
-    // |KVM: Vulberable| and |KVM: Mitigation: $msg|. We remove prefix to
-    // convert the data to common form in order to parse the status correctly.
-    //
-    // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/multihit.html
-    std::string vulnerability_status_no_prefix = vulnerability->message;
-    if (base::StartsWith(vulnerability->message, kKvmPrefix)) {
-      vulnerability_status_no_prefix =
-          vulnerability->message.substr(sizeof(kKvmPrefix) - 1);
-    }
-
-    if (vulnerability_status_no_prefix == kNotAffectedPattern) {
-      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kNotAffected;
-    } else if (base::StartsWith(vulnerability_status_no_prefix,
-                                kVulnerablePattern)) {
-      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kVulnerable;
-    } else if (base::StartsWith(vulnerability_status_no_prefix,
-                                kMitigationPattern)) {
-      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kMitigation;
-    } else if (base::StartsWith(vulnerability_status_no_prefix,
-                                kUnknownPattern)) {
-      vulnerability->status = mojo_ipc::VulnerabilityInfo::Status::kUnknown;
-    } else {
-      LOG(ERROR) << "Unrecognized vulnerability: " << vulnerability_file.value()
-                 << " with content " << vulnerability->message;
-      return std::nullopt;
-    }
+    vulnerability->status =
+        GetVulnerabilityStatusFromMessage(vulnerability->message);
 
     vulnerabilities_vec.push_back(
         {vulnerability_file.BaseName().value(), std::move(vulnerability)});
@@ -723,6 +698,35 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(cpufreq_dirname);
+}
+
+mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
+    const std::string& message) {
+  // Messages in the |iTLB multihit| vulnerability takes a different form with
+  // |KVM: Vulberable|, |KVM: Mitigation: $msg| and |Processor vulnerable|. We
+  // remove prefix to convert the data to common form in order to parse the
+  // status correctly.
+  //
+  // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/multihit.html
+  // https://github.com/torvalds/linux/blob/df0cc57e057f18e44dac8e6c18aba47ab53202f9/arch/x86/kernel/cpu/bugs.c#L1649
+  std::string message_no_prefix = message;
+  if (base::StartsWith(message, kKvmPrefix)) {
+    message_no_prefix = message.substr(sizeof(kKvmPrefix) - 1);
+  }
+
+  if (message_no_prefix == kNotAffectedPattern) {
+    return mojo_ipc::VulnerabilityInfo::Status::kNotAffected;
+  }
+  if (base::StartsWith(message_no_prefix, kVulnerablePattern)) {
+    return mojo_ipc::VulnerabilityInfo::Status::kVulnerable;
+  }
+  if (base::StartsWith(message_no_prefix, kMitigationPattern)) {
+    return mojo_ipc::VulnerabilityInfo::Status::kMitigation;
+  }
+  if (base::StartsWith(message_no_prefix, kUnknownPattern)) {
+    return mojo_ipc::VulnerabilityInfo::Status::kUnknown;
+  }
+  return mojo_ipc::VulnerabilityInfo::Status::kUnrecognized;
 }
 
 void CpuFetcher::HandleCallbackComplete(bool all_callback_called) {

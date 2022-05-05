@@ -390,6 +390,8 @@ struct VulnerabilityInfo {
     kMitigation,
     // Vulnerability is unknown.
     kUnknown,
+    // Vulnerability is unrecognized by parser.
+    kUnrecognized,
   };
 
   Status status@0;
