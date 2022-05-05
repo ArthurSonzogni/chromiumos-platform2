@@ -213,7 +213,7 @@ void SystemProxyAdaptor::GetChromeProxyServersAsync(
     const brillo::http::GetChromeProxyServersCallback& callback) {
   brillo::http::GetChromeProxyServersWithOverrideAsync(
       dbus_object_->GetBus(), target_url,
-      brillo::http::SystemProxyOverride::kOptOut, move(callback));
+      brillo::http::SystemProxyOverride::kOptOut, std::move(callback));
 }
 
 std::unique_ptr<SandboxedWorker> SystemProxyAdaptor::CreateWorker() {
