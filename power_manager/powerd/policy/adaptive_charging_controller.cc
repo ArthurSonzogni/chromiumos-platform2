@@ -27,6 +27,8 @@ namespace {
 const char kDefaultChargeHistoryDir[] =
     "/var/lib/power_manager/charge_history/";
 const char kChargeEventsSubDir[] = "charge_events/";
+const char kTimeFullOnACSubDir[] = "time_full_on_ac/";
+const char kTimeOnACSubDir[] = "time_on_ac/";
 // `kRententionDays`, `kChargeHistoryTimeBucketSize`, and `kMaxChargeEvents`
 // require a privacy review to be changed.
 const base::TimeDelta kRetentionDays = base::Days(30);
@@ -51,7 +53,11 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
   CHECK(base::SetPosixFilePermissions(charge_history_dir_, 0700));
 
   charge_events_dir_ = charge_history_dir_.Append(kChargeEventsSubDir);
+  time_full_on_ac_dir_ = charge_history_dir_.Append(kTimeFullOnACSubDir);
+  time_on_ac_dir_ = charge_history_dir_.Append(kTimeOnACSubDir);
   CHECK(base::CreateDirectory(charge_events_dir_));
+  CHECK(base::CreateDirectory(time_full_on_ac_dir_));
+  CHECK(base::CreateDirectory(time_on_ac_dir_));
 
   base::Time now = base::Time::Now();
   base::FileEnumerator events_dir(charge_events_dir_, false,
@@ -85,6 +91,42 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
     }
   }
 
+  ReadChargeDaysFromFiles(time_full_on_ac_dir_, &time_full_on_ac_days_,
+                          &duration_full_on_ac_);
+  ReadChargeDaysFromFiles(time_on_ac_dir_, &time_on_ac_days_, &duration_on_ac_);
+
+  // There are three cases to handle when creating a best guess for the
+  // `full_charge_time_` (these values are for a heuristic):
+  // - There isn't a charge event without a duration (plug in happened during a
+  // prior instance of ChargeHistory), we go with now as `full_charge_time_`.
+  // - The latest write to time_full_on_ac/ is not after the start of charge, or
+  // there isn't a latest write to time_full_on_ac/. We treat the entire time
+  // since starting charge as full, hence `full_charge_time_` is set to the
+  // start of charge time.
+  // - If the latest write to the last time_full_on_ac/ file is after the start
+  // of the latest charge event, we go with that time, since we already recorded
+  // the time between the start of charge and then.
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
+      status.external_power == PowerSupplyProperties_ExternalPower_AC) {
+    base::File::Info full_on_ac_info;
+    auto rit = time_full_on_ac_days_.rbegin();
+    base::FilePath path;
+    if (ac_connect_time_ == base::Time()) {
+      full_charge_time_ = FloorTime(base::Time::Now());
+    } else if (rit == time_full_on_ac_days_.rend() ||
+               !TimeToJSONFileName(rit->first, &path) ||
+               !base::GetFileInfo(path, &full_on_ac_info) ||
+               full_on_ac_info.last_modified < ac_connect_time_) {
+      full_charge_time_ = ac_connect_time_;
+    } else {
+      full_charge_time_ = FloorTime(full_on_ac_info.last_modified);
+    }
+  } else {
+    full_charge_time_ = base::Time();
+  }
+
+  AddZeroDurationChargeDays(time_full_on_ac_dir_, &time_full_on_ac_days_);
+  AddZeroDurationChargeDays(time_on_ac_dir_, &time_on_ac_days_);
   UpdateHistory(status);
   RemoveOldChargeEvents();
   retention_timer_.Start(
@@ -105,13 +147,51 @@ void ChargeHistory::HandlePowerStatusUpdate(const system::PowerStatus& status) {
     return;
   }
 
+  if (status.external_power == PowerSupplyProperties_ExternalPower_AC &&
+      status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
+      full_charge_time_ == base::Time())
+    full_charge_time_ = FloorTime(base::Time::Now());
+
   if (status.external_power == cached_external_power_)
     return;
 
   UpdateHistory(status);
 }
 
+base::TimeDelta ChargeHistory::GetTimeOnAC() {
+  base::TimeDelta duration_on_ac = duration_on_ac_;
+
+  if (ac_connect_time_ != base::Time() && ac_connect_time_ < base::Time::Now())
+    duration_on_ac += base::Time::Now() - ac_connect_time_;
+
+  return duration_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
+}
+
+base::TimeDelta ChargeHistory::GetTimeFullOnAC() {
+  base::TimeDelta duration_full_on_ac = duration_full_on_ac_;
+  if (full_charge_time_ != base::Time() &&
+      full_charge_time_ < base::Time::Now())
+    duration_full_on_ac += base::Time::Now() - full_charge_time_;
+
+  return duration_full_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
+}
+
+int ChargeHistory::DaysOfHistory() {
+  return time_on_ac_days_.size();
+}
+
 void ChargeHistory::OnEnterLowPowerState() {
+  // Charge Events and Time on AC don't need to be recorded when entering a low
+  // power state, which we may not return from, but Time Full on AC does, since
+  // it relies on `full_charge_time_`, a variable stored only in memory.
+  if (full_charge_time_ != base::Time()) {
+    RecordDurations(time_full_on_ac_dir_, &time_full_on_ac_days_,
+                    full_charge_time_, &duration_full_on_ac_);
+    // Set `full_charge_time_` to now, so we don't double count if the low
+    // power state returns.
+    full_charge_time_ = FloorTime(base::Time::Now());
+  }
+
   rewrite_timer_.Stop();
 }
 
@@ -149,11 +229,108 @@ void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
   }
 
   // On AC disconnect, write the charging duration to the latest charge event
-  // file (the name of which will be the connection time).
+  // file (the name of which will be the connection time), the time_on_ac files,
+  // and the time_full_on_ac files (if we're fully charged).
+  if (full_charge_time_ != base::Time())
+    RecordDurations(time_full_on_ac_dir_, &time_full_on_ac_days_,
+                    full_charge_time_, &duration_full_on_ac_);
+
+  RecordDurations(time_on_ac_dir_, &time_on_ac_days_, ac_connect_time_,
+                  &duration_on_ac_);
+  full_charge_time_ = base::Time();
+
   base::TimeDelta duration = now - ac_connect_time_;
   WriteDurationToFile(charge_events_dir_, ac_connect_time_, duration);
   charge_events_[ac_connect_time_] = duration;
   ac_connect_time_ = base::Time();
+}
+
+void ChargeHistory::RecordDurations(const base::FilePath& dir,
+                                    std::map<base::Time, base::TimeDelta>* days,
+                                    const base::Time& start,
+                                    base::TimeDelta* total_duration) {
+  base::Time now = base::Time::Now();
+  // Midnight for today (before start).
+  base::Time date = start.UTCMidnight();
+  while (date < now) {
+    auto it = days->insert(std::make_pair(date, base::TimeDelta())).first;
+    base::Time tomorrow = date + base::Days(1);
+    base::Time start_for_day = start > it->first ? start : it->first;
+    base::Time end_for_day = tomorrow > now ? now : tomorrow;
+    base::TimeDelta duration = end_for_day - start_for_day;
+
+    // Subtract the old duration for `date` then add back the updated duration
+    // to `total_duration` (the total time for all days tracked in `days`) after
+    // flooring the value and making sure it's not over 1 day.
+    *total_duration -= it->second;
+    it->second += duration;
+    it->second = it->second.FloorToMultiple(kChargeHistoryTimeInterval);
+    if (it->second > base::Days(1)) {
+      LOG(WARNING) << "Time spent on AC: " << it->second << " for day " << date
+                   << " was more than 1 day";
+      it->second = base::Days(1);
+    }
+
+    *total_duration += it->second;
+    WriteDurationToFile(dir, date, it->second);
+    date += base::Days(1);
+  }
+}
+
+void ChargeHistory::ReadChargeDaysFromFiles(
+    const base::FilePath& dir,
+    std::map<base::Time, base::TimeDelta>* days,
+    base::TimeDelta* total_duration) {
+  base::Time now = base::Time::Now();
+  base::FileEnumerator dir_enum(dir, false, base::FileEnumerator::FILES);
+  for (base::FilePath path = dir_enum.Next(); !path.empty();
+       path = dir_enum.Next()) {
+    base::Time file_time;
+    base::TimeDelta duration;
+    if (!JSONFileNameToTime(path, &file_time)) {
+      CHECK(base::DeleteFile(path));
+    } else if (!ReadTimeDeltaFromFile(path, &duration)) {
+      CHECK(base::DeleteFile(path));
+    } else if (file_time < now - kRetentionDays) {
+      // Delete files that are older than our retention limit.
+      CHECK(base::DeleteFile(path));
+    } else {
+      days->insert(std::make_pair(file_time, duration));
+      *total_duration += duration;
+    }
+  }
+}
+
+void ChargeHistory::AddZeroDurationChargeDays(
+    const base::FilePath& dir, std::map<base::Time, base::TimeDelta>* days) {
+  auto rit = days->rbegin();
+  base::Time todays_date = base::Time::Now().UTCMidnight();
+  base::Time date =
+      rit == days->rend() ? todays_date : rit->first + base::Days(1);
+
+  for (; date <= todays_date; date += base::Days(1)) {
+    days->insert(std::make_pair(date, base::TimeDelta()));
+    WriteDurationToFile(dir, date, base::TimeDelta());
+  }
+}
+
+void ChargeHistory::RemoveOldChargeDays(
+    const base::FilePath& dir,
+    std::map<base::Time, base::TimeDelta>* days,
+    base::TimeDelta* total_duration) {
+  for (auto rit = days->rbegin();
+       rit != days->rend() && rit->first < base::Time::Now() - kRetentionDays;
+       rit++) {
+    *total_duration -= rit->second;
+    days->erase(rit->first);
+
+    base::FilePath path;
+    if (!TimeToJSONFileName(rit->first, &path)) {
+      continue;
+    }
+
+    CHECK(base::DeleteFile(dir.Append(path)));
+  }
 }
 
 void ChargeHistory::CreateEmptyChargeEventFile(base::Time start) {
@@ -191,6 +368,9 @@ void ChargeHistory::RemoveOldChargeEvents() {
 
 void ChargeHistory::OnRetentionTimerFired() {
   RemoveOldChargeEvents();
+  RemoveOldChargeDays(time_full_on_ac_dir_, &time_full_on_ac_days_,
+                      &duration_full_on_ac_);
+  RemoveOldChargeDays(time_on_ac_dir_, &time_on_ac_days_, &duration_on_ac_);
 }
 
 void ChargeHistory::ScheduleRewrites() {

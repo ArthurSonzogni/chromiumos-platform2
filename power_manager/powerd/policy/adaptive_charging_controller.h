@@ -105,7 +105,11 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
 };
 
 // Class that records charge history for tracking the start time and duration of
-// charging sessions. These values will be used as inputs to the ML model for
+// charging sessions. We only count AC chargers since low power chargers may
+// result in discharging of the battery (and thus it's difficult to predict when
+// charging will finish).
+//
+// These values will be used as inputs to the ML model for
 // predicting when the charger is unplugged.
 // These values are stored in /var/lib/power_manager/. For
 // privacy reasons, we floor each time value to a multiple of 15 minutes. Data
@@ -120,6 +124,25 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
 // connected for less than 15 minutes, it will result in a 0 duration charge
 // event. This means that charge events can collide (old event will be
 // overwritten).
+// The files in /var/lib/power_manager/time_on_ac/ and
+// /var/lib/power_manager/time_full_on_ac/ have the same format. These files
+// track the total duration for an individual day. The filename is the start of
+// the day in microseconds since epoch (UTC). If a charge event spans more than
+// 1 day, the duration will be distributed across the corresponding files for
+// each day. For example, if 2 hours of charging are equally split across two
+// days, with no other charging during those days, the following files will be
+// created:
+// /var/lib/power_manager/time_on_ac/<day 1>: <1 hour in microseconds>
+// /var/lib/power_manager/time_on_ac/<day 2>: <1 hour in microseconds>
+//
+// If the battery reached full charge after 30 minutes, the following files will
+// also be created:
+// /var/lib/power_manager/time_full_on_ac/<day 1>: <30 minutes in microseconds>
+// /var/lib/power_manager/time_full_on_ac/<day 2>: <1 hour in microseconds>
+//
+// These files are written when the charger is unplugged. .../time_full_on_ac/
+// files are also written when entering a low power state, since those files
+// rely on `full_charge_time_`, which is not written to disk.
 class ChargeHistory {
  public:
   ChargeHistory();
@@ -136,6 +159,16 @@ class ChargeHistory {
   // records the time when the battery reaches full charge.
   void HandlePowerStatusUpdate(const system::PowerStatus& status);
 
+  // Returns the duration on AC within ChargeHistory's retention window.
+  base::TimeDelta GetTimeOnAC();
+
+  // Returns the duration on AC with a full charge within ChargeHistory's
+  // retention window.
+  base::TimeDelta GetTimeFullOnAC();
+
+  // Returns the number of days that have charge history recorded.
+  int DaysOfHistory();
+
   // Makes sure that any state that needs to be written to disk before entering
   // a low power state (such as suspend or shutdown) is written.
   void OnEnterLowPowerState();
@@ -147,6 +180,37 @@ class ChargeHistory {
   // Calculate and record timestamps to files in `charge_history_dir_` then
   // cache the values in `charge_events_`.
   void UpdateHistory(const system::PowerStatus& status);
+
+  // Record the durations per day for charge directory `dir` and modify the
+  // ChargeDays in `days` with the same values.
+  void RecordDurations(const base::FilePath& dir,
+                       std::map<base::Time, base::TimeDelta>* days,
+                       const base::Time& start,
+                       base::TimeDelta* total_duration);
+
+  // Read the ChargeDay values from directory `dir` and cache the values in
+  // `days`. Also sets `total_duration` to the sum of the durations in the
+  // files in `dir`.
+  void ReadChargeDaysFromFiles(const base::FilePath& dir,
+                               std::map<base::Time, base::TimeDelta>* days,
+                               base::TimeDelta* total_duration);
+
+  // Add one ChargeDay for each day since the latest ChargeDay in `days`
+  // (does nothing if the latest is today). If there isn't a latest ChargeDay,
+  // just append today. Also creates the corresponding files in `dir`.
+  //
+  // This is used to explicitly track that certain days had no charging. Our
+  // heuristic to enable Adaptive Charging relies on 14 days of charge history.
+  // If these files aren't set to 0, there's no way to count them when the prior
+  // day with a non-zero charge duration leaves the retention window.
+  void AddZeroDurationChargeDays(const base::FilePath& dir,
+                                 std::map<base::Time, base::TimeDelta>* days);
+
+  // Function to remove all keys from `days` that are older than the retention
+  // date and delete the corresponding files.
+  void RemoveOldChargeDays(const base::FilePath& dir,
+                           std::map<base::Time, base::TimeDelta>* days,
+                           base::TimeDelta* total_duration);
 
   void CreateEmptyChargeEventFile(base::Time start);
 
@@ -204,6 +268,13 @@ class ChargeHistory {
   // Base directory for Charge History.
   base::FilePath charge_history_dir_;
 
+  // Directory for files that track the amount of time with full charge while an
+  // AC charger is connected per day.
+  base::FilePath time_full_on_ac_dir_;
+
+  // Directory for files that track the amount of time on an AC charger per day.
+  base::FilePath time_on_ac_dir_;
+
   // Directory for storing charge events, which track the start of charge and
   // duration.
   base::FilePath charge_events_dir_;
@@ -222,13 +293,36 @@ class ChargeHistory {
   base::RepeatingTimer retention_timer_;
 
   // Cached timestamp for when the charger was connected (if it hasn't been
-  // removed yet).
+  // removed yet). Equal to base::Time() (0) if the charger is disconnected.
+  // Value is always floored to `kChargeHistoryTimeInterval`.
   base::Time ac_connect_time_;
+
+  // Timestamp for when we reached full charge for the current charging session.
+  // Equal to base::Time() (0) if the charger is disconnected, or we haven't
+  // reached full charge yet when the charger is connected.
+  // Value is always floored to `kChargeHistoryTimeInterval`.
+  base::Time full_charge_time_;
 
   // Ordered map of charge events, which maps AC charge plug in times to
   // duration of charge. This provides O(logn) addition and removal of charge
   // events (including removal of min and max) where n <= 50.
   std::map<base::Time, base::TimeDelta> charge_events_;
+
+  // Ordered map of days to duration on AC for up to the last 30 days.
+  std::map<base::Time, base::TimeDelta> time_on_ac_days_;
+
+  // Ordered map of days to duration on AC with full charge for up to the last
+  // 30 days.
+  std::map<base::Time, base::TimeDelta> time_full_on_ac_days_;
+
+  // The duration spent on AC for the charge history currently retained.
+  // Value is always floored to `kChargeHistoryTimeInterval`.
+  base::TimeDelta duration_on_ac_;
+
+  // The duration spent on AC while fully charged for the charge history
+  // currently retained.
+  // Value is always floored to `kChargeHistoryTimeInterval`.
+  base::TimeDelta duration_full_on_ac_;
 
   // Cached external power type. Used to determine if a charge event needs to be
   // created or completed.
