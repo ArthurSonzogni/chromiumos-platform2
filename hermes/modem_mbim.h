@@ -121,7 +121,8 @@ class ModemMbim : public Modem<MbimCmd> {
                                              GAsyncResult* res,
                                              ModemMbim* modem_mbim);
   static bool ParseEidApduResponse(const MbimMessage* response,
-                                   std::string* eid);
+                                   std::string* eid,
+                                   ModemMbim* modem_mbim);
 
   static void UiccLowLevelAccessApduResponseParse(MbimDevice* device,
                                                   GAsyncResult* res,
@@ -143,11 +144,18 @@ class ModemMbim : public Modem<MbimCmd> {
     GET_MBIM_DEVICE,
     GET_SLOT_MAPPING,
     GET_SLOT_INFO,
-    SET_SLOT_MAPPING,
     CLOSE_CHANNEL,
+    SET_SLOT_MAPPING,
     OPEN_CHANNEL,
     GET_EID,
+    CHECK_EID,
     EUICC_EVENT_STEP_LAST,
+  };
+  enum class EidReadFailedStep {
+    CLOSE_CHANNEL,
+    RESTORE_SLOT_ATTEMPT1,
+    RESTORE_SLOT_ATTEMPT2,
+    STEP_LAST,
   };
 
   void ReacquireChannel(EuiccEventStep step,
@@ -157,6 +165,9 @@ class ModemMbim : public Modem<MbimCmd> {
                          bool switch_slot_only,
                          EuiccEventStep step,
                          ResultCallback cb);
+  void OnEidReadFailed(const uint32_t physical_slot,
+                       EidReadFailedStep step,
+                       ResultCallback cb);
   void AcquireChannelAfterCardReady(EuiccEvent event, ResultCallback cb);
 
   class State {
@@ -228,6 +239,7 @@ class ModemMbim : public Modem<MbimCmd> {
   friend std::ostream& operator<<(std::ostream& os, const SlotInfo& info);
   SlotInfo slot_info_;
   base::WeakPtrFactory<ModemMbim> weak_factory_;
+  bool eid_read_failed_ = false;
 };
 
 }  // namespace hermes

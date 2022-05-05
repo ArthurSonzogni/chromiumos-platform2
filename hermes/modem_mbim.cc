@@ -118,6 +118,7 @@ void ModemMbim::Shutdown() {
   ready_state_ = MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED;
   current_state_.Transition(State::kMbimUninitialized);
   slot_info_.Clear();
+  eid_read_failed_ = false;
   modem_manager_proxy_->ScheduleUninhibit(base::Seconds(0));
 }
 
@@ -343,8 +344,14 @@ void ModemMbim::InitializationStep(ModemMbim::State::Value next_state,
                   &ModemMbim::InitializationStep, State::kMbimStarted);
       break;
     case State::kMbimStarted:
-      VLOG(2) << "eSIM initialized for MBIM modem";
       CloseDevice();
+      if (eid_read_failed_) {
+        LOG(ERROR) << "EID read failed";
+        eid_read_failed_ = false;
+        std::move(cb).Run(kModemMessageProcessingError);
+        return;
+      }
+      VLOG(2) << "eSIM initialized for MBIM modem";
       std::move(cb).Run(kModemSuccess);
       OnEuiccUpdated();
       break;
@@ -727,32 +734,43 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
 
 /* static */
 bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
-                                     std::string* eid) {
+                                     std::string* eid,
+                                     ModemMbim* modem_mbim) {
   g_autoptr(GError) error = NULL;
   guint32 status;
   guint32 response_size = 0;
   const guint8* out_response = NULL;
   std::vector<uint8_t> kGetEidDgiTag = {0xBF, 0x3E, 0x12, 0x5A, 0x10};
-  if (response &&
-      mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
-                                       &error) &&
-      mbim_message_ms_uicc_low_level_access_apdu_response_parse(
-          response, &status, &response_size, &out_response, &error)) {
-    if (response_size < 2 || out_response[0] != kGetEidDgiTag[0] ||
-        out_response[1] != kGetEidDgiTag[1]) {
-      return false;
+  if (!response)
+    return false;
+  if (!mbim_message_response_get_result(
+          response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error)) {
+    LOG(ERROR) << "Could not parse EID: " << error->message;
+    if (modem_mbim) {
+      // We've likely encountered b/230851574. Set flag that closes the channel,
+      // and restores the slot.
+      modem_mbim->retry_count_ = kMaxRetries + 1;
+      modem_mbim->eid_read_failed_ = true;
     }
-    VLOG(2) << "Adding to payload from APDU response (" << response_size
-            << " bytes)"
-            << base::HexEncode(&out_response[kGetEidDgiTag.size()],
-                               response_size - kGetEidDgiTag.size());
-    for (int j = kGetEidDgiTag.size(); j < response_size; j++) {
-      *eid += bcd_chars[(out_response[j] >> 4) & 0xF];
-      *eid += bcd_chars[out_response[j] & 0xF];
-    }
-    return true;
+    return false;
   }
-  return false;
+  if (!mbim_message_ms_uicc_low_level_access_apdu_response_parse(
+          response, &status, &response_size, &out_response, &error)) {
+    LOG(ERROR) << "Could not parse EID: " << error->message;
+    return false;
+  }
+  if (response_size < 2 || out_response[0] != kGetEidDgiTag[0] ||
+      out_response[1] != kGetEidDgiTag[1]) {
+    return false;
+  }
+  VLOG(2) << "Decoding EID from APDU response (" << response_size << " bytes)"
+          << base::HexEncode(&out_response[kGetEidDgiTag.size()],
+                             response_size - kGetEidDgiTag.size());
+  for (int j = kGetEidDgiTag.size(); j < response_size; j++) {
+    *eid += bcd_chars[(out_response[j] >> 4) & 0xF];
+    *eid += bcd_chars[out_response[j] & 0xF];
+  }
+  return true;
 }
 
 /* static */
@@ -763,7 +781,7 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
   std::string eid;
   g_autoptr(MbimMessage) response = NULL;
   response = mbim_device_command_finish(device, res, &error);
-  if (ParseEidApduResponse(response, &eid)) {
+  if (ParseEidApduResponse(response, &eid, modem_mbim)) {
     VLOG(2) << "EID for physical slot:"
             << modem_mbim->slot_info_.cached_active_slot_ << " is " << eid;
     modem_mbim->slot_info_.SetSlotStateActiveSlot(MBIM_UICC_SLOT_STATE_UNKNOWN);
@@ -776,8 +794,15 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
     return;
   }
   LOG(ERROR) << "Could not read EID";
-  modem_mbim->euicc_manager_->OnEuiccRemoved(
-      modem_mbim->slot_info_.cached_active_slot_ + 1);
+  // An EID read failure should usually abort any eSIM operation. In the special
+  // case where we encounter b/230851574, eid_read_failed_ is set. In such
+  // cases, do not abort the eSIM operation immediately. Instead, declare
+  // success, and expect any subsequent code to read the eid_read_failed_ flag
+  // and close any channels and reverse any slot switches.
+  if (modem_mbim->eid_read_failed_) {
+    modem_mbim->ProcessMbimResult(kModemSuccess);
+    return;
+  }
   modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
 }
 
@@ -937,6 +962,12 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
   }
   if (physical_switch_slot != slot_mappings[kExecutorIndex]->slot) {
     LOG(ERROR) << "Sim slot switch to " << physical_switch_slot << " failed";
+    // b/230851574 causes a slot switch to fail once inevitably.
+    if (modem_mbim->eid_read_failed_) {
+      LOG(INFO) << "Ignoring failed slot switch";
+      modem_mbim->ProcessMbimResult(kModemSuccess);
+      return;
+    }
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
@@ -1073,12 +1104,14 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
                                   bool switch_slot_only,
                                   EuiccEventStep step,
                                   ResultCallback cb) {
-  LOG(INFO) << __func__ << ": step: " << to_underlying(step);
+  LOG(INFO) << __func__ << ": slot=" << physical_slot
+            << " switch_slot_only=" << switch_slot_only
+            << " step=" << to_underlying(step);
   switch (step) {
     case EuiccEventStep::GET_MBIM_DEVICE:
       CloseDevice();
       {
-        auto next_step = (switch_slot_only) ? EuiccEventStep::SET_SLOT_MAPPING
+        auto next_step = (switch_slot_only) ? EuiccEventStep::CLOSE_CHANNEL
                                             : EuiccEventStep::GET_SLOT_MAPPING;
         auto get_slot_mapping = base::BindOnce(
             &ModemMbim::OnEuiccEventStart, weak_factory_.GetWeakPtr(),
@@ -1102,36 +1135,42 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
                   switch_slot_only, EuiccEventStep::GET_SLOT_INFO);
       break;
     case EuiccEventStep::GET_SLOT_INFO: {
-      auto next_step = (physical_slot == slot_info_.cached_active_slot_)
-                           ? EuiccEventStep::CLOSE_CHANNEL
-                           : EuiccEventStep::SET_SLOT_MAPPING;
       SendMessage(MbimCmd::MbimType::kMbimSlotInfoStatus,
                   std::make_unique<SwitchSlotTxInfo>(physical_slot),
                   std::move(cb), &ModemMbim::OnEuiccEventStart, physical_slot,
-                  switch_slot_only, next_step);
+                  switch_slot_only, EuiccEventStep::CLOSE_CHANNEL);
+    } break;
+    case EuiccEventStep::CLOSE_CHANNEL: {
+      // b/230851574 Channel must be closed before attempting a slot switch.
+      SendMessage(MbimCmd::MbimType::kMbimCloseChannel,
+                  std::unique_ptr<TxInfo>(), std::move(cb),
+                  &ModemMbim::OnEuiccEventStart, physical_slot,
+                  switch_slot_only, EuiccEventStep::SET_SLOT_MAPPING);
     } break;
     case EuiccEventStep::SET_SLOT_MAPPING: {
       auto next_step = (switch_slot_only)
                            ? EuiccEventStep::EUICC_EVENT_STEP_LAST
-                           : EuiccEventStep::CLOSE_CHANNEL;
+                           : EuiccEventStep::OPEN_CHANNEL;
+      // Bypass slot switch if we are already on the requested slot or if slot
+      // switch isn't supported
+      if (physical_slot == slot_info_.cached_active_slot_ ||
+          !mbim_device_check_ms_mbimex_version(device_.get(), 2, 0)) {
+        OnEuiccEventStart(physical_slot, switch_slot_only, next_step,
+                          std::move(cb));
+        break;
+      }
       SendMessage(MbimCmd::MbimType::kMbimSetDeviceSlotMapping,
                   std::make_unique<SwitchSlotTxInfo>(physical_slot),
                   std::move(cb), &ModemMbim::OnEuiccEventStart, physical_slot,
                   switch_slot_only, next_step);
     } break;
-    case EuiccEventStep::CLOSE_CHANNEL:
+    case EuiccEventStep::OPEN_CHANNEL:
       if (!slot_info_.IsEsimActive()) {
         LOG(ERROR) << "Active slot does not have an eSIM";
         euicc_manager_->OnEuiccRemoved(slot_info_.cached_active_slot_ + 1);
         std::move(cb).Run(kModemMessageProcessingError);
         break;
       }
-      SendMessage(MbimCmd::MbimType::kMbimCloseChannel,
-                  std::unique_ptr<TxInfo>(), std::move(cb),
-                  &ModemMbim::OnEuiccEventStart, physical_slot,
-                  switch_slot_only, EuiccEventStep::OPEN_CHANNEL);
-      break;
-    case EuiccEventStep::OPEN_CHANNEL:
       SendMessage(MbimCmd::MbimType::kMbimOpenChannel,
                   std::make_unique<OpenChannelTxInfo>(AidIsdr()), std::move(cb),
                   &ModemMbim::OnEuiccEventStart, physical_slot,
@@ -1141,11 +1180,63 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
       SendMessage(MbimCmd::MbimType::kMbimSendEidApdu,
                   std::unique_ptr<TxInfo>(), std::move(cb),
                   &ModemMbim::OnEuiccEventStart, physical_slot,
-                  switch_slot_only, EuiccEventStep::EUICC_EVENT_STEP_LAST);
+                  switch_slot_only, EuiccEventStep::CHECK_EID);
+      break;
+    case EuiccEventStep::CHECK_EID:
+      if (eid_read_failed_) {
+        OnEidReadFailed(physical_slot, EidReadFailedStep::CLOSE_CHANNEL,
+                        std::move(cb));
+        break;
+      }
+      OnEuiccEventStart(physical_slot, switch_slot_only,
+                        EuiccEventStep::EUICC_EVENT_STEP_LAST, std::move(cb));
       break;
     case EuiccEventStep::EUICC_EVENT_STEP_LAST:
       OnEuiccUpdated();
       std::move(cb).Run(kModemSuccess);
+      break;
+  }
+}
+
+void ModemMbim::OnEidReadFailed(const uint32_t physical_slot,
+                                EidReadFailedStep step,
+                                ResultCallback cb) {
+  // b/230851574 An EID error may have occurred after a slot switch.
+  // Attempt to switch back to the original slot after closing the
+  // channel, while still reporting an error.
+  LOG(INFO) << __func__ << ": slot=" << physical_slot
+            << " step=" << to_underlying(step);
+  switch (step) {
+    case EidReadFailedStep::CLOSE_CHANNEL:
+      SendMessage(MbimCmd::MbimType::kMbimCloseChannel,
+                  std::unique_ptr<TxInfo>(), std::move(cb),
+                  &ModemMbim::OnEidReadFailed, physical_slot,
+                  EidReadFailedStep::RESTORE_SLOT_ATTEMPT1);
+      break;
+    case EidReadFailedStep::RESTORE_SLOT_ATTEMPT1:
+      if (!slot_info_.get_slot_mapping_result_.has_value()) {
+        LOG(ERROR) << "Cannot restore slot after EID read failure";
+        eid_read_failed_ = false;
+        std::move(cb).Run(kModemMessageProcessingError);
+        break;
+      }
+      // This attempt will most likely fail due to b/230851574
+      SendMessage(MbimCmd::MbimType::kMbimSetDeviceSlotMapping,
+                  std::make_unique<SwitchSlotTxInfo>(
+                      slot_info_.get_slot_mapping_result_.value()),
+                  std::move(cb), &ModemMbim::OnEidReadFailed, physical_slot,
+                  EidReadFailedStep::RESTORE_SLOT_ATTEMPT2);
+      break;
+    case EidReadFailedStep::RESTORE_SLOT_ATTEMPT2:
+      SendMessage(MbimCmd::MbimType::kMbimSetDeviceSlotMapping,
+                  std::make_unique<SwitchSlotTxInfo>(
+                      slot_info_.get_slot_mapping_result_.value()),
+                  std::move(cb), &ModemMbim::OnEidReadFailed, physical_slot,
+                  EidReadFailedStep::STEP_LAST);
+      break;
+    case EidReadFailedStep::STEP_LAST:
+      eid_read_failed_ = false;
+      std::move(cb).Run(kModemMessageProcessingError);
       break;
   }
 }
@@ -1279,7 +1370,7 @@ void ModemMbim::TransmitApdu(
 /* static */
 bool ModemMbim::ParseEidApduResponseForTesting(const MbimMessage* response,
                                                std::string* eid) {
-  return ParseEidApduResponse(response, eid);
+  return ParseEidApduResponse(response, eid, nullptr);
 }
 
 template <typename Func, typename... Args>
