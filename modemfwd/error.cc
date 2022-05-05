@@ -39,6 +39,14 @@ brillo::ErrorPtr Error::Create(const base::Location& location,
 }
 
 // static
+void Error::AddTo(brillo::ErrorPtr* error,
+                  const base::Location& location,
+                  const std::string& code,
+                  const std::string& message) {
+  brillo::Error::AddTo(error, location, kModemfwdErrorDomain, code, message);
+}
+
+// static
 brillo::ErrorPtr Error::CreateFromDbusError(brillo::Error* dbus_error) {
   if (!dbus_error)
     return brillo::Error::Create(FROM_HERE, kModemfwdErrorDomain, "", "");

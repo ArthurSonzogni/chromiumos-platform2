@@ -22,7 +22,7 @@
       </arg>
       <arg name="options" type="a{sv}" direction="in">
         A list of optional arguments to be used when force-flashing.
-        Supported values: "carrier_uuid", "variant".
+        Supported values: "carrier_uuid", "variant", "use_modems_fw_info".
       </arg>
       <arg name="success" type="b" direction="out">
         Whether force-flashing was successful.

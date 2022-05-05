@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <brillo/errors/error.h>
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/journal.h"
@@ -30,12 +31,14 @@ class ModemFlasher {
   ModemFlasher& operator=(const ModemFlasher&) = delete;
 
   // Returns a callback that should be executed when the modem reappears.
-  base::OnceClosure TryFlash(Modem* modem);
+  // |err| is set if an error occurred.
+  base::OnceClosure TryFlash(Modem* modem, brillo::ErrorPtr* err);
 
   // This function is the same as TryFlash, but it sets the variant to be used.
-  // Returns a callback that should be executed when the modem reappears.
+  // |err| is set if an error occurred.
   base::OnceClosure TryFlashForTesting(Modem* modem,
-                                       const std::string& variant);
+                                       const std::string& variant,
+                                       brillo::ErrorPtr* err);
 
  private:
   class FlashState {
@@ -102,7 +105,8 @@ class ModemFlasher {
   // Notify UpdateFirmwareComplete failure and reset the |fw_flashed_| flag.
   void ProcessFailedToPrepareFirmwareFile(const base::Location& code_location,
                                           FlashState* flash_state,
-                                          const std::string& firmware_path);
+                                          const std::string& firmware_path,
+                                          brillo::ErrorPtr* err);
 
   std::unique_ptr<Journal> journal_;
 

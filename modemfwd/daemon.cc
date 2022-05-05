@@ -138,7 +138,10 @@ bool DBusAdaptor::ForceFlash(const std::string& device_id,
       brillo::GetVariantValueOrDefault<std::string>(args, "carrier_uuid");
   std::string variant =
       brillo::GetVariantValueOrDefault<std::string>(args, "variant");
-  return daemon_->ForceFlashForTesting(device_id, carrier_uuid, variant);
+  bool use_modems_fw_info =
+      brillo::GetVariantValueOrDefault<bool>(args, "use_modems_fw_info");
+  return daemon_->ForceFlashForTesting(device_id, carrier_uuid, variant,
+                                       use_modems_fw_info);
 }
 
 Daemon::Daemon(const std::string& journal_file,
@@ -323,8 +326,8 @@ void Daemon::OnModemCarrierIdReady(
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false);
     return;
   }
-
-  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get());
+  brillo::ErrorPtr err;
+  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), &err);
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = std::move(cb);
 }
@@ -337,43 +340,45 @@ void Daemon::RegisterDBusObjectsAsync(
 }
 
 bool Daemon::ForceFlash(const std::string& device_id) {
-  auto stub_modem = CreateStubModem(device_id, "", helper_directory_.get());
+  auto stub_modem =
+      CreateStubModem(device_id, "", helper_directory_.get(), false);
   if (!stub_modem)
     return false;
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
-  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get());
+  brillo::ErrorPtr err;
+  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), &err);
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
   // got one.
-  bool is_null = cb.is_null();
-  if (!is_null)
+  if (!cb.is_null())
     std::move(cb).Run();
-  return !is_null;
+  return !err;
 }
 
 bool Daemon::ForceFlashForTesting(const std::string& device_id,
                                   const std::string& carrier_uuid,
-                                  const std::string& variant) {
-  auto stub_modem =
-      CreateStubModem(device_id, carrier_uuid, helper_directory_.get());
+                                  const std::string& variant,
+                                  bool use_modems_fw_info) {
+  auto stub_modem = CreateStubModem(
+      device_id, carrier_uuid, helper_directory_.get(), use_modems_fw_info);
   if (!stub_modem)
     return false;
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "], "
              << "variant [" << variant << "], carrier_uuid [" << carrier_uuid
-             << "]";
+             << "], use_modems_fw_info [" << use_modems_fw_info << "]";
+  brillo::ErrorPtr err;
   base::OnceClosure cb =
-      modem_flasher_->TryFlashForTesting(stub_modem.get(), variant);
+      modem_flasher_->TryFlashForTesting(stub_modem.get(), variant, &err);
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
   // got one.
-  bool is_null = cb.is_null();
-  if (!is_null)
+  if (!cb.is_null())
     std::move(cb).Run();
-  return !is_null;
+  return !err;
 }
 
 void Daemon::CheckForWedgedModems() {

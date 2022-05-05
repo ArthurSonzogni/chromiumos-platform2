@@ -36,6 +36,12 @@ class Error {
                                  const std::string& code,
                                  const std::string& msg);
 
+  // Add an error to the error chain.
+  static void AddTo(brillo::ErrorPtr* error,
+                    const base::Location& location,
+                    const std::string& code,
+                    const std::string& message);
+
   // Returns a brillo error object with error details extracted from a dbus
   // error.
   static brillo::ErrorPtr CreateFromDbusError(brillo::Error* dbus_error);

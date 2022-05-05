@@ -53,31 +53,32 @@ ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
 void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
     const base::Location& code_location,
     FlashState* flash_state,
-    const std::string& firmware_path) {
-  auto err =
-      Error::Create(code_location, kErrorResultFailedToPrepareFirmwareFile,
-                    base::StringPrintf("Failed to prepare firmware file: %s",
-                                       firmware_path.c_str()));
-  notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    const std::string& firmware_path,
+    brillo::ErrorPtr* err) {
+  Error::AddTo(err, code_location, kErrorResultFailedToPrepareFirmwareFile,
+               base::StringPrintf("Failed to prepare firmware file: %s",
+                                  firmware_path.c_str()));
+  notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
   flash_state->fw_flashed_ = false;
 }
 
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
-                                                   const std::string& variant) {
+                                                   const std::string& variant,
+                                                   brillo::ErrorPtr* err) {
   firmware_directory_->OverrideVariantForTesting(variant);
-  return TryFlash(modem);
+  return TryFlash(modem, err);
 }
 
-base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
+base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {
-    auto err = Error::Create(
-        FROM_HERE, kErrorResultFlashFailure,
+    Error::AddTo(
+        err, FROM_HERE, kErrorResultFlashFailure,
         base::StringPrintf("Modem with equipment ID \"%s\" failed to flash too "
                            "many times; not flashing",
                            equipment_id.c_str()));
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
     flash_state->fw_flashed_ = false;
     return base::OnceClosure();
   }
@@ -112,7 +113,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
                                       file_info)) {
         ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
-                                           file_info.firmware_path);
+                                           file_info.firmware_path, err);
         return base::OnceClosure();
       }
 
@@ -152,7 +153,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
                                       file_info)) {
         ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
-                                           file_info.firmware_path);
+                                           file_info.firmware_path, err);
         return base::OnceClosure();
       }
 
@@ -194,7 +195,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
                                       file_info)) {
         ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
-                                           file_info.firmware_path);
+                                           file_info.firmware_path, err);
         return base::OnceClosure();
       }
 
@@ -235,9 +236,9 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   if (!modem->FlashFirmwares(flash_cfg)) {
     flash_state->OnFlashFailed();
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
-    auto err = Error::Create(FROM_HERE, kErrorResultFailureReturnedByHelper,
-                             "Helper failed to flash firmware files");
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    Error::AddTo(err, FROM_HERE, kErrorResultFailureReturnedByHelper,
+                 "Helper failed to flash firmware files");
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
     flash_state->fw_flashed_ = false;
     return base::OnceClosure();
   }
