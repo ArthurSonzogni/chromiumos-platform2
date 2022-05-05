@@ -345,6 +345,9 @@ message StartArcVmRequest {
 
   // The block size of the rootfs. The default block size is used when zero.
   uint32 rootfs_block_size = 15;
+
+  // Option to enable disable consumer auto update toggle.
+  bool enable_consumer_auto_update_toggle = 16;
 }
 
 enum VmStatus {

@@ -1268,6 +1268,11 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   const int enable_tts_caching = config_.GetIntOrDie("ENABLE_TTS_CACHING");
   LOG(INFO) << "enable_tts_caching is " << enable_tts_caching;
 
+  const int enable_consumer_auto_update_toggle =
+      config_.GetIntOrDie("ENABLE_CONSUMER_AUTO_UPDATE_TOGGLE");
+  LOG(INFO) << "consumer_auto_update_toggle is "
+            << enable_consumer_auto_update_toggle;
+
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
     case ArcBinaryTranslationType::NONE:
@@ -1326,7 +1331,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       " " /* in nanoseconds */
       "androidboot.iioservice_present=%d "
       "androidboot.enable_notifications_refresh=%d "
-      "androidboot.arc.tts.caching=%d\n",
+      "androidboot.arc.tts.caching=%d "
+      "androidboot.enable_consumer_auto_update_toggle=%d\n",
       is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       chromeos_channel.c_str(),
@@ -1336,7 +1342,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetDisableDownloadProvider(disable_download_provider).c_str(),
       disable_system_default_app, GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
-      USE_IIOSERVICE, enable_notifications_refresh, enable_tts_caching);
+      USE_IIOSERVICE, enable_notifications_refresh, enable_tts_caching,
+      enable_consumer_auto_update_toggle);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }

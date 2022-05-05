@@ -1393,6 +1393,8 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("DISABLE_DOWNLOAD_PROVIDER=%d",
                          request.disable_download_provider()),
       base::StringPrintf("DISABLE_UREADAHEAD=%d", request.disable_ureadahead()),
+      base::StringPrintf("ENABLE_CONSUMER_AUTO_UPDATE_TOGGLE=%d",
+                         request.enable_consumer_auto_update_toggle()),
       base::StringPrintf("ENABLE_NOTIFICATIONS_REFRESH=%d",
                          request.enable_notifications_refresh()),
       base::StringPrintf("ENABLE_TTS_CACHING=%d", request.enable_tts_caching()),

@@ -80,7 +80,10 @@ message StartArcMiniContainerRequest {
   // Option to enable TTS caching
   optional bool enable_tts_caching = 14 [default = false];
 
-  // Next ID to use: 15
+  // Option to enable disable consumer auto update toggle.
+  optional bool enable_consumer_auto_update_toggle = 15 [default = false];
+
+  // Next ID to use: 16
 }
 
 // ARC upgrade options sent from Chrome to session manager. This message is used
