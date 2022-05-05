@@ -132,7 +132,7 @@ class BacklightController {
   using SetBrightnessCallback = base::RepeatingCallback<void(
       double percent, Transition, SetBacklightBrightnessRequest_Cause)>;
   using GetBrightnessCallback =
-      base::Callback<void(double* percent_out, bool* success_out)>;
+      base::RepeatingCallback<void(double* percent_out, bool* success_out)>;
   using SetToggledOffCallback = base::RepeatingCallback<void(bool toggled_off)>;
   using GetToggledOffCallback =
       base::RepeatingCallback<void(bool* toggled_off)>;

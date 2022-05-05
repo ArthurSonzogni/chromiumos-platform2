@@ -88,7 +88,8 @@ bool EventDeviceStub::ReadEvents(std::vector<input_event>* events_out) {
   return true;
 }
 
-void EventDeviceStub::WatchForEvents(base::Closure new_events_cb) {
+void EventDeviceStub::WatchForEvents(
+    const base::RepeatingClosure& new_events_cb) {
   new_events_cb_ = new_events_cb;
 }
 

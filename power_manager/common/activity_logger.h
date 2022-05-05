@@ -21,12 +21,12 @@ class Clock;
 class BaseActivityLogger {
  public:
   // Logging callback that can be replaced for testing.
-  using LogCallback = base::Callback<void(const std::string&)>;
+  using LogCallback = base::RepeatingCallback<void(const std::string&)>;
 
   Clock* clock_for_test() { return clock_.get(); }
 
   // Sets an alternate callback to be run to log messages.
-  void SetLogCallbackForTest(LogCallback callback);
+  void SetLogCallbackForTest(const LogCallback& callback);
 
   // Returns the current delays of timers or empty deltas if they're stopped.
   base::TimeDelta GetStoppedTimerDelayForTest() const;

@@ -105,15 +105,18 @@ struct ArcTimerManager::ArcTimerInfo {
 
 void ArcTimerManager::Init(DBusWrapperInterface* dbus_wrapper) {
   DCHECK(dbus_wrapper);
-  dbus_wrapper->ExportMethod(kCreateArcTimersMethod,
-                             base::Bind(&ArcTimerManager::HandleCreateArcTimers,
-                                        weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper->ExportMethod(kStartArcTimerMethod,
-                             base::Bind(&ArcTimerManager::HandleStartArcTimer,
-                                        weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper->ExportMethod(kDeleteArcTimersMethod,
-                             base::Bind(&ArcTimerManager::HandleDeleteArcTimers,
-                                        weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kCreateArcTimersMethod,
+      base::BindRepeating(&ArcTimerManager::HandleCreateArcTimers,
+                          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kStartArcTimerMethod,
+      base::BindRepeating(&ArcTimerManager::HandleStartArcTimer,
+                          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kDeleteArcTimersMethod,
+      base::BindRepeating(&ArcTimerManager::HandleDeleteArcTimers,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 std::vector<ArcTimerManager::TimerId> ArcTimerManager::GetTimerIdsForTesting(

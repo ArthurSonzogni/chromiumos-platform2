@@ -85,7 +85,7 @@ class PrefsSourceInterface {
 class PrefsStoreInterface : public PrefsSourceInterface {
  public:
   // Callback type for Watch(). |name| refers to the updated preference.
-  using ChangeCallback = base::Callback<void(const std::string& name)>;
+  using ChangeCallback = base::RepeatingCallback<void(const std::string& name)>;
 
   // Writes a pref named |name| to this store.
   virtual bool WritePrefString(const std::string& name,

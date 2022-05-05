@@ -46,9 +46,9 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
   static const char kIioUdevDevice[];
 
   // Mechanism to obtain a file handle suitable for observing IIO events
-  using OpenIioEventsFunc = base::Callback<int(const base::FilePath&)>;
+  using OpenIioEventsFunc = base::RepeatingCallback<int(const base::FilePath&)>;
 
-  void set_open_iio_events_func_for_testing(OpenIioEventsFunc f);
+  void set_open_iio_events_func_for_testing(const OpenIioEventsFunc& f);
 
   UserProximityWatcher();
   UserProximityWatcher(const UserProximityWatcher&) = delete;

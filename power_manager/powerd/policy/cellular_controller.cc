@@ -454,8 +454,8 @@ void CellularController::OnModemManagerServiceAvailable(bool available) {
   }
 
   mm_obj_proxy_->GetManagedObjects(
-      Bind(&CellularController::OnGetManagedObjectsReplySuccess,
-           weak_ptr_factory_.GetWeakPtr()));
+      BindOnce(&CellularController::OnGetManagedObjectsReplySuccess,
+               weak_ptr_factory_.GetWeakPtr()));
 }
 
 void CellularController::OnServiceOwnerChanged(const std::string& old_owner,
@@ -517,17 +517,17 @@ void CellularController::InitModemManagerSarInterface() {
   mm_obj_proxy_ = std::make_unique<system::DBusObjectManagerWrapper>(
       dbus_wrapper_->GetBus(), modemmanager::kModemManager1ServiceName,
       modemmanager::kModemManager1ServicePath,
-      base::Bind(&CellularController::OnModemManagerServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&CellularController::OnServiceOwnerChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&CellularController::OnModemManagerServiceAvailable,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&CellularController::OnServiceOwnerChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   mm_obj_proxy_->set_interfaces_added_callback(
-      Bind(&CellularController::ModemManagerInterfacesAdded,
-           weak_ptr_factory_.GetWeakPtr()));
+      BindRepeating(&CellularController::ModemManagerInterfacesAdded,
+                    weak_ptr_factory_.GetWeakPtr()));
   mm_obj_proxy_->set_interfaces_removed_callback(
-      Bind(&CellularController::ModemManagerInterfacesRemoved,
-           weak_ptr_factory_.GetWeakPtr()));
+      BindRepeating(&CellularController::ModemManagerInterfacesRemoved,
+                    weak_ptr_factory_.GetWeakPtr()));
 }
 #endif  // USE_CELLULAR
 

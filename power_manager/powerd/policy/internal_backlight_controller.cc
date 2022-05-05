@@ -227,20 +227,24 @@ void InternalBacklightController::Init(
 
   RegisterIncreaseBrightnessHandler(
       dbus_wrapper_, kIncreaseScreenBrightnessMethod,
-      base::Bind(&InternalBacklightController::HandleIncreaseBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &InternalBacklightController::HandleIncreaseBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterDecreaseBrightnessHandler(
       dbus_wrapper_, kDecreaseScreenBrightnessMethod,
-      base::Bind(&InternalBacklightController::HandleDecreaseBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &InternalBacklightController::HandleDecreaseBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterSetBrightnessHandler(
       dbus_wrapper_, kSetScreenBrightnessMethod,
-      base::Bind(&InternalBacklightController::HandleSetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &InternalBacklightController::HandleSetBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterGetBrightnessHandler(
       dbus_wrapper_, kGetScreenBrightnessPercentMethod,
-      base::Bind(&InternalBacklightController::HandleGetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &InternalBacklightController::HandleGetBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
 
   init_time_ = clock_->GetCurrentTime();
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "

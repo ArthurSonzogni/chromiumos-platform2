@@ -23,7 +23,7 @@ void LogMessage(const std::string& message) {
 
 }  // namespace
 
-void BaseActivityLogger::SetLogCallbackForTest(LogCallback callback) {
+void BaseActivityLogger::SetLogCallbackForTest(const LogCallback& callback) {
   log_callback_ = callback;
 }
 
@@ -54,7 +54,7 @@ bool BaseActivityLogger::TriggerOngoingTimerForTest() {
 BaseActivityLogger::BaseActivityLogger(const std::string& activity_name,
                                        base::TimeDelta stopped_delay,
                                        base::TimeDelta ongoing_interval)
-    : log_callback_(base::Bind(&LogMessage)),
+    : log_callback_(base::BindRepeating(&LogMessage)),
       clock_(new Clock()),
       activity_name_(activity_name),
       stopped_delay_(stopped_delay),

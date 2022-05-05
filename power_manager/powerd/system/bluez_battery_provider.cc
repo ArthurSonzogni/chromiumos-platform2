@@ -90,7 +90,7 @@ void BluezBatteryProvider::Init(scoped_refptr<dbus::Bus> bus) {
           bus_, dbus::ObjectPath(kBluetoothBatteryProviderPath));
 
   battery_exported_object_manager_->RegisterAsync(
-      base::Bind(&NoopCompletionAction));
+      base::BindRepeating(&NoopCompletionAction));
 
   object_manager_ = bus_->GetObjectManager(
       bluetooth_battery::kBluetoothBatteryProviderManagerServiceName,
@@ -138,7 +138,7 @@ dbus::PropertySet* BluezBatteryProvider::CreateProperties(
     const dbus::ObjectPath& object_path,
     const std::string& interface_name) {
   return new dbus::PropertySet(object_proxy, interface_name,
-                               base::Bind(&OnPropertyChanged));
+                               base::BindRepeating(&OnPropertyChanged));
 }
 
 void BluezBatteryProvider::RegisterAsBatteryProvider(
@@ -157,8 +157,9 @@ void BluezBatteryProvider::RegisterAsBatteryProvider(
 
   manager_proxy->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&BluezBatteryProvider::HandleRegisterBatteryProviderResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(
+          &BluezBatteryProvider::HandleRegisterBatteryProviderResponse,
+          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void BluezBatteryProvider::HandleRegisterBatteryProviderResponse(
@@ -189,7 +190,7 @@ BluezBattery* BluezBatteryProvider::CreateBattery(const std::string& address,
       battery_exported_object_manager_.get(), bus_, address, level,
       dbus::ObjectPath(object_path), dbus::ObjectPath(device_path));
 
-  batteries_[address]->Export(base::Bind(&NoopCompletionAction));
+  batteries_[address]->Export(base::BindRepeating(&NoopCompletionAction));
 
   return batteries_[address].get();
 }

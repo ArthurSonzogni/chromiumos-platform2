@@ -53,8 +53,8 @@ void AudioClient::Init(DBusWrapperInterface* dbus_wrapper,
   cras_proxy_ = dbus_wrapper_->GetObjectProxy(cras::kCrasServiceName,
                                               cras::kCrasServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
-      cras_proxy_, base::Bind(&AudioClient::HandleCrasAvailableOrRestarted,
-                              weak_ptr_factory_.GetWeakPtr()));
+      cras_proxy_, base::BindOnce(&AudioClient::HandleCrasAvailableOrRestarted,
+                                  weak_ptr_factory_.GetWeakPtr()));
 
   typedef void (AudioClient::*SignalMethod)(dbus::Signal*);
   const std::map<const char*, SignalMethod> kSignalMethods = {
@@ -69,7 +69,7 @@ void AudioClient::Init(DBusWrapperInterface* dbus_wrapper,
   for (const auto& it : kSignalMethods) {
     dbus_wrapper_->RegisterForSignal(
         cras_proxy_, cras::kCrasControlInterface, it.first,
-        base::Bind(it.second, weak_ptr_factory_.GetWeakPtr()));
+        base::BindRepeating(it.second, weak_ptr_factory_.GetWeakPtr()));
   }
 
   if (base::PathExists(audio_suspended_path_))
@@ -127,8 +127,8 @@ void AudioClient::CallGetNodes() {
   dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
   dbus_wrapper_->CallMethodAsync(
       cras_proxy_, &method_call, kCrasDBusTimeout,
-      base::Bind(&AudioClient::HandleGetNodesResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&AudioClient::HandleGetNodesResponse,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void AudioClient::HandleGetNodesResponse(dbus::Response* response) {
@@ -187,8 +187,8 @@ void AudioClient::CallGetNumberOfActiveOutputStreams() {
                                cras::kGetNumberOfActiveOutputStreams);
   dbus_wrapper_->CallMethodAsync(
       cras_proxy_, &method_call, kCrasDBusTimeout,
-      base::Bind(&AudioClient::HandleGetNumberOfActiveOutputStreamsResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&AudioClient::HandleGetNumberOfActiveOutputStreamsResponse,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void AudioClient::HandleGetNumberOfActiveOutputStreamsResponse(
@@ -212,8 +212,8 @@ void AudioClient::CallIsAudioOutputActive() {
                                cras::kIsAudioOutputActive);
   dbus_wrapper_->CallMethodAsync(
       cras_proxy_, &method_call, kCrasDBusTimeout,
-      base::Bind(&AudioClient::HandleIsAudioOutputActiveResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&AudioClient::HandleIsAudioOutputActiveResponse,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void AudioClient::HandleIsAudioOutputActiveResponse(dbus::Response* response) {

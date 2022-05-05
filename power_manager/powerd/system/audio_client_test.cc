@@ -57,8 +57,8 @@ class AudioClientTest : public testing::Test {
   AudioClientTest() {
     cras_proxy_ = dbus_wrapper_.GetObjectProxy(cras::kCrasServiceName,
                                                cras::kCrasServicePath);
-    dbus_wrapper_.SetMethodCallback(
-        base::Bind(&AudioClientTest::HandleMethodCall, base::Unretained(this)));
+    dbus_wrapper_.SetMethodCallback(base::BindRepeating(
+        &AudioClientTest::HandleMethodCall, base::Unretained(this)));
     CHECK(run_dir_.CreateUniqueTempDir());
     CHECK(run_dir_.IsValid());
   }

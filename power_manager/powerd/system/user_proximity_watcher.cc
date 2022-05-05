@@ -62,12 +62,12 @@ const char UserProximityWatcher::kIioUdevSubsystem[] = "iio";
 const char UserProximityWatcher::kIioUdevDevice[] = "iio_device";
 
 void UserProximityWatcher::set_open_iio_events_func_for_testing(
-    OpenIioEventsFunc f) {
+    const OpenIioEventsFunc& f) {
   open_iio_events_func_ = f;
 }
 
 UserProximityWatcher::UserProximityWatcher()
-    : open_iio_events_func_(base::Bind(&OpenIioFd)) {}
+    : open_iio_events_func_(base::BindRepeating(&OpenIioFd)) {}
 
 UserProximityWatcher::~UserProximityWatcher() {
   if (udev_)

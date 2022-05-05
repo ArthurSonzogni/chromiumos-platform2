@@ -126,7 +126,7 @@ void DBusWrapperStub::CallExportedMethod(
 std::unique_ptr<dbus::Response> DBusWrapperStub::CallExportedMethodSync(
     dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> response;
-  CallExportedMethod(method_call, base::Bind(&MoveResponse, &response));
+  CallExportedMethod(method_call, base::BindOnce(&MoveResponse, &response));
   return response;
 }
 

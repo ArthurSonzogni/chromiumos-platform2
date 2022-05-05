@@ -32,11 +32,11 @@ using DBusInterfaceToProperties =
 using DBusObjectsWithProperties =
     std::map<dbus::ObjectPath, DBusInterfaceToProperties>;
 using ManagedObjectsCallback =
-    base::Callback<void(const DBusObjectsWithProperties&)>;
-using InterfacesAddedCallback = base::Callback<void(
+    base::OnceCallback<void(const DBusObjectsWithProperties&)>;
+using InterfacesAddedCallback = base::RepeatingCallback<void(
     const dbus::ObjectPath&,
     const std::map<std::string, brillo::VariantDictionary>&)>;
-using InterfacesRemovedCallback = base::Callback<void(
+using InterfacesRemovedCallback = base::RepeatingCallback<void(
     const dbus::ObjectPath&, const std::vector<std::string>&)>;
 
 // These are the methods that a org.freedesktop.DBus.ObjectManager
@@ -46,7 +46,7 @@ using InterfacesRemovedCallback = base::Callback<void(
 class DBusObjectManagerProxyInterface {
  public:
   virtual ~DBusObjectManagerProxyInterface() = default;
-  virtual void GetManagedObjects(const ManagedObjectsCallback& callback) = 0;
+  virtual void GetManagedObjects(ManagedObjectsCallback callback) = 0;
   virtual void set_interfaces_added_callback(
       const InterfacesAddedCallback& callback) = 0;
   virtual void set_interfaces_removed_callback(
@@ -68,7 +68,7 @@ class DBusObjectManagerWrapper : public DBusObjectManagerProxyInterface {
 
   ~DBusObjectManagerWrapper() override;
   // Inherited methods from DBusObjectManagerProxyInterface.
-  void GetManagedObjects(const ManagedObjectsCallback& callback) override;
+  void GetManagedObjects(ManagedObjectsCallback callback) override;
 
   void set_interfaces_added_callback(
       const InterfacesAddedCallback& callback) override;

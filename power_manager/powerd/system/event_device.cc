@@ -165,7 +165,7 @@ bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
   return true;
 }
 
-void EventDevice::WatchForEvents(base::Closure new_events_cb) {
+void EventDevice::WatchForEvents(const base::RepeatingClosure& new_events_cb) {
   fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(fd_, new_events_cb);
 }
 

@@ -25,8 +25,8 @@ class ActivityLoggerTest : public testing::Test {
     logger_ = logger;
     logger_->clock_for_test()->set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(100));  // Arbitrary.
-    logger_->SetLogCallbackForTest(
-        base::Bind(&ActivityLoggerTest::SaveMessage, base::Unretained(this)));
+    logger_->SetLogCallbackForTest(base::BindRepeating(
+        &ActivityLoggerTest::SaveMessage, base::Unretained(this)));
   }
 
   void AdvanceTime(base::TimeDelta delta) {

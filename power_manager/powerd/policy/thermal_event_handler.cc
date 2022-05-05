@@ -60,8 +60,8 @@ bool ThermalEventHandler::Init() {
   OnThermalChanged(nullptr);
   dbus_wrapper_->ExportMethod(
       kGetThermalStateMethod,
-      base::Bind(&ThermalEventHandler::OnGetThermalStateMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&ThermalEventHandler::OnGetThermalStateMethodCall,
+                          weak_ptr_factory_.GetWeakPtr()));
   return true;
 }
 

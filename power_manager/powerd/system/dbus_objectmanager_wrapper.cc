@@ -55,20 +55,20 @@ DBusObjectManagerWrapper::DBusObjectManagerWrapper(
 DBusObjectManagerWrapper::~DBusObjectManagerWrapper() = default;
 
 void DBusObjectManagerWrapper::GetManagedObjects(
-    const ManagedObjectsCallback& callback) {
-  proxy_->GetManagedObjectsAsync(callback, base::DoNothing());
+    ManagedObjectsCallback callback) {
+  proxy_->GetManagedObjectsAsync(std::move(callback), base::DoNothing());
 }
 
 void DBusObjectManagerWrapper::set_interfaces_added_callback(
     const InterfacesAddedCallback& callback) {
   proxy_->RegisterInterfacesAddedSignalHandler(
-      callback, base::Bind(&HandleSignalConnected));
+      callback, base::BindOnce(&HandleSignalConnected));
 }
 
 void DBusObjectManagerWrapper::set_interfaces_removed_callback(
     const InterfacesRemovedCallback& callback) {
   proxy_->RegisterInterfacesRemovedSignalHandler(
-      callback, base::Bind(&HandleSignalConnected));
+      callback, base::BindOnce(&HandleSignalConnected));
 }
 
 }  // namespace system

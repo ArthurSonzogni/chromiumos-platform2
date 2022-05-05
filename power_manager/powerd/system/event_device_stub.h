@@ -27,7 +27,7 @@ class EventDeviceStub : public EventDeviceInterface {
 
   ~EventDeviceStub() override;
 
-  const base::Closure& new_events_cb() const { return new_events_cb_; }
+  const base::RepeatingClosure& new_events_cb() const { return new_events_cb_; }
   void set_debug_name(const std::string& name) { debug_name_ = name; }
   void set_name(const std::string& name) { name_ = name; }
   void set_phys_path(const std::string& path) { phys_path_ = path; }
@@ -63,7 +63,7 @@ class EventDeviceStub : public EventDeviceInterface {
   LidState GetInitialLidState() override;
   TabletMode GetInitialTabletMode() override;
   bool ReadEvents(std::vector<input_event>* events_out) override;
-  void WatchForEvents(base::Closure new_events_cb) override;
+  void WatchForEvents(const base::RepeatingClosure& new_events_cb) override;
 
  private:
   std::string debug_name_;
@@ -81,8 +81,8 @@ class EventDeviceStub : public EventDeviceInterface {
   // Events to be returned by the next call to ReadEvents().
   std::vector<input_event> events_;
 
-  // Callback registed via WatchForEvents() and called by NotifyAboutEvents().
-  base::Closure new_events_cb_;
+  // Callback registered via WatchForEvents() and called by NotifyAboutEvents().
+  base::RepeatingClosure new_events_cb_;
 };
 
 // EventDeviceFactoryInterface interface that returns EventDeviceStubs for

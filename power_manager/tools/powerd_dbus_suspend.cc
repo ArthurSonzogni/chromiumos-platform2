@@ -209,14 +209,14 @@ int main(int argc, char* argv[]) {
   base::RunLoop run_loop;
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
-      base::Bind(&OnSuspendDone, &run_loop, FLAGS_print_wakeup_type),
-      base::Bind(&OnDBusSignalConnected));
+      base::BindRepeating(&OnSuspendDone, &run_loop, FLAGS_print_wakeup_type),
+      base::BindOnce(&OnDBusSignalConnected));
 
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kHibernateResumeReadySignal,
       base::BindRepeating(&OnHibernateResumeReady, &run_loop),
-      base::BindRepeating(&OnDBusSignalConnected));
+      base::BindOnce(&OnDBusSignalConnected));
 
   // Send a suspend request.
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
@@ -244,7 +244,7 @@ int main(int argc, char* argv[]) {
   // Schedule a task to fire after the timeout.
   if (FLAGS_timeout) {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, base::Bind(&OnTimeout), base::Seconds(FLAGS_timeout));
+        FROM_HERE, base::BindOnce(&OnTimeout), base::Seconds(FLAGS_timeout));
   }
 
   run_loop.Run();

@@ -73,8 +73,8 @@ class SuspendDelayRegisterer {
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
     RegisterSuspendDelay();
     powerd_proxy_->SetNameOwnerChangedCallback(
-        base::Bind(&SuspendDelayRegisterer::NameOwnerChangedReceived,
-                   weak_ptr_factory_.GetWeakPtr()));
+        base::BindRepeating(&SuspendDelayRegisterer::NameOwnerChangedReceived,
+                            weak_ptr_factory_.GetWeakPtr()));
   }
   SuspendDelayRegisterer(const SuspendDelayRegisterer&) = delete;
   SuspendDelayRegisterer& operator=(const SuspendDelayRegisterer&) = delete;
@@ -104,8 +104,8 @@ class SuspendDelayRegisterer {
     LOG(INFO) << "Sleeping " << delay_ms_ << " ms before responding";
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&SuspendDelayRegisterer::SendSuspendReady,
-                   weak_ptr_factory_.GetWeakPtr(), suspend_id),
+        base::BindOnce(&SuspendDelayRegisterer::SendSuspendReady,
+                       weak_ptr_factory_.GetWeakPtr(), suspend_id),
         base::Milliseconds(delay_ms_));
   }
 
@@ -145,17 +145,17 @@ class SuspendDelayRegisterer {
     powerd_proxy_->ConnectToSignal(
         power_manager::kPowerManagerInterface,
         power_manager::kSuspendImminentSignal,
-        base::Bind(&SuspendDelayRegisterer::HandleSuspendImminent,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&SuspendDelayRegisterer::DBusSignalConnected,
-                   weak_ptr_factory_.GetWeakPtr()));
+        base::BindRepeating(&SuspendDelayRegisterer::HandleSuspendImminent,
+                            weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&SuspendDelayRegisterer::DBusSignalConnected,
+                       weak_ptr_factory_.GetWeakPtr()));
     powerd_proxy_->ConnectToSignal(
         power_manager::kPowerManagerInterface,
         power_manager::kSuspendDoneSignal,
-        base::Bind(&SuspendDelayRegisterer::HandleSuspendDone,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&SuspendDelayRegisterer::DBusSignalConnected,
-                   weak_ptr_factory_.GetWeakPtr()));
+        base::BindRepeating(&SuspendDelayRegisterer::HandleSuspendDone,
+                            weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&SuspendDelayRegisterer::DBusSignalConnected,
+                       weak_ptr_factory_.GetWeakPtr()));
   }
 
   void NameOwnerChangedReceived(const std::string& old_owner,

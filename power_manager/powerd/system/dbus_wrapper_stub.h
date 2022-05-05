@@ -76,8 +76,9 @@ class DBusWrapperStub : public DBusWrapperInterface {
   // registered via RegisterForSignal().
   void EmitRegisteredSignal(dbus::ObjectProxy* proxy, dbus::Signal* signal);
 
-  using MethodCallback = base::Callback<std::unique_ptr<dbus::Response>(
-      dbus::ObjectProxy*, dbus::MethodCall*)>;
+  using MethodCallback =
+      base::RepeatingCallback<std::unique_ptr<dbus::Response>(
+          dbus::ObjectProxy*, dbus::MethodCall*)>;
 
   // Sets a callback to be invoked in response to calls to CallMethod*().
   void SetMethodCallback(const MethodCallback& callback);

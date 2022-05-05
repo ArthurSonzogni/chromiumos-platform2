@@ -40,7 +40,7 @@ class EventDevice : public EventDeviceInterface {
   LidState GetInitialLidState() override;
   TabletMode GetInitialTabletMode() override;
   bool ReadEvents(std::vector<input_event>* events_out) override;
-  void WatchForEvents(base::Closure new_events_cb) override;
+  void WatchForEvents(const base::RepeatingClosure& new_events_cb) override;
 
  private:
   // Checks whether bit index |bit| is set in the bitmask returned by

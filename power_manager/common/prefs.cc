@@ -90,7 +90,7 @@ bool Prefs::Init(std::unique_ptr<PrefsStoreInterface> pref_store,
   pref_store_ = std::move(pref_store);
   pref_sources_ = std::move(pref_sources);
   return pref_store_->Watch(
-      base::Bind(&Prefs::HandlePrefChanged, base::Unretained(this)));
+      base::BindRepeating(&Prefs::HandlePrefChanged, base::Unretained(this)));
 }
 
 void Prefs::AddObserver(PrefsObserver* observer) {

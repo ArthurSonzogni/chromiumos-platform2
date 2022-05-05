@@ -60,8 +60,8 @@ void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
     SendStateToDisplayService(state);
   } else {
     timer_.Start(FROM_HERE, delay,
-                 base::Bind(&DisplayPowerSetter::SendStateToDisplayService,
-                            base::Unretained(this), state));
+                 base::BindOnce(&DisplayPowerSetter::SendStateToDisplayService,
+                                base::Unretained(this), state));
   }
 }
 

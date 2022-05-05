@@ -452,9 +452,9 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   if (should_watch) {
-    device->WatchForEvents(base::Bind(&InputWatcher::OnNewEvents,
-                                      weak_ptr_factory_.GetWeakPtr(),
-                                      base::Unretained(device.get())));
+    device->WatchForEvents(base::BindRepeating(&InputWatcher::OnNewEvents,
+                                               weak_ptr_factory_.GetWeakPtr(),
+                                               base::Unretained(device.get())));
     event_devices_.insert(std::make_pair(input_num, device));
   } else {
     VLOG(1) << "Event device with phys path " << device->GetDebugName()

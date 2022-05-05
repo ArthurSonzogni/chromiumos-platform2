@@ -141,9 +141,9 @@ ShutdownFromSuspend::Action ShutdownFromSuspend::PrepareForSuspendAttempt() {
     return ShutdownFromSuspend::Action::SUSPEND;
   }
   if (!alarm_timer_->IsRunning()) {
-    alarm_timer_->Start(
-        FROM_HERE, shutdown_delay_,
-        base::Bind(&ShutdownFromSuspend::OnTimerWake, base::Unretained(this)));
+    alarm_timer_->Start(FROM_HERE, shutdown_delay_,
+                        base::BindRepeating(&ShutdownFromSuspend::OnTimerWake,
+                                            base::Unretained(this)));
   }
 
   return ShutdownFromSuspend::Action::SUSPEND;

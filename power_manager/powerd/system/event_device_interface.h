@@ -70,7 +70,7 @@ class EventDeviceInterface {
   // Start watching this device for incoming events, and run |new_events_cb|
   // when events are ready to be read with ReadEvents(). Shall only be called
   // once.
-  virtual void WatchForEvents(base::Closure new_events_cb) = 0;
+  virtual void WatchForEvents(const base::RepeatingClosure& new_events_cb) = 0;
 };
 
 class EventDeviceFactoryInterface {

@@ -41,9 +41,9 @@ DBusWrapper::DBusWrapper(scoped_refptr<dbus::Bus> bus,
       bus->GetObjectProxy(kBusServiceName, dbus::ObjectPath(kBusServicePath));
   bus_proxy->ConnectToSignal(
       kBusInterface, kBusNameOwnerChangedSignal,
-      base::Bind(&DBusWrapper::HandleNameOwnerChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&HandleSignalConnected));
+      base::BindRepeating(&DBusWrapper::HandleNameOwnerChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
 }
 
 DBusWrapper::~DBusWrapper() = default;
@@ -101,7 +101,7 @@ void DBusWrapper::RegisterForSignal(
     dbus::ObjectProxy::SignalCallback callback) {
   DCHECK(proxy);
   proxy->ConnectToSignal(interface_name, signal_name, callback,
-                         base::Bind(&HandleSignalConnected));
+                         base::BindOnce(&HandleSignalConnected));
 }
 
 void DBusWrapper::ExportMethod(

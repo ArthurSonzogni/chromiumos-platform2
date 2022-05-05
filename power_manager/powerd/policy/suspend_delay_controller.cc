@@ -251,8 +251,8 @@ void SuspendDelayController::OnMinDelayExpiration() {
 void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
   notify_observers_timer_.Start(
       FROM_HERE, base::TimeDelta(),
-      base::Bind(&SuspendDelayController::NotifyObservers,
-                 base::Unretained(this), suspend_id));
+      base::BindOnce(&SuspendDelayController::NotifyObservers,
+                     base::Unretained(this), suspend_id));
 }
 
 void SuspendDelayController::NotifyObservers(int suspend_id) {

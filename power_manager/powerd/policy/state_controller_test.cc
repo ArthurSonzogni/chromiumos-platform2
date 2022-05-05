@@ -234,7 +234,7 @@ class StateControllerTest : public testing::Test {
         send_initial_display_mode_(true),
         send_initial_policy_(true),
         update_engine_operation_(update_engine::Operation::IDLE) {
-    dbus_wrapper_.SetMethodCallback(base::Bind(
+    dbus_wrapper_.SetMethodCallback(base::BindRepeating(
         &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
   }
   StateControllerTest(const StateControllerTest&) = delete;

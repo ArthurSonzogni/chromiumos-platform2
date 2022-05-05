@@ -69,8 +69,9 @@ class UserProximityWatcherTest : public testing::Test {
   UserProximityWatcherTest()
       : user_proximity_watcher_(std::make_unique<UserProximityWatcher>()),
         initial_tablet_mode_(TabletMode::UNSUPPORTED) {
-    user_proximity_watcher_->set_open_iio_events_func_for_testing(base::Bind(
-        &UserProximityWatcherTest::OpenTestIioFd, base::Unretained(this)));
+    user_proximity_watcher_->set_open_iio_events_func_for_testing(
+        base::BindRepeating(&UserProximityWatcherTest::OpenTestIioFd,
+                            base::Unretained(this)));
   }
 
   void Init(UserProximityWatcher::SensorType type,

@@ -242,35 +242,42 @@ std::string Suspender::EventToString(Event event) {
 
 void Suspender::ExportDBusMethods() {
   // Normal suspend/resume methods:
-  dbus_wrapper_->ExportMethod(kRegisterSuspendDelayMethod,
-                              base::Bind(&Suspender::RegisterSuspendDelay,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         suspend_delay_controller_.get()));
-  dbus_wrapper_->ExportMethod(kUnregisterSuspendDelayMethod,
-                              base::Bind(&Suspender::UnregisterSuspendDelay,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         suspend_delay_controller_.get()));
-  dbus_wrapper_->ExportMethod(kHandleSuspendReadinessMethod,
-                              base::Bind(&Suspender::HandleSuspendReadiness,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(
+      kRegisterSuspendDelayMethod,
+      base::BindRepeating(&Suspender::RegisterSuspendDelay,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(
+      kUnregisterSuspendDelayMethod,
+      base::BindRepeating(&Suspender::UnregisterSuspendDelay,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(
+      kHandleSuspendReadinessMethod,
+      base::BindRepeating(&Suspender::HandleSuspendReadiness,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          suspend_delay_controller_.get()));
 
   // Dark suspend/resume methods:
-  dbus_wrapper_->ExportMethod(kRegisterDarkSuspendDelayMethod,
-                              base::Bind(&Suspender::RegisterSuspendDelay,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         dark_suspend_delay_controller_.get()));
-  dbus_wrapper_->ExportMethod(kUnregisterDarkSuspendDelayMethod,
-                              base::Bind(&Suspender::UnregisterSuspendDelay,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         dark_suspend_delay_controller_.get()));
-  dbus_wrapper_->ExportMethod(kHandleDarkSuspendReadinessMethod,
-                              base::Bind(&Suspender::HandleSuspendReadiness,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         dark_suspend_delay_controller_.get()));
-  dbus_wrapper_->ExportMethod(kRecordDarkResumeWakeReasonMethod,
-                              base::Bind(&Suspender::RecordDarkResumeWakeReason,
-                                         weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->ExportMethod(
+      kRegisterDarkSuspendDelayMethod,
+      base::BindRepeating(&Suspender::RegisterSuspendDelay,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          dark_suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(
+      kUnregisterDarkSuspendDelayMethod,
+      base::BindRepeating(&Suspender::UnregisterSuspendDelay,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          dark_suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(
+      kHandleDarkSuspendReadinessMethod,
+      base::BindRepeating(&Suspender::HandleSuspendReadiness,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          dark_suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(
+      kRecordDarkResumeWakeReasonMethod,
+      base::BindRepeating(&Suspender::RecordDarkResumeWakeReason,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Suspender::RegisterSuspendDelay(
@@ -828,8 +835,8 @@ Suspender::State Suspender::HandleUnsuccessfulSuspend(
 void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
   resuspend_timer_.Start(
       FROM_HERE, delay,
-      base::Bind(&Suspender::HandleEvent, base::Unretained(this),
-                 Event::READY_TO_RESUSPEND));
+      base::BindOnce(&Suspender::HandleEvent, base::Unretained(this),
+                     Event::READY_TO_RESUSPEND));
 }
 
 void Suspender::EmitSuspendDoneSignal(int suspend_request_id,

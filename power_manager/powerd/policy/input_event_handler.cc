@@ -45,17 +45,18 @@ void InputEventHandler::Init(system::InputWatcherInterface* input_watcher,
   dbus_wrapper_ = dbus_wrapper;
   dbus_wrapper_->ExportMethod(
       kHandlePowerButtonAcknowledgmentMethod,
-      base::Bind(
+      base::BindRepeating(
           &InputEventHandler::OnHandlePowerButtonAcknowledgmentMethodCall,
           weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->ExportMethod(
       kIgnoreNextPowerButtonPressMethod,
-      base::Bind(&InputEventHandler::OnIgnoreNextPowerButtonPressMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &InputEventHandler::OnIgnoreNextPowerButtonPressMethodCall,
+          weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->ExportMethod(
       kGetSwitchStatesMethod,
-      base::Bind(&InputEventHandler::OnGetSwitchStatesMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&InputEventHandler::OnGetSwitchStatesMethodCall,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
   prefs->GetBool(kFactoryModePref, &factory_mode_);
