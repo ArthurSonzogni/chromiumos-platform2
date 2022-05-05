@@ -76,24 +76,8 @@ bool InternalRgbKeyboard::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 bool InternalRgbKeyboard::GetRgbKeyboardCapabilities() {
-  auto fd = base::ScopedFD(open(kEcPath, O_RDWR | O_CLOEXEC));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "rgbkbd: Failed to open FD for EC while attempting to "
-                  "determine keyboard capabilities";
-    return false;
-  }
-
-  struct rgb_s color = {0, 0, 0};
-  auto command = ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, color);
-
-  auto success = command->Run(fd.get());
-  if (success) {
-    LOG(INFO) << "rgbkbd: Call to ec::RgbkbdCommand SUCCEEDED for "
-                 "GetRgbKeyboardCapabilities";
-  } else {
-    LOG(ERROR) << "rgbkbd: Call to ec::RgbkbdCommand FAILED for "
-                  "GetRgbKeyboardCapabilities";
-  }
-  return success;
+  LOG(INFO) << "Checking RgbKeyboardCapabilities by trying to set all keys to "
+            << CreateRgbLogString(/*r=*/0, /*g=*/0, /*b=*/0);
+  return SetAllKeyColors(/*r=*/0, /*g=*/0, /*b=*/0);
 }
 }  // namespace rgbkbd
