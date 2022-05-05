@@ -15,7 +15,6 @@ group("host") {
     ":vm_concierge",
     ":vmlog_forwarder",
     ":vsh",
-    "//sirenia/manatee-client:libmanatee-client-headers",
     "//vm_tools:vshd",
   ]
   if (use.arcvm) {
@@ -39,10 +38,13 @@ group("host") {
   }
 }
 
+# D-Bus bindings from other platform2 projects need to be listed here so that
+# the system include paths for the headers are added through pkg-config.
 pkg_config("host_target_defaults_pkgs") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmanatee-client",
     "libpatchpanel-client",
     "libpatchpanel-util",
   ]
