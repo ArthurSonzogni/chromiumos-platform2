@@ -287,3 +287,41 @@ kLocChalCredDecryptSPKIPubKeyMismatch=5 @ ./challenge_credentials/challenge_cred
 kLocChalCredDecryptSaltProcessingFailed=6 @ ./challenge_credentials/challenge_credentials_decrypt_operation.cc:99
 kLocChalCredDecryptNoSalt=7 @ ./challenge_credentials/challenge_credentials_decrypt_operation.cc:112
 ```
+
+## Tips and Tricks
+
+### Merge conflict in error/locations.h
+
+It is possible to get frequent merge conflicts in error/locations.h. To resolve
+them, it is recommended to revert all changes in error/locations.h before the
+rebase, then re-run the tools after the rebase. This can be done by:
+
+Reverting changes in error/locations.h:
+
+```
+(cros_sdk) /mnt/host/source/src/platform2 $
+  common_ancestor=`git merge-base cros/main HEAD`; \
+  cl_count=`git rev-list --count "${common_ancestor}"...HEAD`; \
+  for i in `seq $(expr ${cl_count} + 1) -1 2`; do \
+    GIT_SEQUENCE_EDITOR="sed -i -e '${i}i x git checkout HEAD^ -- \
+    cryptohome/error/locations.h && git add --all && git commit --amend \
+    --no-edit'" \
+    git rebase -i "${common_ancestor}"; \
+  done;
+```
+
+Then rebase as usual.
+
+Then re-apply the changes by re-running the tools:
+
+```
+(cros_sdk) /mnt/host/source/src/platform2 $
+  common_ancestor=`git merge-base cros/main HEAD`; \
+  cl_count=`git rev-list --count "${common_ancestor}"...HEAD`; \
+  for i in `seq 2 $(expr ${cl_count} + 1)`; do \
+    GIT_SEQUENCE_EDITOR="sed -i -e '${i}i x \
+    /mnt/host/source/src/platform2/cryptohome/error/tool/location_db.py \
+    --update && git add --all && git commit --amend --no-edit'" \
+    git rebase -i "${common_ancestor}"; \
+done;
+```
