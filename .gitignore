@@ -72,6 +72,11 @@ target/
 # Intellij project dirs
 .idea
 
+# Emacs files
+.dir-locals.el
+.projectile
+TAGS
+
 # clangd cache dir
 .clangd
 .cache
