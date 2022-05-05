@@ -41,8 +41,8 @@ bool SetMkbpWakeMask(const base::ScopedFD& cros_ec_fd, uint32_t wake_mask) {
 
   ec::MkbpWakeMaskEventCommand cmd(wake_mask);
   if (!cmd.Run(cros_ec_fd.get())) {
-    LOG(ERROR) << "Failed to set new MKBP wake mask to " << wake_mask
-               << cmd.Result();
+    LOG(ERROR) << "Failed to set new MKBP wake mask to '0x" << std::hex
+               << wake_mask << "' Result: " << std::dec << cmd.Result();
     return false;
   }
   return true;
