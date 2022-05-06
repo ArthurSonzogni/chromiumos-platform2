@@ -41,6 +41,13 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   void DevicePropertyChanged(org::bluez::Device1ProxyInterface* device,
                              const std::string& property_name);
 
+  FRIEND_TEST(BluetoothEventsImplTest, ReceiveAdapterAddedEvent);
+  FRIEND_TEST(BluetoothEventsImplTest, ReceiveAdapterRemovedEvent);
+  FRIEND_TEST(BluetoothEventsImplTest, ReceiveAdapterPropertyChangedEvent);
+  FRIEND_TEST(BluetoothEventsImplTest, ReceiveDeviceAddedEvent);
+  FRIEND_TEST(BluetoothEventsImplTest, ReceiveDeviceRemovedEvent);
+  FRIEND_TEST(BluetoothEventsImplTest, ReceiveDevicePropertyChangedEvent);
+
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.
   // The InterfacePtrSet manages the lifetime of the endpoints, which are

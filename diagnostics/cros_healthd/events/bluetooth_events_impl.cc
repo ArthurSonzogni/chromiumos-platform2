@@ -27,8 +27,8 @@ void BluetoothEventsImpl::AddObserver(
 
 void BluetoothEventsImpl::SetProxyCallback() {
   org::bluezProxy* bluetooth_proxy = context_->bluetooth_proxy();
-  DCHECK(bluetooth_proxy);
-
+  if (!bluetooth_proxy)
+    return;
   bluetooth_proxy->SetAdapter1AddedCallback(base::BindRepeating(
       &BluetoothEventsImpl::AdapterAdded, weak_ptr_factory_.GetWeakPtr()));
   bluetooth_proxy->SetAdapter1RemovedCallback(base::BindRepeating(
