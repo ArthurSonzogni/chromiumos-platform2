@@ -18,8 +18,8 @@ namespace rmad {
 
 class RestockStateHandler : public BaseStateHandler {
  public:
-  // Wait for 5 seconds before shutting down.
-  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(5);
+  // Wait for 1 second before shutting down.
+  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(1);
 
   explicit RestockStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mocked |power_manager_client_| for testing.

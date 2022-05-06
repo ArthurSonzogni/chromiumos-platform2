@@ -23,8 +23,8 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  public:
   // Poll every 2 seconds.
   static constexpr base::TimeDelta kPollInterval = base::Seconds(2);
-  // Wait for 2 seconds before enabling factory mode and rebooting.
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(2);
+  // Wait for 1 second before enabling factory mode and rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);

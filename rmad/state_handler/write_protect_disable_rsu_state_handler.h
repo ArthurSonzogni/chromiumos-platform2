@@ -27,8 +27,8 @@ class PowerManagerClient;
 
 class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
  public:
-  // Wait for 5 seconds before rebooting.
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
+  // Wait for 1 second before rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store);

@@ -29,7 +29,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
   static constexpr base::TimeDelta kPollInterval = base::Seconds(1);
   static constexpr base::TimeDelta kTaskInterval = base::Seconds(2);
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
   explicit UpdateRoFirmwareStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock |cmd_utils_|, |crossystem_utils|, |flashrom_utils|,

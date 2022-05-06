@@ -34,8 +34,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Report status every second.
   static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
-  // Wait for 5 seconds before rebooting.
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
+  // Wait for 1 second before rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
   explicit ProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock |cbi_utils_|, |cros_config_utils_|,
