@@ -72,8 +72,8 @@ constexpr char kManualQueuePrefix[] = "P_Manual";
 constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
 
 constexpr char kEncryptionKeyFilePrefix[] = "EncryptionKey.";
-const int32_t kEncryptionKeyMaxFileSize = 256;
-const uint64_t kQueueSize = 2 * 1024LL * 1024LL;
+constexpr int32_t kEncryptionKeyMaxFileSize = 256;
+constexpr uint64_t kQueueSize = 2UL * 1024UL * 1024UL;
 
 // Failed upload retry delay: if an upload fails and there are no more incoming
 // events, collected events will not get uploaded for an indefinite time (see
