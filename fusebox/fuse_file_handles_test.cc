@@ -24,23 +24,35 @@ TEST(FuseFileHandlesTest, FileHandles) {
   // The handle has no backing file descriptor.
   EXPECT_EQ(-1, GetFileDescriptor(handle));
 
+  // The handle backing file descriptor can be reset.
+  SetFileDescriptor(handle, 42);
+  EXPECT_EQ(42, GetFileDescriptor(handle));
+
+  // SetFileDescriptor returns the old file descriptor.
+  EXPECT_EQ(42, SetFileDescriptor(handle, -1));
+  EXPECT_EQ(-1, GetFileDescriptor(handle));
+
   // Close the file handle: returns the file descriptor.
   base::ScopedFD fd = CloseFile(handle);
   EXPECT_FALSE(fd.is_valid());
   EXPECT_EQ(-1, fd.get());
 
-  // GetFile should return 0 (the handle is not open).
+  // Handle closed: API that need an open handle fail.
   EXPECT_EQ(0, GetFile(handle));
+  EXPECT_EQ(-1, SetFileDescriptor(handle, 42));
+  EXPECT_EQ(-1, GetFileDescriptor(handle));
 
   // Unknown handles cannot be found.
   EXPECT_EQ(0, GetFile(~1));
 
   // Unknown handles have no backing file descriptor.
+  EXPECT_EQ(-1, SetFileDescriptor(~1, 42));
   EXPECT_EQ(-1, GetFileDescriptor(~1));
   EXPECT_EQ(-1, CloseFile(~1).get());
 
   // Handle 0 is the invalid file handle value.
   EXPECT_EQ(0, GetFile(0));
+  EXPECT_EQ(-1, SetFileDescriptor(0, 42));
   EXPECT_EQ(-1, GetFileDescriptor(0));
   EXPECT_EQ(-1, CloseFile(0).get());
 }

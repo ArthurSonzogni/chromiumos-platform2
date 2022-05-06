@@ -5,6 +5,7 @@
 #include "fusebox/fuse_file_handles.h"
 
 #include <unordered_map>
+#include <utility>
 
 #include <base/check.h>
 #include <base/no_destructor.h>
@@ -36,6 +37,14 @@ int GetFileDescriptor(uint64_t handle) {
   if (it != GetFileHandles().end())
     return it->second;  // handle is open
   return -1;
+}
+
+int SetFileDescriptor(uint64_t handle, int fd) {
+  const auto it = GetFileHandles().find(handle);
+  if (it == GetFileHandles().end())
+    return -1;  // handle is not open
+  std::swap(it->second, fd);
+  return fd;
 }
 
 base::ScopedFD CloseFile(uint64_t handle) {
