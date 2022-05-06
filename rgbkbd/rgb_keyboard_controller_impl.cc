@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/notreached.h"
 
 namespace rgbkbd {
 
@@ -67,6 +68,11 @@ void RgbKeyboardControllerImpl::SetRainbowMode() {
     keyboard_->SetKeyColor(entry.key, entry.color.r, entry.color.g,
                            entry.color.b);
   }
+}
+
+// TODO(jimmyxgong): Implement this stub.
+void RgbKeyboardControllerImpl::SetAnimationMode(RgbAnimationMode mode) {
+  NOTIMPLEMENTED();
 }
 
 Color RgbKeyboardControllerImpl::GetColorForBackgroundType() const {

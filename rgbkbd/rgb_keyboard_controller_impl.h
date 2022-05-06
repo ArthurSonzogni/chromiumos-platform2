@@ -80,6 +80,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) override;
   void SetRainbowMode() override;
+  void SetAnimationMode(RgbAnimationMode mode) override;
   void SetKeyboardClient(RgbKeyboard* keyboard) override;
 
   bool IsCapsLockEnabledForTesting() const { return caps_lock_enabled_; }

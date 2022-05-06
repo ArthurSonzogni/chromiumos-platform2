@@ -57,5 +57,14 @@
       <arg name="enable_testing" type="b" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetAnimationMode">
+      <tp:docstring>
+        Sets the animation mode for the RGB keys of the keyboard. This overrides
+        any static colors or special color mode (e.g. rainbow).
+      </tp:docstring>
+      <!-- See RgbAnimationMode for valid values. Invalid values are no-opts -->
+      <arg name="mode" type="u" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

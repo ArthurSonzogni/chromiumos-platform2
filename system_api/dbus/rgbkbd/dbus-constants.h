@@ -16,11 +16,16 @@ const char kSetCapsLockState[] = "SetCapsLockState";
 const char kSetStaticBackgroundColor[] = "SetStaticBackgroundColor";
 const char kSetRainbowMode[] = "SetRainbowMode";
 const char kSetTestingMode[] = "SetTestingMode";
+const char kSetAnimationMode[] = "SetAnimationMode";
 
 enum class RgbKeyboardCapabilities {
   kNone = 0,
   kIndividualKey = 1,
   kFiveZone = 2,
+};
+
+enum class RgbAnimationMode {
+  kBasicTestPattern = 0,
 };
 
 }  // namespace rgbkbd

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 
+#include "dbus/rgbkbd/dbus-constants.h"
 #include "rgbkbd/rgb_keyboard.h"
 
 namespace rgbkbd {
@@ -20,6 +21,7 @@ class RgbKeyboardController {
   virtual void SetCapsLockState(bool enabled) = 0;
   virtual void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) = 0;
   virtual void SetRainbowMode() = 0;
+  virtual void SetAnimationMode(RgbAnimationMode mode) = 0;
   virtual void SetKeyboardClient(RgbKeyboard* keyboard) = 0;
 };
 

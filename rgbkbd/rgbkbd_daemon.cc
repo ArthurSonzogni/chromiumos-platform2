@@ -58,6 +58,12 @@ void DBusAdaptor::SetTestingMode(bool enable_testing) {
   }
 }
 
+// TODO(jimmyxgong): Implement switch case for different modes.
+void DBusAdaptor::SetAnimationMode(uint32_t mode) {
+  rgb_keyboard_controller_.SetAnimationMode(
+      RgbAnimationMode::kBasicTestPattern);
+}
+
 RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServiceName) {}
 
 void RgbkbdDaemon::RegisterDBusObjectsAsync(

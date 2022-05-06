@@ -35,6 +35,7 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) override;
   void SetRainbowMode() override;
   void SetTestingMode(bool enable_testing) override;
+  void SetAnimationMode(uint32_t mode) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
