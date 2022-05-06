@@ -15,10 +15,11 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include <map>
+#include <array>
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -31,27 +32,32 @@ namespace shill {
 
 namespace {
 
-using flags_info_t = std::vector<std::pair<uint32_t, std::string>>;
+using flag_info_t = std::pair<uint32_t, const char*>;
 
 // Helper for pretty printing flags
+template <std::size_t Dim>
 std::string PrintFlags(uint32_t flags,
-                       const flags_info_t& flags_info,
+                       const std::array<flag_info_t, Dim>& flags_info,
                        const std::string& separator = " | ") {
-  std::string str;
-  if (flags == 0)
+  std::string str = "";
+  if (flags == 0) {
     return str;
+  }
   std::string sep = "";
-  for (const auto& flag_descr : flags_info) {
-    if ((flags & flag_descr.first) == 0)
+  for (size_t i = 0; i < Dim; i++) {
+    if ((flags & flags_info[i].first) == 0) {
       continue;
+    }
     str += sep;
-    str += flag_descr.second;
+    str += flags_info[i].second;
     sep = separator;
   }
   return str;
 }
 
-const flags_info_t kIfaFlags = {
+// Flag names for Address events (ifa_flags field of struct ifaddrmsg). Defined
+// in uapi/linux/if_addr.h
+constexpr std::array<flag_info_t, 12> kIfaFlags{{
     {IFA_F_TEMPORARY, "TEMPORARY"},
     {IFA_F_NODAD, "NODAD"},
     {IFA_F_OPTIMISTIC, "OPTIMISTIC"},
@@ -64,10 +70,11 @@ const flags_info_t kIfaFlags = {
     {IFA_F_NOPREFIXROUTE, "NOPREFIXROUTE"},
     {IFA_F_MCAUTOJOIN, "MCAUTOJOIN"},
     {IFA_F_STABLE_PRIVACY, "STABLE_PRIVACY"},
-};
+}};
 
-// Flag names for Link events. Defined in uapi/linux/if.h
-const flags_info_t kNetDeviceFlags = {
+// Flag names for Link events (ifi_flags field of struct ifinfomsg). Defined in
+// uapi/linux/if.h
+constexpr std::array<flag_info_t, 19> kNetDeviceFlags = {{
     {IFF_ALLMULTI, "ALLMULTI"},
     {IFF_AUTOMEDIA, "AUTOMEDIA"},
     {IFF_BROADCAST, "BROADCAST"},
@@ -87,140 +94,265 @@ const flags_info_t kNetDeviceFlags = {
     {IFF_RUNNING, "RUNNING"},
     {IFF_SLAVE, "SLAVE"},
     {IFF_UP, "UP"},
-};
+}};
 
-// Fine grained link types. Defined in uapi/linux/if_arp.h
-std::map<uint16_t, std::string> kNetDeviceTypes = {
-    {ARPHRD_NETROM, "NETROM"},
-    {ARPHRD_ETHER, "ETHER"},
-    {ARPHRD_EETHER, "EETHER"},
-    {ARPHRD_AX25, "AX25"},
-    {ARPHRD_PRONET, "PRONET"},
-    {ARPHRD_CHAOS, "CHAOS"},
-    {ARPHRD_IEEE802, "IEEE802"},
-    {ARPHRD_ARCNET, "ARCNET"},
-    {ARPHRD_APPLETLK, "APPLETLK"},
-    {ARPHRD_DLCI, "DLCI"},
-    {ARPHRD_ATM, "ATM"},
-    {ARPHRD_METRICOM, "METRICOM"},
-    {ARPHRD_IEEE1394, "IEEE1394"},
-    {ARPHRD_EUI64, "EUI64"},
-    {ARPHRD_INFINIBAND, "INFINIBAND"},
-    {ARPHRD_SLIP, "SLIP"},
-    {ARPHRD_CSLIP, "CSLIP"},
-    {ARPHRD_SLIP6, "SLIP6"},
-    {ARPHRD_CSLIP6, "CSLIP6"},
-    {ARPHRD_RSRVD, "RSRVD"},
-    {ARPHRD_ADAPT, "ADAPT"},
-    {ARPHRD_ROSE, "ROSE"},
-    {ARPHRD_X25, "X25"},
-    {ARPHRD_HWX25, "HWX25"},
-    {ARPHRD_CAN, "CAN"},
-    {ARPHRD_PPP, "PPP"},
-    {ARPHRD_CISCO, "CISCO"},
-    {ARPHRD_HDLC, "HDLC"},
-    {ARPHRD_LAPB, "LAPB"},
-    {ARPHRD_DDCMP, "DDCMP"},
-    {ARPHRD_RAWHDLC, "RAWHDLC"},
-    {ARPHRD_RAWIP, "RAWIP"},
-    {ARPHRD_TUNNEL, "TUNNEL"},
-    {ARPHRD_TUNNEL6, "TUNNEL6"},
-    {ARPHRD_FRAD, "FRAD"},
-    {ARPHRD_SKIP, "SKIP"},
-    {ARPHRD_LOOPBACK, "LOOPBACK"},
-    {ARPHRD_LOCALTLK, "LOCALTLK"},
-    {ARPHRD_FDDI, "FDDI"},
-    {ARPHRD_BIF, "BIF"},
-    {ARPHRD_SIT, "SIT"},
-    {ARPHRD_IPDDP, "IPDDP"},
-    {ARPHRD_IPGRE, "IPGRE"},
-    {ARPHRD_PIMREG, "PIMREG"},
-    {ARPHRD_HIPPI, "HIPPI"},
-    {ARPHRD_ASH, "ASH"},
-    {ARPHRD_ECONET, "ECONET"},
-    {ARPHRD_IRDA, "IRDA"},
-    {ARPHRD_FCPP, "FCPP"},
-    {ARPHRD_FCAL, "FCAL"},
-    {ARPHRD_FCPL, "FCPL"},
-    {ARPHRD_FCFABRIC, "FCFABRIC"},
-    {ARPHRD_IEEE802_TR, "IEEE802_TR"},
-    {ARPHRD_IEEE80211, "IEEE80211"},
-    {ARPHRD_IEEE80211_PRISM, "IEEE80211_PRISM"},
-    {ARPHRD_IEEE80211_RADIOTAP, "IEEE80211_RADIOTAP"},
-    {ARPHRD_IEEE802154, "IEEE802154  "},
-    {ARPHRD_IEEE802154_MONITOR, "IEEE802154_MONITOR"},
-    {ARPHRD_PHONET, "PHONET"},
-    {ARPHRD_PHONET_PIPE, "PHONET_PIPE"},
-    {ARPHRD_CAIF, "CAIF"},
-    {ARPHRD_IP6GRE, "IP6GRE"},
-    {ARPHRD_NETLINK, "NETLINK"},
-    {ARPHRD_6LOWPAN, "6LOWPAN"},
-    {ARPHRD_VSOCKMON, "VSOCKMON"},
-    {ARPHRD_VOID, "VOID"},
-    {ARPHRD_NONE, "NONE"},
-};
+// Returns the name associated with the give |ifi_type| corresponding to the
+// ifi_type field of a struct ifinfomsg LINK message. The possible type values
+// are defined in uapi/linux/if_arp.h.
+std::string GetNetDeviceTypeName(uint16_t ifi_type) {
+  switch (ifi_type) {
+    case ARPHRD_NETROM:
+      return "NETROM";
+    case ARPHRD_ETHER:
+      return "ETHER";
+    case ARPHRD_EETHER:
+      return "EETHER";
+    case ARPHRD_AX25:
+      return "AX25";
+    case ARPHRD_PRONET:
+      return "PRONET";
+    case ARPHRD_CHAOS:
+      return "CHAOS";
+    case ARPHRD_IEEE802:
+      return "IEEE802";
+    case ARPHRD_ARCNET:
+      return "ARCNET";
+    case ARPHRD_APPLETLK:
+      return "APPLETLK";
+    case ARPHRD_DLCI:
+      return "DLCI";
+    case ARPHRD_ATM:
+      return "ATM";
+    case ARPHRD_METRICOM:
+      return "METRICOM";
+    case ARPHRD_IEEE1394:
+      return "IEEE1394";
+    case ARPHRD_EUI64:
+      return "EUI64";
+    case ARPHRD_INFINIBAND:
+      return "INFINIBAND";
+    case ARPHRD_SLIP:
+      return "SLIP";
+    case ARPHRD_CSLIP:
+      return "CSLIP";
+    case ARPHRD_SLIP6:
+      return "SLIP6";
+    case ARPHRD_CSLIP6:
+      return "CSLIP6";
+    case ARPHRD_RSRVD:
+      return "RSRVD";
+    case ARPHRD_ADAPT:
+      return "ADAPT";
+    case ARPHRD_ROSE:
+      return "ROSE";
+    case ARPHRD_X25:
+      return "X25";
+    case ARPHRD_HWX25:
+      return "HWX25";
+    case ARPHRD_CAN:
+      return "CAN";
+    case ARPHRD_PPP:
+      return "PPP";
+    case ARPHRD_CISCO:
+      return "CISCO";  // also ARPHRD_HDLC
+    case ARPHRD_LAPB:
+      return "LAPB";
+    case ARPHRD_DDCMP:
+      return "DDCMP";
+    case ARPHRD_RAWHDLC:
+      return "RAWHDLC";
+    case ARPHRD_RAWIP:
+      return "RAWIP";
+    case ARPHRD_TUNNEL:
+      return "TUNNEL";
+    case ARPHRD_TUNNEL6:
+      return "TUNNEL6";
+    case ARPHRD_FRAD:
+      return "FRAD";
+    case ARPHRD_SKIP:
+      return "SKIP";
+    case ARPHRD_LOOPBACK:
+      return "LOOPBACK";
+    case ARPHRD_LOCALTLK:
+      return "LOCALTLK";
+    case ARPHRD_FDDI:
+      return "FDDI";
+    case ARPHRD_BIF:
+      return "BIF";
+    case ARPHRD_SIT:
+      return "SIT";
+    case ARPHRD_IPDDP:
+      return "IPDDP";
+    case ARPHRD_IPGRE:
+      return "IPGRE";
+    case ARPHRD_PIMREG:
+      return "PIMREG";
+    case ARPHRD_HIPPI:
+      return "HIPPI";
+    case ARPHRD_ASH:
+      return "ASH";
+    case ARPHRD_ECONET:
+      return "ECONET";
+    case ARPHRD_IRDA:
+      return "IRDA";
+    case ARPHRD_FCPP:
+      return "FCPP";
+    case ARPHRD_FCAL:
+      return "FCAL";
+    case ARPHRD_FCPL:
+      return "FCPL";
+    case ARPHRD_FCFABRIC:
+      return "FCFABRIC";
+    case ARPHRD_IEEE802_TR:
+      return "IEEE802_TR";
+    case ARPHRD_IEEE80211:
+      return "IEEE80211";
+    case ARPHRD_IEEE80211_PRISM:
+      return "IEEE80211_PRISM";
+    case ARPHRD_IEEE80211_RADIOTAP:
+      return "IEEE80211_RADIOTAP";
+    case ARPHRD_IEEE802154:
+      return "IEEE802154  ";
+    case ARPHRD_IEEE802154_MONITOR:
+      return "IEEE802154_MONITOR";
+    case ARPHRD_PHONET:
+      return "PHONET";
+    case ARPHRD_PHONET_PIPE:
+      return "PHONET_PIPE";
+    case ARPHRD_CAIF:
+      return "CAIF";
+    case ARPHRD_IP6GRE:
+      return "IP6GRE";
+    case ARPHRD_NETLINK:
+      return "NETLINK";
+    case ARPHRD_6LOWPAN:
+      return "6LOWPAN";
+    case ARPHRD_VSOCKMON:
+      return "VSOCKMON";
+    case ARPHRD_VOID:
+      return "VOID";
+    case ARPHRD_NONE:
+      return "NONE";
+    default:
+      return std::to_string(ifi_type);
+  }
+}
 
-// Route types. Defined in uapi/linux/rtnetlink.h
-std::map<uint8_t, std::string> kRouteTypes = {
-    {RTN_UNSPEC, "UNSPEC"},
-    {RTN_UNICAST, "UNICAST"},
-    {RTN_LOCAL, "LOCAL"},
-    {RTN_BROADCAST, "BROADCAST"},
-    {RTN_ANYCAST, "ANYCAST"},
-    {RTN_MULTICAST, "MULTICAST"},
-    {RTN_BLACKHOLE, "BLACKHOLE"},
-    {RTN_UNREACHABLE, "UNREACHABLE"},
-    {RTN_PROHIBIT, "PROHIBIT"},
-    {RTN_THROW, "THROW"},
-    {RTN_NAT, "NAT"},
-    {RTN_XRESOLVE, "XRESOLVE"},
-};
-
-// Route protocols. Defined in uapi/linux/rtnetlink.h
-std::map<uint8_t, std::string> kRouteProtocols = {
-    {RTPROT_UNSPEC, "UNSPEC"},
-    {RTPROT_REDIRECT, "REDIRECT"},
-    {RTPROT_KERNEL, "KERNEL"},
-    {RTPROT_BOOT, "BOOT"},
-    {RTPROT_STATIC, "STATIC"},
-    {RTPROT_GATED, "GATED"},
-    {RTPROT_RA, "RA"},
-    {RTPROT_MRT, "MRT"},
-    {RTPROT_ZEBRA, "ZEBRA"},
-    {RTPROT_BIRD, "BIRD"},
-    {RTPROT_DNROUTED, "DNROUTED"},
-    {RTPROT_XORP, "XORP"},
-    {RTPROT_NTK, "NTK"},
-    {RTPROT_DHCP, "DHCP"},
-    {RTPROT_MROUTED, "MROUTED"},
-    {RTPROT_BABEL, "BABEL"},
-    // The following protocols are not defined on Linux 4.14
-    {186 /* RTPROT_BGP */, "BGP"},
-    {187 /* RTPROT_ISIS */, "ISIS"},
-    {188 /* RTPROT_OSPF */, "OSPF"},
-    {189 /* RTPROT_RIP */, "RIP"},
-    {192 /* RTPROT_EIGRP */, "EIGRP"},
-};
-
-// Rule actions. Defined in struct fib_rule_hdr in uapi/linux/fib_rules.h such
-// that it aligns with the |rtm_type| field of struct rtmsg defined in
-// uapi/linux/rtnetlink.h. Possible values are defined in
-// uapi/linux/fib_rules.h.
-std::map<uint8_t, std::string> kRuleActions = {
-    {FR_ACT_UNSPEC, "UNSPEC"},       {FR_ACT_TO_TBL, "TO_TBL"},
-    {FR_ACT_GOTO, "GOTO"},           {FR_ACT_NOP, "NOP"},
-    {FR_ACT_RES3, "RES3"},           {FR_ACT_RES4, "RES4"},
-    {FR_ACT_BLACKHOLE, "BLACKHOLE"}, {FR_ACT_UNREACHABLE, "UNREACHABLE"},
-    {FR_ACT_PROHIBIT, "PROHIBIT"},
-};
+// Returns the name associated with the give |rtm_type| corresponding to the
+// rtm_type field of a struct rtmsg ROUTE message. The possible type values
+// are defined in uapi/linux/rtnetlink.h.
+std::string GetRouteTypeName(uint8_t rtm_type) {
+  switch (rtm_type) {
+    case RTN_UNSPEC:
+      return "UNSPEC";
+    case RTN_UNICAST:
+      return "UNICAST";
+    case RTN_LOCAL:
+      return "LOCAL";
+    case RTN_BROADCAST:
+      return "BROADCAST";
+    case RTN_ANYCAST:
+      return "ANYCAST";
+    case RTN_MULTICAST:
+      return "MULTICAST";
+    case RTN_BLACKHOLE:
+      return "BLACKHOLE";
+    case RTN_UNREACHABLE:
+      return "UNREACHABLE";
+    case RTN_PROHIBIT:
+      return "PROHIBIT";
+    case RTN_THROW:
+      return "THROW";
+    case RTN_NAT:
+      return "NAT";
+    case RTN_XRESOLVE:
+      return "XRESOLVE";
+    default:
+      return std::to_string(rtm_type);
+  }
+}
 
 // Helper function to return route protocol names defined by the kernel.
 // User reserved protocol values are returned as decimal numbers.
+// Route protocols. Defined in uapi/linux/rtnetlink.h
 std::string GetRouteProtocol(uint8_t protocol) {
-  const auto it = kRouteProtocols.find(protocol);
-  if (it == kRouteProtocols.end())
-    return std::to_string(protocol);
-  return it->second;
+  switch (protocol) {
+    case RTPROT_UNSPEC:
+      return "UNSPEC";
+    case RTPROT_REDIRECT:
+      return "REDIRECT";
+    case RTPROT_KERNEL:
+      return "KERNEL";
+    case RTPROT_BOOT:
+      return "BOOT";
+    case RTPROT_STATIC:
+      return "STATIC";
+    case RTPROT_GATED:
+      return "GATED";
+    case RTPROT_RA:
+      return "RA";
+    case RTPROT_MRT:
+      return "MRT";
+    case RTPROT_ZEBRA:
+      return "ZEBRA";
+    case RTPROT_BIRD:
+      return "BIRD";
+    case RTPROT_DNROUTED:
+      return "DNROUTED";
+    case RTPROT_XORP:
+      return "XORP";
+    case RTPROT_NTK:
+      return "NTK";
+    case RTPROT_DHCP:
+      return "DHCP";
+    case RTPROT_MROUTED:
+      return "MROUTED";
+    case RTPROT_BABEL:
+      return "BABEL";
+    // The following protocols are not defined on Linux 4.14
+    case 186 /* RTPROT_BGP */:
+      return "BGP";
+    case 187 /* RTPROT_ISIS */:
+      return "ISIS";
+    case 188 /* RTPROT_OSPF */:
+      return "OSPF";
+    case 189 /* RTPROT_RIP */:
+      return "RIP";
+    case 192 /* RTPROT_EIGRP */:
+      return "EIGRP";
+    default:
+      return std::to_string(protocol);
+  }
+}
+
+// Returns the name associated with the given |rule_rtm_type| routing rule
+// action type corresponding to the rtm_type field of a struct rtmsg message.
+// The possible rule action values are defined in  uapi/linux/fib_rules.h. The
+// struct fib_rule_hdr in uapi/linux/fib_rules.h such that it aligns with the
+// |rtm_type| field of struct rtmsg defined in uapi/linux/rtnetlink.h.
+std::string GetRuleActionName(uint16_t rule_rtm_type) {
+  switch (rule_rtm_type) {
+    case FR_ACT_UNSPEC:
+      return "UNSPEC";
+    case FR_ACT_TO_TBL:
+      return "TO_TBL";
+    case FR_ACT_GOTO:
+      return "GOTO";
+    case FR_ACT_NOP:
+      return "NOP";
+    case FR_ACT_RES3:
+      return "RES3";
+    case FR_ACT_RES4:
+      return "RES4";
+    case FR_ACT_BLACKHOLE:
+      return "BLACKHOLE";
+    case FR_ACT_UNREACHABLE:
+      return "UNREACHABLE";
+    case FR_ACT_PROHIBIT:
+      return "PROHIBIT";
+    default:
+      return std::to_string(rule_rtm_type);
+  }
 }
 
 std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
@@ -949,7 +1081,7 @@ std::string RTNLMessage::ToString() const {
       ip_family = "";
       details = base::StringPrintf(
           "%s[%d] type %s flags <%s> change %X", GetIflaIfname().c_str(),
-          interface_index_, kNetDeviceTypes[link_status_.type].c_str(),
+          interface_index_, GetNetDeviceTypeName(link_status_.type).c_str(),
           PrintFlags(link_status_.flags, kNetDeviceFlags, ",").c_str(),
           link_status_.change);
       if (link_status_.kind.has_value())
@@ -982,7 +1114,7 @@ std::string RTNLMessage::ToString() const {
       details += base::StringPrintf(
           "table %d priority %d protocol %s type %s", GetRtaTable(),
           GetRtaPriority(), GetRouteProtocol(route_status_.protocol).c_str(),
-          kRouteTypes[route_status_.type].c_str());
+          GetRouteTypeName(route_status_.type).c_str());
       break;
     case RTNLMessage::kTypeRule:
       // Rules are serialized via struct fib_rule_hdr which aligns with struct
@@ -1003,10 +1135,10 @@ std::string RTNLMessage::ToString() const {
       if (HasAttribute(FRA_FWMARK))
         details += base::StringPrintf("fwmark 0x%X/0x%X ", GetFraFwmark(),
                                       GetFraFwmask());
-      details += base::StringPrintf("table %d priority %d action %s flags %X",
-                                    GetFraTable(), GetFraPriority(),
-                                    kRuleActions[route_status_.type].c_str(),
-                                    route_status_.flags);
+      details += base::StringPrintf(
+          "table %d priority %d action %s flags %X", GetFraTable(),
+          GetFraPriority(), GetRuleActionName(route_status_.type).c_str(),
+          route_status_.flags);
       break;
     case RTNLMessage::kTypeRdnss:
     case RTNLMessage::kTypeDnssl:
