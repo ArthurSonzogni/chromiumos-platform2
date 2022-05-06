@@ -16,6 +16,7 @@
 #include "cros-disks/disk_monitor.h"
 #include "cros-disks/error_logger.h"
 #include "cros-disks/format_manager.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/partition_manager.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
@@ -200,23 +201,24 @@ std::vector<std::string> CrosDisksServer::EnumerateDevices() {
   return devices;
 }
 
-std::vector<CrosDisksServer::DBusMountEntry>
-CrosDisksServer::EnumerateMountEntries() {
-  std::vector<DBusMountEntry> dbus_mount_entries;
-  for (const auto& manager : mount_managers_) {
-    for (const auto& mount_entry : manager->GetMountEntries()) {
-      // Skip in-progress mount points.
-      if (mount_entry.error_type == MOUNT_ERROR_IN_PROGRESS)
+CrosDisksServer::MountEntries CrosDisksServer::EnumerateMountEntries() {
+  MountEntries entries;
+  for (const MountManager* const manager : mount_managers_) {
+    DCHECK(manager);
+    for (const MountPoint* const mount_point : manager->GetMountPoints()) {
+      DCHECK(mount_point);
+
+      // Skip the in-progress mount points.
+      if (mount_point->error() == MOUNT_ERROR_IN_PROGRESS)
         continue;
 
-      dbus_mount_entries.push_back(
-          std::make_tuple(static_cast<uint32_t>(mount_entry.error_type),
-                          mount_entry.source_path,
-                          static_cast<uint32_t>(mount_entry.source_type),
-                          mount_entry.mount_path));
+      entries.emplace_back(mount_point->error(), mount_point->source(),
+                           mount_point->source_type(),
+                           mount_point->path().value());
     }
   }
-  return dbus_mount_entries;
+
+  return entries;
 }
 
 bool CrosDisksServer::GetDeviceProperties(

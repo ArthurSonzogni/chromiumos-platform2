@@ -201,7 +201,7 @@ void MountManager::MountNewSource(const std::string& source,
 
   // For some mounters, the string stored in |mount_point->source()| is
   // different from |source|.
-  mount_point->SetSource(source);
+  mount_point->SetSource(source, GetMountSourceType());
 
   if (const Process* const process = mount_point->process()) {
     // There is a FUSE process to monitor.
@@ -357,16 +357,15 @@ MountErrorType MountManager::CreateMountPathForSource(
   return MOUNT_ERROR_NONE;
 }
 
-std::vector<MountEntry> MountManager::GetMountEntries() const {
-  std::vector<MountEntry> mount_entries;
-  mount_entries.reserve(mount_points_.size());
-  for (const auto& mount_point : mount_points_) {
+std::vector<const MountPoint*> MountManager::GetMountPoints() const {
+  std::vector<const MountPoint*> mount_points;
+  mount_points.reserve(mount_points_.size());
+  for (const std::unique_ptr<MountPoint>& mount_point : mount_points_) {
     DCHECK(mount_point);
-    mount_entries.push_back({mount_point->error(), mount_point->source(),
-                             GetMountSourceType(), mount_point->path().value(),
-                             mount_point->is_read_only()});
+    DCHECK_EQ(mount_point->source_type(), GetMountSourceType());
+    mount_points.push_back(mount_point.get());
   }
-  return mount_entries;
+  return mount_points;
 }
 
 bool MountManager::ShouldReserveMountPathOnError(MountErrorType error) const {

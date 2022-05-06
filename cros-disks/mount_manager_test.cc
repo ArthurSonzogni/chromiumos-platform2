@@ -11,7 +11,6 @@
 #include <sys/unistd.h>
 
 #include <algorithm>
-#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -26,7 +25,6 @@
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/mock_platform.h"
-#include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/mounter.h"
@@ -37,8 +35,10 @@ using testing::ByMove;
 using testing::DoAll;
 using testing::ElementsAre;
 using testing::Invoke;
+using testing::IsEmpty;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::SizeIs;
 using testing::StrictMock;
 using testing::WithArgs;
 
@@ -99,13 +99,7 @@ class MountManagerUnderTest : public MountManager {
     return RemoveMount(mp);
   }
 
-  std::optional<MountEntry> GetMountEntryForTest(const std::string& source) {
-    MountPoint* mp = FindMountBySource(source);
-    if (!mp)
-      return {};
-    return MountEntry(MOUNT_ERROR_NONE, source, GetMountSourceType(),
-                      mp->path().value(), mp->is_read_only());
-  }
+  using MountManager::FindMountBySource;
 };
 
 class MountManagerTest : public ::testing::Test {
@@ -118,7 +112,9 @@ class MountManagerTest : public ::testing::Test {
 
   std::unique_ptr<MountPoint> MakeMountPoint(const std::string& mount_path) {
     return MountPoint::CreateUnmounted(
-        {.mount_path = base::FilePath(mount_path), .source = kSourcePath},
+        {.mount_path = base::FilePath(mount_path),
+         .source = kSourcePath,
+         .source_type = MOUNT_SOURCE_REMOVABLE_DEVICE},
         &platform_);
   }
 
@@ -341,11 +337,8 @@ TEST_F(MountManagerTest, MountFailsWithMountPointAndError) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -378,11 +371,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -395,10 +385,12 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  const std::optional<MountEntry> mount_entry =
-      manager_.GetMountEntryForTest(kSourcePath);
-  EXPECT_TRUE(mount_entry);
-  EXPECT_FALSE(mount_entry->is_read_only);
+  {
+    const MountPoint* const mount_point =
+        manager_.FindMountBySource(kSourcePath);
+    ASSERT_TRUE(mount_point);
+    EXPECT_FALSE(mount_point->is_read_only());
+  }
 
   EXPECT_CALL(platform_, Unmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -421,11 +413,8 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
 
   base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -438,10 +427,12 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  const std::optional<MountEntry> mount_entry =
-      manager_.GetMountEntryForTest(kSourcePath);
-  EXPECT_TRUE(mount_entry);
-  EXPECT_TRUE(mount_entry->is_read_only);
+  {
+    const MountPoint* const mount_point =
+        manager_.FindMountBySource(kSourcePath);
+    ASSERT_TRUE(mount_point);
+    EXPECT_TRUE(mount_point->is_read_only());
+  }
 
   EXPECT_CALL(platform_, Unmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -461,12 +452,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   // Emulate Mounter added read-only option as a fallback.
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = MS_RDONLY,
-      },
-      &platform_);
+      MountPointData{.mount_path = mount_path, .flags = MS_RDONLY}, &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
       .WillOnce(DoAll(SetArgPointee<4>(MOUNT_ERROR_NONE),
@@ -478,10 +464,12 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  const std::optional<MountEntry> mount_entry =
-      manager_.GetMountEntryForTest(kSourcePath);
-  EXPECT_TRUE(mount_entry);
-  EXPECT_TRUE(mount_entry->is_read_only);
+  {
+    const MountPoint* const mount_point =
+        manager_.FindMountBySource(kSourcePath);
+    ASSERT_TRUE(mount_point);
+    EXPECT_TRUE(mount_point->is_read_only());
+  }
 
   EXPECT_CALL(platform_, Unmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -499,11 +487,8 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -539,11 +524,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
 
   const base::FilePath mount_path(final_mount_path);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, _, mount_path, _))
@@ -574,11 +556,8 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -793,11 +772,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
 
   EXPECT_CALL(manager_,
@@ -829,11 +805,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
 
   EXPECT_CALL(manager_,
@@ -865,11 +838,8 @@ TEST_F(MountManagerTest, UnmountRemovesFromCacheIfNotMounted) {
 
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0,
-      },
+      MountPointData{.mount_path = mount_path,
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
       &platform_);
 
   EXPECT_CALL(manager_,
@@ -979,21 +949,20 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
 
-// Verifies that MountManager::GetMountEntries() returns the expected list of
+// Verifies that MountManager::GetMountPoints() returns the expected list of
 // mount entries under different scenarios.
-TEST_F(MountManagerTest, GetMountEntries) {
+TEST_F(MountManagerTest, GetMountPoints) {
   // No mount entry is returned.
-  std::vector<MountEntry> mount_entries = manager_.GetMountEntries();
-  EXPECT_TRUE(mount_entries.empty());
+  EXPECT_THAT(manager_.GetMountPoints(), IsEmpty());
 
   // A normal mount entry is returned.
   manager_.AddMount(MakeMountPoint(kMountPath));
-  mount_entries = manager_.GetMountEntries();
-  ASSERT_EQ(1, mount_entries.size());
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type);
-  EXPECT_EQ(kSourcePath, mount_entries[0].source_path);
-  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type);
-  EXPECT_EQ(kMountPath, mount_entries[0].mount_path);
+  const std::vector<const MountPoint*> mount_points = manager_.GetMountPoints();
+  ASSERT_THAT(mount_points, SizeIs(1));
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_points[0]->error());
+  EXPECT_EQ(kSourcePath, mount_points[0]->source());
+  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_points[0]->source_type());
+  EXPECT_EQ(base::FilePath(kMountPath), mount_points[0]->path());
 
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -1090,12 +1059,7 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
       .WillOnce(Return(true));
 
   auto ptr = std::make_unique<MountPoint>(
-      MountPointData{
-          .mount_path = mount_path,
-          .source = kSourcePath,
-          .flags = 0,
-      },
-      &platform_);
+      MountPointData{.mount_path = mount_path, .flags = 0}, &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, _, mount_path, _))
       .WillOnce(DoAll(SetArgPointee<4>(MOUNT_ERROR_NONE),
@@ -1106,11 +1070,11 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
   EXPECT_EQ(kMountPath, mount_path_);
 
   {
-    const std::optional<MountEntry> mount_entry =
-        manager_.GetMountEntryForTest(kSourcePath);
-    ASSERT_TRUE(mount_entry);
-    EXPECT_FALSE(mount_entry->is_read_only);
-    EXPECT_EQ(kMountPath, mount_entry->mount_path);
+    const MountPoint* const mount_point =
+        manager_.FindMountBySource(kSourcePath);
+    ASSERT_TRUE(mount_point);
+    EXPECT_FALSE(mount_point->is_read_only());
+    EXPECT_EQ(base::FilePath(kMountPath), mount_point->path());
   }
 
   // Remount with read-only mount option.
@@ -1125,10 +1089,10 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   {
-    const std::optional<MountEntry> mount_entry =
-        manager_.GetMountEntryForTest(kSourcePath);
-    EXPECT_TRUE(mount_entry);
-    EXPECT_TRUE(mount_entry->is_read_only);
+    const MountPoint* const mount_point =
+        manager_.FindMountBySource(kSourcePath);
+    ASSERT_TRUE(mount_point);
+    EXPECT_TRUE(mount_point->is_read_only());
   }
 
   // Should be unmounted correctly even after remount.

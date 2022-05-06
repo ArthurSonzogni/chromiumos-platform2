@@ -21,7 +21,6 @@
 #include "cros-disks/device_event_queue.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/format_manager_observer_interface.h"
-#include "cros-disks/mount_entry.h"
 #include "cros-disks/rename_manager_observer_interface.h"
 #include "cros-disks/session_manager_observer_interface.h"
 
@@ -98,9 +97,9 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
 
   // Returns a list of mount entries (<error type, source path, source type,
   // mount path>) that are currently managed by cros-disks.
-  using DBusMountEntry =
-      std::tuple<uint32_t, std::string, uint32_t, std::string>;
-  std::vector<DBusMountEntry> EnumerateMountEntries() override;
+  using MountEntry = std::tuple<uint32_t, std::string, uint32_t, std::string>;
+  using MountEntries = std::vector<MountEntry>;
+  MountEntries EnumerateMountEntries() override;
 
   // Returns properties of a disk device attached to the system.
   bool GetDeviceProperties(brillo::ErrorPtr* error,

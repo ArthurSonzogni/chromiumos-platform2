@@ -28,6 +28,8 @@ struct MountPointData {
   base::FilePath mount_path;
   // Source description used to mount.
   std::string source;
+  // Source type.
+  MountSourceType source_type = MOUNT_SOURCE_INVALID;
   // Filesystem type of the mount.
   std::string filesystem_type;
   // Flags of the mount point.
@@ -92,10 +94,17 @@ class MountPoint final {
     DCHECK(launcher_exit_callback_);
   }
 
-  void SetSource(std::string source) { data_.source = std::move(source); }
+  // Sets the source and source type.
+  void SetSource(std::string source, MountSourceType source_type) {
+    data_.source = std::move(source);
+    DCHECK_EQ(MOUNT_SOURCE_INVALID, data_.source_type);
+    data_.source_type = source_type;
+    DCHECK_NE(MOUNT_SOURCE_INVALID, data_.source_type);
+  }
 
   const base::FilePath& path() const { return data_.mount_path; }
   const std::string& source() const { return data_.source; }
+  MountSourceType source_type() const { return data_.source_type; }
   const std::string& fstype() const { return data_.filesystem_type; }
   int flags() const { return data_.flags; }
   const std::string& data() const { return data_.data; }

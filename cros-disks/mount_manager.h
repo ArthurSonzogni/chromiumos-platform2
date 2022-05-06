@@ -22,7 +22,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
-#include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_point.h"
 
 namespace brillo {
@@ -110,8 +109,8 @@ class MountManager {
   // Unmounts all mounted paths.
   virtual void UnmountAll();
 
-  // Returns the mount entries managed by this mount manager.
-  std::vector<MountEntry> GetMountEntries() const;
+  // Gets the mount points owned by this mount manager.
+  std::vector<const MountPoint*> GetMountPoints() const;
 
  protected:
   MountPoint* FindMountBySource(const std::string& source) const;
