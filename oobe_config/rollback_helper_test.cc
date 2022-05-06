@@ -41,14 +41,16 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
 
-  WriteTestFile(PrefixAbsolutePath(temp_path, kOobeCompletedFile));
-  WriteTestFile(PrefixAbsolutePath(temp_path, kMetricsReportingEnabledFile));
+  WriteTestFile(
+      PrefixAbsolutePath(temp_path, base::FilePath(kOobeCompletedFile)));
+  WriteTestFile(PrefixAbsolutePath(
+      temp_path, base::FilePath(kMetricsReportingEnabledFile)));
 
   ASSERT_TRUE(PrepareSave(temp_path, /*ignore_permissions_for_testing=*/true));
 
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+  VerifyTestFile(PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))
                      .Append(kOobeCompletedFileName));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+  VerifyTestFile(PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))
                      .Append(kMetricsReportingEnabledFileName));
 }
 
@@ -58,12 +60,15 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
 
-  WriteTestFile(PrefixAbsolutePath(temp_path, kOobeCompletedFile));
-  WriteTestFile(PrefixAbsolutePath(temp_path, kMetricsReportingEnabledFile));
+  WriteTestFile(
+      PrefixAbsolutePath(temp_path, base::FilePath(kOobeCompletedFile)));
+  WriteTestFile(PrefixAbsolutePath(
+      temp_path, base::FilePath(kMetricsReportingEnabledFile)));
 
   // Create file /var/lib/oobe_config_save/already_existing
   const base::FilePath already_existing_file_path =
-      PrefixAbsolutePath(temp_path, kSaveTempPath).Append("already_existing");
+      PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))
+          .Append("already_existing");
   WriteTestFile(already_existing_file_path);
   ASSERT_TRUE(base::PathExists(already_existing_file_path));
 
@@ -72,9 +77,9 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {
   // Check that the files are also successfully copied when the pre-existent
   // data has been removed.
   EXPECT_FALSE(base::PathExists(already_existing_file_path));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+  VerifyTestFile(PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))
                      .Append(kOobeCompletedFileName));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+  VerifyTestFile(PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))
                      .Append(kMetricsReportingEnabledFileName));
 }
 

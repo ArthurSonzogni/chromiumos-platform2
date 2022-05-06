@@ -33,7 +33,7 @@ void InitLog() {
 class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
  public:
   OobeConfigRestoreDaemon()
-      : DBusServiceDaemon(kOobeConfigRestoreServiceName) {}
+      : DBusServiceDaemon(kOobeConfigRestoreServicePath) {}
   OobeConfigRestoreDaemon(const OobeConfigRestoreDaemon&) = delete;
   OobeConfigRestoreDaemon& operator=(const OobeConfigRestoreDaemon&) = delete;
 
@@ -60,7 +60,7 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 
 // Runs OobeConfigRestoreDaemon.
 int RunDaemon(bool force_start) {
-  if (!force_start && base::PathExists(kOobeCompletedFile)) {
+  if (!force_start && base::PathExists(base::FilePath(kOobeCompletedFile))) {
     LOG(INFO) << "OOBE is already complete.";
     return 0;
   }

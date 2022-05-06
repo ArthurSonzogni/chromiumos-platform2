@@ -31,7 +31,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
   *enrollment_domain = "";
 
   // Precondition for running rollback.
-  if (!oobe_config_->FileExists(kRestoreTempPath)) {
+  if (!oobe_config_->FileExists(base::FilePath(kRestoreTempPath))) {
     LOG(ERROR) << "Restore destination path doesn't exist.";
     return false;
   }
@@ -50,8 +50,9 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
 
     // We load the proto from kEncryptedStatefulRollbackDataPath.
     string rollback_data_str;
-    if (!oobe_config_->ReadFile(kEncryptedStatefulRollbackDataPath,
-                                &rollback_data_str)) {
+    if (!oobe_config_->ReadFile(
+            base::FilePath(kEncryptedStatefulRollbackDataFile),
+            &rollback_data_str)) {
       metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;
     }

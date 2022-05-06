@@ -26,7 +26,7 @@ void InitLog() {
 int main(int argc, char* argv[]) {
   InitLog();
 
-  if (base::PathExists(oobe_config::kOobeCompletedFile)) {
+  if (base::PathExists(base::FilePath(oobe_config::kOobeCompletedFile))) {
     // OOBE has already been completed so cleanup all restore files.
     LOG(INFO) << "OOBE is already complete. Cleaning up restore files.";
     oobe_config::CleanupRestoreFiles(

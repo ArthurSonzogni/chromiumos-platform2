@@ -77,14 +77,15 @@ bool OobeConfig::WriteFile(const base::FilePath& file_path,
 }
 
 void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
-  if (base::PathExists(
-          GetPrefixedFilePath(kSaveTempPath.Append(kOobeCompletedFileName)))) {
+  if (base::PathExists(GetPrefixedFilePath(
+          base::FilePath(kSaveTempPath).Append(kOobeCompletedFileName)))) {
     // If OOBE has been completed already, we know the EULA has been accepted.
     rollback_data->set_eula_auto_accept(true);
   }
 
-  if (base::PathExists(GetPrefixedFilePath(
-          kSaveTempPath.Append(kMetricsReportingEnabledFileName)))) {
+  if (base::PathExists(
+          GetPrefixedFilePath(base::FilePath(kSaveTempPath)
+                                  .Append(kMetricsReportingEnabledFileName)))) {
     // If |kMetricsReportingEnabledFile| exists, metrics are enabled.
     rollback_data->set_eula_send_statistics(true);
   }
@@ -139,13 +140,13 @@ bool OobeConfig::EncryptedRollbackSave() const {
     return false;
   }
 
-  if (!WriteFile(kUnencryptedStatefulRollbackDataPath,
+  if (!WriteFile(base::FilePath(kUnencryptedStatefulRollbackDataFile),
                  brillo::BlobToString(encrypted_rollback_data->data))) {
     LOG(ERROR) << "Failed to write encrypted rollback data file.";
     return false;
   }
 
-  if (!WriteFile(kDataSavedFile, std::string())) {
+  if (!WriteFile(base::FilePath(kDataSavedFile), std::string())) {
     LOG(ERROR) << "Failed to write data saved flag.";
     return false;
   }
@@ -162,7 +163,8 @@ bool OobeConfig::EncryptedRollbackRestore() const {
   }
 
   std::string encrypted_data;
-  if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &encrypted_data)) {
+  if (!ReadFile(base::FilePath(kUnencryptedStatefulRollbackDataFile),
+                &encrypted_data)) {
     return false;
   }
   std::optional<brillo::SecureBlob> decrypted_data = Decrypt(
@@ -176,7 +178,8 @@ bool OobeConfig::EncryptedRollbackRestore() const {
 
   // Write the unencrypted data immediately to
   // kEncryptedStatefulRollbackDataPath.
-  if (!WriteFile(kEncryptedStatefulRollbackDataPath, rollback_data_str)) {
+  if (!WriteFile(base::FilePath(kEncryptedStatefulRollbackDataFile),
+                 rollback_data_str)) {
     return false;
   }
 
@@ -185,15 +188,15 @@ bool OobeConfig::EncryptedRollbackRestore() const {
     LOG(ERROR) << "Couldn't parse proto.";
     return false;
   }
-  LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataPath.value();
+  LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataFile;
 
   return true;
 }
 
 void OobeConfig::CleanupEncryptedStatefulDirectory() const {
   base::FileEnumerator iter(
-      GetPrefixedFilePath(kEncryptedStatefulRollbackDataPath), false,
-      base::FileEnumerator::FILES);
+      GetPrefixedFilePath(base::FilePath(kEncryptedStatefulRollbackDataFile)),
+      false, base::FileEnumerator::FILES);
   for (auto file = iter.Next(); !file.empty(); file = iter.Next()) {
     if (!base::DeleteFile(file)) {
       LOG(ERROR) << "Couldn't delete " << file.value();
@@ -202,15 +205,16 @@ void OobeConfig::CleanupEncryptedStatefulDirectory() const {
 }
 
 bool OobeConfig::ShouldRestoreRollbackData() const {
-  return FileExists(kUnencryptedStatefulRollbackDataPath);
+  return FileExists(base::FilePath(kUnencryptedStatefulRollbackDataFile));
 }
 
 bool OobeConfig::ShouldSaveRollbackData() const {
-  return FileExists(kRollbackSaveMarkerFile);
+  return FileExists(base::FilePath(kRollbackSaveMarkerFile));
 }
 
 bool OobeConfig::DeleteRollbackSaveFlagFile() const {
-  return base::DeleteFile(GetPrefixedFilePath(kRollbackSaveMarkerFile));
+  return base::DeleteFile(
+      GetPrefixedFilePath(base::FilePath(kRollbackSaveMarkerFile)));
 }
 
 }  // namespace oobe_config

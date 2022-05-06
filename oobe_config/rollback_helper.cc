@@ -31,7 +31,8 @@ bool PrepareSave(const base::FilePath& root_path,
                  bool ignore_permissions_for_testing) {
   LOG(INFO) << "Delete and recreate path to save rollback data";
   // Make sure we have an empty folder where only we can write, otherwise exit.
-  base::FilePath save_path = PrefixAbsolutePath(root_path, kSaveTempPath);
+  base::FilePath save_path =
+      PrefixAbsolutePath(root_path, base::FilePath(kSaveTempPath));
   if (!base::DeletePathRecursively(save_path)) {
     PLOG(ERROR) << "Couldn't delete directory " << save_path.value();
     return false;
@@ -43,8 +44,8 @@ bool PrepareSave(const base::FilePath& root_path,
     return false;
   }
 
-  base::FilePath rollback_data_path =
-      PrefixAbsolutePath(root_path, kUnencryptedStatefulRollbackDataPath);
+  base::FilePath rollback_data_path = PrefixAbsolutePath(
+      root_path, base::FilePath(kUnencryptedStatefulRollbackDataFile));
 
   if (!ignore_permissions_for_testing) {
     uid_t oobe_config_save_uid;
@@ -100,7 +101,8 @@ bool PrepareSave(const base::FilePath& root_path,
       allowed_groups.insert(preserve_gid);
     }
     if (!base::VerifyPathControlledByUser(
-            PrefixAbsolutePath(root_path, kStatefulPartition),
+            PrefixAbsolutePath(root_path,
+                               base::FilePath(kStatefulPartitionPath)),
             rollback_data_path.DirName(), root_uid, allowed_groups)) {
       LOG(ERROR) << "VerifyPathControlledByUser failed for "
                  << rollback_data_path.DirName().value();
@@ -135,9 +137,10 @@ bool PrepareSave(const base::FilePath& root_path,
   }
 
   LOG(INFO) << "Copying data to save path";
-  TryFileCopy(PrefixAbsolutePath(root_path, kOobeCompletedFile),
+  TryFileCopy(PrefixAbsolutePath(root_path, base::FilePath(kOobeCompletedFile)),
               save_path.Append(kOobeCompletedFileName));
-  TryFileCopy(PrefixAbsolutePath(root_path, kMetricsReportingEnabledFile),
+  TryFileCopy(PrefixAbsolutePath(root_path,
+                                 base::FilePath(kMetricsReportingEnabledFile)),
               save_path.Append(kMetricsReportingEnabledFileName));
 
   return true;
@@ -146,7 +149,8 @@ bool PrepareSave(const base::FilePath& root_path,
 void CleanupRestoreFiles(const base::FilePath& root_path,
                          const std::set<std::string>& excluded_files) {
   // Delete everything except |excluded_files| in the restore directory.
-  base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
+  base::FilePath restore_path =
+      PrefixAbsolutePath(root_path, base::FilePath(kRestoreTempPath));
   base::FileEnumerator folder_enumerator(
       restore_path, false,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
@@ -164,8 +168,8 @@ void CleanupRestoreFiles(const base::FilePath& root_path,
   }
 
   // Delete the original preserved data.
-  base::FilePath rollback_data_file =
-      PrefixAbsolutePath(root_path, kUnencryptedStatefulRollbackDataPath);
+  base::FilePath rollback_data_file = PrefixAbsolutePath(
+      root_path, base::FilePath(kUnencryptedStatefulRollbackDataFile));
   if (!base::DeletePathRecursively(rollback_data_file)) {
     PLOG(ERROR) << "Couldn't delete " << rollback_data_file.value();
   } else {

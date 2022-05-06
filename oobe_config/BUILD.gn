@@ -65,7 +65,6 @@ static_library("liboobeconfig") {
     "network_exporter.cc",
     "oobe_config.cc",
     "pstore_storage.cc",
-    "rollback_constants.cc",
     "rollback_openssl_encryption.cc",
   ]
   configs += [ ":liboobeconfig_config" ]
@@ -102,10 +101,7 @@ generate_mojom_bindings("librollback_helper_mojom") {
 # rollback_helper library.
 # Used by rollback_prepare_save and rollback_finish_restore.
 static_library("librollback_helper") {
-  sources = [
-    "rollback_constants.cc",
-    "rollback_helper.cc",
-  ]
+  sources = [ "rollback_helper.cc" ]
   configs += [ ":target_defaults" ]
 }
 
