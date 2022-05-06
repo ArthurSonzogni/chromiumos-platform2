@@ -269,9 +269,10 @@ TPM2UtilityImpl::TPM2UtilityImpl(
       default_trunks_proxy_(new trunks::TrunksDBusProxy),
       tpm_manager_utility_(nullptr) {
   task_runner->PostNonNestableTask(
-      FROM_HERE, base::Bind(&InitTransceiver,
-                            base::Unretained(default_trunks_proxy_.get()),
-                            base::Unretained(&is_trunks_proxy_initialized_)));
+      FROM_HERE,
+      base::BindOnce(&InitTransceiver,
+                     base::Unretained(default_trunks_proxy_.get()),
+                     base::Unretained(&is_trunks_proxy_initialized_)));
   // We stitch the transceivers together. The call chain is:
   // ChapsTPMUtility --> TrunksFactory --> BackgroundCommandTransceiver -->
   // TrunksProxy
@@ -315,7 +316,7 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
     // specialization after the uprev
     task_runner_->PostNonNestableTask(
         FROM_HERE,
-        base::Bind(&TermTransceiver, base::Passed(&default_trunks_proxy_)));
+        base::BindOnce(&TermTransceiver, std::move(default_trunks_proxy_)));
   }
 }
 

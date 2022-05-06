@@ -176,10 +176,10 @@ class Daemon : public brillo::DBusServiceDaemon {
     if (return_code != EX_OK)
       return return_code;
 
-    RegisterHandler(SIGTERM, base::Bind(&Daemon::ShutdownSignalHandler,
-                                        base::Unretained(this)));
-    RegisterHandler(SIGINT, base::Bind(&Daemon::ShutdownSignalHandler,
-                                       base::Unretained(this)));
+    RegisterHandler(SIGTERM, base::BindRepeating(&Daemon::ShutdownSignalHandler,
+                                                 base::Unretained(this)));
+    RegisterHandler(SIGINT, base::BindRepeating(&Daemon::ShutdownSignalHandler,
+                                                base::Unretained(this)));
 
     return EX_OK;
   }
