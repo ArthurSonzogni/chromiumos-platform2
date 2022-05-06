@@ -17,8 +17,6 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-#include <base/logging.h>
-
 using ::testing::Return;
 
 namespace reporting::analytics {

@@ -18,6 +18,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_storage.h"
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
@@ -39,10 +40,10 @@ namespace reporting {
 
 namespace {
 
-constexpr const char kReportingDirectory[] = "/var/cache/reporting";
-const CompressionInformation::CompressionAlgorithm kCompressionType =
+constexpr char kReportingDirectory[] = "/var/cache/reporting";
+constexpr CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
-constexpr const size_t kCompressionThreshold = 512U;
+constexpr size_t kCompressionThreshold = 512U;
 
 }  // namespace
 
@@ -53,6 +54,9 @@ MissiveDaemon::MissiveDaemon()
   analytics_registry_.Add(
       "Storage", std::make_unique<analytics::ResourceCollectorStorage>(
                      base::Minutes(10), base::FilePath(kReportingDirectory)));
+  analytics_registry_.Add(
+      "CPU",
+      std::make_unique<analytics::ResourceCollectorCpu>(base::Minutes(10)));
 }
 
 MissiveDaemon::~MissiveDaemon() = default;
