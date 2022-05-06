@@ -812,6 +812,12 @@
         v1: initial version
       </summary>
     </metric>
+    <metric name="SessionTag" type="int">
+      <summary>
+        A SessionTag links a WiFiConnectionAttempt, WiFiConnectionAttemptResult
+        and WiFiConnectionEnd that correspond to the same connection.
+      </summary>
+    </metric>
     <metric name="AttemptType" type="int">
       <summary>
         Type of connection attempt (e.g. autoconnect, manual connect, ...)
@@ -960,6 +966,12 @@
         v1: initial version
       </summary>
     </metric>
+    <metric name="SessionTag" type="int">
+      <summary>
+        A SessionTag links a WiFiConnectionAttempt, WiFiConnectionAttemptResult
+        and WiFiConnectionEnd that correspond to the same connection.
+      </summary>
+    </metric>
     <metric name="ResultCode" type="int">
       <summary>
         Enum |NetworkServiceError| reporting the status of the connection
@@ -1067,6 +1079,12 @@
         particular event.
         v0: unknown (should not happen)
         v1: initial version
+      </summary>
+    </metric>
+    <metric name="SessionTag" type="int">
+      <summary>
+        A SessionTag links a WiFiConnectionAttempt, WiFiConnectionAttemptResult
+        and WiFiConnectionEnd that correspond to the same connection.
       </summary>
     </metric>
     <metric name="DisconnectionType" type="int">
