@@ -217,6 +217,41 @@ std::string EnumToString(mojom::BusDeviceClass device_class) {
   }
 }
 
+// The conversion, except for kUnmappedEnumField, follows the function
+// |fwupd_version_format_to_string| in the libfwupd.
+std::string EnumToString(mojom::FwupdVersionFormat fwupd_version_format) {
+  switch (fwupd_version_format) {
+    case mojom::FwupdVersionFormat::kUnmappedEnumField:
+      return "unmapped-enum-field";
+    case mojom::FwupdVersionFormat::kUnknown:
+      return "unknown";
+    case mojom::FwupdVersionFormat::kPlain:
+      return "plain";
+    case mojom::FwupdVersionFormat::kNumber:
+      return "number";
+    case mojom::FwupdVersionFormat::kPair:
+      return "pair";
+    case mojom::FwupdVersionFormat::kTriplet:
+      return "triplet";
+    case mojom::FwupdVersionFormat::kQuad:
+      return "quad";
+    case mojom::FwupdVersionFormat::kBcd:
+      return "bcd";
+    case mojom::FwupdVersionFormat::kIntelMe:
+      return "intel-me";
+    case mojom::FwupdVersionFormat::kIntelMe2:
+      return "intel-me2";
+    case mojom::FwupdVersionFormat::kSurfaceLegacy:
+      return "surface-legacy";
+    case mojom::FwupdVersionFormat::kSurface:
+      return "surface";
+    case mojom::FwupdVersionFormat::kDellBios:
+      return "dell-bios";
+    case mojom::FwupdVersionFormat::kHex:
+      return "hex";
+  }
+}
+
 std::string EnumToString(mojom::BootMode mode) {
   switch (mode) {
     case mojom::BootMode::kUnknown:
@@ -1006,6 +1041,15 @@ void DisplayBusDevices(const mojom::BusResultPtr& bus_result) {
           SET_DICT(protocol_id, usb_if_info, &out_usb_if);
           SET_DICT(driver, usb_if_info, &out_usb_if);
           out_usb_ifs->Append(std::move(out_usb_if));
+        }
+        if (usb_info->fwupd_firmware_version_info) {
+          auto* out_usb_firmware =
+              out_usb_info->SetKey("fwupd_firmware_version_info",
+                                   base::Value{base::Value::Type::DICTIONARY});
+          SET_DICT(version, usb_info->fwupd_firmware_version_info,
+                   out_usb_firmware);
+          SET_DICT(version_format, usb_info->fwupd_firmware_version_info,
+                   out_usb_firmware);
         }
         break;
       }
