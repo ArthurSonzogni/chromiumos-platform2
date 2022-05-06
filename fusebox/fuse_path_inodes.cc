@@ -327,12 +327,7 @@ std::deque<Node*> InodeTable::GetDeviceNodes(dev_t device) const {
 }
 
 std::string InodeTable::GetDevicePath(Node* node) {
-  DCHECK(node);
-
-  Device device;
-  auto it = device_map_.find(node->device);
-  if (it != device_map_.end())
-    device = it->second;
+  Device device = GetDevice(node);
 
   // Remove the device.name from the path.
   std::string path = GetPath(node);
@@ -344,7 +339,18 @@ std::string InodeTable::GetDevicePath(Node* node) {
     return path.insert(0, device.path);
   if (!device.path.empty())
     return device.path;
+
   return path;
+}
+
+Device InodeTable::GetDevice(Node* node) const {
+  DCHECK(node);
+
+  auto it = device_map_.find(node->device);
+  if (it != device_map_.end())
+    return it->second;
+
+  return {};
 }
 
 }  // namespace fusebox

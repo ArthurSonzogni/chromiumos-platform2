@@ -83,6 +83,9 @@ class InodeTable {
   // Returns the full device path name: |node| must be in the node table.
   std::string GetDevicePath(Node* node);
 
+  // Returns the node device: |node| must be in the node table.
+  Device GetDevice(Node* node) const;
+
   // Cache a stat for the node.
   void SetStat(ino_t ino, struct stat stat, double timeout = 0);
 
