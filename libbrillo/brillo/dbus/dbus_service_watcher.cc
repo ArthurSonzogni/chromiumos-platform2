@@ -12,12 +12,12 @@ namespace dbus_utils {
 DBusServiceWatcher::DBusServiceWatcher(
     scoped_refptr<dbus::Bus> bus,
     const std::string& connection_name,
-    const base::Closure& on_connection_vanish)
+    const base::RepeatingClosure& on_connection_vanish)
     : bus_{bus},
       connection_name_{connection_name},
       on_connection_vanish_{on_connection_vanish} {
-  monitoring_callback_ = base::Bind(&DBusServiceWatcher::OnServiceOwnerChange,
-                                    weak_factory_.GetWeakPtr());
+  monitoring_callback_ = base::BindRepeating(
+      &DBusServiceWatcher::OnServiceOwnerChange, weak_factory_.GetWeakPtr());
   // Register to listen, and then request the current owner;
   bus_->ListenForServiceOwnerChange(connection_name_, monitoring_callback_);
   bus_->GetServiceOwner(connection_name_, monitoring_callback_);

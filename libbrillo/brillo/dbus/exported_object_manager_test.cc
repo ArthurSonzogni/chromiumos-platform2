@@ -116,7 +116,7 @@ class ExportedObjectManagerTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
     om_.reset(new ExportedObjectManager(bus_.get(), kTestPath));
-    property_writer_ = base::Bind(&WriteTestPropertyDict);
+    property_writer_ = base::BindRepeating(&WriteTestPropertyDict);
     om_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   }
 

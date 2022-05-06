@@ -71,8 +71,8 @@ void DBusInterface::ExportAsync(
     std::string export_error = "Failed exporting " + method_name + " method";
     auto export_handler = sequencer->GetExportHandler(
         interface_name_, method_name, export_error, true);
-    auto method_handler =
-        base::Bind(&DBusInterface::HandleMethodCall, base::Unretained(this));
+    auto method_handler = base::BindRepeating(&DBusInterface::HandleMethodCall,
+                                              base::Unretained(this));
     exported_object->ExportMethod(interface_name_, method_name, method_handler,
                                   export_handler);
   }
@@ -98,8 +98,8 @@ void DBusInterface::ExportAndBlock(ExportedObjectManager* object_manager,
   for (const auto& pair : handlers_) {
     std::string method_name = pair.first;
     VLOG(1) << "Exporting method: " << interface_name_ << "." << method_name;
-    auto method_handler =
-        base::Bind(&DBusInterface::HandleMethodCall, base::Unretained(this));
+    auto method_handler = base::BindRepeating(&DBusInterface::HandleMethodCall,
+                                              base::Unretained(this));
     if (!exported_object->ExportMethodAndBlock(interface_name_, method_name,
                                                method_handler)) {
       LOG(FATAL) << "Failed exporting " << method_name << " method";
@@ -170,8 +170,8 @@ void DBusInterface::ClaimInterface(
   object_manager->ClaimInterface(object_path, interface_name_, writer);
   release_interface_cb_.RunAndReset();
   release_interface_cb_.ReplaceClosure(
-      base::Bind(&ExportedObjectManager::ReleaseInterface, object_manager,
-                 object_path, interface_name_));
+      base::BindOnce(&ExportedObjectManager::ReleaseInterface, object_manager,
+                     object_path, interface_name_));
 }
 
 void DBusInterface::HandleMethodCall(dbus::MethodCall* method_call,

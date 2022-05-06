@@ -55,7 +55,9 @@ class DBusSignalHandlerTest : public testing::Test {
 
     brillo::dbus_utils::ConnectToSignal(
         mock_object_proxy_.get(), kInterface, kSignal,
-        base::Bind(&SignalHandlerSink::Handler, base::Unretained(sink)), {});
+        base::BindRepeating(&SignalHandlerSink::Handler,
+                            base::Unretained(sink)),
+        {});
 
     dbus::Signal signal(kInterface, kSignal);
     dbus::MessageWriter writer(&signal);
@@ -72,7 +74,7 @@ TEST_F(DBusSignalHandlerTest, ConnectToSignal) {
       .Times(1);
 
   brillo::dbus_utils::ConnectToSignal(mock_object_proxy_.get(), kInterface,
-                                      kSignal, base::Closure{}, {});
+                                      kSignal, base::RepeatingClosure{}, {});
 }
 
 TEST_F(DBusSignalHandlerTest, CallSignal_3Args) {

@@ -37,7 +37,7 @@ void ConnectToSignal(
     ::dbus::ObjectProxy* object_proxy,
     const std::string& interface_name,
     const std::string& signal_name,
-    base::Callback<void(Args...)> signal_callback,
+    const base::RepeatingCallback<void(Args...)>& signal_callback,
     ::dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
   // DBusParamReader::Invoke() needs a functor object, not a base::Callback.
   // Wrap the callback with lambda so we can redirect the call.
@@ -60,7 +60,7 @@ void ConnectToSignal(
   // Register our stub handler with D-Bus ObjectProxy.
   object_proxy->ConnectToSignal(
       interface_name, signal_name,
-      base::Bind(dbus_signal_callback, signal_callback_wrapper),
+      base::BindRepeating(dbus_signal_callback, signal_callback_wrapper),
       std::move(on_connected_callback));
 }
 

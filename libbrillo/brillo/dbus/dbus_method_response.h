@@ -36,7 +36,7 @@ class BRILLO_EXPORT DBusMethodResponseBase {
   DBusMethodResponseBase(DBusMethodResponseBase&& other)
       : sender_(std::exchange(
             other.sender_,
-            base::Bind([](std::unique_ptr<dbus::Response> response) {
+            base::BindOnce([](std::unique_ptr<dbus::Response> response) {
               LOG(DFATAL)
                   << "Empty DBusMethodResponseBase attempts to send a response";
             }))),

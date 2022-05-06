@@ -31,8 +31,8 @@ void ExportedPropertySet::OnPropertiesInterfaceExported(
 
 ExportedPropertySet::PropertyWriter ExportedPropertySet::GetPropertyWriter(
     const std::string& interface_name) {
-  return base::Bind(&ExportedPropertySet::WritePropertiesToDict,
-                    weak_ptr_factory_.GetWeakPtr(), interface_name);
+  return base::BindRepeating(&ExportedPropertySet::WritePropertiesToDict,
+                             weak_ptr_factory_.GetWeakPtr(), interface_name);
 }
 
 void ExportedPropertySet::RegisterProperty(
@@ -45,9 +45,9 @@ void ExportedPropertySet::RegisterProperty(
   CHECK(res.second) << "Property '" << property_name << "' already exists";
   // Technically, the property set exists longer than the properties themselves,
   // so we could use Unretained here rather than a weak pointer.
-  ExportedPropertyBase::OnUpdateCallback cb =
-      base::Bind(&ExportedPropertySet::HandlePropertyUpdated,
-                 weak_ptr_factory_.GetWeakPtr(), interface_name, property_name);
+  ExportedPropertyBase::OnUpdateCallback cb = base::BindRepeating(
+      &ExportedPropertySet::HandlePropertyUpdated,
+      weak_ptr_factory_.GetWeakPtr(), interface_name, property_name);
   exported_property->SetUpdateCallback(cb);
 }
 

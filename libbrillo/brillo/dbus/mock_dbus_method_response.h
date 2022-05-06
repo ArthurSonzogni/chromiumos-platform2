@@ -112,7 +112,7 @@ class MockDBusMethodResponse
   explicit MockDBusMethodResponse(::dbus::MethodCall* method_call = nullptr)
       : brillo::dbus_utils::DBusMethodResponse<Types...>(
             method_call,
-            base::Bind(
+            base::BindOnce(
                 [](MockDBusMethodResponse* mock,
                    std::unique_ptr<dbus::Response> response) {
                   mock->response_sender_callback_.Run(std::move(response));

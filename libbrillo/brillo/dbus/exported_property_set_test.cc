@@ -173,8 +173,8 @@ class PropertyValidatorObserver {
  public:
   PropertyValidatorObserver()
       : validate_property_callback_(
-            base::Bind(&PropertyValidatorObserver::ValidateProperty,
-                       base::Unretained(this))) {}
+            base::BindRepeating(&PropertyValidatorObserver::ValidateProperty,
+                                base::Unretained(this))) {}
   PropertyValidatorObserver(const PropertyValidatorObserver&) = delete;
   PropertyValidatorObserver& operator=(const PropertyValidatorObserver&) =
       delete;
@@ -183,13 +183,14 @@ class PropertyValidatorObserver {
 
   MOCK_METHOD(bool, ValidateProperty, (brillo::ErrorPtr*, const T&));
 
-  const base::Callback<bool(brillo::ErrorPtr*, const T&)>&
+  const base::RepeatingCallback<bool(brillo::ErrorPtr*, const T&)>&
   validate_property_callback() const {
     return validate_property_callback_;
   }
 
  private:
-  base::Callback<bool(brillo::ErrorPtr*, const T&)> validate_property_callback_;
+  base::RepeatingCallback<bool(brillo::ErrorPtr*, const T&)>
+      validate_property_callback_;
 };
 
 TEST_F(ExportedPropertySetTest, UpdateNotifications) {

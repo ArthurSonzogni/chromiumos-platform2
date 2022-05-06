@@ -49,7 +49,7 @@ class BRILLO_EXPORT IntrospectableInterfaceHelper {
  private:
   // Internal alias for convenience.
   using StringResponse = std::unique_ptr<DBusMethodResponse<std::string>>;
-  using IntrospectCallback = base::Callback<void(StringResponse)>;
+  using IntrospectCallback = base::RepeatingCallback<void(StringResponse)>;
 
   // Create the method handler for Introspect method call.
   IntrospectCallback GetHandler();
