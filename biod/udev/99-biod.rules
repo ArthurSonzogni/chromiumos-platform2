@@ -1,2 +1,2 @@
 # Older kernels (<v4.19) put cros_fp under the chromeos class
-SUBSYSTEM=="chromeos|misc", KERNEL=="cros_fp" OWNER="root", GROUP="biod" MODE="0660"
+ACTION=="add", SUBSYSTEM=="chromeos|misc", KERNEL=="cros_fp" OWNER="root", GROUP="biod" MODE="0660", RUN+="/sbin/initctl emit --no-wait crosfp-added"
