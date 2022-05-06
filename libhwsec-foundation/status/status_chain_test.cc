@@ -401,48 +401,72 @@ TEST_F(StatusChainTest, BoolsOksAndMessages) {
 }
 
 TEST_F(StatusChainTest, Macros) {
-  auto lambda_as_is = []() {
-    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 1", 0), AsIs());
+  auto lambda_as_is = []() -> StatusChain<Fake1Error> {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 1", 0));
     return OkStatus<Fake1Error>();
   };
   EXPECT_EQ(lambda_as_is().ToFullString(), "Fake1: lambda 1");
 
-  auto lambda_as_is_with_log = []() {
-    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 2", 0), AsIsWithLog("log"));
+  auto lambda_as_is_with_log = []() -> StatusChain<Fake1Error> {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 2", 0)).LogInfo()
+        << "some message";
     return OkStatus<Fake1Error>();
   };
   EXPECT_EQ(lambda_as_is_with_log().ToFullString(), "Fake1: lambda 2");
 
-  auto lambda_as_status = []() {
-    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 3", 0),
-                    AsStatus<Fake2Error>("wrap", 0));
+  auto lambda_as_status = []() -> StatusChain<Fake2Error> {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 3", 0))
+        .WithStatus<Fake2Error>("wrap", 0);
     return OkStatus<Fake2Error>();
   };
   EXPECT_EQ(lambda_as_status().ToFullString(),
             "Fake2: wrap: FROM TRAIT: Fake1: lambda 3");
 
-  auto lambda_as_value = []() {
-    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 4", 0), AsValue(42));
+  auto lambda_as_value = []() -> int {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 4", 0)).As(42);
     return 15;
   };
   EXPECT_EQ(lambda_as_value(), 42);
 
-  auto lambda_as_value_with_log = []() {
-    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 5", 0),
-                    AsValueWithLog(42, "log"));
+  auto lambda_as_value_with_log = []() -> int {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 5", 0)).LogInfo().As(42);
     return 15;
   };
   EXPECT_EQ(lambda_as_value_with_log(), 42);
 
-  auto lambda_as_false_with_log = []() {
-    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 6", 0),
-                    AsFalseWithLog("log"));
+  auto lambda_as_false_with_log = []() -> bool {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 6", 0)).LogInfo().As(false);
     return true;
   };
   EXPECT_FALSE(lambda_as_false_with_log());
 
-  auto lambda_success = []() {
-    RETURN_IF_ERROR(OkStatus<Fake1Error>(), AsFalseWithLog("log"));
+  auto lambda_convert = []() -> StatusChain<FakeBaseError> {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 7", 0));
+    return OkStatus<Fake2Error>();
+  };
+  EXPECT_EQ(lambda_convert().ToFullString(), "Fake1: lambda 7");
+
+  auto lambda_void = []() {
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 8", 0)).ReturnVoid();
+    return;
+  };
+  lambda_void();
+
+  auto lambda_handler = []() -> std::string {
+    auto policy = [](StatusLinker<Fake1Error> linker) {
+      return linker.LogError() << "wow";
+    };
+    RETURN_IF_ERROR(MakeStatus<Fake1Error>("lambda 9", 0))
+        .With(policy)
+        .With([](StatusChain<Fake1Error> status) {
+          return "XD: " + status.ToFullString();
+        });
+    return "";
+  };
+  EXPECT_EQ(lambda_handler(), "XD: Fake1: lambda 9");
+
+  auto lambda_success = []() -> bool {
+    RETURN_IF_ERROR(OkStatus<Fake1Error>()).LogInfo().As(false);
     return true;
   };
   EXPECT_TRUE(lambda_success());
@@ -531,7 +555,8 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
     if (value < 0) {
       return MakeStatus<Fake4Error>("value shouldn't be negative", value);
     }
-    RETURN_IF_ERROR(std::move(lambda1(value)).status(), AsIs());
+    ASSIGN_OR_RETURN(std::unique_ptr<int> result, lambda1(value));
+    LOG(INFO) << result;
     return OkStatus<Fake3Error>();
   };
 
@@ -653,12 +678,10 @@ TEST_F(StatusChainTest, StatusChainOrDerive) {
     if (value == 123) {
       return std::make_unique<DeriveStruct>();
     }
-    auto result = lambda1(value);
-    if (!result.ok()) {
-      return MakeStatus<Fake4Error>("lambda1 failed", 4)
-          .Wrap(std::move(result).status());
-    }
-    return std::move(result).value();
+    std::unique_ptr<DeriveStruct> result;
+    ASSIGN_OR_RETURN(result, lambda1(value),
+                     (_.WithStatus<Fake4Error>("lambda1 failed", 4)));
+    return result;
   };
 
   auto result0 = lambda2(0);
