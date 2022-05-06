@@ -488,7 +488,20 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // delayed based on that prediction.
   base::TimeDelta recheck_alarm_interval_;
 
-  // Tracks the specific state of Adaptive Charging for UMA reporting.
+  // Tracks the specific state of Adaptive Charging for determining what
+  // functionality to perform, as well as reporting to UMA.
+  // ACTIVE - Adaptive Charging is running and is delaying charging or may delay
+  // charging in the future.
+  // INACTIVE - Adaptive Charging is enabled, but it stopped delaying charging
+  // or never started.
+  // HEURISTIC_DISABLED - Adaptive Charging's heuristic (separate from the ML
+  // model) determined that it should not delay charge.
+  // USER_CANCELED - User stopped Adaptive Charging by clicking the "Charge Now"
+  // button.
+  // USER_DISABLED - User does not have the Adaptive Charging feature enabled
+  // (but it is supported).
+  // NOT_SUPPORTED - EC functionality required for Adaptive Charging does not
+  // exist on this platform.
   AdaptiveChargingState state_;
 
   // Whether we should report the AdaptiveChargingTimeToFull metric, which
@@ -533,10 +546,14 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // The following two booleans control how this class behaves via the following
   // table:
   // enabled | supported |
-  // 1       | 1         | evaluate predictions and delay charging
-  // 1       | 0         | scenario does not exist
-  // 0       | 1         | evaluate predictions but do not delay charging
-  // 0       | 0         | evaluate predictions but do not delay charging
+  // 1       | 1         | Evaluate predictions and delay charging.
+  //                       `state` is one of: ACTIVE, INACTIVE,
+  //                       HEURISTIC_DISABLED, or USER_CANCELED.
+  // 1       | 0         | Scenario does not exist.
+  // 0       | 1         | Evaluate predictions but do not delay charging.
+  //                       `state_` is set to USER_DISABLED
+  // 0       | 0         | Evaluate predictions but do not delay charging.
+  //                       `state_` is set to NOT_SUPPORTED
   //
   // Whether Adaptive Charging will delay charging. Predictions are still
   // evaluated if this is false.

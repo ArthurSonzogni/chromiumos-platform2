@@ -37,6 +37,7 @@ class PowerSupplyStub : public PowerSupplyInterface {
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
   void SetAdaptiveChargingSupported(bool supported) override;
+  void SetAdaptiveChargingHeuristicEnabled(bool enabled) override;
   void SetAdaptiveCharging(const base::TimeTicks& target_time,
                            double hold_percent) override;
   void ClearAdaptiveCharging() override;

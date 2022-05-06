@@ -2239,5 +2239,38 @@ TEST_F(PowerSupplyTest, AdaptiveChargingMaxTargetTime) {
   EXPECT_EQ(base::TimeDelta(), status.battery_time_to_full);
 }
 
+// Test that the adaptive_charging_heuristic_enabled property is set in
+// PowerStatus and the PowerSupplyProperties proto.
+TEST_F(PowerSupplyTest, AdaptiveChargingHeuristic) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  double actual_charge = 0.75;
+  PowerStatus status;
+  PowerSupplyProperties proto;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+  power_supply_->SetAdaptiveChargingHeuristicEnabled(false);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.adaptive_charging_heuristic_enabled);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_TRUE(proto.adaptive_charging_supported());
+  EXPECT_FALSE(proto.adaptive_charging_heuristic_enabled());
+  EXPECT_FALSE(proto.adaptive_delaying_charge());
+
+  dbus_wrapper_.ClearSentSignals();
+  proto.Clear();
+
+  power_supply_->SetAdaptiveChargingHeuristicEnabled(true);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.adaptive_charging_heuristic_enabled);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_TRUE(proto.adaptive_charging_supported());
+  EXPECT_TRUE(proto.adaptive_charging_heuristic_enabled());
+  EXPECT_FALSE(proto.adaptive_delaying_charge());
+}
+
 }  // namespace system
 }  // namespace power_manager

@@ -35,6 +35,12 @@ const base::TimeDelta kRetentionDays = base::Days(30);
 const base::TimeDelta kChargeHistoryTimeInterval = base::Minutes(15);
 const int kMaxChargeEvents = 50;
 
+// As a heuristic to improve the accuracy of Adaptive Charging, we require that
+// there be 14 days tracked in ChargeHistory and that 50% of the time on AC has
+// a full charge.
+const int kHeuristicMinDaysHistory = 14;
+const double kHeuristicMinFullOnACRatio = 0.5;
+
 const int64_t kBatterySustainDisabled = -1;
 const base::TimeDelta kDefaultAlarmInterval = base::Minutes(30);
 const int64_t kDefaultHoldPercent = 80;
@@ -711,7 +717,7 @@ void AdaptiveChargingController::OnPredictionResponse(
   // metrics on how well the predictions perform.
   // TODO(b/222620437): If the Battery Sustainer was already set, don't set it
   // again as a workaround until all firmwares are updated.
-  if (!adaptive_charging_enabled_ || is_sustain_set_)
+  if (state_ != AdaptiveChargingState::ACTIVE || is_sustain_set_)
     return;
 
   // Set the upper limit of battery sustain to the current charge if it's higher
@@ -776,7 +782,7 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
     return;
 
   if (AtHoldPercent(status.display_battery_percentage)) {
-    if (adaptive_charging_enabled_ && is_sustain_set_) {
+    if (state_ == AdaptiveChargingState::ACTIVE && is_sustain_set_) {
       power_supply_->SetAdaptiveCharging(target_full_charge_time_,
                                          display_percent_);
     }
@@ -823,8 +829,24 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
 
   started_ = true;
   report_charge_time_ = status.display_battery_percentage <= hold_percent_;
-  if (adaptive_charging_enabled_)
-    state_ = AdaptiveChargingState::ACTIVE;
+  if (adaptive_charging_enabled_) {
+    base::TimeDelta time_full_on_ac = charge_history_.GetTimeFullOnAC();
+    base::TimeDelta time_on_ac = charge_history_.GetTimeOnAC();
+    double ratio =
+        time_on_ac == base::TimeDelta() ? 0.0 : time_full_on_ac / time_on_ac;
+    if (charge_history_.DaysOfHistory() < kHeuristicMinDaysHistory ||
+        ratio < kHeuristicMinFullOnACRatio) {
+      LOG(INFO) << "Adaptive Charging not started due to heuristic. "
+                << charge_history_.DaysOfHistory()
+                << " days of charge history and " << ratio
+                << " time on AC with full charge over time on AC ratio.";
+      state_ = AdaptiveChargingState::HEURISTIC_DISABLED;
+      power_supply_->SetAdaptiveChargingHeuristicEnabled(false);
+    } else {
+      state_ = AdaptiveChargingState::ACTIVE;
+      power_supply_->SetAdaptiveChargingHeuristicEnabled(true);
+    }
+  }
 
   UpdateAdaptiveCharging(reason, true /* async */);
   return true;

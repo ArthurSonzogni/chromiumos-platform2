@@ -53,7 +53,9 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
       const base::TimeTicks& hold_start_time,
       const base::TimeTicks& hold_end_time,
       const base::TimeTicks& charge_finished_time,
-      double display_battery_percentage) override {}
+      double display_battery_percentage) override {
+    adaptive_state = state;
+  }
 
   AdaptiveChargingController* adaptive_charging_controller_;
   // The vector of doubles that represent the probability of unplug for each
@@ -62,6 +64,7 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
   std::vector<double> fake_result;
   int fake_lower;
   int fake_upper;
+  metrics::AdaptiveChargingState adaptive_state;
 };
 
 }  // namespace
@@ -99,7 +102,19 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
 
   ~AdaptiveChargingControllerTest() override = default;
 
-  void Init() {
+  void CreateDefaultChargeHistory() {
+    CreateChargeHistoryDirectories();
+    base::Time now = base::Time::Now();
+    base::Time today = now.UTCMidnight();
+    for (int i = 0; i < 15; ++i) {
+      WriteChargeHistoryFile(time_on_ac_dir_, today - i * base::Days(1),
+                             base::Hours(5));
+      WriteChargeHistoryFile(time_full_on_ac_dir_, today - i * base::Days(1),
+                             base::Hours(3));
+    }
+  }
+
+  void InitNoHistory() {
     adaptive_charging_controller_.Init(&delegate_, &backlight_controller_,
                                        &input_watcher_, &power_supply_,
                                        &dbus_wrapper_, &prefs_);
@@ -112,14 +127,18 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
     PowerManagementPolicy policy;
     policy.set_adaptive_charging_enabled(true);
     adaptive_charging_controller_.HandlePolicyChange(policy);
+  }
 
+  void Init() {
+    CreateDefaultChargeHistory();
+    InitNoHistory();
     EXPECT_TRUE(charge_alarm_->IsRunning());
     EXPECT_TRUE(recheck_alarm_->IsRunning());
     EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
     EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
   }
 
-  void InitFullCharge() {
+  void InitFullChargeNoHistory() {
     power_status_.battery_percentage = 100;
     power_status_.display_battery_percentage = 100;
     power_status_.battery_state = PowerSupplyProperties_BatteryState_FULL;
@@ -140,6 +159,11 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
     // Adaptive Charging is not started when charge is full.
     EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
     EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  }
+
+  void InitFullCharge() {
+    CreateDefaultChargeHistory();
+    InitFullChargeNoHistory();
   }
 
   void DisconnectCharger() {
@@ -452,7 +476,7 @@ TEST_F(AdaptiveChargingControllerTest, TestFullCharge) {
 TEST_F(AdaptiveChargingControllerTest, TestEmptyChargeHistory) {
   // Init will cause power_supply_ to notify observers, which will init Charge
   // History.
-  Init();
+  InitNoHistory();
 
   // Check that directories are created.
   EXPECT_TRUE(base::DirectoryExists(charge_history_dir_));
@@ -510,7 +534,7 @@ TEST_F(AdaptiveChargingControllerTest, TestTimeAlignment) {
   base::Time event_time = FloorTime(base::Time::Now() - base::Minutes(40));
   CreateChargeHistoryDirectories();
   CreateChargeHistoryFile(charge_events_dir_, event_time);
-  Init();
+  InitNoHistory();
 
   // Disconnect power, which should cause Charge History to be written.
   DisconnectCharger();
@@ -540,7 +564,7 @@ TEST_F(AdaptiveChargingControllerTest, HistoryWrittenOnUnplug) {
   base::Time event_time = FloorTime(base::Time::Now() - base::Days(3));
   CreateChargeHistoryDirectories();
   CreateChargeHistoryFile(charge_events_dir_, event_time);
-  Init();
+  InitNoHistory();
   DisconnectCharger();
 
   EXPECT_GE(base::Days(3) + base::Minutes(15),
@@ -555,7 +579,7 @@ TEST_F(AdaptiveChargingControllerTest, TimeFullWrittenOnLowPowerStates) {
   base::Time now = base::Time::Now();
   CreateChargeHistoryDirectories();
   CreateChargeHistoryFile(charge_events_dir_, now - base::Minutes(30));
-  InitFullCharge();
+  InitFullChargeNoHistory();
 
   adaptive_charging_controller_.PrepareForSuspendAttempt();
   base::TimeDelta duration_full_on_ac_file_times = base::TimeDelta();
@@ -598,7 +622,7 @@ TEST_F(AdaptiveChargingControllerTest, HistoryRetentionOnInit) {
     WriteChargeHistoryFile(time_on_ac_dir_, date, base::TimeDelta());
   }
 
-  Init();
+  InitNoHistory();
   EXPECT_EQ(event_durations[0],
             ReadChargeHistoryFile(charge_events_dir_, event_times[0]));
   EXPECT_EQ(event_durations[1],
@@ -642,7 +666,7 @@ TEST_F(AdaptiveChargingControllerTest, MaxChargeEvents) {
   }
 
   EXPECT_EQ(100, NumChargeHistoryFiles(charge_events_dir_));
-  Init();
+  InitNoHistory();
   EXPECT_EQ(50, NumChargeHistoryFiles(charge_events_dir_));
 
   // Check that the correct charge event files still exist.
@@ -670,7 +694,7 @@ TEST_F(AdaptiveChargingControllerTest, TestDaysOfHistory) {
                            today - (i + 5) * base::Days(1), base::Hours(2));
   }
 
-  Init();
+  InitNoHistory();
   // ChargeHistory should append additional days between the last "time_on_ac"
   // day and now.
   EXPECT_EQ(20, charge_history_->DaysOfHistory());
@@ -690,7 +714,7 @@ TEST_F(AdaptiveChargingControllerTest, TestGetTimeFunctions) {
 
   CreateChargeHistoryFile(charge_events_dir_, now - base::Hours(10));
 
-  Init();
+  InitNoHistory();
   base::TimeDelta time_on_ac = 15 * base::Hours(5) + base::Hours(10);
   EXPECT_EQ(time_on_ac, charge_history_->GetTimeOnAC());
   EXPECT_EQ(15 * base::Hours(2), charge_history_->GetTimeFullOnAC());
@@ -703,6 +727,49 @@ TEST_F(AdaptiveChargingControllerTest, TestGetTimeFunctions) {
   EXPECT_GE(time_on_ac + base::Minutes(15), charge_history_->GetTimeOnAC());
   EXPECT_LE(time_on_ac - base::Minutes(15), charge_history_->GetTimeOnAC());
   EXPECT_EQ(15 * base::Hours(2), charge_history_->GetTimeFullOnAC());
+}
+
+// Test that only a few charge history days will result in Adaptive Charging
+// being disabled by its heuristic.
+TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnDays) {
+  CreateChargeHistoryDirectories();
+  base::Time now = base::Time::Now();
+  base::Time today = now.UTCMidnight();
+  for (int i = 0; i < 5; ++i) {
+    WriteChargeHistoryFile(time_on_ac_dir_, today - i * base::Days(1),
+                           base::Hours(5));
+    WriteChargeHistoryFile(time_full_on_ac_dir_, today - i * base::Days(1),
+                           base::Hours(3));
+  }
+
+  InitNoHistory();
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  DisconnectCharger();
+  EXPECT_EQ(metrics::AdaptiveChargingState::HEURISTIC_DISABLED,
+            delegate_.adaptive_state);
+}
+
+// Test that a sufficient number of days (min 14) tracked in ChargeHistory with
+// a too low TimeFullOnAC / TimeOnAC ratio still results in Adaptive Charging
+// being disabled by its heuristic.
+TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnRatio) {
+  CreateChargeHistoryDirectories();
+  base::Time now = base::Time::Now();
+  base::Time today = now.UTCMidnight();
+  for (int i = 0; i < 15; ++i) {
+    WriteChargeHistoryFile(time_on_ac_dir_, today - i * base::Days(1),
+                           base::Hours(5));
+    WriteChargeHistoryFile(time_full_on_ac_dir_, today - i * base::Days(1),
+                           base::Hours(2));
+  }
+
+  InitNoHistory();
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  DisconnectCharger();
+  EXPECT_EQ(metrics::AdaptiveChargingState::HEURISTIC_DISABLED,
+            delegate_.adaptive_state);
 }
 
 }  // namespace policy

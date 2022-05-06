@@ -215,6 +215,9 @@ struct PowerStatus {
   // Indicates if Adaptive Charging is supported for this system.
   bool adaptive_charging_supported = false;
 
+  // Indicates if the Adaptive Charging Heuristic has the feature enabled.
+  bool adaptive_charging_heuristic_enabled = false;
+
   // Indicates if Adaptive Charging is currently delaying charge to the battery.
   bool adaptive_delaying_charge = false;
 };
@@ -244,6 +247,9 @@ class PowerSupplyInterface {
 
   // Sets if Adaptive Charging is supported or not.
   virtual void SetAdaptiveChargingSupported(bool supported) = 0;
+
+  // Sets if the Adaptive Charging heuristic currently has the feature enabled.
+  virtual void SetAdaptiveChargingHeuristicEnabled(bool enabled) = 0;
 
   // Starts Adaptive Charging logic. |target_time| is the current estimate for
   // when Adaptive Charging will allow the battery to finish charging to full.
@@ -371,6 +377,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
   void SetAdaptiveChargingSupported(bool supported) override;
+  void SetAdaptiveChargingHeuristicEnabled(bool enabled) override;
   void SetAdaptiveCharging(const base::TimeTicks& target_time,
                            double hold_percent) override;
   void ClearAdaptiveCharging() override;
@@ -592,6 +599,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Indicates if the system supports Adaptive Charging.
   bool adaptive_charging_supported_ = false;
+
+  // Indicates if Adaptive Charging is enabled by its heuristic.
+  bool adaptive_charging_heuristic_enabled_ = false;
 
   // Set to true when charge is delayed by Adaptive Charging.
   bool adaptive_delaying_charge_ = false;

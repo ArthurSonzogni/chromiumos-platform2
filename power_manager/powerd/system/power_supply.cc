@@ -342,6 +342,8 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
 
     // Parameters for the Adaptive Charging UI
     proto->set_adaptive_charging_supported(status.adaptive_charging_supported);
+    proto->set_adaptive_charging_heuristic_enabled(
+        status.adaptive_charging_heuristic_enabled);
     proto->set_adaptive_delaying_charge(status.adaptive_delaying_charge);
 
     // Cros_healthd is interested in the following items for reporting
@@ -732,6 +734,10 @@ void PowerSupply::SetAdaptiveChargingSupported(bool supported) {
   adaptive_charging_supported_ = supported;
 }
 
+void PowerSupply::SetAdaptiveChargingHeuristicEnabled(bool enabled) {
+  adaptive_charging_heuristic_enabled_ = enabled;
+}
+
 void PowerSupply::SetAdaptiveCharging(const base::TimeTicks& target_time,
                                       double hold_percent) {
   DCHECK(adaptive_charging_supported_);
@@ -743,6 +749,7 @@ void PowerSupply::SetAdaptiveCharging(const base::TimeTicks& target_time,
 
 void PowerSupply::ClearAdaptiveCharging() {
   adaptive_delaying_charge_ = false;
+  adaptive_charging_heuristic_enabled_ = false;
   adaptive_charging_target_full_time_ = base::TimeTicks();
 }
 
@@ -958,6 +965,8 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 
     // Update and modify values based on Adaptive Charging
     status.adaptive_charging_supported = adaptive_charging_supported_;
+    status.adaptive_charging_heuristic_enabled =
+        adaptive_charging_heuristic_enabled_;
     status.adaptive_delaying_charge = adaptive_delaying_charge_;
 
     if (adaptive_delaying_charge_) {

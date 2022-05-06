@@ -40,6 +40,8 @@ void PowerSupplyStub::SetSuspended(bool suspended) {}
 
 void PowerSupplyStub::SetAdaptiveChargingSupported(bool supported) {}
 
+void PowerSupplyStub::SetAdaptiveChargingHeuristicEnabled(bool enabled) {}
+
 void PowerSupplyStub::SetAdaptiveCharging(const base::TimeTicks& target_time,
                                           double hold_percent) {}
 
