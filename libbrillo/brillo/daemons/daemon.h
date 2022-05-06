@@ -92,7 +92,9 @@ class BRILLO_EXPORT Daemon : public AsynchronousSignalHandlerInterface {
   virtual bool OnRestart();
 
   // Returns a delegate to Quit() method in the base::RunLoop instance.
-  base::Closure QuitClosure() const { return message_loop_.QuitClosure(); }
+  base::RepeatingClosure QuitClosure() const {
+    return message_loop_.QuitClosure();
+  }
 
  private:
   // Called when SIGTERM/SIGINT signals are received.

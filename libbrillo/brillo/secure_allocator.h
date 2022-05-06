@@ -93,7 +93,7 @@ class BRILLO_PRIVATE SecureAllocator {
     // allocate the memory correctly. Instead of returning a nullptr, which
     // confuses the standard template library, use CHECK(false) to crash on
     // the failure path.
-    base::ScopedClosureRunner fail_on_allocation_error(base::Bind([]() {
+    base::ScopedClosureRunner fail_on_allocation_error(base::BindOnce([]() {
       PLOG(ERROR) << "Failed to allocate secure memory";
       CHECK(false);
     }));

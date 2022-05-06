@@ -101,7 +101,7 @@ int StubIoctlRunner(const base::FilePath& path,
 }  // namespace
 
 FakeLoopDeviceManager::FakeLoopDeviceManager()
-    : LoopDeviceManager(base::Bind(&StubIoctlRunner)) {}
+    : LoopDeviceManager(base::BindRepeating(&StubIoctlRunner)) {}
 
 std::unique_ptr<LoopDevice> FakeLoopDeviceManager::AttachDeviceToFile(
     const base::FilePath& backing_file) {
@@ -111,10 +111,10 @@ std::unique_ptr<LoopDevice> FakeLoopDeviceManager::AttachDeviceToFile(
   if (StubIoctlRunner(GetLoopDevicePath(device_number), LOOP_SET_FD,
                       reinterpret_cast<uint64_t>(&backing_file), 0) < 0)
     return std::make_unique<LoopDevice>(-1, base::FilePath(),
-                                        base::Bind(&StubIoctlRunner));
+                                        base::BindRepeating(&StubIoctlRunner));
 
   return std::make_unique<LoopDevice>(device_number, backing_file,
-                                      base::Bind(&StubIoctlRunner));
+                                      base::BindRepeating(&StubIoctlRunner));
 }
 
 std::vector<std::unique_ptr<LoopDevice>>
@@ -128,8 +128,9 @@ FakeLoopDeviceManager::SearchLoopDevicePaths(int device_number) {
       return devices;
 
     if (device.valid)
-      devices.push_back(std::make_unique<LoopDevice>(
-          device_number, device.backing_file, base::Bind(&StubIoctlRunner)));
+      devices.push_back(
+          std::make_unique<LoopDevice>(device_number, device.backing_file,
+                                       base::BindRepeating(&StubIoctlRunner)));
     return devices;
   }
 
@@ -138,7 +139,7 @@ FakeLoopDeviceManager::SearchLoopDevicePaths(int device_number) {
                          reinterpret_cast<uint64_t>(&device), 0) == 0) {
     if (device.valid)
       devices.push_back(std::make_unique<LoopDevice>(
-          i, device.backing_file, base::Bind(&StubIoctlRunner)));
+          i, device.backing_file, base::BindRepeating(&StubIoctlRunner)));
     i++;
   }
   return devices;

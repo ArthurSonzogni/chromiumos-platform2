@@ -21,7 +21,7 @@ namespace brillo {
 class LoopDeviceManager;
 
 using LoopIoctl =
-    base::Callback<int(const base::FilePath&, int, uint64_t, int)>;
+    base::RepeatingCallback<int(const base::FilePath&, int, uint64_t, int)>;
 
 // LoopDevice provides an interface to attached loop devices.
 // In order to simplify handling of loop devices, there
@@ -77,8 +77,8 @@ class BRILLO_EXPORT LoopDeviceManager {
   LoopDeviceManager();
   // Create a loop device manager with a non-default ioctl runner.
   // Parameters
-  //   ioctl_runner - base::Callback to run ioctls.
-  explicit LoopDeviceManager(LoopIoctl ioctl_runner);
+  //   ioctl_runner - base::RepeatingCallback to run ioctls.
+  explicit LoopDeviceManager(const LoopIoctl& ioctl_runner);
   LoopDeviceManager(const LoopDeviceManager&) = delete;
   LoopDeviceManager& operator=(const LoopDeviceManager&) = delete;
 

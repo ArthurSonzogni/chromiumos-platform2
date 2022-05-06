@@ -147,7 +147,7 @@ TEST_F(ProcessReaperTest, ReapKilledAndForgottenChild) {
   // Run the loop with a timeout, as the BreakLoop() above is not expected.
   brillo_loop_.PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MessageLoop::BreakLoop, base::Unretained(&brillo_loop_)),
+      base::BindOnce(&MessageLoop::BreakLoop, base::Unretained(&brillo_loop_)),
       base::Milliseconds(100));
   brillo_loop_.Run();
 }

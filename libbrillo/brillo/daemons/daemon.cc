@@ -67,10 +67,10 @@ int Daemon::OnInit() {
   async_signal_handler_.Init();
   for (int signal : {SIGTERM, SIGINT}) {
     async_signal_handler_.RegisterHandler(
-        signal, base::Bind(&Daemon::Shutdown, base::Unretained(this)));
+        signal, base::BindRepeating(&Daemon::Shutdown, base::Unretained(this)));
   }
   async_signal_handler_.RegisterHandler(
-      SIGHUP, base::Bind(&Daemon::Restart, base::Unretained(this)));
+      SIGHUP, base::BindRepeating(&Daemon::Restart, base::Unretained(this)));
   return EX_OK;
 }
 

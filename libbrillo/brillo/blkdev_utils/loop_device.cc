@@ -164,9 +164,9 @@ bool LoopDevice::IsValid() {
 }
 
 LoopDeviceManager::LoopDeviceManager()
-    : loop_ioctl_(base::Bind(&LoopDeviceIoctl)) {}
+    : loop_ioctl_(base::BindRepeating(&LoopDeviceIoctl)) {}
 
-LoopDeviceManager::LoopDeviceManager(LoopIoctl ioctl_runner)
+LoopDeviceManager::LoopDeviceManager(const LoopIoctl& ioctl_runner)
     : loop_ioctl_(ioctl_runner) {}
 
 std::unique_ptr<LoopDevice> LoopDeviceManager::AttachDeviceToFile(

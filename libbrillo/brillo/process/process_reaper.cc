@@ -28,8 +28,8 @@ void ProcessReaper::Register(
   CHECK(!async_signal_handler_);
   async_signal_handler_ = async_signal_handler;
   async_signal_handler->RegisterHandler(
-      SIGCHLD,
-      base::Bind(&ProcessReaper::HandleSIGCHLD, base::Unretained(this)));
+      SIGCHLD, base::BindRepeating(&ProcessReaper::HandleSIGCHLD,
+                                   base::Unretained(this)));
 }
 
 void ProcessReaper::Unregister() {
