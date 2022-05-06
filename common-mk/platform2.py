@@ -68,7 +68,6 @@ _IUSE = [
     'enable_slow_boot_notify',
     'encrypted_reboot_vault',
     'encrypted_stateful',
-    'esdfs',
     'factory_runtime_probe',
     'fake_drivefs_launcher',
     'feedback',
