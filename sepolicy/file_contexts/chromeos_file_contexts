@@ -85,6 +85,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/crossystem             u:object_r:cros_crossystem_exec:s0
 /usr/bin/cups_proxy             u:object_r:cros_cups_proxy_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
+/usr/bin/dbus-monitor           u:object_r:cros_dbus_monitor_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0
 /usr/bin/dugong                 u:object_r:cros_dugong_exec:s0

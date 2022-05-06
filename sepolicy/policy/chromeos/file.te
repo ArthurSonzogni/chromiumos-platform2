@@ -77,6 +77,7 @@ type cros_cupsd_exec, exec_type, file_type, cros_file_type, cros_system_file_typ
 type cros_cups_proxy_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_daisydog_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_dbus_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_send_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_uuidgen_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_debugd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
