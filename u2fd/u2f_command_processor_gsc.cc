@@ -378,6 +378,8 @@ U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
     return MakeCredentialResponse::SUCCESS;
   }
 
+  LOG(ERROR) << "U2F_GENERATE failed with status " << std::hex
+             << generate_status << ".";
   return MakeCredentialResponse::VERIFICATION_FAILED;
 }
 
@@ -400,12 +402,15 @@ U2fCommandProcessorGsc::SendU2fSignWaitForPresence(
     std::optional<std::vector<uint8_t>> opt_signature =
         util::SignatureToDerBytes(sign_resp->sig_r, sign_resp->sig_s);
     if (!opt_signature.has_value()) {
+      LOG(ERROR) << "Failed to parse U2f signature.";
       return GetAssertionResponse::INTERNAL_ERROR;
     }
     *signature = *opt_signature;
     return GetAssertionResponse::SUCCESS;
   }
 
+  LOG(ERROR) << "U2F_SIGN failed with status " << std::hex << sign_status
+             << ".";
   return GetAssertionResponse::VERIFICATION_FAILED;
 }
 

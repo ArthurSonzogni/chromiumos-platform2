@@ -138,15 +138,19 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
     const U2fRegisterRequestApdu& request) {
   std::vector<uint8_t> pub_key;
   std::vector<uint8_t> key_handle;
+  VLOG(1) << "U2F registration requested.";
 
   Cr50CmdStatus generate_status =
       DoU2fGenerate(request.GetAppId(), &pub_key, &key_handle);
 
-  if (generate_status == Cr50CmdStatus::kNotAllowed) {
-    request_user_presence_();
-  }
-
   if (generate_status != Cr50CmdStatus::kSuccess) {
+    if (generate_status == Cr50CmdStatus::kNotAllowed) {
+      LOG(WARNING) << "U2fGenerate requests user presence.";
+      request_user_presence_();
+    } else {
+      LOG(ERROR) << "U2fGenerate failed with status " << std::hex
+                 << static_cast<uint32_t>(generate_status) << ".";
+    }
     return BuildErrorResponse(generate_status);
   }
 
@@ -163,6 +167,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
     if (g2f_cert.has_value()) {
       attestation_cert = *g2f_cert;
     } else {
+      LOG(ERROR) << "Failed to get g2f cert.";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
 
@@ -170,6 +175,8 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
         DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature);
 
     if (attest_status != Cr50CmdStatus::kSuccess) {
+      LOG(ERROR) << "G2fAttest failed with status " << std::hex
+                 << static_cast<uint32_t>(attest_status) << ".";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
 
@@ -180,6 +187,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
     }
   } else if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert,
                                      &signature)) {
+    LOG(ERROR) << "Software attest failed.";
     return BuildEmptyResponse(U2F_SW_WTF);
   }
 
@@ -193,6 +201,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
   register_resp.AppendBytes(signature);
   register_resp.SetStatus(U2F_SW_NO_ERROR);
 
+  VLOG(1) << "Finished processing U2F registration request.";
   return register_resp;
 }
 
@@ -216,21 +225,25 @@ std::vector<uint8_t> BuildU2fAuthenticateResponseSignedData(
 
 U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
     const U2fAuthenticateRequestApdu& request) {
+  VLOG(1) << "U2F authentication requested.";
   if (request.IsAuthenticateCheckOnly()) {
     // The authenticate only version of this command always returns an error (on
     // success, returns an error requesting presence).
     Cr50CmdStatus sign_status =
         DoU2fSignCheckOnly(request.GetAppId(), request.GetKeyHandle());
     if (sign_status == Cr50CmdStatus::kSuccess) {
+      VLOG(1) << "Finished processing U2F authentication (check-only) request.";
       return BuildEmptyResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
     } else {
+      LOG(ERROR) << "U2fSignCheckOnly failed with status " << std::hex
+                 << static_cast<uint32_t>(sign_status) << ".";
       return BuildErrorResponse(sign_status);
     }
   }
 
   std::optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
   if (!counter.has_value()) {
-    LOG(ERROR) << "Failed to retrieve counter value";
+    LOG(ERROR) << "Failed to retrieve counter value.";
     return BuildEmptyResponse(U2F_SW_WTF);
   }
 
@@ -243,15 +256,19 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
       DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
                 util::Sha256(to_sign), &signature);
 
-  if (sign_status == Cr50CmdStatus::kNotAllowed) {
-    request_user_presence_();
-  }
-
   if (sign_status != Cr50CmdStatus::kSuccess) {
+    if (sign_status == Cr50CmdStatus::kNotAllowed) {
+      LOG(WARNING) << "U2fSign requests user presence.";
+      request_user_presence_();
+    } else {
+      LOG(ERROR) << "U2fSign failed with status " << std::hex
+                 << static_cast<uint32_t>(sign_status) << ".";
+    }
     return BuildErrorResponse(sign_status);
   }
 
   if (!user_state_->IncrementCounter()) {
+    LOG(ERROR) << "Failed to increment counter value.";
     // If we can't increment the counter we must not return the signed
     // response, as the next authenticate response would end up having
     // the same counter value.
@@ -267,6 +284,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
   auth_resp.AppendBytes(signature);
   auth_resp.SetStatus(U2F_SW_NO_ERROR);
 
+  VLOG(1) << "Finished processing U2F authentication request.";
   return auth_resp;
 }
 

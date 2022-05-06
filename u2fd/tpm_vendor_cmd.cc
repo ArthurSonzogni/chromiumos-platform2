@@ -89,13 +89,6 @@ uint32_t TpmVendorCommandProxy::VendorCommand(uint16_t cc,
   header.size = base::NetToHost32(header.size);
   header.code = base::NetToHost32(header.code);
 
-  // Error of some sort?
-  if (header.code) {
-    if ((header.code & kVendorRcErr) == kVendorRcErr) {
-      LOG(WARNING) << "TPM error code 0x" << std::hex << header.code;
-    }
-  }
-
   // Pass back any reply beyond the header
   *output = response.substr(sizeof(header));
 
@@ -176,7 +169,6 @@ uint32_t TpmVendorCommandProxy::SendU2fSignGeneric(
       VendorCommand(kVendorCcU2fSign, RequestToString(req), &output_str);
 
   if (resp_code != 0) {
-    LOG(ERROR) << "U2f sign TPM error, response code = " << resp_code;
     return resp_code;
   }
 

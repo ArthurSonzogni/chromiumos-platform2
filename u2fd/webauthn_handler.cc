@@ -229,8 +229,10 @@ void WebAuthnHandler::MakeCredential(
     std::unique_ptr<MakeCredentialMethodResponse> method_response,
     const MakeCredentialRequest& request) {
   MakeCredentialResponse response;
+  VLOG(1) << "Received a MakeCredential request.";
 
   if (!Initialized()) {
+    LOG(WARNING) << "MakeCredential: WebAuthnHandler not initialized.";
     response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
     method_response->Return(response);
     return;
@@ -238,18 +240,21 @@ void WebAuthnHandler::MakeCredential(
 
   if (pending_uv_make_credential_session_ ||
       pending_uv_get_assertion_session_) {
+    LOG(WARNING) << "MakeCredential: There is a pending session.";
     response.set_status(MakeCredentialResponse::REQUEST_PENDING);
     method_response->Return(response);
     return;
   }
 
   if (request.rp_id().empty()) {
+    LOG(ERROR) << "MakeCredential: Invalid request format: no rp_id.";
     response.set_status(MakeCredentialResponse::INVALID_REQUEST);
     method_response->Return(response);
     return;
   }
 
   if (request.verification_type() == VerificationType::VERIFICATION_UNKNOWN) {
+    LOG(ERROR) << "MakeCredential: Unknown verification type.";
     response.set_status(MakeCredentialResponse::VERIFICATION_FAILED);
     method_response->Return(response);
     return;
@@ -298,7 +303,7 @@ CancelWebAuthnFlowResponse WebAuthnHandler::Cancel(
   CancelWebAuthnFlowResponse response;
   if (!pending_uv_make_credential_session_ &&
       !pending_uv_get_assertion_session_) {
-    LOG(ERROR) << "No pending session to cancel.";
+    VLOG(1) << "No pending session to cancel.";
     response.set_canceled(false);
     return response;
   }
@@ -458,7 +463,8 @@ void WebAuthnHandler::DoMakeCredential(
   brillo::Blob credential_secret(kCredentialSecretSize);
   if (uv_compatible) {
     if (RAND_bytes(credential_secret.data(), credential_secret.size()) != 1) {
-      LOG(ERROR) << "Failed to generate secret for new credential.";
+      LOG(ERROR)
+          << "MakeCredential: Failed to generate secret for new credential.";
       response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
       session.response->Return(response);
       return;
@@ -469,8 +475,8 @@ void WebAuthnHandler::DoMakeCredential(
     std::optional<brillo::SecureBlob> legacy_secret =
         user_state_->GetUserSecret();
     if (!legacy_secret) {
-      LOG(ERROR) << "Cannot find user secret when trying to create u2f/g2f "
-                    "credential.";
+      LOG(ERROR) << "MakeCredential: Cannot find user secret when trying to "
+                    "create u2f/g2f credential.";
       response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
       session.response->Return(response);
       return;
@@ -486,12 +492,15 @@ void WebAuthnHandler::DoMakeCredential(
           &credential_key_blob);
 
   if (generate_status != MakeCredentialResponse::SUCCESS) {
+    LOG(ERROR) << "MakeCredential: U2fGenerate failed with status "
+               << static_cast<int>(generate_status) << ".";
     response.set_status(generate_status);
     session.response->Return(response);
     return;
   }
 
   if (credential_id.empty() || credential_public_key.empty()) {
+    LOG(ERROR) << "MakeCredential: Returned credential is empty.";
     response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
     session.response->Return(response);
     return;
@@ -499,10 +508,13 @@ void WebAuthnHandler::DoMakeCredential(
 
   auto ret = HasExcludedCredentials(session.request);
   if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
+    LOG(ERROR) << "MakeCredential: HasExcludedCredentials failed with an "
+                  "internal error.";
     response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
     session.response->Return(response);
     return;
   } else if (ret == HasCredentialsResponse::SUCCESS) {
+    LOG(ERROR) << "MakeCredential: Credential is excluded in the request.";
     response.set_status(MakeCredentialResponse::EXCLUDED_CREDENTIAL_ID);
     session.response->Return(response);
     return;
@@ -516,7 +528,7 @@ void WebAuthnHandler::DoMakeCredential(
           /* include_attested_credential_data = */ true,
           /* is_u2f_authenticator_credential = */ !uv_compatible);
   if (!authenticator_data) {
-    LOG(ERROR) << "MakeAuthenticatorData failed";
+    LOG(ERROR) << "MakeCredential: MakeAuthenticatorData failed";
     response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
     session.response->Return(response);
     return;
@@ -536,6 +548,8 @@ void WebAuthnHandler::DoMakeCredential(
         MakeFidoU2fAttestationStatement(
             data_to_sign, session.request.attestation_conveyance_preference());
     if (!attestation_statement) {
+      LOG(ERROR)
+          << "MakeCredential: Failed to make FIDO attestation statement.";
       response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
       session.response->Return(response);
       return;
@@ -559,12 +573,15 @@ void WebAuthnHandler::DoMakeCredential(
     record.timestamp = base::Time::Now().ToDoubleT();
     record.is_resident_key = session.request.resident_key_required();
     if (!webauthn_storage_->WriteRecord(std::move(record))) {
+      LOG(ERROR)
+          << "MakeCredential: Failed to write record into WebAuthn storage.";
       response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
       session.response->Return(response);
       return;
     }
   }
 
+  VLOG(1) << "Finished processing MakeCredential request.";
   response.set_status(MakeCredentialResponse::SUCCESS);
   session.response->Return(response);
 }
@@ -702,9 +719,11 @@ WebAuthnHandler::HasExcludedCredentials(const MakeCredentialRequest& request) {
 void WebAuthnHandler::GetAssertion(
     std::unique_ptr<GetAssertionMethodResponse> method_response,
     const GetAssertionRequest& request) {
+  VLOG(1) << "Received a GetAssertion request.";
   GetAssertionResponse response;
 
   if (!Initialized()) {
+    LOG(WARNING) << "GetAssertion: WebAuthnHandler not initialized.";
     response.set_status(GetAssertionResponse::INTERNAL_ERROR);
     method_response->Return(response);
     return;
@@ -712,6 +731,7 @@ void WebAuthnHandler::GetAssertion(
 
   if (pending_uv_make_credential_session_ ||
       pending_uv_get_assertion_session_) {
+    LOG(WARNING) << "GetAssertion: There is a pending session.";
     response.set_status(GetAssertionResponse::REQUEST_PENDING);
     method_response->Return(response);
     return;
@@ -719,18 +739,21 @@ void WebAuthnHandler::GetAssertion(
 
   if (request.rp_id().empty() ||
       request.client_data_hash().size() != SHA256_DIGEST_LENGTH) {
+    LOG(ERROR) << "GetAssertion: Invalid request format: no rp_id or incoreect "
+                  "hash length.";
     response.set_status(GetAssertionResponse::INVALID_REQUEST);
     method_response->Return(response);
     return;
   }
 
   if (request.verification_type() == VerificationType::VERIFICATION_UNKNOWN) {
+    LOG(ERROR) << "GetAssertion: Unknown verification type.";
     response.set_status(GetAssertionResponse::VERIFICATION_FAILED);
     method_response->Return(response);
     return;
   }
 
-  // TODO(louiscollard): Support resident credentials.
+  // TODO(b/180502218): Support resident credentials.
 
   std::string* credential_to_use;
   bool is_legacy_credential = false;
@@ -739,6 +762,8 @@ void WebAuthnHandler::GetAssertion(
   MatchedCredentials matched = FindMatchedCredentials(
       request.allowed_credential_id(), request.rp_id(), request.app_id());
   if (matched.has_internal_error) {
+    LOG(ERROR) << "GetAssertion: FindMatchedCredentials failed with an "
+                  "internal error.";
     response.set_status(GetAssertionResponse::INTERNAL_ERROR);
     method_response->Return(response);
     return;
@@ -754,6 +779,7 @@ void WebAuthnHandler::GetAssertion(
     is_legacy_credential = true;
     use_app_id = true;
   } else {
+    LOG(ERROR) << "GetAssertion: Failed to find matched credentials";
     response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
     method_response->Return(response);
     return;
@@ -815,7 +841,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
           session.credential_id, &credential_secret, &credential_key_blob)) {
     if (!AllowPresenceMode()) {
-      LOG(ERROR) << "No credential secret for credential id "
+      LOG(ERROR) << "GetAssertion: No credential secret for credential id "
                  << session.credential_id << ", aborting GetAssertion.";
       response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
       session.response->Return(response);
@@ -826,8 +852,8 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
     std::optional<brillo::SecureBlob> legacy_secret =
         user_state_->GetUserSecret();
     if (!legacy_secret) {
-      LOG(ERROR)
-          << "Cannot find user secret when trying to sign u2fhid credentials";
+      LOG(ERROR) << "GetAssertion: Cannot find user secret when trying to sign "
+                    "u2fhid credentials";
       response.set_status(GetAssertionResponse::INTERNAL_ERROR);
       session.response->Return(response);
       return;
@@ -848,7 +874,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
           /* include_attested_credential_data = */ false,
           is_u2f_authenticator_credential);
   if (!authenticator_data) {
-    LOG(ERROR) << "MakeAuthenticatorData failed";
+    LOG(ERROR) << "GetAssertion: MakeAuthenticatorData failed";
     response.set_status(GetAssertionResponse::INTERNAL_ERROR);
     session.response->Return(response);
     return;
@@ -865,13 +891,19 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
                                       credential_secret, &credential_key_blob,
                                       presence_requirement, &signature);
   response.set_status(sign_status);
-  if (sign_status == GetAssertionResponse::SUCCESS) {
-    auto* assertion = response.add_assertion();
-    assertion->set_credential_id(session.credential_id);
-    AppendToString(*authenticator_data,
-                   assertion->mutable_authenticator_data());
-    AppendToString(signature, assertion->mutable_signature());
+
+  if (sign_status != GetAssertionResponse::SUCCESS) {
+    LOG(ERROR) << "GetAssertion: U2fSign failed with status "
+               << static_cast<int>(sign_status) << ".";
+    session.response->Return(response);
+    return;
   }
+
+  VLOG(1) << "Finished processing GetAssertion request.";
+  auto* assertion = response.add_assertion();
+  assertion->set_credential_id(session.credential_id);
+  AppendToString(*authenticator_data, assertion->mutable_authenticator_data());
+  AppendToString(signature, assertion->mutable_signature());
 
   session.response->Return(response);
 }
@@ -896,6 +928,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
         rp_id_hash, util::ToVector(credential_id), credential_secret,
         &credential_key_blob);
     if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
+      LOG(ERROR) << "U2fSignCheckOnly failed with an internal error.";
       result.has_internal_error = true;
       return result;
     } else if (ret == HasCredentialsResponse::SUCCESS) {
@@ -906,6 +939,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
   const std::optional<brillo::SecureBlob> user_secret =
       user_state_->GetUserSecret();
   if (!user_secret) {
+    LOG(ERROR) << "Failed to get user secret.";
     result.has_internal_error = true;
     return result;
   }
@@ -931,6 +965,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
       case HasCredentialsResponse::UNKNOWN:
       case HasCredentialsResponse::INVALID_REQUEST:
       case HasCredentialsResponse::INTERNAL_ERROR:
+        LOG(ERROR) << "U2fSignCheckOnly failed with an internal error.";
         result.has_internal_error = true;
         return result;
       case google::protobuf::kint32min:
@@ -955,6 +990,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
       case HasCredentialsResponse::UNKNOWN:
       case HasCredentialsResponse::INVALID_REQUEST:
       case HasCredentialsResponse::INTERNAL_ERROR:
+        LOG(ERROR) << "U2fSignCheckOnly failed with an internal error.";
         result.has_internal_error = true;
         return result;
       case google::protobuf::kint32min:
@@ -971,11 +1007,15 @@ HasCredentialsResponse WebAuthnHandler::HasCredentials(
   HasCredentialsResponse response;
 
   if (!Initialized()) {
+    LOG(ERROR) << "Failed to process HasCredentials request because "
+                  "WebAuthnHandler isn't initialized.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
 
   if (request.rp_id().empty() || request.credential_id().empty()) {
+    LOG(ERROR) << "Failed to process HasCredentials request because rp_id or "
+                  "credential_id is empty.";
     response.set_status(HasCredentialsResponse::INVALID_REQUEST);
     return response;
   }
@@ -983,6 +1023,8 @@ HasCredentialsResponse WebAuthnHandler::HasCredentials(
   MatchedCredentials matched = FindMatchedCredentials(
       request.credential_id(), request.rp_id(), request.app_id());
   if (matched.has_internal_error) {
+    LOG(ERROR) << "Failed to process HasCredentials request because "
+                  "FindMatchedCredentials failed with an internal error.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
@@ -1008,11 +1050,15 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
   HasCredentialsResponse response;
 
   if (!Initialized()) {
+    LOG(ERROR) << "Failed to process HasLegacyCredentials request because "
+                  "WebAuthnHandler isn't initialized.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
 
   if (request.credential_id().empty()) {
+    LOG(ERROR) << "Failed to process HasLegacyCredentials request because "
+                  "credential_id is empty.";
     response.set_status(HasCredentialsResponse::INVALID_REQUEST);
     return response;
   }
@@ -1020,6 +1066,8 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
   MatchedCredentials matched = FindMatchedCredentials(
       request.credential_id(), request.rp_id(), request.app_id());
   if (matched.has_internal_error) {
+    LOG(ERROR) << "Failed to process HasLegacyCredentials request because "
+                  "FindMatchedCredentials failed with an internal error.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
