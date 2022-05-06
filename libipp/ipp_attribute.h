@@ -350,6 +350,8 @@ class IPP_EXPORT Collection {
   // Mapping between temporary AttrName created for unknown attributes and
   // their real names.
   std::map<AttrName, std::string> unknown_names;
+  // Stores the order of the unknown attributes.
+  std::vector<AttrName> unknown_attributes_order_;
 };
 
 // Final class for Collection represents collection without known attributes.

@@ -1010,6 +1010,7 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
   unknown_attributes[an].def.is_a_set = is_a_set;
   unknown_attributes[an].def.cc_type = InternalTypeForUnknownAttribute(type);
   unknown_attributes[an].object = new UnknownAttribute(this, an);
+  unknown_attributes_order_.push_back(an);
   if (type == AttrType::collection) {
     unknown_attributes[an].def.constructor = []() -> Collection* {
       return new EmptyCollection();
@@ -1171,8 +1172,8 @@ std::vector<Attribute*> Collection::GetAllAttributes() {
   std::vector<Attribute*> v;
   v.reserve(known_attr.size() + unknown_attributes.size());
   v.insert(v.end(), known_attr.begin(), known_attr.end());
-  for (const auto& e : unknown_attributes)
-    v.push_back(e.second.object);
+  for (const auto an : unknown_attributes_order_)
+    v.push_back(unknown_attributes.at(an).object);
   return v;
 }
 
@@ -1181,8 +1182,8 @@ std::vector<const Attribute*> Collection::GetAllAttributes() const {
   std::vector<const Attribute*> v;
   v.reserve(known_attr.size() + unknown_attributes.size());
   v.insert(v.end(), known_attr.begin(), known_attr.end());
-  for (const auto& e : unknown_attributes)
-    v.push_back(e.second.object);
+  for (const auto an : unknown_attributes_order_)
+    v.push_back(unknown_attributes.at(an).object);
   return v;
 }
 

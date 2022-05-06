@@ -15,7 +15,7 @@ namespace {
 class CollectionTest : public testing::Test {
  public:
   CollectionTest() : frame_(Version::_1_1, Operation::Print_Job, 1) {
-    coll_ = frame_.GetGroup(GroupTag::operation_attributes);
+    frame_.AddGroup(GroupTag::operation_attributes, &coll_);
   }
 
  protected:
@@ -178,6 +178,21 @@ TEST_F(CollectionTest, AddAttrValueOutOfRange) {
 TEST_F(CollectionTest, AddAttrInvalidValueTag) {
   auto err = coll_->AddAttr("xxx", static_cast<ValueTag>(0x0f));
   EXPECT_EQ(err, Code::kInvalidValueTag);
+}
+
+TEST_F(CollectionTest, AttributesOrder) {
+  EXPECT_EQ(coll_->AddAttr("a3", true), Code::kOK);
+  EXPECT_EQ(coll_->AddAttr("a1", false), Code::kOK);
+  EXPECT_EQ(coll_->AddAttr("a5", 1234), Code::kOK);
+  EXPECT_EQ(coll_->AddAttr("a4", ValueTag::no_value), Code::kOK);
+  EXPECT_EQ(coll_->AddAttr("a2", ValueTag::uri, "abcde"), Code::kOK);
+  auto attrs = coll_->GetAllAttributes();
+  ASSERT_EQ(attrs.size(), 5);
+  EXPECT_EQ(attrs[0]->Name(), "a3");
+  EXPECT_EQ(attrs[1]->Name(), "a1");
+  EXPECT_EQ(attrs[2]->Name(), "a5");
+  EXPECT_EQ(attrs[3]->Name(), "a4");
+  EXPECT_EQ(attrs[4]->Name(), "a2");
 }
 
 TEST(ToStrView, ValueTag) {
