@@ -27,6 +27,7 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
+namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 using OnceStringResultCallback = DebugdAdapter::OnceStringResultCallback;
@@ -36,10 +37,6 @@ using routine_status = mojo_ipc::DiagnosticRoutineStatusEnum;
 constexpr char kStartSuccess[] = "Device self-test started";
 constexpr char kNvmeError[] = "NVMe Status:Unknown";
 
-// TODO(b/214177942): As FRIEND_TEST is used in NvmeSelfTestRoutine,
-// NvmeSelfTestRoutineTest must *not* be wrapped in anonymous namespace. See
-// go/gunitadvanced#testing-private-code. However, using FRIEND_TEST is not
-// ideal and should be removed after the routine refactoring.
 class NvmeSelfTestRoutineTest : public testing::Test {
  protected:
   NvmeSelfTestRoutineTest() = default;
@@ -504,6 +501,13 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
                              mojo_ipc::DiagnosticRoutineStatusEnum::kError,
                              kDebugdErrorMessage);
 }
+
+}  // namespace
+
+// TODO(b/214177942): As NvmeSelfTestRoutineTest.RoutineStatusTransition is
+// FRIEND_TEST in NvmeSelfTestRoutine, it must *not* be wrapped in anonymous
+// namespace. See go/gunitadvanced#testing-private-code. However, using
+// FRIEND_TEST is not ideal and should be removed after the routine refactoring.
 
 // Tests that the NvmeSelfTest routine status transition works as expected.
 TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
