@@ -9,7 +9,8 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <libec/mkbp_wake_mask_command.h>
+#include <libec/get_mkbp_wake_mask_command.h>
+#include <libec/set_mkbp_wake_mask_command.h>
 
 namespace power_manager {
 namespace system {
@@ -22,7 +23,7 @@ bool GetMkbpWakeMask(const base::ScopedFD& cros_ec_fd,
   if (cros_ec_fd.get() < 0)
     return false;
 
-  ec::MkbpWakeMaskEventCommand cmd;
+  ec::GetMkbpWakeMaskEventCommand cmd;
   if (!cmd.Run(cros_ec_fd.get())) {
     LOG(ERROR) << "Failed to get current MKBP wake mask. Result : "
                << cmd.Result();
@@ -39,7 +40,7 @@ bool SetMkbpWakeMask(const base::ScopedFD& cros_ec_fd, uint32_t wake_mask) {
   if (cros_ec_fd.get() < 0)
     return false;
 
-  ec::MkbpWakeMaskEventCommand cmd(wake_mask);
+  ec::SetMkbpWakeMaskEventCommand cmd(wake_mask);
   if (!cmd.Run(cros_ec_fd.get())) {
     LOG(ERROR) << "Failed to set new MKBP wake mask to '0x" << std::hex
                << wake_mask << "' Result: " << std::dec << cmd.Result();

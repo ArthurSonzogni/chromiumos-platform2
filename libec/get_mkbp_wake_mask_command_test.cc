@@ -5,73 +5,44 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "libec/mkbp_wake_mask_command.h"
+#include "libec/get_mkbp_wake_mask_command.h"
 
 namespace ec {
 namespace {
 
 using ::testing::Return;
 
-TEST(MkbpWakeMaskCommand, MkbpWakeMaskCommandGet) {
+TEST(GetMkbpWakeMaskCommand, GetMkbpWakeMaskCommand) {
   // Constructor for getting values.
-  MkbpWakeMaskCommand cmd(EC_MKBP_HOST_EVENT_WAKE_MASK);
+  GetMkbpWakeMaskCommand cmd(EC_MKBP_HOST_EVENT_WAKE_MASK);
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_MKBP_WAKE_MASK);
   EXPECT_EQ(cmd.Req()->action, GET_WAKE_MASK);
   EXPECT_EQ(cmd.Req()->mask_type, EC_MKBP_HOST_EVENT_WAKE_MASK);
 }
 
-TEST(MkbpWakeMaskCommand, MkbpWakeMaskCommandSet) {
-  MkbpWakeMaskCommand cmd(EC_MKBP_HOST_EVENT_WAKE_MASK,
-                          EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_CLOSED));
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Command(), EC_CMD_MKBP_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->action, SET_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->mask_type, EC_MKBP_HOST_EVENT_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->new_wake_mask, 1);
-}
-
-TEST(MkbpWakeMaskHostEventCommand, MkbpWakeMaskHostEventCommandGet) {
-  MkbpWakeMaskHostEventCommand cmd;
+TEST(GetMkbpWakeMaskHostEventCommand, GetMkbpWakeMaskHostEventCommand) {
+  GetMkbpWakeMaskHostEventCommand cmd;
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_MKBP_WAKE_MASK);
   EXPECT_EQ(cmd.Req()->action, GET_WAKE_MASK);
   EXPECT_EQ(cmd.Req()->mask_type, EC_MKBP_HOST_EVENT_WAKE_MASK);
 }
 
-TEST(MkbpWakeMaskHostEventCommand, MkbpWakeMaskHostEventCommandSet) {
-  MkbpWakeMaskHostEventCommand cmd(
-      EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_CLOSED));
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Command(), EC_CMD_MKBP_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->action, SET_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->mask_type, EC_MKBP_HOST_EVENT_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->new_wake_mask, 1);
-}
-
-TEST(MkbpWakeMaskEventCommand, MkbpWakeMaskEventCommandGet) {
-  MkbpWakeMaskEventCommand cmd;
+TEST(GetMkbpWakeMaskEventCommand, GetMkbpWakeMaskEventCommand) {
+  GetMkbpWakeMaskEventCommand cmd;
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_MKBP_WAKE_MASK);
   EXPECT_EQ(cmd.Req()->action, GET_WAKE_MASK);
   EXPECT_EQ(cmd.Req()->mask_type, EC_MKBP_EVENT_WAKE_MASK);
-}
-
-TEST(MkbpWakeMaskEventCommand, MkbpWakeMaskEventCommandSet) {
-  MkbpWakeMaskEventCommand cmd(EC_HOST_EVENT_MASK(EC_MKBP_EVENT_BUTTON));
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Command(), EC_CMD_MKBP_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->action, SET_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->mask_type, EC_MKBP_EVENT_WAKE_MASK);
-  EXPECT_EQ(cmd.Req()->new_wake_mask, 4);
 }
 
 // Mock the underlying EcCommand to test.
-class MkbpWakeMaskCommandTest : public testing::Test {
+class GetMkbpWakeMaskCommandTest : public testing::Test {
  public:
-  class MockMkbpWakeMaskCommand : public MkbpWakeMaskCommand {
+  class MockGetMkbpWakeMaskCommand : public GetMkbpWakeMaskCommand {
    public:
-    using MkbpWakeMaskCommand::MkbpWakeMaskCommand;
+    using GetMkbpWakeMaskCommand::GetMkbpWakeMaskCommand;
     MOCK_METHOD(const struct ec_response_mkbp_event_wake_mask*,
                 Resp,
                 (),
@@ -79,8 +50,8 @@ class MkbpWakeMaskCommandTest : public testing::Test {
   };
 };
 
-TEST_F(MkbpWakeMaskCommandTest, Success) {
-  MockMkbpWakeMaskCommand mock_command(EC_MKBP_HOST_EVENT_WAKE_MASK);
+TEST_F(GetMkbpWakeMaskCommandTest, Success) {
+  MockGetMkbpWakeMaskCommand mock_command(EC_MKBP_HOST_EVENT_WAKE_MASK);
   struct ec_response_mkbp_event_wake_mask response = {
       .wake_mask = EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_OPEN)};
   EXPECT_CALL(mock_command, Resp).WillRepeatedly(Return(&response));
@@ -89,11 +60,12 @@ TEST_F(MkbpWakeMaskCommandTest, Success) {
 }
 
 // Mock the underlying EcCommand to test.
-class MkbpWakeMaskHostEventCommandTest : public testing::Test {
+class GetMkbpWakeMaskHostEventCommandTest : public testing::Test {
  public:
-  class MockMkbpWakeMaskHostEventCommand : public MkbpWakeMaskHostEventCommand {
+  class MockGetMkbpWakeMaskHostEventCommand
+      : public GetMkbpWakeMaskHostEventCommand {
    public:
-    using MkbpWakeMaskHostEventCommand::MkbpWakeMaskHostEventCommand;
+    using GetMkbpWakeMaskHostEventCommand::GetMkbpWakeMaskHostEventCommand;
     MOCK_METHOD(const struct ec_response_mkbp_event_wake_mask*,
                 Resp,
                 (),
@@ -101,8 +73,8 @@ class MkbpWakeMaskHostEventCommandTest : public testing::Test {
   };
 };
 
-TEST_F(MkbpWakeMaskHostEventCommandTest, Success) {
-  MockMkbpWakeMaskHostEventCommand mock_command;
+TEST_F(GetMkbpWakeMaskHostEventCommandTest, Success) {
+  MockGetMkbpWakeMaskHostEventCommand mock_command;
   struct ec_response_mkbp_event_wake_mask response = {
       .wake_mask = EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_OPEN)};
   EXPECT_CALL(mock_command, Resp).WillRepeatedly(Return(&response));
@@ -114,11 +86,11 @@ TEST_F(MkbpWakeMaskHostEventCommandTest, Success) {
 }
 
 // Mock the underlying EcCommand to test.
-class MkbpWakeMaskEventCommandTest : public testing::Test {
+class GetMkbpWakeMaskEventCommandTest : public testing::Test {
  public:
-  class MockMkbpWakeMaskEventCommand : public MkbpWakeMaskEventCommand {
+  class MockGetMkbpWakeMaskEventCommand : public GetMkbpWakeMaskEventCommand {
    public:
-    using MkbpWakeMaskEventCommand::MkbpWakeMaskEventCommand;
+    using GetMkbpWakeMaskEventCommand::GetMkbpWakeMaskEventCommand;
     MOCK_METHOD(const struct ec_response_mkbp_event_wake_mask*,
                 Resp,
                 (),
@@ -126,8 +98,8 @@ class MkbpWakeMaskEventCommandTest : public testing::Test {
   };
 };
 
-TEST_F(MkbpWakeMaskEventCommandTest, Success) {
-  MockMkbpWakeMaskEventCommand mock_command;
+TEST_F(GetMkbpWakeMaskEventCommandTest, Success) {
+  MockGetMkbpWakeMaskEventCommand mock_command;
   struct ec_response_mkbp_event_wake_mask response = {
       .wake_mask = EC_HOST_EVENT_MASK(EC_MKBP_EVENT_SWITCH)};
   EXPECT_CALL(mock_command, Resp).WillRepeatedly(Return(&response));
