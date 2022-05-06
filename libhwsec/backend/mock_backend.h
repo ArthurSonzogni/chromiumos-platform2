@@ -45,6 +45,8 @@ class MockBackend : public Backend {
                 (Space space, const brillo::Blob& blob),
                 (override));
     MOCK_METHOD(Status, Lock, (Space space, LockOptions options), (override));
+    MOCK_METHOD(Status, Destroy, (Space space), (override));
+    MOCK_METHOD(StatusOr<bool>, IsWriteLocked, (Space space), (override));
   };
 
   class MockRoData : public RoData {

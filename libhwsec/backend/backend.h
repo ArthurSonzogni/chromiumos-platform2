@@ -76,8 +76,8 @@ class Backend {
     enum class ReadyState {
       // Ready to use.
       kReady,
-      // Not available on this device.
-      kNotAvailable,
+      // Write locked.
+      kWriteLocked,
       // Can be prepared.
       kPreparable,
     };
@@ -101,6 +101,12 @@ class Backend {
 
     // Locks the |space| with some optional |options|.
     virtual Status Lock(Space space, LockOptions options) = 0;
+
+    // Destroys the |space|.
+    virtual Status Destroy(Space space) = 0;
+
+    // Is the |space| write locked or not.
+    virtual StatusOr<bool> IsWriteLocked(Space space) = 0;
 
    protected:
     Storage() = default;

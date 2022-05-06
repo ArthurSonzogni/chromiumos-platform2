@@ -10,7 +10,7 @@ namespace hwsec {
 enum class Space {
   kFirmwareManagementParameters,
   kPlatformFirmwareManagementParameters,
-  kInstallAttribute,
+  kInstallAttributes,
   kBootlockbox,
 };
 

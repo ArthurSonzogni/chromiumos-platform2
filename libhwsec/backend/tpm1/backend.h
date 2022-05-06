@@ -38,6 +38,18 @@ class BackendTpm1 : public Backend {
     Status Prepare() override;
   };
 
+  class StorageTpm1 : public Storage, public SubClassHelper<BackendTpm1> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<ReadyState> IsReady(Space space) override;
+    Status Prepare(Space space, uint32_t size) override;
+    StatusOr<brillo::Blob> Load(Space space) override;
+    Status Store(Space space, const brillo::Blob& blob) override;
+    Status Lock(Space space, LockOptions options) override;
+    Status Destroy(Space space) override;
+    StatusOr<bool> IsWriteLocked(Space space) override;
+  };
+
   class SealingTpm1 : public Sealing, public SubClassHelper<BackendTpm1> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -203,7 +215,7 @@ class BackendTpm1 : public Backend {
 
   State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return nullptr; }
-  Storage* GetStorage() override { return nullptr; }
+  Storage* GetStorage() override { return &storage_; }
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override { return nullptr; }
@@ -225,6 +237,7 @@ class BackendTpm1 : public Backend {
   std::optional<TssTpmContext> tss_user_context_cache_;
 
   StateTpm1 state_{*this};
+  StorageTpm1 storage_{*this};
   SealingTpm1 sealing_{*this};
   DerivingTpm1 deriving_{*this};
   EncryptionTpm1 encryption_{*this};

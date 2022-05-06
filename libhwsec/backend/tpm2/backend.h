@@ -36,6 +36,18 @@ class BackendTpm2 : public Backend {
     Status Prepare() override;
   };
 
+  class StorageTpm2 : public Storage, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<ReadyState> IsReady(Space space) override;
+    Status Prepare(Space space, uint32_t size) override;
+    StatusOr<brillo::Blob> Load(Space space) override;
+    Status Store(Space space, const brillo::Blob& blob) override;
+    Status Lock(Space space, LockOptions options) override;
+    Status Destroy(Space space) override;
+    StatusOr<bool> IsWriteLocked(Space space) override;
+  };
+
   class SealingTpm2 : public Sealing, public SubClassHelper<BackendTpm2> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -206,7 +218,7 @@ class BackendTpm2 : public Backend {
 
   State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return nullptr; }
-  Storage* GetStorage() override { return nullptr; }
+  Storage* GetStorage() override { return &storage_; }
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override { return nullptr; }
@@ -225,6 +237,7 @@ class BackendTpm2 : public Backend {
   TrunksClientContext trunks_context_;
 
   StateTpm2 state_{*this};
+  StorageTpm2 storage_{*this};
   SealingTpm2 sealing_{*this};
   DerivingTpm2 deriving_{*this};
   EncryptionTpm2 encryption_{*this};
