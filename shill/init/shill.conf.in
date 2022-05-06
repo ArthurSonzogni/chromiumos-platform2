@@ -27,7 +27,6 @@ env SHILL_PASSIVE_MODE=
 env SHILL_MINIMUM_MTU=
 env ALLOWED_DEVICES=
 env BLOCKED_DEVICES=
-env DHCPV6_ENABLED_DEVICES=
 
 # Hook for mod_for_test_scripts/100setupTestingInterface.
 env SHILL_TEST_DEVICES=""
@@ -35,7 +34,6 @@ env SHILL_TEST_DEVICES=""
 # Allow the parameters to be overridden by upstart commands and events.
 import ALLOWED_DEVICES
 import BLOCKED_DEVICES
-import DHCPV6_ENABLED_DEVICES
 import SHILL_LOG_LEVEL
 import SHILL_LOG_SCOPES
 import SHILL_LOG_VMODULES
