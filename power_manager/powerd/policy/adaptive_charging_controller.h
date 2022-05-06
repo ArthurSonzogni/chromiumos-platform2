@@ -5,10 +5,15 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_ADAPTIVE_CHARGING_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_ADAPTIVE_CHARGING_CONTROLLER_H_
 
+#include <map>
 #include <memory>
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/important_file_writer.h>
+#include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <brillo/timers/alarm_timer.h>
@@ -83,6 +88,9 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
   // in dark resume to re-evaluate charging delays.
   virtual void PrepareForSuspendAttempt() = 0;
 
+  // Reschedules writes for ChargeHistory.
+  virtual void HandleFullResume() = 0;
+
   // Disables Adaptive Charging for shutdown (and hibernate).
   virtual void HandleShutdown() = 0;
 
@@ -94,6 +102,144 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
 
   // Called upon failure from the Adaptive Charging ml-service.
   virtual void OnPredictionFail(brillo::Error* error) = 0;
+};
+
+// Class that records charge history for tracking the start time and duration of
+// charging sessions. These values will be used as inputs to the ML model for
+// predicting when the charger is unplugged.
+// These values are stored in /var/lib/power_manager/. For
+// privacy reasons, we floor each time value to a multiple of 15 minutes. Data
+// is retained for 30 days.
+//
+// Example of charge event:
+// /var/lib/power_manager/charge_history/charge_events/13296083600000000:
+//   "1800000000"
+//
+// This is a charge event with a 30 minute duration (value stored in
+// microseconds). Since we floor all of the timestamps, if the charger is
+// connected for less than 15 minutes, it will result in a 0 duration charge
+// event. This means that charge events can collide (old event will be
+// overwritten).
+class ChargeHistory {
+ public:
+  ChargeHistory();
+  ChargeHistory(const ChargeHistory&) = delete;
+  ChargeHistory& operator=(const ChargeHistory&) = delete;
+  virtual ~ChargeHistory() = default;
+
+  void Init(const system::PowerStatus& status);
+
+  // Must be called before `Init()` to make things simple.
+  void set_charge_history_dir_for_testing(const base::FilePath& dir);
+
+  // Modifies charge history when the AC charger is plugged/unplugged. Also
+  // records the time when the battery reaches full charge.
+  void HandlePowerStatusUpdate(const system::PowerStatus& status);
+
+  // Makes sure that any state that needs to be written to disk before entering
+  // a low power state (such as suspend or shutdown) is written.
+  void OnEnterLowPowerState();
+
+  // Reschedules pending writes to disk at the next 15 minute aligned time.
+  void OnExitLowPowerState();
+
+ private:
+  // Calculate and record timestamps to files in `charge_history_dir_` then
+  // cache the values in `charge_events_`.
+  void UpdateHistory(const system::PowerStatus& status);
+
+  void CreateEmptyChargeEventFile(base::Time start);
+
+  // Remove the oldest charge events until there are fewer than
+  // `kMaxChargeEvents`. After this, remove all key, value pairs from
+  // `charge_events_` where the end of the charge event is before the retention
+  // cutoff.
+  void RemoveOldChargeEvents();
+
+  // Remove files older than `kRetentionDays` and reduce the number of charge
+  // events to `kMaxChargeEvents` by removing the oldest events.
+  void OnRetentionTimerFired();
+
+  // Schedule the `rewrite_timer_` at the next `kChargeHistoryTimeInterval`
+  // aligned time. We schedule file rewrites like this for privacy reasons,
+  // so that exact timestamps for plug/unplug events don't exist.
+  void ScheduleRewrites();
+
+  // This calls WriteNow, then clears out `scheduled_rewrites_`.
+  void OnRewriteTimerFired();
+
+  // Write `duration` to the file created from `time` in `dir`, then schedule
+  // a rewrite for the same file at the next time multiple of
+  // `kChargeHistoryTimeInterval`.
+  void WriteDurationToFile(const base::FilePath& dir,
+                           base::Time time,
+                           base::TimeDelta duration);
+
+  // Helper function to floor time values to a multiple of
+  // `kChargeHistoryTimeInterval`.
+  static base::Time FloorTime(base::Time time);
+
+  // Read The JSON formatted TimeDelta from `path`.
+  // Returns true on success and false otherwise.
+  static bool ReadTimeDeltaFromFile(const base::FilePath& path,
+                                    base::TimeDelta* delta);
+
+  // Write `delta` as a JSON formatted value to `path`.
+  // Returns true on success and false otherwise.
+  static bool WriteTimeDeltaToFile(const base::FilePath& path,
+                                   base::TimeDelta delta);
+
+  // Convert a filename in the JSON Value format to a Time value.
+  // Returns true on success and false otherwise.
+  static bool JSONFileNameToTime(const base::FilePath& path, base::Time* time);
+
+  // Convert a base::Time value, `time`, to a JSON format filename.
+  // Returns true on success and false otherwise.
+  static bool TimeToJSONFileName(base::Time time, base::FilePath* path);
+
+  // Delete the JSON format filename converted from `time` in directory `dir`.
+  // Crashes if deleting the file fails (not if the JSON conversion fails).
+  static void DeleteChargeFile(const base::FilePath& dir, base::Time time);
+
+  // Base directory for Charge History.
+  base::FilePath charge_history_dir_;
+
+  // Directory for storing charge events, which track the start of charge and
+  // duration.
+  base::FilePath charge_events_dir_;
+
+  // We schedule replacements on `rewrite_timer_` at
+  // `kChargeHistoryTimeInterval` aligned times for privacy reasons; we don't
+  // want to leak the exact plug/unplug times accidentally. This contains the
+  // paths to be rewritten along with the associated TimeDelta values.
+  // The TimeDelta will be serialized out to the FilePath.
+  std::map<base::FilePath, base::TimeDelta> scheduled_rewrites_;
+
+  // Timer to schedule files rewrites on for `scheduled_rewrites_`.
+  base::RetainingOneShotTimer rewrite_timer_;
+
+  // Timer to schedule removing files due to retention limits.
+  base::RepeatingTimer retention_timer_;
+
+  // Cached timestamp for when the charger was connected (if it hasn't been
+  // removed yet).
+  base::Time ac_connect_time_;
+
+  // Ordered map of charge events, which maps AC charge plug in times to
+  // duration of charge. This provides O(logn) addition and removal of charge
+  // events (including removal of min and max) where n <= 50.
+  std::map<base::Time, base::TimeDelta> charge_events_;
+
+  // Cached external power type. Used to determine if a charge event needs to be
+  // created or completed.
+  PowerSupplyProperties::ExternalPower cached_external_power_;
+
+  // Whether Init was called yet, which must be called after we're sure that the
+  // PowerStatus updated correctly. This is when HandlePowerStatusUpdate is
+  // called.
+  bool initialized_ = false;
+
+  base::WeakPtrFactory<ChargeHistory> weak_ptr_factory_;
 };
 
 class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
@@ -140,9 +286,12 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
     StartRecheckAlarm(delay);
   }
 
+  ChargeHistory* get_charge_history_for_testing() { return &charge_history_; }
+
   // Overridden from AdaptiveChargingControllerInterface:
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
   void PrepareForSuspendAttempt() override;
+  void HandleFullResume() override;
   void HandleShutdown() override;
   void OnPredictionResponse(bool inference_done,
                             const std::vector<double>& result) override;
@@ -211,6 +360,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   policy::BacklightController* backlight_controller_;  // non-owned
 
   PrefsInterface* prefs_;  // non-owned
+
+  ChargeHistory charge_history_;
 
   PowerSupplyProperties::ExternalPower cached_external_power_;
 

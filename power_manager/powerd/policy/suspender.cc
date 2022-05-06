@@ -621,6 +621,8 @@ void Suspender::FinishRequest(bool success,
   suspend_delay_controller_->FinishSuspend(suspend_request_id_);
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
   shutdown_from_suspend_->HandleFullResume();
+  if (adaptive_charging_controller_)
+    adaptive_charging_controller_->HandleFullResume();
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type);
   delegate_->SetSuspendAnnounced(false);
   dark_resume_->ExitDarkResume();

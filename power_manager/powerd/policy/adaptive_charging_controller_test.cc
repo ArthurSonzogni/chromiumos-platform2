@@ -9,9 +9,17 @@
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/json/json_file_value_serializer.h>
+#include <base/json/values_util.h>
 #include <base/run_loop.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -71,12 +79,20 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
     delegate_.fake_upper = kBatterySustainDisabled;
     power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
     power_status_.display_battery_percentage = kDefaultTestPercent;
+    power_status_.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
     power_supply_.set_status(power_status_);
     adaptive_charging_controller_.set_recheck_alarm_for_testing(
         std::move(recheck_alarm));
     adaptive_charging_controller_.set_charge_alarm_for_testing(
         std::move(charge_alarm));
     prefs_.SetInt64(kAdaptiveChargingHoldPercentPref, kDefaultTestPercent);
+    EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
+    EXPECT_TRUE(temp_dir_.IsValid());
+    charge_history_dir_ = temp_dir_.GetPath().Append("charge_history");
+    charge_events_dir_ = charge_history_dir_.Append("charge_events");
+    charge_history_ =
+        adaptive_charging_controller_.get_charge_history_for_testing();
+    charge_history_->set_charge_history_dir_for_testing(charge_history_dir_);
   }
 
   ~AdaptiveChargingControllerTest() override = default;
@@ -141,6 +157,69 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
     power_supply_.NotifyObservers();
   }
 
+  void CreateChargeHistoryDirectories() {
+    EXPECT_FALSE(base::DirectoryExists(charge_history_dir_));
+    EXPECT_TRUE(CreateDirectory(charge_history_dir_));
+    EXPECT_TRUE(CreateDirectory(charge_events_dir_));
+  }
+
+  base::Time FloorTime(base::Time time) {
+    base::TimeDelta conv =
+        time.ToDeltaSinceWindowsEpoch().FloorToMultiple(base::Minutes(15));
+    return base::Time::FromDeltaSinceWindowsEpoch(conv);
+  }
+
+  void CreateChargeHistoryFile(const base::FilePath& dir,
+                               const base::Time& start) {
+    base::Value val = base::TimeToValue(FloorTime(start));
+    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    base::File file(dir.Append(opt_path.value()),
+                    base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_READ |
+                        base::File::FLAG_WRITE);
+    EXPECT_TRUE(file.IsValid());
+  }
+
+  int NumChargeHistoryFiles(const base::FilePath& dir) {
+    base::FileEnumerator file_enum(dir, false, base::FileEnumerator::FILES);
+    int num_files = 0;
+    for (base::FilePath path = file_enum.Next(); !path.empty();
+         path = file_enum.Next()) {
+      num_files++;
+    }
+    return num_files;
+  }
+
+  void WriteChargeHistoryFile(const base::FilePath& dir,
+                              const base::Time& start,
+                              const base::TimeDelta& duration) {
+    base::Value val = base::TimeToValue(FloorTime(start));
+    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    JSONFileValueSerializer serializer(dir.Append(opt_path.value()));
+    EXPECT_TRUE(serializer.Serialize(base::TimeDeltaToValue(duration)));
+  }
+
+  bool ChargeHistoryFileExists(const base::FilePath& dir,
+                               const base::Time& start) {
+    base::Value val = base::TimeToValue(FloorTime(start));
+    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    return base::PathExists(dir.Append(opt_path.value()));
+  }
+
+  base::TimeDelta ReadTimeDeltaFromFile(const base::FilePath& path) {
+    JSONFileValueDeserializer deserializer(path);
+    int error;
+    std::string error_msg;
+    auto val_ptr = deserializer.Deserialize(&error, &error_msg);
+    return base::ValueToTimeDelta(*val_ptr).value();
+  }
+
+  base::TimeDelta ReadChargeHistoryFile(const base::FilePath& dir,
+                                        const base::Time& start) {
+    base::Value val = base::TimeToValue(FloorTime(start));
+    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    return ReadTimeDeltaFromFile(dir.Append(opt_path.value()));
+  }
+
  protected:
   FakeDelegate delegate_;
   policy::BacklightControllerStub backlight_controller_;
@@ -151,7 +230,11 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
   brillo::timers::SimpleAlarmTimer* recheck_alarm_;
   brillo::timers::SimpleAlarmTimer* charge_alarm_;
   system::PowerStatus power_status_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath charge_history_dir_;
+  base::FilePath charge_events_dir_;
   AdaptiveChargingController adaptive_charging_controller_;
+  ChargeHistory* charge_history_;
 };
 
 // Test that the alarms are properly set when Adaptive Charging starts, when the
@@ -356,6 +439,123 @@ TEST_F(AdaptiveChargingControllerTest, TestFullCharge) {
   EXPECT_FALSE(charge_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
   EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
+// Test that sub-directories are created, permissions are modified, and initial
+// files are created when the base Charge History directory doesn't even exist.
+TEST_F(AdaptiveChargingControllerTest, TestEmptyChargeHistory) {
+  // Init will cause power_supply_ to notify observers, which will init Charge
+  // History.
+  Init();
+
+  // Check that directories are created.
+  EXPECT_TRUE(base::DirectoryExists(charge_history_dir_));
+  EXPECT_TRUE(base::DirectoryExists(charge_events_dir_));
+
+  // Verify permissions of directories are such that only powerd and root can
+  // read/write charge history.
+  int mode;
+  EXPECT_TRUE(base::GetPosixFilePermissions(charge_history_dir_, &mode));
+  EXPECT_EQ(0700, mode);
+  EXPECT_TRUE(base::GetPosixFilePermissions(charge_events_dir_, &mode));
+  EXPECT_EQ(0700, mode);
+
+  // Check that there is one empty file in `charge_events_dir_`, which indicates
+  // the charger was plugged in, and hasn't been unplugged yet.
+  base::FileEnumerator events_dir(charge_events_dir_, false,
+                                  base::FileEnumerator::FILES);
+  for (base::FilePath path = events_dir.Next(); !path.empty();
+       path = events_dir.Next()) {
+    // charge event should not have a duration yet.
+    EXPECT_EQ(0, events_dir.GetInfo().GetSize());
+  }
+  EXPECT_EQ(1, NumChargeHistoryFiles(charge_events_dir_));
+}
+
+// Verify that timestamps are 15 minute aligned for privacy reasons.
+TEST_F(AdaptiveChargingControllerTest, TestTimeAlignment) {
+  // Make an initial charge event about 40 minutes ago (not unplugged yet).
+  base::Time event_time = FloorTime(base::Time::Now() - base::Minutes(40));
+  CreateChargeHistoryDirectories();
+  CreateChargeHistoryFile(charge_events_dir_, event_time);
+  Init();
+
+  // Disconnect power, which should cause Charge History to be written.
+  DisconnectCharger();
+
+  base::TimeDelta duration =
+      ReadChargeHistoryFile(charge_events_dir_, event_time);
+  EXPECT_TRUE(base::Contains(
+      std::vector<base::TimeDelta>({base::Minutes(30), base::Minutes(45)}),
+      duration));
+}
+
+// Test that the charge event file update occurs.
+TEST_F(AdaptiveChargingControllerTest, HistoryWrittenOnUnplug) {
+  base::Time event_time = FloorTime(base::Time::Now() - base::Days(3));
+  CreateChargeHistoryDirectories();
+  CreateChargeHistoryFile(charge_events_dir_, event_time);
+  Init();
+  DisconnectCharger();
+
+  EXPECT_GE(base::Days(3) + base::Minutes(15),
+            ReadChargeHistoryFile(charge_events_dir_, event_time));
+  EXPECT_LE(base::Days(3) - base::Minutes(15),
+            ReadChargeHistoryFile(charge_events_dir_, event_time));
+}
+
+// Test that our retention policy is properly enforced on Init.
+TEST_F(AdaptiveChargingControllerTest, HistoryRetentionOnInit) {
+  // The first two events should be kept, since we delete events that are 30+
+  // days old from the time of unplug (not plug in).
+  base::Time now = base::Time::Now();
+  std::vector<base::Time> event_times = {
+      now - base::Days(7), now - base::Days(31), now - base::Days(32)};
+  std::vector<base::TimeDelta> event_durations = {base::Hours(1), base::Days(2),
+                                                  base::Hours(10)};
+  CreateChargeHistoryDirectories();
+  for (int i = 0; i < event_times.size(); i++) {
+    WriteChargeHistoryFile(charge_events_dir_, FloorTime(event_times[i]),
+                           event_durations[i]);
+  }
+
+  Init();
+  EXPECT_EQ(event_durations[0],
+            ReadChargeHistoryFile(charge_events_dir_, event_times[0]));
+  EXPECT_EQ(event_durations[1],
+            ReadChargeHistoryFile(charge_events_dir_, event_times[1]));
+  EXPECT_FALSE(ChargeHistoryFileExists(charge_events_dir_, event_times[2]));
+  // 2 of the existing files, and the empty charge event created on Init since
+  // the charger is connected.
+  EXPECT_EQ(3, NumChargeHistoryFiles(charge_events_dir_));
+}
+
+// Test that we limit the number of charge events to 50 on Init and when a new
+// charge event is created.
+TEST_F(AdaptiveChargingControllerTest, MaxChargeEvents) {
+  CreateChargeHistoryDirectories();
+  base::Time file_time = base::Time::Now() - base::Days(5);
+  for (int i = 0; i < 100; i++) {
+    WriteChargeHistoryFile(charge_events_dir_,
+                           file_time + i * base::Minutes(30),
+                           base::Minutes(15));
+  }
+
+  EXPECT_EQ(100, NumChargeHistoryFiles(charge_events_dir_));
+  Init();
+  EXPECT_EQ(50, NumChargeHistoryFiles(charge_events_dir_));
+
+  // Check that the correct charge event files still exist.
+  for (int i = 51; i < 100; i++) {
+    EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_,
+                                        file_time + i * base::Minutes(30)));
+  }
+
+  // Check that there are still 50 charge events after the latest charge event
+  // has a duration written to it.
+  DisconnectCharger();
+
+  EXPECT_EQ(50, NumChargeHistoryFiles(charge_events_dir_));
 }
 
 }  // namespace policy

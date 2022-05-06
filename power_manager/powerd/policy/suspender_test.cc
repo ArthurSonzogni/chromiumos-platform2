@@ -308,9 +308,10 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 
-  // Make sure that Adaptive Charging is notified of the suspend.
+  // Make sure that Adaptive Charging is notified of the suspend and resume.
   EXPECT_CALL(adaptive_charging_controller_, PrepareForSuspendAttempt())
       .Times(1);
+  EXPECT_CALL(adaptive_charging_controller_, HandleFullResume()).Times(1);
 
   // Simulate suspending for 20 minutes.
   const base::TimeDelta kDuration = base::Minutes(20);
@@ -809,6 +810,10 @@ TEST_F(SuspenderTest, DarkResume) {
   // be called again for suspending from Dark Resume.
   EXPECT_CALL(adaptive_charging_controller_, PrepareForSuspendAttempt())
       .Times(2);
+
+  // AdaptiveChargingController should only be notified of full resumes. There
+  // is one dark resume and one full resume in this test.
+  EXPECT_CALL(adaptive_charging_controller_, HandleFullResume()).Times(1);
 
   const int kWakeupCount = 45;
   delegate_.set_wakeup_count(kWakeupCount);

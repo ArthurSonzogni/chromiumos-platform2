@@ -4,8 +4,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
+#include <base/json/json_file_value_serializer.h>
+#include <base/json/json_string_value_serializer.h>
+#include <base/json/values_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>
@@ -19,12 +24,312 @@ namespace power_manager {
 namespace policy {
 
 namespace {
+const char kDefaultChargeHistoryDir[] =
+    "/var/lib/power_manager/charge_history/";
+const char kChargeEventsSubDir[] = "charge_events/";
+// `kRententionDays`, `kChargeHistoryTimeBucketSize`, and `kMaxChargeEvents`
+// require a privacy review to be changed.
+const base::TimeDelta kRetentionDays = base::Days(30);
+const base::TimeDelta kChargeHistoryTimeInterval = base::Minutes(15);
+const int kMaxChargeEvents = 50;
+
 const int64_t kBatterySustainDisabled = -1;
 const base::TimeDelta kDefaultAlarmInterval = base::Minutes(30);
 const int64_t kDefaultHoldPercent = 80;
 const double kDefaultMinProbability = 0.2;
 const int kAdaptiveChargingTimeBucketMin = 15;
+
 }  // namespace
+
+ChargeHistory::ChargeHistory()
+    : charge_history_dir_(kDefaultChargeHistoryDir), weak_ptr_factory_(this) {}
+
+void ChargeHistory::Init(const system::PowerStatus& status) {
+  ac_connect_time_ = base::Time();
+  CHECK(base::CreateDirectory(charge_history_dir_));
+  // Limit reading these files to just powerd and root.
+  CHECK(base::SetPosixFilePermissions(charge_history_dir_, 0700));
+
+  charge_events_dir_ = charge_history_dir_.Append(kChargeEventsSubDir);
+  CHECK(base::CreateDirectory(charge_events_dir_));
+
+  base::Time now = base::Time::Now();
+  base::FileEnumerator events_dir(charge_events_dir_, false,
+                                  base::FileEnumerator::FILES);
+  for (base::FilePath path = events_dir.Next(); !path.empty();
+       path = events_dir.Next()) {
+    base::Time file_time;
+    base::TimeDelta duration;
+    if (!JSONFileNameToTime(path, &file_time)) {
+      CHECK(base::DeleteFile(path));
+    } else if (events_dir.GetInfo().GetSize() == 0) {
+      // There should only be up to one empty charge event. If there's more than
+      // one, only keep the newest one.
+      if (ac_connect_time_ != base::Time()) {
+        if (file_time > ac_connect_time_) {
+          DeleteChargeFile(charge_events_dir_, ac_connect_time_);
+          ac_connect_time_ = file_time;
+        } else {
+          CHECK(base::DeleteFile(path));
+        }
+      } else if (status.external_power ==
+                 PowerSupplyProperties_ExternalPower_AC) {
+        ac_connect_time_ = file_time;
+      }
+    } else if (!ReadTimeDeltaFromFile(path, &duration)) {
+      CHECK(base::DeleteFile(path));
+    } else if (file_time + duration < now - kRetentionDays) {
+      CHECK(base::DeleteFile(path));
+    } else {
+      charge_events_[file_time] = duration;
+    }
+  }
+
+  UpdateHistory(status);
+  RemoveOldChargeEvents();
+  retention_timer_.Start(
+      FROM_HERE, base::Days(1),
+      base::BindRepeating(&ChargeHistory::OnRetentionTimerFired,
+                          weak_ptr_factory_.GetWeakPtr()));
+  initialized_ = true;
+}
+
+void ChargeHistory::set_charge_history_dir_for_testing(
+    const base::FilePath& dir) {
+  charge_history_dir_ = dir;
+}
+
+void ChargeHistory::HandlePowerStatusUpdate(const system::PowerStatus& status) {
+  if (!initialized_) {
+    Init(status);
+    return;
+  }
+
+  if (status.external_power == cached_external_power_)
+    return;
+
+  UpdateHistory(status);
+}
+
+void ChargeHistory::OnEnterLowPowerState() {
+  rewrite_timer_.Stop();
+}
+
+void ChargeHistory::OnExitLowPowerState() {
+  ScheduleRewrites();
+}
+
+void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
+  base::Time now = FloorTime(base::Time::Now());
+  cached_external_power_ = status.external_power;
+
+  // When AC is connected, we just create a new charge event with the current
+  // time as its file name.
+  if (cached_external_power_ == PowerSupplyProperties_ExternalPower_AC) {
+    if (ac_connect_time_ != base::Time()) {
+      LOG(ERROR) << "Last known state was AC Connected for AC Connect event";
+      return;
+    }
+
+    ac_connect_time_ = now;
+
+    // This will remove any existing charge event file with the same start time.
+    CreateEmptyChargeEventFile(ac_connect_time_);
+
+    // If there's an existing charge event for this timestamp, remove it.
+    charge_events_.erase(ac_connect_time_);
+    RemoveOldChargeEvents();
+    return;
+  }
+
+  if (ac_connect_time_ == base::Time()) {
+    LOG(ERROR) << "Latest charge event has a duration on AC unplug, which "
+               << "means the plug-in event was missed.";
+    return;
+  }
+
+  // On AC disconnect, write the charging duration to the latest charge event
+  // file (the name of which will be the connection time).
+  base::TimeDelta duration = now - ac_connect_time_;
+  WriteDurationToFile(charge_events_dir_, ac_connect_time_, duration);
+  charge_events_[ac_connect_time_] = duration;
+  ac_connect_time_ = base::Time();
+}
+
+void ChargeHistory::CreateEmptyChargeEventFile(base::Time start) {
+  base::FilePath path;
+  if (!TimeToJSONFileName(FloorTime(start), &path))
+    return;
+
+  base::File file(charge_events_dir_.Append(path),
+                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_READ |
+                      base::File::FLAG_WRITE);
+  DCHECK(file.IsValid());
+}
+
+void ChargeHistory::RemoveOldChargeEvents() {
+  int max = kMaxChargeEvents;
+  if (ac_connect_time_ != base::Time())
+    --max;
+
+  while (charge_events_.size() > max) {
+    auto it = charge_events_.begin();
+    DeleteChargeFile(charge_events_dir_, it->first);
+    charge_events_.erase(it);
+  }
+
+  if (charge_events_.empty())
+    return;
+
+  auto it = charge_events_.begin();
+  while (it != charge_events_.end() &&
+         it->first + it->second < base::Time::Now() - kRetentionDays) {
+    charge_events_.erase(it);
+    it = charge_events_.begin();
+  }
+}
+
+void ChargeHistory::OnRetentionTimerFired() {
+  RemoveOldChargeEvents();
+}
+
+void ChargeHistory::ScheduleRewrites() {
+  base::TimeDelta delay = base::Time::Now().ToDeltaSinceWindowsEpoch();
+  delay = delay.CeilToMultiple(kChargeHistoryTimeInterval) - delay;
+  rewrite_timer_.Start(FROM_HERE, delay,
+                       base::BindRepeating(&ChargeHistory::OnRewriteTimerFired,
+                                           weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ChargeHistory::OnRewriteTimerFired() {
+  for (auto it = scheduled_rewrites_.begin(); it != scheduled_rewrites_.end();
+       it++) {
+    bool success = WriteTimeDeltaToFile(it->first, it->second);
+    DCHECK(success);
+  }
+  scheduled_rewrites_.clear();
+}
+
+void ChargeHistory::WriteDurationToFile(const base::FilePath& dir,
+                                        base::Time time,
+                                        base::TimeDelta duration) {
+  if (duration < base::TimeDelta()) {
+    LOG(WARNING) << "Negative duration: " << duration.InMilliseconds()
+                 << "ms set to be written to directory: " << dir
+                 << " for time: " << time << ". Setting to 0";
+    duration = base::TimeDelta();
+  }
+
+  base::FilePath path;
+  if (!TimeToJSONFileName(time, &path)) {
+    LOG(ERROR) << "Failed to convert time value: " << time << " to file name";
+    return;
+  }
+
+  // Write the file now for data retention purposes, but schedule a write later
+  // (that will replace the file) at a 15 minute aligned time for privacy
+  // reasons.
+  path = dir.Append(path);
+  bool success = WriteTimeDeltaToFile(path, duration);
+  DCHECK(success);
+  if (success) {
+    scheduled_rewrites_[path] = duration;
+    ScheduleRewrites();
+  }
+}
+
+// static
+base::Time ChargeHistory::FloorTime(base::Time time) {
+  base::TimeDelta conv = time.ToDeltaSinceWindowsEpoch().FloorToMultiple(
+      kChargeHistoryTimeInterval);
+  return base::Time::FromDeltaSinceWindowsEpoch(conv);
+}
+
+// static
+bool ChargeHistory::ReadTimeDeltaFromFile(const base::FilePath& file,
+                                          base::TimeDelta* delta) {
+  // The TimeDelta values is stored in JSON format.
+  JSONFileValueDeserializer deserializer(file);
+  int error_code = 0;
+  std::string error_msg;
+  auto val = deserializer.Deserialize(&error_code, &error_msg);
+  if (!val.get()) {
+    LOG(ERROR) << "Failed to deserialize TimeDelta from " << file
+               << " with error message " << error_msg << " and error code "
+               << error_code;
+    return false;
+  }
+
+  auto opt_delta = base::ValueToTimeDelta(*val);
+  if (!opt_delta.has_value()) {
+    LOG(ERROR) << "Failed to parse TimeDelta from file contents: " << file;
+    return false;
+  }
+
+  *delta = opt_delta.value();
+  return true;
+}
+
+// static
+bool ChargeHistory::WriteTimeDeltaToFile(const base::FilePath& path,
+                                         base::TimeDelta delta) {
+  // Use the string instead of file serializer, since we use
+  // ImportantFileWriter functionality to write the file safely.
+  std::string json_string;
+  JSONStringValueSerializer serializer(&json_string);
+  base::Value val =
+      base::TimeDeltaToValue(delta.FloorToMultiple(kChargeHistoryTimeInterval));
+  if (!serializer.Serialize(val)) {
+    LOG(ERROR) << "Failed to serialize TimeDelta: " << delta
+               << " to a string. Deleting file: " << path
+               << " that it would be written to";
+    CHECK(base::DeleteFile(path));
+    return false;
+  }
+
+  return base::ImportantFileWriter::WriteFileAtomically(path, json_string);
+}
+
+// static
+bool ChargeHistory::JSONFileNameToTime(const base::FilePath& file,
+                                       base::Time* time) {
+  base::Value val = base::FilePathToValue(file.BaseName());
+  absl::optional<base::Time> opt_time = base::ValueToTime(val);
+  if (!opt_time.has_value()) {
+    LOG(ERROR) << "Failed to parse timestamp from filename: " << file;
+    return false;
+  }
+
+  *time = opt_time.value();
+  return true;
+}
+
+// static
+bool ChargeHistory::TimeToJSONFileName(base::Time time, base::FilePath* file) {
+  base::Value val = base::TimeToValue(time);
+  absl::optional<base::FilePath> opt_file = base::ValueToFilePath(val);
+  if (!opt_file.has_value()) {
+    LOG(ERROR) << "Failed to create filename from time: " << time;
+    return false;
+  }
+
+  *file = opt_file.value();
+  return true;
+}
+
+// static
+// We don't schedule deletion of files since this will only update timestamps
+// associated with the last modification to the directory. Since this is only
+// one timestamp, and it will be overwritten later on as well, there is no
+// privacy concern around this.
+void ChargeHistory::DeleteChargeFile(const base::FilePath& dir,
+                                     base::Time time) {
+  base::FilePath path;
+  if (!TimeToJSONFileName(FloorTime(time), &path))
+    return;
+
+  CHECK(base::DeleteFile(dir.Append(path)));
+}
 
 AdaptiveChargingController::AdaptiveChargingController()
     : weak_ptr_factory_(this) {}
@@ -142,11 +447,17 @@ void AdaptiveChargingController::PrepareForSuspendAttempt() {
   // Set the charge policy synchronously to make sure this completes before
   // suspend.
   UpdateAdaptiveCharging(UserChargingEvent::Event::SUSPEND, false /* async */);
+  charge_history_.OnEnterLowPowerState();
+}
+
+void AdaptiveChargingController::HandleFullResume() {
+  charge_history_.OnExitLowPowerState();
 }
 
 void AdaptiveChargingController::HandleShutdown() {
   adaptive_charging_enabled_ = false;
   StopAdaptiveCharging();
+  charge_history_.OnEnterLowPowerState();
 }
 
 void AdaptiveChargingController::OnPredictionResponse(
@@ -249,6 +560,7 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
   PowerSupplyProperties::ExternalPower last_external_power =
       cached_external_power_;
   cached_external_power_ = status.external_power;
+  charge_history_.HandlePowerStatusUpdate(status);
 
   if (status.external_power != last_external_power) {
     if (status.external_power == PowerSupplyProperties_ExternalPower_AC) {
