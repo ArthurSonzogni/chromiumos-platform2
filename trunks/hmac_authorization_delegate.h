@@ -17,7 +17,6 @@
 
 namespace trunks {
 
-const uint8_t kContinueSession = 1;
 const size_t kAesKeySize = 16;      // 128 bits is minimum AES key size.
 const size_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
 

@@ -9,6 +9,8 @@
 
 namespace trunks {
 
+inline constexpr uint8_t kContinueSession = 1;
+
 // AuthorizationDelegate is an interface passed to TPM commands. The delegate
 // takes care of providing the authorization data for commands and verifying
 // authorization data for responses. It also handles parameter encryption for

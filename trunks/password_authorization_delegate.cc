@@ -6,11 +6,10 @@
 
 #include <base/logging.h>
 
+#include "trunks/authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
-
-const uint8_t kContinueSession = 1;
 
 PasswordAuthorizationDelegate::PasswordAuthorizationDelegate(
     const std::string& password) {
