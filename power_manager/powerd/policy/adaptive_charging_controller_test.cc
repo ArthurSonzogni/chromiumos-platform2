@@ -124,6 +124,23 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
     EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
   }
 
+  void DisconnectCharger() {
+    power_status_.external_power =
+        PowerSupplyProperties_ExternalPower_DISCONNECTED;
+    power_status_.battery_state =
+        PowerSupplyProperties_BatteryState_DISCHARGING;
+    power_supply_.set_status(power_status_);
+    power_supply_.NotifyObservers();
+  }
+
+  void ConnectCharger() {
+    // Leave whether to set `power_status_.battery_state` to FULL or CHARGING to
+    // the caller.
+    power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
+    power_supply_.set_status(power_status_);
+    power_supply_.NotifyObservers();
+  }
+
  protected:
   FakeDelegate delegate_;
   policy::BacklightControllerStub backlight_controller_;
@@ -179,10 +196,7 @@ TEST_F(AdaptiveChargingControllerTest, TestAlarmSet) {
 TEST_F(AdaptiveChargingControllerTest, TestBatterySustainClearedDisconnect) {
   Init();
   // When external power is unplugged.
-  power_status_.external_power =
-      PowerSupplyProperties_ExternalPower_DISCONNECTED;
-  power_supply_.set_status(power_status_);
-  power_supply_.NotifyObservers();
+  DisconnectCharger();
   EXPECT_FALSE(recheck_alarm_->IsRunning());
   EXPECT_FALSE(charge_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
@@ -320,13 +334,9 @@ TEST_F(AdaptiveChargingControllerTest, TestChargeNow) {
 
   // Check that Adaptive Charging successfully starts again after unplugging
   // then plugging the AC charger.
-  power_status_.external_power =
-      PowerSupplyProperties_ExternalPower_DISCONNECTED;
-  power_supply_.set_status(power_status_);
-  power_supply_.NotifyObservers();
-  power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
-  power_supply_.set_status(power_status_);
-  power_supply_.NotifyObservers();
+  DisconnectCharger();
+  power_status_.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+  ConnectCharger();
   EXPECT_TRUE(charge_alarm_->IsRunning());
   EXPECT_TRUE(recheck_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
@@ -339,15 +349,9 @@ TEST_F(AdaptiveChargingControllerTest, TestFullCharge) {
   InitFullCharge();
 
   // Verify that Adaptive Charging doesn't start on unplug/plug as well.
-  power_status_.external_power =
-      PowerSupplyProperties_ExternalPower_DISCONNECTED;
-  power_status_.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
-  power_supply_.set_status(power_status_);
-  power_supply_.NotifyObservers();
-  power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
+  DisconnectCharger();
   power_status_.battery_state = PowerSupplyProperties_BatteryState_FULL;
-  power_supply_.set_status(power_status_);
-  power_supply_.NotifyObservers();
+  ConnectCharger();
   EXPECT_FALSE(recheck_alarm_->IsRunning());
   EXPECT_FALSE(charge_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
