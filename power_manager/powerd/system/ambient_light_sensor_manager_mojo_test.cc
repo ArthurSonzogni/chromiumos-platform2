@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/run_loop.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
@@ -53,13 +54,20 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
   void ResetMojoChannel() {
     sensor_service_.ClearReceivers();
 
-    // Wait until the disconnect handler in |sensor_service_handler_| is called.
-    base::RunLoop().RunUntilIdle();
-
     mojo::PendingRemote<cros::mojom::SensorService> pending_remote;
     sensor_service_.AddReceiver(
         pending_remote.InitWithNewPipeAndPassReceiver());
-    sensor_service_handler_.SetUpChannel(std::move(pending_remote));
+
+    // |sensor_service_.ClearReceivers()| will trigger
+    // |sensor_service_handler_::OnSensorServiceDisconnect|, if the
+    // SensorService mojo pipe exists. |sensor_service_handler_::SetUpChannel|
+    // should be called after the disconnect handler is executed, to setup the
+    // SensorService mojo pipe again.
+    base::SequencedTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&SensorServiceHandler::SetUpChannel,
+                       base::Unretained(&sensor_service_handler_),
+                       std::move(pending_remote), base::DoNothing()));
   }
 
   void SetSensor(int32_t iio_device_id,

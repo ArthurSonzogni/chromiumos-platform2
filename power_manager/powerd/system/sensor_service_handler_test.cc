@@ -30,12 +30,17 @@ class FakeObserver : public SensorServiceHandlerObserver {
       int32_t iio_device_id,
       const std::vector<cros::mojom::DeviceType>& types) override {
     device_ids_.push_back(iio_device_id);
+
+    if (on_new_device_added_closure_)
+      on_new_device_added_closure_.Run();
   }
   void SensorServiceConnected() override { connected_ = true; }
   void SensorServiceDisconnected() override { connected_ = false; }
 
   std::vector<int32_t> device_ids_;
   std::optional<bool> connected_;
+
+  base::RepeatingClosure on_new_device_added_closure_;
 };
 
 }  // namespace
@@ -101,14 +106,20 @@ TEST_F(SensorServiceHandlerTest, DisconnectCallback) {
 TEST_F(SensorServiceHandlerTest, ConnectedAndAddNewDevices) {
   EXPECT_TRUE(observer_->connected_.value_or(false));
 
+  base::RunLoop loop, loop2;
+
+  observer_->on_new_device_added_closure_ = loop.QuitClosure();
+
   SetSensor(1);
-  base::RunLoop().RunUntilIdle();
+  loop.Run();
 
   EXPECT_EQ(observer_->device_ids_.size(), 1);
   EXPECT_EQ(observer_->device_ids_[0], 1);
 
   auto observer2 = std::make_unique<FakeObserver>(&sensor_service_handler_);
-  base::RunLoop().RunUntilIdle();
+  observer2->on_new_device_added_closure_ = loop2.QuitClosure();
+  loop2.Run();
+
   EXPECT_EQ(observer2->device_ids_.size(), 1);
   EXPECT_EQ(observer2->device_ids_[0], 1);
 }
