@@ -6,6 +6,16 @@
 # Gets the stateful partition name.
 # Used for recovery while booted from MiniOs.
 
+# shellcheck source=/dev/null
+. /usr/share/misc/shflags
+
+DEFINE_boolean lvm_stateful "${FLAGS_FALSE}" \
+                       "Use LVM-based stateful partition"
+DEFINE_boolean mount "${FLAGS_FALSE}" "Mount stateful partition"
+
+FLAGS "$@" || exit "$?"
+eval set -- "${FLAGS_ARGV}"
+
 get_stateful_partition() {
   local DST
   . /usr/bin/write_gpt.sh
@@ -29,18 +39,29 @@ get_stateful_partition() {
 mount_stateful_partition() {
   local stateful
   if ! mountpoint -q /stateful; then
-    if stateful="$(get_stateful_partition)"; then
-      mount "${stateful}" /stateful
-    else
+    if ! stateful="$(get_stateful_partition)"; then
       return 1
     fi
+
+    if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
+      # Get unencrypted LVM stateful partition.
+      . /usr/share/misc/lvm-utils.sh
+      local vg_name
+      vg_name="$(get_volume_group "${stateful}")"
+      if [ -n "${vg_name}" ]; then
+        vgchange -ay "${vg_name}" >/dev/null 2>&1
+        stateful="/dev/${vg_name}/unencrypted"
+      fi
+    fi
+
+    mount "${stateful}" /stateful
   fi
 }
 
 main() {
   set -e
 
-  if [ "$1" = "--mount" ]; then
+  if [ "${FLAGS_mount}" -eq "${FLAGS_TRUE}" ]; then
     mount_stateful_partition
   else
     get_stateful_partition
