@@ -70,6 +70,7 @@ using brillo::SecureBlob;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
@@ -2194,7 +2195,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
       .WillOnce(Return(false));
@@ -2302,7 +2303,7 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
       .WillOnce(Return(false));
@@ -2874,7 +2875,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
         .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
-    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
         .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
     EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
         .WillOnce(Return(false));
@@ -2932,7 +2933,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
       .WillOnce(Return(false));
@@ -3062,7 +3063,7 @@ TEST_F(UserDataAuthExTest, AddKeyValidity) {
   add_req_->mutable_key()->mutable_data()->set_label("just a label");
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
@@ -3083,7 +3084,7 @@ TEST_F(UserDataAuthExTest, AddKeyResetSeedGeneration) {
   add_req_->mutable_key()->mutable_data()->set_label("just a label");
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, AddWrappedResetSeedIfMissing(_, _));
   EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
@@ -3105,8 +3106,10 @@ TEST_F(UserDataAuthExTest, AddKeyKeysetNotFound) {
   add_req_->mutable_key()->mutable_data()->set_label("just a label");
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(nullptr)));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
+      .WillOnce(ReturnError<CryptohomeMountError>(
+          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
+          MOUNT_ERROR_KEY_FAILURE));
 
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -3127,7 +3130,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   Credentials credentials("another", brillo::SecureBlob(kKey));
   session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   // The `unlock_webauthn_secret` is false by default, WebAuthn secret shouldn't
@@ -3149,7 +3152,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsUnlockWebAuthnSecretSuccess) {
   Credentials credentials("another", brillo::SecureBlob(kKey));
   session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   // The `unlock_webauthn_secret` is set to true, so WebAuthn secret should be
@@ -3172,8 +3175,10 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
   Credentials credentials("another", brillo::SecureBlob(kKey));
   session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::unique_ptr<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
+      .WillOnce(ReturnError<CryptohomeMountError>(
+          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
+          MOUNT_ERROR_KEY_FAILURE));
 
   // CheckKey failed, so the WebAuthn secret shouldn't be prepared even if
   // `unlock_webauthn_secret` is true.
@@ -3215,6 +3220,10 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   EXPECT_CALL(*session_, VerifyCredentials(CredentialsMatcher(credentials)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
+      .WillRepeatedly(ReturnError<CryptohomeMountError>(
+          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
+          MOUNT_ERROR_KEY_FAILURE));
 
   // CheckKey failed, so the WebAuthn secret shouldn't be prepared even if
   // `unlock_webauthn_secret` is true.
@@ -3433,7 +3442,7 @@ TEST_F(UserDataAuthExTest, RemoveKeyValidity) {
   EXPECT_CALL(keyset_management_,
               RemoveKeyset(Property(&Credentials::username, kUsername1),
                            Property(&KeyData::label, kLabel1)))
-      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
+      .WillOnce(ReturnError<CryptohomeError>());
 
   EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3449,7 +3458,9 @@ TEST_F(UserDataAuthExTest, RemoveKeyValidity) {
   EXPECT_CALL(keyset_management_,
               RemoveKeyset(Property(&Credentials::username, kUsername1),
                            Property(&KeyData::label, kLabel1)))
-      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+      .WillOnce(ReturnError<CryptohomeError>(
+          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
@@ -3694,9 +3705,8 @@ TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
 
   // Test for successful case.
 
-  EXPECT_CALL(
-      keyset_management_,
-      GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
+  EXPECT_CALL(keyset_management_,
+              GetValidKeyset(Property(&Credentials::username, kUsername1)))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_,
               Migrate(_, Property(&Credentials::username, kUsername1)))
@@ -3705,17 +3715,17 @@ TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test for unsuccessful case when existing keyset is not validated.
-  EXPECT_CALL(
-      keyset_management_,
-      GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
-      .WillOnce(Return(ByMove(nullptr)));
+  EXPECT_CALL(keyset_management_,
+              GetValidKeyset(Property(&Credentials::username, kUsername1)))
+      .WillOnce(ReturnError<CryptohomeMountError>(
+          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
+          MOUNT_ERROR_KEY_FAILURE));
   EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
 
   // Test for unsuccessful case when keyset migration fails.
-  EXPECT_CALL(
-      keyset_management_,
-      GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
+  EXPECT_CALL(keyset_management_,
+              GetValidKeyset(Property(&Credentials::username, kUsername1)))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_,
               Migrate(_, Property(&Credentials::username, kUsername1)))

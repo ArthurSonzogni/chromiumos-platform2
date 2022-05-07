@@ -21,6 +21,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
@@ -32,9 +33,9 @@ namespace cryptohome {
 
 class KeysetManagement {
  public:
-  using DecryptVkCallback =
-      base::RepeatingCallback<bool(VaultKeyset*, CryptoError*)>;
-  using EncryptVkCallback = base::OnceCallback<bool(VaultKeyset* vk)>;
+  using DecryptVkCallback = base::RepeatingCallback<CryptoStatus(VaultKeyset*)>;
+  using EncryptVkCallback =
+      base::OnceCallback<CryptohomeStatus(VaultKeyset* vk)>;
 
   KeysetManagement() = default;
   KeysetManagement(Platform* platform,
@@ -77,13 +78,12 @@ class KeysetManagement {
   // pair.
   virtual bool AreCredentialsValid(const Credentials& credentials);
 
-  // Returns decrypted with |creds| keyset, or nullptr if none decryptable
-  // with the provided |creds| found and |error| will be populated with the
-  // partucular failure reason.
-  // NOTE: The LE Credential Keysets are only considered when the key label
-  // provided via |creds| is non-empty (b/202907485).
-  virtual std::unique_ptr<VaultKeyset> GetValidKeyset(const Credentials& creds,
-                                                      MountError* error);
+  // Returns decrypted with |creds| keyset, or an error status with the reasons
+  // if none decryptable with the provided |creds| found. NOTE: The LE
+  // Credential Keysets are only considered when the key label provided via
+  // |creds| is non-empty (b/202907485).
+  virtual MountStatusOr<std::unique_ptr<VaultKeyset>> GetValidKeyset(
+      const Credentials& creds);
 
   // Loads the vault keyset for the supplied obfuscated username and index.
   // Returns true for success, false for failure.
@@ -94,8 +94,8 @@ class KeysetManagement {
   virtual bool UserExists(const std::string& obfuscated_username);
 
   // Adds initial keyset for the credentials and wraps the file system keyset
-  // provided. Returns the added keyset, or null on failure.
-  virtual std::unique_ptr<VaultKeyset> AddInitialKeyset(
+  // provided. Returns the added keyset, or an error status on failure.
+  virtual CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> AddInitialKeyset(
       const Credentials& credentials,
       const FileSystemKeyset& file_system_keyset);
 
@@ -132,15 +132,16 @@ class KeysetManagement {
 
   // Removes the keyset identified by |key_data|.  The VaultKeyset backing
   // |credentials| may be the same that |key_data| identifies.
-  virtual CryptohomeErrorCode RemoveKeyset(const Credentials& credentials,
-                                           const KeyData& key_data);
+  virtual CryptohomeStatus RemoveKeyset(const Credentials& credentials,
+                                        const KeyData& key_data);
 
   // Removes the keyset specified by |index| from the list for the user
   // vault identified by its |obfuscated| username.
   // The caller should check credentials if the call is user-sourced.
   // TODO(wad,ellyjones) Determine a better keyset priotization and management
   //                     scheme than just integer indices, like fingerprints.
-  virtual bool ForceRemoveKeyset(const std::string& obfuscated, int index);
+  virtual CryptohomeStatus ForceRemoveKeyset(const std::string& obfuscated,
+                                             int index);
 
   // Allows a keyset to be moved to a different index assuming the index can be
   // claimed for a given |obfuscated| username.
@@ -173,8 +174,9 @@ class KeysetManagement {
   // Checks whether the keyset is up to date (e.g. has correct encryption
   // parameters, has all required fields populated etc.) and if not, updates
   // and resaves the keyset.
-  virtual bool ReSaveKeysetIfNeeded(const Credentials& credentials,
-                                    VaultKeyset* keyset) const;
+  // Returns OkStatus if successful or no resave needed.
+  virtual CryptohomeStatus ReSaveKeysetIfNeeded(const Credentials& credentials,
+                                                VaultKeyset* keyset) const;
 
   // Check if the vault keyset needs re-encryption.
   virtual bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
@@ -186,7 +188,7 @@ class KeysetManagement {
   // ========== KeysetManagement methods with KeyBlobs ===============
 
   // Resaves the vault keyset with |key_blobs|, restoring on failure.
-  virtual bool ReSaveKeysetWithKeyBlobs(
+  virtual CryptohomeStatus ReSaveKeysetWithKeyBlobs(
       VaultKeyset& vault_keyset,
       KeyBlobs key_blobs,
       std::unique_ptr<AuthBlockState> auth_state) const;
@@ -195,7 +197,8 @@ class KeysetManagement {
   // the key data given by |key_data| and challenge credentials info given by
   // |challenge_credentials_keyset_info| to the created keyset. Wraps the keyset
   // with |key_blobs| and persists to the disk.
-  virtual std::unique_ptr<VaultKeyset> AddInitialKeysetWithKeyBlobs(
+  virtual CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
+  AddInitialKeysetWithKeyBlobs(
       const std::string& obfuscated_username,
       const KeyData& key_data,
       const SerializedVaultKeyset_SignatureChallengeInfo&
@@ -204,16 +207,15 @@ class KeysetManagement {
       KeyBlobs key_blobs,
       std::unique_ptr<AuthBlockState> auth_state);
 
-  // Returns decrypted with |key_blobs| keyset, or nullptr if none decryptable
-  // with the provided |key_blobs|, |obfuscated_username| and |label| found.
-  // |error| will be populated with the partucular failure reason. NOTE: The LE
-  // Credential Keysets are only considered when the |label| provided is
-  // non-empty (b/202907485).
-  virtual std::unique_ptr<VaultKeyset> GetValidKeysetWithKeyBlobs(
-      const std::string& obfuscated_username,
-      KeyBlobs key_blobs,
-      const std::optional<std::string>& label,
-      MountError* error);
+  // Returns decrypted with |key_blobs| keyset, or an error status with the
+  // particular failure reason if none decryptable with the provided
+  // |key_blobs|, |obfuscated_username| and |label|. NOTE: The LE Credential
+  // Keysets are only considered when the |label| provided is non-empty
+  // (b/202907485).
+  virtual MountStatusOr<std::unique_ptr<VaultKeyset>>
+  GetValidKeysetWithKeyBlobs(const std::string& obfuscated_username,
+                             KeyBlobs key_blobs,
+                             const std::optional<std::string>& label);
 
   // Adds a new keyset to the given |vault_keyset| and persist to
   // disk. This function assumes the user is already authenticated and their
@@ -255,7 +257,7 @@ class KeysetManagement {
   // the key data given by |key_data| and challenge credentials info given by
   // |challenge_credentials_keyset_info| to the created keyset. Wraps keyset
   // with |encrypt_vk_callback| and persists to disk.
-  std::unique_ptr<VaultKeyset> AddInitialKeysetImpl(
+  CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> AddInitialKeysetImpl(
       const std::string& obfuscated_username,
       const KeyData& key_data,
       const SerializedVaultKeyset_SignatureChallengeInfo&
@@ -265,11 +267,10 @@ class KeysetManagement {
 
   // Returns decrypted VaultKeyset for the obfuscated_username and label or
   // nullptr if none decryptable.
-  std::unique_ptr<VaultKeyset> GetValidKeysetImpl(
+  MountStatusOr<std::unique_ptr<VaultKeyset>> GetValidKeysetImpl(
       const std::string& obfuscated_username,
       const std::optional<std::string>& label,
-      DecryptVkCallback decrypt_vk_callback,
-      MountError* error);
+      DecryptVkCallback decrypt_vk_callback);
 
   // Generates a new keyset for |obfuscated_username_new| with |key_data_new|
   // and the filesystem key from |vault_keyset_old| and persist to disk.  If
@@ -282,13 +283,13 @@ class KeysetManagement {
                                     bool clobber);
 
   // Resaves the given |vault_keyset| with the credentials, restoring on error.
-  bool ReSaveKeyset(const Credentials& credentials,
-                    VaultKeyset* vault_keyset) const;
+  CryptohomeStatus ReSaveKeyset(const Credentials& credentials,
+                                VaultKeyset* vault_keyset) const;
 
   // Implements the common functionality for resaving a keyset with restore on
   // error.
-  bool ReSaveKeysetImpl(VaultKeyset& vault_keyset,
-                        EncryptVkCallback encrypt_vk_callback) const;
+  CryptohomeStatus ReSaveKeysetImpl(
+      VaultKeyset& vault_keyset, EncryptVkCallback encrypt_vk_callback) const;
 
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   base::Time GetPerIndexTimestampFileData(const std::string& obfuscated,

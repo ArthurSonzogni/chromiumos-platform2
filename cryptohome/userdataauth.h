@@ -798,14 +798,14 @@ class UserDataAuth {
   // =============== Mount Related Utilities ===============
 
   // Performs a single attempt to Mount a non-annonimous user.
-  MountError AttemptUserMount(const Credentials& credentials,
-                              const MountArgs& mount_args,
-                              scoped_refptr<UserSession> user_session);
+  MountStatus AttemptUserMount(const Credentials& credentials,
+                               const MountArgs& mount_args,
+                               scoped_refptr<UserSession> user_session);
 
   // Performs a single attempt to Mount a non-annonimous user with AuthSession
-  MountError AttemptUserMount(AuthSession* auth_session,
-                              const MountArgs& mount_args,
-                              scoped_refptr<UserSession> user_session);
+  MountStatus AttemptUserMount(AuthSession* auth_session,
+                               const MountArgs& mount_args,
+                               scoped_refptr<UserSession> user_session);
 
   // Returns the UserSession object associated with the given username
   scoped_refptr<UserSession> GetUserSession(const std::string& username);
@@ -936,9 +936,8 @@ class UserDataAuth {
 
   // This utility function loads the user vault keyset. Add the vault keyset
   // first, if the user is a new user.
-  std::unique_ptr<VaultKeyset> LoadVaultKeyset(const Credentials& credentials,
-                                               bool is_new_user,
-                                               MountError* error);
+  MountStatusOr<std::unique_ptr<VaultKeyset>> LoadVaultKeyset(
+      const Credentials& credentials, bool is_new_user);
 
   // This utility function adds a new credential to the user keyset. Obtains the
   // existing vault keyset by authenticating with the existing credentials; adds

@@ -154,10 +154,8 @@ class AuthSessionInterfaceTest : public ::testing::Test {
                   const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
     Credentials creds(username, secret);
-    EXPECT_CALL(keyset_management_,
-                GetValidKeyset(CredentialsMatcher(creds), _))
-        .WillOnce(DoAll(SetArgPointee<1>(MOUNT_ERROR_NONE),
-                        Return(ByMove(std::move(vk)))));
+    EXPECT_CALL(keyset_management_, GetValidKeyset(CredentialsMatcher(creds)))
+        .WillOnce(Return(ByMove(std::move(vk))));
   }
 };
 

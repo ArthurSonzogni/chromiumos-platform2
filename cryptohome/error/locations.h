@@ -669,6 +669,70 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthNoKeyInfoInTryLiteChalRespCheckKey = 421,
   /* ./userdataauth.cc */
   kLocUserDataAuthMultipleKeyInTryLiteChalRespCheckKey = 422,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementGetKeysetsFailedInGetValidKeyset = 423,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementNoKeysetsInGetValidKeyset = 424,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementKeysetNotDecryptedInGetValidKeyset = 425,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementNoKeysetsDecryptedInGetValidKeyset = 426,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementDecryptFailedInGetValidKeyset = 427,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementEncryptFailedInAddInitial = 428,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementSaveFailedInAddInitial = 429,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementEncryptFailedInReSaveKeyset = 430,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementSaveFailedInReSaveKeyset = 431,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementNoLabelInRemoveKeyset = 432,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementVKNotFoundInRemoveKeyset = 433,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementKeyNotFoundInRemoveKeyset = 434,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementBadAuthInRemoveKeyset = 435,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementRemoveFailedInRemoveKeyset = 436,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementInvalidIndexInRemoveKeyset = 437,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementDeleteFailedInRemoveKeyset = 438,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthRemoveUnrecoverableFailedInContinueMount = 439,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCreateKeyBlobsFailedInLoadVK = 440,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAddInitialKeysetFailedInLoadVK = 441,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetKeyLabelsFailedInLoadVK = 442,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoKeyLabelUsableInLoadVK = 443,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionActiveInAttemptUserMountCred = 444,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEphemeralFailedInAttemptUserMountCred = 445,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCheckExistenceFailedInAttemptUserMountCred = 446,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAccountMissingInAttemptUserMountCred = 447,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCreateFailedInAttemptUserMountCred = 448,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthLoadVKFailedInAttemptUserMountCred = 449,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountVaultFailedInAttemptUserMountCred = 450,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionActiveInAttemptUserMountAS = 451,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEphemeralFailedInAttemptUserMountAS = 452,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNotAuthedInAttemptUserMountAS = 453,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountVaultFailedInAttemptUserMountAS = 454,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -2092,14 +2092,14 @@ void UserDataAuth::ContinueMountWithCredentials(
   if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
 
-  MountError code;
+  MountStatus code;
   if (auth_session) {
     code = AttemptUserMount(auth_session, mount_args, user_session);
   } else {
     code = AttemptUserMount(*credentials, mount_args, user_session);
   }
   // Does actual mounting here.
-  if (code == MOUNT_ERROR_TPM_COMM_ERROR) {
+  if (!code.ok() && code->mount_error() == MOUNT_ERROR_TPM_COMM_ERROR) {
     LOG(WARNING) << "TPM communication error. Retrying.";
     if (auth_session) {
       code = AttemptUserMount(auth_session, mount_args, user_session);
@@ -2108,21 +2108,26 @@ void UserDataAuth::ContinueMountWithCredentials(
     }
   }
 
-  if (code == MOUNT_ERROR_VAULT_UNRECOVERABLE) {
+  if (!code.ok() && code->mount_error() == MOUNT_ERROR_VAULT_UNRECOVERABLE) {
     LOG(ERROR) << "Unrecoverable vault, removing.";
     if (!homedirs_->Remove(obfuscated_username)) {
       LOG(ERROR) << "Failed to remove unrecoverable vault.";
-      code = MOUNT_ERROR_REMOVE_INVALID_USER_FAILED;
+      code = MakeStatus<CryptohomeMountError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocUserDataAuthRemoveUnrecoverableFailedInContinueMount),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kPowerwash}),
+          MOUNT_ERROR_REMOVE_INVALID_USER_FAILED);
     }
   }
 
   // Mark the timer as done.
   ReportTimerStop(kMountExTimer);
 
-  if (code != MOUNT_ERROR_NONE) {
+  if (!code.ok()) {
     // Mount returned a non-OK status.
     LOG(ERROR) << "Failed to mount cryptohome, error = " << code;
-    reply.set_error(MountErrorToCryptohomeError(code));
+    reply.set_error(MountErrorToCryptohomeError(code->mount_error()));
     ResetDictionaryAttackMitigation();
     std::move(on_done).Run(reply);
     return;
@@ -2139,11 +2144,11 @@ void UserDataAuth::ContinueMountWithCredentials(
   keyset_management_->RecordAllVaultKeysetMetrics(obfuscated);
 }
 
-std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
-    const Credentials& credentials, bool is_new_user, MountError* error) {
+MountStatusOr<std::unique_ptr<VaultKeyset>> UserDataAuth::LoadVaultKeyset(
+    const Credentials& credentials, bool is_new_user) {
   AuthBlockState out_state;
   std::string obfuscated_username = credentials.GetObfuscatedUsername();
-  PopulateError(error, MountError::MOUNT_ERROR_NONE);
+
   // 1. Handle initial user case.
   if (is_new_user) {
     // Although there isn't any real use case of having LE credential as an
@@ -2159,19 +2164,29 @@ std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
     if (!err.ok()) {
       LOG(ERROR) << "Error in creating key blobs to add initial keyset: "
                  << err;
-      PopulateError(error, MountError::MOUNT_ERROR_KEY_FAILURE);
-      return nullptr;
+      return MakeStatus<CryptohomeMountError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocUserDataAuthCreateKeyBlobsFailedInLoadVK),
+                 ErrorActionSet({ErrorAction::kReboot,
+                                 ErrorAction::kDevCheckUnexpectedState}),
+                 MountError::MOUNT_ERROR_KEY_FAILURE)
+          .Wrap(std::move(err));
     }
     std::unique_ptr<AuthBlockState> auth_state =
         std::make_unique<AuthBlockState>(out_state);
-    if (!keyset_management_->AddInitialKeysetWithKeyBlobs(
+    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->AddInitialKeysetWithKeyBlobs(
             obfuscated_username, credentials.key_data(),
             credentials.challenge_credentials_keyset_info(),
             FileSystemKeyset::CreateRandom(), std::move(key_blobs),
-            std::move(auth_state))) {
+            std::move(auth_state));
+    if (!vk_status.ok()) {
       LOG(ERROR) << "Error in adding initial keyset.";
-      PopulateError(error, MountError::MOUNT_ERROR_KEY_FAILURE);
-      return nullptr;
+      return MakeStatus<CryptohomeMountError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocUserDataAuthAddInitialKeysetFailedInLoadVK),
+                 MountError::MOUNT_ERROR_KEY_FAILURE)
+          .Wrap(std::move(vk_status).status());
     }
   }
 
@@ -2188,13 +2203,20 @@ std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
   if (!GetKeyLabels(*keyset_management_, credentials, key_labels /*Out*/)) {
     LOG(ERROR) << "Error in LoadVaultKeyset getting the key data of the "
                   "existing keysets.";
-    PopulateError(error, MountError::MOUNT_ERROR_VAULT_UNRECOVERABLE);
-    return nullptr;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthGetKeyLabelsFailedInLoadVK),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault}),
+        MountError::MOUNT_ERROR_VAULT_UNRECOVERABLE);
   }
 
   // Assign each label from the existing vault keysets one by one to try
   // authentication against each vault keyset.
-  std::unique_ptr<VaultKeyset> vk;
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      MakeStatus<CryptohomeMountError>(
+          CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoKeyLabelUsableInLoadVK),
+          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth,
+                          ErrorAction::kDeleteVault}),
+          MountError::MOUNT_ERROR_KEY_FAILURE);
   Credentials temp_credential(credentials.username(), credentials.passkey());
   KeyData key_data = credentials.key_data();
   for (auto label : key_labels) {
@@ -2206,29 +2228,26 @@ std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
     CryptoStatus err = DeriveKeyBlobs(*auth_block_utility_, temp_credential,
                                       key_blobs /*Out*/);
     if (!err.ok()) {
-      PopulateError(error, CryptoErrorToMountError(err->local_crypto_error()));
-      // If the key derivation fails try key derivation with the next label. In
-      // the key derivation process label is used to obtain the AuthBlockState
-      // from the VaultKeyset with the given label for a given user.
+      vk_status = std::move(err);
       continue;
     }
-    vk = keyset_management_->GetValidKeysetWithKeyBlobs(
-        obfuscated_username, std::move(key_blobs), label, error);
-    if (vk != nullptr) {
+    vk_status = keyset_management_->GetValidKeysetWithKeyBlobs(
+        obfuscated_username, std::move(key_blobs), label);
+    if (vk_status.ok()) {
       LOG(INFO) << "Authenticated VaultKeyset with label: " << label;
       break;
     }
   }
-  if (!vk) {
-    return nullptr;
+  if (!vk_status.ok()) {
+    return vk_status;
   }
 
   // 3. Check whether an update is needed for the VaultKeyset. Reencrypt keyset
   // with a TPM backed key if user logged in while TPM ownership was taken. If
   // this is not the case, fill in missing fields in the keyset, and resave.
-  VaultKeyset updated_vault_keyset = *(vk.get());
+  VaultKeyset updated_vault_keyset = *(vk_status.value().get());
   if (!keyset_management_->ShouldReSaveKeyset(&updated_vault_keyset)) {
-    return vk;
+    return vk_status;
   }
   // KeyBlobs needs to be re-created since there maybe a change in the
   // AuthBlock type with the change in TPM state. Don't abort on failure.
@@ -2242,7 +2261,7 @@ std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
     LOG(ERROR) << "Error in key creation to resave the keyset. Old vault "
                   "keyset will be used. Error: "
                << create_err;
-    return vk;
+    return vk_status;
   }
   std::unique_ptr<AuthBlockState> auth_state =
       std::make_unique<AuthBlockState>(out_state);
@@ -2250,22 +2269,31 @@ std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
           updated_vault_keyset, std::move(key_blobs), std::move(auth_state))) {
     LOG(ERROR) << "Error in resaving updated vault keyset. Old vault keyset "
                   "will be used.";
-    return vk;
+    return vk_status;
   }
   return std::make_unique<VaultKeyset>(updated_vault_keyset);
 }
 
-MountError UserDataAuth::AttemptUserMount(
+MountStatus UserDataAuth::AttemptUserMount(
     const Credentials& credentials,
     const UserDataAuth::MountArgs& mount_args,
     scoped_refptr<UserSession> user_session) {
   if (user_session->IsActive()) {
-    return MOUNT_ERROR_MOUNT_POINT_BUSY;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionActiveInAttemptUserMountCred),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kRetry, ErrorAction::kReboot}),
+        MOUNT_ERROR_MOUNT_POINT_BUSY);
   }
 
   if (mount_args.is_ephemeral) {
     user_session->SetCredentials(credentials);
-    return user_session->MountEphemeral(credentials.username());
+    MountError err = user_session->MountEphemeral(credentials.username());
+    // TODO(b/230715712): Migrate UserSession and wrap the error.
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthEphemeralFailedInAttemptUserMountCred),
+        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}), err);
   }
 
   MountError error = MOUNT_ERROR_NONE;
@@ -2275,58 +2303,93 @@ MountError UserDataAuth::AttemptUserMount(
     if (error != MOUNT_ERROR_NONE) {
       LOG(ERROR) << "Failed to check cryptohome existence for : "
                  << obfuscated_username << " error = " << error;
-      return error;
+      return MakeStatus<CryptohomeMountError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocUserDataAuthCheckExistenceFailedInAttemptUserMountCred),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                          ErrorAction::kRetry, ErrorAction::kReboot,
+                          ErrorAction::kDeleteVault}),
+          error);
     }
     if (!mount_args.create_if_missing) {
       LOG(ERROR) << "Asked to mount nonexistent user";
-      return MOUNT_ERROR_USER_DOES_NOT_EXIST;
+      return MakeStatus<CryptohomeMountError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocUserDataAuthAccountMissingInAttemptUserMountCred),
+          ErrorActionSet({ErrorAction::kCreateRequired}),
+          MOUNT_ERROR_USER_DOES_NOT_EXIST);
     }
     if (!homedirs_->Create(credentials.username())) {
       LOG(ERROR) << "Error creating cryptohome.";
-      return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
+      return MakeStatus<CryptohomeMountError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocUserDataAuthCreateFailedInAttemptUserMountCred),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                          ErrorAction::kRetry, ErrorAction::kReboot,
+                          ErrorAction::kPowerwash}),
+          error);
     }
     created = true;
   }
 
-  std::unique_ptr<VaultKeyset> vk =
-      LoadVaultKeyset(credentials, created, &error);
-  if (error != MOUNT_ERROR_NONE) {
-    return error;
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      LoadVaultKeyset(credentials, created);
+  if (!vk_status.ok()) {
+    return MakeStatus<CryptohomeMountError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthLoadVKFailedInAttemptUserMountCred))
+        .Wrap(std::move(vk_status).status());
   }
-  if (vk == nullptr) {
-    return MOUNT_ERROR_FATAL;
-  }
+  std::unique_ptr<VaultKeyset> vk = std::move(vk_status).value();
 
   low_disk_space_handler_->disk_cleanup()->FreeDiskSpaceDuringLogin(
       obfuscated_username);
-  error = user_session->MountVault(credentials.username(),
-                                   FileSystemKeyset(*vk.get()),
-                                   MountArgsToVaultOptions(mount_args));
-  if (error == MOUNT_ERROR_NONE) {
+  MountError mount_error = user_session->MountVault(
+      credentials.username(), FileSystemKeyset(*vk.get()),
+      MountArgsToVaultOptions(mount_args));
+  // TODO(b/230715712): Migrate user session and wrap the error.
+  if (mount_error == MOUNT_ERROR_NONE) {
     // Store the credentials in the cache to use on session unlock.
     user_session->SetCredentials(credentials);
+    return OkStatus<CryptohomeMountError>();
   }
-
-  return error;
+  return MakeStatus<CryptohomeMountError>(
+      CRYPTOHOME_ERR_LOC(
+          kLocUserDataAuthMountVaultFailedInAttemptUserMountCred),
+      ErrorActionSet(
+          {ErrorAction::kRetry, ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+      mount_error);
 }
 
-MountError UserDataAuth::AttemptUserMount(
+MountStatus UserDataAuth::AttemptUserMount(
     AuthSession* auth_session,
     const UserDataAuth::MountArgs& mount_args,
     scoped_refptr<UserSession> user_session) {
   if (user_session->IsActive()) {
-    return MOUNT_ERROR_MOUNT_POINT_BUSY;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionActiveInAttemptUserMountAS),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kRetry, ErrorAction::kReboot}),
+        MOUNT_ERROR_MOUNT_POINT_BUSY);
   }
   // Mount ephemerally using authsession
   if (mount_args.is_ephemeral) {
     // Store the credentials in the cache to use on session unlock.
     user_session->SetCredentials(auth_session);
-    return user_session->MountEphemeral(auth_session->username());
+    MountError err = user_session->MountEphemeral(auth_session->username());
+    // TODO(b/230715712): Migrate UserSession and wrap the error.
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthEphemeralFailedInAttemptUserMountAS),
+        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}), err);
   }
 
   // Cannot proceed with mount if the AuthSession is not authenticated yet.
   if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
-    return MOUNT_ERROR_FATAL;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthNotAuthedInAttemptUserMountAS),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        MOUNT_ERROR_FATAL);
   }
 
   MountError error = user_session->MountVault(
@@ -2336,20 +2399,23 @@ MountError UserDataAuth::AttemptUserMount(
   if (error == MOUNT_ERROR_NONE) {
     // Store the credentials in the cache to use on session unlock.
     user_session->SetCredentials(auth_session);
+    return OkStatus<CryptohomeMountError>();
   }
-  return error;
+  return MakeStatus<CryptohomeMountError>(
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountVaultFailedInAttemptUserMountAS),
+      ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault}), error);
 }
 
 bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,
                                       const Credentials& new_credentials) {
   DCHECK_EQ(existing_credentials.username(), new_credentials.username());
-  std::unique_ptr<VaultKeyset> vault_keyset =
-      keyset_management_->GetValidKeyset(existing_credentials, nullptr);
-  if (vault_keyset == nullptr) {
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(existing_credentials);
+  if (!vk_status.ok()) {
     return false;
   }
 
-  if (!keyset_management_->Migrate(*vault_keyset.get(), new_credentials)) {
+  if (!keyset_management_->Migrate(*vk_status.value().get(), new_credentials)) {
     return false;
   }
   return true;
@@ -2360,16 +2426,16 @@ CryptohomeErrorCode UserDataAuth::AddVaultKeyset(
     const Credentials& new_credentials,
     bool clobber) {
   DCHECK_EQ(existing_credentials.username(), new_credentials.username());
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->GetValidKeyset(existing_credentials, nullptr);
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(existing_credentials);
 
-  if (!vk) {
+  if (!vk_status.ok()) {
     // Differentiate between failure and non-existent.
     if (!existing_credentials.key_data().label().empty()) {
-      vk = keyset_management_->GetVaultKeyset(
+      vk_status = keyset_management_->GetVaultKeyset(
           existing_credentials.GetObfuscatedUsername(),
           existing_credentials.key_data().label());
-      if (!vk.get()) {
+      if (!vk_status.ok()) {
         LOG(WARNING) << "Key not found for AddKey operation.";
         return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
       }
@@ -2381,7 +2447,7 @@ CryptohomeErrorCode UserDataAuth::AddVaultKeyset(
   // If the newly added credential is an LE credential and reset seed is
   // missing in the vault keyset it needs to be added. We don't know whether
   // it is LE credential yet. So add reset_seed in anycase and resave.
-  VaultKeyset* vault_keyset = vk.get();
+  VaultKeyset* vault_keyset = vk_status.value().get();
   CryptohomeErrorCode crypto_error =
       keyset_management_->AddWrappedResetSeedIfMissing(vault_keyset,
                                                        existing_credentials);
@@ -2531,14 +2597,14 @@ void UserDataAuth::CheckKey(
                                            obfuscated_username);
 
     if (request.unlock_webauthn_secret()) {
-      std::unique_ptr<VaultKeyset> vk =
-          keyset_management_->GetValidKeyset(credentials, nullptr /* error */);
-      if (!vk) {
+      MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+          keyset_management_->GetValidKeyset(credentials);
+      if (!vk_status.ok()) {
         std::move(on_done).Run(
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
         return;
       }
-      if (!PrepareWebAuthnSecret(account_id, *vk)) {
+      if (!PrepareWebAuthnSecret(account_id, *vk_status.value().get())) {
         // Failed to prepare WebAuthn secret means there's no active user
         // session for the account id.
         std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
@@ -2556,9 +2622,9 @@ void UserDataAuth::CheckKey(
     return;
   }
 
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->GetValidKeyset(credentials, nullptr /* error */);
-  if (!vk) {
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(credentials);
+  if (!vk_status.ok()) {
     // TODO(wad) Should this pass along KEY_NOT_FOUND too?
     std::move(on_done).Run(
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -2570,7 +2636,7 @@ void UserDataAuth::CheckKey(
                                          obfuscated_username);
 
   if (request.unlock_webauthn_secret()) {
-    if (!PrepareWebAuthnSecret(account_id, *vk)) {
+    if (!PrepareWebAuthnSecret(account_id, *vk_status.value().get())) {
       // Failed to prepare WebAuthn secret means there's no active user
       // session for the account id.
       std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
@@ -2893,14 +2959,13 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
 
-  CryptohomeErrorCode result;
-  result = keyset_management_->RemoveKeyset(credentials, request.key().data());
+  CryptohomeStatus result =
+      keyset_management_->RemoveKeyset(credentials, request.key().data());
 
-  // Note that cryptohome::CryptohomeErrorCode and
-  // user_data_auth::CryptohomeErrorCode are same in content, and it'll remain
-  // so until the end of the refactor, so we can safely cast from one to
-  // another.
-  return static_cast<user_data_auth::CryptohomeErrorCode>(result);
+  if (result.ok()) {
+    return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  }
+  return result->local_legacy_error().value();
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(

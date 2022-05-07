@@ -21,6 +21,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
@@ -42,6 +43,7 @@ using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
+using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 using ::testing::_;
@@ -369,10 +371,10 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_CALL(keyset_management_, ReSaveKeysetIfNeeded(_, _))
-      .WillOnce(Return(true));
+      .WillOnce(ReturnError<CryptohomeError>());
 
   // Verify.
   EXPECT_TRUE(auth_session.Authenticate(authorization_request).ok());
@@ -601,7 +603,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
       .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
       .WillOnce(Return(false));
@@ -678,7 +680,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave) {
       .WillOnce(Return(AuthBlockType::kLibScryptCompat));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));

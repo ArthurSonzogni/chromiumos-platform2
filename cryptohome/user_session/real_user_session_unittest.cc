@@ -83,8 +83,10 @@ class RealUserSessionTest : public ::testing::Test {
     PrepareDirectoryStructure();
 
     homedirs_->Create(kUser0);
-    keyset_management_->AddInitialKeyset(users_[0].credentials,
-                                         FileSystemKeyset::CreateRandom());
+    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> status =
+        keyset_management_->AddInitialKeyset(users_[0].credentials,
+                                             FileSystemKeyset::CreateRandom());
+    ASSERT_TRUE(status.ok());
 
     mount_ = new NiceMock<MockMount>();
 
@@ -177,9 +179,10 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
   session_->SetCredentials(users_[0].credentials);
-  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
-      users_[0].credentials, nullptr /*error*/);
-  FileSystemKeyset fs_keyset(*vk.get());
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(users_[0].credentials);
+  ASSERT_TRUE(vk_status.ok());
+  FileSystemKeyset fs_keyset(*vk_status.value().get());
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -332,13 +335,12 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
   CryptohomeVault::Options options = {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
-  MountError code = MOUNT_ERROR_NONE;
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->GetValidKeyset(users_[0].credentials, &code);
-  EXPECT_EQ(code, MOUNT_ERROR_NONE);
-  EXPECT_NE(vk, nullptr);
 
-  FileSystemKeyset fs_keyset(*vk.get());
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(users_[0].credentials);
+  ASSERT_TRUE(vk_status.ok());
+
+  FileSystemKeyset fs_keyset(*vk_status.value().get());
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -397,9 +399,10 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
-  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
-      users_[0].credentials, nullptr /*error*/);
-  FileSystemKeyset fs_keyset(*vk.get());
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(users_[0].credentials);
+  ASSERT_TRUE(vk_status.ok());
+  FileSystemKeyset fs_keyset(*vk_status.value().get());
   EXPECT_EQ(MOUNT_ERROR_NONE,
             session_->MountVault(users_[0].name, fs_keyset, options));
 

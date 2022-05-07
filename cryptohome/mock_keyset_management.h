@@ -39,9 +39,9 @@ class MockKeysetManagement : public KeysetManagement {
               Migrate,
               (const VaultKeyset&, const Credentials&),
               (override));
-  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+  MOCK_METHOD(MountStatusOr<std::unique_ptr<VaultKeyset>>,
               GetValidKeyset,
-              (const Credentials&, MountError*),
+              (const Credentials&),
               (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               GetVaultKeyset,
@@ -59,7 +59,7 @@ class MockKeysetManagement : public KeysetManagement {
               GetVaultKeysetLabelsAndData,
               (const std::string&, KeyLabelMap*),
               (const, override));
-  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+  MOCK_METHOD(CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
               AddInitialKeyset,
               (const Credentials&, const FileSystemKeyset&),
               (override));
@@ -75,11 +75,14 @@ class MockKeysetManagement : public KeysetManagement {
               UpdateKeyset,
               (const Credentials&, const VaultKeyset&),
               (override));
-  MOCK_METHOD(CryptohomeErrorCode,
+  MOCK_METHOD(CryptohomeStatus,
               RemoveKeyset,
               (const Credentials&, const KeyData&),
               (override));
-  MOCK_METHOD(bool, ForceRemoveKeyset, (const std::string&, int), (override));
+  MOCK_METHOD(CryptohomeStatus,
+              ForceRemoveKeyset,
+              (const std::string&, int),
+              (override));
   MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
   MOCK_METHOD(void, RemoveLECredentials, (const std::string&), (override));
   MOCK_METHOD(bool, UserExists, (const std::string&), (override));
@@ -95,7 +98,7 @@ class MockKeysetManagement : public KeysetManagement {
               CleanupPerIndexTimestampFiles,
               (const std::string&),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(CryptohomeStatus,
               ReSaveKeysetIfNeeded,
               (const Credentials& credentials, VaultKeyset* keyset),
               (const, override));
@@ -103,16 +106,13 @@ class MockKeysetManagement : public KeysetManagement {
               ShouldReSaveKeyset,
               (VaultKeyset * vault_keyset),
               (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(CryptohomeStatus,
               ReSaveKeysetWithKeyBlobs,
               (VaultKeyset&, KeyBlobs, std::unique_ptr<AuthBlockState>),
               (const, override));
-  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+  MOCK_METHOD(MountStatusOr<std::unique_ptr<VaultKeyset>>,
               GetValidKeysetWithKeyBlobs,
-              (const std::string&,
-               KeyBlobs,
-               const std::optional<std::string>&,
-               MountError*),
+              (const std::string&, KeyBlobs, const std::optional<std::string>&),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
               AddKeysetWithKeyBlobs,
@@ -123,7 +123,7 @@ class MockKeysetManagement : public KeysetManagement {
                std::unique_ptr<AuthBlockState>,
                bool clobber),
               (override));
-  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+  MOCK_METHOD(CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
               AddInitialKeysetWithKeyBlobs,
               (const std::string&,
                const KeyData&,

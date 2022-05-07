@@ -439,11 +439,14 @@ void AuthSession::AddVaultKeyset(
               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
       return;
     }
-    vault_keyset_ = keyset_management_->AddInitialKeysetWithKeyBlobs(
-        obfuscated_username_, key_data,
-        challenge_credentials_keyset_info.value(), file_system_keyset_.value(),
-        std::move(*key_blobs.get()), std::move(auth_state));
-    if (vault_keyset_ == nullptr) {
+    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->AddInitialKeysetWithKeyBlobs(
+            obfuscated_username_, key_data,
+            challenge_credentials_keyset_info.value(),
+            file_system_keyset_.value(), std::move(*key_blobs.get()),
+            std::move(auth_state));
+    if (!vk_status.ok()) {
+      vault_keyset_ = nullptr;
       ReplyWithError(
           std::move(on_done), reply,
           MakeStatus<CryptohomeError>(
@@ -453,6 +456,8 @@ void AuthSession::AddVaultKeyset(
               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
       return;
     }
+    vault_keyset_ = std::move(vk_status).value();
+
     // Flip the flag, so that our future invocations go through AddKeyset()
     // and not AddInitialKeyset().
     user_has_configured_credential_ = true;
@@ -646,24 +651,22 @@ CryptohomeStatus AuthSession::Authenticate(
   if (!is_ephemeral_user_) {
     // A persistent mount will always have a persistent key on disk. Here
     // keyset_management tries to fetch that persistent credential.
-    MountError error = MOUNT_ERROR_NONE;
-    // TODO(dlunev): fix conditional error when we switch to StatusOr.
-    vault_keyset_ = keyset_management_->GetValidKeyset(*credentials, &error);
-    if (!vault_keyset_) {
-      // MountError from GetValidKeyset is MOUNT_ERROR_NONE only if
-      // CryptoError::CE_TPM_FATAL is received from VaultKeyset::Decrypt().
-      error = (error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : error);
-      // TODO(b/229825202): Migrate Keyset Management and wrap the returned
-      // error.
+    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->GetValidKeyset(*credentials);
+    if (!vk_status.ok()) {
       return MakeStatus<CryptohomeMountError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionGetValidKeysetFailedInAuth),
-          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth,
-                          ErrorAction::kDeleteVault}),
-          error, MountErrorToCryptohomeError(error));
+                 CRYPTOHOME_ERR_LOC(kLocAuthSessionGetValidKeysetFailedInAuth))
+          .Wrap(std::move(vk_status).status());
     }
+    vault_keyset_ = std::move(vk_status).value();
     file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
     // Add the missing fields in the keyset, if any, and resave.
-    keyset_management_->ReSaveKeysetIfNeeded(*credentials, vault_keyset_.get());
+    CryptohomeStatus status = keyset_management_->ReSaveKeysetIfNeeded(
+        *credentials, vault_keyset_.get());
+    if (!status.ok()) {
+      LOG(INFO) << "Non-fatal error in resaving keyset during authentication: "
+                << status;
+    }
   }
 
   // Set the credential verifier for this credential.
@@ -850,15 +853,11 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   DCHECK(callback_error.ok());
 
-  MountError mount_error;
-  vault_keyset_ = keyset_management_->GetValidKeysetWithKeyBlobs(
-      obfuscated_username_, std::move(*key_blobs.get()), key_data_.label(),
-      &mount_error);
-  if (!vault_keyset_) {
-    // TODO(b/229825202): Migrate Keyset Management and wrap the returned
-    // error.
-    mount_error =
-        (mount_error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : mount_error);
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          obfuscated_username_, std::move(*key_blobs.get()), key_data_.label());
+  if (!vk_status.ok()) {
+    vault_keyset_ = nullptr;
 
     LOG(ERROR) << "Failed to load VaultKeyset and file system keyset.";
 
@@ -866,11 +865,12 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
         std::move(on_done), reply,
         MakeStatus<CryptohomeMountError>(
             CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionGetValidKeysetFailedInLoadVaultKeyset),
-            ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth,
-                            ErrorAction::kDeleteVault}),
-            mount_error, MountErrorToCryptohomeError(mount_error)));
+                kLocAuthSessionGetValidKeysetFailedInLoadVaultKeyset))
+            .Wrap(std::move(vk_status).status()));
+    return;
   }
+
+  vault_keyset_ = std::move(vk_status).value();
 
   // Authentication is successfully completed. Reset LE Credential counter if
   // the current AutFactor is not an LECredential.
@@ -935,7 +935,7 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
     return;
   }
 
-  keyset_management_->ReSaveKeysetWithKeyBlobs(
+  CryptohomeStatus status = keyset_management_->ReSaveKeysetWithKeyBlobs(
       updated_vault_keyset, std::move(*key_blobs), std::move(auth_block_state));
   // Updated ketyset is saved on the disk, it is safe to update
   // |vault_keyset_|.
