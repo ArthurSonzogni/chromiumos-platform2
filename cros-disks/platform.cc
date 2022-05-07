@@ -239,20 +239,18 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   return true;
 }
 
-MountErrorType Platform::Unmount(const std::string& path, int flags) const {
-  if (umount2(path.c_str(), flags) == 0) {
-    VLOG(1) << "Unmounted " << quote(path) << " with flags 0x" << std::hex
-            << flags << "...";
+MountErrorType Platform::Unmount(const std::string& mount_path) const {
+  if (umount2(mount_path.c_str(), MNT_FORCE | MNT_DETACH) == 0) {
+    VLOG(1) << "Unmounted " << quote(mount_path);
     return MOUNT_ERROR_NONE;
   }
 
   const error_t error = errno;
-  PLOG(ERROR) << "Cannot unmount " << redact(path) << " with flags 0x"
-              << std::hex << flags;
+  PLOG(ERROR) << "Cannot unmount " << redact(mount_path);
 
   switch (error) {
-    case EINVAL:  // |path| is not a mount point
-    case ENOENT:  // |path| has a nonexistent component
+    case EINVAL:  // |mount_path| is not a mount point
+    case ENOENT:  // |mount_path| has a nonexistent component
       return MOUNT_ERROR_PATH_NOT_MOUNTED;
     case EPERM:
       return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
@@ -261,6 +259,10 @@ MountErrorType Platform::Unmount(const std::string& path, int flags) const {
     default:
       return MOUNT_ERROR_UNKNOWN;
   }
+}
+
+MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
+  return Unmount(mount_path.value());
 }
 
 MountErrorType Platform::Mount(const std::string& source_path,
@@ -322,7 +324,7 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
       continue;
 
     const base::FilePath subdir = base::FilePath(dir).Append(name);
-    Platform::Unmount(subdir.value(), MNT_FORCE | MNT_DETACH);
+    Platform::Unmount(subdir.value());
     Platform::RemoveEmptyDirectory(subdir.value());
   }
 

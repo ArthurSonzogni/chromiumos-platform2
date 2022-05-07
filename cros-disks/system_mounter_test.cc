@@ -107,8 +107,7 @@ TEST(SystemMounterTest, MountFilesystem) {
   ASSERT_TRUE(mountpoint);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
-  EXPECT_CALL(platform, Unmount("/mnt/dir", 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform, Unmount("/mnt/dir")).WillOnce(Return(MOUNT_ERROR_NONE));
   mountpoint.reset();
 }
 
@@ -137,28 +136,10 @@ TEST(SystemMounterTest, UnmountFailedNoRetry) {
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
 
-  EXPECT_CALL(platform, Unmount("/mnt/dir", 0))
+  EXPECT_CALL(platform, Unmount("/mnt/dir"))
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARGUMENT))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARGUMENT, mountpoint->Unmount());
-  mountpoint.reset();
-}
-
-TEST(SystemMounterTest, UnmountBusyRetry) {
-  MockPlatform platform;
-  SystemMounter mounter(&platform, "fstype", /* read_only= */ false, {});
-
-  EXPECT_CALL(platform, Mount(_, "/mnt/dir", "fstype", _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto mountpoint =
-      mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
-
-  EXPECT_CALL(platform, Unmount("/mnt/dir", 0))
-      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
-  EXPECT_CALL(platform, Unmount("/mnt/dir", MNT_DETACH | MNT_FORCE))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mountpoint->Unmount());
   mountpoint.reset();
 }
 

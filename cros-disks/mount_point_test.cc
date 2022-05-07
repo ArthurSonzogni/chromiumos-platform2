@@ -40,34 +40,17 @@ class MountPointTest : public testing::Test {
 TEST_F(MountPointTest, Unmount) {
   auto mount_point = std::make_unique<MountPoint>(data_, &platform_);
 
-  EXPECT_CALL(platform_, Unmount(kMountPath, _))
+  EXPECT_CALL(platform_, Unmount(kMountPath))
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE));
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mount_point->Unmount());
 
-  EXPECT_CALL(platform_, Unmount(kMountPath, _))
+  EXPECT_CALL(platform_, Unmount(kMountPath))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
 
   EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Unmount());
-}
-
-TEST_F(MountPointTest, UnmountBusy) {
-  const std::unique_ptr<MountPoint> mount_point =
-      std::make_unique<MountPoint>(data_, &platform_);
-  EXPECT_TRUE(mount_point->is_mounted());
-
-  // Unmount will retry unmounting with force and detach if mount point busy.
-  EXPECT_CALL(platform_, Unmount(kMountPath, 0))
-      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
-  EXPECT_CALL(platform_, Unmount(kMountPath, MNT_DETACH | MNT_FORCE))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
-      .WillOnce(Return(true));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
-
-  EXPECT_FALSE(mount_point->is_mounted());
 }
 
 TEST_F(MountPointTest, UnmountOnDestroy) {
@@ -85,7 +68,7 @@ TEST_F(MountPointTest, UnmountError) {
       std::make_unique<MountPoint>(data_, &platform_);
   EXPECT_TRUE(mount_point->is_mounted());
 
-  EXPECT_CALL(platform_, Unmount(kMountPath, 0))
+  EXPECT_CALL(platform_, Unmount(kMountPath))
       .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -113,7 +96,7 @@ TEST_F(MountPointTest, Remount) {
   EXPECT_EQ(MOUNT_ERROR_INTERNAL, mount_point->Remount(false));
   EXPECT_TRUE(mount_point->is_read_only());
 
-  EXPECT_CALL(platform_, Unmount(kMountPath, _))
+  EXPECT_CALL(platform_, Unmount(kMountPath))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));

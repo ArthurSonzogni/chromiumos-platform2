@@ -22,13 +22,12 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/error_logger.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
-#include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
-
 namespace {
 
 using testing::_;
@@ -52,7 +51,7 @@ const char kCgroup[] = "/sys/fs/cgroup/freezer/exe/cgroup.procs";
 const int kFUSEMountFlags = MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_DIRSYNC;
 
 // Mock Platform implementation for testing.
-class MockFUSEPlatform : public Platform {
+class MockFUSEPlatform : public MockPlatform {
  public:
   MockFUSEPlatform() {
     ON_CALL(*this, GetUserAndGroupId(_, _, _))
@@ -61,40 +60,6 @@ class MockFUSEPlatform : public Platform {
     ON_CALL(*this, SetOwnership(_, _, _)).WillByDefault(Return(true));
     ON_CALL(*this, SetPermissions(_, _)).WillByDefault(Return(true));
   }
-
-  MOCK_METHOD(bool,
-              GetUserAndGroupId,
-              (const std::string&, uid_t*, gid_t*),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Mount,
-              (const std::string&,
-               const std::string&,
-               const std::string&,
-               uint64_t,
-               const std::string&),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Unmount,
-              (const std::string&, int),
-              (const, override));
-  MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
-  MOCK_METHOD(bool,
-              RemoveEmptyDirectory,
-              (const std::string&),
-              (const, override));
-  MOCK_METHOD(bool,
-              SetOwnership,
-              (const std::string&, uid_t, gid_t),
-              (const, override));
-  MOCK_METHOD(bool,
-              GetOwnership,
-              (const std::string&, uid_t*, gid_t*),
-              (const, override));
-  MOCK_METHOD(bool,
-              SetPermissions,
-              (const std::string&, mode_t),
-              (const, override));
 
   bool Lstat(const std::string& path,
              base::stat_wrapper_t* out) const override {
@@ -284,8 +249,7 @@ TEST_F(FUSEMounterTest, MountingSucceeds) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -314,8 +278,7 @@ TEST_F(FUSEMounterTest, MountingReadOnly) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -347,8 +310,7 @@ TEST_F(FUSEMounterTest, MountingBlockDevice) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -357,7 +319,7 @@ TEST_F(FUSEMounterTest, MountFailed) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(mounter_, PrepareSandbox).Times(0);
-  EXPECT_CALL(platform_, Unmount(kMountDir, _)).Times(0);
+  EXPECT_CALL(platform_, Unmount(kMountDir)).Times(0);
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
@@ -372,8 +334,7 @@ TEST_F(FUSEMounterTest, SandboxFailed) {
   EXPECT_CALL(mounter_, PrepareSandbox)
       .WillOnce(DoAll(SetArgPointee<3>(MOUNT_ERROR_INVALID_MOUNT_OPTIONS),
                       Return(ByMove(nullptr))));
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 
@@ -406,8 +367,7 @@ TEST_F(FUSEMounterTest, AppFailed) {
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -428,8 +388,7 @@ TEST_F(FUSEMounterTest, UnmountTwice) {
 
   // Even though Unmount() is called twice, the underlying unmount should only
   // be done once.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
@@ -451,38 +410,13 @@ TEST_F(FUSEMounterTest, UnmountFailure) {
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
   // If an Unmount fails, we should be able to retry.
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
+  EXPECT_CALL(platform_, Unmount(kMountDir))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN));
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mount_point->Unmount());
 
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
-}
-
-TEST_F(FUSEMounterTest, UnmountBusy) {
-  EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  auto process_ptr = std::make_unique<MockSandboxedProcess>();
-  EXPECT_CALL(*process_ptr, StartImpl).WillOnce(Return(123));
-  EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
-      .WillOnce(Return(ByMove(std::move(process_ptr))));
-
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto mount_point =
-      mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
-  EXPECT_TRUE(mount_point);
-  EXPECT_EQ(MOUNT_ERROR_NONE, error);
-
-  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
-      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
-  EXPECT_CALL(platform_, Unmount(kMountDir, MNT_FORCE | MNT_DETACH))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
-      .WillOnce(Return(true));
-
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
 }
 

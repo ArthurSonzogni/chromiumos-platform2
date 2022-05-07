@@ -43,15 +43,11 @@ MountPoint::MountPoint(MountPointData data, const Platform* platform)
   DCHECK(!path().empty());
 }
 
-MountPoint::~MountPoint() {
-  Unmount();
-}
-
 MountErrorType MountPoint::Unmount() {
   MountErrorType error = MOUNT_ERROR_PATH_NOT_MOUNTED;
 
   if (is_mounted_) {
-    error = UnmountImpl();
+    error = platform_->Unmount(data_.mount_path);
     if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
       is_mounted_ = false;
 
@@ -88,44 +84,13 @@ MountErrorType MountPoint::Remount(bool read_only) {
     flags &= ~MS_RDONLY;
   }
 
-  const MountErrorType error = RemountImpl(flags);
+  const MountErrorType error =
+      platform_->Mount(data_.source, data_.mount_path.value(),
+                       data_.filesystem_type, flags | MS_REMOUNT, data_.data);
   if (!error)
     data_.flags = flags;
 
   return error;
-}
-
-MountErrorType MountPoint::UnmountImpl() {
-  // We take a 2-step approach to unmounting FUSE filesystems. First, try a
-  // normal unmount. This lets the VFS flush any pending data and lets the
-  // filesystem shut down cleanly. If the filesystem is busy, force unmount
-  // the filesystem. This is done because there is no good recovery path the
-  // user can take, and these filesystem are sometimes unmounted implicitly on
-  // login/logout/suspend.
-
-  const base::FilePath& mount_path = data_.mount_path;
-  if (const MountErrorType error = platform_->Unmount(mount_path.value(), 0);
-      error != MOUNT_ERROR_PATH_ALREADY_MOUNTED)
-    return error;
-
-  // The mount point couldn't be unmounted because it is BUSY.
-  LOG(INFO) << "Forcefully unmounting " << quote(mount_path) << "...";
-
-  // For FUSE filesystems, MNT_FORCE will cause the kernel driver to immediately
-  // close the channel to the user-space driver program and cancel all
-  // outstanding requests. However, if any program is still accessing the
-  // filesystem, the umount2() will fail with EBUSY and the mountpoint will
-  // still be attached. Since the mountpoint is no longer valid, use MNT_DETACH
-  // to also force the mountpoint to be disconnected. On a non-FUSE filesystem
-  // MNT_FORCE doesn't have effect, so it only handles MNT_DETACH, but it's OK
-  // to pass MNT_FORCE too.
-  return platform_->Unmount(mount_path.value(), MNT_FORCE | MNT_DETACH);
-}
-
-MountErrorType MountPoint::RemountImpl(int flags) {
-  return platform_->Mount(data_.source, data_.mount_path.value(),
-                          data_.filesystem_type, flags | MS_REMOUNT,
-                          data_.data);
 }
 
 MountErrorType MountPoint::ConvertLauncherExitCodeToMountError(

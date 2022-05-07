@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace cros_disks {
@@ -130,7 +131,8 @@ class Platform {
   virtual bool SetPermissions(const std::string& path, mode_t mode) const;
 
   // Unmounts |path| with |flags|.
-  virtual MountErrorType Unmount(const std::string& path, int flags) const;
+  virtual MountErrorType Unmount(const std::string& mount_path) const;
+  MountErrorType Unmount(const base::FilePath& mount_path) const;
 
   // Mounts the |source| filesystem of type |filesystem_type| at mount point
   // |target| with |flags| and |options|.

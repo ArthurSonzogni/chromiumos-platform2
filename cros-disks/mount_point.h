@@ -62,7 +62,7 @@ class MountPoint final {
 
   // Unmounts the mount point as a last resort, but as it's unable to handle
   // errors an explicit call to Unmount() is the better alternative.
-  ~MountPoint();
+  ~MountPoint() { Unmount(); }
 
   base::WeakPtr<MountPoint> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
@@ -114,13 +114,6 @@ class MountPoint final {
   Process* process() const { return process_.get(); }
 
  private:
-  // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
-  // called once, regardless of the number of times Unmount() is called.
-  MountErrorType UnmountImpl();
-
-  // Remounts with new flags. Only called if mount is assumed to be mounted.
-  MountErrorType RemountImpl(int flags);
-
   // Converts the FUSE launcher's exit code into a MountErrorType.
   MountErrorType ConvertLauncherExitCodeToMountError(int exit_code) const;
 
