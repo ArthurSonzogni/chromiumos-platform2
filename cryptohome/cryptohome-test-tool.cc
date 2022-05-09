@@ -17,6 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
@@ -39,6 +40,19 @@ using cryptohome::cryptorecovery::RecoveryResponse;
 using cryptohome::cryptorecovery::RequestMetadata;
 
 namespace {
+
+OnboardingMetadata GenerateFakeOnboardingMetadata() {
+  SecureBlob recovery_id = hwsec_foundation::Sha256(SecureBlob("recovery_id"));
+  OnboardingMetadata onboarding_metadata{
+      .cryptohome_user_type = cryptohome::cryptorecovery::UserType::kGaiaId,
+      .cryptohome_user = "123456789012345678901",
+      .device_user_id = "fake_device_user_id",
+      .board_name = "fake_board",
+      .model_name = "fake_model",
+      .recovery_id = hwsec_foundation::SecureBlobToHex(recovery_id)};
+
+  return onboarding_metadata;
+}
 
 cryptohome::cryptorecovery::RecoveryCryptoTpmBackend*
 GetRecoveryCryptoTpmBackend() {
@@ -115,7 +129,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   SecureBlob recovery_key;
   SecureBlob channel_pub_key;
   SecureBlob channel_priv_key;
-  OnboardingMetadata onboarding_metadata;
+  OnboardingMetadata onboarding_metadata = GenerateFakeOnboardingMetadata();
   if (!recovery_crypto->GenerateHsmPayload(
           mediator_pub_key, onboarding_metadata, &hsm_payload, &rsa_priv_key,
           &destination_share, &recovery_key, &channel_pub_key,
