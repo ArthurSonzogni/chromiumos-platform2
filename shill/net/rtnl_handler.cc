@@ -283,19 +283,17 @@ void RTNLHandler::ParseRTNL(InputData* data) {
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
-    SLOG(this, 5) << __func__ << ": received payload (" << end - buf << ")";
-
-    RTNLMessage msg;
-    ByteString payload(reinterpret_cast<const unsigned char*>(hdr),
-                       hdr->nlmsg_len);
-    SLOG(this, 5) << "RTNL received payload length " << payload.GetLength()
-                  << ": \"" << payload.HexEncode() << "\"";
+    const uint8_t* payload = reinterpret_cast<const uint8_t*>(hdr);
+    SLOG(this, 5) << __func__ << "RTNL received payload length "
+                  << hdr->nlmsg_len << ": \""
+                  << ByteString(payload, hdr->nlmsg_len).HexEncode() << "\"";
 
     // Swapping out of |stored_requests_| here ensures that the RTNLMessage will
     // be destructed regardless of the control flow below.
     std::unique_ptr<RTNLMessage> request_msg = PopStoredRequest(hdr->nlmsg_seq);
 
-    if (!msg.Decode(payload)) {
+    RTNLMessage msg;
+    if (!msg.Decode(payload, hdr->nlmsg_len)) {
       SLOG(this, 5) << __func__ << ": rtnl packet type " << hdr->nlmsg_type
                     << " length " << hdr->nlmsg_len << " sequence "
                     << hdr->nlmsg_seq;
@@ -324,11 +322,10 @@ void RTNLHandler::ParseRTNL(InputData* data) {
             mode = request_msg->mode();
           } else if (NLMSG_OK(&(hdrErr->msg),
                               static_cast<unsigned int>(end - buf))) {
-            ByteString payloadFromErr(
-                reinterpret_cast<const unsigned char*>(&(hdrErr->msg)),
-                hdrErr->msg.nlmsg_len);
+            const uint8_t* error_payload =
+                reinterpret_cast<const uint8_t*>(&(hdrErr->msg));
             RTNLMessage msgErr;
-            if (msgErr.Decode(payloadFromErr)) {
+            if (msgErr.Decode(error_payload, hdrErr->msg.nlmsg_len)) {
               request_str = " (" + msgErr.ToString() + ")";
               mode = msgErr.mode();
             }

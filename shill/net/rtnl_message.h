@@ -160,6 +160,9 @@ class SHILL_EXPORT RTNLMessage {
   RTNLMessage& operator=(const RTNLMessage&) = delete;
 
   // Parse an RTNL message.  Returns true on success.
+  bool Decode(const uint8_t* data, size_t length);
+  // TODO(b/230911080) Update usage of RTNLMessage::Decode in patchpanel and
+  // remove this overload version.
   bool Decode(const ByteString& data);
   // Encode an RTNL message.  Returns empty ByteString on failure.
   ByteString Encode() const;
@@ -275,7 +278,7 @@ class SHILL_EXPORT RTNLMessage {
                        const ByteString& info_data);
 
  private:
-  SHILL_PRIVATE bool DecodeInternal(const ByteString& msg);
+  SHILL_PRIVATE bool DecodeInternal(const uint8_t* data, size_t length);
   SHILL_PRIVATE bool DecodeLink(const RTNLHeader* hdr,
                                 rtattr** attr_data,
                                 int* attr_length);

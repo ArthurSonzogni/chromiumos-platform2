@@ -442,7 +442,7 @@ class RTNLMessageTest : public Test {
                      ByteString qdisc,
                      int oper_state) {
     RTNLMessage msg;
-    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
 
     EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
     EXPECT_EQ(mode, msg.mode());
@@ -483,7 +483,7 @@ class RTNLMessageTest : public Test {
                         unsigned char scope) {
     RTNLMessage msg;
 
-    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
     EXPECT_EQ(RTNLMessage::kTypeAddress, msg.type());
     EXPECT_EQ(mode, msg.mode());
     EXPECT_EQ(interface_index, msg.interface_index());
@@ -515,7 +515,7 @@ class RTNLMessageTest : public Test {
                       int metric) {
     RTNLMessage msg;
 
-    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
     EXPECT_EQ(RTNLMessage::kTypeRoute, msg.type());
     EXPECT_EQ(0, msg.interface_index());
     EXPECT_EQ(family, msg.family());
@@ -586,7 +586,7 @@ class RTNLMessageTest : public Test {
                      const std::string& ifname) {
     RTNLMessage msg;
 
-    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
     EXPECT_EQ(RTNLMessage::kTypeRule, msg.type());
     EXPECT_EQ(0, msg.interface_index());
     EXPECT_EQ(family, msg.family());
@@ -663,7 +663,7 @@ class RTNLMessageTest : public Test {
                       const std::string& dns_server_addresses) {
     RTNLMessage msg;
 
-    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
     EXPECT_EQ(RTNLMessage::kTypeRdnss, msg.type());
     EXPECT_EQ(mode, msg.mode());
     EXPECT_EQ(interface_index, msg.interface_index());
@@ -696,7 +696,7 @@ class RTNLMessageTest : public Test {
                          uint8_t type) {
     RTNLMessage msg;
 
-    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
     EXPECT_EQ(RTNLMessage::kTypeNeighbor, msg.type());
     EXPECT_EQ(mode, msg.mode());
     EXPECT_EQ(family, msg.family());
@@ -724,8 +724,7 @@ TEST_F(RTNLMessageTest, NewLinkWlan0) {
 
 TEST_F(RTNLMessageTest, NewLinkIfb1) {
   RTNLMessage msg;
-  EXPECT_TRUE(
-      msg.Decode(ByteString(kNewLinkMessageIfb1, sizeof(kNewLinkMessageIfb1))));
+  EXPECT_TRUE(msg.Decode(kNewLinkMessageIfb1, sizeof(kNewLinkMessageIfb1)));
   EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
 
   EXPECT_EQ(RTNLMessage::kModeAdd, msg.mode());
@@ -840,7 +839,7 @@ TEST_F(RTNLMessageTest, ParseRuleEvents) {
   };
   for (const auto& tt : test_cases) {
     RTNLMessage msg;
-    EXPECT_TRUE(msg.Decode(ByteString(tt.payload, tt.length)));
+    EXPECT_TRUE(msg.Decode(tt.payload, tt.length));
     EXPECT_EQ(tt.iif, msg.GetFraIifname());
     EXPECT_EQ(tt.oif, msg.GetFraOifname());
     EXPECT_EQ(tt.src.ToString(), msg.GetFraSrc().ToString());
@@ -855,8 +854,7 @@ TEST_F(RTNLMessageTest, ParseRuleEvents) {
 TEST_F(RTNLMessageTest, AddRouteBusted) {
   // RTNLMessage should list parse errors as kMessageUnknown
   RTNLMessage msg;
-  EXPECT_FALSE(
-      msg.Decode(ByteString(kAddRouteBusted, sizeof(kAddRouteBusted))));
+  EXPECT_FALSE(msg.Decode(kAddRouteBusted, sizeof(kAddRouteBusted)));
 }
 
 TEST_F(RTNLMessageTest, AddNeighbor) {
@@ -938,7 +936,8 @@ TEST_F(RTNLMessageTest, EncodeLinkDel) {
                    IPAddress::kFamilyUnknown);
 
   RTNLMessage msg;
-  EXPECT_TRUE(msg.Decode(pmsg.Encode()));
+  auto packet = pmsg.Encode();
+  EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
 
   EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
   EXPECT_EQ(RTNLMessage::kModeDelete, msg.mode());
@@ -961,7 +960,8 @@ TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
                    0, 0, 0, IPAddress::kFamilyUnknown);
   pmsg.SetIflaInfoKind(kLinkKind, {});
   RTNLMessage msg;
-  EXPECT_TRUE(msg.Decode(pmsg.Encode()));
+  auto packet = pmsg.Encode();
+  EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
   EXPECT_TRUE(msg.link_status().kind.has_value());
   EXPECT_EQ(msg.link_status().kind.value(), kLinkKind);
 }
@@ -1017,7 +1017,7 @@ TEST_F(RTNLMessageTest, ToString) {
   };
   for (const auto& tt : test_cases) {
     RTNLMessage msg;
-    EXPECT_TRUE(msg.Decode(ByteString(tt.payload, tt.length)));
+    EXPECT_TRUE(msg.Decode(tt.payload, tt.length));
     EXPECT_TRUE(RE2::FullMatch(msg.ToString(), tt.regexp))
         << '"' << msg.ToString() << "\" did not match regex \"" << tt.regexp
         << '"';

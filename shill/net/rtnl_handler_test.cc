@@ -581,7 +581,7 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
           run_loop.QuitClosure(), kErrorNumber));
 
   RTNLMessage sent_msg;
-  sent_msg.Decode(msg_bytes);
+  sent_msg.Decode(msg_bytes.GetConstData(), msg_bytes.GetLength());
   EXPECT_EQ(sent_msg.flags(),
             NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK);
   EXPECT_EQ(sent_msg.GetIflaIfname(), kIfName);

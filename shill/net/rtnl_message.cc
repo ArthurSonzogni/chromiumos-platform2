@@ -325,21 +325,24 @@ RTNLMessage::RTNLMessage(Type type,
       interface_index_(interface_index),
       family_(family) {}
 
-bool RTNLMessage::Decode(const ByteString& msg) {
-  bool ret = DecodeInternal(msg);
+bool RTNLMessage::Decode(const ByteString& data) {
+  return Decode(data.GetConstData(), data.GetLength());
+}
+
+bool RTNLMessage::Decode(const uint8_t* data, size_t length) {
+  bool ret = DecodeInternal(data, length);
   if (!ret) {
     Reset();
   }
   return ret;
 }
 
-bool RTNLMessage::DecodeInternal(const ByteString& msg) {
-  const RTNLHeader* hdr =
-      reinterpret_cast<const RTNLHeader*>(msg.GetConstData());
-
-  if (msg.GetLength() < sizeof(hdr->hdr) ||
-      msg.GetLength() < hdr->hdr.nlmsg_len)
+bool RTNLMessage::DecodeInternal(const uint8_t* data, size_t length) {
+  const RTNLHeader* hdr = reinterpret_cast<const RTNLHeader*>(data);
+  if (length < sizeof(hdr->hdr) || length < hdr->hdr.nlmsg_len ||
+      hdr->hdr.nlmsg_len < sizeof(hdr->hdr)) {
     return false;
+  }
 
   mode_ = kModeUnknown;
   switch (hdr->hdr.nlmsg_type) {
