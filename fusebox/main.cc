@@ -669,6 +669,99 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     request->ReplyBuffer(buf.data(), length);
   }
 
+  void Write(std::unique_ptr<WriteRequest> request,
+             ino_t ino,
+             const char* buf,
+             size_t size,
+             off_t off) override {
+    VLOG(1) << "write ino " << ino << " off " << off << " size " << size;
+
+    if (request->IsInterrupted())
+      return;
+
+    if (size > SSIZE_MAX) {
+      errno = request->ReplyError(EINVAL);
+      PLOG(ERROR) << "write size";
+      return;
+    }
+
+    if (!fusebox::GetFile(request->fh())) {
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "write fh " << request->fh();
+      return;
+    }
+
+    int fd = fusebox::GetFileDescriptor(request->fh());
+    if (fd != -1) {
+      WriteFileDescriptor(std::move(request), ino, fd, buf, size, off);
+      return;
+    }
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kWriteMethod);
+    dbus::MessageWriter writer(&method);
+
+    auto path = fusebox::GetFileData(request->fh()).path;
+    writer.AppendString(path);
+    writer.AppendInt64(base::strict_cast<int64_t>(off));
+    writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(buf), size);
+
+    auto write_response =
+        base::BindOnce(&FuseBoxClient::WriteResponse, base::Unretained(this),
+                       std::move(request), ino, size, off);
+    CallFuseBoxServerMethod(&method, std::move(write_response));
+  }
+
+  void WriteResponse(std::unique_ptr<WriteRequest> request,
+                     ino_t ino,
+                     size_t size,
+                     off_t off,
+                     dbus::Response* response) {
+    VLOG(1) << "write-resp fh " << request->fh() << " off " << off << " size "
+            << size;
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    if (!fusebox::GetFile(request->fh())) {
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "read-resp fh " << request->fh();
+      return;
+    }
+
+    uint32_t length = 0;
+    reader.PopUint32(&length);
+
+    request->ReplyWrite(length);
+  }
+
+  void WriteFileDescriptor(std::unique_ptr<WriteRequest> request,
+                           ino_t ino,
+                           int fd,
+                           const char* buf,
+                           size_t size,
+                           off_t off) {
+    VLOG(1) << "write-fd fh " << request->fh() << " off " << off << " size "
+            << size;
+
+    DCHECK_LE(size, SSIZE_MAX);
+
+    DCHECK_NE(-1, fd);
+    ssize_t length = HANDLE_EINTR(pwrite(fd, buf, size, off));
+    if (length == -1) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "write-fd fh " << request->fh();
+      return;
+    }
+
+    request->ReplyWrite(length);
+  }
+
   void Release(std::unique_ptr<OkRequest> request, ino_t ino) override {
     VLOG(1) << "release fh " << request->fh();
 
