@@ -624,6 +624,14 @@ void Euicc::OnFWUpdated(
     DbusResult<T...> dbus_result,
     int os_update_result) {
   VLOG(2) << __func__ << os_update_result;
+  if (os_update_result ==
+      Thales::Device::COS::COSUpdateHermesManager::COSUPDATE_RESULT_FAILED) {
+    auto decoded_error =
+        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                              kErrorUnknown, "eSIM OS update failed");
+    EndEuiccOp(dbus_result, std::move(decoded_error));
+    return;
+  }
   auto start_get_card_version = base::BindOnce(
       &Euicc::InitEuicc<T...>, weak_factory_.GetWeakPtr(),
       InitEuiccStep::START_GET_CARD_VERSION, std::move(passthrough_cb));
