@@ -347,9 +347,10 @@ message WriteProtectDisablePhysicalState {
 message WriteProtectDisableCompleteState {
   enum Action {
     RMAD_WP_DISABLE_UNKNOWN = 0;
-    RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE = 1;
+    RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE = 1;  // Deprecated.
     RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE = 2;
     RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN = 3;
+    RMAD_WP_DISABLE_COMPLETE_NO_OP = 4;
   }
   // Provided by daemon.
   // Deprecated.
