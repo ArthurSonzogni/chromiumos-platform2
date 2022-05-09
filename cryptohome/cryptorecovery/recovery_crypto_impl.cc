@@ -15,7 +15,10 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/system/sys_info.h>
+#include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <brillo/udev/udev_device.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
@@ -23,10 +26,12 @@
 #include <libhwsec-foundation/crypto/error_util.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/ec.h>
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/filesystem_layout.h"
 
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
@@ -45,6 +50,9 @@ namespace cryptohome {
 namespace cryptorecovery {
 
 namespace {
+
+constexpr char kDeviceUnknown[] = "UNKNOWN";
+constexpr int kRecoveryIdSeedLength = 32;
 
 brillo::SecureBlob GetRecoveryKeyHkdfInfo() {
   return brillo::SecureBlob("CryptoHome Wrapping Key");
@@ -122,7 +130,7 @@ bool GetRecoveryResponseFromProto(
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
-    RecoveryCryptoTpmBackend* tpm_backend) {
+    RecoveryCryptoTpmBackend* tpm_backend, Platform* platform) {
   DCHECK(tpm_backend);
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -137,12 +145,14 @@ std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
   }
   // using wrapUnique because the constructor is private and make_unique calls
   // the constructor externally
-  return base::WrapUnique(new RecoveryCryptoImpl(std::move(*ec), tpm_backend));
+  return base::WrapUnique(
+      new RecoveryCryptoImpl(std::move(*ec), tpm_backend, platform));
 }
 
 RecoveryCryptoImpl::RecoveryCryptoImpl(EllipticCurve ec,
-                                       RecoveryCryptoTpmBackend* tpm_backend)
-    : ec_(std::move(ec)), tpm_backend_(tpm_backend) {
+                                       RecoveryCryptoTpmBackend* tpm_backend,
+                                       Platform* platform)
+    : ec_(std::move(ec)), tpm_backend_(tpm_backend), platform_(platform) {
   DCHECK(tpm_backend_);
 }
 
@@ -814,6 +824,183 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
     return false;
   }
   return true;
+}
+
+bool RecoveryCryptoImpl::GenerateOnboardingMetadata(
+    const AccountIdentifier& account_id,
+    const std::string& gaia_id,
+    const std::string& device_user_id,
+    OnboardingMetadata* onboarding_metadata) const {
+  onboarding_metadata->cryptohome_user_type = UserType::kGaiaId;
+  // The user is uniquely identified by the obfuscated GAIA ID.
+  onboarding_metadata->cryptohome_user = gaia_id;
+  // Device ID is a stable cryptohome identifier (for cryptohome lifetime only).
+  // it does not uniquely identify the user though and gets regenerated on every
+  // new device account creation/device powerwash etc.
+  onboarding_metadata->device_user_id = device_user_id;
+  // The device board name and form-factor.
+  onboarding_metadata->board_name = base::SysInfo::GetLsbReleaseBoard();
+  std::string device_type;
+  if (!base::SysInfo::GetLsbReleaseValue("DEVICETYPE", &device_type)) {
+    LOG(ERROR) << "Unable to get device type for recovery onboarding";
+    onboarding_metadata->form_factor = kDeviceUnknown;
+  } else {
+    onboarding_metadata->form_factor = device_type;
+  }
+  onboarding_metadata->rlz_code = GetRlzCode();
+  std::string recovery_id = LoadStoredRecoveryId(account_id);
+  if (recovery_id.empty()) {
+    LOG(ERROR) << "Unable to get the valid Recovery Id";
+    return false;
+  }
+  onboarding_metadata->recovery_id = recovery_id;
+  return true;
+}
+
+std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
+    const AccountIdentifier& account_id) const {
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  if (recovery_id_path.empty()) {
+    LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
+    return "";
+  }
+  CryptoRecoveryIdContainer recovery_id_pb;
+  if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
+    LOG(ERROR) << "Unable to deserialize RecoveryId protobuf";
+    return "";
+  }
+  if (!recovery_id_pb.has_recovery_id() ||
+      recovery_id_pb.recovery_id().empty()) {
+    LOG(ERROR) << "Serialized protobuf does not contain the actual RecoveryId";
+    return "";
+  }
+  return hwsec_foundation::SecureBlobToHex(
+      brillo::SecureBlob(recovery_id_pb.recovery_id().begin(),
+                         recovery_id_pb.recovery_id().end()));
+}
+
+// TODO(mslus): Update the logic to generate a new CryptoRecoveryIdContainer
+// file if LoadPersistedRecoveryIdContainer fails.
+bool RecoveryCryptoImpl::GenerateRecoveryId(
+    const AccountIdentifier& account_id) const {
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  if (recovery_id_path.empty()) {
+    LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
+    return false;
+  }
+  CryptoRecoveryIdContainer recovery_id_pb;
+  if (IsRecoveryIdAvailable(recovery_id_path)) {
+    if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
+      return false;
+    }
+    if (!RotateRecoveryId(&recovery_id_pb)) {
+      return false;
+    }
+  } else {
+    GenerateInitialRecoveryId(&recovery_id_pb);
+  }
+  if (!PersistRecoveryIdContainer(recovery_id_path, recovery_id_pb)) {
+    LOG(ERROR) << "Unable to serialize the new Recovery Id";
+    return false;
+  }
+  return true;
+}
+
+bool RecoveryCryptoImpl::RotateRecoveryId(
+    CryptoRecoveryIdContainer* recovery_id_pb) const {
+  if (!recovery_id_pb->has_seed()) {
+    return false;
+  }
+  crypto::ScopedBIGNUM seed_bn =
+      hwsec_foundation::SecureBlobToBigNum(brillo::SecureBlob(
+          recovery_id_pb->seed().begin(), recovery_id_pb->seed().end()));
+  if (!recovery_id_pb->has_increment()) {
+    return false;
+  }
+  int increment = recovery_id_pb->increment();
+
+  if (BN_add_word(seed_bn.get(), increment) < 0) {
+    LOG(ERROR) << "Unable to increment the Recovery Id's seed";
+    return false;
+  }
+  brillo::SecureBlob recovery_id_blob;
+  if (!hwsec_foundation::BigNumToSecureBlob(*seed_bn, kRecoveryIdSeedLength,
+                                            &recovery_id_blob)) {
+    LOG(ERROR) << "Unable to convert Recovery Id to a binary blob";
+    return false;
+  }
+  // Computes a new recovery_id by hashing seed+increment. The hash
+  // (in the current version Sha256) must be resistant against length
+  // extension attacks.
+  recovery_id_blob = hwsec_foundation::Sha256(recovery_id_blob);
+  recovery_id_pb->set_increment(increment + 1);
+  recovery_id_pb->set_recovery_id(recovery_id_blob.data(),
+                                  recovery_id_blob.size());
+  return true;
+}
+
+void RecoveryCryptoImpl::GenerateInitialRecoveryId(
+    CryptoRecoveryIdContainer* recovery_id_pb) const {
+  brillo::SecureBlob seed_blob =
+      hwsec_foundation::CreateSecureRandomBlob(kRecoveryIdSeedLength);
+  brillo::SecureBlob recovery_id_blob = hwsec_foundation::Sha256(seed_blob);
+  recovery_id_pb->set_seed(seed_blob.data(), seed_blob.size());
+  recovery_id_pb->set_increment(1);
+  recovery_id_pb->set_recovery_id(recovery_id_blob.data(),
+                                  recovery_id_blob.size());
+}
+
+// Checks if the serialized RecoveryId was already generated and stored in user
+// home directory. It returns false if we cannot access user home directory
+// (but if so we should not try to construct OnboardingMetadata and other
+// recovery data blobs) of have not explicitly generated the RecoveryId yet.
+bool RecoveryCryptoImpl::IsRecoveryIdAvailable(
+    const base::FilePath& recovery_id_path) const {
+  return platform_->FileExists(recovery_id_path);
+}
+
+bool RecoveryCryptoImpl::LoadPersistedRecoveryIdContainer(
+    const base::FilePath& recovery_id_path,
+    CryptoRecoveryIdContainer* recovery_id_pb) const {
+  if (!IsRecoveryIdAvailable(recovery_id_path)) {
+    return false;
+  }
+  std::string recovery_id_serialized_pb;
+  if (!platform_->ReadFileToString(recovery_id_path,
+                                   &recovery_id_serialized_pb)) {
+    LOG(ERROR) << "Error reading serialized RecoveryId protobuf";
+    return false;
+  }
+  if (!recovery_id_pb->ParseFromString(recovery_id_serialized_pb)) {
+    LOG(ERROR) << "Unable to parse RecoveryId protobuf";
+    return false;
+  }
+  return true;
+}
+
+bool RecoveryCryptoImpl::PersistRecoveryIdContainer(
+    const base::FilePath& recovery_id_path,
+    const CryptoRecoveryIdContainer& recovery_id_pb) const {
+  std::string recovery_id_serialized_pb;
+  if (!recovery_id_pb.SerializeToString(&recovery_id_serialized_pb)) {
+    return false;
+  }
+  if (!platform_->WriteStringToFileAtomicDurable(
+          recovery_id_path, recovery_id_serialized_pb, kKeyFilePermissions)) {
+    LOG(ERROR) << "Failed to write serialized RecoveryId: "
+               << recovery_id_path.value();
+    return false;
+  }
+  return true;
+}
+
+std::string RecoveryCryptoImpl::GetRlzCode() const {
+  constexpr char kRlzCodePath[] = "/run/chromeos-config/v1/brand-code";
+  std::string data;
+  if (!platform_->ReadFileToString(base::FilePath(kRlzCodePath), &data)) {
+    return kDeviceUnknown;
+  }
+  return data;
 }
 
 }  // namespace cryptorecovery

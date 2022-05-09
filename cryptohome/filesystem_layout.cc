@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
@@ -33,6 +34,9 @@ constexpr mode_t kSaltFilePermissions = 0644;
 constexpr char kSkelPath[] = "/etc/skel";
 constexpr char kLogicalVolumePrefix[] = "cryptohome";
 constexpr char kDmcryptVolumePrefix[] = "dmcrypt";
+
+// Storage for serialized RecoveryId.
+constexpr char kRecoveryIdFile[] = "recovery_id";
 
 bool GetOrCreateSalt(Platform* platform,
                      const base::FilePath& salt_file,
@@ -66,6 +70,14 @@ bool GetOrCreateSalt(Platform* platform,
     salt->swap(local_salt);
   }
   return true;
+}
+
+// Get the Account ID for an AccountIdentifier proto.
+std::string GetAccountId(const cryptohome::AccountIdentifier& id) {
+  if (id.has_account_id()) {
+    return id.account_id();
+  }
+  return id.email();
 }
 
 }  // namespace
@@ -175,6 +187,17 @@ bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt) {
 
 bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt) {
   return GetOrCreateSalt(platform, PublicMountSaltFile(), salt);
+}
+
+base::FilePath GetRecoveryIdPath(
+    const cryptohome::AccountIdentifier& account_id) {
+  std::string obfuscated =
+      brillo::cryptohome::home::SanitizeUserName(GetAccountId(account_id));
+  if (obfuscated.empty()) {
+    return base::FilePath();
+  }
+  return brillo::cryptohome::home::GetHashedUserPath(obfuscated)
+      .Append(kRecoveryIdFile);
 }
 
 bool InitializeFilesystemLayout(Platform* platform,

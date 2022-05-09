@@ -140,7 +140,8 @@ class HsmPayloadCborHelperTest : public testing::Test {
     onboarding_meta_data_.cryptohome_user = "User ID";
     onboarding_meta_data_.device_user_id = "Device User ID";
     onboarding_meta_data_.board_name = "Board Name";
-    onboarding_meta_data_.model_name = "Model Name";
+    onboarding_meta_data_.form_factor = "Form factor";
+    onboarding_meta_data_.rlz_code = "Rlz Code";
     onboarding_meta_data_.recovery_id = "Recovery ID";
   }
 
@@ -281,9 +282,12 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
       CborMapContainsStringValue(kBoardName, onboarding_meta_data_.board_name));
+  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
+              CborMapContainsStringValue(kFormFactor,
+                                         onboarding_meta_data_.form_factor));
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
-      CborMapContainsStringValue(kModelName, onboarding_meta_data_.model_name));
+      CborMapContainsStringValue(kRlzCode, onboarding_meta_data_.rlz_code));
   EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
               CborMapContainsStringValue(kRecoveryId,
                                          onboarding_meta_data_.recovery_id));
@@ -295,7 +299,7 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
               CborMapContainsIntegerValue(kSchemaVersion,
                                           kOnboardingMetaDataSchemaVersion));
-  EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 7);
+  EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 8);
 
   // 3 fields + schema version:
   EXPECT_EQ(GetCborMapSize(cbor_output), 4);

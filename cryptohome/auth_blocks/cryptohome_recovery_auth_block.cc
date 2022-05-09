@@ -47,19 +47,23 @@ namespace cryptohome {
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
-    cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend)
-    : CryptohomeRecoveryAuthBlock(hwsec, tpm_backend, nullptr) {}
+    cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+    Platform* platform)
+    : CryptohomeRecoveryAuthBlock(hwsec, tpm_backend, nullptr, platform) {}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
     cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
-    LECredentialManager* le_manager)
+    LECredentialManager* le_manager,
+    Platform* platform)
     : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery),
       hwsec_(hwsec),
       tpm_backend_(tpm_backend),
-      le_manager_(le_manager) {
+      le_manager_(le_manager),
+      platform_(platform) {
   DCHECK(hwsec_);
   DCHECK(tpm_backend_);
+  DCHECK(platform_);
 }
 
 CryptoStatus CryptohomeRecoveryAuthBlock::Create(
@@ -88,7 +92,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
-      RecoveryCryptoImpl::Create(tpm_backend_);
+      RecoveryCryptoImpl::Create(tpm_backend_, platform_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
@@ -236,7 +240,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery =
-      RecoveryCryptoImpl::Create(tpm_backend_);
+      RecoveryCryptoImpl::Create(tpm_backend_, platform_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(

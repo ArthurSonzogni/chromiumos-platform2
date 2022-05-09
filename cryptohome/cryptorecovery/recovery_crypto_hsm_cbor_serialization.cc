@@ -181,7 +181,8 @@ const char kCryptohomeUser[] = "cryptohome_user";
 const char kCryptohomeUserType[] = "cryptohome_user_type";
 const char kDeviceUserId[] = "device_user_id";
 const char kBoardName[] = "board_name";
-const char kModelName[] = "model_name";
+const char kFormFactor[] = "form_factor";
+const char kRlzCode[] = "rlz_code";
 const char kRecoveryId[] = "recovery_id";
 const char kAuthClaim[] = "auth_claim";
 const char kRequestorUser[] = "requestor_user";
@@ -250,8 +251,10 @@ bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
                                    args.onboarding_meta_data.device_user_id);
   onboarding_meta_data_map.emplace(kBoardName,
                                    args.onboarding_meta_data.board_name);
-  onboarding_meta_data_map.emplace(kModelName,
-                                   args.onboarding_meta_data.model_name);
+  onboarding_meta_data_map.emplace(kFormFactor,
+                                   args.onboarding_meta_data.form_factor);
+  onboarding_meta_data_map.emplace(kRlzCode,
+                                   args.onboarding_meta_data.rlz_code);
   onboarding_meta_data_map.emplace(kRecoveryId,
                                    args.onboarding_meta_data.recovery_id);
   ad_map.emplace(kOnboardingMetaData, std::move(onboarding_meta_data_map));

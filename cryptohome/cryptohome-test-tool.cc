@@ -49,7 +49,8 @@ OnboardingMetadata GenerateFakeOnboardingMetadata() {
       .cryptohome_user = "123456789012345678901",
       .device_user_id = "fake_device_user_id",
       .board_name = "fake_board",
-      .model_name = "fake_model",
+      .form_factor = "fake_form_factor",
+      .rlz_code = "fake_rlz_code",
       .recovery_id = hwsec_foundation::SecureBlobToHex(recovery_id)};
 
   return onboarding_metadata;
@@ -114,8 +115,13 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path) {
+  // TODO(mslus): Platform pointer is passed here in order to access filesystem
+  // for recovery_id generation. We are using fake onboarding_metadata at the
+  // moment so it is ok to use nullptr but in the next iteration we should start
+  // testing with the real Platform.
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(),
+                                 /*platform*/ nullptr);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -198,7 +204,8 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(),
+                                 /*platform*/ nullptr);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -333,7 +340,8 @@ bool DoRecoveryCryptoDecryptAction(
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(),
+                                 /*platform*/ nullptr);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;

@@ -16,6 +16,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/fake_platform.h"
 
 using brillo::SecureBlob;
 using hwsec_foundation::BigNumToSecureBlob;
@@ -29,7 +30,9 @@ namespace cryptorecovery {
 namespace {
 
 constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
+const char kFakeDeviceId[] = "fake device id";
 const char kFakeGaiaAccessToken[] = "fake access token";
+const char kFakeGaiaId[] = "fake gaia id";
 const char kFakeRapt[] = "fake rapt";
 const char kFakeUserId[] = "fake user id";
 
@@ -89,10 +92,11 @@ class RecoveryCryptoTest : public testing::Test {
  public:
   RecoveryCryptoTest() {
     onboarding_metadata_.cryptohome_user_type = UserType::kGaiaId;
-    onboarding_metadata_.cryptohome_user = "fake user id";
-    onboarding_metadata_.device_user_id = "Device User ID";
+    onboarding_metadata_.cryptohome_user = kFakeGaiaId;
+    onboarding_metadata_.device_user_id = kFakeDeviceId;
     onboarding_metadata_.board_name = "Board Name";
-    onboarding_metadata_.model_name = "Model Name";
+    onboarding_metadata_.form_factor = "Model Name";
+    onboarding_metadata_.rlz_code = "Rlz Code";
     onboarding_metadata_.recovery_id = "Recovery ID";
 
     AuthClaim auth_claim;
@@ -116,7 +120,8 @@ class RecoveryCryptoTest : public testing::Test {
     ASSERT_TRUE(
         FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response_));
 
-    recovery_ = RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend_);
+    recovery_ = RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend_,
+                                           &platform_);
     ASSERT_TRUE(recovery_);
     mediator_ = FakeRecoveryMediatorCrypto::Create();
     ASSERT_TRUE(mediator_);
@@ -168,6 +173,7 @@ class RecoveryCryptoTest : public testing::Test {
   OnboardingMetadata onboarding_metadata_;
   RequestMetadata request_metadata_;
 
+  FakePlatform platform_;
   cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
       recovery_crypto_fake_tpm_backend_;
 
@@ -415,6 +421,31 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
       destination_share, ephemeral_pub_key,
       /*mediated_point=*/SecureBlob("not a point"), /*obfuscated_username=*/"",
       &mediated_recovery_key));
+}
+
+TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+
+  // Generate a new seed and compute recovery_id.
+  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_FALSE(recovery_id.empty());
+  // Re-generate a recovery id from the existing persisted data.
+  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_FALSE(new_recovery_id.empty());
+  EXPECT_NE(recovery_id, new_recovery_id);
+}
+
+TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadata) {
+  OnboardingMetadata onboarding_metadata;
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+  recovery_->GenerateOnboardingMetadata(account_id, kFakeGaiaId, kFakeDeviceId,
+                                        &onboarding_metadata);
+  EXPECT_EQ(onboarding_metadata.cryptohome_user, kFakeGaiaId);
+  EXPECT_EQ(onboarding_metadata.device_user_id, kFakeDeviceId);
 }
 
 }  // namespace cryptorecovery

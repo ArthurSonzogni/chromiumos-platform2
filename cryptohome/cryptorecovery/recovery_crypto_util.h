@@ -59,7 +59,8 @@ struct OnboardingMetadata {
   // Unique ID tied to the user's cryptohome on the device
   std::string device_user_id;
   std::string board_name;
-  std::string model_name;
+  std::string form_factor;
+  std::string rlz_code;
   // Generated anew after each successful recovery, hex-encoded sha-256 hash
   // string.
   std::string recovery_id;

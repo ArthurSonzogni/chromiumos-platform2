@@ -333,7 +333,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
     case AuthBlockType::kCryptohomeRecovery:
       return std::make_unique<CryptohomeRecoveryAuthBlock>(
           crypto_->GetHwsec(), crypto_->GetRecoveryCryptoBackend(),
-          crypto_->le_manager());
+          crypto_->le_manager(), platform_);
 
     case AuthBlockType::kScrypt:
       return std::make_unique<ScryptAuthBlock>();
@@ -412,7 +412,7 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<CryptohomeRecoveryAuthBlock>(
               crypto_->GetHwsec(), crypto_->GetRecoveryCryptoBackend(),
-              crypto_->le_manager()));
+              crypto_->le_manager(), platform_));
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
@@ -605,7 +605,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
   }
 
   std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
-      cryptorecovery::RecoveryCryptoImpl::Create(recovery_backend);
+      cryptorecovery::RecoveryCryptoImpl::Create(recovery_backend, platform_);
 
   // Generate recovery request proto which will be sent back to Chrome, and then
   // to the recovery server.

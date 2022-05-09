@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/platform.h"
+#include "cryptohome/proto_bindings/rpc.pb.h"
 
 namespace cryptohome {
 
@@ -78,6 +79,10 @@ bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt);
 
 // Gets an existing kiosk mount salt, or creates one if it doesn't exist.
 bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt);
+
+// Gets full path for serialized RecoveryId.
+base::FilePath GetRecoveryIdPath(
+    const cryptohome::AccountIdentifier& account_id);
 
 bool InitializeFilesystemLayout(Platform* platform,
                                 brillo::SecureBlob* salt);

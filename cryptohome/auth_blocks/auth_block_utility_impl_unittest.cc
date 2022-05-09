@@ -1574,7 +1574,7 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
         brillo::BlobFromString(epoch_response.SerializeAsString());
 
     auto recovery = cryptorecovery::RecoveryCryptoImpl::Create(
-        &recovery_crypto_fake_tpm_backend_);
+        &recovery_crypto_fake_tpm_backend_, &platform_);
     ASSERT_TRUE(recovery);
 
     cryptorecovery::HsmPayload hsm_payload;
@@ -1618,6 +1618,7 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
   brillo::SecureBlob channel_priv_key_;
   brillo::SecureBlob destination_share_;
   brillo::Blob epoch_response_blob_;
+  FakePlatform platform_;
 };
 
 TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestSuccess) {

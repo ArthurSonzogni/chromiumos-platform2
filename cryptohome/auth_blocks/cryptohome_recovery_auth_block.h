@@ -24,11 +24,13 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(
       hwsec::CryptohomeFrontend* hwsec,
-      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend);
+      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+      Platform* platform);
   explicit CryptohomeRecoveryAuthBlock(
       hwsec::CryptohomeFrontend* hwsec,
       cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
-      LECredentialManager* le_manager);
+      LECredentialManager* le_manager,
+      Platform* platform);
 
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
   CryptohomeRecoveryAuthBlock& operator=(const CryptohomeRecoveryAuthBlock&) =
@@ -58,6 +60,7 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   cryptorecovery::RecoveryCryptoTpmBackend* const tpm_backend_;
   // Low Entropy credentials manager, needed for revocation support.
   LECredentialManager* const le_manager_;
+  Platform* const platform_;
 };
 
 }  // namespace cryptohome

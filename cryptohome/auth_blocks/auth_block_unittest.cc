@@ -32,6 +32,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
@@ -1289,7 +1290,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
 
     // Start recovery process.
     std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
-        cryptorecovery::RecoveryCryptoImpl::Create(tpm_backend);
+        cryptorecovery::RecoveryCryptoImpl::Create(tpm_backend, &platform_);
     ASSERT_TRUE(recovery);
     brillo::SecureBlob rsa_priv_key;
 
@@ -1329,6 +1330,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   brillo::SecureBlob mediator_pub_key_;
   brillo::SecureBlob epoch_pub_key_;
   cryptorecovery::CryptoRecoveryEpochResponse epoch_response_;
+  FakePlatform platform_;
 };
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
@@ -1348,7 +1350,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec, &recovery_crypto_fake_tpm_backend, nullptr);
+      &hwsec, &recovery_crypto_fake_tpm_backend, nullptr, &platform_);
   AuthBlockState auth_state;
   EXPECT_TRUE(
       auth_block.Create(auth_input, &auth_state, &created_key_blobs).ok());
@@ -1418,7 +1420,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec, &recovery_crypto_fake_tpm_backend, &le_cred_manager);
+      &hwsec, &recovery_crypto_fake_tpm_backend, &le_cred_manager, &platform_);
   AuthBlockState auth_state;
   EXPECT_TRUE(
       auth_block.Create(auth_input, &auth_state, &created_key_blobs).ok());
@@ -1491,9 +1493,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, MissingObfuscatedUsername) {
   SetupMockHwsec(hwsec);
 
   KeyBlobs created_key_blobs;
-  CryptohomeRecoveryAuthBlock auth_block(&hwsec,
-                                         &recovery_crypto_fake_tpm_backend,
-                                         /*LECredentialManager*=*/nullptr);
+  CryptohomeRecoveryAuthBlock auth_block(
+      &hwsec, &recovery_crypto_fake_tpm_backend,
+      /*LECredentialManager*=*/nullptr, &platform_);
   AuthBlockState auth_state;
   EXPECT_FALSE(
       auth_block.Create(auth_input, &auth_state, &created_key_blobs).ok());
