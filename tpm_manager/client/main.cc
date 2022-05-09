@@ -214,7 +214,7 @@ class ClientLoop : public ClientLoopBase {
  private:
   // Posts tasks on to the message loop based on command line flags.
   int ScheduleCommand() {
-    base::Closure task;
+    base::OnceClosure task;
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
         command_line->GetArgs().size() == 0) {
@@ -223,49 +223,49 @@ class ClientLoop : public ClientLoopBase {
     std::string command = command_line->GetArgs()[0];
     if (command == kGetTpmStatusCommand) {
       if (!command_line->HasSwitch(kNonsensitiveSwitch)) {
-        task = base::Bind(&ClientLoop::HandleGetTpmStatus,
-                          weak_factory_.GetWeakPtr(),
-                          command_line->HasSwitch(kIgnoreCacheSwitch));
+        task = base::BindOnce(&ClientLoop::HandleGetTpmStatus,
+                              weak_factory_.GetWeakPtr(),
+                              command_line->HasSwitch(kIgnoreCacheSwitch));
       } else {
-        task = base::Bind(&ClientLoop::HandleGetTpmNonsensitiveStatus,
-                          weak_factory_.GetWeakPtr(),
-                          command_line->HasSwitch(kIgnoreCacheSwitch));
+        task = base::BindOnce(&ClientLoop::HandleGetTpmNonsensitiveStatus,
+                              weak_factory_.GetWeakPtr(),
+                              command_line->HasSwitch(kIgnoreCacheSwitch));
       }
 
     } else if (command == kGetVersionInfoCommand) {
-      task = base::Bind(&ClientLoop::HandleGetVersionInfo,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleGetVersionInfo,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kGetSupportedFeatures) {
-      task = base::Bind(&ClientLoop::HandleGetSupportedFeatures,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleGetSupportedFeatures,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kGetDictionaryAttackInfoCommand) {
-      task = base::Bind(&ClientLoop::HandleGetDictionaryAttackInfo,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleGetDictionaryAttackInfo,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kGetRoVerificationStatusCommand) {
-      task = base::Bind(&ClientLoop::HandleGetRoVerificationStatus,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleGetRoVerificationStatus,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kResetDictionaryAttackLockCommand) {
-      task = base::Bind(&ClientLoop::HandleResetDictionaryAttackLock,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleResetDictionaryAttackLock,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kTakeOwnershipCommand) {
-      task = base::Bind(&ClientLoop::HandleTakeOwnership,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleTakeOwnership,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kRemoveOwnerDependencyCommand) {
       if (!command_line->HasSwitch(kDependencySwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(&ClientLoop::HandleRemoveOwnerDependency,
-                        weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII(kDependencySwitch));
+      task = base::BindOnce(
+          &ClientLoop::HandleRemoveOwnerDependency, weak_factory_.GetWeakPtr(),
+          command_line->GetSwitchValueASCII(kDependencySwitch));
     } else if (command == kClearStoredOwnerPasswordCommand) {
-      task = base::Bind(&ClientLoop::HandleClearStoredOwnerPassword,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleClearStoredOwnerPassword,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kDefineSpaceCommand) {
       if (!command_line->HasSwitch(kIndexSwitch) ||
           !command_line->HasSwitch(kSizeSwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::HandleDefineSpace, weak_factory_.GetWeakPtr(),
           StringToNvramIndex(command_line->GetSwitchValueASCII(kIndexSwitch)),
           StringToUint32(command_line->GetSwitchValueASCII(kSizeSwitch)),
@@ -276,7 +276,7 @@ class ClientLoop : public ClientLoopBase {
       if (!command_line->HasSwitch(kIndexSwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::HandleDestroySpace, weak_factory_.GetWeakPtr(),
           StringToNvramIndex(command_line->GetSwitchValueASCII(kIndexSwitch)));
     } else if (command == kWriteSpaceCommand) {
@@ -284,7 +284,7 @@ class ClientLoop : public ClientLoopBase {
           !command_line->HasSwitch(kFileSwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::HandleWriteSpace, weak_factory_.GetWeakPtr(),
           StringToNvramIndex(command_line->GetSwitchValueASCII(kIndexSwitch)),
           command_line->GetSwitchValueASCII(kFileSwitch),
@@ -295,7 +295,7 @@ class ClientLoop : public ClientLoopBase {
           !command_line->HasSwitch(kFileSwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::HandleReadSpace, weak_factory_.GetWeakPtr(),
           StringToNvramIndex(command_line->GetSwitchValueASCII(kIndexSwitch)),
           command_line->GetSwitchValueASCII(kFileSwitch),
@@ -305,7 +305,7 @@ class ClientLoop : public ClientLoopBase {
       if (!command_line->HasSwitch(kIndexSwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::HandleLockSpace, weak_factory_.GetWeakPtr(),
           StringToNvramIndex(command_line->GetSwitchValueASCII(kIndexSwitch)),
           command_line->HasSwitch(kLockRead),
@@ -313,20 +313,20 @@ class ClientLoop : public ClientLoopBase {
           command_line->GetSwitchValueASCII(kPasswordSwitch),
           command_line->HasSwitch(kUseOwnerSwitch));
     } else if (command == kListSpacesCommand) {
-      task =
-          base::Bind(&ClientLoop::HandleListSpaces, weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::HandleListSpaces,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kGetSpaceInfoCommand) {
       if (!command_line->HasSwitch(kIndexSwitch)) {
         return EX_USAGE;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::HandleGetSpaceInfo, weak_factory_.GetWeakPtr(),
           StringToNvramIndex(command_line->GetSwitchValueASCII(kIndexSwitch)));
     } else {
       // Command line arguments did not match any valid commands.
       return EX_USAGE;
     }
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, task);
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, std::move(task));
     return EX_OK;
   }
 
@@ -347,9 +347,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_ignore_cache(ignore_cache);
     tpm_ownership_->GetTpmStatusAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -358,10 +359,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_ignore_cache(ignore_cache);
     tpm_ownership_->GetTpmNonsensitiveStatusAsync(
         request,
-        base::Bind(
+        base::BindOnce(
             &ClientLoop::PrintReplyAndQuit<GetTpmNonsensitiveStatusReply>,
             weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -369,9 +371,10 @@ class ClientLoop : public ClientLoopBase {
     GetVersionInfoRequest request;
     tpm_ownership_->GetVersionInfoAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetVersionInfoReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetVersionInfoReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -379,9 +382,11 @@ class ClientLoop : public ClientLoopBase {
     GetSupportedFeaturesRequest request;
     tpm_ownership_->GetSupportedFeaturesAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetSupportedFeaturesReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<GetSupportedFeaturesReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -389,9 +394,11 @@ class ClientLoop : public ClientLoopBase {
     GetDictionaryAttackInfoRequest request;
     tpm_ownership_->GetDictionaryAttackInfoAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetDictionaryAttackInfoReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<GetDictionaryAttackInfoReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -399,9 +406,11 @@ class ClientLoop : public ClientLoopBase {
     GetRoVerificationStatusRequest request;
     tpm_ownership_->GetRoVerificationStatusAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetRoVerificationStatusReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<GetRoVerificationStatusReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -409,10 +418,11 @@ class ClientLoop : public ClientLoopBase {
     ResetDictionaryAttackLockRequest request;
     tpm_ownership_->ResetDictionaryAttackLockAsync(
         request,
-        base::Bind(
+        base::BindOnce(
             &ClientLoop::PrintReplyAndQuit<ResetDictionaryAttackLockReply>,
             weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -420,9 +430,10 @@ class ClientLoop : public ClientLoopBase {
     TakeOwnershipRequest request;
     tpm_ownership_->TakeOwnershipAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<TakeOwnershipReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<TakeOwnershipReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -431,9 +442,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_owner_dependency(owner_dependency);
     tpm_ownership_->RemoveOwnerDependencyAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<RemoveOwnerDependencyReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<RemoveOwnerDependencyReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -441,10 +454,11 @@ class ClientLoop : public ClientLoopBase {
     ClearStoredOwnerPasswordRequest request;
     tpm_ownership_->ClearStoredOwnerPasswordAsync(
         request,
-        base::Bind(
+        base::BindOnce(
             &ClientLoop::PrintReplyAndQuit<ClearStoredOwnerPasswordReply>,
             weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -530,9 +544,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_policy(bind_to_pcr0 ? NVRAM_POLICY_PCR0 : NVRAM_POLICY_NONE);
     tpm_nvram_->DefineSpaceAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<DefineSpaceReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<DefineSpaceReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -541,9 +556,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_index(index);
     tpm_nvram_->DestroySpaceAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<DestroySpaceReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<DestroySpaceReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -564,9 +580,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_use_owner_authorization(use_owner_authorization);
     tpm_nvram_->WriteSpaceAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<WriteSpaceReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<WriteSpaceReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -589,9 +606,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_use_owner_authorization(use_owner_authorization);
     tpm_nvram_->ReadSpaceAsync(
         request,
-        base::Bind(&ClientLoop::HandleReadSpaceReply,
-                   weak_factory_.GetWeakPtr(), output_file),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::HandleReadSpaceReply,
+                       weak_factory_.GetWeakPtr(), output_file),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -608,9 +626,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_use_owner_authorization(use_owner_authorization);
     tpm_nvram_->LockSpaceAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<LockSpaceReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<LockSpaceReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -619,9 +638,10 @@ class ClientLoop : public ClientLoopBase {
     ListSpacesRequest request;
     tpm_nvram_->ListSpacesAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<ListSpacesReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<ListSpacesReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -630,9 +650,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_index(index);
     tpm_nvram_->GetSpaceInfoAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetSpaceInfoReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetSpaceInfoReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 

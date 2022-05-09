@@ -107,7 +107,7 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     EXPECT_TRUE(reply.owned());
   };
   GetTpmStatusRequest request;
-  proxy_.GetTpmStatus(request, base::Bind(callback, &callback_count));
+  proxy_.GetTpmStatus(request, base::BindOnce(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -147,7 +147,7 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmNonsensitiveStatus) {
   };
   GetTpmNonsensitiveStatusRequest request;
   proxy_.GetTpmNonsensitiveStatus(request,
-                                  base::Bind(callback, &callback_count));
+                                  base::BindOnce(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -188,8 +188,8 @@ TEST_F(TpmOwnershipDBusProxyTest, GetVersionInfo) {
               expected_version_info.SerializeAsString());
   };
   GetVersionInfoRequest request;
-  proxy_.GetVersionInfo(
-      request, base::Bind(callback, expected_version_info, &callback_count));
+  proxy_.GetVersionInfo(request, base::BindOnce(callback, expected_version_info,
+                                                &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -229,7 +229,7 @@ TEST_F(TpmOwnershipDBusProxyTest, GetDictionaryAttackInfo) {
   };
   GetDictionaryAttackInfoRequest request;
   proxy_.GetDictionaryAttackInfo(request,
-                                 base::Bind(callback, &callback_count));
+                                 base::BindOnce(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -259,7 +259,7 @@ TEST_F(TpmOwnershipDBusProxyTest, TakeOwnership) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
   };
   TakeOwnershipRequest request;
-  proxy_.TakeOwnership(request, base::Bind(callback, &callback_count));
+  proxy_.TakeOwnership(request, base::BindOnce(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -295,7 +295,8 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
   };
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(owner_dependency);
-  proxy_.RemoveOwnerDependency(request, base::Bind(callback, &callback_count));
+  proxy_.RemoveOwnerDependency(request,
+                               base::BindOnce(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -327,7 +328,7 @@ TEST_F(TpmOwnershipDBusProxyTest, ClearStoredOwnerPassword) {
   };
   ClearStoredOwnerPasswordRequest request;
   proxy_.ClearStoredOwnerPassword(request,
-                                  base::Bind(callback, &callback_count));
+                                  base::BindOnce(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 

@@ -40,8 +40,8 @@ bool TpmManagerUtility::Initialize() {
     base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                               base::WaitableEvent::InitialState::NOT_SIGNALED);
     tpm_manager_thread_.task_runner()->PostTask(
-        FROM_HERE, base::Bind(&TpmManagerUtility::InitializationTask,
-                              base::Unretained(this), &event));
+        FROM_HERE, base::BindOnce(&TpmManagerUtility::InitializationTask,
+                                  base::Unretained(this), &event));
     event.Wait();
   }
   if (!tpm_owner_ || !tpm_nvram_) {
@@ -184,9 +184,10 @@ void TpmManagerUtility::InitializationTask(base::WaitableEvent* completion) {
   default_tpm_nvram_ = std::make_unique<org::chromium::TpmNvramProxy>(bus_);
 
   default_tpm_owner_->RegisterSignalOwnershipTakenSignalHandler(
-      base::Bind(&TpmManagerUtility::OnOwnershipTaken, base::Unretained(this)),
-      base::Bind(&TpmManagerUtility::OnSignalConnected,
-                 base::Unretained(this)));
+      base::BindRepeating(&TpmManagerUtility::OnOwnershipTaken,
+                          base::Unretained(this)),
+      base::BindOnce(&TpmManagerUtility::OnSignalConnected,
+                     base::Unretained(this)));
 
   tpm_owner_ = default_tpm_owner_.get();
   tpm_nvram_ = default_tpm_nvram_.get();
