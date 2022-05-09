@@ -774,7 +774,39 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
+    auto data = fusebox::GetFileData(request->fh());
     fusebox::CloseFile(request->fh());
+
+    if (data.type != kMTPType) {
+      request->ReplyOk();
+      return;
+    }
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kCloseMethod);
+    dbus::MessageWriter writer(&method);
+
+    writer.AppendString(data.path);
+
+    auto release_response =
+        base::BindOnce(&FuseBoxClient::ReleaseResponse, base::Unretained(this),
+                       std::move(request), ino);
+    CallFuseBoxServerMethod(&method, std::move(release_response));
+  }
+
+  void ReleaseResponse(std::unique_ptr<OkRequest> request,
+                       ino_t ino,
+                       dbus::Response* response) {
+    VLOG(1) << "release-resp fh " << request->fh();
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
     request->ReplyOk();
   }
 
