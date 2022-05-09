@@ -59,7 +59,7 @@ class Pkcs11KeyStore : public KeyStore {
                            const std::string& certificate) override;
 
  private:
-  using EnumObjectsCallback = base::Callback<bool(
+  using EnumObjectsCallback = base::RepeatingCallback<bool(
       const std::string& key_name, CK_OBJECT_HANDLE object_handle)>;
 
   // Searches for a PKCS #11 object for a given key name.  If one exists, the

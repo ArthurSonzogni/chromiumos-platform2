@@ -211,8 +211,8 @@ bool Pkcs11KeyStore::DeleteByPrefix(const std::string& username,
     return false;
   }
   EnumObjectsCallback callback =
-      base::Bind(&Pkcs11KeyStore::DeleteIfMatchesPrefix, base::Unretained(this),
-                 session.handle(), key_prefix);
+      base::BindRepeating(&Pkcs11KeyStore::DeleteIfMatchesPrefix,
+                          base::Unretained(this), session.handle(), key_prefix);
   if (!EnumObjects(session.handle(), callback)) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to delete key data.";
     return false;

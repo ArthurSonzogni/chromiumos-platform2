@@ -2678,7 +2678,7 @@ TEST_P(AttestationServiceTest, EnrollSuccess) {
         ->mutable_credentials()
         ->mutable_encrypted_endorsement_credentials())[aca_type_]
       .set_wrapped_key("wrapped_key");
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     quit_closure.Run();
@@ -2699,7 +2699,7 @@ TEST_P(AttestationServiceTest, EnrollSuccessNoop) {
         ->mutable_credentials()
         ->mutable_encrypted_endorsement_credentials())[aca_type_]
       .set_wrapped_key("wrapped_key");
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     quit_closure.Run();
@@ -2718,7 +2718,7 @@ TEST_P(AttestationServiceTest, EnrollSuccessForced) {
         ->mutable_credentials()
         ->mutable_encrypted_endorsement_credentials())[aca_type_]
       .set_wrapped_key("wrapped_key");
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     quit_closure.Run();
@@ -2734,7 +2734,7 @@ TEST_P(AttestationServiceTest, EnrollSuccessForced) {
 }
 
 TEST_P(AttestationServiceTest, EnrollFailureNoIdentity) {
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -2748,7 +2748,7 @@ TEST_P(AttestationServiceTest, EnrollFailureNoIdentity) {
 
 TEST_P(AttestationServiceTest, EnrollFailureBadPcaAgentStatus) {
   SetUpIdentity(identity_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -2765,7 +2765,7 @@ TEST_P(AttestationServiceTest, EnrollFailureBadPcaAgentStatus) {
 
 TEST_P(AttestationServiceTest, EnrollFailureBadPcaAgentResponse) {
   SetUpIdentity(identity_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_INVALID_PARAMETER);
     quit_closure.Run();
@@ -2781,7 +2781,7 @@ TEST_P(AttestationServiceTest, EnrollFailureBadPcaAgentResponse) {
 
 TEST_P(AttestationServiceTest, EnrollFailureBadPcaServerResponse) {
   SetUpIdentity(identity_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_REQUEST_DENIED_BY_CA);
     quit_closure.Run();
@@ -2799,7 +2799,7 @@ TEST_P(AttestationServiceTest, EnrollFailureBadPcaServerResponse) {
 TEST_P(AttestationServiceTest, GetCertificateSuccess) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_certificate());
@@ -2823,7 +2823,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccess) {
 TEST_P(AttestationServiceTest, GetCertificateSuccessNoop) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_public_key());
@@ -2847,7 +2847,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessNoop) {
 TEST_P(AttestationServiceTest, GetCertificateSuccessSavedBadPublicKey) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -2871,7 +2871,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessSavedBadPublicKey) {
 TEST_P(AttestationServiceTest, GetCertificateSuccessForced) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_certificate());
@@ -2894,7 +2894,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessForced) {
 }
 
 TEST_P(AttestationServiceTest, GetCertificateFailureNoIdentity) {
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -2913,7 +2913,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureNoIdentity) {
 TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaAgentStatus) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -2937,7 +2937,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaAgentStatus) {
 TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaAgentResponse) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_NOT_AVAILABLE);
     quit_closure.Run();
@@ -2962,7 +2962,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaAgentResponse) {
 TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaServerResponse) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_REQUEST_DENIED_BY_CA);
     quit_closure.Run();
@@ -2985,7 +2985,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaServerResponse) {
 
 TEST_P(AttestationServiceTest, AttestationFlowSuccess) {
   SetUpIdentity(identity_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_certificate());
@@ -3011,7 +3011,7 @@ TEST_P(AttestationServiceTest, AttestationFlowSuccess) {
 
 TEST_P(AttestationServiceTest, AttestationFlowBadPublicKey) {
   SetUpIdentity(identity_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -3037,7 +3037,7 @@ TEST_P(AttestationServiceTest, AttestationFlowBadPublicKey) {
 
 TEST_P(AttestationServiceTest, AttestationFlowFailureNotEnrolled) {
   SetUpIdentity(identity_);
-  auto callback = [](const base::Closure& quit_closure,
+  auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_UNEXPECTED_DEVICE_ERROR);
     quit_closure.Run();
@@ -3069,7 +3069,7 @@ TEST_P(AttestationServiceTest, EnrollSuccessQueued) {
   // Offset by 1; for enrollment request the request under process doesn't
   // count.
   int request_count = service_->kEnrollmentRequestLimit + 1;
-  auto callback = [](int* count, const base::Closure& quit_closure,
+  auto callback = [](int* count, const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     *count -= 1;
@@ -3109,7 +3109,7 @@ TEST_P(AttestationServiceTest, EnrollFailureQueued) {
   // Offset by 1; for enrollment request the request under process doesn't
   // count.
   int request_count = service_->kEnrollmentRequestLimit + 1;
-  auto callback = [](int* count, const base::Closure& quit_closure,
+  auto callback = [](int* count, const base::RepeatingClosure& quit_closure,
                      const EnrollReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_INVALID_PARAMETER);
     *count -= 1;
@@ -3144,7 +3144,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessQueued) {
   SetUpIdentityCertificate(identity_, aca_type_);
 
   int request_count = service_->kCertificateRequestAliasLimit;
-  auto callback = [](int* count, const base::Closure& quit_closure,
+  auto callback = [](int* count, const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     *count -= 1;
@@ -3184,7 +3184,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureQueued) {
   SetUpIdentityCertificate(identity_, aca_type_);
 
   int request_count = service_->kCertificateRequestAliasLimit;
-  auto callback = [](int* count, const base::Closure& quit_closure,
+  auto callback = [](int* count, const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_NOT_AVAILABLE);
     *count -= 1;

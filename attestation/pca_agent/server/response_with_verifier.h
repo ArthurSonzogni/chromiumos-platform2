@@ -28,7 +28,7 @@ class ResponseWithVerifier
   explicit ResponseWithVerifier(Verifier&& v)
       : brillo::dbus_utils::DBusMethodResponse<ReplyType>(
             /*method_call=*/nullptr,
-            base::Bind([](std::unique_ptr<dbus::Response> response) {
+            base::BindOnce([](std::unique_ptr<dbus::Response> response) {
               FAIL() << "The sender shouldn't have been called.";
             })),
         verifier_(v) {
