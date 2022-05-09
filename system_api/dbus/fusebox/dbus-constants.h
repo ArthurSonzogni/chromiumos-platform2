@@ -14,11 +14,13 @@ const char kFuseBoxServicePath[] = "/org/chromium/FuseBoxService";
 
 // FuseBoxService methods.
 const char kCloseMethod[] = "Close";
+const char kCreateMethod[] = "Create";
 const char kFlushMethod[] = "Flush";
 const char kOpenMethod[] = "Open";
 const char kReadDirMethod[] = "ReadDir";
 const char kReadMethod[] = "Read";
 const char kStatMethod[] = "Stat";
+const char kTruncateMethod[] = "Truncate";
 const char kWriteMethod[] = "Write";
 
 // FuseBoxReverseService interface/name/path (chromeos /usr/bin/fusebox daemon)
