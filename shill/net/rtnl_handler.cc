@@ -320,14 +320,16 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           if (request_msg) {
             request_str = " (" + request_msg->ToString() + ")";
             mode = request_msg->mode();
-          } else if (NLMSG_OK(&(hdrErr->msg),
-                              static_cast<unsigned int>(end - buf))) {
+          } else {
             const uint8_t* error_payload =
                 reinterpret_cast<const uint8_t*>(&(hdrErr->msg));
-            RTNLMessage msgErr;
-            if (msgErr.Decode(error_payload, hdrErr->msg.nlmsg_len)) {
-              request_str = " (" + msgErr.ToString() + ")";
-              mode = msgErr.mode();
+            if (NLMSG_OK(&(hdrErr->msg),
+                         static_cast<unsigned int>(end - error_payload))) {
+              RTNLMessage msgErr;
+              if (msgErr.Decode(error_payload, hdrErr->msg.nlmsg_len)) {
+                request_str = " (" + msgErr.ToString() + ")";
+                mode = msgErr.mode();
+              }
             }
           }
 
