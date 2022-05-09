@@ -122,17 +122,17 @@ grpc_api::RunRoutineRequest MakeDiskRandomReadRoutineRequest() {
 }
 
 void SaveGetAvailableRoutinesResponse(
-    base::Closure callback,
+    base::OnceClosure callback,
     grpc_api::GetAvailableRoutinesResponse* response,
     const std::vector<grpc_api::DiagnosticRoutine>& returned_routines,
     grpc_api::RoutineServiceStatus service_status) {
   for (const auto& routine : returned_routines)
     response->add_routines(routine);
   response->set_service_status(service_status);
-  callback.Run();
+  std::move(callback).Run();
 }
 
-void SaveRunRoutineResponse(base::Closure callback,
+void SaveRunRoutineResponse(base::OnceClosure callback,
                             grpc_api::RunRoutineResponse* response,
                             int uuid,
                             grpc_api::DiagnosticRoutineStatus status,
@@ -140,11 +140,11 @@ void SaveRunRoutineResponse(base::Closure callback,
   response->set_uuid(uuid);
   response->set_status(status);
   response->set_service_status(service_status);
-  callback.Run();
+  std::move(callback).Run();
 }
 
 void SaveGetRoutineUpdateResponse(
-    base::Closure callback,
+    base::OnceClosure callback,
     grpc_api::GetRoutineUpdateResponse* response,
     int uuid,
     grpc_api::DiagnosticRoutineStatus status,
@@ -160,7 +160,7 @@ void SaveGetRoutineUpdateResponse(
   response->set_output(output);
   response->set_status_message(status_message);
   response->set_service_status(service_status);
-  callback.Run();
+  std::move(callback).Run();
 }
 
 // Tests for the RoutineService class.
@@ -175,7 +175,7 @@ class RoutineServiceTest : public testing::Test {
   grpc_api::GetAvailableRoutinesResponse ExecuteGetAvailableRoutines() {
     base::RunLoop run_loop;
     grpc_api::GetAvailableRoutinesResponse response;
-    service_.GetAvailableRoutines(base::Bind(
+    service_.GetAvailableRoutines(base::BindOnce(
         &SaveGetAvailableRoutinesResponse, run_loop.QuitClosure(), &response));
     run_loop.Run();
     return response;
@@ -185,8 +185,9 @@ class RoutineServiceTest : public testing::Test {
       const grpc_api::RunRoutineRequest& request) {
     base::RunLoop run_loop;
     grpc_api::RunRoutineResponse response;
-    service_.RunRoutine(request, base::Bind(&SaveRunRoutineResponse,
-                                            run_loop.QuitClosure(), &response));
+    service_.RunRoutine(
+        request, base::BindOnce(&SaveRunRoutineResponse, run_loop.QuitClosure(),
+                                &response));
     run_loop.Run();
     return response;
   }
@@ -197,9 +198,10 @@ class RoutineServiceTest : public testing::Test {
       const bool include_output) {
     base::RunLoop run_loop;
     grpc_api::GetRoutineUpdateResponse response;
-    service_.GetRoutineUpdate(uuid, command, include_output,
-                              base::Bind(&SaveGetRoutineUpdateResponse,
-                                         run_loop.QuitClosure(), &response));
+    service_.GetRoutineUpdate(
+        uuid, command, include_output,
+        base::BindOnce(&SaveGetRoutineUpdateResponse, run_loop.QuitClosure(),
+                       &response));
     run_loop.Run();
     return response;
   }

@@ -40,7 +40,7 @@ void GrpcClientManager::Start(
 }
 
 void GrpcClientManager::ShutDown(base::OnceClosure on_shutdown_callback) {
-  const base::Closure barrier_closure = base::BarrierClosure(
+  const base::RepeatingClosure barrier_closure = base::BarrierClosure(
       wilco_dtc_grpc_clients_.size(), std::move(on_shutdown_callback));
   for (const auto& client : wilco_dtc_grpc_clients_) {
     client->ShutDown(barrier_closure);

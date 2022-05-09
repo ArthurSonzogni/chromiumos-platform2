@@ -103,7 +103,7 @@ std::string FakeFileContents() {
 template <class T>
 base::RepeatingCallback<void(grpc::Status, std::unique_ptr<T>)>
 GrpcCallbackResponseSaver(std::unique_ptr<T>* response) {
-  return base::Bind(
+  return base::BindRepeating(
       [](std::unique_ptr<T>* response, grpc::Status status,
          std::unique_ptr<T> received_response) {
         *response = std::move(received_response);
@@ -870,8 +870,8 @@ TEST_F(GrpcServiceTest, RequestBluetoothDataNotification) {
   base::RunLoop run_loop;
   service()->RequestBluetoothDataNotification(
       std::move(request),
-      base::Bind(
-          [](base::Closure callback, grpc::Status status,
+      base::BindRepeating(
+          [](base::RepeatingClosure callback, grpc::Status status,
              std::unique_ptr<
                  grpc_api::RequestBluetoothDataNotificationResponse>) {
             callback.Run();
@@ -921,7 +921,7 @@ TEST_P(GetStatefulPartitionAvailableCapacityTest, All) {
 
   auto callback_impl =
       [](grpc_api::GetStatefulPartitionAvailableCapacityResponse::Status status,
-         int32_t expected_capacity, base::Closure loop_callback,
+         int32_t expected_capacity, base::RepeatingClosure loop_callback,
          grpc::Status grpcStatus,
          std::unique_ptr<
              grpc_api::GetStatefulPartitionAvailableCapacityResponse> reply) {
@@ -931,8 +931,9 @@ TEST_P(GetStatefulPartitionAvailableCapacityTest, All) {
       };
 
   base::RunLoop run_loop;
-  auto callback = base::Bind(callback_impl, get_expected_status(),
-                             get_expected_capacity(), run_loop.QuitClosure());
+  auto callback =
+      base::BindRepeating(callback_impl, get_expected_status(),
+                          get_expected_capacity(), run_loop.QuitClosure());
   service()->GetStatefulPartitionAvailableCapacity(
       std::make_unique<
           grpc_api::GetStatefulPartitionAvailableCapacityRequest>(),
@@ -945,21 +946,21 @@ INSTANTIATE_TEST_SUITE_P(
     GetStatefulPartitionAvailableCapacityTest,
     testing::Values(
         std::make_tuple(
-            base::Bind([]() {
+            base::BindRepeating([]() {
               return chromeos::cros_healthd::mojom::TelemetryInfoPtr(nullptr);
             }),
             grpc_api::GetStatefulPartitionAvailableCapacityResponse::
                 STATUS_ERROR_REQUEST_PROCESSING,
             0),
         std::make_tuple(
-            base::Bind([]() {
+            base::BindRepeating([]() {
               return chromeos::cros_healthd::mojom::TelemetryInfo::New();
             }),
             grpc_api::GetStatefulPartitionAvailableCapacityResponse::
                 STATUS_ERROR_REQUEST_PROCESSING,
             0),
         std::make_tuple(
-            base::Bind([]() {
+            base::BindRepeating([]() {
               auto probe_response =
                   chromeos::cros_healthd::mojom::TelemetryInfo::New();
               probe_response->stateful_partition_result =
@@ -974,7 +975,7 @@ INSTANTIATE_TEST_SUITE_P(
                 STATUS_ERROR_REQUEST_PROCESSING,
             0),
         std::make_tuple(
-            base::Bind([]() {
+            base::BindRepeating([]() {
               constexpr uint64_t kAvailableBytes = 220403699712ull;
               constexpr auto kFakeFilesystem = "ext4";
               constexpr auto kFakeMountSource = "/dev/mmcblk0p1";

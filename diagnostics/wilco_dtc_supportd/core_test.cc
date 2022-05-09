@@ -110,11 +110,12 @@ using MojomWilcoDtcSupportdWebRequestStatus =
 // quits |*run_loop|.
 template <typename ValueType>
 base::RepeatingCallback<void(grpc::Status, std::unique_ptr<ValueType>)>
-MakeAsyncResponseWriter(const base::Closure& callback,
+MakeAsyncResponseWriter(const base::RepeatingClosure& callback,
                         std::unique_ptr<ValueType>* response) {
-  return base::Bind(
-      [](const base::Closure& callback, std::unique_ptr<ValueType>* response,
-         grpc::Status status, std::unique_ptr<ValueType> received_response) {
+  return base::BindRepeating(
+      [](const base::RepeatingClosure& callback,
+         std::unique_ptr<ValueType>* response, grpc::Status status,
+         std::unique_ptr<ValueType> received_response) {
         ASSERT_TRUE(received_response);
         ASSERT_FALSE(*response);
         *response = std::move(received_response);
@@ -332,7 +333,8 @@ class CoreTest : public testing::Test {
 
   MojoServiceFactory mojo_service_factory_{
       &mojo_grpc_adapter_,
-      base::Bind(&StrictMock<MockDaemon>::ShutDown, base::Unretained(&daemon_)),
+      base::BindRepeating(&StrictMock<MockDaemon>::ShutDown,
+                          base::Unretained(&daemon_)),
       base::BindOnce(&CoreTest::FakeBindMojoFactory, base::Unretained(this))};
 
   bool simulate_bind_failure_ = false;
@@ -605,23 +607,24 @@ TEST_F(StartedCoreTest, ProbeTelemetryInfo) {
           chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCpu,
           chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
 
-  core_delegate()->probe_service()->SetProbeTelemetryInfoCallback(base::Bind(
-      [](std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-             expected_categories,
-         std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-             received_categories,
-         ProbeTelemetryInfoCallback received_callback) {
-        EXPECT_EQ(expected_categories, received_categories);
-        std::move(received_callback).Run(nullptr);
-      },
-      kCategories));
+  core_delegate()->probe_service()->SetProbeTelemetryInfoCallback(
+      base::BindOnce(
+          [](std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
+                 expected_categories,
+             std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
+                 received_categories,
+             ProbeTelemetryInfoCallback received_callback) {
+            EXPECT_EQ(expected_categories, received_categories);
+            std::move(received_callback).Run(nullptr);
+          },
+          kCategories));
 
   base::RunLoop run_loop;
   static_cast<GrpcService::Delegate*>(core())->ProbeTelemetryInfo(
-      kCategories, base::Bind(
-                       [](base::Closure loop_closure,
+      kCategories, base::BindOnce(
+                       [](base::OnceClosure loop_closure,
                           chromeos::cros_healthd::mojom::TelemetryInfoPtr) {
-                         loop_closure.Run();
+                         std::move(loop_closure).Run();
                        },
                        run_loop.QuitClosure()));
   run_loop.Run();
@@ -650,7 +653,7 @@ TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
     auto barrier_closure = base::BarrierClosure(2, run_loop.QuitClosure());
 
     auto update_callback = base::BindRepeating(
-        [](const base::Closure& callback,
+        [](const base::RepeatingClosure& callback,
            const grpc_api::HandleBluetoothDataChangedRequest&) {
           callback.Run();
         },
@@ -668,7 +671,7 @@ TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
 
   {
     auto bluetooth_callback =
-        [](const base::Closure& callback,
+        [](const base::RepeatingClosure& callback,
            grpc_api::HandleBluetoothDataChangedRequest* request_out,
            const grpc_api::HandleBluetoothDataChangedRequest& request) {
           DCHECK(request_out);
@@ -693,8 +696,8 @@ TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
 
     fake_wilco_dtc.RequestBluetoothDataNotification(
         grpc_api::RequestBluetoothDataNotificationRequest{},
-        base::Bind(
-            [](base::Closure barrier_closure, grpc::Status status,
+        base::BindRepeating(
+            [](base::RepeatingClosure barrier_closure, grpc::Status status,
                std::unique_ptr<
                    grpc_api::RequestBluetoothDataNotificationResponse>) {
               barrier_closure.Run();
@@ -795,7 +798,7 @@ TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtc) {
       barrier_closure);
   fake_ui_message_receiver_wilco_dtc()
       ->set_handle_message_from_ui_json_message_response(kJsonMessageResponse);
-  fake_wilco_dtc()->set_handle_message_from_ui_callback(base::Bind([]() {
+  fake_wilco_dtc()->set_handle_message_from_ui_callback(base::BindOnce([]() {
     // The wilco_dtc not eligible to receive messages from UI must not
     // receive them.
     FAIL();
@@ -880,8 +883,8 @@ TEST_F(BootstrappedCoreTest, GetCrosHealthdDiagnosticsService) {
 
   std::vector<grpc_api::DiagnosticRoutine> received_routines;
   base::RunLoop run_loop;
-  fake_wilco_dtc()->GetAvailableRoutines(base::Bind(
-      [](base::Closure quit_closure,
+  fake_wilco_dtc()->GetAvailableRoutines(base::BindRepeating(
+      [](base::RepeatingClosure quit_closure,
          std::vector<grpc_api::DiagnosticRoutine>* unpacked_response_out,
          grpc::Status status,
          std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response) {
@@ -899,7 +902,7 @@ TEST_F(BootstrappedCoreTest, GetCrosHealthdDiagnosticsService) {
 // browser.
 TEST_F(BootstrappedCoreTest, NotifyConfigurationDataChanged) {
   base::RunLoop run_loop;
-  const base::Closure barrier_closure =
+  const base::RepeatingClosure barrier_closure =
       base::BarrierClosure(2, run_loop.QuitClosure());
 
   fake_ui_message_receiver_wilco_dtc()->set_configuration_data_changed_callback(
@@ -1115,7 +1118,7 @@ TEST_F(BootstrappedCoreTest, HandleBluetoothDataChanged) {
   adapters[1].connected_devices_count = 2;
 
   auto bluetooth_callback =
-      [](const base::Closure& callback,
+      [](const base::RepeatingClosure& callback,
          grpc_api::HandleBluetoothDataChangedRequest* request_out,
          const grpc_api::HandleBluetoothDataChangedRequest& request) {
         DCHECK(request_out);
@@ -1202,14 +1205,15 @@ class EcServiceBootstrappedCoreTest
   }
 
  private:
-  void SetupFakeWilcoDtcEcEventCallback(const base::Closure& callback,
+  void SetupFakeWilcoDtcEcEventCallback(const base::RepeatingClosure& callback,
                                         FakeWilcoDtc* fake_wilco_dtc,
                                         std::multiset<GrpcEvent>* events_out) {
     DCHECK(fake_wilco_dtc);
     DCHECK(events_out);
     fake_wilco_dtc->set_handle_ec_event_request_callback(base::BindRepeating(
-        [](const base::Closure& callback, std::multiset<GrpcEvent>* events_out,
-           int32_t type, const std::string& payload) {
+        [](const base::RepeatingClosure& callback,
+           std::multiset<GrpcEvent>* events_out, int32_t type,
+           const std::string& payload) {
           DCHECK(events_out);
           events_out->insert({type, payload});
           callback.Run();
@@ -1322,13 +1326,13 @@ class PowerdEventServiceBootstrappedCoreTest
   }
 
   void SetupFakeWilcoDtcPowerEventCallback(
-      const base::Closure& callback,
+      const base::RepeatingClosure& callback,
       FakeWilcoDtc* fake_wilco_dtc,
       grpc_api::HandlePowerNotificationRequest::PowerEvent* event_out) {
     DCHECK(fake_wilco_dtc);
     DCHECK(event_out);
     fake_wilco_dtc->set_handle_power_event_request_callback(base::BindRepeating(
-        [](const base::Closure& callback,
+        [](const base::RepeatingClosure& callback,
            grpc_api::HandlePowerNotificationRequest::PowerEvent* event_out,
            grpc_api::HandlePowerNotificationRequest::PowerEvent event) {
           DCHECK(event_out);

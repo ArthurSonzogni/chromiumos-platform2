@@ -31,7 +31,7 @@ Daemon::Daemon()
     : DBusServiceDaemon(kWilcoDtcSupportdServiceName /* service_name */),
       mojo_service_factory_(
           &mojo_grpc_adapter_,
-          base::Bind(&brillo::Daemon::Quit, base::Unretained(this))),
+          base::BindRepeating(&brillo::Daemon::Quit, base::Unretained(this))),
       wilco_dtc_supportd_core_(&wilco_dtc_supportd_core_delegate_impl_,
                                &grpc_client_manager_,
                                {GetWilcoDtcSupportdGrpcHostVsockUri(),

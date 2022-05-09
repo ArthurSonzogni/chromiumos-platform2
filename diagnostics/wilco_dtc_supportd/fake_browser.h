@@ -60,7 +60,7 @@ class FakeBrowser final {
   // It's not allowed to call this method again after a successful completion.
   bool BootstrapMojoConnection(
       FakeMojoFdGenerator* fake_mojo_fd_generator,
-      const base::Closure& bootstrap_mojo_connection_callback);
+      base::OnceClosure bootstrap_mojo_connection_callback);
 
   // Call the |SendUiMessageToWilcoDtc| Mojo method
   // on wilco_dtc_supportd daemon, which will call the |HandleMessageFromUi|
@@ -100,7 +100,7 @@ class FakeBrowser final {
   // |get_service_mojo_method_callback| is called when the full-duplex Mojo
   // communication with the tested Mojo service is established.
   void CallGetServiceMojoMethod(
-      const base::Closure& get_service_mojo_method_callback);
+      base::OnceClosure get_service_mojo_method_callback);
 
   // Unowned. Points to the tested WilcoDtcSupportdServiceFactory instance.
   mojo::Remote<MojomWilcoDtcSupportdServiceFactory>* const

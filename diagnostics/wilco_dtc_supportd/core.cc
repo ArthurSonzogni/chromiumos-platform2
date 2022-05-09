@@ -126,57 +126,62 @@ bool Core::Start() {
   // |grpc_service_|.
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestSendMessageToUi,
-      base::Bind(&GrpcService::SendMessageToUi,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::SendMessageToUi,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetProcData,
-      base::Bind(&GrpcService::GetProcData, base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetProcData,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetSysfsData,
-      base::Bind(&GrpcService::GetSysfsData, base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetSysfsData,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetEcTelemetry,
-      base::Bind(&GrpcService::GetEcTelemetry,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetEcTelemetry,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest,
-      base::Bind(&GrpcService::PerformWebRequest,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::PerformWebRequest,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetAvailableRoutines,
-      base::Bind(&GrpcService::GetAvailableRoutines,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetAvailableRoutines,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestRunRoutine,
-      base::Bind(&GrpcService::RunRoutine, base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::RunRoutine,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetRoutineUpdate,
-      base::Bind(&GrpcService::GetRoutineUpdate,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetRoutineUpdate,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetOsVersion,
-      base::Bind(&GrpcService::GetOsVersion, base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetOsVersion,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetVpdField,
-      base::Bind(&GrpcService::GetVpdField, base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetVpdField,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetConfigurationData,
-      base::Bind(&GrpcService::GetConfigurationData,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetConfigurationData,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData,
-      base::Bind(&GrpcService::GetDriveSystemData,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetDriveSystemData,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::
           RequestRequestBluetoothDataNotification,
-      base::Bind(&GrpcService::RequestBluetoothDataNotification,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::RequestBluetoothDataNotification,
+                          base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::
           RequestGetStatefulPartitionAvailableCapacity,
-      base::Bind(&GrpcService::GetStatefulPartitionAvailableCapacity,
-                 base::Unretained(&grpc_service_)));
+      base::BindRepeating(&GrpcService::GetStatefulPartitionAvailableCapacity,
+                          base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
@@ -202,7 +207,7 @@ void Core::ShutDown(base::OnceClosure on_shutdown_callback) {
   VLOG(1) << "Tearing down gRPC server, gRPC wilco_dtc clients, "
              "EC event service and D-Bus server";
   UnsubscribeFromEventServices();
-  const base::Closure barrier_closure =
+  const base::RepeatingClosure barrier_closure =
       base::BarrierClosure(2, std::move(on_shutdown_callback));
   ec_service_->ShutDown(barrier_closure);
   grpc_server_.ShutDown(barrier_closure);
@@ -361,7 +366,7 @@ void Core::GetDriveSystemData(DriveSystemDataType data_type,
     return;
   }
 
-  auto result_callback = base::Bind(
+  auto result_callback = base::BindOnce(
       [](const GetDriveSystemDataCallback& callback, const std::string& result,
          brillo::Error* error) {
         if (error) {
@@ -376,10 +381,10 @@ void Core::GetDriveSystemData(DriveSystemDataType data_type,
 
   switch (data_type) {
     case DriveSystemDataType::kSmartAttributes:
-      debugd_adapter_->GetSmartAttributes(result_callback);
+      debugd_adapter_->GetSmartAttributes(std::move(result_callback));
       break;
     case DriveSystemDataType::kIdentityAttributes:
-      debugd_adapter_->GetNvmeIdentity(result_callback);
+      debugd_adapter_->GetNvmeIdentity(std::move(result_callback));
       break;
   }
 }
@@ -432,19 +437,20 @@ void Core::OnPowerdEvent(PowerEventType type) {
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandlePowerNotification, request,
-        base::Bind([](grpc::Status status,
-                      std::unique_ptr<grpc_api::HandlePowerNotificationResponse>
-                          response) {
-          if (!status.ok()) {
-            VLOG(1) << "Failed to call HandlePowerNotification gRPC "
-                       "method on wilco_dtc. grpc error code: "
-                    << status.error_code()
-                    << ", error message: " << status.error_message();
-            return;
-          }
-          VLOG(1) << "gRPC method HandlePowerNotification was "
-                     "successfully called on wilco_dtc";
-        }));
+        base::BindRepeating(
+            [](grpc::Status status,
+               std::unique_ptr<grpc_api::HandlePowerNotificationResponse>
+                   response) {
+              if (!status.ok()) {
+                VLOG(1) << "Failed to call HandlePowerNotification gRPC "
+                           "method on wilco_dtc. grpc error code: "
+                        << status.error_code()
+                        << ", error message: " << status.error_message();
+                return;
+              }
+              VLOG(1) << "gRPC method HandlePowerNotification was "
+                         "successfully called on wilco_dtc";
+            }));
   }
 }
 
@@ -503,9 +509,10 @@ void Core::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandleEcNotification, request,
-        base::Bind([](grpc::Status status,
-                      std::unique_ptr<grpc_api::HandleEcNotificationResponse>
-                          response) {
+        base::BindRepeating([](grpc::Status status,
+                               std::unique_ptr<
+                                   grpc_api::HandleEcNotificationResponse>
+                                   response) {
           if (!status.ok()) {
             VLOG(1)
                 << "Failed to call HandleEcNotificationRequest gRPC method on "
@@ -560,7 +567,7 @@ void Core::NotifyClientsBluetoothAdapterState(
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandleBluetoothDataChanged, request,
-        base::Bind(
+        base::BindRepeating(
             [](grpc::Status status,
                std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>
                    response) {

@@ -40,13 +40,13 @@ FakeBrowser::~FakeBrowser() = default;
 
 bool FakeBrowser::BootstrapMojoConnection(
     FakeMojoFdGenerator* fake_mojo_fd_generator,
-    const base::Closure& bootstrap_mojo_connection_callback) {
+    base::OnceClosure bootstrap_mojo_connection_callback) {
   if (!CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator)) {
-    bootstrap_mojo_connection_callback.Run();
+    std::move(bootstrap_mojo_connection_callback).Run();
     return false;
   }
 
-  CallGetServiceMojoMethod(bootstrap_mojo_connection_callback);
+  CallGetServiceMojoMethod(std::move(bootstrap_mojo_connection_callback));
   return true;
 }
 
@@ -79,7 +79,7 @@ bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
 
   // Storage for the output data returned by the D-Bus call.
   std::unique_ptr<dbus::Response> response;
-  const auto response_writer_callback = base::Bind(
+  const auto response_writer_callback = base::BindRepeating(
       [](std::unique_ptr<dbus::Response>* response,
          std::unique_ptr<dbus::Response> passed_response) {
         *response = std::move(passed_response);
@@ -95,7 +95,7 @@ bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
 }
 
 void FakeBrowser::CallGetServiceMojoMethod(
-    const base::Closure& get_service_mojo_method_callback) {
+    base::OnceClosure get_service_mojo_method_callback) {
   // Queue a Mojo GetService() method call that allows to establish full-duplex
   // Mojo communication with the tested Mojo service.
   // After this call, |wilco_dtc_supportd_service_| can be used for requests
@@ -112,7 +112,7 @@ void FakeBrowser::CallGetServiceMojoMethod(
   (*wilco_dtc_supportd_service_factory_)
       ->GetService(wilco_dtc_supportd_service_.BindNewPipeAndPassReceiver(),
                    std::move(wilco_dtc_supportd_client_proxy),
-                   get_service_mojo_method_callback);
+                   std::move(get_service_mojo_method_callback));
 }
 
 }  // namespace wilco

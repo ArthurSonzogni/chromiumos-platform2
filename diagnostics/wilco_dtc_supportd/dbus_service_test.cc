@@ -58,7 +58,8 @@ class DBusServiceTest : public testing::Test {
   MojoGrpcAdapter mojo_grpc_adapter_{&grpc_client_manager_};
   MojoServiceFactory mojo_service_factory_{
       &mojo_grpc_adapter_,
-      base::Bind(&MockCallback::ShutDown, base::Unretained(&mock_callback_)),
+      base::BindRepeating(&MockCallback::ShutDown,
+                          base::Unretained(&mock_callback_)),
       base::BindOnce(&MockCallback::BindMojoServiceFactory,
                      base::Unretained(&mock_callback_))};
   DBusService dbus_service_{&mojo_service_factory_};

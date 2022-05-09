@@ -105,7 +105,7 @@ std::optional<std::string> MojoServiceFactory::Start(
     ShutdownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
     return "Failed to bootstrap Mojo";
   }
-  mojo_service_factory_receiver_.set_disconnect_handler(base::Bind(
+  mojo_service_factory_receiver_.set_disconnect_handler(base::BindOnce(
       &MojoServiceFactory::ShutdownDueToMojoError, base::Unretained(this),
       "Mojo connection error" /* debug_reason */));
 

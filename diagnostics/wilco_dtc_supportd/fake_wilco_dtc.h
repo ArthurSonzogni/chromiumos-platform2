@@ -113,7 +113,7 @@ class FakeWilcoDtc final {
   // Sets up the passed callback to be used for subsequent
   // |HandleMessageFromUi| gRPC calls.
   void set_handle_message_from_ui_callback(
-      base::Closure handle_message_from_ui_callback) {
+      base::OnceClosure handle_message_from_ui_callback) {
     handle_message_from_ui_callback_.emplace(
         std::move(handle_message_from_ui_callback));
   }
@@ -148,8 +148,7 @@ class FakeWilcoDtc final {
 
   // Sets up the passed callback to be used for subsequent
   // |HandleConfigurationDataChanged| gRPC calls.
-  void set_configuration_data_changed_callback(
-      base::RepeatingClosure callback) {
+  void set_configuration_data_changed_callback(base::OnceClosure callback) {
     configuration_data_changed_callback_.emplace(std::move(callback));
   }
 
@@ -202,7 +201,7 @@ class FakeWilcoDtc final {
   AsyncGrpcWilcoDtcServer grpc_server_;
   AsyncGrpcWilcoDtcSupportdClient wilco_dtc_supportd_grp_client_;
 
-  std::optional<base::Closure> handle_message_from_ui_callback_;
+  std::optional<base::OnceClosure> handle_message_from_ui_callback_;
   std::optional<std::string> handle_message_from_ui_actual_json_message_;
   std::optional<std::string> handle_message_from_ui_json_message_response_;
 
@@ -212,7 +211,7 @@ class FakeWilcoDtc final {
   std::optional<HandlePowerNotificationRequestCallback>
       handle_power_event_request_callback_;
 
-  std::optional<base::RepeatingClosure> configuration_data_changed_callback_;
+  std::optional<base::OnceClosure> configuration_data_changed_callback_;
 
   std::optional<HandleBluetoothDataChangedRequestCallback>
       bluetooth_data_changed_request_callback_;

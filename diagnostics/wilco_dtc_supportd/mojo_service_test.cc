@@ -92,12 +92,12 @@ TEST_F(MojoServiceTest, SendWilcoDtcMessageToUi) {
   base::RunLoop run_loop;
   mojo_service()->SendWilcoDtcMessageToUi(
       kJsonMessageToUi,
-      base::Bind(
-          [](const base::Closure& quit_closure,
+      base::BindOnce(
+          [](base::OnceClosure quit_closure,
              base::StringPiece expected_json_message, grpc::Status status,
              base::StringPiece json_message) {
             EXPECT_EQ(json_message, expected_json_message);
-            quit_closure.Run();
+            std::move(quit_closure).Run();
           },
           run_loop.QuitClosure(), kJsonMessageFromUi));
   run_loop.Run();
@@ -105,11 +105,11 @@ TEST_F(MojoServiceTest, SendWilcoDtcMessageToUi) {
 
 TEST_F(MojoServiceTest, SendWilcoDtcMessageToUiEmptyMessage) {
   base::RunLoop run_loop;
-  auto callback = base::Bind(
-      [](const base::Closure& quit_closure, grpc::Status status,
+  auto callback = base::BindOnce(
+      [](base::OnceClosure quit_closure, grpc::Status status,
          base::StringPiece json_message) {
         EXPECT_TRUE(json_message.empty());
-        quit_closure.Run();
+        std::move(quit_closure).Run();
       },
       run_loop.QuitClosure());
   mojo_service()->SendWilcoDtcMessageToUi("", std::move(callback));
@@ -142,8 +142,8 @@ TEST_F(MojoServiceTest, PerformWebRequest) {
   base::RunLoop run_loop;
   mojo_service()->PerformWebRequest(
       kHttpMethod, kHttpsUrl, {kHeader1, kHeader2}, kBodyRequest,
-      base::Bind(
-          [](const base::Closure& quit_closure,
+      base::BindOnce(
+          [](base::OnceClosure quit_closure,
              MojomWilcoDtcSupportdWebRequestStatus expected_status,
              int expected_http_status, std::string expected_response_body,
              MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
@@ -151,7 +151,7 @@ TEST_F(MojoServiceTest, PerformWebRequest) {
             EXPECT_EQ(expected_status, status);
             EXPECT_EQ(expected_http_status, http_status);
             EXPECT_EQ(expected_response_body, response_body);
-            quit_closure.Run();
+            std::move(quit_closure).Run();
           },
           run_loop.QuitClosure(), kWebRequestStatus, kHttpStatusOk,
           kBodyResponse));
@@ -169,11 +169,11 @@ TEST_F(MojoServiceTest, GetConfigurationData) {
           })));
 
   base::RunLoop run_loop;
-  mojo_service()->GetConfigurationData(base::Bind(
-      [](const base::Closure& quit_closure, const std::string& expected_data,
+  mojo_service()->GetConfigurationData(base::BindOnce(
+      [](base::OnceClosure quit_closure, const std::string& expected_data,
          const std::string& json_configuration_data) {
         EXPECT_EQ(json_configuration_data, expected_data);
-        quit_closure.Run();
+        std::move(quit_closure).Run();
       },
       run_loop.QuitClosure(), kFakeJsonConfigurationData));
   run_loop.Run();

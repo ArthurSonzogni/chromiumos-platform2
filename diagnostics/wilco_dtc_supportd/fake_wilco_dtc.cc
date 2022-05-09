@@ -19,22 +19,24 @@ FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
                                      wilco_dtc_supportd_grpc_uri) {
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleMessageFromUi,
-      base::Bind(&FakeWilcoDtc::HandleMessageFromUi, base::Unretained(this)));
+      base::BindRepeating(&FakeWilcoDtc::HandleMessageFromUi,
+                          base::Unretained(this)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleEcNotification,
-      base::Bind(&FakeWilcoDtc::HandleEcNotification, base::Unretained(this)));
+      base::BindRepeating(&FakeWilcoDtc::HandleEcNotification,
+                          base::Unretained(this)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandlePowerNotification,
-      base::Bind(&FakeWilcoDtc::HandlePowerNotification,
-                 base::Unretained(this)));
+      base::BindRepeating(&FakeWilcoDtc::HandlePowerNotification,
+                          base::Unretained(this)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
-      base::Bind(&FakeWilcoDtc::HandleConfigurationDataChanged,
-                 base::Unretained(this)));
+      base::BindRepeating(&FakeWilcoDtc::HandleConfigurationDataChanged,
+                          base::Unretained(this)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleBluetoothDataChanged,
-      base::Bind(&FakeWilcoDtc::HandleBluetoothDataChanged,
-                 base::Unretained(this)));
+      base::BindRepeating(&FakeWilcoDtc::HandleBluetoothDataChanged,
+                          base::Unretained(this)));
 
   grpc_server_.Start();
 }
@@ -42,7 +44,7 @@ FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
 FakeWilcoDtc::~FakeWilcoDtc() {
   // Wait until both gRPC server and client get shut down.
   base::RunLoop run_loop;
-  const base::Closure barrier_closure =
+  const base::RepeatingClosure barrier_closure =
       base::BarrierClosure(2, run_loop.QuitClosure());
   grpc_server_.ShutDown(barrier_closure);
   wilco_dtc_supportd_grp_client_.ShutDown(barrier_closure);
@@ -133,7 +135,8 @@ void FakeWilcoDtc::HandleMessageFromUi(
       handle_message_from_ui_json_message_response_.value());
   callback.Run(grpc::Status::OK, std::move(response));
 
-  handle_message_from_ui_callback_->Run();
+  if (handle_message_from_ui_callback_.has_value())
+    std::move(handle_message_from_ui_callback_.value()).Run();
 }
 
 void FakeWilcoDtc::HandleEcNotification(
@@ -167,7 +170,8 @@ void FakeWilcoDtc::HandleConfigurationDataChanged(
       std::make_unique<grpc_api::HandleConfigurationDataChangedResponse>();
   callback.Run(grpc::Status::OK, std::move(response));
 
-  configuration_data_changed_callback_->Run();
+  if (configuration_data_changed_callback_.has_value())
+    std::move(configuration_data_changed_callback_.value()).Run();
 }
 
 void FakeWilcoDtc::HandleBluetoothDataChanged(

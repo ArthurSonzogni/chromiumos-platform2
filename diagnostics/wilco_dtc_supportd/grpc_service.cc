@@ -320,7 +320,7 @@ void GrpcService::SendMessageToUi(
     const SendMessageToUiCallback& callback) {
   delegate_->SendWilcoDtcMessageToUi(
       request->json_message(),
-      base::Bind(&ForwardSendMessageToUiResponse, callback));
+      base::BindOnce(&ForwardSendMessageToUiResponse, callback));
 }
 
 void GrpcService::GetProcData(
@@ -492,7 +492,8 @@ void GrpcService::PerformWebRequest(
       std::vector<std::string>(
           std::make_move_iterator(parameter->mutable_headers()->begin()),
           std::make_move_iterator(parameter->mutable_headers()->end())),
-      parameter->request_body(), base::Bind(&ForwardWebGrpcResponse, callback));
+      parameter->request_body(),
+      base::BindOnce(&ForwardWebGrpcResponse, callback));
 }
 
 void GrpcService::GetAvailableRoutines(
@@ -500,7 +501,7 @@ void GrpcService::GetAvailableRoutines(
     const GetAvailableRoutinesCallback& callback) {
   DCHECK(request);
   delegate_->GetAvailableRoutinesToService(
-      base::Bind(&ForwardGetAvailableRoutinesResponse, callback));
+      base::BindOnce(&ForwardGetAvailableRoutinesResponse, callback));
 }
 
 void GrpcService::RunRoutine(
@@ -653,7 +654,7 @@ void GrpcService::RunRoutine(
   }
 
   delegate_->RunRoutineToService(
-      *request, base::Bind(&ForwardRunRoutineResponse, callback));
+      *request, base::BindOnce(&ForwardRunRoutineResponse, callback));
 }
 
 void GrpcService::GetRoutineUpdate(
@@ -672,7 +673,7 @@ void GrpcService::GetRoutineUpdate(
 
   delegate_->GetRoutineUpdateRequestToService(
       request->uuid(), request->command(), request->include_output(),
-      base::Bind(&ForwardGetRoutineUpdateResponse, callback));
+      base::BindOnce(&ForwardGetRoutineUpdateResponse, callback));
 }
 
 void GrpcService::GetOsVersion(
@@ -701,7 +702,7 @@ void GrpcService::GetConfigurationData(
   DCHECK(request);
 
   delegate_->GetConfigurationDataFromBrowser(
-      base::Bind(&ForwardGetConfigurationDataResponse, callback));
+      base::BindOnce(&ForwardGetConfigurationDataResponse, callback));
 }
 
 void GrpcService::GetVpdField(
@@ -760,7 +761,8 @@ void GrpcService::GetDriveSystemData(
   }
 
   delegate_->GetDriveSystemData(
-      data_type, base::Bind(&ForwardGetDriveSystemDataResponse, callback));
+      data_type,
+      base::BindRepeating(&ForwardGetDriveSystemDataResponse, callback));
 }
 
 void GrpcService::RequestBluetoothDataNotification(
@@ -783,7 +785,7 @@ void GrpcService::GetStatefulPartitionAvailableCapacity(
       chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
   delegate_->ProbeTelemetryInfo(
       std::move(categories),
-      base::Bind(&ForwardGetStatefulPartitionAvailableCapacity, callback));
+      base::BindOnce(&ForwardGetStatefulPartitionAvailableCapacity, callback));
 }
 
 void GrpcService::AddFileDump(

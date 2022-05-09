@@ -117,9 +117,9 @@ TEST_F(ProbeServiceImplTest, DroppedConnection) {
   base::RunLoop run_loop;
   service()->ProbeTelemetryInfo(
       {}, base::BindOnce(
-              [](base::Closure callback, mojo_ipc::TelemetryInfoPtr ptr) {
+              [](base::OnceClosure callback, mojo_ipc::TelemetryInfoPtr ptr) {
                 EXPECT_FALSE(ptr);
-                callback.Run();
+                std::move(callback).Run();
               },
               run_loop.QuitClosure()));
   run_loop.Run();
@@ -132,9 +132,9 @@ TEST_F(ProbeServiceImplTest, RecoverAfterDroppedConnection) {
   base::RunLoop run_loop1;
   service()->ProbeTelemetryInfo(
       {}, base::BindOnce(
-              [](base::Closure callback, mojo_ipc::TelemetryInfoPtr ptr) {
+              [](base::OnceClosure callback, mojo_ipc::TelemetryInfoPtr ptr) {
                 EXPECT_FALSE(ptr);
-                callback.Run();
+                std::move(callback).Run();
               },
               run_loop1.QuitClosure()));
   run_loop1.Run();
@@ -160,9 +160,9 @@ TEST_F(ProbeServiceImplTest, RecoverAfterDroppedConnection) {
   base::RunLoop run_loop2;
   service()->ProbeTelemetryInfo(
       {}, base::BindOnce(
-              [](base::Closure callback, mojo_ipc::TelemetryInfoPtr ptr) {
+              [](base::OnceClosure callback, mojo_ipc::TelemetryInfoPtr ptr) {
                 EXPECT_TRUE(ptr);
-                callback.Run();
+                std::move(callback).Run();
               },
               run_loop2.QuitClosure()));
   run_loop2.Run();
@@ -198,10 +198,10 @@ TEST_F(ProbeServiceImplTest, ProbeTelemetryInfo) {
   service()->ProbeTelemetryInfo(
       kCategories,
       base::BindOnce(
-          [](base::Closure callback, mojo_ipc::TelemetryInfoPtr ptr) {
+          [](base::OnceClosure callback, mojo_ipc::TelemetryInfoPtr ptr) {
             ASSERT_TRUE(ptr);
             EXPECT_TRUE(ptr->battery_result->is_battery_info());
-            callback.Run();
+            std::move(callback).Run();
           },
           run_loop.QuitClosure()));
   run_loop.Run();

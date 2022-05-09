@@ -27,7 +27,7 @@ void MissingProbeTelemetryInfoCallback(
 }  // namespace
 
 FakeProbeService::FakeProbeService()
-    : telemetry_callback_(base::Bind(MissingProbeTelemetryInfoCallback)) {}
+    : telemetry_callback_(base::BindOnce(MissingProbeTelemetryInfoCallback)) {}
 
 FakeProbeService::~FakeProbeService() = default;
 

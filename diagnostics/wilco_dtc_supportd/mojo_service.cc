@@ -115,7 +115,8 @@ void MojoService::SendUiMessageToWilcoDtc(
 
   grpc_adapter_->SendGrpcUiMessageToWilcoDtc(
       json_message_content,
-      base::Bind(&ForwardMojoJsonResponse, base::Passed(std::move(callback))));
+      base::BindRepeating(&ForwardMojoJsonResponse,
+                          base::Passed(std::move(callback))));
 }
 
 void MojoService::NotifyConfigurationDataChanged() {

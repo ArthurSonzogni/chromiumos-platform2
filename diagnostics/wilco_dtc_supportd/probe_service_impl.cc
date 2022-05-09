@@ -37,8 +37,8 @@ void ProbeServiceImpl::ProbeTelemetryInfo(
   callbacks_.insert({callback_key, std::move(callback)});
   service_ptr_->ProbeTelemetryInfo(
       std::move(categories),
-      base::Bind(&ProbeServiceImpl::ForwardProbeTelemetryInfoResponse,
-                 weak_ptr_factory_.GetWeakPtr(), callback_key));
+      base::BindOnce(&ProbeServiceImpl::ForwardProbeTelemetryInfoResponse,
+                     weak_ptr_factory_.GetWeakPtr(), callback_key));
 }
 
 void ProbeServiceImpl::ForwardProbeTelemetryInfoResponse(
@@ -62,7 +62,7 @@ bool ProbeServiceImpl::BindCrosHealthdProbeServiceIfNeeded() {
 
   auto request = mojo::MakeRequest(&service_ptr_);
 
-  service_ptr_.set_connection_error_handler(base::Bind(
+  service_ptr_.set_connection_error_handler(base::BindOnce(
       &ProbeServiceImpl::OnDisconnect, weak_ptr_factory_.GetWeakPtr()));
 
   return delegate_->BindCrosHealthdProbeService(std::move(request));

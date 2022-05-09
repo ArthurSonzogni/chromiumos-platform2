@@ -24,7 +24,7 @@ template <typename... Services>
 void ShutDownServicesInRunLoop(Services*... services) {
   CHECK(!base::RunLoop::IsRunningOnCurrentThread());
   base::RunLoop run_loop;
-  const base::Closure barrier_closure =
+  const base::RepeatingClosure barrier_closure =
       base::BarrierClosure(sizeof...(services), run_loop.QuitClosure());
 
   // Braced initializer lists guarantee the execution of clauses from left to
