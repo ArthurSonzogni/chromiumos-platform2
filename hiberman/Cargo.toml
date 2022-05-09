@@ -26,7 +26,7 @@ protobuf = "2.3"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 sync = { path = "../../platform/crosvm/common/sync" } # provided by ebuild
-sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
+sys_util = "0.1.0"
 syslog = "4.0.0"
 system_api = { path = "../../platform2/system_api" } # provided by ebuild
 thiserror = "1.0.20"
