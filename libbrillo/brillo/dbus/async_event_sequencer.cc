@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/check.h>
@@ -36,11 +38,10 @@ AsyncEventSequencer::ExportHandler AsyncEventSequencer::GetExportHandler(
                     finish_handler, interface_name, method_name);
 }
 
-void AsyncEventSequencer::OnAllTasksCompletedCall(
-    std::vector<CompletionAction> actions) {
+void AsyncEventSequencer::OnAllTasksCompletedCall(CompletionOnceAction action) {
   CHECK(!started_) << "OnAllTasksCompletedCall called twice!";
   started_ = true;
-  completion_actions_.assign(actions.begin(), actions.end());
+  completion_action_ = std::move(action);
   // All of our callbacks might have been called already.
   PossiblyRunCompletionActions();
 }
@@ -114,12 +115,11 @@ void AsyncEventSequencer::PossiblyRunCompletionActions() {
     // be scheduled in the future.
     return;
   }
-  for (const auto& completion_action : completion_actions_) {
-    // Should this be put on the message loop or run directly?
-    completion_action.Run(!had_failures_);
+  // Should this be put on the message loop or run directly?
+  if (!completion_action_.is_null()) {
+    // Our reference to the action is discarded by std::move.
+    std::move(completion_action_).Run(!had_failures_);
   }
-  // Discard our references to those actions.
-  completion_actions_.clear();
 }
 
 }  // namespace dbus_utils

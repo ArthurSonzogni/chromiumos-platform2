@@ -52,7 +52,7 @@ void DBusProtocolHandler::RegisterAsync(
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting ProtocolHandler.", true));
-  sequencer->OnAllTasksCompletedCall({completion_callback});
+  sequencer->OnAllTasksCompletedCall(completion_callback);
 }
 
 ExportedObjectManager* DBusProtocolHandler::GetObjectManager() const {

@@ -100,7 +100,7 @@ void Server::RegisterAsync(
     pair.second->RegisterAsync(
         sequencer->GetHandler("Failed exporting ProtocolHandler.", false));
   }
-  sequencer->OnAllTasksCompletedCall({completion_callback});
+  sequencer->OnAllTasksCompletedCall(completion_callback);
 }
 
 void Server::OnFirewallServiceOnline() {

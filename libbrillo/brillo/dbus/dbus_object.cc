@@ -61,7 +61,7 @@ void DBusInterface::ExportAsync(
     dbus::Bus* /* bus */,
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionOnceAction completion_callback) {
   VLOG(1) << "Registering D-Bus interface '" << interface_name_ << "' for '"
           << object_path.value() << "'";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
@@ -77,16 +77,24 @@ void DBusInterface::ExportAsync(
                                   export_handler);
   }
 
-  std::vector<AsyncEventSequencer::CompletionAction> actions;
+  std::vector<AsyncEventSequencer::CompletionOnceAction> actions;
   if (object_manager) {
     auto property_writer_callback =
         dbus_object_->property_set_.GetPropertyWriter(interface_name_);
-    actions.push_back(base::Bind(
+    actions.push_back(base::BindOnce(
         &DBusInterface::ClaimInterface, weak_factory_.GetWeakPtr(),
         object_manager->AsWeakPtr(), object_path, property_writer_callback));
   }
-  actions.push_back(completion_callback);
-  sequencer->OnAllTasksCompletedCall(actions);
+  actions.push_back(std::move(completion_callback));
+  auto actions_cb = base::BindOnce(
+      [](std::vector<AsyncEventSequencer::CompletionOnceAction> actions,
+         bool all_succeeded) {
+        for (auto& action : actions) {
+          std::move(action).Run(all_succeeded);
+        }
+      },
+      std::move(actions));
+  sequencer->OnAllTasksCompletedCall(std::move(actions_cb));
 }
 
 void DBusInterface::ExportAndBlock(ExportedObjectManager* object_manager,
@@ -118,7 +126,7 @@ void DBusInterface::UnexportAsync(
     ExportedObjectManager* object_manager,
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionOnceAction completion_callback) {
   VLOG(1) << "Unexporting D-Bus interface " << interface_name_ << " for "
           << object_path.value();
 
@@ -137,7 +145,7 @@ void DBusInterface::UnexportAsync(
                                     export_handler);
   }
 
-  sequencer->OnAllTasksCompletedCall({completion_callback});
+  sequencer->OnAllTasksCompletedCall(std::move(completion_callback));
 }
 
 void DBusInterface::UnexportAndBlock(ExportedObjectManager* object_manager,
@@ -272,10 +280,10 @@ void DBusObject::RemoveInterface(const std::string& interface_name) {
 
 void DBusObject::ExportInterfaceAsync(
     const std::string& interface_name,
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionOnceAction completion_callback) {
   AddOrGetInterface(interface_name)
       ->ExportAsync(object_manager_.get(), bus_.get(), exported_object_,
-                    object_path_, completion_callback);
+                    object_path_, std::move(completion_callback));
 }
 
 void DBusObject::ExportInterfaceAndBlock(const std::string& interface_name) {
@@ -286,10 +294,10 @@ void DBusObject::ExportInterfaceAndBlock(const std::string& interface_name) {
 
 void DBusObject::UnexportInterfaceAsync(
     const std::string& interface_name,
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionOnceAction completion_callback) {
   AddOrGetInterface(interface_name)
       ->UnexportAsync(object_manager_.get(), exported_object_, object_path_,
-                      completion_callback);
+                      std::move(completion_callback));
 }
 
 void DBusObject::UnexportInterfaceAndBlock(const std::string& interface_name) {
@@ -298,7 +306,7 @@ void DBusObject::UnexportInterfaceAndBlock(const std::string& interface_name) {
 }
 
 void DBusObject::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionOnceAction completion_callback) {
   VLOG(1) << "Registering D-Bus object '" << object_path_.value() << "'.";
   CHECK(exported_object_ == nullptr) << "Object already registered.";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
@@ -314,7 +322,7 @@ void DBusObject::RegisterAsync(
                               false));
   }
 
-  sequencer->OnAllTasksCompletedCall({completion_callback});
+  sequencer->OnAllTasksCompletedCall(std::move(completion_callback));
 }
 
 void DBusObject::RegisterAndBlock() {

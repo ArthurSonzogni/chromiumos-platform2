@@ -39,13 +39,13 @@ TEST_F(AsyncEventSequencerTest, WaitForCompletionActions) {
   auto finished_handler = aec_->GetHandler("handler failed", false);
   finished_handler.Run(true);
   EXPECT_CALL(*this, HandleCompletion(true)).Times(1);
-  aec_->OnAllTasksCompletedCall({cb_});
+  aec_->OnAllTasksCompletedCall(cb_);
 }
 
 TEST_F(AsyncEventSequencerTest, MultiInitActionsSucceed) {
   auto finished_handler1 = aec_->GetHandler("handler failed", false);
   auto finished_handler2 = aec_->GetHandler("handler failed", false);
-  aec_->OnAllTasksCompletedCall({cb_});
+  aec_->OnAllTasksCompletedCall(cb_);
   finished_handler1.Run(true);
   EXPECT_CALL(*this, HandleCompletion(true)).Times(1);
   finished_handler2.Run(true);
@@ -54,7 +54,7 @@ TEST_F(AsyncEventSequencerTest, MultiInitActionsSucceed) {
 TEST_F(AsyncEventSequencerTest, SomeInitActionsFail) {
   auto finished_handler1 = aec_->GetHandler("handler failed", false);
   auto finished_handler2 = aec_->GetHandler("handler failed", false);
-  aec_->OnAllTasksCompletedCall({cb_});
+  aec_->OnAllTasksCompletedCall(cb_);
   finished_handler1.Run(false);
   EXPECT_CALL(*this, HandleCompletion(false)).Times(1);
   finished_handler2.Run(true);
@@ -65,7 +65,7 @@ TEST_F(AsyncEventSequencerTest, MultiDBusActionsSucceed) {
                                          "method export failed", false);
   auto handler2 = aec_->GetExportHandler(kTestInterface, kTestMethod2,
                                          "method export failed", false);
-  aec_->OnAllTasksCompletedCall({cb_});
+  aec_->OnAllTasksCompletedCall(cb_);
   handler1.Run(kTestInterface, kTestMethod1, true);
   EXPECT_CALL(*this, HandleCompletion(true)).Times(1);
   handler2.Run(kTestInterface, kTestMethod2, true);
@@ -76,7 +76,7 @@ TEST_F(AsyncEventSequencerTest, SomeDBusActionsFail) {
                                          "method export failed", false);
   auto handler2 = aec_->GetExportHandler(kTestInterface, kTestMethod2,
                                          "method export failed", false);
-  aec_->OnAllTasksCompletedCall({cb_});
+  aec_->OnAllTasksCompletedCall(cb_);
   handler1.Run(kTestInterface, kTestMethod1, true);
   EXPECT_CALL(*this, HandleCompletion(false)).Times(1);
   handler2.Run(kTestInterface, kTestMethod2, false);
@@ -86,7 +86,7 @@ TEST_F(AsyncEventSequencerTest, MixedActions) {
   auto handler1 = aec_->GetExportHandler(kTestInterface, kTestMethod1,
                                          "method export failed", false);
   auto handler2 = aec_->GetHandler("handler failed", false);
-  aec_->OnAllTasksCompletedCall({cb_});
+  aec_->OnAllTasksCompletedCall(cb_);
   handler1.Run(kTestInterface, kTestMethod1, true);
   EXPECT_CALL(*this, HandleCompletion(true)).Times(1);
   handler2.Run(true);

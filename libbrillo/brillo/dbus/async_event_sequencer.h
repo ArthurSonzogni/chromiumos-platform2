@@ -8,8 +8,7 @@
 #include <set>
 #include <string>
 #include <vector>
-
-#include <base/callback_forward.h>
+#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/brillo_export.h>
 
@@ -44,6 +43,10 @@ class BRILLO_EXPORT AsyncEventSequencer
   using CompletionAction = base::Callback<void(bool all_succeeded)>;
   using CompletionTask = base::Callback<void(void)>;
 
+  // TODO(weiluanwang): Rename to CompletionAction when the migration is
+  // finished.
+  using CompletionOnceAction = base::OnceCallback<void(bool all_succeeded)>;
+
   AsyncEventSequencer();
   AsyncEventSequencer(const AsyncEventSequencer&) = delete;
   AsyncEventSequencer& operator=(const AsyncEventSequencer&) = delete;
@@ -63,9 +66,9 @@ class BRILLO_EXPORT AsyncEventSequencer
                                  bool failure_is_fatal);
 
   // Once all handlers obtained via GetHandler have run,
-  // we'll run each CompletionAction, then discard our references.
+  // we'll run the CompletionOnceAction, then discard our reference.
   // No more handlers may be obtained after this call.
-  void OnAllTasksCompletedCall(std::vector<CompletionAction> actions);
+  void OnAllTasksCompletedCall(CompletionOnceAction action);
 
   // Wrap a CompletionTask with a function that discards the result.
   // This CompletionTask retains no references to the AsyncEventSequencer.
@@ -99,7 +102,7 @@ class BRILLO_EXPORT AsyncEventSequencer
   bool started_{false};
   int registration_counter_{0};
   std::set<int> outstanding_registrations_;
-  std::vector<CompletionAction> completion_actions_;
+  CompletionOnceAction completion_action_;
   bool had_failures_{false};
   // Ref counted objects have private destructors.
   ~AsyncEventSequencer();

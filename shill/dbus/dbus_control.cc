@@ -86,8 +86,8 @@ void DBusControl::RegisterManagerObject(
   manager->RegisterAsync(base::Bind(
       &DBusControl::OnDBusServiceRegistered, base::Unretained(this),
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
-  sequencer->OnAllTasksCompletedCall(
-      {base::Bind(&DBusControl::TakeServiceOwnership, base::Unretained(this))});
+  sequencer->OnAllTasksCompletedCall(base::BindOnce(
+      &DBusControl::TakeServiceOwnership, base::Unretained(this)));
 }
 
 void DBusControl::OnDBusServiceRegistered(
