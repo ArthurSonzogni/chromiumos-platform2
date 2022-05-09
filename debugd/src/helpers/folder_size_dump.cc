@@ -137,6 +137,10 @@ bool DumpDirectory(const DirAdder& entry) {
   RE2::GlobalReplace(&output, R"(^\n+)", "");
   RE2::GlobalReplace(&output, R"(\n{2,})", "\n");
 
+  // Filter out user avatar filenames as they leak who used the device.
+  RE2::GlobalReplace(&output, R"(\S+@\S+[.](jpe?g|png|webp))",
+                     "<user avatar>.<format>");
+
   std::cout << "--- " << entry.GetPath() << " ---" << std::endl;
   std::cout << output;
 
