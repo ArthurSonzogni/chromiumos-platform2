@@ -170,7 +170,7 @@ TEST_F(PowerManagerClientTest, SuspendImminent) {
   current_suspend_id_ = 1297;
 
   bool called = false;
-  client->RegisterSuspendDelay(base::Bind(&SetTrue, &called),
+  client->RegisterSuspendDelay(base::BindRepeating(&SetTrue, &called),
                                base::DoNothing());
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
@@ -196,7 +196,7 @@ TEST_F(PowerManagerClientTest, SuspendDone) {
 
   bool called = false;
   client->RegisterSuspendDelay(base::DoNothing(),
-                               base::Bind(&SetTrue, &called));
+                               base::BindRepeating(&SetTrue, &called));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal);
@@ -233,7 +233,7 @@ TEST_F(PowerManagerClientTest, WrongSuspendId) {
 
   bool called = false;
   client->RegisterSuspendDelay(base::DoNothing(),
-                               base::Bind(&SetTrue, &called));
+                               base::BindRepeating(&SetTrue, &called));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal);
@@ -269,7 +269,7 @@ TEST_F(PowerManagerClientTest, MultipleSuspendImminents) {
   current_suspend_id_ = 7261;
 
   int32_t counter = 0;
-  client->RegisterSuspendDelay(base::Bind(&Increment, &counter),
+  client->RegisterSuspendDelay(base::BindRepeating(&Increment, &counter),
                                base::DoNothing());
 
   for (int i = 0; i < 3; ++i) {

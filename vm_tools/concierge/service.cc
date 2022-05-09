@@ -291,8 +291,8 @@ bool SetupListenerService(base::Thread* grpc_thread,
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool ret = grpc_thread->task_runner()->PostTask(
-      FROM_HERE, base::Bind(&RunListenerService, listener_impl,
-                            listener_address, &event, server_copy));
+      FROM_HERE, base::BindOnce(&RunListenerService, listener_impl,
+                                listener_address, &event, server_copy));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return false;
@@ -1259,7 +1259,7 @@ bool Service::Init() {
                  for (const auto& iter : kServiceMethods) {
                    bool ret = exported_object_->ExportMethodAndBlock(
                        kVmConciergeInterface, iter.first,
-                       base::Bind(
+                       base::BindRepeating(
                            &HandleSynchronousDBusMethodCall,
                            base::Bind(iter.second, base::Unretained(service))));
                    if (!ret) {
@@ -1270,7 +1270,7 @@ bool Service::Init() {
                  for (const auto& iter : kAsyncServiceMethods) {
                    bool ret = exported_object_->ExportMethodAndBlock(
                        kVmConciergeInterface, iter.first,
-                       base::Bind(
+                       base::BindRepeating(
                            &HandleAsynchronousDBusMethodCall,
                            base::Bind(iter.second, base::Unretained(service))));
                    if (!ret) {
@@ -1298,11 +1298,11 @@ bool Service::Init() {
 
   // Set up the D-Bus client for shill.
   shill_client_ = std::make_unique<ShillClient>(bus_);
-  shill_client_->RegisterResolvConfigChangedHandler(base::Bind(
+  shill_client_->RegisterResolvConfigChangedHandler(base::BindRepeating(
       &Service::OnResolvConfigChanged, weak_ptr_factory_.GetWeakPtr()));
   shill_client_->RegisterDefaultServiceChangedHandler(
-      base::Bind(&Service::OnDefaultNetworkServiceChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Service::OnDefaultNetworkServiceChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   // Set up the D-Bus client for powerd and register suspend/resume handlers.
   power_manager_client_ = std::make_unique<PowerManagerClient>(bus_);
@@ -1323,9 +1323,10 @@ bool Service::Init() {
   cicerone_service_proxy_->ConnectToSignal(
       vm_tools::cicerone::kVmCiceroneServiceName,
       vm_tools::cicerone::kTremplinStartedSignal,
-      base::Bind(&Service::OnTremplinStartedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Service::OnSignalConnected, weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Service::OnTremplinStartedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&Service::OnSignalConnected,
+                     weak_ptr_factory_.GetWeakPtr()));
 
   // Get the D-Bus proxy for communicating with seneschal.
   seneschal_service_proxy_ = bus_->GetObjectProxy(
@@ -1352,9 +1353,10 @@ bool Service::Init() {
   }
   pvm::dispatcher::RegisterVmToolsChangedCallbacks(
       vmplugin_service_proxy_,
-      base::Bind(&Service::OnVmToolsStateChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Service::OnSignalConnected, weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Service::OnVmToolsStateChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&Service::OnSignalConnected,
+                     weak_ptr_factory_.GetWeakPtr()));
 
   // Get the D-Bus proxy for communicating with resource manager.
   resource_manager_service_proxy_ = bus_->GetObjectProxy(
@@ -2725,8 +2727,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
       base::ThreadTaskRunnerHandle::Get()->PostTask(
           FROM_HERE,
-          base::Bind(&Service::RunDiskImageOperation,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+          base::BindOnce(&Service::RunDiskImageOperation,
+                         weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
     }
 
     writer.AppendProtoAsArrayOfBytes(response);
@@ -2989,8 +2991,9 @@ std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
     std::string uuid = op->uuid();
     disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
-                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+        FROM_HERE,
+        base::BindOnce(&Service::RunDiskImageOperation,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   } else if (op->status() == DISK_STATUS_RESIZED) {
     DiskImageStatus status = DISK_STATUS_RESIZED;
     std::string failure_reason;
@@ -3183,8 +3186,9 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     std::string uuid = op->uuid();
     disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
-                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+        FROM_HERE,
+        base::BindOnce(&Service::RunDiskImageOperation,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 
   writer.AppendProtoAsArrayOfBytes(response);
@@ -3260,8 +3264,9 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
     std::string uuid = op->uuid();
     disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
-                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+        FROM_HERE,
+        base::BindOnce(&Service::RunDiskImageOperation,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 
   writer.AppendProtoAsArrayOfBytes(response);
@@ -3307,8 +3312,9 @@ void Service::RunDiskImageOperation(std::string uuid) {
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     // Reschedule ourselves so we can execute next chunk of work.
     base::ThreadTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
-                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+        FROM_HERE,
+        base::BindOnce(&Service::RunDiskImageOperation,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 }
 

@@ -109,7 +109,7 @@ class TerminaVmTest : public ::testing::Test {
  private:
   // Posted back to the main thread by the grpc thread after starting the
   // server.
-  void ServerStartCallback(base::Closure quit,
+  void ServerStartCallback(base::OnceClosure quit,
                            std::shared_ptr<grpc::Server> server);
 
   // The message loop for the current thread.  Declared here because it must be
@@ -341,7 +341,7 @@ void StartFakeMaitredService(
     TerminaVmTest* vm_test,
     scoped_refptr<base::SingleThreadTaskRunner> main_task_runner,
     base::FilePath listen_path,
-    base::Callback<void(std::shared_ptr<grpc::Server>)> server_cb) {
+    base::OnceCallback<void(std::shared_ptr<grpc::Server>)> server_cb) {
   FakeMaitredService maitred(vm_test);
 
   grpc::ServerBuilder builder;
@@ -350,7 +350,8 @@ void StartFakeMaitredService(
   builder.RegisterService(&maitred);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
-  main_task_runner->PostTask(FROM_HERE, base::Bind(server_cb, server));
+  main_task_runner->PostTask(FROM_HERE,
+                             base::BindOnce(std::move(server_cb), server));
 
   if (server) {
     // This will not race with shutdown because the grpc server code includes a
@@ -370,11 +371,11 @@ void TerminaVmTest::SetUp() {
   ASSERT_TRUE(server_thread_.Start());
   server_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &StartFakeMaitredService, this, base::ThreadTaskRunnerHandle::Get(),
           temp_dir_.GetPath().Append(kServerSocket),
-          base::Bind(&TerminaVmTest::ServerStartCallback,
-                     weak_factory_.GetWeakPtr(), run_loop.QuitClosure())));
+          base::BindOnce(&TerminaVmTest::ServerStartCallback,
+                         weak_factory_.GetWeakPtr(), run_loop.QuitClosure())));
 
   run_loop.Run();
 
@@ -424,10 +425,10 @@ void TerminaVmTest::TearDown() {
   server_thread_.Stop();
 }
 
-void TerminaVmTest::ServerStartCallback(base::Closure quit,
+void TerminaVmTest::ServerStartCallback(base::OnceClosure quit,
                                         std::shared_ptr<grpc::Server> server) {
   server_.swap(server);
-  quit.Run();
+  std::move(quit).Run();
 }
 
 void TerminaVmTest::TestFailed(string reason) {

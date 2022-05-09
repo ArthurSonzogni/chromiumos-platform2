@@ -32,8 +32,8 @@ class PowerManagerClient final {
   // Registers a suspend delay with the power manager.  Calls
   // |suspend_imminent_cb| whenever the device is about to suspend and
   // |suspend_done_cb| when the device resumes.
-  void RegisterSuspendDelay(base::Closure suspend_imminent_cb,
-                            base::Closure suspend_done_cb);
+  void RegisterSuspendDelay(const base::RepeatingClosure& suspend_imminent_cb,
+                            const base::RepeatingClosure& suspend_done_cb);
 
  private:
   void HandleSuspendImminent(dbus::Signal* signal);
@@ -52,8 +52,8 @@ class PowerManagerClient final {
   int32_t delay_id_;
   int32_t current_suspend_id_;
 
-  base::Closure suspend_imminent_cb_;
-  base::Closure suspend_done_cb_;
+  base::RepeatingClosure suspend_imminent_cb_;
+  base::RepeatingClosure suspend_done_cb_;
 
   base::WeakPtrFactory<PowerManagerClient> weak_factory_{this};
 

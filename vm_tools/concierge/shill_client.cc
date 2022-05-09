@@ -44,13 +44,13 @@ ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus)
   // 3) That IPConfig's Nameservers and SearchDomains properties
   // may require updating the nameservers and search domains in the guest VMs.
   manager_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ShillClient::OnManagerPropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ShillClient::OnManagerPropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ShillClient::OnManagerPropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ShillClient::OnManagerPropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 
-  auto owner_changed_cb = base::Bind(&ShillClient::OnShillServiceOwnerChange,
-                                     weak_factory_.GetWeakPtr());
+  auto owner_changed_cb = base::BindRepeating(
+      &ShillClient::OnShillServiceOwnerChange, weak_factory_.GetWeakPtr());
   bus_->GetObjectProxy(shill::kFlimflamServiceName, dbus::ObjectPath{"/"})
       ->SetNameOwnerChangedCallback(owner_changed_cb);
 }
@@ -132,14 +132,14 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
   // The default service has changed, so update the proxy object and register
   // a handler for its properties.
   if (default_service_proxy_) {
-    default_service_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+    default_service_proxy_->ReleaseObjectProxy(base::BindOnce([]() {}));
   }
   default_service_proxy_.reset(new ServiceProxy(bus_, service_path));
   default_service_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ShillClient::OnServicePropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ShillClient::OnServicePropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ShillClient::OnServicePropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
   if (!default_service_changed_callback_.is_null()) {
     default_service_changed_callback_.Run();
   }
@@ -204,14 +204,14 @@ void ShillClient::OnServicePropertyChange(const std::string& property_name,
 
   // Use it as the default IPConfig for nameservers.
   if (default_ipconfig_proxy_) {
-    default_ipconfig_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+    default_ipconfig_proxy_->ReleaseObjectProxy(base::BindOnce([]() {}));
   }
   default_ipconfig_proxy_ = std::move(ipconfig_proxy);
   default_ipconfig_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ShillClient::OnIPConfigPropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ShillClient::OnIPConfigPropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ShillClient::OnIPConfigPropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ShillClient::OnIPConfigPropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void ShillClient::OnIPConfigPropertyChangeRegistration(
@@ -261,15 +261,15 @@ void ShillClient::OnIPConfigPropertyChange(const std::string& property_name,
 }
 
 void ShillClient::RegisterResolvConfigChangedHandler(
-    base::Callback<void(std::vector<std::string>, std::vector<std::string>)>
-        callback) {
+    const base::RepeatingCallback<void(std::vector<std::string>,
+                                       std::vector<std::string>)>& callback) {
   config_changed_callback_ = std::move(callback);
   CHECK(!config_changed_callback_.is_null());
   config_changed_callback_.Run(nameservers_, search_domains_);
 }
 
 void ShillClient::RegisterDefaultServiceChangedHandler(
-    base::Callback<void()> callback) {
+    const base::RepeatingCallback<void()>& callback) {
   default_service_changed_callback_ = std::move(callback);
 }
 

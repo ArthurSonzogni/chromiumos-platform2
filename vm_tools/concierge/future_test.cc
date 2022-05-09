@@ -398,7 +398,7 @@ TEST_F(FutureTest, NoDeadlock) {
     base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE,
         base::BindOnce(
-            [](base::Closure closure) {
+            [](base::RepeatingClosure closure) {
               Promise<bool> promise;
               Future<bool> future =
                   promise.GetFuture(base::SequencedTaskRunnerHandle::Get());

@@ -26,10 +26,12 @@ class ShillClient final {
   ShillClient& operator=(const ShillClient&) = delete;
 
   void RegisterResolvConfigChangedHandler(
-      base::Callback<void(std::vector<std::string> nameservers,
-                          std::vector<std::string> search_domains)> callback);
+      const base::RepeatingCallback<
+          void(std::vector<std::string> nameservers,
+               std::vector<std::string> search_domains)>& callback);
 
-  void RegisterDefaultServiceChangedHandler(base::Callback<void()> callback);
+  void RegisterDefaultServiceChangedHandler(
+      const base::RepeatingCallback<void()>& callback);
 
  private:
   void OnShillServiceOwnerChange(const std::string& old_owner,
@@ -53,10 +55,10 @@ class ShillClient final {
   std::vector<std::string> nameservers_;
   std::vector<std::string> search_domains_;
 
-  base::Callback<void(std::vector<std::string> nameservers,
-                      std::vector<std::string> search_domains)>
+  base::RepeatingCallback<void(std::vector<std::string> nameservers,
+                               std::vector<std::string> search_domains)>
       config_changed_callback_;
-  base::Callback<void()> default_service_changed_callback_;
+  base::RepeatingCallback<void()> default_service_changed_callback_;
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;

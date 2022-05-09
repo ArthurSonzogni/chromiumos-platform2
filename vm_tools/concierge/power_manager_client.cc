@@ -59,8 +59,9 @@ PowerManagerClient::~PowerManagerClient() {
   }
 }
 
-void PowerManagerClient::RegisterSuspendDelay(base::Closure suspend_imminent_cb,
-                                              base::Closure suspend_done_cb) {
+void PowerManagerClient::RegisterSuspendDelay(
+    const base::RepeatingClosure& suspend_imminent_cb,
+    const base::RepeatingClosure& suspend_done_cb) {
   // We don't need to check whether powerd is running because it should start
   // automatically at boot while concierge is not started until the user
   // explicitly tries to start a VM.
@@ -102,19 +103,19 @@ void PowerManagerClient::RegisterSuspendDelay(base::Closure suspend_imminent_cb,
   power_manager_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
-      base::Bind(&PowerManagerClient::HandleSuspendImminent,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&PowerManagerClient::HandleSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerManagerClient::HandleSuspendImminent,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&PowerManagerClient::HandleSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 
   power_manager_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
-      base::Bind(&PowerManagerClient::HandleSuspendDone,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&PowerManagerClient::HandleSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerManagerClient::HandleSuspendDone,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&PowerManagerClient::HandleSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 
-  power_manager_proxy_->SetNameOwnerChangedCallback(base::Bind(
+  power_manager_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
       &PowerManagerClient::HandleNameOwnerChanged, weak_factory_.GetWeakPtr()));
 }
 
