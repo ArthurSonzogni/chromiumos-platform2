@@ -77,9 +77,20 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
     if (!JSONFileNameToTime(path, &file_time)) {
       CHECK(base::DeleteFile(path));
     } else if (events_dir.GetInfo().GetSize() == 0) {
-      // There should only be up to one empty charge event. If there's more than
-      // one, only keep the newest one.
-      if (ac_connect_time_ != base::Time()) {
+      // Only delete charge events "from the future" if they are incomplete.
+      // This is because we don't have a reasonable way to figure out the
+      // duration, since we likely missed the unplug. This is because system
+      // time being in the past is likely due to the RTC losing its state. If
+      // the charger was not unplugged, the RTC is unlikely to have lost its
+      // state.
+      if (file_time > now) {
+        LOG(WARNING) << "AC connect time: " << file_time << " written to disk "
+                     << "without duration is in the future. Possibly caused by "
+                     << "loss of RTC state. Deleting file";
+        CHECK(base::DeleteFile(path));
+      } else if (ac_connect_time_ != base::Time()) {
+        // There should only be up to one empty charge event. If there's more
+        // than one, only keep the newest one.
         if (file_time > ac_connect_time_) {
           DeleteChargeFile(charge_events_dir_, ac_connect_time_);
           ac_connect_time_ = file_time;

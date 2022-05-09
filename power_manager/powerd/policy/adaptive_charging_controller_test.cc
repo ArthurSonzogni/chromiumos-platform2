@@ -857,5 +857,17 @@ TEST_F(AdaptiveChargingControllerTest, TestSystemTimeJumpExistingChargeEvent) {
   EXPECT_EQ(base::Days(1), ReadChargeHistoryFile(time_on_ac_dir_, yesterday));
 }
 
+TEST_F(AdaptiveChargingControllerTest, TestFutureChargeEventDeleted) {
+  CreateChargeHistoryDirectories();
+  base::Time now = base::Time::Now();
+  base::Time event_time = now + base::Hours(1);
+  charge_history_->clock()->set_current_wall_time_for_testing(now);
+  CreateChargeHistoryFile(charge_events_dir_, event_time);
+
+  EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_, event_time));
+  InitNoHistory();
+  EXPECT_FALSE(ChargeHistoryFileExists(charge_events_dir_, event_time));
+}
+
 }  // namespace policy
 }  // namespace power_manager
