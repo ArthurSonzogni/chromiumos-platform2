@@ -154,7 +154,10 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
-    struct stat stat = GetServerStat(ino, &reader);
+    Device device = GetInodeTable().GetDevice(node);
+    bool read_only = device.mode == "ro";
+
+    struct stat stat = GetServerStat(ino, &reader, read_only);
     request->ReplyAttr(stat, kStatTimeoutSeconds);
   }
 
@@ -235,9 +238,12 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
+    Device device = GetInodeTable().GetDevice(node);
+    bool read_only = device.mode == "ro";
+
     fuse_entry_param entry = {0};
     entry.ino = static_cast<fuse_ino_t>(node->ino);
-    entry.attr = GetServerStat(node->ino, &reader);
+    entry.attr = GetServerStat(node->ino, &reader, read_only);
     entry.attr_timeout = kStatTimeoutSeconds;
     entry.entry_timeout = kEntryTimeoutSeconds;
 
@@ -374,8 +380,10 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     for (const auto& item : proto.entries()) {
       const char* name = item.name().c_str();
       if (Node* node = GetInodeTable().Ensure(parent, name)) {
+        Device device = GetInodeTable().GetDevice(node);
         mode_t mode = item.is_directory() ? S_IFDIR | 0770 : S_IFREG | 0770;
-        entries.push_back({node->ino, item.name(), MakeStatModeBits(mode)});
+        auto item_perms = MakeStatModeBits(mode, device.mode == "ro");
+        entries.push_back({node->ino, item.name(), item_perms});
       } else {
         response->Append(errno);
         PLOG(ERROR) << "parent ino: " << parent << " name: " << item.name();
