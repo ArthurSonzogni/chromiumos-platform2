@@ -67,6 +67,8 @@ bool LoopbackDevice::Teardown() {
     return false;
   }
 
+  std::ignore = loopdev->SetName("");
+
   return loopdev->Detach();
 }
 
