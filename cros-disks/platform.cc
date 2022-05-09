@@ -239,8 +239,8 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   return true;
 }
 
-MountErrorType Platform::Unmount(const std::string& mount_path) const {
-  if (umount2(mount_path.c_str(), MNT_FORCE | MNT_DETACH) == 0) {
+MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
+  if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
     VLOG(1) << "Unmounted " << quote(mount_path);
     return MOUNT_ERROR_NONE;
   }
@@ -259,10 +259,6 @@ MountErrorType Platform::Unmount(const std::string& mount_path) const {
     default:
       return MOUNT_ERROR_UNKNOWN;
   }
-}
-
-MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
-  return Unmount(mount_path.value());
 }
 
 MountErrorType Platform::Mount(const std::string& source_path,
@@ -324,7 +320,7 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
       continue;
 
     const base::FilePath subdir = base::FilePath(dir).Append(name);
-    Platform::Unmount(subdir.value());
+    Platform::Unmount(subdir);
     Platform::RemoveEmptyDirectory(subdir.value());
   }
 

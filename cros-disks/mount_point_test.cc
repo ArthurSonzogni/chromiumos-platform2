@@ -16,7 +16,7 @@ namespace cros_disks {
 
 namespace {
 
-using testing::_;
+using testing::ElementsAre;
 using testing::Return;
 using testing::StrictMock;
 
@@ -40,11 +40,11 @@ class MountPointTest : public testing::Test {
 TEST_F(MountPointTest, Unmount) {
   auto mount_point = std::make_unique<MountPoint>(data_, &platform_);
 
-  EXPECT_CALL(platform_, Unmount(kMountPath))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE));
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mount_point->Unmount());
 
-  EXPECT_CALL(platform_, Unmount(kMountPath))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -68,7 +68,7 @@ TEST_F(MountPointTest, UnmountError) {
       std::make_unique<MountPoint>(data_, &platform_);
   EXPECT_TRUE(mount_point->is_mounted());
 
-  EXPECT_CALL(platform_, Unmount(kMountPath))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
       .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -96,7 +96,7 @@ TEST_F(MountPointTest, Remount) {
   EXPECT_EQ(MOUNT_ERROR_INTERNAL, mount_point->Remount(false));
   EXPECT_TRUE(mount_point->is_read_only());
 
-  EXPECT_CALL(platform_, Unmount(kMountPath))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));

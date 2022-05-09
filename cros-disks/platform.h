@@ -130,9 +130,8 @@ class Platform {
   // Sets the permissions of |path| to |mode|. Returns true on success.
   virtual bool SetPermissions(const std::string& path, mode_t mode) const;
 
-  // Unmounts |path| with |flags|.
-  virtual MountErrorType Unmount(const std::string& mount_path) const;
-  MountErrorType Unmount(const base::FilePath& mount_path) const;
+  // Forcefully unmounts |mount_path|.
+  virtual MountErrorType Unmount(const base::FilePath& mount_path) const;
 
   // Mounts the |source| filesystem of type |filesystem_type| at mount point
   // |target| with |flags| and |options|.

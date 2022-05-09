@@ -446,15 +446,14 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
   EXPECT_TRUE(base::PathExists(file_path));
 
   // Unmount the temporary file system.
-  EXPECT_EQ(platform_.Unmount(mount_path.value()), MOUNT_ERROR_NONE);
+  EXPECT_EQ(platform_.Unmount(mount_path), MOUNT_ERROR_NONE);
 
   // The file in the temporary file system shouldn't be visible anymore.
   EXPECT_FALSE(base::PathExists(file_path));
 
   // Trying to unmount an existing but not mounted directory should fail.
   EXPECT_TRUE(base::DirectoryExists(mount_path));
-  EXPECT_EQ(platform_.Unmount(mount_path.value()),
-            MOUNT_ERROR_PATH_NOT_MOUNTED);
+  EXPECT_EQ(platform_.Unmount(mount_path), MOUNT_ERROR_PATH_NOT_MOUNTED);
 
   // Should be able to remove the directory now that it is unmounted.
   EXPECT_TRUE(base::DirectoryExists(mount_path));
@@ -462,8 +461,7 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
   EXPECT_FALSE(base::DirectoryExists(mount_path));
 
   // Trying to unmount an absent directory should fail.
-  EXPECT_EQ(platform_.Unmount(mount_path.value()),
-            MOUNT_ERROR_PATH_NOT_MOUNTED);
+  EXPECT_EQ(platform_.Unmount(mount_path), MOUNT_ERROR_PATH_NOT_MOUNTED);
 }
 
 TEST_F(PlatformTest, RunAsRootUnmountForce) {
@@ -487,7 +485,7 @@ TEST_F(PlatformTest, RunAsRootUnmountForce) {
   // Keep the file open.
 
   // Force-unmount the temporary file system.
-  EXPECT_EQ(platform_.Unmount(mount_path.value()), MOUNT_ERROR_NONE);
+  EXPECT_EQ(platform_.Unmount(mount_path), MOUNT_ERROR_NONE);
 
   // The file in the temporary file system shouldn't be visible anymore.
   EXPECT_FALSE(base::PathExists(file_path));

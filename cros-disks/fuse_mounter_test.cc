@@ -249,7 +249,8 @@ TEST_F(FUSEMounterTest, MountingSucceeds) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -278,7 +279,8 @@ TEST_F(FUSEMounterTest, MountingReadOnly) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -310,7 +312,8 @@ TEST_F(FUSEMounterTest, MountingBlockDevice) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -319,7 +322,7 @@ TEST_F(FUSEMounterTest, MountFailed) {
   EXPECT_CALL(platform_, Mount(_, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(mounter_, PrepareSandbox).Times(0);
-  EXPECT_CALL(platform_, Unmount(kMountDir)).Times(0);
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir))).Times(0);
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
@@ -334,7 +337,8 @@ TEST_F(FUSEMounterTest, SandboxFailed) {
   EXPECT_CALL(mounter_, PrepareSandbox)
       .WillOnce(DoAll(SetArgPointee<3>(MOUNT_ERROR_INVALID_MOUNT_OPTIONS),
                       Return(ByMove(nullptr))));
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 
@@ -367,7 +371,8 @@ TEST_F(FUSEMounterTest, AppFailed) {
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mount_point->error());
 
   // The MountPoint will unmount when it is destructed.
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 }
@@ -388,7 +393,8 @@ TEST_F(FUSEMounterTest, UnmountTwice) {
 
   // Even though Unmount() is called twice, the underlying unmount should only
   // be done once.
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
@@ -410,11 +416,12 @@ TEST_F(FUSEMounterTest, UnmountFailure) {
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
   // If an Unmount fails, we should be able to retry.
-  EXPECT_CALL(platform_, Unmount(kMountDir))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN));
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mount_point->Unmount());
 
-  EXPECT_CALL(platform_, Unmount(kMountDir)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir)))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
