@@ -177,7 +177,7 @@ ErrorType AuthPolicy::Initialize(bool device_is_locked) {
 
 void AuthPolicy::RegisterAsync(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+    brillo::dbus_utils::AsyncEventSequencer::CompletionOnceAction
         completion_callback) {
   DCHECK(!dbus_object_);
   dbus_object_ = std::move(dbus_object);
@@ -188,7 +188,7 @@ void AuthPolicy::RegisterAsync(
   CHECK_EQ(base::ThreadTaskRunnerHandle::Get(),
            dbus_object_->GetBus()->GetDBusTaskRunner());
   RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(completion_callback);
+  dbus_object_->RegisterAsync(std::move(completion_callback));
 
   session_manager_client_ =
       std::make_unique<SessionManagerClient>(dbus_object_.get());

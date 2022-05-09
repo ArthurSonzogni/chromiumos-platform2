@@ -53,8 +53,8 @@ class Daemon : public brillo::DBusServiceDaemon {
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true);
     authpolicy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
-        base::Bind(&Daemon::OnAuthPolicyRegistered,
-                   weak_ptr_factory_.GetWeakPtr(), handler));
+        base::BindOnce(&Daemon::OnAuthPolicyRegistered,
+                       weak_ptr_factory_.GetWeakPtr(), handler));
   }
 
  private:

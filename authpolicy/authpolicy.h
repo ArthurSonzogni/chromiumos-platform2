@@ -62,7 +62,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+      brillo::dbus_utils::AsyncEventSequencer::CompletionOnceAction
           completion_callback);
 
   // Cleans all persistent state files. Returns true if all files were cleared.

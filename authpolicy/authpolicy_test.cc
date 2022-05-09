@@ -509,7 +509,8 @@ class AuthPolicyTest : public testing::Test {
     // they might be accessed during initialization.
     authpolicy_ = std::make_unique<AuthPolicy>(metrics_.get(), paths_.get());
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
-    authpolicy_->RegisterAsync(std::move(dbus_object), base::Bind(&DoNothing));
+    authpolicy_->RegisterAsync(std::move(dbus_object),
+                               base::BindOnce(&DoNothing));
 
     // Setup the cryptohome dbus mock.
     std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyMock>
