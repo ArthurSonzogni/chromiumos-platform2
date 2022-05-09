@@ -143,17 +143,12 @@ impl SnapshotDevice {
     }
 
     /// Indicate to the kernel whether or not to power down into "platform" mode
-    /// (which I believe means S4).
+    /// (which is only meaningful on Intel systems, and means S4).
     pub fn set_platform_mode(&mut self, use_platform_mode: bool) -> Result<()> {
-        let move_param: c_int = use_platform_mode as c_int;
-        // Send the parameter down as a mutable pointer, even though the ioctl
-        // will not modify it.
+        let param_ulong: c_ulong = use_platform_mode as c_ulong;
         unsafe {
-            self.ioctl_with_ptr(
-                PLATFORM_SUPPORT,
-                "PLATFORM_SUPPORT",
-                &move_param as *const c_int as *const c_void,
-            )
+            let rc = sys_util::ioctl_with_val(&self.file, PLATFORM_SUPPORT, param_ulong);
+            self.evaluate_ioctl_return("PLATFORM_SUPPORT", rc)
         }
     }
 
@@ -173,21 +168,6 @@ impl SnapshotDevice {
     /// address space layout or memory model side effects.
     unsafe fn simple_ioctl(&mut self, ioctl: c_ulong, name: &str) -> Result<()> {
         let rc = sys_util::ioctl(&self.file, ioctl);
-        self.evaluate_ioctl_return(name, rc)
-    }
-
-    /// Helper function to send an ioctl and return a Result
-    /// # Safety
-    ///
-    /// The caller must ensure that the actions the ioctl performs uphold
-    /// Rust's memory safety guarantees. Specifically
-    unsafe fn ioctl_with_ptr(
-        &mut self,
-        ioctl: c_ulong,
-        name: &str,
-        param: *const c_void,
-    ) -> Result<()> {
-        let rc = sys_util::ioctl_with_ptr(&self.file, ioctl, param);
         self.evaluate_ioctl_return(name, rc)
     }
 

@@ -9,6 +9,7 @@ use std::mem::MaybeUninit;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
+use libc::{reboot, RB_POWER_OFF};
 use log::{debug, error, info};
 use sys_util::syscall;
 
@@ -24,7 +25,7 @@ use crate::hibermeta::{HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_VALID, 
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::{
     get_page_size, is_lvm_system, lock_process_memory, path_to_stateful_block, prealloc_mem,
-    BUFFER_PAGES,
+    HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -151,7 +152,8 @@ impl SuspendConductor {
         let block_path = path_to_stateful_block()?;
         let dry_run = self.options.dry_run;
         let snap_dev = frozen_userspace.as_mut();
-        snap_dev.set_platform_mode(self.options.force_platform_mode)?;
+        let platform_mode = self.options.force_platform_mode;
+        snap_dev.set_platform_mode(platform_mode)?;
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
@@ -166,6 +168,8 @@ impl SuspendConductor {
             set_hibernate_cookie(Some(&block_path), true)?;
             if dry_run {
                 info!("Not powering off due to dry run");
+            } else if platform_mode {
+                info!("Entering S4");
             } else {
                 info!("Powering off");
             }
@@ -176,7 +180,12 @@ impl SuspendConductor {
             redirect_log(HiberlogOut::BufferInMemory);
             // Power the thing down.
             if !dry_run {
-                snap_dev.power_off()?;
+                if platform_mode {
+                    snap_dev.power_off()?;
+                } else {
+                    Self::power_off()?;
+                }
+
                 error!("Returned from power off");
             }
 
@@ -268,5 +277,18 @@ impl SuspendConductor {
         // Safe because the syscall just initialized it, and we just verified
         // the return was successful.
         unsafe { Ok(stats.assume_init()) }
+    }
+
+    /// Utility function to power the system down immediately.
+    fn power_off() -> Result<()> {
+        // This is safe because the system either ceases to exist, or does
+        // nothing to memory.
+        unsafe {
+            // On success, we shouldn't be executing, so the return code can be
+            // ignored because we already know it's a failure.
+            let _ = reboot(RB_POWER_OFF);
+            Err(HibernateError::ShutdownError(sys_util::Error::last()))
+                .context("Failed to shut down")
+        }
     }
 }

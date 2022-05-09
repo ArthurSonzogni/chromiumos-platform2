@@ -84,6 +84,9 @@ pub enum HibernateError {
     /// Swap information not found.
     #[error("Swap information not found")]
     SwapInfoNotFoundError(),
+    /// Failed to shut down
+    #[error("Failed to shut down: {0}")]
+    ShutdownError(sys_util::Error),
 }
 
 /// Options taken from the command line affecting hibernate.
