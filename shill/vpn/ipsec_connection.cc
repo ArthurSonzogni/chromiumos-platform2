@@ -758,7 +758,7 @@ void IPsecConnection::SwanctlLoadConfig() {
              base::BindOnce(&IPsecConnection::SwanctlNextStep,
                             weak_factory_.GetWeakPtr(),
                             ConnectStep::kSwanctlConfigLoaded),
-             "Failed to load swanctl.conf");
+             Service::kFailureInternal, "Failed to load swanctl.conf");
 }
 
 void IPsecConnection::SwanctlInitiateConnection() {
@@ -772,7 +772,7 @@ void IPsecConnection::SwanctlInitiateConnection() {
       args,
       base::BindOnce(&IPsecConnection::SwanctlNextStep,
                      weak_factory_.GetWeakPtr(), ConnectStep::kIPsecConnected),
-      "Failed to initiate IPsec connection");
+      Service::kFailureConnect, "Failed to initiate IPsec connection");
 }
 
 void IPsecConnection::SwanctlListSAs() {
@@ -780,7 +780,7 @@ void IPsecConnection::SwanctlListSAs() {
   RunSwanctl(args,
              base::BindOnce(&IPsecConnection::OnSwanctlListSAsDone,
                             weak_factory_.GetWeakPtr()),
-             "Failed to get SA information");
+             Service::kFailureInternal, "Failed to get SA information");
 }
 
 void IPsecConnection::CreateXFRMInterface() {
@@ -882,6 +882,7 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
 
 void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
                                  SwanctlCallback on_success,
+                                 Service::ConnectFailure reason_on_failure,
                                  const std::string& message_on_failure) {
   std::map<std::string, std::string> env = {
       {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
@@ -893,20 +894,22 @@ void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
       VPNUtil::BuildMinijailOptions(kCapMask),
       base::BindOnce(&IPsecConnection::OnSwanctlExited,
                      weak_factory_.GetWeakPtr(), std::move(on_success),
-                     message_on_failure));
+                     reason_on_failure, message_on_failure));
   if (pid == -1) {
-    NotifyFailure(Service::kFailureInternal, message_on_failure);
+    NotifyFailure(Service::kFailureInternal,
+                  message_on_failure + ": failed to run swanctl in minijail");
   }
 }
 
 void IPsecConnection::OnSwanctlExited(SwanctlCallback on_success,
+                                      Service::ConnectFailure reason_on_failure,
                                       const std::string& message_on_failure,
                                       int exit_code,
                                       const std::string& stdout_str) {
   if (exit_code == 0) {
     std::move(on_success).Run(stdout_str);
   } else {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(reason_on_failure,
                   base::StringPrintf("%s, exit_code=%d",
                                      message_on_failure.c_str(), exit_code));
   }

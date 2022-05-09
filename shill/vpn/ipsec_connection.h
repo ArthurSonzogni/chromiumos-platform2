@@ -176,11 +176,14 @@ class IPsecConnection : public VPNConnection {
 
   // Helper functions to run swanctl. RunSwanctl() executes `swanctl` with
   // |args|, and invokes |on_success| if the execution succeeds and the exit
-  // code is 0, otherwise invokes NoitfyFailure() with |message_on_failure|.
+  // code is 0, otherwise invokes NotifyFailure() with |reason_on_failure| and
+  // |message_on_failure|.
   void RunSwanctl(const std::vector<std::string>& args,
                   SwanctlCallback on_success,
+                  Service::ConnectFailure reason_on_failure,
                   const std::string& message_on_failure);
   void OnSwanctlExited(SwanctlCallback on_success,
+                       Service::ConnectFailure reason_on_failure,
                        const std::string& message_on_failure,
                        int exit_code,
                        const std::string& stdout_str);

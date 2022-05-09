@@ -205,7 +205,7 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
       const_args()->Lookup<std::string>(kProviderHostProperty, ""));
   if (remote_ip.empty()) {
     LOG(ERROR) << "Failed to resolve host property to IP.";
-    NotifyServiceOfFailure(Service::kFailureInternal);
+    NotifyServiceOfFailure(Service::kFailureDNSLookup);
     return;
   }
 

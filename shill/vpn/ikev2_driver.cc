@@ -142,7 +142,7 @@ void IKEv2Driver::StartIPsecConnection() {
   auto ipsec_config = MakeIPsecConfig(*const_args(), *eap_credentials());
   if (!ipsec_config) {
     LOG(ERROR) << "Failed to generate IPsec config";
-    NotifyServiceOfFailure(Service::kFailureConnect);
+    NotifyServiceOfFailure(Service::kFailureInternal);
     return;
   }
 
