@@ -55,7 +55,8 @@ int LoopDeviceIoctl(const base::FilePath& device,
 
   // Some ioctl failures may be informational (eg. on non-existent loop
   // devices) so it is left to users of this function to log actual errors.
-  return ioctl(device_fd.get(), type, arg);
+  int result = ioctl(device_fd.get(), type, arg);
+  return result < 0 ? -errno : result;
 }
 
 // Parse the device number for a valid /sys/block/loopX path
