@@ -122,8 +122,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
     dbus::MessageWriter writer(&method);
 
-    auto item = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(item);
+    auto path = GetInodeTable().GetDevicePath(node);
+    writer.AppendString(path);
 
     auto stat_response =
         base::BindOnce(&FuseBoxClient::StatResponse, base::Unretained(this),
@@ -184,8 +184,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
     dbus::MessageWriter writer(&method);
 
-    auto item = GetInodeTable().GetDevicePath(parent_node);
-    writer.AppendString(item.append("/").append(name));
+    std::string path = GetInodeTable().GetDevicePath(parent_node);
+    writer.AppendString(path.append("/").append(name));
 
     auto lookup_response =
         base::BindOnce(&FuseBoxClient::LookupResponse, base::Unretained(this),
@@ -248,6 +248,81 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     entry.entry_timeout = kEntryTimeoutSeconds;
 
     request->ReplyEntry(entry);
+  }
+
+  void SetAttr(std::unique_ptr<AttrRequest> request,
+               ino_t ino,
+               struct stat* attr,
+               int to_set) override {
+    VLOG(1) << "SetAttr ino " << ino << " fh " << request->fh();
+
+    if (request->IsInterrupted())
+      return;
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " setattr " << ino;
+      return;
+    }
+
+    // Allow setting file size truncate(2) to support file write(2).
+    const int kAllowedToSet = FUSE_SET_ATTR_SIZE;
+
+    constexpr auto allowed_to_set = [](int to_set) {
+      if (to_set & ~kAllowedToSet)
+        return ENOTSUP;
+      if (!to_set)  // Nothing to_set? error EINVAL.
+        return EINVAL;
+      return 0;
+    };
+
+    VLOG(1) << " to_set " << ToSetFlagsToString(to_set);
+    if (errno = allowed_to_set(to_set); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " setattr to_set";
+      return;
+    }
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kTruncateMethod);
+    dbus::MessageWriter writer(&method);
+
+    auto path = GetInodeTable().GetDevicePath(node);
+    writer.AppendString(path);
+    writer.AppendInt64(base::strict_cast<int64_t>(attr->st_size));
+
+    auto truncate_response =
+        base::BindOnce(&FuseBoxClient::TruncateResponse, base::Unretained(this),
+                       std::move(request), node->ino);
+    CallFuseBoxServerMethod(&method, std::move(truncate_response));
+  }
+
+  void TruncateResponse(std::unique_ptr<AttrRequest> request,
+                        ino_t ino,
+                        dbus::Response* response) {
+    VLOG(1) << "truncate-resp " << ino;
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " truncate-resp " << ino;
+      return;
+    }
+
+    Device device = GetInodeTable().GetDevice(node);
+    bool read_only = device.mode == "ro";
+
+    struct stat stat = GetServerStat(ino, &reader, read_only);
+    request->ReplyAttr(stat, kStatTimeoutSeconds);
   }
 
   void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) override {
