@@ -229,19 +229,20 @@ class DpslThreadContextImplMultiThreadTest
   }
 
   std::function<void()> CreateAddToQueueTaskForBackground(
-      int task_id, const base::Closure& main_thread_callback) {
-    base::Closure main_thread_add_to_queue_task = base::Bind(
-        [](const base::Closure& task,
-           const base::Closure& main_thread_callback) {
+      int task_id, const base::RepeatingClosure& main_thread_callback) {
+    base::RepeatingClosure main_thread_add_to_queue_task = base::BindRepeating(
+        [](const base::RepeatingClosure& task,
+           const base::RepeatingClosure& main_thread_callback) {
           task.Run();
           main_thread_callback.Run();
         },
-        base::Bind(&DpslThreadContextImplMultiThreadTest::AddToQueueTask,
-                   base::Unretained(this), task_id),
+        base::BindRepeating(
+            &DpslThreadContextImplMultiThreadTest::AddToQueueTask,
+            base::Unretained(this), task_id),
         main_thread_callback);
 
     return background_thread_->WrapTaskToReplyOnMainThread(
-        base::Closure(), main_thread_context_.get(),
+        base::RepeatingClosure(), main_thread_context_.get(),
         main_thread_add_to_queue_task);
   }
 
@@ -250,8 +251,8 @@ class DpslThreadContextImplMultiThreadTest
 };
 
 TEST_F(DpslThreadContextImplMultiThreadTest, PostTask) {
-  base::Closure quit_closure =
-      base::BarrierClosure(3, base::Bind(
+  base::RepeatingClosure quit_closure =
+      base::BarrierClosure(3, base::BindOnce(
                                   [](DpslThreadContext* main_thread_context) {
                                     main_thread_context->QuitEventLoop();
                                   },
@@ -271,8 +272,8 @@ TEST_F(DpslThreadContextImplMultiThreadTest, PostTask) {
 }
 
 TEST_F(DpslThreadContextImplMultiThreadTest, PostDelayedTask) {
-  base::Closure quit_closure =
-      base::BarrierClosure(3, base::Bind(
+  base::RepeatingClosure quit_closure =
+      base::BarrierClosure(3, base::BindOnce(
                                   [](DpslThreadContext* main_thread_context) {
                                     main_thread_context->QuitEventLoop();
                                   },

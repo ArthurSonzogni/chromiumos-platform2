@@ -180,7 +180,7 @@ void DpslRequesterImpl::ScheduleGrpcClientMethodCall(
     std::function<void(std::unique_ptr<ResponseType>)> response_callback) {
   task_runner_->PostTask(
       location,
-      base::Bind(
+      base::BindRepeating(
           &DpslRequesterImpl::CallGrpcClientMethod<GrpcStubMethod, RequestType,
                                                    ResponseType>,
           weak_ptr_factory_.GetWeakPtr(), grpc_stub_method,

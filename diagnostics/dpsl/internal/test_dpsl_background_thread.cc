@@ -20,9 +20,9 @@ namespace diagnostics {
 
 // static
 std::function<void()> TestDpslBackgroundThread::WrapTaskToReplyOnMainThread(
-    const base::Closure& background_callback,
+    const base::RepeatingClosure& background_callback,
     DpslThreadContext* main_thread_context,
-    const base::Closure& main_thread_callback) {
+    const base::RepeatingClosure& main_thread_callback) {
   DCHECK(main_thread_context);
   DCHECK(!main_thread_callback.is_null());
 
@@ -51,7 +51,7 @@ TestDpslBackgroundThread::TestDpslBackgroundThread(
   base::RunLoop run_loop;
 
   on_thread_context_ready_ = WrapTaskToReplyOnMainThread(
-      base::Closure(), main_thread_context_, run_loop.QuitClosure());
+      base::RepeatingClosure(), main_thread_context_, run_loop.QuitClosure());
 
   thread_.Start();
 
@@ -63,7 +63,7 @@ TestDpslBackgroundThread::~TestDpslBackgroundThread() {
 
   run_event_loop_event_.Signal();
 
-  DoSync(base::Bind(
+  DoSync(base::BindRepeating(
       [](DpslThreadContext* background_thread_context) {
         background_thread_context->QuitEventLoop();
       },
@@ -77,7 +77,7 @@ void TestDpslBackgroundThread::StartEventLoop() {
 }
 
 void TestDpslBackgroundThread::DoSync(
-    const base::Closure& background_callback) {
+    const base::RepeatingClosure& background_callback) {
   DCHECK(run_event_loop_event_.IsSignaled());
   DCHECK(main_thread_context_->BelongsToCurrentThread());
   DCHECK(thread_context_);

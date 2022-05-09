@@ -57,24 +57,25 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
   }
   async_grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleMessageFromUi,
-      base::Bind(handle_message_from_ui_handler, base::Unretained(this)));
+      base::BindRepeating(handle_message_from_ui_handler,
+                          base::Unretained(this)));
 
   async_grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleEcNotification,
-      base::Bind(&DpslRpcServerImpl::HandleEcNotification,
-                 base::Unretained(this)));
+      base::BindRepeating(&DpslRpcServerImpl::HandleEcNotification,
+                          base::Unretained(this)));
   async_grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandlePowerNotification,
-      base::Bind(&DpslRpcServerImpl::HandlePowerNotification,
-                 base::Unretained(this)));
+      base::BindRepeating(&DpslRpcServerImpl::HandlePowerNotification,
+                          base::Unretained(this)));
   async_grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
-      base::Bind(&DpslRpcServerImpl::HandleConfigurationDataChanged,
-                 base::Unretained(this)));
+      base::BindRepeating(&DpslRpcServerImpl::HandleConfigurationDataChanged,
+                          base::Unretained(this)));
   async_grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleBluetoothDataChanged,
-      base::Bind(&DpslRpcServerImpl::HandleBluetoothDataChanged,
-                 base::Unretained(this)));
+      base::BindRepeating(&DpslRpcServerImpl::HandleBluetoothDataChanged,
+                          base::Unretained(this)));
 }
 
 DpslRpcServerImpl::~DpslRpcServerImpl() {

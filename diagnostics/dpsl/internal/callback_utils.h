@@ -50,8 +50,9 @@ inline ReturnType RunStdFunctionWithArgsGrpc(
 template <typename ReturnType, typename... ArgTypes>
 inline base::RepeatingCallback<ReturnType(ArgTypes...)>
 MakeCallbackFromStdFunction(std::function<ReturnType(ArgTypes...)> function) {
-  return base::Bind(&internal::RunStdFunctionWithArgs<ReturnType, ArgTypes...>,
-                    base::Passed(std::move(function)));
+  return base::BindRepeating(
+      &internal::RunStdFunctionWithArgs<ReturnType, ArgTypes...>,
+      base::Passed(std::move(function)));
 }
 
 // Transforms std::function into base::RepeatingCallback, and ignores
@@ -60,7 +61,7 @@ template <typename ReturnType, typename... ArgTypes>
 inline base::RepeatingCallback<ReturnType(grpc::Status, ArgTypes...)>
 MakeCallbackFromStdFunctionGrpc(
     std::function<ReturnType(ArgTypes...)> function) {
-  return base::Bind(
+  return base::BindRepeating(
       &internal::RunStdFunctionWithArgsGrpc<ReturnType, ArgTypes...>,
       base::Passed(std::move(function)));
 }
@@ -73,8 +74,8 @@ inline void RunCallbackOnTaskRunner(
     const base::Location& location,
     base::RepeatingCallback<void(ArgTypes...)> callback,
     ArgTypes... args) {
-  task_runner->PostTask(location, base::Bind(std::move(callback),
-                                             base::Passed(std::move(args))...));
+  task_runner->PostTask(
+      location, base::BindOnce(std::move(callback), std::move(args)...));
 }
 
 }  // namespace internal
@@ -86,9 +87,9 @@ inline base::RepeatingCallback<void(ArgTypes...)>
 MakeOriginTaskRunnerPostingCallback(
     const base::Location& location,
     base::RepeatingCallback<void(ArgTypes...)> callback) {
-  return base::Bind(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
-                    base::ThreadTaskRunnerHandle::Get(), location,
-                    std::move(callback));
+  return base::BindRepeating(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
+                             base::ThreadTaskRunnerHandle::Get(), location,
+                             std::move(callback));
 }
 
 }  // namespace diagnostics

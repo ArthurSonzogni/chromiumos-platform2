@@ -210,8 +210,8 @@ using PerformWebRequestTestParam = DpslRequesterImplServerTestParam<
     grpc_api::PerformWebRequestParameter,
     grpc_api::PerformWebRequestResponse,
     &DpslRequesterImpl::PerformWebRequest,
-    decltype(
-        &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest),
+    decltype(&grpc_api::WilcoDtcSupportd::AsyncService::
+                 RequestPerformWebRequest),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest>;
 
 void FillProtobufForTest(grpc_api::GetEcTelemetryRequest* req) {
@@ -243,8 +243,8 @@ using GetAvailableRoutinesTestParam = DpslRequesterImplServerTestParam<
     grpc_api::GetAvailableRoutinesRequest,
     grpc_api::GetAvailableRoutinesResponse,
     &DpslRequesterImpl::GetAvailableRoutines,
-    decltype(
-        &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetAvailableRoutines),
+    decltype(&grpc_api::WilcoDtcSupportd::AsyncService::
+                 RequestGetAvailableRoutines),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetAvailableRoutines>;
 
 void FillProtobufForTest(grpc_api::RunRoutineRequest* req) {
@@ -280,8 +280,8 @@ using GetRoutineUpdateTestParam = DpslRequesterImplServerTestParam<
     grpc_api::GetRoutineUpdateRequest,
     grpc_api::GetRoutineUpdateResponse,
     &DpslRequesterImpl::GetRoutineUpdate,
-    decltype(
-        &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetRoutineUpdate),
+    decltype(&grpc_api::WilcoDtcSupportd::AsyncService::
+                 RequestGetRoutineUpdate),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetRoutineUpdate>;
 
 void FillProtobufForTest(grpc_api::GetOsVersionRequest*) {
@@ -312,8 +312,8 @@ using GetConfigurationDataTestParam = DpslRequesterImplServerTestParam<
     grpc_api::GetConfigurationDataRequest,
     grpc_api::GetConfigurationDataResponse,
     &DpslRequesterImpl::GetConfigurationData,
-    decltype(
-        &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetConfigurationData),
+    decltype(&grpc_api::WilcoDtcSupportd::AsyncService::
+                 RequestGetConfigurationData),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetConfigurationData>;
 
 void FillProtobufForTest(grpc_api::GetVpdFieldRequest* req) {
@@ -345,8 +345,8 @@ using GetDriveSystemDataTestParam = DpslRequesterImplServerTestParam<
     grpc_api::GetDriveSystemDataRequest,
     grpc_api::GetDriveSystemDataResponse,
     &DpslRequesterImpl::GetDriveSystemData,
-    decltype(
-        &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData),
+    decltype(&grpc_api::WilcoDtcSupportd::AsyncService::
+                 RequestGetDriveSystemData),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData>;
 
 void FillProtobufForTest(
@@ -397,14 +397,15 @@ class TestDsplMultiRequesterServer {
       : async_grpc_server_(base::ThreadTaskRunnerHandle::Get(), {uri}) {
     async_grpc_server_.RegisterHandler(
         &grpc_api::WilcoDtcSupportd::AsyncService::RequestSendMessageToUi,
-        base::Bind(
+        base::BindRepeating(
             &TestDsplMultiRequesterServer::HandleSendMessageToUiCallbackCall,
             base::Unretained(this)));
 
     async_grpc_server_.RegisterHandler(
         &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest,
-        base::Bind(&TestDsplMultiRequesterServer::HandlePerformWebRequest,
-                   base::Unretained(this)));
+        base::BindRepeating(
+            &TestDsplMultiRequesterServer::HandlePerformWebRequest,
+            base::Unretained(this)));
   }
   TestDsplMultiRequesterServer(const TestDsplMultiRequesterServer&) = delete;
   TestDsplMultiRequesterServer& operator=(const TestDsplMultiRequesterServer&) =
@@ -541,7 +542,7 @@ TEST_F(DpslRequesterImplWithRequesterTest, MultiRequest) {
   server.SetPerformWebRequestResponseToReplyWith(response2);
 
   auto quit_closure =
-      base::BarrierClosure(2, base::Bind(
+      base::BarrierClosure(2, base::BindOnce(
                                   [](DpslThreadContext* main_thread_context) {
                                     main_thread_context->QuitEventLoop();
                                   },
@@ -585,8 +586,8 @@ class TestDsplRequesterServer {
       : async_grpc_server_(base::ThreadTaskRunnerHandle::Get(), {uri}) {
     async_grpc_server_.RegisterHandler(
         TestParam::RequestRpcFunctionValue,
-        base::Bind(&TestDsplRequesterServer::HandleCall,
-                   base::Unretained(this)));
+        base::BindRepeating(&TestDsplRequesterServer::HandleCall,
+                            base::Unretained(this)));
   }
   TestDsplRequesterServer(const TestDsplRequesterServer&) = delete;
   TestDsplRequesterServer& operator=(const TestDsplRequesterServer&) = delete;
@@ -717,7 +718,7 @@ TYPED_TEST(DpslRequesterImplServerTest, CallGrpcMethodFromBackgroundThread) {
                                              this->global_context_.get(),
                                              this->main_thread_context_.get());
   background_thread.StartEventLoop();
-  background_thread.DoSync(base::Bind(
+  background_thread.DoSync(base::BindRepeating(
       &TestFixture::PerformRequest, base::Unretained(this), request, response));
 
   this->main_thread_context_->RunEventLoop();
