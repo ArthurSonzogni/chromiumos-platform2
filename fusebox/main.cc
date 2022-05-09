@@ -389,8 +389,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     dbus::MethodCall method(kFuseBoxServiceInterface, kReadDirMethod);
     dbus::MessageWriter writer(&method);
 
-    auto item = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(item);
+    auto path = GetInodeTable().GetDevicePath(node);
+    writer.AppendString(path);
     writer.AppendUint64(handle);
 
     auto readdir_started =
@@ -486,6 +486,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     request->ReplyOk();
   }
 
+  static constexpr char kMTPType[] = "mtp";
+
   void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "open " << ino;
 
@@ -499,27 +501,64 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
+    Device device = GetInodeTable().GetDevice(node);
+
+    constexpr auto mtp_device_type = [](const Device& device) {
+      if (device.name.rfind(kMTPType, 0) == 0)
+        return std::string(kMTPType);
+      return std::string();
+    };
+
+    const std::string path = GetInodeTable().GetDevicePath(node);
+    const std::string type = mtp_device_type(device);
+
+    int mode = request->flags() & O_ACCMODE;
+    if (mode == O_RDONLY) {
+      uint64_t handle = fusebox::OpenFile();
+      fusebox::SetFileData(handle, path, type);
+      request->ReplyOpen(handle);
+      return;
+    }
+
+    if (device.mode == "ro") {
+      errno = request->ReplyError(EACCES);
+      PLOG(ERROR) << "open " << ino;
+      return;
+    }
+
+    if (type != kMTPType) {
+      uint64_t handle = fusebox::OpenFile();
+      fusebox::SetFileData(handle, path, type);
+      request->ReplyOpen(handle);
+      return;
+    }
+
+    CHECK(request->flags() & O_ACCMODE);  // open for write
+
     dbus::MethodCall method(kFuseBoxServiceInterface, kOpenMethod);
     dbus::MessageWriter writer(&method);
 
-    auto item = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(item);
+    writer.AppendString(path);
     VLOG(1) << "open flags " << OpenFlagsToString(request->flags());
-    writer.AppendInt32(request->flags() & O_ACCMODE);
+    writer.AppendInt32(request->flags());
 
     auto open_response =
         base::BindOnce(&FuseBoxClient::OpenResponse, base::Unretained(this),
-                       std::move(request), node->ino);
+                       std::move(request), node->ino, path, type);
     CallFuseBoxServerMethod(&method, std::move(open_response));
   }
 
   void OpenResponse(std::unique_ptr<OpenRequest> request,
                     ino_t ino,
+                    std::string path,
+                    std::string type,
                     dbus::Response* response) {
     VLOG(1) << "open-resp " << ino;
 
     if (request->IsInterrupted())
       return;
+
+    CHECK(request->flags() & O_ACCMODE);  // open for write
 
     dbus::MessageReader reader(response);
     if (int error = GetResponseErrno(&reader, response)) {
@@ -527,29 +566,12 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
-    // TODO(crbug.com/1293648): don't ignore the server_handle value. We should
-    // call the kFuseBoxServiceInterface kCloseMethod D-Bus method (with this
-    // server_handle argument) when we're done with the underlying file
-    // descriptor, so the kFuseBoxServiceInterface server can clean up. See
-    // also the https://crrev.com/c/3435630 code review discussion.
-    //
-    // The server_handle variable (a number allocated by the
-    // kFuseBoxServiceInterface server and sent to this program as a D-Bus
-    // request-response) is separate from the handle variable below (allocated
-    // by this program and sent to the kernel as a FUSE request-response).
-    uint64_t server_handle;
-    CHECK(reader.PopUint64(&server_handle));
-
     base::ScopedFD fd;
     reader.PopFileDescriptor(&fd);
 
-    if (!GetInodeTable().Lookup(ino)) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "open-resp " << ino;
-      return;
-    }
-
     uint64_t handle = fusebox::OpenFile(std::move(fd));
+    fusebox::SetFileData(handle, path, type);
+
     request->ReplyOpen(handle);
   }
 
@@ -569,13 +591,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
-    Node* node = GetInodeTable().Lookup(ino);
-    if (!node) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "read " << ino;
-      return;
-    }
-
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "read fh " << request->fh();
@@ -591,14 +606,14 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     dbus::MethodCall method(kFuseBoxServiceInterface, kReadMethod);
     dbus::MessageWriter writer(&method);
 
-    auto item = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(item);
+    auto path = fusebox::GetFileData(request->fh()).path;
+    writer.AppendString(path);
     writer.AppendInt64(base::strict_cast<int64_t>(off));
     writer.AppendInt32(base::saturated_cast<int32_t>(size));
 
     auto read_response =
         base::BindOnce(&FuseBoxClient::ReadResponse, base::Unretained(this),
-                       std::move(request), node->ino, size, off);
+                       std::move(request), ino, size, off);
     CallFuseBoxServerMethod(&method, std::move(read_response));
   }
 
