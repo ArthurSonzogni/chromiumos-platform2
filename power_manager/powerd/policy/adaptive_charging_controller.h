@@ -19,6 +19,7 @@
 
 #include "ml/proto_bindings/ranker_example.pb.h"
 
+#include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -154,6 +155,8 @@ class ChargeHistory {
   // Must be called before `Init()` to make things simple.
   void set_charge_history_dir_for_testing(const base::FilePath& dir);
 
+  Clock* clock() { return &clock_; }
+
   // Modifies charge history when the AC charger is plugged/unplugged. Also
   // records the time when the battery reaches full charge.
   void HandlePowerStatusUpdate(const system::PowerStatus& status);
@@ -176,6 +179,11 @@ class ChargeHistory {
   void OnExitLowPowerState();
 
  private:
+  // Check if system time had a large change, and adjust `full_charge_time_`,
+  // `ac_connect_time_` and the charge event file associated with
+  // `ac_connect_time_` if there was a large time change.
+  void CheckAndFixSystemTimeChange();
+
   // Calculate and record timestamps to files in `charge_history_dir_` then
   // cache the values in `charge_events_`.
   void UpdateHistory(const system::PowerStatus& status);
@@ -291,16 +299,39 @@ class ChargeHistory {
   // Timer to schedule removing files due to retention limits.
   base::RepeatingTimer retention_timer_;
 
+  // Clock used to fetch timestamps for `ac_connect_time_`, etc. Timers are not
+  // run using this clock. This is used to allow for modifying the time for
+  // testing.
+  Clock clock_;
+
   // Cached timestamp for when the charger was connected (if it hasn't been
   // removed yet). Equal to base::Time() (0) if the charger is disconnected.
   // Value is always floored to `kChargeHistoryTimeInterval`.
   base::Time ac_connect_time_;
+
+  // Used for making sure a time change doesn't alter charge durations. For
+  // instance, if RTC state is lost, that could result in a large time jump.
+  base::TimeTicks ac_connect_ticks_;
+
+  // The duration that AC has been connected on Init (if it was connected then).
+  // `ac_connect_ticks_` - `ac_connect_ticks_offset_` is when AC was connected.
+  // This is kept separate from `ac_connect_ticks_` to avoid negative
+  // base::TimeTicks values, which are not allowed.
+  base::TimeDelta ac_connect_ticks_offset_;
 
   // Timestamp for when we reached full charge for the current charging session.
   // Equal to base::Time() (0) if the charger is disconnected, or we haven't
   // reached full charge yet when the charger is connected.
   // Value is always floored to `kChargeHistoryTimeInterval`.
   base::Time full_charge_time_;
+
+  // Used for making sure a time change doesn't alter time full on AC durations.
+  base::TimeTicks full_charge_ticks_;
+
+  // The duration that the system was fully charged while plugged into AC on
+  // Init. `full_charge_ticks_` - `full_charge_ticks_offset_` is when the system
+  // became fully charged.
+  base::TimeDelta full_charge_ticks_offset_;
 
   // Ordered map of charge events, which maps AC charge plug in times to
   // duration of charge. This provides O(logn) addition and removal of charge

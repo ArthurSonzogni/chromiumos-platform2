@@ -54,6 +54,8 @@ ChargeHistory::ChargeHistory()
 
 void ChargeHistory::Init(const system::PowerStatus& status) {
   ac_connect_time_ = base::Time();
+  ac_connect_ticks_ = base::TimeTicks();
+  ac_connect_ticks_offset_ = base::TimeDelta();
   CHECK(base::CreateDirectory(charge_history_dir_));
   // Limit reading these files to just powerd and root.
   CHECK(base::SetPosixFilePermissions(charge_history_dir_, 0700));
@@ -65,7 +67,7 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
   CHECK(base::CreateDirectory(time_full_on_ac_dir_));
   CHECK(base::CreateDirectory(time_on_ac_dir_));
 
-  base::Time now = base::Time::Now();
+  base::Time now = clock_.GetCurrentWallTime();
   base::FileEnumerator events_dir(charge_events_dir_, false,
                                   base::FileEnumerator::FILES);
   for (base::FilePath path = events_dir.Next(); !path.empty();
@@ -81,12 +83,16 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
         if (file_time > ac_connect_time_) {
           DeleteChargeFile(charge_events_dir_, ac_connect_time_);
           ac_connect_time_ = file_time;
+          ac_connect_ticks_ = clock_.GetCurrentBootTime();
+          ac_connect_ticks_offset_ = now - file_time;
         } else {
           CHECK(base::DeleteFile(path));
         }
       } else if (status.external_power ==
                  PowerSupplyProperties_ExternalPower_AC) {
         ac_connect_time_ = file_time;
+        ac_connect_ticks_ = clock_.GetCurrentBootTime();
+        ac_connect_ticks_offset_ = now - file_time;
       }
     } else if (!ReadTimeDeltaFromFile(path, &duration)) {
       CHECK(base::DeleteFile(path));
@@ -118,14 +124,20 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
     auto rit = time_full_on_ac_days_.rbegin();
     base::FilePath path;
     if (ac_connect_time_ == base::Time()) {
-      full_charge_time_ = FloorTime(base::Time::Now());
+      full_charge_time_ = FloorTime(now);
+      full_charge_ticks_ = clock_.GetCurrentBootTime();
+      full_charge_ticks_offset_ = base::TimeDelta();
     } else if (rit == time_full_on_ac_days_.rend() ||
                !TimeToJSONFileName(rit->first, &path) ||
                !base::GetFileInfo(path, &full_on_ac_info) ||
                full_on_ac_info.last_modified < ac_connect_time_) {
       full_charge_time_ = ac_connect_time_;
+      full_charge_ticks_ = ac_connect_ticks_;
+      full_charge_ticks_offset_ = ac_connect_ticks_offset_;
     } else {
       full_charge_time_ = FloorTime(full_on_ac_info.last_modified);
+      full_charge_ticks_ = clock_.GetCurrentBootTime();
+      full_charge_ticks_offset_ = now - full_charge_time_;
     }
   } else {
     full_charge_time_ = base::Time();
@@ -155,9 +167,13 @@ void ChargeHistory::HandlePowerStatusUpdate(const system::PowerStatus& status) {
 
   if (status.external_power == PowerSupplyProperties_ExternalPower_AC &&
       status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
-      full_charge_time_ == base::Time())
-    full_charge_time_ = FloorTime(base::Time::Now());
+      full_charge_time_ == base::Time()) {
+    full_charge_time_ = FloorTime(clock_.GetCurrentWallTime());
+    full_charge_ticks_ = clock_.GetCurrentBootTime();
+    full_charge_ticks_offset_ = base::TimeDelta();
+  }
 
+  CheckAndFixSystemTimeChange();
   if (status.external_power == cached_external_power_)
     return;
 
@@ -166,18 +182,18 @@ void ChargeHistory::HandlePowerStatusUpdate(const system::PowerStatus& status) {
 
 base::TimeDelta ChargeHistory::GetTimeOnAC() {
   base::TimeDelta duration_on_ac = duration_on_ac_;
-
-  if (ac_connect_time_ != base::Time() && ac_connect_time_ < base::Time::Now())
-    duration_on_ac += base::Time::Now() - ac_connect_time_;
+  if (ac_connect_time_ != base::Time())
+    duration_on_ac += clock_.GetCurrentBootTime() - ac_connect_ticks_ +
+                      ac_connect_ticks_offset_;
 
   return duration_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
 }
 
 base::TimeDelta ChargeHistory::GetTimeFullOnAC() {
   base::TimeDelta duration_full_on_ac = duration_full_on_ac_;
-  if (full_charge_time_ != base::Time() &&
-      full_charge_time_ < base::Time::Now())
-    duration_full_on_ac += base::Time::Now() - full_charge_time_;
+  if (full_charge_time_ != base::Time())
+    duration_full_on_ac += clock_.GetCurrentBootTime() - full_charge_ticks_ +
+                           full_charge_ticks_offset_;
 
   return duration_full_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
 }
@@ -187,6 +203,8 @@ int ChargeHistory::DaysOfHistory() {
 }
 
 void ChargeHistory::OnEnterLowPowerState() {
+  CheckAndFixSystemTimeChange();
+
   // Charge Events and Time on AC don't need to be recorded when entering a low
   // power state, which we may not return from, but Time Full on AC does, since
   // it relies on `full_charge_time_`, a variable stored only in memory.
@@ -195,7 +213,9 @@ void ChargeHistory::OnEnterLowPowerState() {
                     full_charge_time_, &duration_full_on_ac_);
     // Set `full_charge_time_` to now, so we don't double count if the low
     // power state returns.
-    full_charge_time_ = FloorTime(base::Time::Now());
+    full_charge_time_ = FloorTime(clock_.GetCurrentWallTime());
+    full_charge_ticks_ = clock_.GetCurrentBootTime();
+    full_charge_ticks_offset_ = base::TimeDelta();
   }
 
   rewrite_timer_.Stop();
@@ -205,8 +225,45 @@ void ChargeHistory::OnExitLowPowerState() {
   ScheduleRewrites();
 }
 
+void ChargeHistory::CheckAndFixSystemTimeChange() {
+  // Nothing to do if `ac_connect_time_` is not set.
+  if (ac_connect_time_ == base::Time())
+    return;
+
+  base::Time now = FloorTime(clock_.GetCurrentWallTime());
+  base::TimeTicks ticks = clock_.GetCurrentBootTime();
+  base::TimeDelta duration =
+      (now - ac_connect_time_).FloorToMultiple(kChargeHistoryTimeInterval);
+  base::TimeDelta ticks_duration =
+      (ticks - ac_connect_ticks_ + ac_connect_ticks_offset_)
+          .FloorToMultiple(kChargeHistoryTimeInterval);
+
+  // If we detect a time jump larger than the time interval, remove the
+  // existing charge event file.
+  if ((duration - ticks_duration).magnitude() > kChargeHistoryTimeInterval) {
+    DeleteChargeFile(charge_events_dir_, ac_connect_time_);
+    ac_connect_time_ = now - ticks_duration;
+    CreateEmptyChargeEventFile(ac_connect_time_);
+
+    // The latest days may not be tracked yet, so explicitly add them now.
+    AddZeroDurationChargeDays(time_full_on_ac_dir_, &time_full_on_ac_days_);
+    AddZeroDurationChargeDays(time_on_ac_dir_, &time_on_ac_days_);
+  }
+
+  if (full_charge_time_ == base::Time())
+    return;
+
+  duration =
+      (now - full_charge_time_).FloorToMultiple(kChargeHistoryTimeInterval);
+  ticks_duration = (ticks - full_charge_ticks_ + full_charge_ticks_offset_)
+                       .FloorToMultiple(kChargeHistoryTimeInterval);
+  if ((duration - ticks_duration).magnitude() > kChargeHistoryTimeInterval) {
+    full_charge_time_ = now - ticks_duration;
+  }
+}
+
 void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
-  base::Time now = FloorTime(base::Time::Now());
+  base::Time now = FloorTime(clock_.GetCurrentWallTime());
   cached_external_power_ = status.external_power;
 
   // When AC is connected, we just create a new charge event with the current
@@ -218,6 +275,8 @@ void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
     }
 
     ac_connect_time_ = now;
+    ac_connect_ticks_ = clock_.GetCurrentBootTime();
+    ac_connect_ticks_offset_ = base::TimeDelta();
 
     // This will remove any existing charge event file with the same start time.
     CreateEmptyChargeEventFile(ac_connect_time_);
@@ -242,18 +301,26 @@ void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
   RecordDurations(time_on_ac_dir_, &time_on_ac_days_, ac_connect_time_,
                   &duration_on_ac_);
   full_charge_time_ = base::Time();
+  full_charge_ticks_ = base::TimeTicks();
+  full_charge_ticks_offset_ = base::TimeDelta();
 
-  base::TimeDelta duration = now - ac_connect_time_;
-  WriteDurationToFile(charge_events_dir_, ac_connect_time_, duration);
-  charge_events_[ac_connect_time_] = duration;
+  base::TimeDelta ticks_duration =
+      (clock_.GetCurrentBootTime() - ac_connect_ticks_ +
+       ac_connect_ticks_offset_)
+          .FloorToMultiple(kChargeHistoryTimeInterval);
+
+  WriteDurationToFile(charge_events_dir_, ac_connect_time_, ticks_duration);
+  charge_events_[ac_connect_time_] = ticks_duration;
   ac_connect_time_ = base::Time();
+  ac_connect_ticks_ = base::TimeTicks();
+  ac_connect_ticks_offset_ = base::TimeDelta();
 }
 
 void ChargeHistory::RecordDurations(const base::FilePath& dir,
                                     std::map<base::Time, base::TimeDelta>* days,
                                     const base::Time& start,
                                     base::TimeDelta* total_duration) {
-  base::Time now = base::Time::Now();
+  base::Time now = clock_.GetCurrentWallTime();
   // Midnight for today (before start).
   base::Time date = start.UTCMidnight();
   while (date < now) {
@@ -285,7 +352,7 @@ void ChargeHistory::ReadChargeDaysFromFiles(
     const base::FilePath& dir,
     std::map<base::Time, base::TimeDelta>* days,
     base::TimeDelta* total_duration) {
-  base::Time now = base::Time::Now();
+  base::Time now = clock_.GetCurrentWallTime();
   base::FileEnumerator dir_enum(dir, false, base::FileEnumerator::FILES);
   for (base::FilePath path = dir_enum.Next(); !path.empty();
        path = dir_enum.Next()) {
@@ -308,7 +375,7 @@ void ChargeHistory::ReadChargeDaysFromFiles(
 void ChargeHistory::AddZeroDurationChargeDays(
     const base::FilePath& dir, std::map<base::Time, base::TimeDelta>* days) {
   auto rit = days->rbegin();
-  base::Time todays_date = base::Time::Now().UTCMidnight();
+  base::Time todays_date = clock_.GetCurrentWallTime().UTCMidnight();
   base::Time date =
       rit == days->rend() ? todays_date : rit->first + base::Days(1);
 
@@ -323,7 +390,8 @@ void ChargeHistory::RemoveOldChargeDays(
     std::map<base::Time, base::TimeDelta>* days,
     base::TimeDelta* total_duration) {
   for (auto rit = days->rbegin();
-       rit != days->rend() && rit->first < base::Time::Now() - kRetentionDays;
+       rit != days->rend() &&
+       rit->first < clock_.GetCurrentWallTime() - kRetentionDays;
        rit++) {
     *total_duration -= rit->second;
     days->erase(rit->first);
@@ -364,7 +432,8 @@ void ChargeHistory::RemoveOldChargeEvents() {
 
   auto it = charge_events_.begin();
   while (it != charge_events_.end() &&
-         it->first + it->second < base::Time::Now() - kRetentionDays) {
+         it->first + it->second <
+             clock_.GetCurrentWallTime() - kRetentionDays) {
     charge_events_.erase(it);
     it = charge_events_.begin();
   }
@@ -378,7 +447,8 @@ void ChargeHistory::OnRetentionTimerFired() {
 }
 
 void ChargeHistory::ScheduleRewrites() {
-  base::TimeDelta delay = base::Time::Now().ToDeltaSinceWindowsEpoch();
+  base::TimeDelta delay =
+      clock_.GetCurrentWallTime().ToDeltaSinceWindowsEpoch();
   delay = delay.CeilToMultiple(kChargeHistoryTimeInterval) - delay;
   rewrite_timer_.Start(FROM_HERE, delay,
                        base::BindRepeating(&ChargeHistory::OnRewriteTimerFired,

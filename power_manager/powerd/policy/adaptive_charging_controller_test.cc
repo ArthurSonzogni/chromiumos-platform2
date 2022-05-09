@@ -543,8 +543,12 @@ TEST_F(AdaptiveChargingControllerTest, TestEmptyChargeHistory) {
 
 // Verify that timestamps are 15 minute aligned for privacy reasons.
 TEST_F(AdaptiveChargingControllerTest, TestTimeAlignment) {
+  // Set time to 5 minutes before midnight so that it isn't a multiple of
+  // `kChargeHistoryTimeInterval`, and thus the duration will be floored.
+  base::Time now = base::Time::Now().UTCMidnight() - base::Minutes(5);
+  charge_history_->clock()->set_current_wall_time_for_testing(now);
   // Make an initial charge event about 40 minutes ago (not unplugged yet).
-  base::Time event_time = FloorTime(base::Time::Now() - base::Minutes(40));
+  base::Time event_time = FloorTime(now - base::Minutes(40));
   CreateChargeHistoryDirectories();
   CreateChargeHistoryFile(charge_events_dir_, event_time);
   InitNoHistory();
@@ -554,19 +558,8 @@ TEST_F(AdaptiveChargingControllerTest, TestTimeAlignment) {
 
   base::TimeDelta duration =
       ReadChargeHistoryFile(charge_events_dir_, event_time);
-  EXPECT_TRUE(base::Contains(
-      std::vector<base::TimeDelta>({base::Minutes(30), base::Minutes(45)}),
-      duration));
-
-  // The time on AC can be 15 minutes, 30 minutes, or 45 minutes. Since the
-  // start of charging can be up to 55 minutes ago (and this would be floored to
-  // 45 minutes), the time on AC could be 45 minutes. Since the time charging
-  // could be split between two days (say 11 minutes and 29 minutes), the total
-  // time charging could be 15 minutes (since both values are floored).
-  EXPECT_TRUE(base::Contains(
-      std::vector<base::TimeDelta>(
-          {base::Minutes(15), base::Minutes(30), base::Minutes(45)}),
-      charge_history_->GetTimeOnAC()));
+  EXPECT_EQ(base::Minutes(30), duration);
+  EXPECT_EQ(base::Minutes(30), charge_history_->GetTimeOnAC());
 
   // Battery was never full.
   EXPECT_EQ(base::TimeDelta(), charge_history_->GetTimeFullOnAC());
@@ -574,22 +567,25 @@ TEST_F(AdaptiveChargingControllerTest, TestTimeAlignment) {
 
 // Test that all of the file updates that need to happen on unplug occur.
 TEST_F(AdaptiveChargingControllerTest, HistoryWrittenOnUnplug) {
-  base::Time event_time = FloorTime(base::Time::Now() - base::Days(3));
+  // Set time to exactly midnight to avoid rounding issues with
+  // timestamps getting floored to multiples of `kChargeHistoryTimeInterval`.
+  base::Time now = base::Time::Now().UTCMidnight();
+  base::Time event_time = FloorTime(now - base::Days(3));
+  charge_history_->clock()->set_current_wall_time_for_testing(now);
   CreateChargeHistoryDirectories();
   CreateChargeHistoryFile(charge_events_dir_, event_time);
   InitNoHistory();
   DisconnectCharger();
 
-  EXPECT_GE(base::Days(3) + base::Minutes(15),
-            ReadChargeHistoryFile(charge_events_dir_, event_time));
-  EXPECT_LE(base::Days(3) - base::Minutes(15),
+  EXPECT_EQ(base::Days(3),
             ReadChargeHistoryFile(charge_events_dir_, event_time));
 }
 
 // Test that we record pending time to `time_full_on_ac_dir_` when entering
 // suspend and shutdown.
 TEST_F(AdaptiveChargingControllerTest, TimeFullWrittenOnLowPowerStates) {
-  base::Time now = base::Time::Now();
+  base::Time now = base::Time::Now().UTCMidnight();
+  charge_history_->clock()->set_current_wall_time_for_testing(now);
   CreateChargeHistoryDirectories();
   CreateChargeHistoryFile(charge_events_dir_, now - base::Minutes(30));
   InitFullChargeNoHistory();
@@ -602,11 +598,7 @@ TEST_F(AdaptiveChargingControllerTest, TimeFullWrittenOnLowPowerStates) {
        path = full_on_ac_dir.Next())
     duration_full_on_ac_file_times += ReadTimeDeltaFromFile(path);
 
-  // The time in the files should total to 15, 30, or 45 minutes, depending on
-  // how things are floored, whether the initial charge event time is close to
-  // 45 minutes, and whether the duration of charge spans two days.
-  EXPECT_GE(base::Minutes(45), duration_full_on_ac_file_times);
-  EXPECT_LE(base::Minutes(15), duration_full_on_ac_file_times);
+  EXPECT_EQ(base::Minutes(30), duration_full_on_ac_file_times);
 }
 
 // Test that our retention policy is properly enforced on Init.
@@ -715,31 +707,47 @@ TEST_F(AdaptiveChargingControllerTest, TestDaysOfHistory) {
 
 // Test that the GetTime... functions works correctly.
 TEST_F(AdaptiveChargingControllerTest, TestGetTimeFunctions) {
+  base::Time now = base::Time::Now().UTCMidnight();
+  Clock* clock = charge_history_->clock();
+  clock->set_current_wall_time_for_testing(now);
+  clock->set_current_boot_time_for_testing(base::TimeTicks::Now());
   CreateChargeHistoryDirectories();
-  base::Time now = base::Time::Now();
-  base::Time today = now.UTCMidnight();
   for (int i = 0; i < 15; ++i) {
-    WriteChargeHistoryFile(time_on_ac_dir_, today - (i + 5) * base::Days(1),
+    WriteChargeHistoryFile(time_on_ac_dir_, now - (i + 5) * base::Days(1),
                            base::Hours(5));
-    WriteChargeHistoryFile(time_full_on_ac_dir_,
-                           today - (i + 5) * base::Days(1), base::Hours(2));
+    WriteChargeHistoryFile(time_full_on_ac_dir_, now - (i + 5) * base::Days(1),
+                           base::Hours(2));
   }
 
   CreateChargeHistoryFile(charge_events_dir_, now - base::Hours(10));
 
   InitNoHistory();
   base::TimeDelta time_on_ac = 15 * base::Hours(5) + base::Hours(10);
+  base::TimeDelta time_full_on_ac = 15 * base::Hours(2);
   EXPECT_EQ(time_on_ac, charge_history_->GetTimeOnAC());
-  EXPECT_EQ(15 * base::Hours(2), charge_history_->GetTimeFullOnAC());
+  EXPECT_EQ(time_full_on_ac, charge_history_->GetTimeFullOnAC());
+
+  // Set charge to full, so that GetTimeFullOnAC() will also increase now.
+  power_status_.battery_percentage = 100;
+  power_status_.display_battery_percentage = 100;
+  power_status_.battery_state = PowerSupplyProperties_BatteryState_FULL;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+
+  // Advance boot time and check that GetTime... values reflect that.
+  clock->advance_current_boot_time_for_testing(base::Hours(1));
+  clock->set_current_wall_time_for_testing(now + base::Hours(1));
+  time_on_ac += base::Hours(1);
+  time_full_on_ac += base::Hours(1);
+  EXPECT_EQ(time_on_ac, charge_history_->GetTimeOnAC());
+  EXPECT_EQ(time_full_on_ac, charge_history_->GetTimeFullOnAC());
 
   // Check that disconnecting power (and thus finalizing charge history numbers
   // based on the current charge event) doesn't change the GetTime... values.
   DisconnectCharger();
 
-  // The 10 hours may be split across two days, which may turn it into 9:45.
-  EXPECT_GE(time_on_ac + base::Minutes(15), charge_history_->GetTimeOnAC());
-  EXPECT_LE(time_on_ac - base::Minutes(15), charge_history_->GetTimeOnAC());
-  EXPECT_EQ(15 * base::Hours(2), charge_history_->GetTimeFullOnAC());
+  EXPECT_EQ(time_on_ac, charge_history_->GetTimeOnAC());
+  EXPECT_EQ(time_full_on_ac, charge_history_->GetTimeFullOnAC());
 }
 
 // Test that only a few charge history days will result in Adaptive Charging
@@ -783,6 +791,70 @@ TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnRatio) {
   DisconnectCharger();
   EXPECT_EQ(metrics::AdaptiveChargingState::HEURISTIC_DISABLED,
             delegate_.adaptive_state);
+}
+
+// Test that a large time jump while ChargeHistory is keeping track of time will
+// be accounted for. We expect that the plug in time and durations will be
+// correct.
+TEST_F(AdaptiveChargingControllerTest, TestSystemTimeJumpNoHistory) {
+  Clock* clock = charge_history_->clock();
+  base::Time now = base::Time::Now().UTCMidnight();
+  base::Time old_now = now - base::Days(5);
+  clock->set_current_wall_time_for_testing(old_now);
+
+  // ChargeHistory should initially create a file in `charge_events_dir_` with
+  // `old_now` as the start time for charging, but change it to `now` later on,
+  // after time changed to 5 days later.
+  InitFullChargeNoHistory();
+  EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_, old_now));
+  clock->set_current_wall_time_for_testing(now);
+  DisconnectCharger();
+  EXPECT_FALSE(ChargeHistoryFileExists(charge_events_dir_, old_now));
+  EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_, now));
+
+  // Expect a zero duration charge event, zero time on AC, and zero time full on
+  // AC.
+  EXPECT_EQ(base::TimeDelta(), ReadChargeHistoryFile(charge_events_dir_, now));
+  EXPECT_EQ(base::TimeDelta(),
+            ReadChargeHistoryFile(time_full_on_ac_dir_, now));
+  EXPECT_EQ(base::TimeDelta(), ReadChargeHistoryFile(time_on_ac_dir_, now));
+}
+
+// Test that a time change with a preexisting plug in time (but no duration) is
+// corrected when there's a time change. We do this because we expect large time
+// changes to come from the RTC losing state, which likely occurred from
+// draining the battery completely. This means that the preexisting plug in time
+// likely came from after the RTC lost its state, since the RTC shouldn't lose
+// its state when the system has power.
+TEST_F(AdaptiveChargingControllerTest, TestSystemTimeJumpExistingChargeEvent) {
+  CreateChargeHistoryDirectories();
+  Clock* clock = charge_history_->clock();
+  base::Time now = base::Time::Now().UTCMidnight();
+  base::Time old_now = now - base::Days(5);
+  base::Time yesterday = now - base::Days(1);
+  base::Time event_time = now - base::Days(1);
+  base::Time old_event_time = old_now - base::Days(1);
+  clock->set_current_wall_time_for_testing(old_now);
+  CreateChargeHistoryFile(charge_events_dir_, old_event_time);
+
+  InitFullChargeNoHistory();
+  EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_, old_event_time));
+  clock->set_current_wall_time_for_testing(now);
+  DisconnectCharger();
+
+  // The correct duration of the charge event is one day, since `old_event_time`
+  // is 1 day before `old_now`.
+  EXPECT_FALSE(ChargeHistoryFileExists(charge_events_dir_, old_event_time));
+  EXPECT_EQ(1, NumChargeHistoryFiles(charge_events_dir_));
+  EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_, event_time));
+  EXPECT_TRUE(ChargeHistoryFileExists(time_full_on_ac_dir_, yesterday));
+  EXPECT_TRUE(ChargeHistoryFileExists(time_on_ac_dir_, yesterday));
+
+  EXPECT_EQ(base::Days(1),
+            ReadChargeHistoryFile(charge_events_dir_, event_time));
+  EXPECT_EQ(base::Days(1),
+            ReadChargeHistoryFile(time_full_on_ac_dir_, yesterday));
+  EXPECT_EQ(base::Days(1), ReadChargeHistoryFile(time_on_ac_dir_, yesterday));
 }
 
 }  // namespace policy
