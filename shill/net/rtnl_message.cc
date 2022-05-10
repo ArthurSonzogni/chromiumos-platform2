@@ -457,10 +457,6 @@ RTNLMessage::RTNLMessage(Type type,
       interface_index_(interface_index),
       family_(family) {}
 
-bool RTNLMessage::Decode(const ByteString& data) {
-  return Decode(data.GetConstData(), data.GetLength());
-}
-
 bool RTNLMessage::Decode(const uint8_t* data, size_t length) {
   bool ret = DecodeInternal(data, length);
   if (!ret) {

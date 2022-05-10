@@ -161,9 +161,6 @@ class SHILL_EXPORT RTNLMessage {
 
   // Parse an RTNL message.  Returns true on success.
   bool Decode(const uint8_t* data, size_t length);
-  // TODO(b/230911080) Update usage of RTNLMessage::Decode in patchpanel and
-  // remove this overload version.
-  bool Decode(const ByteString& data);
   // Encode an RTNL message.  Returns empty ByteString on failure.
   ByteString Encode() const;
   // Reset all fields.
