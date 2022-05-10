@@ -73,10 +73,15 @@ int ChromeosStartup::Run() {
   // mounted below, so do this early on.
   CheckClock();
 
+  // bootstat writes timings to tmpfs.
+  bootstat_.LogEvent("pre-startup");
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     LOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
   }
+
+  bootstat_.LogEvent("post-startup");
 
   return ret;
 }

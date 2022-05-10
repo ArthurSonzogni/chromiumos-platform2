@@ -117,9 +117,6 @@ add_clobber_crash_report() {
   sync
 }
 
-# bootstat writes timings to tmpfs.
-bootstat pre-startup
-
 mount -n -i -c -t debugfs \
   -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
   debugfs /sys/kernel/debug
@@ -754,8 +751,6 @@ if [ -x "$(command -v rollback_finish_restore)" ]; then
     reboot
   fi
 fi
-
-bootstat post-startup
 
 # Always return success to avoid killing init
 exit 0
