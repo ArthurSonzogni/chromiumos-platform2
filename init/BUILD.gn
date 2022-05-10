@@ -72,6 +72,7 @@ static_library("libcrosstartup") {
   sources = [
     "startup/chromeos_startup.cc",
     "startup/platform_impl.cc",
+    "startup/security_manager.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
@@ -179,6 +180,7 @@ if (use.test) {
     sources = [
       "startup/chromeos_startup_test.cc",
       "startup/fake_platform_impl.cc",
+      "startup/security_manager_test.cc",
     ]
     configs += [
       "//common-mk:test",

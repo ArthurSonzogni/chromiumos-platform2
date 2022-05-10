@@ -21,6 +21,7 @@
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
 #include "init/startup/platform_impl.h"
+#include "init/startup/security_manager.h"
 
 namespace {
 
@@ -171,6 +172,10 @@ void ChromeosStartup::EarlySetup() {
   if (!platform_->Mount(namespaces, namespaces, "", MS_BIND, "") ||
       !platform_->Mount(base::FilePath(), namespaces, "", MS_PRIVATE, "")) {
     PLOG(WARNING) << "Unable to mount " << namespaces.value();
+  }
+
+  if (!ConfigureProcessMgmtSecurity(root_)) {
+    PLOG(WARNING) << "Failed to configure process management security.";
   }
 }
 

@@ -198,10 +198,6 @@ string_contains() {
   esac
 }
 
-# Configure chromiumos LSM security policies for process management.
-. /usr/share/cros/config_process_mgmt_utils.sh
-configure_process_mgmt_security
-
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
 # image also uses initramfs but it never reach here). When using initrd+tftpboot
