@@ -24,14 +24,6 @@ TEST(FuseFileHandlesTest, FileHandles) {
   // The handle has no backing file descriptor.
   EXPECT_EQ(-1, GetFileDescriptor(handle));
 
-  // The handle backing file descriptor can be reset.
-  SetFileDescriptor(handle, 42);
-  EXPECT_EQ(42, GetFileDescriptor(handle));
-
-  // SetFileDescriptor returns the old file descriptor.
-  EXPECT_EQ(42, SetFileDescriptor(handle, -1));
-  EXPECT_EQ(-1, GetFileDescriptor(handle));
-
   // Close the file handle: returns the file descriptor.
   base::ScopedFD fd = CloseFile(handle);
   EXPECT_FALSE(fd.is_valid());
@@ -39,20 +31,17 @@ TEST(FuseFileHandlesTest, FileHandles) {
 
   // Handle closed: API that need an open handle fail.
   EXPECT_EQ(0, GetFile(handle));
-  EXPECT_EQ(-1, SetFileDescriptor(handle, 42));
   EXPECT_EQ(-1, GetFileDescriptor(handle));
 
   // Unknown handles cannot be found.
   EXPECT_EQ(0, GetFile(~1));
 
   // Unknown handles have no backing file descriptor.
-  EXPECT_EQ(-1, SetFileDescriptor(~1, 42));
   EXPECT_EQ(-1, GetFileDescriptor(~1));
   EXPECT_EQ(-1, CloseFile(~1).get());
 
   // Handle 0 is the invalid file handle value.
   EXPECT_EQ(0, GetFile(0));
-  EXPECT_EQ(-1, SetFileDescriptor(0, 42));
   EXPECT_EQ(-1, GetFileDescriptor(0));
   EXPECT_EQ(-1, CloseFile(0).get());
 }
@@ -82,6 +71,9 @@ TEST(FuseFileHandlesTest, FileHandlesFileDescriptor) {
   // And the file handle now owns the file descriptor.
   EXPECT_EQ(fd, GetFileDescriptor(handle));
 
+  // GetFileData fd field is the same file descriptor.
+  EXPECT_EQ(fd, GetFileData(handle).fd);
+
   // Close the handle: returns the file descriptor.
   base::ScopedFD rfd = CloseFile(handle);
   EXPECT_TRUE(rfd.is_valid());
@@ -92,6 +84,7 @@ TEST(FuseFileHandlesTest, FileHandlesFileDescriptor) {
 
   // Closed handles have no backing file descriptor.
   EXPECT_EQ(-1, GetFileDescriptor(handle));
+  EXPECT_EQ(-1, GetFileData(handle).fd);
   EXPECT_EQ(-1, CloseFile(handle).get());
 
   // Test done: clean up.
@@ -128,9 +121,7 @@ TEST(FuseFileHandlesTest, FileHandlesFileData) {
   EXPECT_EQ(-1, GetFileData(handle).fd);
 
   // The fd data is the handle backing file descriptor.
-  SetFileDescriptor(handle, 42);
-  EXPECT_EQ(42, GetFileData(handle).fd);
-  SetFileDescriptor(handle, -1);
+  EXPECT_EQ(-1, GetFileDescriptor(handle));
   EXPECT_EQ(-1, GetFileData(handle).fd);
 
   // Close the file handle: returns the file descriptor.

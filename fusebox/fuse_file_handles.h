@@ -28,9 +28,6 @@ uint64_t GetFile(uint64_t handle);
 // Returns backing fd if file |handle| is open, or -1 if not.
 int GetFileDescriptor(uint64_t handle);
 
-// Sets backing fd if file |handle| is open. Returns the old fd.
-int SetFileDescriptor(uint64_t handle, int fd);
-
 // Returns handle data if file |handle| is open, empty if not.
 HandleData GetFileData(uint64_t handle);
 

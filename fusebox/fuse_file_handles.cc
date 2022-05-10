@@ -40,14 +40,6 @@ int GetFileDescriptor(uint64_t handle) {
   return it->second.fd;
 }
 
-int SetFileDescriptor(uint64_t handle, int fd) {
-  const auto it = GetFileHandles().find(handle);
-  if (it == GetFileHandles().end())
-    return -1;
-  std::swap(it->second.fd, fd);
-  return fd;
-}
-
 HandleData GetFileData(uint64_t handle) {
   const auto it = GetFileHandles().find(handle);
   if (it == GetFileHandles().end())
