@@ -52,6 +52,12 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
   StatusOr<brillo::SecureBlob> GetRandomSecureBlob(size_t size) override;
   StatusOr<uint32_t> GetManufacturer() override;
   StatusOr<bool> IsPinWeaverEnabled() override;
+  StatusOr<StorageState> GetSpaceState(Space space) override;
+  Status PrepareSpace(Space space, uint32_t size) override;
+  StatusOr<brillo::Blob> LoadSpace(Space space) override;
+  Status StoreSpace(Space space, const brillo::Blob& blob) override;
+  Status DestroySpace(Space space) override;
+  StatusOr<bool> IsSpaceWriteLocked(Space space) override;
 };
 
 }  // namespace hwsec

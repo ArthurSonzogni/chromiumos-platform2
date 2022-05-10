@@ -159,4 +159,30 @@ StatusOr<bool> CryptohomeFrontendImpl::IsPinWeaverEnabled() {
   return middleware_.CallSync<&Backend::PinWeaver::IsEnabled>();
 }
 
+StatusOr<CryptohomeFrontend::StorageState>
+CryptohomeFrontendImpl::GetSpaceState(Space space) {
+  return middleware_.CallSync<&Backend::Storage::IsReady>(space);
+}
+
+Status CryptohomeFrontendImpl::PrepareSpace(Space space, uint32_t size) {
+  return middleware_.CallSync<&Backend::Storage::Prepare>(space, size);
+}
+
+StatusOr<brillo::Blob> CryptohomeFrontendImpl::LoadSpace(Space space) {
+  return middleware_.CallSync<&Backend::Storage::Load>(space);
+}
+
+Status CryptohomeFrontendImpl::StoreSpace(Space space,
+                                          const brillo::Blob& blob) {
+  return middleware_.CallSync<&Backend::Storage::Store>(space, blob);
+}
+
+Status CryptohomeFrontendImpl::DestroySpace(Space space) {
+  return middleware_.CallSync<&Backend::Storage::Destroy>(space);
+}
+
+StatusOr<bool> CryptohomeFrontendImpl::IsSpaceWriteLocked(Space space) {
+  return middleware_.CallSync<&Backend::Storage::IsWriteLocked>(space);
+}
+
 }  // namespace hwsec

@@ -71,6 +71,12 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
               (override));
   MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsPinWeaverEnabled, (), (override));
+  MOCK_METHOD(StatusOr<StorageState>, GetSpaceState, (Space), (override));
+  MOCK_METHOD(Status, PrepareSpace, (Space, uint32_t), (override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (Space), (override));
+  MOCK_METHOD(Status, StoreSpace, (Space, const brillo::Blob&), (override));
+  MOCK_METHOD(Status, DestroySpace, (Space), (override));
+  MOCK_METHOD(StatusOr<bool>, IsSpaceWriteLocked, (Space), (override));
 };
 
 }  // namespace hwsec

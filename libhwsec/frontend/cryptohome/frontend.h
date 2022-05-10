@@ -22,6 +22,8 @@ namespace hwsec {
 class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
  public:
   using CreateKeyResult = Backend::KeyManagerment::CreateKeyResult;
+  using StorageState = Backend::Storage::ReadyState;
+
   ~CryptohomeFrontend() override = default;
 
   // Is the security module enabled or not.
@@ -95,6 +97,24 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
 
   // Is the PinWeaver enabled or not.
   virtual StatusOr<bool> IsPinWeaverEnabled() = 0;
+
+  // Gets the state of |space|.
+  virtual StatusOr<StorageState> GetSpaceState(Space space) = 0;
+
+  // Prepares the |space|.
+  virtual Status PrepareSpace(Space space, uint32_t size) = 0;
+
+  // Reads the data of |space|.
+  virtual StatusOr<brillo::Blob> LoadSpace(Space space) = 0;
+
+  // Writes the data to |space|.
+  virtual Status StoreSpace(Space space, const brillo::Blob& blob) = 0;
+
+  // Destroys the |space|.
+  virtual Status DestroySpace(Space space) = 0;
+
+  // Is the |space| write locked or not.
+  virtual StatusOr<bool> IsSpaceWriteLocked(Space space) = 0;
 };
 
 }  // namespace hwsec
