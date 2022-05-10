@@ -127,10 +127,6 @@ else
   DISABLE_STATEFUL_SECURITY_HARDENING="false"
 fi
 
-# Initialize kernel sysctl settings early so that they take effect for boot
-# processes.
-sysctl -q --system
-
 # CROS_DEBUG equals one if we've booted in developer mode or we've
 # booted a developer image.
 crossystem "cros_debug?1"

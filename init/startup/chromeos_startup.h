@@ -65,6 +65,8 @@ class ChromeosStartup {
                   std::unique_ptr<Platform> platform);
   virtual ~ChromeosStartup() = default;
 
+  void Sysctl();
+
   // EarlySetup contains the early mount calls of chromeos_startup. This
   // function exists to help break up the Run function into smaller functions.
   void EarlySetup();

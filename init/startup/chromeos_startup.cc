@@ -72,6 +72,19 @@ void ChromeosStartup::CheckClock() {
   }
 }
 
+void ChromeosStartup::Sysctl() {
+  // Initialize kernel sysctl settings early so that they take effect for boot
+  // processes.
+  brillo::ProcessImpl proc;
+  proc.AddArg("/usr/sbin/sysctl");
+  proc.AddArg("-q");
+  proc.AddArg("--system");
+  int status = proc.Run();
+  if (status != 0) {
+    LOG(WARNING) << "Failed to initialize kernel sysctl settings.";
+  }
+}
+
 ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
                                  const Flags& flags,
                                  const base::FilePath& root,
@@ -139,6 +152,10 @@ void ChromeosStartup::EarlySetup() {
       PLOG(WARNING) << "Unable to mount " << sys_security.value();
     }
   }
+
+  // Initialize kernel sysctl settings early so that they take effect for boot
+  // processes.
+  Sysctl();
 }
 
 // Main function to run chromeos_startup.
