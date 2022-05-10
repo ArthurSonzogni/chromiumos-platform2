@@ -17,7 +17,6 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <shill/net/byte_string.h>
 #include <shill/net/rtnl_message.h>
 
 namespace patchpanel {
@@ -94,8 +93,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   bcast_forwarder.OnFileCanReadWithoutBlocking(fd);
 
   shill::RTNLMessage rtnl_msg;
-  shill::ByteString bytes(bcast_forwarder.payload);
-  rtnl_msg.Decode(bytes);
+  rtnl_msg.Decode(bcast_forwarder.payload.data(),
+                  bcast_forwarder.payload.size());
   bcast_forwarder.AddrMsgHandler(rtnl_msg);
 
   return 0;
