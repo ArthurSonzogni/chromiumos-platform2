@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <crosvm/crosvm_control.h>
 
 #include "vm_tools/concierge/vm_util.h"
 
@@ -54,8 +55,7 @@ void VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   if (byte_size < 0) {
     LOG(ERROR) << "Skipping setting a negative balloon size: " << byte_size;
   }
-  vm_tools::concierge::RunCrosvmCommand(
-      {"balloon", std::to_string(byte_size), GetVmSocketPath()});
+  crosvm_client_balloon_vms(GetVmSocketPath().c_str(), byte_size);
 }
 
 const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
@@ -130,8 +130,16 @@ std::string VmBaseImpl::GetVmSocketPath() const {
   return runtime_dir_.GetPath().Append(cros_vm_socket_).value();
 }
 
-void VmBaseImpl::RunCrosvmCommand(const std::string& command) const {
-  vm_tools::concierge::RunCrosvmCommand(std::move(command), GetVmSocketPath());
+bool VmBaseImpl::Stop() const {
+  return crosvm_client_stop_vm(GetVmSocketPath().c_str());
+}
+
+bool VmBaseImpl::Suspend() const {
+  return crosvm_client_suspend_vm(GetVmSocketPath().c_str());
+}
+
+bool VmBaseImpl::Resume() const {
+  return crosvm_client_resume_vm(GetVmSocketPath().c_str());
 }
 
 uint32_t VmBaseImpl::seneschal_server_handle() const {
@@ -142,15 +150,15 @@ uint32_t VmBaseImpl::seneschal_server_handle() const {
 }
 
 void VmBaseImpl::HandleSuspendImminent() {
-  RunCrosvmCommand("suspend");
+  Suspend();
 }
 
 void VmBaseImpl::HandleSuspendDone() {
-  RunCrosvmCommand("resume");
+  Resume();
 }
 
 void VmBaseImpl::MakeRtVcpu() {
-  RunCrosvmCommand("make_rt");
+  crosvm_client_make_rt_vm(GetVmSocketPath().c_str());
 }
 
 }  // namespace concierge

@@ -161,7 +161,10 @@ static_library("libconcierge") {
     "../concierge/vsock_cid_pool.cc",
   ]
   configs += [ ":host_target_defaults" ]
-  libs = [ "grpc" ]
+  libs = [
+    "grpc",
+    "crosvm_control",
+  ]
   all_dependent_pkg_deps = [
     "grpc++",
     "libarchive",

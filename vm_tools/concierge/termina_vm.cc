@@ -442,7 +442,7 @@ bool TerminaVm::Shutdown() {
                << status.error_message();
 
   // Try to shut it down via the crosvm socket.
-  RunCrosvmCommand("stop");
+  Stop();
 
   // We can't actually trust the exit codes that crosvm gives us so just see if
   // it exited.
@@ -518,10 +518,6 @@ bool TerminaVm::ConfigureContainerGuest(const std::string& vm_token,
   }
 
   return true;
-}
-
-void TerminaVm::RunCrosvmCommand(string command) {
-  vm_tools::concierge::RunCrosvmCommand(std::move(command), GetVmSocketPath());
 }
 
 bool TerminaVm::Mount(string source,
@@ -651,11 +647,11 @@ void TerminaVm::HandleSuspendImminent() {
     LOG(ERROR) << "Failed to prepare for suspending" << status.error_message();
   }
 
-  RunCrosvmCommand("suspend");
+  Suspend();
 }
 
 void TerminaVm::HandleSuspendDone() {
-  RunCrosvmCommand("resume");
+  Resume();
 }
 
 bool TerminaVm::Mount9P(uint32_t port, string target) {

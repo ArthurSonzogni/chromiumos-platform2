@@ -401,23 +401,6 @@ bool CheckProcessExists(pid_t pid) {
   return kill(pid, 0) >= 0 || errno != ESRCH;
 }
 
-void RunCrosvmCommand(std::initializer_list<std::string> args) {
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  for (auto& s : args) {
-    crosvm.AddArg(s);
-  }
-
-  // This must be synchronous as we may do things after calling this function
-  // that depend on the crosvm command being completed (like suspending the
-  // device).
-  crosvm.Run();
-}
-
-void RunCrosvmCommand(std::string command, std::string socket_path) {
-  RunCrosvmCommand({command, socket_path});
-}
-
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   // TODO(hikalium): Rewrite this logic to use FFI
   // after b/188858559 is done.

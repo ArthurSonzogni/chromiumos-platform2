@@ -117,10 +117,6 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout);
 // Returns true if a process with |pid| exists.
 bool CheckProcessExists(pid_t pid);
 
-// Runs a crosvm subcommand.
-void RunCrosvmCommand(std::initializer_list<std::string> args);
-void RunCrosvmCommand(std::string command, std::string socket_path);
-
 // Returns balloon stats info retrieved from virtio-balloon device.
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path);
 

@@ -268,9 +268,6 @@ class TerminaVm final : public VmBaseImpl {
   // Starts the VM with the given kernel and root file system.
   bool Start(VmBuilder vm_builder);
 
-  // Runs a crosvm subcommend.
-  void RunCrosvmCommand(std::string command);
-
   // Helper version to record the VM kernel version at startup.
   void RecordKernelVersionForEnterpriseReporting();
 

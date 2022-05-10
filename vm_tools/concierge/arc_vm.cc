@@ -431,7 +431,7 @@ bool ArcVm::Shutdown() {
   LOG(WARNING) << "Failed to shut down ARCVM gracefully.";
 
   LOG(WARNING) << "Trying to shut ARCVM down via the crosvm socket.";
-  RunCrosvmCommand("stop");
+  Stop();
 
   // We can't actually trust the exit codes that crosvm gives us so just see if
   // it exited.
@@ -546,11 +546,11 @@ bool ArcVm::ListUsbDevice(std::vector<UsbDevice>* devices) {
 }
 
 void ArcVm::HandleSuspendImminent() {
-  RunCrosvmCommand("suspend");
+  Suspend();
 }
 
 void ArcVm::HandleSuspendDone() {
-  RunCrosvmCommand("resume");
+  Resume();
 }
 
 // static

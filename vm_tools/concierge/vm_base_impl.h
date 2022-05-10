@@ -75,7 +75,17 @@ class VmBaseImpl : public VmInterface {
 
   std::string GetVmSocketPath() const;
 
-  void RunCrosvmCommand(const std::string& command) const;
+  // Stops this VM
+  // Returns true on success, false otherwise
+  bool Stop() const;
+
+  // Suspends this VM
+  // Returns true on success, false otherwise
+  bool Suspend() const;
+
+  // Resumes this VM
+  // Returns true on success, false otherwise
+  bool Resume() const;
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM. Returns 0 if there is no seneschal server associated with this
