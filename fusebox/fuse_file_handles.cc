@@ -14,7 +14,7 @@
 namespace fusebox {
 
 static auto& GetFileHandles() {
-  static base::NoDestructor<std::unordered_map<uint64_t, int>> handles;
+  static base::NoDestructor<std::unordered_map<uint64_t, HandleData>> handles;
   return *handles;
 }
 
@@ -22,37 +22,53 @@ uint64_t OpenFile(base::ScopedFD fd) {
   static uint64_t next = 0;
   uint64_t handle = ++next;
   CHECK(handle) << "file handles wrapped";
-  GetFileHandles()[handle] = fd.release();
+  GetFileHandles()[handle].fd = fd.release();
   return handle;
 }
 
 uint64_t GetFile(uint64_t handle) {
   const auto it = GetFileHandles().find(handle);
-  if (it != GetFileHandles().end())
-    return handle;  // handle is open
-  return 0;
+  if (it == GetFileHandles().end())
+    return 0;
+  return handle;
 }
 
 int GetFileDescriptor(uint64_t handle) {
   const auto it = GetFileHandles().find(handle);
-  if (it != GetFileHandles().end())
-    return it->second;  // handle is open
-  return -1;
+  if (it == GetFileHandles().end())
+    return -1;
+  return it->second.fd;
 }
 
 int SetFileDescriptor(uint64_t handle, int fd) {
   const auto it = GetFileHandles().find(handle);
   if (it == GetFileHandles().end())
-    return -1;  // handle is not open
-  std::swap(it->second, fd);
+    return -1;
+  std::swap(it->second.fd, fd);
   return fd;
+}
+
+HandleData GetFileData(uint64_t handle) {
+  const auto it = GetFileHandles().find(handle);
+  if (it == GetFileHandles().end())
+    return {};
+  return it->second;
+}
+
+bool SetFileData(uint64_t handle, std::string path, std::string type) {
+  const auto it = GetFileHandles().find(handle);
+  if (it == GetFileHandles().end())
+    return false;
+  std::swap(it->second.path, path);
+  std::swap(it->second.type, type);
+  return true;
 }
 
 base::ScopedFD CloseFile(uint64_t handle) {
   const auto it = GetFileHandles().find(handle);
   if (it == GetFileHandles().end())
-    return base::ScopedFD();  // handle is not open
-  base::ScopedFD fd(it->second);
+    return {};
+  base::ScopedFD fd(it->second.fd);
   GetFileHandles().erase(it);
   return fd;
 }

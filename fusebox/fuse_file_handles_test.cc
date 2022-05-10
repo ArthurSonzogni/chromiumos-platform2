@@ -100,4 +100,60 @@ TEST(FuseFileHandlesTest, FileHandlesFileDescriptor) {
   ASSERT_TRUE(dir.Delete());
 }
 
+TEST(FuseFileHandlesTest, FileHandlesFileData) {
+  // Create a new open file handle.
+  uint64_t handle = OpenFile();
+  EXPECT_NE(0, handle);
+
+  // The handle has no backing file descriptor.
+  EXPECT_EQ(handle, GetFile(handle));
+  EXPECT_EQ(-1, GetFileDescriptor(handle));
+
+  // The handle can hold optional data.
+  EXPECT_EQ(true, SetFileData(handle, "something"));
+  EXPECT_EQ("something", GetFileData(handle).path);
+  EXPECT_EQ("", GetFileData(handle).type);
+  EXPECT_EQ(-1, GetFileData(handle).fd);
+
+  // The data path could be a url.
+  EXPECT_EQ(true, SetFileData(handle, "file://foo/bar"));
+  EXPECT_EQ("file://foo/bar", GetFileData(handle).path);
+  EXPECT_EQ("", GetFileData(handle).type);
+  EXPECT_EQ(-1, GetFileData(handle).fd);
+
+  // An optional type can be specified.
+  EXPECT_EQ(true, SetFileData(handle, "filesystem:url", "mtp"));
+  EXPECT_EQ("filesystem:url", GetFileData(handle).path);
+  EXPECT_EQ("mtp", GetFileData(handle).type);
+  EXPECT_EQ(-1, GetFileData(handle).fd);
+
+  // The fd data is the handle backing file descriptor.
+  SetFileDescriptor(handle, 42);
+  EXPECT_EQ(42, GetFileData(handle).fd);
+  SetFileDescriptor(handle, -1);
+  EXPECT_EQ(-1, GetFileData(handle).fd);
+
+  // Close the file handle: returns the file descriptor.
+  base::ScopedFD fd = CloseFile(handle);
+  EXPECT_EQ(-1, fd.get());
+
+  // Closed handles have no optional data.
+  EXPECT_EQ(-1, GetFileData(handle).fd);
+  EXPECT_EQ("", GetFileData(handle).path);
+  EXPECT_EQ("", GetFileData(handle).type);
+
+  // Unknown handles have no optional data.
+  EXPECT_EQ(0, GetFile(~1));
+  EXPECT_EQ(-1, GetFileData(~0).fd);
+  EXPECT_EQ("", GetFileData(~0).path);
+  EXPECT_EQ("", GetFileData(~0).type);
+
+  // Handle 0 is the invalid handle value.
+  EXPECT_EQ(0, GetFile(0));
+  EXPECT_EQ(-1, GetFileDescriptor(0));
+  EXPECT_EQ(-1, GetFileData(0).fd);
+  EXPECT_EQ("", GetFileData(0).path);
+  EXPECT_EQ("", GetFileData(0).type);
+}
+
 }  // namespace fusebox
