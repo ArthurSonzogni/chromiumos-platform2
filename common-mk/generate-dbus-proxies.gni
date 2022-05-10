@@ -9,11 +9,7 @@ template("generate_dbus_proxies") {
                            "proxy_output_file",
                            "mock_output_file",
                            "proxy_path_in_mocks",
-                           "new_fd_bindings",
                          ])
-  if (!defined(new_fd_bindings)) {
-    new_fd_bindings = true
-  }
   if (!defined(proxy_output_file)) {
     proxy_output_file = ""
   }
@@ -46,9 +42,6 @@ template("generate_dbus_proxies") {
     }
     if (proxy_path_in_mocks != "") {
       args += [ "--proxy-path-in-mocks=${proxy_path_in_mocks}" ]
-    }
-    if (new_fd_bindings) {
-      args += [ "--new-fd-bindings" ]
     }
   }
 }
