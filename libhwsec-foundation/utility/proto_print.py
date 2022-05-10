@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 
+
 # Holds information about a protobuf message field.
 #
 # Attributes:
@@ -169,7 +170,8 @@ def ParseProto(input_file):
             current_message_stack[-1].AddField(
                 field_match.group(1), field_match.group(2),
                 field_match.group(3), False)
-        elif current_message_stack and field_match3:
+        elif current_message_stack and field_match3 and field_match3.group(
+                2) != 'option':
             current_message_stack[-1].AddField(
                 field_match3.group(1).strip(), field_match3.group(2),
                 field_match3.group(3), True)
