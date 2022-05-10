@@ -149,10 +149,6 @@ if [ "${CROS_DEBUG}" -eq 1 ]; then
   . /usr/share/cros/dev_utils.sh
 fi
 
-# Protect a bind mount to the Chrome mount namespace.
-mount --bind /run/namespaces /run/namespaces
-mount --make-private /run/namespaces
-
 # Prepare to mount stateful partition
 ROOT_DEV="$(rootdev -s)"
 ROOTDEV_RET_CODE=$?

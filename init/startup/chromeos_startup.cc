@@ -30,6 +30,8 @@ constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelConfig[] = "sys/kernel/config";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
+constexpr char kRunNamespaces[] = "run/namespaces";
+
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kDebugfsAccessGrp[] = "debugfs-access";
@@ -163,6 +165,13 @@ void ChromeosStartup::EarlySetup() {
   // Initialize kernel sysctl settings early so that they take effect for boot
   // processes.
   Sysctl();
+
+  // Protect a bind mount to the Chrome mount namespace.
+  const base::FilePath namespaces = root_.Append(kRunNamespaces);
+  if (!platform_->Mount(namespaces, namespaces, "", MS_BIND, "") ||
+      !platform_->Mount(base::FilePath(), namespaces, "", MS_PRIVATE, "")) {
+    PLOG(WARNING) << "Unable to mount " << namespaces.value();
+  }
 }
 
 // Main function to run chromeos_startup.
