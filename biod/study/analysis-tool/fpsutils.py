@@ -7,6 +7,7 @@
 """Utilities needed for Fingerprint Study Analysis."""
 
 import timeit
+from collections import Counter
 from enum import Enum
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
@@ -66,13 +67,13 @@ class DataFrameCountTrieAccess:
             cols = list(table.columns)
         self.cols = cols
 
-        self.counts_dict = dict()
+        self.counts_dict = Counter[Tuple]()
 
         for row in np.array(table[cols]):
             for i in range(len(cols)+1):
                 # We include the empty tuple (row[0:0]) count also.
                 t = tuple(row)[0:i]
-                self.counts_dict[t] = self.counts_dict.get(t, 0) + 1
+                self.counts_dict[t] += 1
 
     def isin(self, values: tuple) -> bool:
         """A tuple will only be in the cache if the count is at least 1."""
@@ -80,7 +81,7 @@ class DataFrameCountTrieAccess:
 
     def counts(self, values: tuple) -> int:
         """Get the number of rows that start with `values` tuple."""
-        return self.counts_dict.get(values, 0)
+        return self.counts_dict[values]
 
 
 def boot_sample(
