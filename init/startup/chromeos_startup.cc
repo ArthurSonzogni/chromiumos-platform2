@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/types.h>
+#include <time.h>
+
 #include <memory>
 #include <string>
-#include <sys/types.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -14,6 +16,7 @@
 #include "init/crossystem.h"
 #include "init/crossystem_impl.h"
 #include "init/startup/chromeos_startup.h"
+#include "init/startup/constants.h"
 #include "init/startup/lib.h"
 
 namespace startup {
@@ -33,6 +36,25 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
   flags->lvm_stateful = USE_LVM_STATEFUL_PARTITION;
 }
 
+// We manage this base timestamp by hand. It isolates us from bad clocks on
+// the system where this image was built/modified, and on the runtime image
+// (in case a dev modified random paths while the clock was out of sync).
+// TODO(b/234157809): Our namespaces module doesn't support time namespaces
+// currently. Add unittests for CheckClock once we add support.
+void ChromeosStartup::CheckClock() {
+  time_t cur_time;
+  time(&cur_time);
+
+  if (cur_time < kBaseSecs) {
+    struct timespec stime;
+    stime.tv_sec = kBaseSecs;
+    stime.tv_nsec = 0;
+    if (clock_settime(CLOCK_REALTIME, &stime) != 0) {
+      PLOG(WARNING) << "Unable to set time.";
+    }
+  }
+}
+
 ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
                                  const Flags& flags,
                                  const base::FilePath& root,
@@ -47,6 +69,10 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
 
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
+  // Make sure our clock is somewhat up-to-date. We don't need any resources
+  // mounted below, so do this early on.
+  CheckClock();
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     LOG(WARNING) << "chromeos_startup.sh returned with code " << ret;

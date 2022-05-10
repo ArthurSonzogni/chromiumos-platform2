@@ -42,6 +42,7 @@ class ChromeosStartup {
   int Run();
 
  private:
+  void CheckClock();
   // Runs the bash version of chromeos startup to allow for incremental
   // migration.
   int RunChromeosStartupScript();

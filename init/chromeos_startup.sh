@@ -112,31 +112,10 @@ is_tpm_owned() {
   [ "${tpm_owned}" != "0" ]
 }
 
-# Check the date in case the RTC battery died and it initialized to something
-# old (https://crbug.com/195715).  This doesn't need to be perfect, just
-# somewhat recent.  We'll recover later via tlsdate.
-check_clock() {
-  # We manage this base timestamp by hand.  It isolates us from bad clocks on
-  # the system where this image was built/modified, and on the runtime image
-  # (in case a dev modified random paths while the clock was out of sync).
-  # Calculated using: date -d"01 Jan $(date +%Y) UTC" +%s
-  local year="2022"
-  local base_secs="1640995200"
-
-  # See if the current time is older than our fixed time.  If so, pull up.
-  if [ "$(date -u +%s)" -lt "${base_secs}" ]; then
-    date -u "01020000${year}"
-  fi
-}
-
 add_clobber_crash_report() {
   crash_reporter --early --log_to_stderr --mount_failure --mount_device="$1"
   sync
 }
-
-# Make sure our clock is somewhat up-to-date.  We don't need any resources
-# mounted below, so do this early on.
-check_clock
 
 # bootstat writes timings to tmpfs.
 bootstat pre-startup
