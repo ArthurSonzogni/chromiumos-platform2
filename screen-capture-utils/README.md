@@ -23,8 +23,12 @@ Here’s a quick rundown of how to use kmsvnc.
 (DUT)# kmsvnc
 ```
 
-VNC server will start listening on port 5900. Forward the port with SSH from
-your client, and connect through the port. Example:
+VNC server will start listening on port 5900.
+
+### Using a VNC viewer.
+
+Forward the port 5900 with SSH from your client, and connect through the port.
+Example:
 
 ```shell
 (workstation)$ ssh -L 5900:localhost:5900 DUT  # Keep this running to forward port.
@@ -38,6 +42,31 @@ xtigervncviewer becomes `localhost:0`)
 ```shell
 (workstation)$ sudo apt install tigervnc-viewer  # to install on Debian.
 (workstation)$ xtigervncviewer localhost:0
+```
+
+### Using novnc.
+
+novnc is a VNC client on the web. On test images novnc is available. It will
+start listening to port 6080, open browser to point to the page.
+
+```
+(workstation)$ ssh -L 6080:localhost:6080 DUT
+(DUT)# kmsvnc &
+(DUT)# novnc &
+Navigate to this URL:
+
+    http://localhost:6080/vnc.html?host=localhost&port=6080
+
+Press Ctrl-C to exit
+
+```
+
+If you're in a local network such as a home network, this might be an option to
+open the port directly so you can connect directly, specifying the DUT IP
+address directly like: `http://${DUT}:6080/vnc.html?host=${DUT}&port=6080`
+
+```
+(DUT)# iptables -I INPUT -p tcp --dport 6080 -j ACCEPT
 ```
 
 ### Reporting bugs
