@@ -69,7 +69,7 @@ constexpr char kTraceBufferSizeFile[] =
 constexpr char kTraceMarkerFile[] =
     "sys/kernel/debug/tracing/instances/drm/trace_marker";
 constexpr char kSnapshotDirPath[] = "var/log/display_debug";
-constexpr char kDrmTraceLogName[] = "drm_trace";
+constexpr char kDrmTraceLogName[] = "drm_trace_verbose";
 constexpr char kModetestLogName[] = "modetest";
 
 constexpr char kDRMTraceToolErrorString[] =

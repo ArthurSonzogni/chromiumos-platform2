@@ -189,7 +189,8 @@ TEST_P(DRMTraceToolSnapshotTest, SnapshotSuccess) {
 INSTANTIATE_TEST_SUITE_P(
     SnapshotTypes,
     DRMTraceToolSnapshotTest,
-    ::testing::Values(SnapshotTestParam(DRMSnapshotType_TRACE, "drm_trace"),
+    ::testing::Values(SnapshotTestParam(DRMSnapshotType_TRACE,
+                                        "drm_trace_verbose"),
                       SnapshotTestParam(DRMSnapshotType_MODETEST, "modetest")));
 
 TEST_F(DRMTraceToolTest, WriteToNonExistentFile) {

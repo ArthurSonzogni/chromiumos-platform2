@@ -438,6 +438,11 @@ const std::array kCommandLogs {
 const std::array kCommandLogsVerbose{
     // PCI config space accesses are limited without CAP_SYS_ADMIN.
     Log{kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn", kRoot, kRoot},
+    // Same as drm_trace, but a larger log. Caller should trim it as needed.
+    Log{kFile, "drm_trace_verbose",
+        "/sys/kernel/debug/tracing/instances/drm/trace",
+        SandboxedProcess::kDefaultUser, kDebugfsGroup, 10 * 1024 * 1024,
+        LogTool::Encoding::kUtf8},
 };
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
@@ -933,7 +938,8 @@ std::optional<string> LogTool::GetLog(const string& name) {
   if (GetNamedLogFrom(name, kCommandLogs, &result) ||
       GetNamedLogFrom(name, kCommandLogsShort, &result) ||
       GetNamedLogFrom(name, kExtraLogs, &result) ||
-      GetNamedLogFrom(name, kFeedbackLogs, &result)) {
+      GetNamedLogFrom(name, kFeedbackLogs, &result) ||
+      GetNamedLogFrom(name, kCommandLogsVerbose, &result)) {
     return std::make_optional(result);
   }
   return std::nullopt;
