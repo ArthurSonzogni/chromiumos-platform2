@@ -208,8 +208,6 @@ TEST_F(CryptoTest, TpmStepTest) {
   AuthBlockState auth_block_state;
   ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
-  // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
-  // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
@@ -279,8 +277,6 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   AuthBlockState auth_block_state;
   ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
-  // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
-  // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   EXPECT_CALL(tpm, DecryptBlob(_, _, _, _))
@@ -343,8 +339,6 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   AuthBlockState auth_block_state;
   ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
-  // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
-  // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   // UnsealWithAuthorization operation will fail.
@@ -372,8 +366,6 @@ TEST_F(CryptoTest, ScryptStepTest) {
   AuthBlockState auth_block_state;
   ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
-  // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
-  // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   SecureBlob original_data;

@@ -513,8 +513,6 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
   AuthBlockState auth_block_state;
   ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
-  // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
-  // modified to take a key material and an auth block state.
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   SecureBlob original_data;

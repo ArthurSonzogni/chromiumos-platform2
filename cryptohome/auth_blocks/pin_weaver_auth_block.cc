@@ -147,8 +147,7 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
-  // TODO(kerrnel): This may not be needed, but is currently retained to
-  // maintain the original logic.
+  // This may not be needed, but is retained to maintain the original logic.
   if (!cryptohome_key_loader_->HasCryptohomeKey())
     cryptohome_key_loader_->Init();
 
