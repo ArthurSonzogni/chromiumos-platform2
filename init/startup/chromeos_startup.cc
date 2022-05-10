@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
 
@@ -12,12 +14,26 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
+#include <brillo/userdb_utils.h>
 
 #include "init/crossystem.h"
 #include "init/crossystem_impl.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
-#include "init/startup/lib.h"
+#include "init/startup/platform_impl.h"
+
+namespace {
+
+constexpr char kTracingOn[] = "sys/kernel/debug/tracing/tracing_on";
+
+constexpr char kSysKernelDebug[] = "sys/kernel/debug";
+constexpr char kSysKernelConfig[] = "sys/kernel/config";
+constexpr char kSysKernelSecurity[] = "sys/kernel/security";
+constexpr char kDisableStatefulSecurityHard[] =
+    "usr/share/cros/startup/disable_stateful_security_hardening";
+constexpr char kDebugfsAccessGrp[] = "debugfs-access";
+
+}  // namespace
 
 namespace startup {
 
@@ -50,6 +66,7 @@ void ChromeosStartup::CheckClock() {
     stime.tv_sec = kBaseSecs;
     stime.tv_nsec = 0;
     if (clock_settime(CLOCK_REALTIME, &stime) != 0) {
+      // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to set time.";
     }
   }
@@ -60,12 +77,69 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
                                  const base::FilePath& root,
                                  const base::FilePath& stateful,
                                  const base::FilePath& lsb_file,
-                                 const base::FilePath& proc_file)
+                                 const base::FilePath& proc_file,
+                                 std::unique_ptr<Platform> platform)
     : cros_system_(std::move(cros_system)),
       lsb_file_(lsb_file),
       proc_(proc_file),
       root_(root),
-      stateful_(stateful) {}
+      stateful_(stateful),
+      platform_(std::move(platform)) {}
+
+void ChromeosStartup::EarlySetup() {
+  gid_t debugfs_grp;
+  if (!brillo::userdb::GetGroupInfo(kDebugfsAccessGrp, &debugfs_grp)) {
+    PLOG(WARNING) << "Can't get gid for " << kDebugfsAccessGrp;
+  } else {
+    char data[25];
+    snprintf(data, sizeof(data), "mode=0750,uid=0,gid=%d", debugfs_grp);
+    const base::FilePath debug = root_.Append(kSysKernelDebug);
+    if (!platform_->Mount("debugfs", debug, "debugfs", kCommonMountFlags,
+                          data)) {
+      // TODO(b/232901639): Improve failure reporting
+      PLOG(WARNING) << "Unable to mount " << debug.value();
+    }
+  }
+
+  // /sys/kernel/debug/tracing/tracing_on is 1 right after tracefs is
+  // initialized in the kernel. Set it to a reasonable initial state of 0 after
+  // debugfs is mounted. This needs to be done early during boot to avoid
+  // interference with ureadahead that uses ftrace to build the list of files to
+  // preload in the block cache. Android's init running in the ARC++ container
+  // sets this file to 0, and we set it to 0 here so the the initial state of
+  // tracing_on is always 0 regardless of ARC++.
+  struct stat st;
+  const base::FilePath tracing = root_.Append(kTracingOn);
+  if (platform_->Stat(tracing, &st) && S_ISREG(st.st_mode)) {
+    if (!base::WriteFile(tracing, "0")) {
+      PLOG(WARNING) << "Failed to write to " << tracing.value();
+    }
+  }
+
+  // Mount configfs, if present.
+  const base::FilePath sys_config = root_.Append(kSysKernelConfig);
+  if (base::DirectoryExists(sys_config)) {
+    if (!platform_->Mount("configfs", sys_config, "configfs", kCommonMountFlags,
+                          "")) {
+      // TODO(b/232901639): Improve failure reporting.
+      PLOG(WARNING) << "Unable to mount " << sys_config.value();
+    }
+  }
+
+  const base::FilePath disable_sec_hard =
+      root_.Append(kDisableStatefulSecurityHard);
+  disable_stateful_security_hardening_ = base::PathExists(disable_sec_hard);
+
+  // Mount securityfs as it is used to configure inode security policies below.
+  if (!disable_stateful_security_hardening_) {
+    const base::FilePath sys_security = root_.Append(kSysKernelSecurity);
+    if (!platform_->Mount("securityfs", sys_security, "securityfs",
+                          kCommonMountFlags, "")) {
+      // TODO(b/232901639): Improve failure reporting.
+      PLOG(WARNING) << "Unable to mount " << sys_security.value();
+    }
+  }
+}
 
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
@@ -76,9 +150,12 @@ int ChromeosStartup::Run() {
   // bootstat writes timings to tmpfs.
   bootstat_.LogEvent("pre-startup");
 
+  EarlySetup();
+
   int ret = RunChromeosStartupScript();
   if (ret) {
-    LOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
+    // TODO(b/232901639): Improve failure reporting.
+    PLOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
   }
 
   bootstat_.LogEvent("post-startup");

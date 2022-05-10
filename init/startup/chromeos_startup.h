@@ -15,9 +15,35 @@
 #include <metrics/bootstat.h>
 
 #include "init/crossystem.h"
-#include "init/startup/lib.h"
+#include "init/startup/platform_impl.h"
 
 namespace startup {
+
+// Define a struct to contain the flags we set when parsing USE flags.
+struct Flags {
+  // Indicates built with USE=encrypted_reboot_vault. Used to determine
+  // if we need to setup the encrypted reboot vault.
+  bool encrypted_reboot_vault;
+  // Indicates built with USE=encrypted_stateful, used to determine which
+  // mount function to use
+  bool encstateful;
+  // Indicates built with USE=direncryption. Used when mounting the stateful
+  // partition to determine if we should enable directory encryption.
+  bool direncryption;
+  // Indicates built with USE=fsverity. Used when mounting the stateful
+  // partition.
+  bool fsverity;
+  // Indicates built with USE=lvm_stateful_partition. Used when mounting the
+  // stateful partition.
+  bool lvm_stateful;
+  // Indicates built with USE=prjquota. Used when mounting the stateful
+  // partition.
+  bool prjquota;
+  // Not a USE flag, but indicates if built with both USE=tpm2 and
+  // USE=encrypted_stateful. Used to determine if we will try to create
+  // a system key.
+  bool sys_key_util;
+};
 
 // This is the primary class for the startup functionality, making use of the
 // other classes in the startup directory. chromeos_startup sets up different
@@ -35,8 +61,13 @@ class ChromeosStartup {
                   const base::FilePath& root,
                   const base::FilePath& stateful,
                   const base::FilePath& lsb_file,
-                  const base::FilePath& proc_file);
+                  const base::FilePath& proc_file,
+                  std::unique_ptr<Platform> platform);
   virtual ~ChromeosStartup() = default;
+
+  // EarlySetup contains the early mount calls of chromeos_startup. This
+  // function exists to help break up the Run function into smaller functions.
+  void EarlySetup();
 
   // Run the chromeos startup routine.
   int Run();
@@ -52,8 +83,9 @@ class ChromeosStartup {
   const base::FilePath proc_;
   const base::FilePath root_;
   const base::FilePath stateful_;
-  std::stack<base::FilePath> mount_stack_;
   bootstat::BootStat bootstat_;
+  std::unique_ptr<Platform> platform_;
+  bool disable_stateful_security_hardening_;
 };
 
 }  // namespace startup

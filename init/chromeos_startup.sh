@@ -117,41 +117,14 @@ add_clobber_crash_report() {
   sync
 }
 
-mount -n -i -c -t debugfs \
-  -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
-  debugfs /sys/kernel/debug
-
-# /sys/kernel/debug/tracing/tracing_on is 1 right after tracefs is initialized
-# in the kernel. Set it to a reasonable initial state of 0 after debugfs is
-# mounted. This needs to be done early during boot to avoid interference with
-# ureadahead that uses ftrace to build the list of files to preload in the block
-# cache. Android's init running in the ARC++ container sets this file to 0, and
-# we set it to 0 here so the the initial state of tracing_on is always 0
-# regardless of ARC++.
-if [ -e /sys/kernel/debug/tracing/tracing_on ]; then
-  echo 0 > /sys/kernel/debug/tracing/tracing_on
-fi
-
 # Some startup functions are split into a separate library which may be
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
-
-# Mount configfs, if present.
-if [ -d /sys/kernel/config ]; then
-  mount -n -i -c -t configfs -o nodev,nosuid,noexec configfs \
-    /sys/kernel/config
-fi
 
 if [ -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
   DISABLE_STATEFUL_SECURITY_HARDENING="true"
 else
   DISABLE_STATEFUL_SECURITY_HARDENING="false"
-fi
-
-if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
-  # Mount securityfs as it is used to configure inode security policies below.
-  mount -n -i -c -t securityfs -o nodev,noexec,nosuid securityfs \
-    /sys/kernel/security
 fi
 
 # Initialize kernel sysctl settings early so that they take effect for boot

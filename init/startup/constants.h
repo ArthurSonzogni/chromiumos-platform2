@@ -5,6 +5,8 @@
 #ifndef INIT_STARTUP_CONSTANTS_H_
 #define INIT_STARTUP_CONSTANTS_H_
 
+#include <sys/mount.h>
+
 namespace startup {
 
 // These constants are used to check the clock. Since they need to be
@@ -14,6 +16,12 @@ constexpr int kYear = 2022;
 // This isn't exactly correct as it doesn't handle leap years, but it's
 // good enough for our purposes (pulling clock to the ~last year).
 constexpr uint64_t kBaseSecs = (kYear - 1970) * (365 * 24 * 60 * 60);
+
+// Many of the mount calls in chromeos_startup utilize these flags.
+// Making this a constant to simplify those mount calls, but this
+// should only be used in cases where these specific mount flags are
+// needed.
+constexpr int kCommonMountFlags = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
 }  // namespace startup
 

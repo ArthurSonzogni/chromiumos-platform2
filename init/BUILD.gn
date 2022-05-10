@@ -18,6 +18,7 @@ group("all") {
   ]
   if (use.test) {
     deps += [
+      ":chromeos_startup_test",
       ":clobber_state_test",
       ":file_attrs_cleaner_test",
       ":periodic_scheduler_test",
@@ -68,7 +69,10 @@ static_library("utils") {
 }
 
 static_library("libcrosstartup") {
-  sources = [ "startup/chromeos_startup.cc" ]
+  sources = [
+    "startup/chromeos_startup.cc",
+    "startup/platform_impl.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":libclobber",
@@ -169,6 +173,22 @@ executable("usermode-helper") {
 if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("chromeos_startup_test") {
+    sources = [
+      "startup/chromeos_startup_test.cc",
+      "startup/fake_platform_impl.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    deps = [
+      ":libcrosstartup",
+      "//common-mk/testrunner",
+    ]
   }
 
   executable("clobber_state_test") {
