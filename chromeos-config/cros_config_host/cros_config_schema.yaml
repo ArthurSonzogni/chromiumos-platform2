@@ -286,6 +286,15 @@ typeDefs:
                 properties:
                   powersave-bias:
                     type: integer
+  resourced_power_source_preferences: &resourced_power_source_preferences
+    description: Defines settings that configure resourced based on power source.
+      https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
+    type: object
+    properties:
+      default-power-preferences: *resourced_power_preferences
+      web-rtc-power-preferences: *resourced_power_preferences
+      fullscreen-power-preferences: *resourced_power_preferences
+      gaming-power-preferences: *resourced_power_preferences
 type: object
 properties:
   chromeos:
@@ -889,10 +898,8 @@ properties:
                 https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
               type: object
               properties:
-                default-power-preferences: *resourced_power_preferences
-                web-rtc-power-preferences: *resourced_power_preferences
-                fullscreen-power-preferences: *resourced_power_preferences
-                gaming-power-preferences: *resourced_power_preferences
+                ac: *resourced_power_source_preferences
+                dc: *resourced_power_source_preferences
             test-label:
               description: Test alias (model) label that will be applied in Autotest and
                 reported for test results.

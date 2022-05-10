@@ -896,6 +896,80 @@ In the tables below,
 ### resource
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ac | [ac](#ac) |  | False |  | False | Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
+| dc | [dc](#dc) |  | False |  | False | Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
+
+### ac
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| gaming-power-preferences | [gaming-power-preferences](#gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+
+### default-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### fullscreen-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### gaming-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### web-rtc-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### dc
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | gaming-power-preferences | [gaming-power-preferences](#gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
