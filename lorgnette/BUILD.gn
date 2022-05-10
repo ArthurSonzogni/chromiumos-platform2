@@ -9,6 +9,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":install_dbus_config",
+    ":install_debug",
     ":install_init",
     ":install_system_service",
     ":lorgnette",
@@ -108,6 +109,11 @@ install_config("install_system_service") {
 install_config("install_init") {
   sources = [ "init/lorgnette.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_debug") {
+  sources = [ "init/lorgnette-debug.conf" ]
+  install_path = "/usr/share/lorgnette"
 }
 
 if (use.test) {
