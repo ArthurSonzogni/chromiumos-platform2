@@ -350,6 +350,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVulkan(true).EnableRenderServer(true);
   }
 
+  if (USE_CROSVM_VIRTGPU_NATIVE_CONTEXT) {
+    vm_builder.EnableVirtgpuNativeContext(true);
+  }
+
   CustomParametersForDev custom_parameters;
 
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
