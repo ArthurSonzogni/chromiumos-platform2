@@ -41,7 +41,7 @@ SysfsFunction::DataType SysfsFunction::EvalImpl() const {
   for (const auto& sysfs_path : Glob(glob_path)) {
     auto dict_value = MapFilesToDict(sysfs_path, keys_, optional_keys_);
     if (dict_value)
-      result.push_back(std::move(*dict_value));
+      result.Append(std::move(*dict_value));
   }
   return result;
 }

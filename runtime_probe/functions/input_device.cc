@@ -106,7 +106,7 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
   value.SetStringKey("device_type",
                      InputDevice::Type_Name(input_device->type()));
   FixTouchscreenI2cDevice(&value);
-  list_value->push_back(std::move(value));
+  list_value->Append(std::move(value));
 }
 
 }  // namespace

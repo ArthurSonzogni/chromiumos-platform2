@@ -13,7 +13,9 @@ namespace {
 
 void ConcatenateDataType(GenericStorageFunction::DataType* dest,
                          GenericStorageFunction::DataType&& src) {
-  std::move(src.begin(), src.end(), std::back_inserter(*dest));
+  for (auto& value : src) {
+    dest->Append(std::move(value));
+  }
 }
 }  // namespace
 

@@ -100,7 +100,7 @@ UsbCameraFunction::DataType UsbCameraFunction::EvalImpl() const {
     res.SetStringKey("path", video_path.value());
     if (ExploreAsUsbCamera(video_path, &res)) {
       res.SetStringKey("bus_type", "usb");
-      result.push_back(std::move(res));
+      result.Append(std::move(res));
     }
   }
 

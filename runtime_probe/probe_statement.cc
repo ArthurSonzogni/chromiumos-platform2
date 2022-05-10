@@ -103,13 +103,9 @@ ProbeFunction::DataType ProbeStatement::Eval() const {
   if (expect_) {
     // |expect_->Apply| will return false if the probe result is considered
     // invalid.
-    // |std::partition| will move failed elements to end of list, |first_fail|
-    // will point the the first failed element.
-    auto first_failure = std::partition(
-        results.begin(), results.end(),
-        [this](auto& result) { return expect_->Apply(&result); });
-    // Remove failed elements.
-    results.erase(first_failure, results.end());
+    // Erase all elements that failed.
+    results.EraseIf(
+        [&](base::Value& result) { return !expect_->Apply(&result); });
   }
 
   return results;

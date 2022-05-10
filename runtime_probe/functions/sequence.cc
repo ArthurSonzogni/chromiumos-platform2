@@ -28,7 +28,7 @@ SequenceFunction::DataType SequenceFunction::EvalImpl() const {
   }
 
   DataType results;
-  results.push_back(std::move(result));
+  results.Append(std::move(result));
   return results;
 }
 

@@ -58,7 +58,7 @@ EdidFunction::DataType EdidFunction::EvalImpl() const {
       if (node_res.DictEmpty())
         continue;
 
-      result.push_back(std::move(node_res));
+      result.Append(std::move(node_res));
     }
   }
 

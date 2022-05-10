@@ -146,7 +146,7 @@ MemoryFunction::DataType GetMemoryInfo() {
     info.SetIntKey("speed", dmi_memory->speed);
     info.SetStringKey("locator", dmi_memory->locator);
     info.SetStringKey("part", dmi_memory->part_number);
-    results.push_back(std::move(info));
+    results.Append(std::move(info));
   }
 
   return results;

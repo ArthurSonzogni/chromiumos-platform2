@@ -62,7 +62,7 @@ TcpcFunction::DataType TcpcFunction::EvalImpl() const {
     val.SetStringKey("product_id",
                      base::StringPrintf("0x%x", cmd->ProductId()));
     val.SetStringKey("device_id", base::StringPrintf("0x%x", cmd->DeviceId()));
-    result.push_back(std::move(val));
+    result.Append(std::move(val));
   }
 
   return result;

@@ -130,7 +130,7 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
                                                           logical_block_size));
     }
 
-    result.push_back(std::move(*node_res));
+    result.Append(std::move(*node_res));
   }
 
   return result;

@@ -63,7 +63,7 @@ GenericBattery::DataType GenericBattery::EvalImpl() const {
                                  base::NumberToString(battery_index + 1));
       }
 
-      result.push_back(std::move(*dict_value));
+      result.Append(std::move(*dict_value));
     }
   }
 

@@ -36,7 +36,7 @@ EctoolI2Cread::DataType EctoolI2Cread::EvalImpl() const {
   if (re.PartialMatch(ectool_output, &reg_value)) {
     base::Value dict_value(base::Value::Type::DICTIONARY);
     dict_value.SetStringKey(key_, reg_value);
-    result.push_back(std::move(dict_value));
+    result.Append(std::move(dict_value));
   }
   return result;
 }

@@ -48,7 +48,7 @@ GpuFunction::DataType GpuFunction::EvalImpl() const {
       continue;
     std::optional<base::Value> res = MapFilesToDict(path, kGPUFields);
     if (res.has_value())
-      results.push_back(std::move(res).value());
+      results.Append(std::move(res).value());
   }
 
   return results;

@@ -30,7 +30,7 @@ VPDCached::DataType VPDCached::EvalImpl() const {
   PrependToDVKey(&*dict_value, kKeyPrefix);
 
   VPDCached::DataType result{};
-  result.push_back(std::move(*dict_value));
+  result.Append(std::move(*dict_value));
   return result;
 }
 

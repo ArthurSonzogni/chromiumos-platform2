@@ -19,11 +19,11 @@ BaseFunctionTest::BaseFunctionTest() {
 BaseFunctionTest::~BaseFunctionTest() = default;
 
 // static
-std::vector<base::Value> BaseFunctionTest::CreateProbeResultFromJson(
+base::Value::List BaseFunctionTest::CreateProbeResultFromJson(
     const std::string& str) {
   auto res = base::JSONReader::Read(str);
-  CHECK(res.has_value());
-  return std::move(*res).TakeList();
+  CHECK(res.has_value() && res->is_list());
+  return std::move(res->GetList());
 }
 
 }  // namespace runtime_probe

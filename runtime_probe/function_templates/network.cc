@@ -193,7 +193,7 @@ NetworkFunction::DataType NetworkFunction::EvalImpl() const {
       node_res->SetStringKey("type", device_type);
     }
 
-    result.push_back(std::move(*node_res));
+    result.Append(std::move(*node_res));
   }
 
   return result;

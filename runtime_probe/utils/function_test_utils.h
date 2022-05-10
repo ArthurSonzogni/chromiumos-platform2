@@ -25,8 +25,7 @@ class BaseFunctionTest : public BaseFileTest {
 
  protected:
   // Helper function to create the expected probe result form a json string.
-  static std::vector<base::Value> CreateProbeResultFromJson(
-      const std::string& str);
+  static base::Value::List CreateProbeResultFromJson(const std::string& str);
 
   ContextMockImpl* mock_context() { return &mock_context_; }
 

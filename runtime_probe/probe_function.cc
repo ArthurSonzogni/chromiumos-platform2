@@ -108,7 +108,7 @@ PrivilegedProbeFunction::DataType PrivilegedProbeFunction::Eval() const {
     return {};
   }
 
-  DataType result = std::move(*json_output).TakeList();
+  DataType result = std::move(json_output->GetList());
   PostHelperEvalImpl(&result);
   return result;
 }

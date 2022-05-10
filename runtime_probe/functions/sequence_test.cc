@@ -40,10 +40,8 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   b.SetBoolKey("b", true);
 
   DataType val;
-  // val{std::move(a), std::move(b)} implicitly calls the copy constructor which
-  // is not possible.
-  val.push_back(std::move(a));
-  val.push_back(std::move(b));
+  val.Append(std::move(a));
+  val.Append(std::move(b));
 
   EXPECT_CALL(*mock_probe_function_1, Eval())
       .WillOnce(testing::Return(testing::ByMove(std::move(val))));
@@ -76,7 +74,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   a.SetBoolKey("c", false);
 
   DataType val_a;
-  val_a.push_back(std::move(a));
+  val_a.Append(std::move(a));
 
   EXPECT_CALL(*mock_probe_function_1, Eval())
       .WillOnce(testing::Return(testing::ByMove(std::move(val_a))));
@@ -88,7 +86,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   b.SetBoolKey("c", true);
 
   DataType val_b;
-  val_b.push_back(std::move(b));
+  val_b.Append(std::move(b));
 
   EXPECT_CALL(*mock_probe_function_2, Eval())
       .WillOnce(testing::Return(testing::ByMove(std::move(val_b))));

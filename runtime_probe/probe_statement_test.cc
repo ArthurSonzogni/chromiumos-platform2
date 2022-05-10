@@ -51,13 +51,11 @@ TEST(ProbeStatementTest, TestEval) {
   bad_result.SetStringKey("optional_field", "optional");
 
   ProbeFunction::DataType val_a;
-  // val_a{std::move(x), std::move(y)} implicitly calls the copy constructor
-  // which is not possible.
-  val_a.push_back(std::move(good_result));
-  val_a.push_back(std::move(bad_result));
+  val_a.Append(std::move(good_result));
+  val_a.Append(std::move(bad_result));
 
   ProbeFunction::DataType val_b;
-  val_b.push_back(std::move(good_result2));
+  val_b.Append(std::move(good_result2));
 
   EXPECT_CALL(*mock_eval, Eval())
       .WillOnce(::testing::Return(::testing::ByMove(std::move(val_a))))

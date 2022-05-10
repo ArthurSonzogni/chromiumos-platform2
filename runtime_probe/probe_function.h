@@ -69,7 +69,7 @@ class ProbeFunction {
   //      }
 
  public:
-  using DataType = std::vector<base::Value>;
+  using DataType = base::Value::List;
 
   // Returns the name of the probe function.  The returned value should always
   // identical to the static member |function_name| of the derived class.
