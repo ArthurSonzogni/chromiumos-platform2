@@ -129,6 +129,8 @@ class DlcBase {
   FRIEND_TEST(DlcBaseTest, InitializationReservedSpaceOmitted);
   FRIEND_TEST(DlcBaseTestRemovable,
               InitializationReservedSpaceOnRemovableDevice);
+  FRIEND_TEST(DlcBaseTest, InitializationReservedSpaceDoesNotSparsifyAgain);
+  FRIEND_TEST(DlcBaseTest, ReinstallingNonReservedSpaceDoesNotSparsifyAgain);
   FRIEND_TEST(DBusServiceTest, GetInstalled);
   FRIEND_TEST(DlcBaseTest, GetUsedBytesOnDisk);
   FRIEND_TEST(DlcBaseTest, DefaultState);

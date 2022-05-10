@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
@@ -103,6 +105,74 @@ TEST_F(DlcBaseTestRemovable, InitializationReservedSpaceOnRemovableDevice) {
       dlc.GetImagePath(SystemState::Get()->active_boot_slot())));
   EXPECT_FALSE(base::PathExists(
       dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
+}
+
+TEST_F(DlcBaseTest, InitializationReservedSpaceDoesNotSparsifyAgain) {
+  // First DLC has `reserved` set to true.
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+
+  auto* system_state = SystemState::Get();
+  auto a_img = dlc.GetImagePath(system_state->active_boot_slot());
+  auto b_img = dlc.GetImagePath(system_state->inactive_boot_slot());
+  auto a_img_size = GetFileSize(a_img);
+  auto b_img_size = GetFileSize(b_img);
+
+  EXPECT_TRUE(base::PathExists(a_img));
+  EXPECT_TRUE(base::PathExists(b_img));
+  EXPECT_TRUE(WriteToFile(a_img, std::string(a_img_size, '1')));
+  EXPECT_TRUE(WriteToFile(b_img, std::string(b_img_size, '2')));
+
+  std::vector<uint8_t> expected_hash_a, expected_hash_b;
+  EXPECT_TRUE(HashFile(a_img, a_img_size, &expected_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size, &expected_hash_b));
+
+  // Mimic a reboot.
+  dlc.Initialize();
+
+  // On reboot, there should not be resizing + re-sparsing of images.
+  std::vector<uint8_t> actual_hash_a, actual_hash_b;
+  EXPECT_TRUE(HashFile(a_img, a_img_size, &actual_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size, &actual_hash_b));
+
+  EXPECT_EQ(expected_hash_a, actual_hash_a);
+  EXPECT_EQ(expected_hash_b, actual_hash_b);
+}
+
+TEST_F(DlcBaseTest, ReinstallingNonReservedSpaceDoesNotSparsifyAgain) {
+  DlcBase dlc(kSecondDlc);
+  dlc.Initialize();
+
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
+  EXPECT_TRUE(dlc.Install(&err_));
+
+  auto* system_state = SystemState::Get();
+  auto a_img = dlc.GetImagePath(system_state->active_boot_slot());
+  auto b_img = dlc.GetImagePath(system_state->inactive_boot_slot());
+  auto a_img_size = GetFileSize(a_img);
+  auto b_img_size = GetFileSize(b_img);
+
+  EXPECT_TRUE(base::PathExists(a_img));
+  EXPECT_TRUE(base::PathExists(b_img));
+  EXPECT_TRUE(WriteToFile(a_img, std::string(a_img_size, '2')));
+  EXPECT_TRUE(WriteToFile(b_img, std::string(b_img_size, '3')));
+
+  std::vector<uint8_t> expected_hash_a, expected_hash_b;
+  EXPECT_TRUE(HashFile(a_img, a_img_size, &expected_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size, &expected_hash_b));
+
+  // Mimic re-install after reboot.
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  dlc.ChangeState(DlcState::NOT_INSTALLED);
+  EXPECT_TRUE(dlc.Install(&err_));
+
+  // There should not be resizing + re-sparsing of images.
+  std::vector<uint8_t> actual_hash_a, actual_hash_b;
+  EXPECT_TRUE(HashFile(a_img, a_img_size, &actual_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size, &actual_hash_b));
+
+  EXPECT_EQ(expected_hash_a, actual_hash_a);
+  EXPECT_EQ(expected_hash_b, actual_hash_b);
 }
 
 TEST_F(DlcBaseTest, CreateDlc) {
