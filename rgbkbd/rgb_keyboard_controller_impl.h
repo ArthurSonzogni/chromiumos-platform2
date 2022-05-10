@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <dbus/rgbkbd/dbus-constants.h>
 
@@ -48,7 +49,7 @@ static constexpr Color kRainbowIndigo = Color(/*r=*/25, /*g=*/55, /*b=*/210);
 static constexpr Color kRainbowPurple = Color(/*r=*/132, /*g=*/32, /*b=*/180);
 
 // TODO(michaelcheco): Update values for keys.
-const KeyColor kRainbowMode[] = {
+const KeyColor kRainbowModeIndividualKey[] = {
     {kLeftShiftKey, kCapsLockHighlightDefault},
     {kRightShiftKey, kCapsLockHighlightDefault},
     {3, kRainbowRed},
@@ -63,6 +64,23 @@ const KeyColor kRainbowMode[] = {
     {12, kRainbowIndigo},
     {13, kRainbowPurple},
     {14, kRainbowPurple},
+};
+
+const KeyColor kRainbowModeFiveZone[] = {
+    {1, kRainbowRed},        {2, kRainbowRed},        {3, kRainbowRed},
+    {4, kRainbowRed},        {5, kRainbowRed},        {6, kRainbowRed},
+    {7, kRainbowRed},        {8, kRainbowRed},        {9, kRainbowRed},
+    {10, kRainbowRed},       {11, kRainbowYellow},    {12, kRainbowYellow},
+    {13, kRainbowYellow},    {14, kRainbowYellow},    {15, kRainbowYellow},
+    {16, kRainbowYellow},    {17, kRainbowYellow},    {18, kRainbowYellow},
+    {19, kRainbowYellow},    {20, kRainbowYellow},    {21, kRainbowGreen},
+    {22, kRainbowGreen},     {23, kRainbowGreen},     {24, kRainbowGreen},
+    {25, kRainbowGreen},     {26, kRainbowGreen},     {27, kRainbowGreen},
+    {28, kRainbowGreen},     {29, kRainbowGreen},     {30, kRainbowGreen},
+    {31, kRainbowLightBlue}, {32, kRainbowLightBlue}, {33, kRainbowLightBlue},
+    {34, kRainbowLightBlue}, {35, kRainbowLightBlue}, {36, kRainbowLightBlue},
+    {37, kRainbowLightBlue}, {38, kRainbowLightBlue}, {39, kRainbowLightBlue},
+    {40, kRainbowLightBlue},
 };
 
 enum class BackgroundType {
@@ -86,6 +104,11 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   void SetKeyboardClient(RgbKeyboard* keyboard) override;
 
   bool IsCapsLockEnabledForTesting() const { return caps_lock_enabled_; }
+  void SetCapabilitiesForTesting(RgbKeyboardCapabilities capabilities) {
+    capabilities_ = capabilities;
+  }
+
+  const std::vector<KeyColor> GetRainbowModeColorsWithoutShiftKeysForTesting();
 
  private:
   Color GetCapsLockHighlightColor() const {

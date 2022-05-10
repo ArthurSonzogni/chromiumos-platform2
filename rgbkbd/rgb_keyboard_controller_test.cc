@@ -54,17 +54,6 @@ void ValidateLog(base::span<const KeyColor> expected) {
   ValidateLog(expected_string);
 }
 
-std::vector<KeyColor> GetRainbowModeColorsWithoutCapsLockKeys() {
-  std::vector<KeyColor> vec;
-  for (const auto& entry : kRainbowMode) {
-    if (entry.key == kLeftShiftKey || entry.key == kRightShiftKey) {
-      continue;
-    }
-    vec.push_back(entry);
-  }
-  return vec;
-}
-
 }  // namespace
 
 class RgbKeyboardControllerTest : public testing::Test {
@@ -111,19 +100,31 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockState) {
   ValidateLog(std::move(default_colors));
 }
 
-TEST_F(RgbKeyboardControllerTest, SetRainbowMode) {
+TEST_F(RgbKeyboardControllerTest, SetRainbowModeFiveZone) {
+  controller_->SetCapabilitiesForTesting(RgbKeyboardCapabilities::kFiveZone);
   controller_->SetRainbowMode();
-  ValidateLog(kRainbowMode);
+  ValidateLog(kRainbowModeFiveZone);
+}
+
+TEST_F(RgbKeyboardControllerTest, SetRainbowModeIndividualKey) {
+  controller_->SetCapabilitiesForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  controller_->SetRainbowMode();
+  ValidateLog(kRainbowModeIndividualKey);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeCapsLockEnabled) {
+  controller_->SetCapabilitiesForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
   controller_->SetCapsLockState(/*enabled=*/true);
   EXPECT_TRUE(logger_->ResetLog());
   controller_->SetRainbowMode();
-  ValidateLog(GetRainbowModeColorsWithoutCapsLockKeys());
+  ValidateLog(controller_->GetRainbowModeColorsWithoutShiftKeysForTesting());
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeWithCapsLock) {
+  controller_->SetCapabilitiesForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
   // Simulate enabling caps lock.
   controller_->SetCapsLockState(/*enabled=*/true);
   EXPECT_TRUE(logger_->ResetLog());
@@ -131,7 +132,7 @@ TEST_F(RgbKeyboardControllerTest, SetRainbowModeWithCapsLock) {
   // Set rainbow mode.
   controller_->SetRainbowMode();
 
-  ValidateLog(GetRainbowModeColorsWithoutCapsLockKeys());
+  ValidateLog(controller_->GetRainbowModeColorsWithoutShiftKeysForTesting());
   EXPECT_TRUE(logger_->ResetLog());
 
   // Disable caps lock.

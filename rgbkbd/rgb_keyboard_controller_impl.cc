@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/containers/span.h"
 #include "base/notreached.h"
 
 namespace rgbkbd {
@@ -57,8 +58,17 @@ void RgbKeyboardControllerImpl::SetKeyboardClient(RgbKeyboard* keyboard) {
 }
 
 void RgbKeyboardControllerImpl::SetRainbowMode() {
+  base::span<const KeyColor> rainbow_mode;
   background_type_ = BackgroundType::kStaticRainbow;
-  for (const auto& entry : kRainbowMode) {
+
+  if (capabilities_ == RgbKeyboardCapabilities::kFiveZone) {
+    rainbow_mode = base::span<const KeyColor>(kRainbowModeFiveZone,
+                                              std::size(kRainbowModeFiveZone));
+  } else {
+    rainbow_mode = base::span<const KeyColor>(
+        kRainbowModeIndividualKey, std::size(kRainbowModeIndividualKey));
+  }
+  for (const auto& entry : rainbow_mode) {
     // Check if caps lock is enabled to avoid overriding the caps lock
     // highlight keys.
     if (caps_lock_enabled_ && IsShiftKey(entry.key)) {
@@ -88,6 +98,19 @@ Color RgbKeyboardControllerImpl::GetColorForBackgroundType() const {
 Color RgbKeyboardControllerImpl::GetCurrentCapsLockColor() const {
   return caps_lock_enabled_ ? GetCapsLockHighlightColor()
                             : GetColorForBackgroundType();
+}
+
+const std::vector<KeyColor>
+RgbKeyboardControllerImpl::GetRainbowModeColorsWithoutShiftKeysForTesting() {
+  DCHECK(capabilities_ == RgbKeyboardCapabilities::kIndividualKey);
+  std::vector<KeyColor> vec;
+  for (const auto& entry : kRainbowModeIndividualKey) {
+    if (entry.key == kLeftShiftKey || entry.key == kRightShiftKey) {
+      continue;
+    }
+    vec.push_back(entry);
+  }
+  return vec;
 }
 
 }  // namespace rgbkbd
