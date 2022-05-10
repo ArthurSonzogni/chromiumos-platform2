@@ -57,6 +57,12 @@ void RgbKeyboardControllerImpl::SetKeyboardClient(RgbKeyboard* keyboard) {
   keyboard_ = keyboard;
 }
 
+void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
+    RgbKeyboardCapabilities capability) {
+  DCHECK(!capabilities_.has_value());
+  capabilities_ = capability;
+}
+
 void RgbKeyboardControllerImpl::SetRainbowMode() {
   base::span<const KeyColor> rainbow_mode;
   background_type_ = BackgroundType::kStaticRainbow;

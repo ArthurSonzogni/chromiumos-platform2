@@ -110,6 +110,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   void SetRainbowMode() override;
   void SetAnimationMode(RgbAnimationMode mode) override;
   void SetKeyboardClient(RgbKeyboard* keyboard) override;
+  void SetKeyboardCapabilityForTesting(RgbKeyboardCapabilities capability);
 
   bool IsCapsLockEnabledForTesting() const { return caps_lock_enabled_; }
   void SetCapabilitiesForTesting(RgbKeyboardCapabilities capabilities) {

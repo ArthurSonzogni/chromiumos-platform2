@@ -34,7 +34,7 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint8_t r, uint8_t g, uint8_t b) override;
   void SetRainbowMode() override;
-  void SetTestingMode(bool enable_testing) override;
+  void SetTestingMode(bool enable_testing, uint32_t capability) override;
   void SetAnimationMode(uint32_t mode) override;
 
  private:

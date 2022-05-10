@@ -80,6 +80,22 @@ TEST_F(RgbKeyboardControllerTest, GetRgbKeyboardCapabilitiesReturnsFiveZone) {
             static_cast<uint32_t>(RgbKeyboardCapabilities::kFiveZone));
 }
 
+TEST_F(RgbKeyboardControllerTest, SetCapabilityIndividualKey) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+
+  EXPECT_EQ(static_cast<uint32_t>(RgbKeyboardCapabilities::kIndividualKey),
+            controller_->GetRgbKeyboardCapabilities());
+}
+
+TEST_F(RgbKeyboardControllerTest, SetCapabilityFiveZone) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kFiveZone);
+
+  EXPECT_EQ(static_cast<uint32_t>(RgbKeyboardCapabilities::kFiveZone),
+            controller_->GetRgbKeyboardCapabilities());
+}
+
 TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithDefaultHighlight) {
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
   // Set the background color to something other than |kWhiteBackgroundColor|

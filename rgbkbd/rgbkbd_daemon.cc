@@ -53,13 +53,15 @@ void DBusAdaptor::SetRainbowMode() {
   rgb_keyboard_controller_.SetRainbowMode();
 }
 
-void DBusAdaptor::SetTestingMode(bool enable_testing) {
+void DBusAdaptor::SetTestingMode(bool enable_testing, uint32_t capability) {
   if (enable_testing) {
     if (!logger_keyboard_) {
       logger_keyboard_ = std::make_unique<KeyboardBacklightLogger>(
           base::FilePath(kLogFilePathForTesting));
     }
     rgb_keyboard_controller_.SetKeyboardClient(logger_keyboard_.get());
+    rgb_keyboard_controller_.SetKeyboardCapabilityForTesting(
+        static_cast<RgbKeyboardCapabilities>(capability));
   } else {
     DCHECK(internal_keyboard_);
     rgb_keyboard_controller_.SetKeyboardClient(internal_keyboard_.get());

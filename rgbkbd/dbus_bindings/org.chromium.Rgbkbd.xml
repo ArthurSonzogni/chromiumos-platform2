@@ -55,6 +55,7 @@
         configured to the non-testing mode.
       </tp:docstring>
       <arg name="enable_testing" type="b" direction="in"/>
+      <arg name="capability" type="u" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SetAnimationMode">
