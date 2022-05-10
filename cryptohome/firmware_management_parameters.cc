@@ -18,9 +18,6 @@
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>
 
-#include "cryptohome/fwmp_checker_owner_index.h"
-#include "cryptohome/fwmp_checker_platform_index.h"
-
 extern "C" {
 #include "cryptohome/crc8.h"
 }
@@ -55,95 +52,48 @@ const uint32_t FirmwareManagementParameters::kCrcDataOffset = 2;
 
 // static
 std::unique_ptr<FirmwareManagementParameters>
-FirmwareManagementParameters::CreateInstance(Tpm* tpm) {
-  std::unique_ptr<FwmpChecker> fwmp_checker_platform_index(
-      new FwmpCheckerPlatformIndex());
+FirmwareManagementParameters::CreateInstance(hwsec::CryptohomeFrontend* hwsec) {
+  CHECK(hwsec);
 
-  // NOTE: Following are the cases that the checker tells it's NOT platform
-  // index, while it's NOT an owner index either:
-  // 1. It's PLATFORM_CREATE, but other attributes, e.g., WRITE_AUTHORIZATION,
-  // are wrong.
-  // 2. The index doesn't exist due to error when creating FWMP index.
-  // 3. Other unexpected error, e.g., D-Bus communication error, or TPM
-  // connection error.
-  const bool is_platform_index =
-      PLATFORM_FWMP_INDEX ||
-      fwmp_checker_platform_index->IsValidForWrite(kNvramIndex);
-  if (is_platform_index) {
+  if (PLATFORM_FWMP_INDEX) {
     return std::make_unique<FirmwareManagementParameters>(
-        ResetMethod::kStoreDefaultFlags,
-        WriteProtectionMethod::kOwnerAuthorization, tpm,
-        std::move(fwmp_checker_platform_index));
-  } else {
-    return std::make_unique<FirmwareManagementParameters>(
-        ResetMethod::kRecreateSpace, WriteProtectionMethod::kWriteLock, tpm,
-        std::unique_ptr<FwmpChecker>(new FwmpCheckerOwnerIndex()));
+        hwsec::Space::kPlatformFirmwareManagementParameters, hwsec);
   }
+
+  if (hwsec::StatusOr<hwsec::CryptohomeFrontend::StorageState> state =
+          hwsec->GetSpaceState(
+              hwsec::Space::kPlatformFirmwareManagementParameters);
+      !state.ok()) {
+    return std::make_unique<FirmwareManagementParameters>(
+        hwsec::Space::kFirmwareManagementParameters, hwsec);
+  }
+
+  return std::make_unique<FirmwareManagementParameters>(
+      hwsec::Space::kPlatformFirmwareManagementParameters, hwsec);
 }
 
 FirmwareManagementParameters::FirmwareManagementParameters(
-    ResetMethod reset_method,
-    WriteProtectionMethod write_protection_method,
-    Tpm* tpm,
-    std::unique_ptr<FwmpChecker> fwmp_checker)
-    : reset_method_(reset_method),
-      write_protection_method_(write_protection_method),
-      tpm_(tpm),
-      fwmp_checker_(std::move(fwmp_checker)),
+    hwsec::Space fwmp_type, hwsec::CryptohomeFrontend* hwsec)
+    : fwmp_type_(fwmp_type),
+      hwsec_(hwsec),
       raw_(new FirmwareManagementParametersRawV1_0()) {
-  DCHECK(
-      (reset_method_ == ResetMethod::kRecreateSpace &&
-       write_protection_method_ == WriteProtectionMethod::kWriteLock) ||
-      (reset_method_ == ResetMethod::kStoreDefaultFlags &&
-       write_protection_method_ == WriteProtectionMethod::kOwnerAuthorization));
+  CHECK(hwsec_);
 }
+
+// constructor for mock testing purpose.
+FirmwareManagementParameters::FirmwareManagementParameters()
+    : fwmp_type_(hwsec::Space::kFirmwareManagementParameters),
+      hwsec_(nullptr) {}
 
 FirmwareManagementParameters::~FirmwareManagementParameters() {}
 
-bool FirmwareManagementParameters::TpmIsReady() const {
-  if (!tpm_) {
-    LOG(ERROR) << "TpmIsReady: no tpm_ instance.";
-    return false;
-  }
-  if (!tpm_->IsEnabled()) {
-    LOG(ERROR) << "TpmIsReady: is not enabled.";
-    return false;
-  }
-  if (!tpm_->IsOwned()) {
-    LOG(ERROR) << "TpmIsReady: is not owned.";
-    return false;
-  }
-  return true;
-}
-
-bool FirmwareManagementParameters::HasAuthorization() const {
-  if (!TpmIsReady()) {
-    LOG(ERROR) << "HasAuthorization: TPM not ready.";
-    return false;
-  }
-  // Need owner password to create or destroy NVRAM spaces
-  brillo::SecureBlob owner_password;
-  if (tpm_->IsOwnerPasswordPresent()) {
-    return true;
-  }
-  LOG(INFO) << "HasAuthorization: TPM Owner password not available.";
-  return false;
-}
-
 bool FirmwareManagementParameters::Destroy(void) {
-  if (reset_method_ == ResetMethod::kStoreDefaultFlags) {
+  if (fwmp_type_ == hwsec::Space::kPlatformFirmwareManagementParameters) {
     return Store(/*flags=*/0, /*developer_key_hash=*/nullptr);
   }
 
-  if (!HasAuthorization()) {
-    LOG(ERROR) << "Destroy() called with insufficient authorization.";
-    return false;
-  }
-
-  // Only destroy the space if it exists
-  if (tpm_->IsNvramDefined(kNvramIndex) && !tpm_->DestroyNvram(kNvramIndex)) {
-    LOG(WARNING) << "Failed to destroy NVRAM Space in "
-                    "FirmwareManagementParameters::Destroy()";
+  if (hwsec::Status status = hwsec_->DestroySpace(fwmp_type_); !status.ok()) {
+    LOG(ERROR) << "Failed to destroy FWMP: " << status;
     return false;
   }
 
@@ -151,27 +101,14 @@ bool FirmwareManagementParameters::Destroy(void) {
   return true;
 }
 
-bool FirmwareManagementParameters::Create(void) {
-  if (reset_method_ == ResetMethod::kStoreDefaultFlags) {
+bool FirmwareManagementParameters::Create() {
+  if (fwmp_type_ == hwsec::Space::kPlatformFirmwareManagementParameters) {
     return Store(/*flags=*/0, /*developer_key_hash=*/nullptr);
   }
 
-  // Make sure we have what we need now.
-  if (!HasAuthorization()) {
-    LOG(ERROR) << "Create() called with insufficient authorization.";
-    return false;
-  }
-  if (!Destroy()) {
-    LOG(ERROR) << "Failed to destroy Firmware Management Parameters data "
-                  "before creation.";
-    return false;
-  }
-
-  // Use a WriteDefine space with no PCR0 locking
-  if (!tpm_->DefineNvram(
-          kNvramIndex, kNvramBytes,
-          Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramFirmwareReadable)) {
-    LOG(ERROR) << "Create() failed to defined NVRAM space.";
+  if (hwsec::Status status = hwsec_->PrepareSpace(fwmp_type_, kNvramBytes);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to prepare FWMP: " << status;
     return false;
   }
 
@@ -184,16 +121,26 @@ bool FirmwareManagementParameters::Load(void) {
     return true;
   }
 
-  if (!tpm_->IsNvramDefined(kNvramIndex)) {
-    LOG(INFO) << "Load() called with no NVRAM space defined.";
+  auto state = hwsec_->GetSpaceState(fwmp_type_);
+  if (!state.ok()) {
+    LOG(ERROR) << "Failed to get FWMP state: " << state.status();
     return false;
   }
 
-  SecureBlob nvram_data(0);
-  if (!tpm_->ReadNvram(kNvramIndex, &nvram_data)) {
-    LOG(ERROR) << "Load() could not read from NVRAM space.";
+  if (state.value() != hwsec::CryptohomeFrontend::StorageState::kReady &&
+      state.value() != hwsec::CryptohomeFrontend::StorageState::kWriteLocked) {
+    LOG(INFO) << "Load() called with unexpected FWMP state: "
+              << static_cast<int>(state.value());
     return false;
   }
+
+  auto data = hwsec_->LoadSpace(fwmp_type_);
+  if (!data.ok()) {
+    LOG(ERROR) << "Failed to load FWMP: " << data.status();
+    return false;
+  }
+
+  SecureBlob nvram_data(data->begin(), data->end());
 
   // Make sure we've read enough data for a 1.0 struct
   unsigned int nvram_size = nvram_data.size();
@@ -235,33 +182,16 @@ bool FirmwareManagementParameters::Load(void) {
 
 bool FirmwareManagementParameters::Store(
     uint32_t flags, const brillo::Blob* developer_key_hash) {
-  if (!TpmIsReady()) {
-    LOG(ERROR) << "Store() called when TPM was not ready!";
+  // Check the FWMP state.
+  auto state = hwsec_->GetSpaceState(fwmp_type_);
+  if (!state.ok()) {
+    LOG(ERROR) << "Failed to get FWMP state: " << state.status();
     return false;
   }
 
-  // Ensure we have the space ready.
-  //
-  // TODO(b/183474803): Consider merge all the following check into
-  // `FwmpChecker`.
-  if (!tpm_->IsNvramDefined(kNvramIndex)) {
-    LOG(ERROR) << "Store() called with no NVRAM space.";
-    return false;
-  }
-  if (tpm_->IsNvramLocked(kNvramIndex)) {
-    LOG(ERROR) << "Store() called with a locked NVRAM space.";
-    return false;
-  }
-
-  // Check defined NVRAM size.
-  unsigned int nvram_size = tpm_->GetNvramSize(kNvramIndex);
-  if (nvram_size != kNvramBytes) {
-    LOG(ERROR) << "Store() found unexpected NVRAM size " << nvram_size << ".";
-    return false;
-  }
-
-  if (!fwmp_checker_->IsValidForWrite(kNvramIndex)) {
-    LOG(ERROR) << "Store() called with unexpected nv index template.";
+  if (state.value() != hwsec::CryptohomeFrontend::StorageState::kReady) {
+    LOG(INFO) << "Store() called with unexpected FWMP state: "
+              << static_cast<int>(state.value());
     return false;
   }
 
@@ -290,35 +220,13 @@ bool FirmwareManagementParameters::Store(
   raw_->crc = crc8(raw8 + kCrcDataOffset, raw_->struct_size - kCrcDataOffset);
 
   // Write the data to nvram
-  SecureBlob nvram_data(raw_->struct_size);
+  brillo::Blob nvram_data(raw_->struct_size);
   memcpy(nvram_data.data(), raw_.get(), raw_->struct_size);
 
-  bool store_result = false;
-  switch (write_protection_method_) {
-    case WriteProtectionMethod::kWriteLock:
-      store_result = tpm_->WriteNvram(kNvramIndex, nvram_data);
-      break;
-    case WriteProtectionMethod::kOwnerAuthorization:
-      store_result = tpm_->OwnerWriteNvram(kNvramIndex, nvram_data);
-      break;
-  }
-  if (!store_result) {
-    LOG(ERROR) << "Store() failed to write to NVRAM";
+  if (hwsec::Status status = hwsec_->StoreSpace(fwmp_type_, nvram_data);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to store FWMP: " << status;
     return false;
-  }
-
-  // Lock nvram index for writing if the write protection is `kWriteLock`.
-  if (write_protection_method_ == WriteProtectionMethod::kWriteLock) {
-    if (!tpm_->WriteLockNvram(kNvramIndex)) {
-      LOG(ERROR) << "Store() failed to lock the NVRAM space";
-      return false;
-    }
-
-    // Ensure the space is now locked.
-    if (!tpm_->IsNvramLocked(kNvramIndex)) {
-      LOG(ERROR) << "NVRAM space did not lock as expected.";
-      return false;
-    }
   }
 
   loaded_ = true;

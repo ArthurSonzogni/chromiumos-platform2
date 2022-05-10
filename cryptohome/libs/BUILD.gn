@@ -313,8 +313,6 @@ static_library("libcrostpm") {
     "../cryptohome_key_loader.cc",
     "../cryptohome_keys_manager.cc",
     "../firmware_management_parameters.cc",
-    "../fwmp_checker_owner_index.cc",
-    "../fwmp_checker_platform_index.cc",
     "../install_attributes.cc",
     "../key_objects.cc",
     "../le_credential_manager_impl.cc",

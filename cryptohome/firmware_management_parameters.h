@@ -11,10 +11,8 @@
 
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <openssl/sha.h>
-
-#include "cryptohome/fwmp_checker.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -45,18 +43,10 @@ struct FirmwareManagementParametersRawV1_0;
 // ...
 class FirmwareManagementParameters {
  public:
-  // TODO(b/183474803): add doc.
-  enum class ResetMethod {
-    kRecreateSpace,
-    kStoreDefaultFlags,
-  };
-  enum class WriteProtectionMethod {
-    kWriteLock,
-    kOwnerAuthorization,
-  };
   // Creates a propoer firmware management parameters according to the TPM
   // version on the device.
-  static std::unique_ptr<FirmwareManagementParameters> CreateInstance(Tpm* tpm);
+  static std::unique_ptr<FirmwareManagementParameters> CreateInstance(
+      hwsec::CryptohomeFrontend* hwsec);
 
   // Populates the basic internal state of the firmware management parameters.
   //
@@ -69,10 +59,8 @@ class FirmwareManagementParameters {
   // FirmwareManagementParameters requires a |tpm|.  If a NULL |tpm| is
   // supplied, none of the operations will succeed, but it should not crash or
   // behave unexpectedly. See firmware_management_parameters.md for info.
-  FirmwareManagementParameters(ResetMethod reset_method,
-                               WriteProtectionMethod write_protection_method,
-                               Tpm* tpm,
-                               std::unique_ptr<FwmpChecker> fwmp_checker);
+  FirmwareManagementParameters(hwsec::Space fwmp_type,
+                               hwsec::CryptohomeFrontend* hwsec);
   FirmwareManagementParameters(const FirmwareManagementParameters&) = delete;
   FirmwareManagementParameters& operator=(const FirmwareManagementParameters&) =
       delete;
@@ -142,18 +130,13 @@ class FirmwareManagementParameters {
   // Offset of CRC'd data (past CRC and size)
   static const uint32_t kCrcDataOffset;
 
+ protected:
+  // constructor for mock testing purpose.
+  FirmwareManagementParameters();
+
  private:
-  // Returns true if we have the authorization needed to create/destroy
-  // NVRAM spaces.
-  bool HasAuthorization() const;
-
-  // Returns true if the tpm is owned and connected.
-  bool TpmIsReady() const;
-
-  const ResetMethod reset_method_;
-  const WriteProtectionMethod write_protection_method_;
-  Tpm* const tpm_;
-  const std::unique_ptr<FwmpChecker> fwmp_checker_;
+  const hwsec::Space fwmp_type_;
+  hwsec::CryptohomeFrontend* const hwsec_;
   std::unique_ptr<FirmwareManagementParametersRawV1_0> raw_;
   bool loaded_ = false;
 };
