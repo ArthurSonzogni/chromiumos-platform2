@@ -77,6 +77,11 @@ constexpr char kCgroupContainerSuffix[] = "chronos_containers";
 // Default value of the PATH environment variable.
 constexpr char kDefaultPath[] = "/usr/bin:/usr/sbin:/bin:/sbin";
 
+#if USE_VM_BOREALIS
+// Name of the file that specifies the hostname within the VM.
+constexpr char kHostnameConfigFile[] = "/etc/hostname";
+#endif
+
 // Uid and Gid for the chronos user and group, respectively.
 constexpr uid_t kChronosUid = 1000;
 constexpr gid_t kChronosGid = 1000;
@@ -756,6 +761,17 @@ void UnmountFilesystems() {
 
 }  // namespace
 
+string ParseHostname(const string& etc_hostname_contents) {
+  for (const auto& line : base::SplitStringPiece(etc_hostname_contents, "\n",
+                                                 base::TRIM_WHITESPACE,
+                                                 base::SPLIT_WANT_NONEMPTY)) {
+    if (line[0] != '#') {
+      return string(line);
+    }
+  }
+  return {};
+}
+
 class Init::Worker {
  public:
   // Relevant information about processes launched by this process.
@@ -1368,6 +1384,24 @@ bool Init::Setup() {
     PLOG(ERROR) << "Failed to set PATH";
     return false;
   }
+
+#if USE_VM_BOREALIS
+  // Set hostname
+  string hostnameconfig;
+  if (base::ReadFileToString(base::FilePath(kHostnameConfigFile),
+                             &hostnameconfig)) {
+    string hostname(ParseHostname(hostnameconfig));
+    if (hostname.empty()) {
+      LOG(WARNING) << "No valid hostname in " << kHostnameConfigFile
+                   << "; will not set hostname";
+    } else if (sethostname(hostname.c_str(), hostname.size()) != 0) {
+      PLOG(ERROR) << "sethostname() failed";
+    }
+  } else {
+    PLOG(WARNING) << "Failed to read " << kHostnameConfigFile
+                  << "; will not set hostname";
+  }
+#endif
 
   // Block SIGCHLD here because we want to handle it in the worker thread.
   sigset_t mask;

@@ -16,6 +16,10 @@
 namespace vm_tools {
 namespace maitred {
 
+// Given the contents of /etc/hostname, return the hostname to set, or an
+// empty string on failure.
+std::string ParseHostname(const std::string& etc_hostname_contents);
+
 // Encapsulates all the functionality for which maitred is responsible when it
 // runs as pid 1 on a VM.
 class Init final {

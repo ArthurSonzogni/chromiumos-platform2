@@ -30,6 +30,7 @@ group("guest") {
       ":garcon_icon_finder_test",
       ":garcon_icon_index_file_test",
       ":garcon_mime_types_parser_test",
+      ":maitred_init_test",
       ":maitred_service_test",
       ":maitred_syslog_test",
       ":notificationd_test",
@@ -210,6 +211,19 @@ copy("upgrade_container") {
 }
 
 if (use.test) {
+  executable("maitred_init_test") {
+    sources = [ "../maitred/init_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libmaitred",
+      "../../common-mk/testrunner:testrunner",
+      "//vm_tools:libvm_tools_common",
+    ]
+  }
+
   executable("maitred_service_test") {
     sources = [ "../maitred/service_impl_test.cc" ]
     configs += [
