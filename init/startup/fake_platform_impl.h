@@ -44,9 +44,13 @@ class FakePlatform : public Platform {
              unsigned long flags,
              const std::string& data) override;
 
+  // Wrapper around umount(2).
+  bool Umount(const base::FilePath& path) override;
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
   std::unordered_map<std::string, std::string> mount_result_map_;
+  std::vector<std::string> umount_vector_;
 };
 
 }  // namespace startup

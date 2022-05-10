@@ -697,12 +697,6 @@ fi
 dev_mount_packages "${DEV_IMAGE}"
 dev_pop_paths_to_preserve
 
-if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
-  # Unmount securityfs so that further modifications to inode security policies
-  # are not possible.
-  umount /sys/kernel/security
-fi
-
 # Skip rollback restore check if not supported on this device.
 if [ -x "$(command -v rollback_finish_restore)" ]; then
   # If a rollback is in progress, restores preserved data. If restoring fails,

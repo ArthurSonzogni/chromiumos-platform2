@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include <stdlib.h>
-#include <string>
 #include <sys/types.h>
+
+#include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 
@@ -61,6 +63,11 @@ bool FakePlatform::Mount(const std::string& src,
   }
 
   return src.compare(it->second) == 0;
+}
+
+bool FakePlatform::Umount(const base::FilePath& path) {
+  umount_vector_.push_back(path.value());
+  return true;
 }
 
 }  // namespace startup

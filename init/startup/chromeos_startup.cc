@@ -196,6 +196,15 @@ int ChromeosStartup::Run() {
     PLOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
   }
 
+  if (!disable_stateful_security_hardening_) {
+    // Unmount securityfs so that further modifications to inode security
+    // policies are not possible
+    const base::FilePath kernel_sec = root_.Append(kSysKernelSecurity);
+    if (!platform_->Umount(kernel_sec)) {
+      PLOG(WARNING) << "Failed to umount: " << kernel_sec;
+    }
+  }
+
   bootstat_.LogEvent("post-startup");
 
   return ret;

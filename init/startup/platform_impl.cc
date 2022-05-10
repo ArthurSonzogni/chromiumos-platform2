@@ -38,4 +38,8 @@ bool Platform::Mount(const std::string& src,
                data.c_str()) == 0;
 }
 
+bool Platform::Umount(const base::FilePath& path) {
+  return !umount(path.value().c_str());
+}
+
 }  // namespace startup

@@ -33,6 +33,9 @@ class Platform {
                      const std::string& type,
                      unsigned long flags,
                      const std::string& data);
+
+  // Wrapper around umount(2).
+  virtual bool Umount(const base::FilePath& path);
 };
 
 }  // namespace startup
