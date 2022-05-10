@@ -24,6 +24,95 @@
 using std::string;
 using std::vector;
 
+// String matching the kernel boot lines in grub.cfg files.
+const std::string CommandPatternForSlot(BootSlot slot) {
+  switch (slot) {
+    case BootSlot::A:
+      return "/syslinux/vmlinuz.A";
+    case BootSlot::B:
+      return "/syslinux/vmlinuz.B";
+  }
+}
+
+std::string EfiGrubCfg::GetKernelCommand(BootSlot slot,
+                                         EfiGrubCfg::DmOption dm) const {
+  const string kernel_pattern = CommandPatternForSlot(slot);
+  const bool want_empty_dm = dm == EfiGrubCfg::DmOption::None;
+  for (const auto& line : file_lines_) {
+    if (line.find(kernel_pattern) == string::npos)
+      continue;
+
+    if (ExtractKernelArg(line, "dm").empty() == want_empty_dm)
+      return line;
+  }
+  return "";
+}
+
+bool EfiGrubCfg::ReplaceKernelCommand(BootSlot slot,
+                                      EfiGrubCfg::DmOption dm,
+                                      std::string cmd) {
+  const string kernel_pattern = CommandPatternForSlot(slot);
+  const bool want_empty_dm = dm == EfiGrubCfg::DmOption::None;
+  bool did_set = false;
+  for (auto& line : file_lines_) {
+    if (line.find(kernel_pattern) == string::npos)
+      continue;
+
+    if (ExtractKernelArg(line, "dm").empty() == want_empty_dm) {
+      DLOG(INFO) << "Replacing: " << line;
+      line = cmd;
+      // Continue to replace all matching lines.
+      // It is not expected that there are multiple entries
+      // however replace them if they occur.
+      did_set = true;
+    }
+  }
+  return did_set;
+}
+
+bool EfiGrubCfg::LoadFile(const base::FilePath& path) {
+  string grub_src;
+  if (!base::ReadFileToString(path, &grub_src)) {
+    PLOG(ERROR) << "Unable to read grub template file: " << path.value();
+    return false;
+  }
+  // Split the file contents into lines.
+  file_lines_ = base::SplitString(grub_src, "\n", base::KEEP_WHITESPACE,
+                                  base::SPLIT_WANT_ALL);
+  return true;
+}
+
+std::string EfiGrubCfg::ToString() const {
+  return base::JoinString(file_lines_, "\n");
+}
+
+bool EfiGrubCfg::UpdateBootParameters(BootSlot slot,
+                                      const string& root_uuid,
+                                      const string& verity_args) {
+  const string kernel_pattern = CommandPatternForSlot(slot);
+  for (auto& line : file_lines_) {
+    // Convert all "linuxefi" grub commands to "linux" for the updated
+    // version of grub.
+    base::ReplaceFirstSubstringAfterOffset(&line, 0, "linuxefi", "linux");
+
+    if (line.find(kernel_pattern) == string::npos)
+      continue;
+
+    DLOG(INFO) << "Updating command: " << line;
+    if (ExtractKernelArg(line, "dm").empty()) {
+      // If it's an unverified boot line, just set the root partition to boot.
+      if (!SetKernelArg("root", "PARTUUID=" + root_uuid, &line)) {
+        LOG(ERROR) << "Unable to update unverified root flag in " << line;
+        return false;
+      }
+    } else if (!SetKernelArg("dm", verity_args, &line)) {
+      LOG(INFO) << "Unable to update verified dm flag.";
+      return false;
+    }
+  }
+  return true;
+}
+
 bool UpdateLegacyKernel(const InstallConfig& install_config) {
   const base::FilePath root_mount(install_config.root.mount());
   const base::FilePath boot_mount(install_config.boot.mount());
@@ -165,6 +254,100 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config) {
   return result;
 }
 
+// Convert a slot string into the BootSlot enum value.
+// Returns false when the slot_string is not a valid enum value.
+bool StringToSlot(const std::string& slot_string, BootSlot* slot) {
+  if (slot_string == "A")
+    *slot = BootSlot::A;
+  else if (slot_string == "B")
+    *slot = BootSlot::B;
+  else
+    return false;
+  return true;
+}
+
+// Modifies the slot's command line arguments in the boot
+// grub.cfg for the update.
+//
+// The rootfs and dm= arguments will be taken from target kernel.
+// The rest of the kernel parameters will come from the grub.cfg
+// template in the target rootfs.
+//
+// Returns true if the boot grub.cfg file was successfully updated.
+bool UpdateEfiGrubCfg(const InstallConfig& install_config) {
+  // Of the form: PARTUUID=XXX-YYY-ZZZ
+  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string root_uuid = install_config.root.uuid();
+  string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
+
+  BootSlot slot;
+  if (!StringToSlot(install_config.slot, &slot)) {
+    LOG(ERROR) << "Invalid slot value.";
+    return false;
+  }
+
+  // Path to the target grub.cfg to be updated in the EFI partition.
+  const base::FilePath boot_grub_path =
+      base::FilePath(install_config.boot.mount()).Append("efi/boot/grub.cfg");
+  // Grub.cfg source in the new root filesystem.
+  const base::FilePath root_grub_path =
+      base::FilePath(install_config.root.mount())
+          .Append("boot/efi/boot/grub.cfg");
+
+  EfiGrubCfg boot_cfg;
+  if (!boot_cfg.LoadFile(boot_grub_path)) {
+    LOG(ERROR) << "Unable to read the target grub config.";
+    return false;
+  }
+
+  EfiGrubCfg root_cfg;
+  if (!root_cfg.LoadFile(root_grub_path)) {
+    LOG(ERROR) << "Unable to read the source grub kernel config. ";
+    return false;
+  }
+
+  // Extract the dm and non-dm kernel command lines from the grub config
+  // on new rootfs.
+  string dm_entry =
+      root_cfg.GetKernelCommand(slot, EfiGrubCfg::DmOption::Present);
+  if (dm_entry.empty()) {
+    LOG(ERROR) << "Unable to to find dm entry from the root grub.cfg";
+    return false;
+  }
+  string no_dm_entry =
+      root_cfg.GetKernelCommand(slot, EfiGrubCfg::DmOption::None);
+  if (no_dm_entry.empty()) {
+    LOG(ERROR) << "Unable to to find non-dm entry from the root grub.cfg";
+    return false;
+  }
+
+  // Replace the kernel command lines with those taken from the root's
+  // grub.cfg.
+  if (!boot_cfg.ReplaceKernelCommand(slot, EfiGrubCfg::DmOption::Present,
+                                     dm_entry)) {
+    LOG(ERROR) << "Unable to update the grub kernel boot options.";
+    return false;
+  }
+  if (!boot_cfg.ReplaceKernelCommand(slot, EfiGrubCfg::DmOption::None,
+                                     no_dm_entry)) {
+    LOG(ERROR) << "Unable to update the grub kernel boot options.";
+    return false;
+  }
+
+  // Update the root partition parameters in the boot grub.cfg.
+  if (!boot_cfg.UpdateBootParameters(slot, root_uuid, kernel_config_dm)) {
+    LOG(ERROR) << "Unable to update the rootfs grub configuration.";
+    return false;
+  }
+
+  // Write out the new grub.cfg.
+  if (!base::WriteFile(boot_grub_path, boot_cfg.ToString())) {
+    PLOG(ERROR) << "Unable to write boot menu file: " << boot_grub_path;
+    return false;
+  }
+  return true;
+}
+
 bool RunEfiPostInstall(const InstallConfig& install_config) {
   LOG(INFO) << "Running EfiPostInstall.";
 
@@ -175,32 +358,9 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   if (!UpdateEfiBootloaders(install_config))
     return false;
 
-  // Of the form: PARTUUID=XXX-YYY-ZZZ
-  string kernel_config = DumpKernelConfig(install_config.kernel.device());
-  string root_uuid = install_config.root.uuid();
-  string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
-
-  base::FilePath grub_path =
-      base::FilePath(install_config.boot.mount()).Append("efi/boot/grub.cfg");
-
-  // Read in the grub.cfg to be updated.
-  string grub_src;
-  if (!base::ReadFileToString(grub_path, &grub_src)) {
-    PLOG(ERROR) << "Unable to read grub template file: " << grub_path.value();
+  // Update the grub.cfg configuration files.
+  if (!UpdateEfiGrubCfg(install_config))
     return false;
-  }
-
-  string output;
-  if (!EfiGrubUpdate(grub_src, install_config.slot, root_uuid, kernel_config_dm,
-                     &output)) {
-    return false;
-  }
-
-  // Write out the new grub.cfg.
-  if (!base::WriteFile(grub_path, output)) {
-    PLOG(ERROR) << "Unable to write boot menu file: " << grub_path;
-    return false;
-  }
 
   // TODO(tbrandston): EFI boot entry management should fail installs but not
   // updates. Until b/190430369 is fixed, however, there are some devices that
@@ -210,46 +370,5 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
     LOG(INFO) << "Ignorning failed EFI management.";
 
   // We finished.
-  return true;
-}
-
-bool EfiGrubUpdate(const string& input,
-                   const string& slot,
-                   const string& root_uuid,
-                   const string& verity_args,
-                   string* output) {
-  // Split the file contents into lines.
-  vector<string> file_lines = base::SplitString(
-      input, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-
-  // Search pattern for lines are related to our slot.
-  string kernel_pattern = "/syslinux/vmlinuz." + slot;
-
-  for (vector<string>::iterator line = file_lines.begin();
-       line < file_lines.end(); line++) {
-    // Convert all "linuxefi" grub commands to "linux" for the updated
-    // version of grub.
-    base::ReplaceFirstSubstringAfterOffset(&(*line), 0, "linuxefi", "linux");
-
-    if (line->find(kernel_pattern) != string::npos) {
-      if (ExtractKernelArg(*line, "dm").empty()) {
-        // If it's an unverified boot line, just set the root partition to boot.
-        if (!SetKernelArg("root", "PARTUUID=" + root_uuid, &(*line))) {
-          LOG(ERROR) << "Unable to update unverified root flag in " << *line;
-          return false;
-        }
-      } else {
-        if (!SetKernelArg("dm", verity_args, &(*line))) {
-          LOG(INFO) << "Unable to update verified dm flag.";
-          return false;
-        }
-      }
-    }
-  }
-
-  // Join the lines back into file contents.
-  *output = base::JoinString(file_lines, "\n");
-
-  // Other EFI post-install actions, if any, go here.
   return true;
 }
