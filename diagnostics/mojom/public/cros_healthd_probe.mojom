@@ -336,9 +336,11 @@ struct CpuInfo {
   array<CpuTemperatureChannel> temperature_channels@3;
   // Information about keylocker.
   KeylockerInfo? keylocker_info@4;
-  // The general virtualization info.
+  // The general virtualization info. Guaranteed to be not null unless the
+  // version doesn't match.
   [MinVersion=1] VirtualizationInfo? virtualization@5;
   // The cpu vulnerability info. The key is the name of the vulnerability.
+  // Guaranteed to be not null unless the version doesn't match.
   [MinVersion=1] map<string, VulnerabilityInfo>? vulnerabilities@6;
 };
 
