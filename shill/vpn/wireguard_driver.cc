@@ -120,7 +120,7 @@ std::string GenerateBase64PrivateKey() {
 // wireguard-tools is blocking but with a timeout (kPollTimeout below).
 std::string CalculateBase64PublicKey(const std::string& base64_private_key,
                                      ProcessManager* process_manager) {
-  constexpr auto kPollTimeout = base::Milliseconds(200);
+  constexpr auto kPollTimeout = base::Seconds(1);
 
   constexpr uint64_t kCapMask = 0;
   int stdin_fd = -1;
