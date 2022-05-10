@@ -141,6 +141,8 @@ has_arc(`
   allowxperm cros_cryptohomed media_rw_data_file:{ file dir } ioctl {
     FS_IOC_FSGETXATTR
     FS_IOC_FSSETXATTR
+    FS_IOC_GETFLAGS
+    FS_IOC_SETFLAGS
   };
   allow cros_cryptohomed media_rw_data_file:dir { relabelfrom relabelto };
 ')
