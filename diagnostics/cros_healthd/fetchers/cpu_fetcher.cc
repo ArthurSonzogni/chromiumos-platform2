@@ -68,16 +68,21 @@ const char kCPUTempFilePattern[] = "temp*_input";
 // String "aeskl" indicates keylocker support.
 const char kKeylockerAeskl[] = "aeskl";
 
-// Patterns used to match the status of CPU vulnerability.
+namespace vulnerability {
+
+// Strings used to match the status of CPU vulnerability.
 // The possible output formats can be found here:
 // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln
-constexpr char kKvmPrefix[] = "KVM: ";
-constexpr char kNotAffectedPattern[] = "Not affected";
-constexpr char kVulnerablePattern[] = "Vulnerable";
+constexpr char kNotAffectedContent[] = "Not affected";
+constexpr char kVulnerablePrefix[] = "Vulnerable";
+constexpr char kKvmVulnerablePrefix[] = "KVM: Vulnerable";
 // https://github.com/torvalds/linux/blob/df0cc57e057f18e44dac8e6c18aba47ab53202f9/arch/x86/kernel/cpu/bugs.c#L1649
-constexpr char kProcessorVulnerablePattern[] = "Processor vulnerable";
-constexpr char kMitigationPattern[] = "Mitigation";
-constexpr char kUnknownPattern[] = "Unknown";
+constexpr char kProcessorVulnerableContent[] = "Processor vulnerable";
+constexpr char kMitigationPrefix[] = "Mitigation";
+constexpr char kKvmMitigationPrefix[] = "KVM: Mitigation";
+constexpr char kUnknownPrefix[] = "Unknown";
+
+}  // namespace vulnerability
 
 // The different SMT control file content that indicates the state of SMT
 // control.
@@ -749,22 +754,19 @@ mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
   // status correctly.
   //
   // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/multihit.html
-  std::string message_no_prefix = message;
-  if (base::StartsWith(message, kKvmPrefix)) {
-    message_no_prefix = message.substr(sizeof(kKvmPrefix) - 1);
-  }
-
-  if (message_no_prefix == kNotAffectedPattern) {
+  if (message == vulnerability::kNotAffectedContent) {
     return mojo_ipc::VulnerabilityInfo::Status::kNotAffected;
   }
-  if (base::StartsWith(message_no_prefix, kVulnerablePattern) ||
-      message_no_prefix == kProcessorVulnerablePattern) {
+  if (base::StartsWith(message, vulnerability::kVulnerablePrefix) ||
+      base::StartsWith(message, vulnerability::kKvmVulnerablePrefix) ||
+      message == vulnerability::kProcessorVulnerableContent) {
     return mojo_ipc::VulnerabilityInfo::Status::kVulnerable;
   }
-  if (base::StartsWith(message_no_prefix, kMitigationPattern)) {
+  if (base::StartsWith(message, vulnerability::kMitigationPrefix) ||
+      base::StartsWith(message, vulnerability::kKvmMitigationPrefix)) {
     return mojo_ipc::VulnerabilityInfo::Status::kMitigation;
   }
-  if (base::StartsWith(message_no_prefix, kUnknownPattern)) {
+  if (base::StartsWith(message, vulnerability::kUnknownPrefix)) {
     return mojo_ipc::VulnerabilityInfo::Status::kUnknown;
   }
   return mojo_ipc::VulnerabilityInfo::Status::kUnrecognized;
