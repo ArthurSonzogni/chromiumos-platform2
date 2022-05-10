@@ -34,10 +34,10 @@ void ModemSignalProxy::Setup(const int rate,
                              int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << rate;
   proxy_->SetupAsync(rate,
-                     base::Bind(&ModemSignalProxy::OnSetupSuccess,
-                                weak_factory_.GetWeakPtr(), callback),
-                     base::Bind(&ModemSignalProxy::OnSetupFailure,
-                                weak_factory_.GetWeakPtr(), callback),
+                     base::BindOnce(&ModemSignalProxy::OnSetupSuccess,
+                                    weak_factory_.GetWeakPtr(), callback),
+                     base::BindOnce(&ModemSignalProxy::OnSetupFailure,
+                                    weak_factory_.GetWeakPtr(), callback),
                      timeout);
 }
 

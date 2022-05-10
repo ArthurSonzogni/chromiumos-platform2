@@ -29,10 +29,10 @@ SupplicantBSSProxy::SupplicantBSSProxy(const scoped_refptr<dbus::Bus>& bus,
       wifi_endpoint_(wifi_endpoint) {
   // Register signal handler.
   bss_proxy_->RegisterPropertiesChangedSignalHandler(
-      base::Bind(&SupplicantBSSProxy::PropertiesChanged,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&SupplicantBSSProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&SupplicantBSSProxy::PropertiesChanged,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&SupplicantBSSProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 }
 
 SupplicantBSSProxy::~SupplicantBSSProxy() {

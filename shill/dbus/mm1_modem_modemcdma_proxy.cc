@@ -27,10 +27,10 @@ ModemModemCdmaProxy::ModemModemCdmaProxy(const scoped_refptr<dbus::Bus>& bus,
           bus, service, path)) {
   // Register signal handlers.
   proxy_->RegisterActivationStateChangedSignalHandler(
-      base::Bind(&ModemModemCdmaProxy::ActivationStateChanged,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ModemModemCdmaProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ModemModemCdmaProxy::ActivationStateChanged,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ModemModemCdmaProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 }
 
 ModemModemCdmaProxy::~ModemModemCdmaProxy() = default;
@@ -42,10 +42,10 @@ void ModemModemCdmaProxy::Activate(const std::string& carrier,
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << carrier;
   proxy_->ActivateAsync(
       carrier,
-      base::Bind(&ModemModemCdmaProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(), callback, __func__),
-      base::Bind(&ModemModemCdmaProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::BindOnce(&ModemModemCdmaProxy::OnOperationSuccess,
+                     weak_factory_.GetWeakPtr(), callback, __func__),
+      base::BindOnce(&ModemModemCdmaProxy::OnOperationFailure,
+                     weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
@@ -58,10 +58,10 @@ void ModemModemCdmaProxy::ActivateManual(const KeyValueStore& properties,
       KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->ActivateManualAsync(
       properties_dict,
-      base::Bind(&ModemModemCdmaProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(), callback, __func__),
-      base::Bind(&ModemModemCdmaProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::BindOnce(&ModemModemCdmaProxy::OnOperationSuccess,
+                     weak_factory_.GetWeakPtr(), callback, __func__),
+      base::BindOnce(&ModemModemCdmaProxy::OnOperationFailure,
+                     weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 

@@ -36,10 +36,10 @@ void SimProxy::SendPin(const std::string& pin,
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->SendPinAsync(
       pin,
-      base::Bind(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
-      base::Bind(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
       timeout);
 }
 
@@ -52,10 +52,10 @@ void SimProxy::SendPuk(const std::string& puk,
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->SendPukAsync(
       puk, pin,
-      base::Bind(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
-      base::Bind(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
       timeout);
 }
 
@@ -68,10 +68,10 @@ void SimProxy::EnablePin(const std::string& pin,
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
   proxy_->EnablePinAsync(
       pin, enabled,
-      base::Bind(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
-      base::Bind(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
       timeout);
 }
 
@@ -84,10 +84,10 @@ void SimProxy::ChangePin(const std::string& old_pin,
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->ChangePinAsync(
       old_pin, new_pin,
-      base::Bind(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
-      base::Bind(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                 callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
+      base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
+                     callback, __func__),
       timeout);
 }
 

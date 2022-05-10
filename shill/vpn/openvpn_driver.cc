@@ -176,8 +176,8 @@ void OpenVPNDriver::Cleanup() {
   // the callback for OnOpenVPNDied, and then terminating and reaping
   // the process with StopProcess().
   if (pid_) {
-    process_manager()->UpdateExitCallback(pid_,
-                                          base::Bind(DoNothingWithExitStatus));
+    process_manager()->UpdateExitCallback(
+        pid_, base::BindOnce(DoNothingWithExitStatus));
   }
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {

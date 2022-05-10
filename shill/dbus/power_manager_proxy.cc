@@ -57,22 +57,23 @@ PowerManagerProxy::PowerManagerProxy(
       service_available_(false) {
   // Register signal handlers.
   proxy_->RegisterSuspendImminentSignalHandler(
-      base::Bind(&PowerManagerProxy::SuspendImminent,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&PowerManagerProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerManagerProxy::SuspendImminent,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&PowerManagerProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
   proxy_->RegisterSuspendDoneSignalHandler(
-      base::Bind(&PowerManagerProxy::SuspendDone, weak_factory_.GetWeakPtr()),
-      base::Bind(&PowerManagerProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerManagerProxy::SuspendDone,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&PowerManagerProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
   proxy_->RegisterDarkSuspendImminentSignalHandler(
-      base::Bind(&PowerManagerProxy::DarkSuspendImminent,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&PowerManagerProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerManagerProxy::DarkSuspendImminent,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&PowerManagerProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 
   // One time callback when service becomes available.
-  proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::Bind(
+  proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
       &PowerManagerProxy::OnServiceAvailable, weak_factory_.GetWeakPtr()));
 }
 
@@ -321,7 +322,7 @@ void PowerManagerProxy::OnServiceAvailable(bool available) {
   CHECK(available);
 
   // Service is available now, continuously monitor the service owner changes.
-  proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(base::Bind(
+  proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(base::BindRepeating(
       &PowerManagerProxy::OnServiceOwnerChanged, weak_factory_.GetWeakPtr()));
 
   // The callback might invoke calls to the ObjectProxy, so defer the callback

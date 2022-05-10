@@ -40,17 +40,17 @@ SupplicantNetworkProxy::SupplicantNetworkProxy(
     : network_proxy_(new fi::w1::wpa_supplicant1::NetworkProxy(
           bus, WPASupplicant::kDBusAddr, object_path)) {
   // Register properties.
-  properties_.reset(
-      new PropertySet(network_proxy_->GetObjectProxy(), kInterfaceName,
-                      base::Bind(&SupplicantNetworkProxy::OnPropertyChanged,
-                                 weak_factory_.GetWeakPtr())));
+  properties_.reset(new PropertySet(
+      network_proxy_->GetObjectProxy(), kInterfaceName,
+      base::BindRepeating(&SupplicantNetworkProxy::OnPropertyChanged,
+                          weak_factory_.GetWeakPtr())));
 
   // Register signal handler.
   network_proxy_->RegisterPropertiesChangedSignalHandler(
-      base::Bind(&SupplicantNetworkProxy::PropertiesChanged,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&SupplicantNetworkProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&SupplicantNetworkProxy::PropertiesChanged,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&SupplicantNetworkProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 
   // Connect property signals and initialize cached values. Based on
   // recommendations from src/dbus/property.h.

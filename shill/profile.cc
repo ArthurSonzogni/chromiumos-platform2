@@ -44,7 +44,8 @@ Profile::Profile(Manager* manager,
                  bool connect_to_rpc)
     : manager_(manager),
       properties_(kAlwaysOnVpnModeOff, kDefaultAlwaysOnVpnService),
-      store_(base::Bind(&Profile::OnPropertyChanged, base::Unretained(this))),
+      store_(base::BindRepeating(&Profile::OnPropertyChanged,
+                                 base::Unretained(this))),
       name_(name) {
   if (connect_to_rpc)
     adaptor_ = manager->control_interface()->CreateProfileAdaptor(this);

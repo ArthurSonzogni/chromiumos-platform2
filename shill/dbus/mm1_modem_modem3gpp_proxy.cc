@@ -34,10 +34,10 @@ void ModemModem3gppProxy::Register(const std::string& operator_id,
                                    int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operator_id;
   proxy_->RegisterAsync(operator_id,
-                        base::Bind(&ModemModem3gppProxy::OnRegisterSuccess,
-                                   weak_factory_.GetWeakPtr(), callback),
-                        base::Bind(&ModemModem3gppProxy::OnRegisterFailure,
-                                   weak_factory_.GetWeakPtr(), callback),
+                        base::BindOnce(&ModemModem3gppProxy::OnRegisterSuccess,
+                                       weak_factory_.GetWeakPtr(), callback),
+                        base::BindOnce(&ModemModem3gppProxy::OnRegisterFailure,
+                                       weak_factory_.GetWeakPtr(), callback),
                         timeout);
 }
 
@@ -45,10 +45,10 @@ void ModemModem3gppProxy::Scan(Error* error,
                                const KeyValueStoresCallback& callback,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  proxy_->ScanAsync(base::Bind(&ModemModem3gppProxy::OnScanSuccess,
-                               weak_factory_.GetWeakPtr(), callback),
-                    base::Bind(&ModemModem3gppProxy::OnScanFailure,
-                               weak_factory_.GetWeakPtr(), callback),
+  proxy_->ScanAsync(base::BindOnce(&ModemModem3gppProxy::OnScanSuccess,
+                                   weak_factory_.GetWeakPtr(), callback),
+                    base::BindOnce(&ModemModem3gppProxy::OnScanFailure,
+                                   weak_factory_.GetWeakPtr(), callback),
                     timeout);
 }
 
@@ -62,10 +62,10 @@ void ModemModem3gppProxy::SetInitialEpsBearerSettings(
       KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->SetInitialEpsBearerSettingsAsync(
       properties_dict,
-      base::Bind(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsSuccess,
-                 weak_factory_.GetWeakPtr(), callback),
-      base::Bind(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsFailure,
-                 weak_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsSuccess,
+                     weak_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsFailure,
+                     weak_factory_.GetWeakPtr(), callback),
       timeout);
 }
 

@@ -38,10 +38,10 @@ void ModemLocationProxy::Setup(uint32_t sources,
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << ": " << sources << ", " << signal_location;
   proxy_->SetupAsync(sources, signal_location,
-                     base::Bind(&ModemLocationProxy::OnSetupSuccess,
-                                weak_factory_.GetWeakPtr(), callback),
-                     base::Bind(&ModemLocationProxy::OnSetupFailure,
-                                weak_factory_.GetWeakPtr(), callback),
+                     base::BindOnce(&ModemLocationProxy::OnSetupSuccess,
+                                    weak_factory_.GetWeakPtr(), callback),
+                     base::BindOnce(&ModemLocationProxy::OnSetupFailure,
+                                    weak_factory_.GetWeakPtr(), callback),
                      timeout);
 }
 
@@ -49,11 +49,12 @@ void ModemLocationProxy::GetLocation(Error* error,
                                      const BrilloAnyCallback& callback,
                                      int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  proxy_->GetLocationAsync(base::Bind(&ModemLocationProxy::OnGetLocationSuccess,
-                                      weak_factory_.GetWeakPtr(), callback),
-                           base::Bind(&ModemLocationProxy::OnGetLocationFailure,
-                                      weak_factory_.GetWeakPtr(), callback),
-                           timeout);
+  proxy_->GetLocationAsync(
+      base::BindOnce(&ModemLocationProxy::OnGetLocationSuccess,
+                     weak_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&ModemLocationProxy::OnGetLocationFailure,
+                     weak_factory_.GetWeakPtr(), callback),
+      timeout);
 }
 
 void ModemLocationProxy::OnSetupSuccess(const ResultCallback& callback) {
