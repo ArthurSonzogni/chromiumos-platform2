@@ -136,9 +136,6 @@ fi
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
 
-mkdir -p /dev/shm
-mount -n -i -c -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
-
 # Mount configfs, if present.
 if [ -d /sys/kernel/config ]; then
   mount -n -i -c -t configfs -o nodev,nosuid,noexec configfs \
