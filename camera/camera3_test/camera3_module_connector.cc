@@ -436,13 +436,13 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
 }
 
 void CameraHalClient::OpenDevice(
-    int cam_id, cros::mojom::Camera3DeviceOpsRequest dev_ops_req) {
+    int cam_id, mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops) {
   VLOGF_ENTER();
   auto future = cros::Future<int32_t>::Create(nullptr);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalClient::OpenDeviceOnIpcThread,
-                     base::Unretained(this), cam_id, std::move(dev_ops_req),
+                     base::Unretained(this), cam_id, std::move(dev_ops),
                      cros::GetFutureCallback(future)));
   if (!future->Wait()) {
     ADD_FAILURE() << __func__ << " timeout";
@@ -451,14 +451,14 @@ void CameraHalClient::OpenDevice(
 
 void CameraHalClient::OpenDeviceOnIpcThread(
     int cam_id,
-    cros::mojom::Camera3DeviceOpsRequest dev_ops_req,
+    mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops,
     base::OnceCallback<void(int32_t)> cb) {
   VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
     std::move(cb).Run(-ENODEV);
     return;
   }
-  camera_module_->OpenDevice(cam_id, std::move(dev_ops_req), std::move(cb));
+  camera_module_->OpenDevice(cam_id, std::move(dev_ops), std::move(cb));
 }
 
 bool CameraHalClient::GetVendorTagByName(const std::string name,

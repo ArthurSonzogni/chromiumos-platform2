@@ -18,6 +18,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/associated_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -126,7 +127,8 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
   int GetCameraInfo(int cam_id, camera_info* info);
 
   // Open camera device
-  void OpenDevice(int cam_id, cros::mojom::Camera3DeviceOpsRequest dev_ops_req);
+  void OpenDevice(int cam_id,
+                  mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops);
 
   // Get vendor tag by the tag name; False is returned if not found.
   bool GetVendorTagByName(const std::string name, uint32_t* tag);
@@ -160,10 +162,11 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
                        cros::mojom::CameraInfoPtr camera_info);
 
   void OnDeviceOpsRequestReceived(
-      cros::mojom::Camera3DeviceOpsRequest dev_ops_req);
-  void OpenDeviceOnIpcThread(int cam_id,
-                             cros::mojom::Camera3DeviceOpsRequest dev_ops_req,
-                             base::OnceCallback<void(int32_t)> cb);
+      mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops);
+  void OpenDeviceOnIpcThread(
+      int cam_id,
+      mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops,
+      base::OnceCallback<void(int32_t)> cb);
   void CameraDeviceStatusChange(
       int32_t camera_id, cros::mojom::CameraDeviceStatus new_status) override;
   void TorchModeStatusChange(int32_t camera_id,
