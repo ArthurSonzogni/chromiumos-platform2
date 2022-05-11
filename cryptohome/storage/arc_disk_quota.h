@@ -27,8 +27,8 @@ constexpr char kUserDownloadsDir[] = "MyFiles/Downloads";
 constexpr char kAndroidDataDir[] = "android-data";
 
 // SELinux context of Android media files.
-constexpr char kMediaRWDataFileSELinuxContext[] =
-    "u:object_r:media_rw_data_file:s0";
+constexpr std::array<const char*, 4> kMediaRWDataFileSELinuxContextTokens = {
+    "u", "object_r", "media_rw_data_file", "s0"};
 
 // This class handles quota-related query from ARC++, and only designed to be
 // called from within the container. The main reason is that IsQuotaSupported
@@ -122,6 +122,9 @@ class ArcDiskQuota {
   virtual bool SetMediaRWDataFileProjectInheritanceFlag(bool enable,
                                                         int fd,
                                                         int* out_error) const;
+
+  // Whether the SELinux context is Android media files context.
+  static bool IsMediaRWDataFileContext(const std::string& context);
 
   // The constants below describes the ranges of valid ID to query (based on
   // what is tracked by installd).These numbers are from

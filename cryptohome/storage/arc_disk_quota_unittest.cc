@@ -43,10 +43,20 @@ class ArcDiskQuotaTest : public ::testing::Test {
 
   ~ArcDiskQuotaTest() override {}
 
+  void SetUp() override {
+    media_rw_data_file_selinux_context_ =
+        kMediaRWDataFileSELinuxContextTokens[0];
+    for (int i = 1; i < std::size(kMediaRWDataFileSELinuxContextTokens); ++i) {
+      media_rw_data_file_selinux_context_ +=
+          std::string(":") + kMediaRWDataFileSELinuxContextTokens[i];
+    }
+  }
+
  protected:
   MockHomeDirs homedirs_;
   MockPlatform platform_;
   ArcDiskQuota arc_disk_quota_;
+  std::string media_rw_data_file_selinux_context_;
 
   static const uid_t kAndroidUidStart = ArcDiskQuota::kAndroidUidStart;
   static const uid_t kAndroidUidEnd = ArcDiskQuota::kAndroidUidEnd;
@@ -442,13 +452,91 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_IoctlFails) {
                                             kObfuscatedUsername));
 }
 
+TEST_F(ArcDiskQuotaTest, IsMediaRWDataFileContext_NoCategory) {
+  EXPECT_TRUE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_InvalidNumberOfCategories) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c10"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_AppIdCategories) {
+  EXPECT_TRUE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c10,c270"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_InvalidFirstAppIdCategories) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c270,c270"));
+}
+
+TEST_F(
+    ArcDiskQuotaTest,
+    IsMediaRWDataFileContext_ContextCategories_InvalidSecondAppIdCategories) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c10,c10"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_UserCategories) {
+  EXPECT_TRUE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c512,c768"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_InvalidFirstUserCategories) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c51,c768"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_InvalidSecondUserCategories) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c512,c76"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_ContextCategories_AppIdAndUserCategories) {
+  EXPECT_TRUE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c10,c270,c512,c768"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_FourContextCategories_InvalidFirstAppId) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c270,c270,c512,c768"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_FourContextCategories_InvalidSecondAppId) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c123,c10,c512,c768"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_FourContextCategories_InvalidFirstUser) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c123,c258,c515,c768"));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       IsMediaRWDataFileContext_FourContextCategories_InvalidSecondUser) {
+  EXPECT_FALSE(ArcDiskQuota::IsMediaRWDataFileContext(
+      media_rw_data_file_selinux_context_ + ":c123,c258,c512,c771"));
+}
+
 TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_Succeeds) {
   constexpr int kProjectId = kValidAndroidProjectId;
   constexpr int kFd = 1234;
   int error = 0;
 
   EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
-      .WillOnce(Return(kMediaRWDataFileSELinuxContext));
+      .WillOnce(Return(media_rw_data_file_selinux_context_));
   EXPECT_CALL(platform_, SetQuotaProjectIdWithFd(kProjectId, kFd, &error))
       .WillOnce(Return(true));
 
@@ -499,7 +587,7 @@ TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectInheritanceFlag_Succeeds) {
   int error = 0;
 
   EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
-      .WillOnce(Return(kMediaRWDataFileSELinuxContext));
+      .WillOnce(Return(media_rw_data_file_selinux_context_));
   EXPECT_CALL(platform_,
               SetQuotaProjectInheritanceFlagWithFd(kEnable, kFd, &error))
       .WillOnce(Return(true));

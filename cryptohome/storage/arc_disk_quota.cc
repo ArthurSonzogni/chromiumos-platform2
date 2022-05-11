@@ -5,11 +5,15 @@
 #include "cryptohome/storage/arc_disk_quota.h"
 
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <brillo/cryptohome.h>
 
 #include "cryptohome/projectid_config.h"
@@ -175,6 +179,72 @@ bool ArcDiskQuota::SetProjectId(int project_id,
   return platform_->SetQuotaProjectId(project_id, path);
 }
 
+bool ArcDiskQuota::IsMediaRWDataFileContext(const std::string& context) {
+  const auto context_tokens = base::SplitStringPiece(
+      context, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (context_tokens.size() < kMediaRWDataFileSELinuxContextTokens.size()) {
+    return false;
+  }
+  // Check if the prefix of the context matches the expected SELinux context.
+  if (!std::equal(kMediaRWDataFileSELinuxContextTokens.begin(),
+                  kMediaRWDataFileSELinuxContextTokens.end(),
+                  context_tokens.begin())) {
+    return false;
+  }
+
+  // Everything matches.
+  if (context_tokens.size() == kMediaRWDataFileSELinuxContextTokens.size()) {
+    return true;
+  }
+
+  // Check if the suffix of the context is valid based on
+  // external/selinux/libselinux/src/android/android_platform.c in the Android
+  // repository.
+
+  // The suffix should consists of exactly one extra token.
+  if (context_tokens.size() !=
+      kMediaRWDataFileSELinuxContextTokens.size() + 1) {
+    return false;
+  }
+  const auto category_tokens = base::SplitStringPiece(
+      context_tokens.back(), ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  std::vector<int> categories;
+  for (const auto& token : category_tokens) {
+    // Each token should contain at least two characters and in the form of c%u.
+    if (token.length() < 2) {
+      return false;
+    }
+    if (token[0] != 'c') {
+      return false;
+    }
+    int category = -1;
+    if (!base::StringToInt(token.substr(1), &category)) {
+      return false;
+    }
+    categories.push_back(category);
+  }
+
+  // The checks below check if each category belongs to app id or user.
+  // Since ARCVM only has user 0, when the category is user category, we only
+  // do exact comparison: either with 512 + 0 or 768 + 0 (where 512 and 768 are
+  // the constants that are defined in
+  // external/selinux/libselinux/src/android/android_platform.c in the Android
+  // repository).
+  if (categories.size() == 2) {
+    return ((0 <= categories[0] && categories[0] < 256 &&
+             256 <= categories[1] && categories[1] < 512) ||
+            (512 == categories[0] && categories[1] == 768));
+  } else if (categories.size() == 4) {
+    return (0 <= categories[0] && categories[0] < 256 && 256 <= categories[1] &&
+            categories[1] < 512 && categories[2] == 512 &&
+            categories[3] == 768);
+  } else {
+    // Known suffix consists of only two or four categories.
+    return false;
+  }
+}
+
 bool ArcDiskQuota::SetMediaRWDataFileProjectId(int project_id,
                                                int fd,
                                                int* out_error) const {
@@ -190,7 +260,7 @@ bool ArcDiskQuota::SetMediaRWDataFileProjectId(int project_id,
     *out_error = EIO;
     return false;
   }
-  if (*context != kMediaRWDataFileSELinuxContext) {
+  if (!IsMediaRWDataFileContext(*context)) {
     LOG(ERROR) << "Unexpected SELinux context: " << *context;
     *out_error = EPERM;
     return false;
@@ -206,7 +276,7 @@ bool ArcDiskQuota::SetMediaRWDataFileProjectInheritanceFlag(
     *out_error = EIO;
     return false;
   }
-  if (*context != kMediaRWDataFileSELinuxContext) {
+  if (!IsMediaRWDataFileContext(*context)) {
     LOG(ERROR) << "Unexpected SELinux context: " << *context;
     *out_error = EPERM;
     return false;
