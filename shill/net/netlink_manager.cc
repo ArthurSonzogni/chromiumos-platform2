@@ -309,10 +309,10 @@ void NetlinkManager::Start() {
   // IO handler will be installed to the current message loop.
   dispatcher_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       file_descriptor(),
-      base::Bind(&NetlinkManager::OnRawNlMessageReceived,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnReadError,
-                 weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&NetlinkManager::OnRawNlMessageReceived,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnReadError,
+                          weak_ptr_factory_.GetWeakPtr())));
 }
 
 int NetlinkManager::file_descriptor() const {

@@ -99,7 +99,8 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   SetReceiverBufferSize(kReceiveBufferBytes);
 
   rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      rtnl_socket_, base::Bind(&RTNLHandler::ParseRTNL, base::Unretained(this)),
+      rtnl_socket_,
+      base::BindRepeating(&RTNLHandler::ParseRTNL, base::Unretained(this)),
       base::Bind(&RTNLHandler::OnReadError, base::Unretained(this))));
 
   NextRequest(last_dump_sequence_);

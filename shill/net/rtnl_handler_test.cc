@@ -63,8 +63,8 @@ class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
       : sockets_(new StrictMock<MockSockets>()),
-        callback_(base::Bind(&RTNLHandlerTest::HandlerCallback,
-                             base::Unretained(this))) {}
+        callback_(base::BindRepeating(&RTNLHandlerTest::HandlerCallback,
+                                      base::Unretained(this))) {}
 
   void SetUp() override {
     RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
