@@ -43,10 +43,6 @@ pkg_config("target_defaults") {
   } else {
     libs = [ "mbim-glib" ]
   }
-
-  if (use.internal) {
-    pkg_deps += [ "gemalto-firmware" ]
-  }
 }
 
 generate_dbus_proxies("modemmanager_proxies") {
@@ -109,7 +105,6 @@ static_library("libhermes") {
 
   configs += [ ":target_defaults" ]
   defines = [ "USE_QRTR=${use.qrtr}" ]
-  defines += [ "USE_INTERNAL=${use.internal}" ]
   deps = [
     ":hermes-protos",
     ":hermes_adaptors",
