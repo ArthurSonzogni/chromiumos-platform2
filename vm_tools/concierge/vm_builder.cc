@@ -537,6 +537,10 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
          BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
   }
 
+  // TODO(morg): Refactor shared parameter logic with BuildVmArgs
+  cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(),
+                               {"--cpus", std::to_string(cpus_)});
+
   if (vm_memory_id_) {
     std::string mms_control_socket =
         "/run/mms_control_" + std::to_string(*vm_memory_id_) + ".sock";
@@ -549,7 +553,23 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
                                  {"--mem", memory_in_mib_});
   }
 
-  // TODO(b/215472603): Handle other parameters.
+  if (enable_smt_.has_value()) {
+    if (!enable_smt_.value())
+      cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(), "--no-smt");
+  }
+
+  if (enable_delay_rt_)
+    cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(), "--delay-rt");
+
+  if (enable_per_vm_core_scheduling_)
+    cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(),
+                                 "--per-vm-core-scheduling");
+
+  if (kernel_params_.size() > 0)
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--params", base::JoinString(kernel_params_, " ")});
+
   return cmds;
 }
 
