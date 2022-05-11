@@ -18,6 +18,7 @@
 #include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
@@ -60,6 +61,7 @@ class FetchAggregator final {
   DisplayFetcher display_fetcher_;
   FanFetcher fan_fetcher_;
   GraphicsFetcher graphics_fetcher_;
+  InputFetcher input_fetcher_;
   MemoryFetcher memory_fetcher_;
   NetworkFetcher network_fetcher_;
   StatefulPartitionFetcher stateful_partition_fetcher_;

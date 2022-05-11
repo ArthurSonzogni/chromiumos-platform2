@@ -48,6 +48,7 @@ FetchAggregator::FetchAggregator(Context* context)
       display_fetcher_(context),
       fan_fetcher_(context),
       graphics_fetcher_(context),
+      input_fetcher_(context),
       memory_fetcher_(context),
       network_fetcher_(context),
       stateful_partition_fetcher_(context),
@@ -167,6 +168,11 @@ void FetchAggregator::Run(
       case mojom::ProbeCategoryEnum::kDisplay: {
         display_fetcher_.FetchDisplayInfo(
             CreateFetchCallback(&barrier, &info->display_result));
+        break;
+      }
+      case mojom::ProbeCategoryEnum::kInput: {
+        input_fetcher_.Fetch(
+            CreateFetchCallback(&barrier, &info->input_result));
         break;
       }
     }

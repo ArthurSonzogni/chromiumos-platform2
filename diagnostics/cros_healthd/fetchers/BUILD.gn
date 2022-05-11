@@ -47,6 +47,7 @@ source_set("libcros_healthd_fetchers") {
     "display_fetcher.cc",
     "fan_fetcher.cc",
     "graphics_fetcher.cc",
+    "input_fetcher.cc",
     "memory_fetcher.cc",
     "network_fetcher.cc",
     "network_interface_fetcher.cc",
