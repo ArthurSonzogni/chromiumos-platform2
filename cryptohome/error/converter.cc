@@ -266,6 +266,12 @@ template void ReplyWithError(
     const user_data_auth::UpdateCredentialReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
 
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
+        on_done,
+    const user_data_auth::GetRecoveryRequestReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+
 }  // namespace error
 
 }  // namespace cryptohome

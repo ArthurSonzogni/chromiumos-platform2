@@ -275,6 +275,7 @@ static_library("libcrosplatform") {
     ":target_defaults",
   ]
   libs = [
+    "cbor",
     "keyutils",
     "rootdev",
     "secure_erase_file",

@@ -18,6 +18,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_objects.h"
 
@@ -118,6 +119,15 @@ class AuthBlockUtility {
       const AuthInput& auth_input,
       const AuthBlockState& auth_block_state,
       KeyBlobs& out_key_blobs) const = 0;
+
+  // Generates a payload for cryptohome recovery AuthFactor authentication.
+  [[nodiscard]] virtual CryptoStatus GenerateRecoveryRequest(
+      const cryptorecovery::RequestMetadata& request_metadata,
+      const brillo::Blob& epoch_response,
+      const CryptohomeRecoveryAuthBlockState& state,
+      Tpm* tpm,
+      brillo::SecureBlob* out_recovery_request,
+      brillo::SecureBlob* out_ephemeral_pub_key) const = 0;
 };
 
 }  // namespace cryptohome

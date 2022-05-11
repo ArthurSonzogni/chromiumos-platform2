@@ -24,6 +24,7 @@
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
@@ -79,6 +80,29 @@ std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
     label_to_auth_factor.emplace(label, std::move(auth_factor).value());
   }
   return label_to_auth_factor;
+}
+
+cryptorecovery::RequestMetadata RequestMetadataFromProto(
+    const user_data_auth::GetRecoveryRequestRequest& request) {
+  cryptorecovery::RequestMetadata result;
+
+  result.requestor_user_id = request.requestor_user_id();
+  switch (request.requestor_user_id_type()) {
+    case user_data_auth::GetRecoveryRequestRequest_UserType_GAIA_ID:
+      result.requestor_user_id_type = cryptorecovery::UserType::kGaiaId;
+      break;
+    case user_data_auth::GetRecoveryRequestRequest_UserType_UNKNOWN:
+    default:
+      result.requestor_user_id_type = cryptorecovery::UserType::kUnknown;
+      break;
+  }
+
+  result.auth_claim = cryptorecovery::AuthClaim{
+      .gaia_access_token = request.gaia_access_token(),
+      .gaia_reauth_proof_token = request.gaia_reauth_proof_token(),
+  };
+
+  return result;
 }
 
 }  // namespace
@@ -770,6 +794,67 @@ bool AuthSession::AuthenticateAuthFactor(
     return false;
   }
   return AuthenticateViaVaultKeyset(auth_input.value(), std::move(on_done));
+}
+
+bool AuthSession::GetRecoveryRequest(
+    user_data_auth::GetRecoveryRequestRequest request,
+    base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
+        on_done) {
+  user_data_auth::GetRecoveryRequestReply reply;
+
+  // Check the factor exists.
+  auto label_to_auth_factor_iter =
+      label_to_auth_factor_.find(request.auth_factor_label());
+  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
+    LOG(ERROR) << "Authentication key not found: "
+               << request.auth_factor_label();
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocAuthSessionFactorNotFoundInGetRecoveryRequest),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return false;
+  }
+
+  // Read CryptohomeRecoveryAuthBlockState.
+  AuthFactor* auth_factor = label_to_auth_factor_iter->second.get();
+  auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
+      &(auth_factor->auth_block_state().state));
+  if (!state) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocNoRecoveryAuthBlockStateInGetRecoveryRequest),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return false;
+  }
+
+  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  // GenerateRecoveryRequest will set:
+  // - `recovery_request` on the `reply` object
+  // - `ephemeral_pub_key` which is saved in AuthSession and retrieved during
+  // the `AuthenticateAuthFactor` call.
+  CryptoStatus status = auth_block_utility_->GenerateRecoveryRequest(
+      RequestMetadataFromProto(request),
+      brillo::BlobFromString(request.epoch_response()), *state, crypto_->tpm(),
+      &recovery_request, &ephemeral_pub_key);
+  if (!status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocCryptoFailedInGenerateRecoveryRequest))
+            .Wrap(std::move(status)));
+    return false;
+  }
+
+  cryptohome_recovery_ephemeral_pub_key_ = ephemeral_pub_key;
+  reply.set_recovery_request(recovery_request.to_string());
+  std::move(on_done).Run(reply);
+  return true;
 }
 
 bool AuthSession::AuthenticateViaVaultKeyset(

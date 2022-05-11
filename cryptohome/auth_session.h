@@ -123,6 +123,15 @@ class AuthSession final {
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
 
+  // Generates a payload that will be sent to the server for cryptohome recovery
+  // AuthFactor authentication. GetRecoveryRequest saves data in the
+  // AuthSession state. This call is required before the AuthenticateAuthFactor
+  // call for cryptohome recovery AuthFactor.
+  bool GetRecoveryRequest(
+      user_data_auth::GetRecoveryRequestRequest request,
+      base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
+          on_done);
+
   // Return a const reference to FileSystemKeyset.
   // FileSystemKeyset is set when the auth session gets into an authenticated
   // state. So, the caller must ensure that AuthSession is in authenticated
@@ -377,6 +386,10 @@ class AuthSession final {
   std::map<std::string, cryptohome::KeyData> key_label_data_;
   // Map containing the auth factors already configured for this user.
   std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
+  // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
+  // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
+  // cases.
+  std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
 
   friend class AuthSessionTest;
   friend class AuthSessionManagerTest;

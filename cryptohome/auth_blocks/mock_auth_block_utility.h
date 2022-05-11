@@ -92,6 +92,15 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const AuthBlockState& auth_block_state,
                KeyBlobs& out_key_blobs),
               (const, override));
+  MOCK_METHOD(CryptoStatus,
+              GenerateRecoveryRequest,
+              (const cryptorecovery::RequestMetadata& request_metadata,
+               const brillo::Blob& epoch_response,
+               const CryptohomeRecoveryAuthBlockState& state,
+               Tpm* tpm,
+               brillo::SecureBlob* out_recovery_request,
+               brillo::SecureBlob* out_ephemeral_pub_key),
+              (const, override));
 };
 
 }  // namespace cryptohome

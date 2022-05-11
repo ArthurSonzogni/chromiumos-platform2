@@ -741,6 +741,24 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserSessionMountFailedInMountEphemeral = 457,
   /* ./auth_session.cc */
   kLocAuthSessionAddResetSecretFailedInAddViaUSS = 458,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockStateInvalidInGenerateRecoveryRequest = 459,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocFailedDeserializeHsmPayloadInGenerateRecoveryRequest = 460,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocFailedParseEpochResponseInGenerateRecoveryRequest = 461,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest = 462,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocFailedGenerateRecoveryRequest = 463,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInGetRecoveryRequest = 464,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInGetRecoveryRequest = 465,
+  /* ./auth_session.cc */
+  kLocNoRecoveryAuthBlockStateInGetRecoveryRequest = 466,
+  /* ./auth_session.cc */
+  kLocCryptoFailedInGenerateRecoveryRequest = 467,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -36,6 +36,10 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/key_objects.h"
@@ -545,6 +549,82 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
       GetAuthBlockWithType(auth_block_type);
   return auth_block.value()->Derive(auth_input, auth_block_state,
                                     &out_key_blobs);
+}
+
+CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
+    const cryptorecovery::RequestMetadata& request_metadata,
+    const brillo::Blob& epoch_response,
+    const CryptohomeRecoveryAuthBlockState& state,
+    Tpm* tpm,
+    brillo::SecureBlob* out_recovery_request,
+    brillo::SecureBlob* out_ephemeral_pub_key) const {
+  // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.
+  if (!state.hsm_payload.has_value() || !state.channel_pub_key.has_value() ||
+      !state.channel_priv_key.has_value()) {
+    LOG(ERROR) << "CryptohomeRecoveryAuthBlockState is invalid";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthBlockStateInvalidInGenerateRecoveryRequest),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  // Deserialize HSM payload from CryptohomeRecoveryAuthBlockState.
+  cryptorecovery::HsmPayload hsm_payload;
+  if (!cryptorecovery::DeserializeHsmPayloadFromCbor(state.hsm_payload.value(),
+                                                     &hsm_payload)) {
+    LOG(ERROR) << "Failed to deserialize HSM payload";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocFailedDeserializeHsmPayloadInGenerateRecoveryRequest),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  // Parse epoch response, which is sent from Chrome, to proto.
+  cryptorecovery::CryptoRecoveryEpochResponse epoch_response_proto;
+  if (!epoch_response_proto.ParseFromString(
+          brillo::BlobToString(epoch_response))) {
+    LOG(ERROR) << "Failed to parse epoch response";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocFailedParseEpochResponseInGenerateRecoveryRequest),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  if (!tpm->GetRecoveryCryptoBackend()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
+      cryptorecovery::RecoveryCryptoImpl::Create(
+          tpm->GetRecoveryCryptoBackend());
+
+  // Generate recovery request proto which will be sent back to Chrome, and then
+  // to the recovery server.
+  cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
+  // TODO(b/196191918): Get rsa_priv_key from CryptohomeRecoveryAuthBlockState.
+  if (!recovery->GenerateRecoveryRequest(
+          hsm_payload, request_metadata, epoch_response_proto,
+          brillo::SecureBlob() /*rsa_priv_key*/, state.channel_priv_key.value(),
+          state.channel_pub_key.value(), &recovery_request,
+          out_ephemeral_pub_key)) {
+    LOG(ERROR) << "Call to GenerateRecoveryRequest failed";
+    // TODO(b/231297066): send more specific error.
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocFailedGenerateRecoveryRequest),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  // Serialize recovery request proto.
+  *out_recovery_request =
+      brillo::SecureBlob(recovery_request.SerializeAsString());
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome
