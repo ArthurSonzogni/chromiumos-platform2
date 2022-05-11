@@ -8,18 +8,19 @@
 
 #include "base/check.h"
 #include "base/containers/span.h"
+#include "base/logging.h"
 #include "base/notreached.h"
 
 namespace rgbkbd {
 
 RgbKeyboardControllerImpl::RgbKeyboardControllerImpl(RgbKeyboard* keyboard)
-    : keyboard_(keyboard), background_color_(kWhiteBackgroundColor) {}
+    : keyboard_(keyboard),
+      capabilities_(keyboard_->GetRgbKeyboardCapabilities()),
+      background_color_(kWhiteBackgroundColor) {}
 RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
-  if (!capabilities_.has_value()) {
-    capabilities_ = keyboard_->GetRgbKeyboardCapabilities();
-  }
+  DCHECK(capabilities_.has_value());
   return static_cast<uint32_t>(capabilities_.value());
 }
 
@@ -33,6 +34,11 @@ void RgbKeyboardControllerImpl::SetAllKeyColors(const Color& color) {
 }
 
 void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
+  if (!IsKeyboardSupported()) {
+    LOG(ERROR) << "Invalid call to SetCapsLockState for unsupported keyboard";
+    return;
+  }
+
   caps_lock_enabled_ = enabled;
   const auto color = GetCurrentCapsLockColor();
   SetKeyColor({kLeftShiftKey, color});
@@ -42,6 +48,12 @@ void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
 void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint8_t r,
                                                          uint8_t g,
                                                          uint8_t b) {
+  if (!IsKeyboardSupported()) {
+    LOG(ERROR) << "Invalid call to SetStaticBackgroundColor for "
+                  "unsupported keyboard";
+    return;
+  }
+
   background_type_ = BackgroundType::kStaticSingleColor;
   background_color_ = Color(r, g, b);
   SetAllKeyColors(background_color_);
@@ -64,6 +76,11 @@ void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
 }
 
 void RgbKeyboardControllerImpl::SetRainbowMode() {
+  if (!IsKeyboardSupported()) {
+    LOG(ERROR) << "Invalid call to SetRainbowMode for unsupported keyboard";
+    return;
+  }
+
   base::span<const KeyColor> rainbow_mode;
   background_type_ = BackgroundType::kStaticRainbow;
 
@@ -123,6 +140,11 @@ Color RgbKeyboardControllerImpl::GetCapsLockHighlightColor() const {
   return (background_color_ == kWhiteBackgroundColor)
              ? kCapsLockHighlightAlternate
              : kCapsLockHighlightDefault;
+}
+
+bool RgbKeyboardControllerImpl::IsKeyboardSupported() const {
+  DCHECK(capabilities_.has_value());
+  return capabilities_.value() != RgbKeyboardCapabilities::kNone;
 }
 
 }  // namespace rgbkbd
