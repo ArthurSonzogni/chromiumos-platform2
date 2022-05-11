@@ -1076,6 +1076,8 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | apps | [apps](#apps) |  | False |  | False |  |
+| ash-disabled-features | array - string |  | False |  | True | Disabled features passed to the Ash window manager and system UI. Each entry should be a string of the form FeatureName. If this property is not set, features will be determined by other cros_config properties. Serialized to a null byte separated string when written to configfs.img |
+| ash-enabled-features | array - string |  | False |  | True | Enabled features passed to the Ash window manager and system UI. Each entry should be a string of the form FeatureName. If this property is not set, features will be determined by other cros_config properties. Serialized to a null byte separated string when written to configfs.img |
 | extra-ash-flags | array - string |  | False |  | True | Switches passed to the Ash window manager and system UI. Each entry should be a string of the form --<key>=<value>, or --<key> for boolean switches. If this property is not set, flags will be determined by other cros_config properties. Serialized to a null byte separated string when written to configfs.img |
 | handwriting-recognition-web-platform-api | boolean |  | False |  | False | Whether the handwriting recognition web platform API is supported. |
 | help-content-id | string |  | False |  | False | Identifier passed to the Showoff app to identify any device-specific help content to be displayed. |

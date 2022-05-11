@@ -395,6 +395,7 @@ chromeos:
           $stylus-category: 'none'
           $test-label: 'CUSTOM1_TEST_LABEL'
           $marketing-name: 'BRAND1_MARKETING_NAME1'
+          $extra-ash-feature: 'CloudGamingDevice'
         - $key-id: 'CUSTOM2'
           $wallpaper: 'CUSTOM2_WALLPAPER'
           $regulatory-label: 'CUSTOM2_LABEL'
@@ -404,6 +405,7 @@ chromeos:
           $stylus-category: 'external'
           $test-label: 'CUSTOM2_TEST_LABEL'
           $marketing-name: 'BRAND2_MARKETING_NAME2'
+          $extra-ash-feature: '{{$test-extra-ash-feature}}'
       skus:
         - config:
             identity:
@@ -423,11 +425,22 @@ chromeos:
               $oem-name: ''
               oem-name: '{{$oem-name}}'
               marketing-name: '{{$marketing-name}}'
+            ui:
+              ash-enabled-features:
+              - CommonFeature
+              - '{{$extra-ash-feature}}'
+              $extra-ash-feature: ''
+              $test-extra-ash-feature: ''
 """
 
 INVALID_CUSTOM_LABEL_CONFIG = """
             # THIS WILL CAUSE THE FAILURE
             test-label: '{{$test-label}}'
+"""
+
+INVALID_CUSTOM_LABEL_CONFIG_FEATURE = """
+            # THIS WILL CAUSE THE FAILURE
+            $test-extra-ash-feature: 'OtherFeature'
 """
 
 
@@ -486,13 +499,20 @@ chromeos:
           cros_config_schema.TransformConfig(config))
     self.assertIn('Identities are not unique', str(ctx.exception))
 
-  def testCustomLabelWithExternalStylus(self):
+  def testCustomLabelWithExternalStylusAndCloudGamingFeature(self):
     config = CUSTOM_LABEL_CONFIG
     cros_config_schema.ValidateConfig(
         cros_config_schema.TransformConfig(config))
 
   def testCustomLabelWithOtherThanBrandChanges(self):
     config = CUSTOM_LABEL_CONFIG + INVALID_CUSTOM_LABEL_CONFIG
+    with self.assertRaises(cros_config_schema.ValidationError) as ctx:
+      cros_config_schema.ValidateConfig(
+          cros_config_schema.TransformConfig(config))
+    self.assertIn('Custom label configs can only', str(ctx.exception))
+
+  def testCustomLabelWithFeatureFlagOtherThanBrandChanges(self):
+    config = CUSTOM_LABEL_CONFIG + INVALID_CUSTOM_LABEL_CONFIG_FEATURE
     with self.assertRaises(cros_config_schema.ValidationError) as ctx:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))

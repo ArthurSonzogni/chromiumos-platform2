@@ -39,6 +39,7 @@ BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper',
 # External stylus is allowed for custom labels
 EXTERNAL_STYLUS = 'external'
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
+ALLOWED_CUSTOM_LABEL_FEATURES = {'CloudGamingDevice'}
 
 
 def MergeDictionaries(primary, overlay):
@@ -357,6 +358,8 @@ def _GenerateInferredAshSwitches(device_config):
   ui_config = device_config.get('ui', {})
   ash_switches = set()
   ash_switches |= set(ui_config.get('extra-ash-flags', []))
+  ash_enabled_features = set(ui_config.get('ash-enabled-features', []))
+  ash_disabled_features = set(ui_config.get('ash-disabled-features', []))
 
   extra_web_apps_dir = ui_config.get('apps', {}).get('extra-web-apps-dir')
   if extra_web_apps_dir:
@@ -375,6 +378,13 @@ def _GenerateInferredAshSwitches(device_config):
   display_properties = device_config.get('displays')
   if display_properties:
     ash_switches.add('--display-properties=%s' % json.dumps(display_properties))
+
+  if ash_enabled_features:
+    ash_switches.add('--enable-features=%s' % ','.join(
+        sorted(feature for feature in ash_enabled_features if feature)))
+  if ash_disabled_features:
+    ash_switches.add('--disable-features=%s' % ','.join(
+        sorted(feature for feature in ash_disabled_features if feature)))
 
   if not ash_switches:
     return device_config
@@ -614,6 +624,13 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
       if 'ui' not in config_minus_brand:
         config_minus_brand['ui'] = {}
       config_minus_brand['ui']['help-content-id'] = ''
+
+      # Trim allowed feature flags from /ui:ash-enabled-features
+      if 'ash-enabled-features' in config_minus_brand['ui']:
+        config_minus_brand['ui']['ash-enabled-features'] = sorted(
+            feature
+            for feature in set(config_minus_brand['ui']['ash-enabled-features'])
+            if feature and feature not in ALLOWED_CUSTOM_LABEL_FEATURES)
 
       config_minus_brand.get('arc', {}). get('build-properties', {}).pop(
           'marketing-name', None)
