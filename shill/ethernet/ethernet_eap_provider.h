@@ -22,7 +22,7 @@ class Manager;
 
 class EthernetEapProvider : public ProviderInterface {
  public:
-  using CredentialChangeCallback = base::Callback<void()>;
+  using CredentialChangeCallback = base::RepeatingCallback<void()>;
 
   explicit EthernetEapProvider(Manager* manager);
   ~EthernetEapProvider() override;

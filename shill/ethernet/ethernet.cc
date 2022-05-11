@@ -370,8 +370,8 @@ void Ethernet::OnEapDetected() {
                              is_eap_detected_);
   eap_listener_->Stop();
   GetEapProvider()->SetCredentialChangeCallback(
-      this, base::Bind(&Ethernet::TryEapAuthentication,
-                       weak_ptr_factory_.GetWeakPtr()));
+      this, base::BindRepeating(&Ethernet::TryEapAuthentication,
+                                weak_ptr_factory_.GetWeakPtr()));
   TryEapAuthentication();
 }
 

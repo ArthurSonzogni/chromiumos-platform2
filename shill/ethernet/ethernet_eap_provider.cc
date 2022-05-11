@@ -5,6 +5,7 @@
 #include "shill/ethernet/ethernet_eap_provider.h"
 
 #include <string>
+#include <utility>
 
 #include "shill/ethernet/ethernet_eap_service.h"
 #include "shill/manager.h"
@@ -65,7 +66,7 @@ void EthernetEapProvider::Stop() {
 
 void EthernetEapProvider::SetCredentialChangeCallback(
     Ethernet* device, CredentialChangeCallback callback) {
-  callback_map_[device] = callback;
+  callback_map_[device] = std::move(callback);
 }
 
 void EthernetEapProvider::ClearCredentialChangeCallback(Ethernet* device) {
