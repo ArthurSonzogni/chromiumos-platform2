@@ -678,12 +678,12 @@ class UserDataAuth {
     sessions_[username] = session;
   }
 
-  bool StartAuthSession(
+  void StartAuthSession(
       user_data_auth::StartAuthSessionRequest request,
       base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
           on_done);
 
-  bool AddCredentials(
+  void AddCredentials(
       user_data_auth::AddCredentialsRequest request,
       base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
           on_done);
@@ -693,17 +693,17 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
           on_done);
 
-  bool AuthenticateAuthSession(
+  void AuthenticateAuthSession(
       user_data_auth::AuthenticateAuthSessionRequest request,
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done);
 
-  bool InvalidateAuthSession(
+  void InvalidateAuthSession(
       user_data_auth::InvalidateAuthSessionRequest request,
       base::OnceCallback<
           void(const user_data_auth::InvalidateAuthSessionReply&)> on_done);
 
-  bool ExtendAuthSession(
+  void ExtendAuthSession(
       user_data_auth::ExtendAuthSessionRequest request,
       base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
           on_done);
@@ -733,22 +733,22 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
           on_done);
 
-  bool AddAuthFactor(
+  void AddAuthFactor(
       user_data_auth::AddAuthFactorRequest request,
       base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
           on_done);
 
-  bool AuthenticateAuthFactor(
+  void AuthenticateAuthFactor(
       user_data_auth::AuthenticateAuthFactorRequest request,
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
 
-  bool UpdateAuthFactor(
+  void UpdateAuthFactor(
       user_data_auth::UpdateAuthFactorRequest request,
       base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
           on_done);
 
-  bool RemoveAuthFactor(
+  void RemoveAuthFactor(
       user_data_auth::RemoveAuthFactorRequest request,
       base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
           on_done);

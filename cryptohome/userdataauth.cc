@@ -3791,7 +3791,7 @@ void UserDataAuth::SeedUrandom() {
   }
 }
 
-bool UserDataAuth::StartAuthSession(
+void UserDataAuth::StartAuthSession(
     user_data_auth::StartAuthSessionRequest request,
     base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
         on_done) {
@@ -3809,7 +3809,7 @@ bool UserDataAuth::StartAuthSession(
             ErrorActionSet(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
-    return false;
+    return;
   }
 
   reply.set_auth_session_id(auth_session->serialized_token());
@@ -3820,7 +3820,7 @@ bool UserDataAuth::StartAuthSession(
       auth_session->user_exists()) {
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
     std::move(on_done).Run(reply);
-    return false;
+    return;
   }
 
   google::protobuf::Map<std::string, cryptohome::KeyData> proto_key_map(
@@ -3837,7 +3837,6 @@ bool UserDataAuth::StartAuthSession(
   }
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-  return true;
 }
 
 user_data_auth::CryptohomeErrorCode
@@ -3865,7 +3864,7 @@ UserDataAuth::HandleAddCredentialForEphemeralVault(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
-bool UserDataAuth::AddCredentials(
+void UserDataAuth::AddCredentials(
     user_data_auth::AddCredentialsRequest request,
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
         on_done) {
@@ -3878,7 +3877,7 @@ bool UserDataAuth::AddCredentials(
   if (!auth_session) {
     reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     std::move(on_done).Run(reply);
-    return false;
+    return;
   }
 
   // Additional check if the user wants to add new credentials for an existing
@@ -3886,7 +3885,7 @@ bool UserDataAuth::AddCredentials(
   if (request.add_more_credentials() && !auth_session->user_exists()) {
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED);
     std::move(on_done).Run(reply);
-    return false;
+    return;
   }
 
   if (auth_session->ephemeral_user()) {
@@ -3898,7 +3897,6 @@ bool UserDataAuth::AddCredentials(
     // auth_session_token.
     auth_session->AddCredentials(request, std::move(on_done));
   }
-  return true;
 }
 
 void UserDataAuth::UpdateCredential(
@@ -3923,7 +3921,7 @@ void UserDataAuth::UpdateCredential(
   return;
 }
 
-bool UserDataAuth::AuthenticateAuthSession(
+void UserDataAuth::AuthenticateAuthSession(
     user_data_auth::AuthenticateAuthSessionRequest request,
     base::OnceCallback<
         void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done) {
@@ -3942,7 +3940,7 @@ bool UserDataAuth::AuthenticateAuthSession(
                                        ErrorAction::kReboot}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
-    return false;
+    return;
   }
 
   // Perform authentication using data in AuthorizationRequest and
@@ -3959,10 +3957,9 @@ bool UserDataAuth::AuthenticateAuthSession(
   reply.set_authenticated(auth_session->GetStatus() ==
                           AuthStatus::kAuthStatusAuthenticated);
   ReplyWithError(std::move(on_done), reply, std::move(err));
-  return false;
 }
 
-bool UserDataAuth::InvalidateAuthSession(
+void UserDataAuth::InvalidateAuthSession(
     user_data_auth::InvalidateAuthSessionRequest request,
     base::OnceCallback<void(const user_data_auth::InvalidateAuthSessionReply&)>
         on_done) {
@@ -3972,10 +3969,9 @@ bool UserDataAuth::InvalidateAuthSession(
   auth_session_manager_->RemoveAuthSession(request.auth_session_id());
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-  return true;
 }
 
-bool UserDataAuth::ExtendAuthSession(
+void UserDataAuth::ExtendAuthSession(
     user_data_auth::ExtendAuthSessionRequest request,
     base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
         on_done) {
@@ -3994,7 +3990,7 @@ bool UserDataAuth::ExtendAuthSession(
                                        ErrorAction::kReboot}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
-    return false;
+    return;
   }
 
   // Extend specified AuthSession.
@@ -4011,7 +4007,6 @@ bool UserDataAuth::ExtendAuthSession(
             .Wrap(std::move(ret));
   }
   ReplyWithError(std::move(on_done), reply, std::move(err));
-  return true;
 }
 
 AuthSession* UserDataAuth::GetAuthenticatedAuthSession(
@@ -4387,7 +4382,7 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
   return OkStatus<CryptohomeError>();
 }
 
-bool UserDataAuth::AddAuthFactor(
+void UserDataAuth::AddAuthFactor(
     user_data_auth::AddAuthFactorRequest request,
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
         on_done) {
@@ -4401,7 +4396,7 @@ bool UserDataAuth::AddAuthFactor(
   if (!auth_session) {
     reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     std::move(on_done).Run(reply);
-    return false;
+    return;
   }
   // TODO(b/229708597): Migrate and wrap the returned status.
   CryptohomeStatus status = auth_session->AddAuthFactor(request);
@@ -4416,10 +4411,9 @@ bool UserDataAuth::AddAuthFactor(
   }
 
   std::move(on_done).Run(reply);
-  return true;
 }
 
-bool UserDataAuth::AuthenticateAuthFactor(
+void UserDataAuth::AuthenticateAuthFactor(
     user_data_auth::AuthenticateAuthFactorRequest request,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done) {
@@ -4438,12 +4432,12 @@ bool UserDataAuth::AuthenticateAuthFactor(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
-    return false;
+    return;
   }
-  return auth_session->AuthenticateAuthFactor(request, std::move(on_done));
+  auth_session->AuthenticateAuthFactor(request, std::move(on_done));
 }
 
-bool UserDataAuth::UpdateAuthFactor(
+void UserDataAuth::UpdateAuthFactor(
     user_data_auth::UpdateAuthFactorRequest request,
     base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
         on_done) {
@@ -4452,10 +4446,9 @@ bool UserDataAuth::UpdateAuthFactor(
   user_data_auth::UpdateAuthFactorReply reply;
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
   std::move(on_done).Run(reply);
-  return true;
 }
 
-bool UserDataAuth::RemoveAuthFactor(
+void UserDataAuth::RemoveAuthFactor(
     user_data_auth::RemoveAuthFactorRequest request,
     base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
         on_done) {
@@ -4464,7 +4457,6 @@ bool UserDataAuth::RemoveAuthFactor(
   user_data_auth::RemoveAuthFactorReply reply;
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
   std::move(on_done).Run(reply);
-  return true;
 }
 
 void UserDataAuth::GetAuthSessionStatus(
