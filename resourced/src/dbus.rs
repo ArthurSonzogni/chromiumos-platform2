@@ -109,7 +109,11 @@ fn set_game_mode(m: &MethodInfo) -> MethodResult {
     let mode = common::GameMode::try_from(mode_raw)
         .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
 
-    common::set_game_mode(mode).map_err(|_| MethodErr::failed("Failed to set game mode"))?;
+    common::set_game_mode(mode).map_err(|e| {
+        error!("{:#}", e);
+
+        MethodErr::failed("Failed to set game mode")
+    })?;
 
     let timer = &m.path.get_data().reset_game_mode_timer;
     timer
@@ -127,7 +131,11 @@ fn set_game_mode_with_timeout(m: &MethodInfo) -> MethodResult {
         .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
     let timeout = Duration::from_secs(timeout_raw.into());
 
-    common::set_game_mode(mode).map_err(|_| MethodErr::failed("Failed to set game mode"))?;
+    common::set_game_mode(mode).map_err(|e| {
+        error!("{:#}", e);
+
+        MethodErr::failed("Failed to set game mode")
+    })?;
 
     let timer = &m.path.get_data().reset_game_mode_timer;
     timer
@@ -151,7 +159,10 @@ fn set_rtc_audio_active(m: &MethodInfo) -> MethodResult {
 
     match common::set_rtc_audio_active(active) {
         Ok(()) => Ok(vec![m.msg.method_return()]),
-        Err(_) => Err(MethodErr::failed("Failed to set RTC audio activity")),
+        Err(e) => {
+            error!("{:#}", e);
+            Err(MethodErr::failed("Failed to set RTC audio activity"))
+        }
     }
 }
 
@@ -168,8 +179,11 @@ fn set_fullscreen_video_with_timeout(m: &MethodInfo) -> MethodResult {
         .map_err(|_| MethodErr::failed("Unsupported fullscreen video value"))?;
     let timeout = Duration::from_secs(timeout_raw.into());
 
-    common::set_fullscreen_video(mode)
-        .map_err(|_| MethodErr::failed("Failed to set full screen video mode"))?;
+    common::set_fullscreen_video(mode).map_err(|e| {
+        error!("{:#}", e);
+
+        MethodErr::failed("Failed to set full screen video mode")
+    })?;
 
     let timer = &m.path.get_data().reset_fullscreen_video_timer;
     timer
