@@ -759,6 +759,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocNoRecoveryAuthBlockStateInGetRecoveryRequest = 466,
   /* ./auth_session.cc */
   kLocCryptoFailedInGenerateRecoveryRequest = 467,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoUserInputInCreate = 468,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoUsernameInCreate = 469,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoResetSecretInCreate = 470,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoUserInputInDerive = 471,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -384,7 +384,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   EXPECT_EQ(le_secret, le_secret_result);
 }
 
-TEST(PinWeaverAuthBlockTest, CreateFailTest) {
+TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
@@ -415,8 +415,64 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
                 ->local_crypto_error());
 }
 
+// Test PinWeaverAuthBlock create fails when there's no user_input provided.
+TEST(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  NiceMock<MockLECredentialManager> le_cred_manager;
+
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  AuthInput auth_input = {.obfuscated_username = obfuscated_username,
+                          .reset_secret = reset_secret};
+  KeyBlobs vkk_data;
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Create(auth_input, &auth_state, &vkk_data)
+                ->local_crypto_error());
+}
+
+// Test PinWeaverAuthBlock create fails when there's no obfuscated_username
+// provided.
+TEST(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
+  brillo::SecureBlob user_input(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  NiceMock<MockLECredentialManager> le_cred_manager;
+
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  AuthInput auth_input = {.user_input = user_input,
+                          .reset_secret = reset_secret};
+  KeyBlobs vkk_data;
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Create(auth_input, &auth_state, &vkk_data)
+                ->local_crypto_error());
+}
+
+// Test PinWeaverAuthBlock create fails when there's no reset_secret provided.
+TEST(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
+  brillo::SecureBlob user_input(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  NiceMock<MockLECredentialManager> le_cred_manager;
+
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  AuthInput auth_input = {.user_input = user_input,
+                          .obfuscated_username = obfuscated_username};
+  KeyBlobs vkk_data;
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Create(auth_input, &auth_state, &vkk_data)
+                ->local_crypto_error());
+}
+
 // Check required field |le_label| in PinWeaverAuthBlockState.
 TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
+  brillo::SecureBlob user_input(20, 'C');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
@@ -434,7 +490,7 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
-  AuthInput auth_input = {};
+  AuthInput auth_input = {.user_input = user_input};
   EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
             auth_block.Derive(auth_input, auth_state, &key_blobs)
                 ->local_crypto_error());
@@ -442,6 +498,7 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
 
 // Check required field |salt| in PinWeaverAuthBlockState.
 TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
+  brillo::SecureBlob user_input(20, 'C');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
@@ -455,6 +512,29 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   state.le_label = 0;
   state.chaps_iv = chaps_iv;
   state.fek_iv = fek_iv;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {.user_input = user_input};
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs)
+                ->local_crypto_error());
+}
+
+// Check PinWeaverAuthBlock derive fails if user_input is missing.
+TEST(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+
+  // Construct the auth block state.
+  AuthBlockState auth_state;
+  PinWeaverAuthBlockState state = {
+      .le_label = 0, .salt = salt, .chaps_iv = chaps_iv, .fek_iv = fek_iv};
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
