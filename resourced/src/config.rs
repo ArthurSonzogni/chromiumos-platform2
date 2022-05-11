@@ -50,7 +50,7 @@ impl PowerPreferencesType {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PowerSourceType {
     AC,
     DC,

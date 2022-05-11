@@ -7,6 +7,7 @@ mod config;
 mod dbus;
 mod gpu_freq_scaling;
 mod memory;
+mod power;
 
 #[cfg(test)]
 mod test;

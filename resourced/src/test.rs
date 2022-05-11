@@ -13,6 +13,8 @@ use anyhow::Result;
 use crate::common::{parse_file_to_u64, set_epp};
 use crate::config;
 use crate::config::ConfigProvider;
+use crate::power;
+use crate::power::PowerSourceProvider;
 
 use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
@@ -485,6 +487,63 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
             assert_eq!(expected, actual.unwrap());
         }
     }
+
+    Ok(())
+}
+
+#[test]
+fn test_power_source_provider_empty_root() -> Result<()> {
+    let root = tempdir()?;
+
+    let provider = power::DirectoryPowerSourceProvider { root: root.path() };
+
+    let power_source = provider.get_power_source()?;
+
+    assert_eq!(power_source, config::PowerSourceType::DC);
+
+    Ok(())
+}
+
+const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
+
+#[test]
+fn test_power_source_provider_empty_path() -> Result<()> {
+    let root = tempdir()?;
+
+    let path = root.path().join(POWER_SUPPLY_PATH);
+    fs::create_dir_all(&path)?;
+
+    let provider = power::DirectoryPowerSourceProvider { root: root.path() };
+
+    let power_source = provider.get_power_source()?;
+
+    assert_eq!(power_source, config::PowerSourceType::DC);
+
+    Ok(())
+}
+
+/// Tests that the `DirectoryPowerSourceProvider` can parse the charger sysfs
+/// `online` attribute.
+#[test]
+fn test_power_source_provider_disconnected_then_connected() -> Result<()> {
+    let root = tempdir()?;
+
+    let path = root.path().join(POWER_SUPPLY_PATH);
+    fs::create_dir_all(&path)?;
+
+    let provider = power::DirectoryPowerSourceProvider { root: root.path() };
+
+    let charger = path.join("charger-1");
+    fs::create_dir_all(&charger)?;
+    let online = charger.join("online");
+
+    fs::write(&online, b"0")?;
+    let power_source = provider.get_power_source()?;
+    assert_eq!(power_source, config::PowerSourceType::DC);
+
+    fs::write(&online, b"1")?;
+    let power_source = provider.get_power_source()?;
+    assert_eq!(power_source, config::PowerSourceType::AC);
 
     Ok(())
 }
