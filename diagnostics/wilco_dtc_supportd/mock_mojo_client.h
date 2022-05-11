@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/buffer.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
@@ -31,10 +32,11 @@ class MockMojoClient
       MojoWilcoDtcSupportdWebRequestStatus, int32_t, mojo::ScopedHandle)>;
   using MojoGetConfigurationDataCallback =
       base::OnceCallback<void(const std::string&)>;
-  using MojoCrosHealthdDiagnosticsServiceRequest =
-      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest;
-  using MojoCrosHealthdProbeServiceRequest =
-      chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest;
+  using MojoCrosHealthdDiagnosticsServicePendingReceiver =
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>;
+  using MojoCrosHealthdProbeServicePendingReceiver = mojo::PendingReceiver<
+      chromeos::cros_healthd::mojom::CrosHealthdProbeService>;
 
   void SendWilcoDtcMessageToUi(
       mojo::ScopedHandle json_message,
@@ -63,11 +65,11 @@ class MockMojoClient
   MOCK_METHOD(void, HandleEvent, (const MojoWilcoDtcSupportdEvent), (override));
   MOCK_METHOD(void,
               GetCrosHealthdDiagnosticsService,
-              (MojoCrosHealthdDiagnosticsServiceRequest),
+              (MojoCrosHealthdDiagnosticsServicePendingReceiver),
               (override));
   MOCK_METHOD(void,
               GetCrosHealthdProbeService,
-              (MojoCrosHealthdProbeServiceRequest),
+              (MojoCrosHealthdProbeServicePendingReceiver),
               (override));
 };
 

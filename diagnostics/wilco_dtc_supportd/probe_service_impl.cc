@@ -35,7 +35,7 @@ void ProbeServiceImpl::ProbeTelemetryInfo(
   next_callback_key_++;
   DCHECK_EQ(callbacks_.count(callback_key), 0);
   callbacks_.insert({callback_key, std::move(callback)});
-  service_ptr_->ProbeTelemetryInfo(
+  service_->ProbeTelemetryInfo(
       std::move(categories),
       base::BindOnce(&ProbeServiceImpl::ForwardProbeTelemetryInfoResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -57,21 +57,21 @@ void ProbeServiceImpl::ForwardProbeTelemetryInfoResponse(
 }
 
 bool ProbeServiceImpl::BindCrosHealthdProbeServiceIfNeeded() {
-  if (service_ptr_.is_bound())
+  if (service_.is_bound())
     return true;
 
-  auto request = mojo::MakeRequest(&service_ptr_);
+  auto receiver = service_.BindNewPipeAndPassReceiver();
 
-  service_ptr_.set_connection_error_handler(base::BindOnce(
+  service_.set_disconnect_handler(base::BindOnce(
       &ProbeServiceImpl::OnDisconnect, weak_ptr_factory_.GetWeakPtr()));
 
-  return delegate_->BindCrosHealthdProbeService(std::move(request));
+  return delegate_->BindCrosHealthdProbeService(std::move(receiver));
 }
 
 void ProbeServiceImpl::OnDisconnect() {
   VLOG(1) << "Mojo connection to cros_healthd probe service is closed.";
   RunInFlightCallbacks();
-  service_ptr_.reset();
+  service_.reset();
 }
 
 void ProbeServiceImpl::RunInFlightCallbacks() {

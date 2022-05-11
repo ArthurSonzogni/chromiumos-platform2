@@ -12,7 +12,7 @@
 #include <base/strings/string_piece.h>
 #include <dbus/message.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/system/buffer.h>
 
 #include "diagnostics/wilco_dtc_supportd/utils/mojo_utils.h"

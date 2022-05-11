@@ -12,7 +12,6 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/run_loop.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter_delegate.h"

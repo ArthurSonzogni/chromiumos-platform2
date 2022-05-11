@@ -44,6 +44,7 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -870,9 +871,10 @@ TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
 TEST_F(BootstrappedCoreTest, GetCrosHealthdDiagnosticsService) {
   FakeDiagnosticsService fake_diagnostics_service;
   EXPECT_CALL(*wilco_dtc_supportd_client(), GetCrosHealthdDiagnosticsService(_))
-      .WillOnce(
-          WithArg<0>([&](chromeos::cros_healthd::mojom::
-                             CrosHealthdDiagnosticsServiceRequest service) {
+      .WillOnce(WithArg<0>(
+          [&](mojo::PendingReceiver<
+              chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+                  service) {
             fake_diagnostics_service.GetCrosHealthdDiagnosticsService(
                 std::move(service));
           }));
