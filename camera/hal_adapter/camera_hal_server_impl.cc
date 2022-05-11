@@ -175,7 +175,7 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (result != 0) {
-    LOGF(ERROR) << "Failed to register camera HAL: "
+    LOGF(ERROR) << "Failed to register camera server: "
                 << base::safe_strerror(-result);
     return;
   }
@@ -186,7 +186,7 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
           &CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged,
           base::Unretained(this)));
 
-  LOGF(INFO) << "Registered camera HAL";
+  LOGF(INFO) << "Successfully registered camera server.";
 }
 
 void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
@@ -195,7 +195,8 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
 
   // The CameraHalDispatcher Mojo parent is probably dead. We need to restart
   // another process in order to connect to the new Mojo parent.
-  LOGF(INFO) << "Mojo connection to CameraHalDispatcher is broken";
+  LOGF(INFO) << "Mojo connection to (Chrome) CameraHalDispatcher is "
+                "disconnected. Chrome may have crashed.";
   receiver_.reset();
   main_task_runner_->PostTask(
       FROM_HERE,
