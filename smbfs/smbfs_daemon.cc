@@ -21,6 +21,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
 #include <mojo/public/cpp/system/invitation.h>
 
@@ -186,7 +187,7 @@ bool SmbFsDaemon::InitMojo() {
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());
   mojo_session_ = std::make_unique<MojoSession>(
       bus_, temp_dir_.GetPath(), chan_,
-      mojom::SmbFsBootstrapRequest(
+      mojo::PendingReceiver<mojom::SmbFsBootstrap>(
           invitation.ExtractMessagePipe(mojom::kBootstrapPipeName)),
       uid_, gid_,
       base::BindOnce(&SmbFsDaemon::OnSessionShutdown, base::Unretained(this)));

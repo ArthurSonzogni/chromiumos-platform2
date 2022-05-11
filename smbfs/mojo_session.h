@@ -14,6 +14,8 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "smbfs/smb_filesystem.h"
