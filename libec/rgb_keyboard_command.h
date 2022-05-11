@@ -28,7 +28,7 @@ class BRILLO_EXPORT RgbkbdSetColorCommand
     Req()->req.length = color.size();
     std::copy(color.begin(), color.end(), Req()->color.begin());
     SetReqSize(sizeof(rgb_keyboard::Header) +
-               Req()->color.size() * sizeof(Req()->color[0]));
+               Req()->req.length * sizeof(Req()->color[0]));
   }
   ~RgbkbdSetColorCommand() override = default;
 };
