@@ -167,10 +167,12 @@ const int kAdaptiveChargingSyncDBusTimeoutMs = 3000;
 // |response_sender|. If |handler| returns NULL, an empty response is
 // created and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::OnceCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  std::unique_ptr<dbus::Response> response = handler.Run(method_call);
+  std::unique_ptr<dbus::Response> response =
+      std::move(handler).Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
   std::move(response_sender).Run(std::move(response));

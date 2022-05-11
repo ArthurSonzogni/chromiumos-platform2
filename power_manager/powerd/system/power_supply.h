@@ -613,7 +613,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   base::TimeDelta current_poll_delay_for_testing_;
 
   // Calls NotifyObservers().
-  base::CancelableClosure notify_observers_task_;
+  base::CancelableOnceClosure notify_observers_task_;
 
   // Maps from sysfs line power subdirectory basenames (e.g.
   // "CROS_USB_PD_CHARGER0") to enum values describing the corresponding

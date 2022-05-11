@@ -9,6 +9,7 @@
 
 #include <cerrno>
 #include <cstdio>
+#include <utility>
 
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -57,24 +58,24 @@ bool AsyncFileReader::HasOpenedFile() const {
 }
 
 void AsyncFileReader::StartRead(
-    const base::Callback<void(const std::string&)>& read_cb,
-    const base::Callback<void()>& error_cb) {
+    base::OnceCallback<void(const std::string&)> read_cb,
+    base::OnceCallback<void()> error_cb) {
   Reset();
 
   if (fd_ == -1) {
     LOG(ERROR) << "No file handle available.";
     if (!error_cb.is_null())
-      error_cb.Run();
+      std::move(error_cb).Run();
     return;
   }
 
   if (!AsyncRead(initial_read_size_, 0)) {
     if (!error_cb.is_null())
-      error_cb.Run();
+      std::move(error_cb).Run();
     return;
   }
-  read_cb_ = read_cb;
-  error_cb_ = error_cb;
+  read_cb_ = std::move(read_cb);
+  error_cb_ = std::move(error_cb);
   read_in_progress_ = true;
 }
 
@@ -110,7 +111,7 @@ void AsyncFileReader::UpdateState() {
           break;
       }
       if (!read_cb_.is_null())
-        read_cb_.Run(stored_data_);
+        std::move(read_cb_).Run(stored_data_);
       Reset();
       break;
     }
@@ -118,7 +119,7 @@ void AsyncFileReader::UpdateState() {
       LOG(ERROR) << "Error during read of file " << path_.value()
                  << ", status=" << status;
       if (!error_cb_.is_null())
-        error_cb_.Run();
+        std::move(error_cb_).Run();
       Reset();
       break;
     }

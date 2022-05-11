@@ -77,8 +77,8 @@ void ThermalDevice::ReadDeviceState() {
   // The timer will be restarted after the read finishes.
   poll_timer_.Stop();
   polling_file_.StartRead(
-      base::Bind(&ThermalDevice::ReadCallback, base::Unretained(this)),
-      base::Bind(&ThermalDevice::ErrorCallback, base::Unretained(this)));
+      base::BindOnce(&ThermalDevice::ReadCallback, base::Unretained(this)),
+      base::BindOnce(&ThermalDevice::ErrorCallback, base::Unretained(this)));
 }
 
 void ThermalDevice::ReadCallback(const std::string& data) {

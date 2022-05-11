@@ -138,20 +138,23 @@ void AmbientLightSensorDelegateFile::ReadAls() {
   poll_timer_.Stop();
 
   clear_reading_.reset();
-  als_file_.StartRead(base::Bind(&AmbientLightSensorDelegateFile::ReadCallback,
-                                 base::Unretained(this)),
-                      base::Bind(&AmbientLightSensorDelegateFile::ErrorCallback,
-                                 base::Unretained(this)));
+  als_file_.StartRead(
+      base::BindOnce(&AmbientLightSensorDelegateFile::ReadCallback,
+                     base::Unretained(this)),
+      base::BindOnce(&AmbientLightSensorDelegateFile::ErrorCallback,
+                     base::Unretained(this)));
   if (!IsColorSensor())
     return;
 
   color_readings_.clear();
   for (const ColorChannelInfo& channel : kColorChannelConfig) {
     color_als_files_[&channel].StartRead(
-        base::Bind(&AmbientLightSensorDelegateFile::ReadColorChannelCallback,
-                   base::Unretained(this), &channel),
-        base::Bind(&AmbientLightSensorDelegateFile::ErrorColorChannelCallback,
-                   base::Unretained(this), &channel));
+        base::BindOnce(
+            &AmbientLightSensorDelegateFile::ReadColorChannelCallback,
+            base::Unretained(this), &channel),
+        base::BindOnce(
+            &AmbientLightSensorDelegateFile::ErrorColorChannelCallback,
+            base::Unretained(this), &channel));
   }
 }
 

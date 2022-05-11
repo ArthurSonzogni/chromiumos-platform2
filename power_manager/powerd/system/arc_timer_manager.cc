@@ -318,11 +318,9 @@ void ArcTimerManager::HandleStartArcTimer(
   // because if the parent object goes away the timers are cleared and all
   // pending callbacks are cancelled. If the instance sets new timers after a
   // respawn, again, the old timers and pending callbacks are cancelled.
-  // TODO(abhishekbh): This needs to be base::BindRepeating but it's not
-  // available in the current version of libchrome.
-  arc_timer->timer->Start(
-      FROM_HERE, delay,
-      base::Bind(&OnExpiration, timer_id, arc_timer->expiration_fd.get()));
+  arc_timer->timer->Start(FROM_HERE, delay,
+                          base::BindRepeating(&OnExpiration, timer_id,
+                                              arc_timer->expiration_fd.get()));
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 

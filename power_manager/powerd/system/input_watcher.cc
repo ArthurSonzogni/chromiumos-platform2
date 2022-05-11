@@ -189,8 +189,8 @@ LidState InputWatcher::QueryLidState() {
   }
 
   if (!queued_events_.empty()) {
-    send_queued_events_task_.Reset(
-        base::Bind(&InputWatcher::SendQueuedEvents, base::Unretained(this)));
+    send_queued_events_task_.Reset(base::BindOnce(
+        &InputWatcher::SendQueuedEvents, base::Unretained(this)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, send_queued_events_task_.callback());
   }

@@ -92,10 +92,10 @@ class AsyncFileReaderTest : public ::testing::Test {
     file_reader_->set_initial_read_size_for_testing(initial_read_size);
     if (!file_reader_->Init(path_))
       return false;
-    file_reader_->StartRead(
-        base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this)),
-        base::Bind(&AsyncFileReaderTest::ErrorCallback,
-                   base::Unretained(this)));
+    file_reader_->StartRead(base::BindOnce(&AsyncFileReaderTest::ReadCallback,
+                                           base::Unretained(this)),
+                            base::BindOnce(&AsyncFileReaderTest::ErrorCallback,
+                                           base::Unretained(this)));
     return loop_runner_.StartLoop(kMaxFileReadTime);
   }
 

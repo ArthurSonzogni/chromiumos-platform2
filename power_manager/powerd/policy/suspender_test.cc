@@ -60,13 +60,13 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void set_suspend_advance_time(base::TimeDelta delta) {
     suspend_advance_time_ = delta;
   }
-  void set_completion_callback(base::Closure callback) {
+  void set_completion_callback(const base::RepeatingClosure& callback) {
     completion_callback_ = callback;
   }
-  void set_shutdown_callback(base::Closure callback) {
+  void set_shutdown_callback(const base::RepeatingClosure& callback) {
     shutdown_callback_ = callback;
   }
-  void set_suspend_callback(base::Closure callback) {
+  void set_suspend_callback(const base::RepeatingClosure& callback) {
     suspend_callback_ = callback;
   }
 
@@ -176,13 +176,13 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   base::TimeDelta suspend_advance_time_;
 
   // Callback to run each time UndoPrepareToSuspend() is called.
-  base::Closure completion_callback_;
+  base::RepeatingClosure completion_callback_;
 
   // Callback to run each time ShutDown*() is called.
-  base::Closure shutdown_callback_;
+  base::RepeatingClosure shutdown_callback_;
 
   // Callback to run each time DoSuspend() is called.
-  base::Closure suspend_callback_;
+  base::RepeatingClosure suspend_callback_;
 
   // Arguments passed to last invocation of DoSuspend().
   uint64_t suspend_wakeup_count_ = 0;
@@ -749,10 +749,10 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
                             SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
-  delegate_.set_completion_callback(
-      base::Bind(&Suspender::RequestSuspend, base::Unretained(&suspender_),
-                 SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                 SuspendFlavor::SUSPEND_DEFAULT));
+  delegate_.set_completion_callback(base::BindRepeating(
+      &Suspender::RequestSuspend, base::Unretained(&suspender_),
+      SuspendImminent_Reason_OTHER, base::TimeDelta(),
+      SuspendFlavor::SUSPEND_DEFAULT));
 
   // Check that the SuspendDone signal from the first request contains the first
   // request's ID, and that a second request was started immediately.
@@ -767,7 +767,7 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
   EXPECT_EQ(kNewSuspendId, GetSuspendImminentId(1));
 
   // Don't send additional suspend requests automatically.
-  delegate_.set_completion_callback(base::Closure());
+  delegate_.set_completion_callback(base::RepeatingClosure());
 
   // Finish the second request.
   dbus_wrapper_.ClearSentSignals();
@@ -778,8 +778,8 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
 
   // Now make the delegate's shutdown method report that the system is shutting
   // down.
-  delegate_.set_shutdown_callback(
-      base::Bind(&Suspender::HandleShutdown, base::Unretained(&suspender_)));
+  delegate_.set_shutdown_callback(base::BindRepeating(
+      &Suspender::HandleShutdown, base::Unretained(&suspender_)));
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
                             SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
@@ -923,7 +923,7 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
       policy::ShutdownFromSuspendInterface::Action::SUSPEND);
 
   // Simulate being in dark resume after each suspend attempt.
-  delegate_.set_suspend_callback(base::Bind(
+  delegate_.set_suspend_callback(base::BindRepeating(
       [](system::DarkResumeStub* dark_resume) {
         dark_resume->set_in_dark_resume(true);
       },
@@ -1017,7 +1017,7 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
       policy::ShutdownFromSuspendInterface::Action::SUSPEND);
 
   // Simulate being in dark resume after each suspend attempt.
-  delegate_.set_suspend_callback(base::Bind(
+  delegate_.set_suspend_callback(base::BindRepeating(
       [](system::DarkResumeStub* dark_resume) {
         dark_resume->set_in_dark_resume(true);
       },
@@ -1047,7 +1047,7 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
 
   // The resuspend attempt is finally sucessful. Reset the suspend callback so
   // that dark resume is not set to true after Suspend() runs.
-  delegate_.set_suspend_callback(base::Closure());
+  delegate_.set_suspend_callback(base::RepeatingClosure());
   dark_resume_.set_in_dark_resume(false);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());

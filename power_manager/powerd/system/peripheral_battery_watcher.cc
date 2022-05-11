@@ -259,11 +259,11 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
   AsyncFileReader* reader = battery_readers_.back().get();
 
   if (reader->Init(capacity_path)) {
-    reader->StartRead(base::Bind(&PeripheralBatteryWatcher::ReadCallback,
-                                 base::Unretained(this), path, model_name,
-                                 status, sn, active_update),
-                      base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
-                                 base::Unretained(this), path, model_name));
+    reader->StartRead(base::BindOnce(&PeripheralBatteryWatcher::ReadCallback,
+                                     base::Unretained(this), path, model_name,
+                                     status, sn, active_update),
+                      base::BindOnce(&PeripheralBatteryWatcher::ErrorCallback,
+                                     base::Unretained(this), path, model_name));
   } else {
     LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
   }

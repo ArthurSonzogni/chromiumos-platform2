@@ -192,7 +192,7 @@ class InputWatcher : public InputWatcherInterface,
 
   // Posted by QueryLidState() to run SendQueuedEvents() to notify observers
   // about |queued_events_|.
-  base::CancelableClosure send_queued_events_task_;
+  base::CancelableOnceClosure send_queued_events_task_;
 
   // Name of the power button interface to skip monitoring for input events.
   std::string power_button_to_skip_;

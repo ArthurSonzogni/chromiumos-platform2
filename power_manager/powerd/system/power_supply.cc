@@ -1447,8 +1447,8 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   if (notify_policy == NotifyPolicy::SYNCHRONOUSLY) {
     NotifyObservers();
   } else {
-    notify_observers_task_.Reset(base::BindRepeating(
-        &PowerSupply::NotifyObservers, base::Unretained(this)));
+    notify_observers_task_.Reset(
+        base::BindOnce(&PowerSupply::NotifyObservers, base::Unretained(this)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, notify_observers_task_.callback());
   }
