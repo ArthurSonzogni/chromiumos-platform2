@@ -118,7 +118,7 @@ class MojoConnector {
   void OnCreatePushSubscriptionCallback(
       const std::string& device_id,
       const VideoCaptureServiceClient::OpenDeviceCallback& callback,
-      video_capture::mojom::CreatePushSubscriptionResultCode code,
+      video_capture::mojom::CreatePushSubscriptionResultCodePtr code,
       media::mojom::VideoCaptureParamsPtr settings_opened_with);
 
   void StopVideoCaptureOnIpcThread(const std::string& device_id);

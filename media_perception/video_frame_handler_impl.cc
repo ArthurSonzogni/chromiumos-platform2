@@ -137,6 +137,10 @@ void VideoFrameHandlerImpl::OnError(::media::mojom::VideoCaptureError error) {
   LOG(ERROR) << "Got call to OnError: " << error;
 }
 
+void VideoFrameHandlerImpl::OnFrameWithEmptyRegionCapture() {
+  LOG(INFO) << "Got call to OnFrameWithEmptyRegionCapture";
+}
+
 void VideoFrameHandlerImpl::OnLog(const std::string& message) {
   LOG(INFO) << "Got call to OnLog: " << message;
 }

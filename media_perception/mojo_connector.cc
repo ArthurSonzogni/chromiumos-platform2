@@ -22,14 +22,15 @@ namespace mri {
 namespace {
 
 CreatePushSubscriptionResultCode GetCreatePushSubscriptionResultCode(
-    video_capture::mojom::CreatePushSubscriptionResultCode code) {
-  switch (code) {
-    case video_capture::mojom::CreatePushSubscriptionResultCode::kFailed:
-      return CreatePushSubscriptionResultCode::FAILED;
-    case video_capture::mojom::CreatePushSubscriptionResultCode::
+    video_capture::mojom::CreatePushSubscriptionResultCodePtr code) {
+  if (!code->is_success_code()) {
+    return CreatePushSubscriptionResultCode::FAILED;
+  }
+  switch (code->get_success_code()) {
+    case video_capture::mojom::CreatePushSubscriptionSuccessCode::
         kCreatedWithDifferentSettings:
       return CreatePushSubscriptionResultCode::CREATED_WITH_DIFFERENT_SETTINGS;
-    case video_capture::mojom::CreatePushSubscriptionResultCode::
+    case video_capture::mojom::CreatePushSubscriptionSuccessCode::
         kCreatedWithRequestedSettings:
       return CreatePushSubscriptionResultCode::CREATED_WITH_REQUESTED_SETTINGS;
   }
@@ -308,7 +309,7 @@ void MojoConnector::OpenDeviceOnIpcThread(
 void MojoConnector::OnCreatePushSubscriptionCallback(
     const std::string& device_id,
     const VideoCaptureServiceClient::OpenDeviceCallback& callback,
-    video_capture::mojom::CreatePushSubscriptionResultCode code,
+    video_capture::mojom::CreatePushSubscriptionResultCodePtr code,
     media::mojom::VideoCaptureParamsPtr settings_opened_with) {
   VideoStreamParams params;
   params.set_frame_rate_in_frames_per_second(
@@ -319,7 +320,7 @@ void MojoConnector::OnCreatePushSubscriptionCallback(
       settings_opened_with->requested_format->frame_size->width);
   params.set_height_in_pixels(
       settings_opened_with->requested_format->frame_size->height);
-  callback(device_id, GetCreatePushSubscriptionResultCode(code),
+  callback(device_id, GetCreatePushSubscriptionResultCode(std::move(code)),
            Serialized<VideoStreamParams>(params).GetBytes());
 }
 
