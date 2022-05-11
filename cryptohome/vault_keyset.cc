@@ -1092,7 +1092,9 @@ CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
     LOG(ERROR) << "Failed to retrieve auth block.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetUnknownBlockTypeInEncryptVK),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kReboot,
+                        ErrorAction::kPowerwash}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -1182,8 +1184,13 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
   }
 
-  ReportCreateAuthBlock(AuthBlockType::kLibScryptCompat);
-  return std::make_unique<LibScryptCompatAuthBlock>();
+  if (USE_TPM_INSECURE_FALLBACK) {
+    ReportCreateAuthBlock(AuthBlockType::kLibScryptCompat);
+    return std::make_unique<LibScryptCompatAuthBlock>();
+  }
+
+  LOG(WARNING) << "No available auth block for creation.";
+  return nullptr;
 }
 
 std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {

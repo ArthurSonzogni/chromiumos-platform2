@@ -29,6 +29,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/vault_keyset.h"
@@ -70,6 +71,9 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 
   void SetUp() override {
     // Setup salt for brillo functions.
+    EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
+    EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     converter_ = std::make_unique<AuthFactorVaultKeysetConverter>(
@@ -83,6 +87,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 
  protected:
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockTpm> tpm_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;
   std::unique_ptr<KeysetManagement> keyset_management_;

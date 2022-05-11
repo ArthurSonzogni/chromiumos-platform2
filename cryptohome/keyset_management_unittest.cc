@@ -25,6 +25,13 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
+#include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_le_credential_backend.h"
@@ -57,6 +64,7 @@ using ::testing::ElementsAre;
 using ::testing::EndsWith;
 using ::testing::Eq;
 using ::testing::MatchesRegex;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -99,6 +107,50 @@ void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
   *blob = wrapped_keyset;
 }
 
+// TODO(b/233700483): Replace this with the mock auth block.
+class FallbackVaultKeyset : public VaultKeyset {
+ public:
+  explicit FallbackVaultKeyset(Crypto* crypto) : crypto_(crypto) {}
+
+ protected:
+  std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const override {
+    if (IsLECredential()) {
+      return std::make_unique<PinWeaverAuthBlock>(
+          crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+    }
+
+    if (IsSignatureChallengeProtected()) {
+      return std::make_unique<ChallengeCredentialAuthBlock>();
+    }
+
+    bool use_tpm = crypto_->tpm() && crypto_->tpm()->IsOwned();
+    bool with_user_auth = crypto_->CanUnsealWithUserAuth();
+    bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
+                       crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
+                           CryptohomeKeyType::kECC);
+
+    if (use_tpm && with_user_auth && has_ecc_key) {
+      return std::make_unique<TpmEccAuthBlock>(
+          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+    }
+
+    if (use_tpm && with_user_auth && !has_ecc_key) {
+      return std::make_unique<TpmBoundToPcrAuthBlock>(
+          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+    }
+
+    if (use_tpm && !with_user_auth) {
+      return std::make_unique<TpmNotBoundToPcrAuthBlock>(
+          crypto_->tpm(), crypto_->cryptohome_keys_manager());
+    }
+
+    return std::make_unique<LibScryptCompatAuthBlock>();
+  }
+
+ private:
+  Crypto* crypto_;
+};
+
 }  // namespace
 
 class KeysetManagementTest : public ::testing::Test {
@@ -116,10 +168,14 @@ class KeysetManagementTest : public ::testing::Test {
   KeysetManagementTest& operator=(KeysetManagementTest&&) = delete;
 
   void SetUp() override {
+    mock_vault_keyset_factory_ = new NiceMock<MockVaultKeysetFactory>();
+    ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
+        .WillByDefault([this](auto&&, auto&&) {
+          auto* vk = new FallbackVaultKeyset(&crypto_);
+          vk->Initialize(&platform_, &crypto_);
+          return vk;
+        });
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
-    mock_vault_keyset_factory_ = new MockVaultKeysetFactory();
-    keyset_management_mock_vk_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_,
         std::unique_ptr<VaultKeysetFactory>(mock_vault_keyset_factory_));
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
@@ -139,9 +195,8 @@ class KeysetManagementTest : public ::testing::Test {
   NiceMock<MockTpm> tpm_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;
-  std::unique_ptr<KeysetManagement> keyset_management_;
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
-  std::unique_ptr<KeysetManagement> keyset_management_mock_vk_;
+  std::unique_ptr<KeysetManagement> keyset_management_;
   base::ScopedTempDir temp_dir_;
   KeyBlobs key_blobs_;
   std::unique_ptr<AuthBlockState> auth_state_;
@@ -204,7 +259,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithKeyData(const KeyData& key_data) {
     for (auto& user : users_) {
-      VaultKeyset vk;
+      FallbackVaultKeyset vk(&crypto_);
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
@@ -217,7 +272,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithoutKeyData() {
     for (auto& user : users_) {
-      VaultKeyset vk;
+      FallbackVaultKeyset vk(&crypto_);
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
@@ -228,7 +283,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithKeyDataAndKeyBlobs(const KeyData& key_data) {
     for (auto& user : users_) {
-      VaultKeyset vk;
+      FallbackVaultKeyset vk(&crypto_);
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
@@ -248,7 +303,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithoutKeyDataAndKeyBlobs() {
     for (auto& user : users_) {
-      VaultKeyset vk;
+      FallbackVaultKeyset vk(&crypto_);
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       key_blobs_.vkk_key = kInitialBlob32;
@@ -746,8 +801,10 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 
   // TEST
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(
-                new_credentials, *vk_status.value().get(), false));
+            keyset_management_->AddKeyset(new_credentials,
+                                          *vk_status.value().get(), false));
+
+  Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
   // VERIFY
   // If we failed to save the added keyset due to disk failure, the old
@@ -800,8 +857,10 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   // TEST
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(
-                new_credentials, *vk_status.value().get(), false));
+            keyset_management_->AddKeyset(new_credentials,
+                                          *vk_status.value().get(), false));
+
+  Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
   // VERIFY
   // If we failed to save the added keyset due to disk failure, the old
@@ -1769,7 +1828,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
 // vault keyset when missing.
 TEST_F(KeysetManagementTest, AddWrappedResetSeed) {
   // Setup a vault keyset.
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
@@ -1846,7 +1905,7 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
             key));
 
     MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_mock_vk_->GetValidKeyset(users_[0].credentials);
+        keyset_management_->GetValidKeyset(users_[0].credentials);
     ASSERT_FALSE(vk_status.ok());
     EXPECT_EQ(vk_status.status()->mount_error(), value);
   }
@@ -1855,7 +1914,7 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
 TEST_F(KeysetManagementTest, AddKeysetNoFile) {
   // Test for file not found.
   // Setup
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1871,7 +1930,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFile) {
 TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
   // Suitable file path is found, test for first time entering a new label.
   // Setup
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1885,7 +1944,7 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
   // Setup
   // Saves DefaultKeyData() as primary label.
   KeysetSetUpWithKeyData(DefaultKeyData());
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1906,7 +1965,7 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
   // but AddKeyset fails to overwrite the existing file.
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1926,9 +1985,10 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   // Test
-  EXPECT_EQ(
-      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-      keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk, true));
+  EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_->AddKeyset(users_[0].credentials, vk, true));
+
+  Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
   // Verify that AddKeyset deleted the file at index 1.
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 1);
@@ -1944,7 +2004,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
   // Test of AddKeyset overloaded to work with AuthSessions.
   // Suitable file path is found, but save fails.
   // Setup
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1957,9 +2017,10 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
 
   // Test
   // The file path created by AddKeyset is deleted after save fails.
-  EXPECT_EQ(
-      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-      keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk, true));
+  EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_->AddKeyset(users_[0].credentials, vk, true));
+
+  Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
   // Verify
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 0);
@@ -1971,7 +2032,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
   // A suitable file path is found, encyrpt fails,
   // and the created VaultKeyset file is deleted.
   // Setup
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1984,9 +2045,10 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
 
   // Test
   // The file path created by AddKeyset is deleted after encyrption fails.
-  EXPECT_EQ(
-      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-      keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk, true));
+  EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_->AddKeyset(users_[0].credentials, vk, true));
+
+  Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
   // Verify that the file was deleted.
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 0);
@@ -1998,7 +2060,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndData) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2033,7 +2095,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileExtension) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2074,7 +2136,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileIndex) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2117,7 +2179,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2156,7 +2218,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
 TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   // LoadVaultKeysetForUser within function fails to load the VaultKeyset.
   // Setup
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
@@ -2170,8 +2232,10 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
 
   // Test
   std::map<std::string, KeyData> labels_and_data_map;
-  EXPECT_FALSE(keyset_management_mock_vk_->GetVaultKeysetLabelsAndData(
+  EXPECT_FALSE(keyset_management_->GetVaultKeysetLabelsAndData(
       users_[0].obfuscated, &labels_and_data_map));
+
+  Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 }
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
@@ -2490,7 +2554,7 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
   // Setup a vault keyset.
   //
   // Non-scrypt encryption would fail on missing reset seed, so use scrypt.
-  VaultKeyset vk;
+  FallbackVaultKeyset vk(&crypto_);
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());

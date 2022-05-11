@@ -142,6 +142,19 @@ std::string HexDecode(const std::string& hex) {
   CHECK(base::HexStringToBytes(hex, &output));
   return std::string(output.begin(), output.end());
 }
+
+// TODO(b/233700483): Replace this with the mock auth block.
+class LibScryptCompatVaultKeyset : public VaultKeyset {
+ protected:
+  std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const override {
+    return std::make_unique<LibScryptCompatAuthBlock>();
+  }
+
+  std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation() override {
+    return std::make_unique<LibScryptCompatAuthBlock>();
+  }
+};
+
 }  // namespace
 
 class VaultKeysetTest : public ::testing::Test {
@@ -258,7 +271,7 @@ ACTION_P(CopyFromSecureBlob, b) {
 }
 
 TEST_F(VaultKeysetTest, LoadSaveTest) {
-  VaultKeyset keyset;
+  LibScryptCompatVaultKeyset keyset;
   keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
@@ -286,7 +299,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
 }
 
 TEST_F(VaultKeysetTest, WriteError) {
-  VaultKeyset keyset;
+  LibScryptCompatVaultKeyset keyset;
   keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
@@ -302,7 +315,7 @@ TEST_F(VaultKeysetTest, WriteError) {
 }
 
 TEST_F(VaultKeysetTest, AuthLockedDefault) {
-  VaultKeyset keyset;
+  LibScryptCompatVaultKeyset keyset;
   keyset.Initialize(&platform_, &crypto_);
 
   static const int kFscryptPolicyVersion = 2;
@@ -489,7 +502,7 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
   // Check that EncryptVaultKeyset returns something other than the bytes
   // passed.
 
-  VaultKeyset vault_keyset;
+  LibScryptCompatVaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
@@ -503,7 +516,7 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
 TEST_F(VaultKeysetTest, DecryptionTest) {
   // Check that DecryptVaultKeyset returns the original keyset.
 
-  VaultKeyset vault_keyset;
+  LibScryptCompatVaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
@@ -566,7 +579,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   // Check if InitializeToAdd correctly copies keys
   // from parameter vault keyset to underlying data structure.
 
-  VaultKeyset vault_keyset;
+  LibScryptCompatVaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
@@ -612,7 +625,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
 
 TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
   // Check to decrypt a VaultKeyset that hasn't been loaded yet.
-  VaultKeyset vault_keyset;
+  LibScryptCompatVaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 

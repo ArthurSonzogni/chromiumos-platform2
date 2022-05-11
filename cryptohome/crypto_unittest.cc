@@ -352,34 +352,37 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
 }
 
 TEST_F(CryptoTest, ScryptStepTest) {
-  // Check that the code path changes to support scrypt work
-  MockPlatform platform;
-  Crypto crypto(&platform);
+  if (USE_TPM_INSECURE_FALLBACK) {
+    // Check that the code path changes to support scrypt work
+    MockPlatform platform;
+    Crypto crypto(&platform);
 
-  VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform, &crypto);
-  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
+    VaultKeyset vault_keyset;
+    vault_keyset.Initialize(&platform, &crypto);
+    vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
-  SecureBlob key(20);
-  GetSecureRandom(key.data(), key.size());
+    SecureBlob key(20);
+    GetSecureRandom(key.data(), key.size());
 
-  AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+    AuthBlockState auth_block_state;
+    ASSERT_TRUE(
+        vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
 
-  vault_keyset.SetAuthBlockState(auth_block_state);
+    vault_keyset.SetAuthBlockState(auth_block_state);
 
-  SecureBlob original_data;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+    SecureBlob original_data;
+    ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  ASSERT_TRUE(
-      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
-          .ok());
+    ASSERT_TRUE(
+        vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
+            .ok());
 
-  SecureBlob new_data;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
+    SecureBlob new_data;
+    ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
 
-  EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+    EXPECT_EQ(new_data.size(), original_data.size());
+    ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+  }
 }
 
 TEST_F(CryptoTest, GetSha1FipsTest) {

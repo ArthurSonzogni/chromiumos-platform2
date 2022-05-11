@@ -86,10 +86,7 @@ class RealUserSessionTest : public ::testing::Test {
     PrepareDirectoryStructure();
 
     homedirs_->Create(kUser0);
-    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> status =
-        keyset_management_->AddInitialKeyset(users_[0].credentials,
-                                             FileSystemKeyset::CreateRandom());
-    ASSERT_TRUE(status.ok());
+    users_[0].user_fs_keyset = FileSystemKeyset::CreateRandom();
 
     mount_ = new NiceMock<MockMount>();
 
@@ -113,6 +110,7 @@ class RealUserSessionTest : public ::testing::Test {
     Credentials credentials;
     base::FilePath homedir_path;
     base::FilePath user_path;
+    FileSystemKeyset user_fs_keyset;
   };
 
   // Information about users' homedirs. The order of users is equal to kUsers.
@@ -182,10 +180,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
   session_->SetCredentials(users_[0].credentials);
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk_status.ok());
-  FileSystemKeyset fs_keyset(*vk_status.value().get());
+  FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(ReturnOk<StorageError>());
@@ -343,11 +338,7 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk_status.ok());
-
-  FileSystemKeyset fs_keyset(*vk_status.value().get());
+  FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(ReturnOk<StorageError>());
@@ -405,10 +396,7 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(ReturnOk<StorageError>());
 
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk_status.ok());
-  FileSystemKeyset fs_keyset(*vk_status.value().get());
+  FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
   EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
 
   // The WebAuthn secret isn't stored when mounting.

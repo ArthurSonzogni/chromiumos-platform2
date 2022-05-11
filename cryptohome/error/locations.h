@@ -439,7 +439,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAddFailedInAddKeyset = 306,
   /* ./auth_session.cc */
   kLocAuthSessionNoFSKeyInAddKeyset = 307,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNoChallengeInfoInAddKeyset = 308,
   /* ./auth_session.cc */
   kLocAuthSessionAddInitialFailedInAddKeyset = 309,
@@ -453,7 +453,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionUnauthedInUpdate = 313,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInUpdate = 314,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionChalCredUnsupportedInUpdate = 315,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInCallbackInUpdateKeyset = 316,
@@ -495,7 +495,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionUnknownFactorInAddAuthFactor = 334,
   /* ./auth_session.cc */
   kLocAuthSessionNoInputInAddAuthFactor = 335,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionVKUnsupportedInAddAuthFactor = 336,
   /* ./auth_session.cc */
   kLocAuthSessionCreateAuthFactorFailedInAddViaUSS = 337,
@@ -799,7 +799,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthMountFailedInPreparePersistentVault = 486,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAuthSessionInAddAuthFactor = 487,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAddAuthFactorFailedInAddAuthFactor = 488,
   /* ./user_secret_stash_storage.cc */
   kLocUSSStorageWriteFailedInPersist = 489,
@@ -907,6 +907,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionVKConverterFailsInAddAuthFactor = 540,
   /* ./auth_session.cc */
   kLocAuthSessionAddViaUSSFailedInAddAuthFactor = 541,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor = 542,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

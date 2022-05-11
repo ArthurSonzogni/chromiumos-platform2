@@ -239,21 +239,23 @@ class VaultKeyset {
   // Generates a random blob to be used as reset secret for LE Credentials.
   std::optional<brillo::SecureBlob> GetOrGenerateResetSecret();
 
+  // The protected functions that can be override for the testing purpose.
+ protected:
+  // This function serves as a factory method to return the authblock used in
+  // authentication creation.
+  virtual std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const;
+
+  // This function serves as a factory method to return the authblock used in
+  // authentication derivation. The type of the AuthBlock is determined based on
+  // |flags_|.which derived from vault keyset.
+  virtual std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation();
+
  private:
   // Converts the class to a protobuf for serialization to disk.
   SerializedVaultKeyset ToSerialized() const;
 
   // Clears all the fields set from the SerializedVaultKeyset.
   void ResetVaultKeyset();
-
-  // This function serves as a factory method to return the authblock used in
-  // authentication creation.
-  std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const;
-
-  // This function serves as a factory method to return the authblock used in
-  // authentication derivation. The type of the AuthBlock is determined based on
-  // |flags_|.which derived from vault keyset.
-  std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation();
 
   // This function decrypts a keyset that is encrypted with a VaultKeysetKey.
   //

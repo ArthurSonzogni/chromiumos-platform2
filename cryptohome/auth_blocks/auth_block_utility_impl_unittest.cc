@@ -1355,7 +1355,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       keyset_management_.get(), &crypto_, &platform_);
 
   // Test for kLibScryptCompat
-  EXPECT_EQ(AuthBlockType::kLibScryptCompat,
+  EXPECT_EQ(USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kLibScryptCompat
+                                      : AuthBlockType::kMaxValue,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
                 /*is_challenge_credential =*/false));

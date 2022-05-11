@@ -13,32 +13,28 @@
 
 namespace cryptohome {
 
-class VerifierTest : public ::testing::TestWithParam<CredentialVerifier*> {
+class VerifierTest : public ::testing::Test {
  public:
-  VerifierTest() { password_verifier_.reset(GetParam()); }
+  void SetUp() override { password_verifier_.reset(new ScryptVerifier()); }
 
  protected:
   std::unique_ptr<CredentialVerifier> password_verifier_;
 };
 
-INSTANTIATE_TEST_SUITE_P(Scrypt,
-                         VerifierTest,
-                         ::testing::Values(new ScryptVerifier()));
-
-TEST_P(VerifierTest, Ok) {
+TEST_F(VerifierTest, Ok) {
   brillo::SecureBlob secret("good");
   EXPECT_TRUE(password_verifier_->Set(secret));
   EXPECT_TRUE(password_verifier_->Verify(secret));
 }
 
-TEST_P(VerifierTest, Fail) {
+TEST_F(VerifierTest, Fail) {
   brillo::SecureBlob secret("good");
   brillo::SecureBlob wrong_secret("wrong");
   EXPECT_TRUE(password_verifier_->Set(secret));
   EXPECT_FALSE(password_verifier_->Verify(wrong_secret));
 }
 
-TEST_P(VerifierTest, NotSet) {
+TEST_F(VerifierTest, NotSet) {
   brillo::SecureBlob secret("not set secret");
   EXPECT_FALSE(password_verifier_->Verify(secret));
 }

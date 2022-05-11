@@ -35,8 +35,10 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
@@ -78,9 +80,17 @@ class AuthSessionTest : public ::testing::Test {
   AuthSessionTest& operator=(const AuthSessionTest&) = delete;
   ~AuthSessionTest() override = default;
 
+  void SetUp() override {
+    EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
+    EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  }
+
  protected:
   base::test::SingleThreadTaskEnvironment task_environment_;
   // Mock and fake objects, will be passed to AuthSession for its internal use.
+  NiceMock<MockTpm> tpm_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockCrypto> crypto_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockKeysetManagement> keyset_management_;

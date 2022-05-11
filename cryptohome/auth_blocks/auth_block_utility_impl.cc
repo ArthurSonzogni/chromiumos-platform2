@@ -290,7 +290,12 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     return AuthBlockType::kTpmNotBoundToPcr;
   }
 
-  return AuthBlockType::kLibScryptCompat;
+  if (USE_TPM_INSECURE_FALLBACK) {
+    return AuthBlockType::kLibScryptCompat;
+  }
+
+  LOG(WARNING) << "No available auth block for creation.";
+  return AuthBlockType::kMaxValue;
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
@@ -517,6 +522,18 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
   AuthBlockType auth_block_type =
       GetAuthBlockTypeForCreation(is_le_credential, is_recovery,
                                   /*is_challenge_credential =*/false);
+
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Failed to get auth block type for creation";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  AuthInput mutable_auth_input = auth_input;
+
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";
     return MakeStatus<CryptohomeCryptoError>(
