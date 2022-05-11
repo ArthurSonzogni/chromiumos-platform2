@@ -11,6 +11,7 @@
 #include "modemfwd/error.h"
 #include "modemfwd/metrics.h"
 
+using modemfwd::metrics::CheckForWedgedModemResult;
 using modemfwd::metrics::DlcInstallResult;
 using modemfwd::metrics::DlcUninstallResult;
 using modemfwd::metrics::FwInstallResult;
@@ -42,6 +43,51 @@ class MetricsTest : public testing::Test {
 TEST_F(MetricsTest, Init) {
   EXPECT_CALL(*metrics_library_, Init());
   metrics_->Init();
+}
+
+TEST_F(MetricsTest, SendCheckForWedgedModemResult) {
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  metrics::kMetricCheckForWedgedModemResult, 0,
+                  static_cast<int>(CheckForWedgedModemResult::kNumConstants)));
+  metrics_->SendCheckForWedgedModemResult(
+      CheckForWedgedModemResult::kModemPresent);
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  metrics::kMetricCheckForWedgedModemResult, 1,
+                  static_cast<int>(CheckForWedgedModemResult::kNumConstants)));
+  metrics_->SendCheckForWedgedModemResult(
+      CheckForWedgedModemResult::kModemPresentAfterReboot);
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  metrics::kMetricCheckForWedgedModemResult, 2,
+                  static_cast<int>(CheckForWedgedModemResult::kNumConstants)));
+  metrics_->SendCheckForWedgedModemResult(
+      CheckForWedgedModemResult::kFailedToRebootModem);
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  metrics::kMetricCheckForWedgedModemResult, 3,
+                  static_cast<int>(CheckForWedgedModemResult::kNumConstants)));
+  metrics_->SendCheckForWedgedModemResult(
+      CheckForWedgedModemResult::kModemWedged);
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  metrics::kMetricCheckForWedgedModemResult, 4,
+                  static_cast<int>(CheckForWedgedModemResult::kNumConstants)));
+  metrics_->SendCheckForWedgedModemResult(
+      CheckForWedgedModemResult::kModemAbsentAfterReboot);
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  // Check that all values were tested.
+  EXPECT_EQ(5, static_cast<int>(CheckForWedgedModemResult::kNumConstants));
 }
 
 TEST_F(MetricsTest, SendDlcInstallResultSuccess) {

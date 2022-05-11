@@ -11,6 +11,7 @@
 #include "modemfwd/logging.h"
 #include "modemfwd/metrics.h"
 
+using modemfwd::metrics::CheckForWedgedModemResult;
 using modemfwd::metrics::DlcInstallResult;
 using modemfwd::metrics::DlcUninstallResult;
 using modemfwd::metrics::FwInstallResult;
@@ -41,6 +42,8 @@ MetricEnum GetMetricFromInnerErrorCode(
 
 namespace metrics {
 
+const char kMetricCheckForWedgedModemResult[] =
+    "Platform.Modemfwd.CheckForWedgedModemResult";
 const char kMetricDlcInstallResult[] = "Platform.Modemfwd.DlcInstallResult";
 const char kMetricDlcUninstallResult[] = "Platform.Modemfwd.DlcUninstallResult";
 const char kMetricFwUpdateLocation[] = "Platform.Modemfwd.FWUpdateLocation";
@@ -168,5 +171,12 @@ void Metrics::SendFwInstallResult(FwInstallResult result) {
   metrics_library_->SendEnumToUMA(
       metrics::kMetricFwInstallResult, static_cast<int>(result),
       static_cast<int>(FwInstallResult::kNumConstants));
+}
+
+void Metrics::SendCheckForWedgedModemResult(CheckForWedgedModemResult result) {
+  ELOG(INFO) << "SendCheckForWedgedModemResult:" << static_cast<int>(result);
+  metrics_library_->SendEnumToUMA(
+      metrics::kMetricCheckForWedgedModemResult, static_cast<int>(result),
+      static_cast<int>(CheckForWedgedModemResult::kNumConstants));
 }
 }  // namespace modemfwd

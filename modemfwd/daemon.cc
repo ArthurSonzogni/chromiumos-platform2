@@ -176,8 +176,8 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  helper_directory_ =
-      CreateModemHelperDirectory(helper_dir_path_, GetModemFirmwareVariant());
+  variant_ = GetModemFirmwareVariant();
+  helper_directory_ = CreateModemHelperDirectory(helper_dir_path_, variant_);
   if (!helper_directory_) {
     auto err =
         Error::Create(FROM_HERE, kErrorResultInitFailure,
@@ -206,7 +206,6 @@ int Daemon::OnInit() {
 int Daemon::SetupFirmwareDirectory() {
   CHECK(!fw_manifest_dir_path_.empty());
 
-  variant_ = GetModemFirmwareVariant();
   std::map<std::string, std::string> dlc_per_variant;
   fw_index_ = ParseFirmwareManifestV2(
       fw_manifest_dir_path_.Append(kManifestName), dlc_per_variant);
@@ -250,7 +249,7 @@ void Daemon::InstallDlcCompleted(const std::string& mount_path,
         metrics::FwUpdateLocation::kFallbackToRootFS);
   } else {
     fw_manifest_directory_ = CreateFirmwareDirectory(
-        std::move(fw_index_), base::FilePath(mount_path), std::move(variant_));
+        std::move(fw_index_), base::FilePath(mount_path), variant_);
     metrics_->SendFwUpdateLocation(metrics::FwUpdateLocation::kDlc);
   }
   CompleteInitialization();
@@ -259,7 +258,7 @@ void Daemon::InstallDlcCompleted(const std::string& mount_path,
 void Daemon::CompleteInitialization() {
   if (!fw_manifest_directory_)
     fw_manifest_directory_ = CreateFirmwareDirectory(
-        std::move(fw_index_), fw_manifest_dir_path_, std::move(variant_));
+        std::move(fw_index_), fw_manifest_dir_path_, variant_);
   DCHECK(fw_manifest_directory_);
 
   auto journal = OpenJournal(journal_file_path_, fw_manifest_directory_.get(),
@@ -389,8 +388,11 @@ void Daemon::CheckForWedgedModems() {
 
 void Daemon::ForceFlashIfWedged(const std::string& device_id,
                                 ModemHelper* helper) {
-  if (device_ids_seen_.count(device_id) > 0)
+  if (device_ids_seen_.count(device_id) > 0) {
+    metrics_->SendCheckForWedgedModemResult(
+        metrics::CheckForWedgedModemResult::kModemPresent);
     return;
+  }
 
   if (!helper->FlashModeCheck()) {
     LOG(WARNING) << "Modem not found, trying to reset it...";
@@ -403,21 +405,35 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     } else {
       EVLOG(1) << "Couldn't reboot modem with device ID [" << device_id
                << "], it may not be present";
+      // |kFailedToRebootModem| will be sent only on devices with a modem
+      // firmware-variant, since devices without a modem will always fail to
+      // reboot the non existing modem and will pollute the metrics.
+      if (!variant_.empty()) {
+        metrics_->SendCheckForWedgedModemResult(
+            metrics::CheckForWedgedModemResult::kFailedToRebootModem);
+      }
     }
     return;
   }
 
+  metrics_->SendCheckForWedgedModemResult(
+      metrics::CheckForWedgedModemResult::kModemWedged);
   LOG(INFO) << "Modem with device ID [" << device_id
             << "] appears to be wedged, attempting recovery";
   ForceFlash(device_id);
 }
 
 void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
-  if (device_ids_seen_.count(device_id) > 0)
+  if (device_ids_seen_.count(device_id) > 0) {
+    metrics_->SendCheckForWedgedModemResult(
+        metrics::CheckForWedgedModemResult::kModemPresentAfterReboot);
     return;
+  }
 
   LOG(INFO) << "Modem with device ID [" << device_id
             << "] did not appear after reboot, attempting recovery";
+  metrics_->SendCheckForWedgedModemResult(
+      metrics::CheckForWedgedModemResult::kModemAbsentAfterReboot);
   ForceFlash(device_id);
 }
 

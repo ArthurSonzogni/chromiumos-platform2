@@ -16,6 +16,7 @@
 namespace modemfwd {
 
 namespace metrics {
+extern const char kMetricCheckForWedgedModemResult[];
 extern const char kMetricDlcInstallResult[];
 extern const char kMetricDlcUninstallResult[];
 extern const char kMetricFwUpdateLocation[];
@@ -80,6 +81,15 @@ enum class FwInstallResult {
   kNumConstants
 };
 
+enum class CheckForWedgedModemResult {
+  kModemPresent = 0,
+  kModemPresentAfterReboot = 1,
+  kFailedToRebootModem = 2,
+  kModemWedged = 3,
+  kModemAbsentAfterReboot = 4,
+  kNumConstants
+};
+
 }  // namespace metrics
 
 // Performs UMA metrics logging for the modemfw daemon.
@@ -113,6 +123,10 @@ class Metrics {
 
   // Sends the |FwInstallResult| value that corresponds to |err|.
   void SendFwInstallResultFailure(const brillo::Error* err);
+
+  // Sends the |CheckForWedgedModemResult| value.
+  virtual void SendCheckForWedgedModemResult(
+      metrics::CheckForWedgedModemResult result);
 
  protected:
   // For testing.
