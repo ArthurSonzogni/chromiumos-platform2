@@ -28,6 +28,8 @@ namespace {
 
 const char kDevCoredumpDBusErrorString[] =
     "org.chromium.debugd.error.DevCoreDump";
+const char kPrintscanDebugSetCategoriesErrorString[] =
+    "org.chromium.debugd.error.PrintscanDebugSetCategories";
 
 const char kShouldSendRlzPingKey[] = "should_send_rlz_ping";
 
@@ -62,6 +64,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   packet_capture_tool_ = std::make_unique<PacketCaptureTool>();
   perf_tool_ = std::make_unique<PerfTool>();
   ping_tool_ = std::make_unique<PingTool>();
+  printscan_tool_ = std::make_unique<PrintscanTool>(bus);
   probe_tool_ = std::make_unique<ProbeTool>();
   route_tool_ = std::make_unique<RouteTool>();
   shill_scripts_tool_ = std::make_unique<ShillScriptsTool>();
@@ -742,6 +745,35 @@ bool DebugdDBusAdaptor::SetCrashSenderTestMode(brillo::ErrorPtr* error,
 
   crash_sender_tool_->SetTestMode(mode);
   return true;
+}
+
+bool DebugdDBusAdaptor::PrintscanDebugSetCategories(brillo::ErrorPtr* error,
+                                                    uint32_t categories) {
+  PrintscanCategories categories_enum;
+  switch (categories) {
+    case 0x0: {
+      categories_enum = PrintscanCategories::PRINTSCAN_NO_CATEGORIES;
+      break;
+    }
+    case 0x1: {
+      categories_enum = PrintscanCategories::PRINTSCAN_PRINTING_CATEGORY;
+      break;
+    }
+    case 0x2: {
+      categories_enum = PrintscanCategories::PRINTSCAN_SCANNING_CATEGORY;
+      break;
+    }
+    case 0x3: {
+      categories_enum = PrintscanCategories::PRINTSCAN_ALL_CATEGORIES;
+      break;
+    }
+    default: {
+      DEBUGD_ADD_ERROR(error, kPrintscanDebugSetCategoriesErrorString,
+                       "Invalid categories for PrintscanDebugSetCategories.");
+      return false;
+    }
+  }
+  return printscan_tool_->DebugSetCategories(error, categories_enum);
 }
 
 }  // namespace debugd

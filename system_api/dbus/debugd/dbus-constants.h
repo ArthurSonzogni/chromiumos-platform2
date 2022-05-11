@@ -151,6 +151,13 @@ enum FeedbackLogType {
   VAR_LOG_FILES = 9,
 };
 
+// PrintscanDebugCategories flags. These values must align with those in
+// org.chromium.debug.xml.
+enum PrintscanDebugCategories {
+  PrintscanDebugCategory_PRINTING = 0x1,
+  PrintscanDebugCategory_SCANNING = 0x2,
+};
+
 // Debug log keys which should be substituted in the system info dialog.
 const char kIwlwifiDumpKey[] = "iwlwifi_dump";
 

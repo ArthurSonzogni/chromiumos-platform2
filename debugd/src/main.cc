@@ -97,15 +97,20 @@ void enter_vfs_namespace() {
   // often leads to a smaller blob), then copies the old blob to a new blob and
   // overwrites the repacked kernel onto the new blob.
   minijail_mount_tmp_size(j.get(), 100 * 1024 * 1024);
-  // In case we start before cups, make sure the path exists.
-  mkdir("/run/cups", 0755);
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
     LOG(FATAL) << "minijail_bind(\"/run/cups\") failed";
-  // In case we start before upstart-socket-bridge, make sure the path exists.
-  mkdir("/run/ippusb", 0755);
   // Mount /run/ippusb to be able to communicate with CUPS.
   if (minijail_bind(j.get(), "/run/ippusb", "/run/ippusb", 0))
     LOG(FATAL) << "minijail_bind(\"/run/ippusb\") failed";
+
+  // Mount writable debug directories for cups, ippusb, and lorgnette for use
+  // with printscan_tool.
+  if (minijail_bind(j.get(), "/run/cups/debug", "/run/cups/debug", 1))
+    LOG(FATAL) << "minijail_bind(\"/run/cups/debug\" failed";
+  if (minijail_bind(j.get(), "/run/ippusb/debug", "/run/ippusb/debug", 1))
+    LOG(FATAL) << "minijail_bind(\"/run/ippusb/debug\" failed";
+  if (minijail_bind(j.get(), "/run/lorgnette/debug", "/run/lorgnette/debug", 1))
+    LOG(FATAL) << "minijail_bind(\"/run/lorgnette/debug\" failed";
 
   // In case we start before avahi-daemon, make sure the path exists.
   mkdir("/var/run/avahi-daemon", 0755);

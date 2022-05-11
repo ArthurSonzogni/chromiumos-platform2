@@ -121,6 +121,7 @@ static_library("libdebugd") {
     "src/packet_capture_tool.cc",
     "src/perf_tool.cc",
     "src/ping_tool.cc",
+    "src/printscan_tool.cc",
     "src/probe_tool.cc",
     "src/process_with_id.cc",
     "src/process_with_output.cc",
@@ -137,6 +138,7 @@ static_library("libdebugd") {
     "src/systrace_tool.cc",
     "src/tracepath_tool.cc",
     "src/u2f_tool.cc",
+    "src/upstart_tools.cc",
     "src/variant_utils.cc",
     "src/verify_ro_tool.cc",
     "src/wifi_fw_dump_tool.cc",
@@ -381,10 +383,12 @@ if (use.test) {
       "src/log_tool_test.cc",
       "src/metrics_test.cc",
       "src/perf_tool_test.cc",
+      "src/printscan_tool_test.cc",
       "src/probe_tool_test.cc",
       "src/process_with_id_test.cc",
       "src/storage_tool_test.cc",
       "src/subprocess_tool_test.cc",
+      "src/upstart_tools_test.cc",
     ]
     configs += [
       "//common-mk:test",

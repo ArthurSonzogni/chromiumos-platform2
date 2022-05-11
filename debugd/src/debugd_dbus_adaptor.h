@@ -44,6 +44,7 @@
 #include "debugd/src/packet_capture_tool.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/ping_tool.h"
+#include "debugd/src/printscan_tool.h"
 #include "debugd/src/probe_tool.h"
 #include "debugd/src/restricted_tool_wrapper.h"
 #include "debugd/src/route_tool.h"
@@ -262,6 +263,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                            const std::string& log) override;
   bool DRMTraceSnapshot(brillo::ErrorPtr* error, uint32_t type_enum) override;
   bool SetCrashSenderTestMode(brillo::ErrorPtr* error, bool mode) override;
+  bool PrintscanDebugSetCategories(brillo::ErrorPtr* error,
+                                   uint32_t categories) override;
 
  private:
   void OnPacketCaptureStopped();
@@ -292,6 +295,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<PacketCaptureTool> packet_capture_tool_;
   std::unique_ptr<PerfTool> perf_tool_;
   std::unique_ptr<PingTool> ping_tool_;
+  std::unique_ptr<PrintscanTool> printscan_tool_;
   std::unique_ptr<RouteTool> route_tool_;
   std::unique_ptr<SchedulerConfigurationTool> scheduler_configuration_tool_;
   std::unique_ptr<ShillScriptsTool> shill_scripts_tool_;

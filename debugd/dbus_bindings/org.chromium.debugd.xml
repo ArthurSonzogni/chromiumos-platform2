@@ -1542,6 +1542,21 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="PrintscanDebugSetCategories">
+      <tp:docstring>
+        Collect printscan debug logs for the specified categories.
+        If no categories are specified, disable log collection
+        for all categories.
+      </tp:docstring>
+      <arg name="categories" type="u" direction="in">
+        <tp:docstring>
+          A bitwise OR of categories to enable. Acceptable values are defined
+          in the PrintscanDebugCategories flags.
+          Setting |categories| to '0' will disable additional logging.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <tp:flags name="DRMTraceCategories">
       <tp:docstring>
         Bit flags representing debug logging categories. Definitions of
@@ -1599,6 +1614,16 @@
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
+    <tp:flags name="PrintscanDebugCategories">
+      <tp:docstring>
+        Bit flags representing debug logging categories.
+        Currently dbusxx-xml2cpp does not extract flags values, so any changes
+        here should be manually flushed to
+        system_api/dbus/debugd/dbus-constants.h
+      </tp:docstring>
+      <tp:flag suffix="PRINTING"  value="0x1"/>
+      <tp:flag suffix="SCANNING"  value="0x2"/>
+    </tp:flags>
     <signal name="PacketCaptureStart">
       <tp:docstring>
         The signal is emitted when a packet capture process starts in debugd.
