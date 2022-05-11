@@ -25,7 +25,6 @@
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
-#include "diagnostics/cros_healthd/utils/mock_mojo_relay.h"
 
 namespace org {
 namespace chromium {
@@ -65,9 +64,6 @@ class MockContext final : public Context {
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
   org::freedesktop::fwupdProxyMock* mock_fwupd_proxy() const;
   MockDebugdAdapter* mock_debugd_adapter() const;
-  MockMojoRelay<chromeos::cros_healthd::internal::mojom::
-                    CrosHealthdInternalServiceFactory>*
-  mock_internal_service_factory_relay() const;
   FakeNetworkHealthAdapter* fake_network_health_adapter() const;
   MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() const;
   FakePowerdAdapter* fake_powerd_adapter() const;
