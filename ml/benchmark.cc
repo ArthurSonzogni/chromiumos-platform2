@@ -221,6 +221,8 @@ BenchmarkResults ToBenchmarkResults(AccumulativeResult* accumulative_result) {
   }
 
   benchmark_result.set_status(BenchmarkReturnStatus::OK);
+  benchmark_result.set_power_normalization_factor(
+      accumulative_result->cputimes_in_us.size());
 
   // Sorts all walltimes_in_us for all the successful runs.
   std::sort(accumulative_result->walltimes_in_us.begin(),

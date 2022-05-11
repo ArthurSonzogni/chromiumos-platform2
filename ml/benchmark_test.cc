@@ -148,6 +148,7 @@ TEST_F(MlBenchmarkTest, TfliteModelMatchedValueTest) {
   CHECK(results.ParseFromArray(results_data, results_size));
   free_benchmark_results(results_data);
   EXPECT_EQ(results.status(), BenchmarkReturnStatus::OK);
+  EXPECT_EQ(results.power_normalization_factor(), 100);
 
   auto latencies = results.percentile_latencies_in_us();
   EXPECT_EQ(latencies.size(), 4);
@@ -177,7 +178,7 @@ TEST_F(MlBenchmarkTest, TfliteModelMatchedValueTest) {
   EXPECT_GT(metrics[4].values()[0], metrics[3].values()[0]);
 }
 
-TEST_F(MlBenchmarkTest, TfliteModelUnmachedValueTest) {
+TEST_F(MlBenchmarkTest, TfliteModelUnmatchedValueTest) {
   SetExpectedValue(0.76f);
   // Step 1 run benchmark_start.
   const std::string config = benchmark_config_.SerializeAsString();
