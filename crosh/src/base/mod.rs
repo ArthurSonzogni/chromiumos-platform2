@@ -13,6 +13,7 @@ mod dlc_install;
 mod dmesg;
 mod insert_coin;
 mod packet_capture;
+mod printscan_debug;
 mod rollback;
 mod set_time;
 mod verify_ro;
@@ -31,6 +32,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     dmesg::register(dispatcher);
     insert_coin::register(dispatcher);
     packet_capture::register(dispatcher);
+    printscan_debug::register(dispatcher);
     rollback::register(dispatcher);
     set_time::register(dispatcher);
     verify_ro::register(dispatcher);
