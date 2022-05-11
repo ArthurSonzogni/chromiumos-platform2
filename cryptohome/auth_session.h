@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
@@ -390,6 +391,9 @@ class AuthSession final {
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.
   std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
+
+  // Should be the last member.
+  base::WeakPtrFactory<AuthSession> weak_factory_{this};
 
   friend class AuthSessionTest;
   friend class AuthSessionManagerTest;

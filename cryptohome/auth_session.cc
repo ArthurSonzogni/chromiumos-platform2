@@ -373,7 +373,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
     // credentials. So |reset_secret| is given to be std::nullopt.
     reset_secret = std::nullopt;
     create_callback = base::BindOnce(
-        &AuthSession::AddVaultKeyset, base::Unretained(this),
+        &AuthSession::AddVaultKeyset, weak_factory_.GetWeakPtr(),
         credentials.key_data(), credentials.challenge_credentials_keyset_info(),
         std::move(on_done));
   } else {  // AddKeyset operation
@@ -382,7 +382,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
       reset_secret = vault_keyset_->GetOrGenerateResetSecret();
     }
     create_callback = base::BindOnce(
-        &AuthSession::AddVaultKeyset, base::Unretained(this),
+        &AuthSession::AddVaultKeyset, weak_factory_.GetWeakPtr(),
         credentials.key_data(), std::nullopt, std::move(on_done));
   }
   // |reset_secret| is not processed in the AuthBlocks, the value is copied to
@@ -595,12 +595,11 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
                           /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username_, reset_secret};
 
-  AuthBlock::CreateCallback create_callback =
-      base::BindOnce(&AuthSession::UpdateVaultKeyset, base::Unretained(this),
-                     credentials.key_data(), std::move(on_done));
+  AuthBlock::CreateCallback create_callback = base::BindOnce(
+      &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
+      credentials.key_data(), std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
-  return;
 }
 
 void AuthSession::UpdateVaultKeyset(
@@ -897,7 +896,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
   return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_state,
       base::BindOnce(&AuthSession::LoadVaultKeysetAndFsKeys,
-                     base::Unretained(this), auth_input.user_input,
+                     weak_factory_.GetWeakPtr(), auth_input.user_input,
                      std::move(on_done)));
 }
 
