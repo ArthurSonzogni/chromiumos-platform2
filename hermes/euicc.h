@@ -105,10 +105,12 @@ class Euicc {
   void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
                     DbusResult<T...> dbus_result,
                     int err);
+#if USE_INTERNAL
   template <typename... T>
   void OnFWUpdated(base::OnceCallback<void(DbusResult<T...>)> cb,
                    DbusResult<T...> dbus_result,
                    int os_update_result);
+#endif
   enum class InitEuiccStep {
     CHECK_IF_INITIALIZED,
     UPDATE_FW,

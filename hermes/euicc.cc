@@ -618,6 +618,7 @@ void Euicc::RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
   std::move(cb).Run(std::move(dbus_result));
 }
 
+#if USE_INTERNAL
 template <typename... T>
 void Euicc::OnFWUpdated(
     base::OnceCallback<void(DbusResult<T...>)> passthrough_cb,
@@ -641,6 +642,7 @@ void Euicc::OnFWUpdated(
                      std::move(start_get_card_version),
                      std::move(dbus_result)));
 }
+#endif
 
 template <typename... T>
 void Euicc::InitEuicc(InitEuiccStep step,
