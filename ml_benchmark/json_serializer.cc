@@ -125,6 +125,9 @@ std::optional<base::Value> BenchmarkResultsToJson(
   }
   doc.SetKey("metrics", std::move(metrics));
 
+  doc.SetKey("power_normalization_factor",
+             base::Value(results.power_normalization_factor()));
+
   return doc;
 }
 

@@ -187,4 +187,14 @@ TEST(BenchmarkResultsToJson, MetricsCardinality) {
   }
 }
 
+TEST(BenchmarkResultsToJson, PowerNormalizationFactor) {
+  BenchmarkResults results;
+  results.set_power_normalization_factor(100);
+
+  const std::optional<base::Value> json =
+      ml_benchmark::BenchmarkResultsToJson(results);
+  ASSERT_TRUE(json);
+  EXPECT_EQ(json->FindDoubleKey("power_normalization_factor"), 100);
+}
+
 }  // namespace ml_benchmark

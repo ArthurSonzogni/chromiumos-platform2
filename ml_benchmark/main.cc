@@ -54,6 +54,9 @@ void PrintMetrics(const BenchmarkResults& results) {
     LOG(INFO) << metric.name() << ": " << metric.values()[0] << " ("
               << chrome::ml_benchmark::Metric_Units_Name(metric.units()) << ")";
   }
+
+  LOG(INFO) << "power normalization factor: "
+            << results.power_normalization_factor();
 }
 
 void BenchmarkAndReportResults(

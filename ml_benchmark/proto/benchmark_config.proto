@@ -68,6 +68,6 @@ message BenchmarkResults {
   BenchmarkReturnStatus status = 1;
   string results_message = 2;
   map<int32, int64> percentile_latencies_in_us = 5;
-
   repeated Metric metrics = 6;
+  double power_normalization_factor = 7;
 }
