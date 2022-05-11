@@ -12,6 +12,7 @@
 
 #include <sysexits.h>
 
+#include <csignal>
 #include <map>
 #include <memory>
 #include <vector>
