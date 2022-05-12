@@ -26,6 +26,7 @@
 #include <linux/fs.h>
 #include <linux/vm_sockets.h>
 
+#include <csignal>
 #include <map>
 #include <string>
 #include <utility>
