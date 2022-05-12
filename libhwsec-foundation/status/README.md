@@ -7,7 +7,7 @@ The error objects framework consists of two main components:
 
 Error objects are default, copy and move constructible, and also provide an
 explicit constructor from a `std::string`. They also have three customization
-points
+points:
 
 1. `std::string ToString()` const - by default returns the message the `Error`
    was constructed with (or std::string() in the case of default constructor).
@@ -37,7 +37,7 @@ by using iterators manually, as in
 where `error_obj_ptr == *it`, and `it->something` is equivalent to
 `error_obj_ptr->something`.
 
-The success is marked with either OkStatus<T>() (preferred) object or nullptr.
+The success is marked with either `OkStatus<T>()` (preferred) object or `nullptr`.
 
 ## How to add a new error type?
 
@@ -48,7 +48,7 @@ The success is marked with either OkStatus<T>() (preferred) object or nullptr.
    qualified base class constructor, but it is not necessary. It is recommended
    that at least `error_message` setting constructor of the base class is
    invoked.
-4. It needs to override the destructor
+4. It needs to override the destructor.
 5. It can override `ToString` to customize printing behaviour.
 6. It can overload `WrapTransform` to modify wrapping error during Wrap
    operation.
@@ -91,9 +91,9 @@ Note: you should never convert an `OkStatus` into the StatusChainOr.
 1. If you need to interact with non-libhwsec errors - define MakeStatusTrait
    for your custom error to convert external error to a StatusChain object.
 2. If you need to return a new error, use
-   `return MakeStatus<CustomError>(<custom error ctor args>)`;
+   `return MakeStatus<CustomError>(<custom error ctor args>)`.
 3. If you need to wrap a previously returned error with a new one
-   `return MakeStatus<CustomError>(<custom error ctor args>).Wrap(std::move(old_chain));`
+   `return MakeStatus<CustomError>(<custom error ctor args>).Wrap(std::move(old_chain))`.
 
 ## Customizing MakeStatus
 
@@ -150,7 +150,7 @@ modify the stack.
         }
         ```
 2. Use of `StatusChain` in the `if` expression:
-    1. Prefer using `RETURN_IF_ERROR` if possible and readable
+    1. Prefer using `RETURN_IF_ERROR` if possible and readable.
        ```C++
        RETURN_IF_ERROR(SomeMagicFunction(), AsStatus<TPMErrpr>("some error"));
        ```
@@ -161,7 +161,7 @@ modify the stack.
         }
         ```
     3. It's acceptable to do implicit bool conversions when the error is declared inside the if expression.
-       Note, that eventually the implicit conversion might be deprecated
+       Note, that eventually the implicit conversion might be deprecated.
         ```C++
         if (StatusChain<TPM1Error> status = SomeMagicFunction()) {
           /* Do some error handlings... */
