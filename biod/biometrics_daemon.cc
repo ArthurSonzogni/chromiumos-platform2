@@ -83,8 +83,6 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
       base::BindRepeating(&BiometricsManagerWrapper::StartAuthSession,
                           base::Unretained(this)));
   dbus_object_.RegisterAsync(completion_callback);
-
-  RefreshRecordObjects();
 }
 
 BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
