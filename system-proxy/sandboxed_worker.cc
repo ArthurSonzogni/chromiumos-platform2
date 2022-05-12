@@ -5,6 +5,7 @@
 #include "system-proxy/sandboxed_worker.h"
 
 #include <inttypes.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/types.h>
 

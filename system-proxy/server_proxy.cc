@@ -4,6 +4,8 @@
 
 #include "system-proxy/server_proxy.h"
 
+#include <signal.h>
+
 #include <iostream>
 #include <string>
 #include <utility>
