@@ -26,12 +26,14 @@ allow cros_cryptohomed {
   cros_home_shadow_uid_user
 }:dir mounton;
 
-allow cros_cryptohomed cros_home_shadow_uid_root:dir { relabelfrom relabelto };
+allow cros_cryptohomed {
+  cros_home_shadow_uid
+  cros_home_shadow_uid_root
+  cros_home_shadow_uid_user }:{ dir file } { relabelfrom relabelto };
 # Access rules for relabelling the mounted, unlabeled root for a newly created
 # ext4 filesystem. Cryptohome creates and mounts ext4 filesystems for dm-crypt
 # containers: cryptohome/storage/encrypted_container/dmcrypt_container.cc:128
 allow cros_cryptohomed unlabeled:{ dir file } relabelfrom;
-allow cros_cryptohomed cros_home_shadow_uid_user:{ dir file } { relabelto relabelfrom };
 create_dir_file(cros_cryptohomed, {
   cros_downloads_file
   cros_home
@@ -39,6 +41,7 @@ create_dir_file(cros_cryptohomed, {
   cros_home_root
   cros_home_shadow
   cros_home_shadow_low_entropy_creds
+  cros_home_shadow_uid
   cros_home_shadow_uid_root
   cros_home_shadow_uid_root_android
   cros_home_shadow_uid_user
@@ -49,14 +52,18 @@ create_dir_file(cros_cryptohomed, {
   cros_run_arcvm
   cros_run_lockbox
 });
-create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
 
 r_dir_file(cros_cryptohomed, {
   cros_home_shadow_uid_root_shill_logs
   cros_stateful_partition
   cros_run_daemon_store
+  cros_run_crosdns
   cros_var_db
+  cros_run_shill
 });
+
+cros_udp_create(cros_cryptohomed);
+cros_tcp_connect(cros_cryptohomed);
 
 # ioctl is restricted for Chrome OS domains, see chrome_os.te. Give required
 # permissions to cros_cryptohomed.

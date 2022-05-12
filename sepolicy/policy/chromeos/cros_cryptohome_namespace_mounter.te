@@ -10,6 +10,10 @@ domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chrom
 allow domain cros_cryptohome_namespace_mounter:key search;
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd use;
 
+allow cros_cryptohome_namespace_mounter cros_cryptohomed:{
+  unix_stream_socket
+  tcp_socket } { read write };
+
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Define a cryptohome domain and add these rules to there.
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file rw_file_perms;
