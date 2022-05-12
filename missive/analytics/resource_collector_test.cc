@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
+using testing::NiceMock;
+
 namespace reporting::analytics {
 
 class ResourceCollectorTest : public ::testing::TestWithParam<base::TimeDelta> {
@@ -24,7 +26,7 @@ class ResourceCollectorTest : public ::testing::TestWithParam<base::TimeDelta> {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // The time interval that resource collector is expected to collect resources
   const base::TimeDelta interval_{GetParam()};
-  ResourceCollectorMock resource_collector_{interval_};
+  NiceMock<ResourceCollectorMock> resource_collector_{interval_};
 };
 
 TEST_P(ResourceCollectorTest, CallOnceInAWhile) {
