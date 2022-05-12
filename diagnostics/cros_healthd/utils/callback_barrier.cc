@@ -10,24 +10,36 @@
 #include <base/check_op.h>
 
 namespace diagnostics {
+namespace {
+
+void OnFinish(base::OnceClosure on_success,
+              base::OnceClosure on_error,
+              bool success) {
+  if (success) {
+    std::move(on_success).Run();
+  } else {
+    std::move(on_error).Run();
+  }
+}
+
+}  // namespace
+
+CallbackBarrier::CallbackBarrier(base::OnceCallback<void(bool)> on_finish)
+    : tracker_(base::MakeRefCounted<CallbackBarrier::Tracker>(
+          std::move(on_finish))) {}
 
 CallbackBarrier::CallbackBarrier(base::OnceClosure on_success,
                                  base::OnceClosure on_error)
-    : tracker_(base::MakeRefCounted<CallbackBarrier::Tracker>(
-          std::move(on_success), std::move(on_error))) {}
+    : CallbackBarrier(base::BindOnce(
+          &OnFinish, std::move(on_success), std::move(on_error))) {}
 
 CallbackBarrier::~CallbackBarrier() = default;
 
-CallbackBarrier::Tracker::Tracker(base::OnceClosure on_success,
-                                  base::OnceClosure on_error)
-    : on_success_(std::move(on_success)), on_error_(std::move(on_error)) {}
+CallbackBarrier::Tracker::Tracker(base::OnceCallback<void(bool)> on_finish)
+    : on_finish_(std::move(on_finish)) {}
 
 CallbackBarrier::Tracker::~Tracker() {
-  if (num_uncalled_callback_ == 0) {
-    std::move(on_success_).Run();
-  } else {
-    std::move(on_error_).Run();
-  }
+  std::move(on_finish_).Run(num_uncalled_callback_ == 0);
 }
 
 void CallbackBarrier::Tracker::IncreaseUncalledCallbackNum() {

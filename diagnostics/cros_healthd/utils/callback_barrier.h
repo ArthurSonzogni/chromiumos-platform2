@@ -17,11 +17,10 @@ namespace diagnostics {
 // Calls |base::OnceClosure| after all the dependent |base::OnceCallback<T>|
 // are called. This is useful when tracking multiple async calls.
 //
-// It takes two arguments as the final callbacks, |on_success| and |on_error|.
-// |on_success| will be called after all the dependencies are called.
-// |on_error| will be called if there is a dependency being dropped. This could
-// happen if the callback is passed to a mojo interface and the interface is
-// disconnected.
+// It takes a callback / callbacks which is guaranteed to be called after all
+// the dependencies are called or dropped, so the error can be handled. E.g. A
+// dependency could be dropped if it is passed to a mojo interface and the
+// interface is disconnected. See constructor below for details.
 //
 // The CallbackBarrier and each dependencies holds a shared reference to the
 // final callbacks. So the final callbacks are valid until all the dependencies
@@ -45,6 +44,11 @@ namespace diagnostics {
 //
 class CallbackBarrier {
  public:
+  // |on_finish| will be called with a boolean indicates whether all the
+  // dependency are called.
+  explicit CallbackBarrier(base::OnceCallback<void(bool)> on_finish);
+  // Just like above, but call |on_success| if result is true, or |on_error|
+  // otherwise.
   CallbackBarrier(base::OnceClosure on_success, base::OnceClosure on_error);
   CallbackBarrier(const CallbackBarrier&) = delete;
   const CallbackBarrier& operator=(const CallbackBarrier&) = delete;
@@ -63,11 +67,11 @@ class CallbackBarrier {
 
  private:
   // Tracks each dependency. When all the references are gone, it checks the
-  // number of uncalled callbacks and calls the result handler (either the
-  // success or the error).
+  // number of uncalled callbacks and calls the result handler with a boolean
+  // indicates whether all the dependency are called.
   class Tracker : public base::RefCounted<Tracker> {
    public:
-    Tracker(base::OnceClosure on_success, base::OnceClosure on_error);
+    explicit Tracker(base::OnceCallback<void(bool)> on_finish);
     Tracker(const Tracker&) = delete;
     const Tracker& operator=(const Tracker&) = delete;
 
@@ -82,10 +86,8 @@ class CallbackBarrier {
 
     // The number of the uncalled callbacks.
     uint32_t num_uncalled_callback_ = 0;
-    // The success handler.
-    base::OnceClosure on_success_;
-    // The error handler.
-    base::OnceClosure on_error_;
+    // The result handler.
+    base::OnceCallback<void(bool)> on_finish_;
 
     friend class base::RefCounted<Tracker>;
   };
