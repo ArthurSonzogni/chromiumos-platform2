@@ -106,6 +106,26 @@ bool RestartOperation(const JournalEntry& entry,
         {fw_type, firmware_file->path_on_filesystem(), info->version});
     paths_for_logging.push_back(firmware_file->path_for_logging().value());
     all_files.push_back(std::move(firmware_file));
+
+    // Main firmware may also include associated firmware payloads that we will
+    // simply reflash as well.
+    if (entry_type == JournalEntryType::MAIN) {
+      for (const auto& assoc_entry : res.assoc_firmware) {
+        auto assoc_file = std::make_unique<FirmwareFile>();
+        if (!assoc_file->PrepareFrom(firmware_dir->GetFirmwarePath(),
+                                     assoc_entry.second)) {
+          LOG(ERROR) << "Unfinished \"" << fw_type
+                     << "\" firmware flash for device with ID \""
+                     << entry.device_id() << "\" but no firmware was found";
+          continue;
+        }
+
+        flashed_fw.push_back({assoc_entry.first,
+                              assoc_file->path_on_filesystem(),
+                              assoc_entry.second.version});
+        paths_for_logging.push_back(assoc_file->path_for_logging().value());
+      }
+    }
   }
   if (flashed_fw.size() != entry.type_size() || !flashed_fw.size()) {
     LOG(ERROR) << "Malformed journal entry with invalid types.";
