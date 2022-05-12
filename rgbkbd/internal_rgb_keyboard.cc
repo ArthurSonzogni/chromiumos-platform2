@@ -4,6 +4,7 @@
 
 #include "rgbkbd/internal_rgb_keyboard.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <sstream>
@@ -23,8 +24,8 @@ constexpr char kEcPath[] = "/dev/cros_ec";
 
 std::string CreateRgbLogString(uint8_t r, uint8_t g, uint8_t b) {
   std::stringstream rgb_log;
-  rgb_log << " R: " << static_cast<int>(r) << "G: " << static_cast<int>(g)
-          << "B: " << static_cast<int>(b);
+  rgb_log << " R:" << static_cast<int>(r) << " G:" << static_cast<int>(g)
+          << " B:" << static_cast<int>(b);
   return rgb_log.str();
 }
 }  // namespace
@@ -33,44 +34,54 @@ bool InternalRgbKeyboard::SetKeyColor(uint32_t key,
                                       uint8_t r,
                                       uint8_t g,
                                       uint8_t b) {
-  auto fd = base::ScopedFD(open(kEcPath, O_RDWR | O_CLOEXEC));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "rgbkbd: Failed to open FD for EC while calling SetKeyColor";
+  auto raw_fd = open(kEcPath, O_RDWR | O_CLOEXEC);
+  if (raw_fd == -1) {
+    auto err = errno;
+    LOG(ERROR)
+        << "Failed to open FD for EC while calling SetKeyColor with errno="
+        << err;
     return false;
   }
+
+  auto fd = base::ScopedFD(raw_fd);
+  DCHECK(fd.is_valid());
 
   struct rgb_s color = {r, g, b};
   ec::RgbkbdSetColorCommand command(key, std::vector<struct rgb_s>{color});
 
   auto success = command.Run(fd.get());
   if (success) {
-    LOG(INFO) << "rgbkbd: Call to ec::RgbkbdSetColorCommand SUCCEEDED"
-              << "with Key: " << key << CreateRgbLogString(r, g, b);
+    LOG(INFO) << "Setting key color succeeded with key " << key
+              << CreateRgbLogString(r, g, b);
   } else {
-    LOG(ERROR) << "rgbkbd: Call to ec::RgbkbdSetColorCommand FAILED"
-               << "with Key: " << key << CreateRgbLogString(r, g, b);
+    LOG(ERROR) << "Setting key color failed with key " << key
+               << CreateRgbLogString(r, g, b);
   }
   return success;
 }
 
 bool InternalRgbKeyboard::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
-  auto fd = base::ScopedFD(open(kEcPath, O_RDWR | O_CLOEXEC));
-  if (!fd.is_valid()) {
+  auto raw_fd = open(kEcPath, O_RDWR | O_CLOEXEC);
+  if (raw_fd == -1) {
+    auto err = errno;
     LOG(ERROR)
-        << "rgbkbd: Failed to open FD for EC while calling SetAllKeyColors";
+        << "Failed to open FD for EC while calling SetAllKeyColors with errno="
+        << err;
     return false;
   }
 
+  auto fd = base::ScopedFD(raw_fd);
+  DCHECK(fd.is_valid());
   struct rgb_s color = {r, g, b};
   auto command = ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, color);
 
   auto success = command->Run(fd.get());
   if (success) {
-    LOG(INFO) << "rgbkbd: Call to ec::RgbkbdCommand SUCCEEDED:"
-              << CreateRgbLogString(r, g, b);
+    LOG(INFO) << "Setting all key colors to" << CreateRgbLogString(r, g, b)
+              << " succeeded";
   } else {
-    LOG(ERROR) << "rgbkbd: Call to ec::RgbkbdCommand FAILED:"
-               << CreateRgbLogString(r, g, b);
+    LOG(ERROR) << "Setting all key colors to" << CreateRgbLogString(r, g, b)
+               << " failed";
   }
   return success;
 }

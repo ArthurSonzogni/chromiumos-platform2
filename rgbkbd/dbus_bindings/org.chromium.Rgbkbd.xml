@@ -33,9 +33,9 @@
         Capslock is disabled, the Capslock highlight keys will reflect this
         background color.
       </tp:docstring>
-      <arg name="r" type="u" direction="in"/>
-      <arg name="g" type="u" direction="in"/>
-      <arg name="b" type="u" direction="in"/>
+      <arg name="r" type="y" direction="in"/>
+      <arg name="g" type="y" direction="in"/>
+      <arg name="b" type="y" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SetRainbowMode">

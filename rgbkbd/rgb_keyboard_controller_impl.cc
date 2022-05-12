@@ -38,9 +38,9 @@ void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
   SetKeyColor({kRightShiftKey, color});
 }
 
-void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint32_t r,
-                                                         uint32_t g,
-                                                         uint32_t b) {
+void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint8_t r,
+                                                         uint8_t g,
+                                                         uint8_t b) {
   background_type_ = BackgroundType::kStaticSingleColor;
   background_color_ = Color(r, g, b);
   SetAllKeyColors(background_color_);

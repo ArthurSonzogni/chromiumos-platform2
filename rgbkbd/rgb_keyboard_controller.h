@@ -19,7 +19,7 @@ class RgbKeyboardController {
 
   virtual uint32_t GetRgbKeyboardCapabilities() = 0;
   virtual void SetCapsLockState(bool enabled) = 0;
-  virtual void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) = 0;
+  virtual void SetStaticBackgroundColor(uint8_t r, uint8_t g, uint8_t b) = 0;
   virtual void SetRainbowMode() = 0;
   virtual void SetAnimationMode(RgbAnimationMode mode) = 0;
   virtual void SetKeyboardClient(RgbKeyboard* keyboard) = 0;

@@ -32,7 +32,7 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
 
   uint32_t GetRgbKeyboardCapabilities() override;
   void SetCapsLockState(bool enabled) override;
-  void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) override;
+  void SetStaticBackgroundColor(uint8_t r, uint8_t g, uint8_t b) override;
   void SetRainbowMode() override;
   void SetTestingMode(bool enable_testing) override;
   void SetAnimationMode(uint32_t mode) override;
