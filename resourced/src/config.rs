@@ -111,7 +111,7 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
  */
 #[derive(Debug)]
 pub struct DirectoryConfigProvider<'a> {
-    pub root: &'a str,
+    pub root: &'a Path,
 }
 
 impl ConfigProvider for DirectoryConfigProvider<'_> {
@@ -120,7 +120,8 @@ impl ConfigProvider for DirectoryConfigProvider<'_> {
         power_source_type: PowerSourceType,
         power_preference_type: PowerPreferencesType,
     ) -> Result<Option<PowerPreferences>> {
-        let path = Path::new(&self.root)
+        let path = self
+            .root
             .join(RESOURCED_CONFIG_PATH)
             .join(power_source_type.to_name())
             .join(power_preference_type.to_name());
