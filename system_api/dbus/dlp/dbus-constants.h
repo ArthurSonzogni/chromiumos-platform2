@@ -15,6 +15,7 @@ constexpr char kSetDlpFilesPolicyMethod[] = "SetDlpFilesPolicy";
 constexpr char kAddFileMethod[] = "AddFile";
 constexpr char kRequestFileAccessMethod[] = "RequestFileAccess";
 constexpr char kGetFilesSourcesMethod[] = "GetFilesSources";
+constexpr char kCheckFilesTransfer[] = "CheckFilesTransfer";
 
 // Errors returned by DLP Daemon mathods:
 constexpr char kErrorFailedToCreatePipe[] = "FailedToCreatePipe";
