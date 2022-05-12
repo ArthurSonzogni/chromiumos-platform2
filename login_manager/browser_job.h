@@ -97,9 +97,10 @@ class BrowserJobInterface : public ChildJobInterface {
 
   // Sets |kBrowserDataMigrationFlag| and |kLoginManagerFlag| to chrome launch
   // flags. |userhash| is passed as the value of |kBrowserDataMigrationFlag| to
-  // let chrome know which user data directory to do migration on.
-  virtual void SetBrowserDataMigrationArgsForUser(
-      const std::string& userhash) = 0;
+  // let chrome know which user data directory to do migration on. If |is_move|
+  // is true, it also sets |kBrowserDataMigrationModeFlag|.
+  virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
+                                                  const bool is_move) = 0;
 
   // Clears values set by |SetBrowserDataMigrationArgsForUser()|.
   virtual void ClearBrowserDataMigrationArgs() = 0;
@@ -120,9 +121,14 @@ class BrowserJobInterface : public ChildJobInterface {
   // crash_reporter to run in crash-loop mode.
   static const char kCrashLoopBeforeFlag[];
 
-  // The flag to pass to chrome to tell it to run migration for the user with
+  // The flag to pass to Chrome to tell it to run migration for the user with
   // the specified user hash.
   static const char kBrowserDataMigrationForUserFlag[];
+
+  // The flag to pass to Chrome to tell to run move
+  // migration. It is used together with |kBrowserDataMigrationForUserFlag|.
+  // Without this flag, copy migration is run.
+  static const char kBrowserDataMigrationMoveModeFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
@@ -169,7 +175,8 @@ class BrowserJob : public BrowserJobInterface {
   void SetFeatureFlags(
       const std::vector<std::string>& feature_flags,
       const std::map<std::string, std::string>& origin_list_flags) override;
-  void SetBrowserDataMigrationArgsForUser(const std::string& userhash) override;
+  void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
+                                          const bool is_move) override;
   void ClearBrowserDataMigrationArgs() override;
   void SetTestArguments(const std::vector<std::string>& arguments) override;
   void SetAdditionalEnvironmentVariables(

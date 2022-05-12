@@ -1017,8 +1017,57 @@ void SessionManagerImpl::HandleLockScreenShown() {
   adaptor_.SendScreenIsLockedSignal();
 }
 
-bool SessionManagerImpl::StartBrowserDataMigration(
-    brillo::ErrorPtr* error, const std::string& in_account_id) {
+// TODO(crbug.com/1328643): Taking raw |MethodCall| to make the second argument
+// optional. Once Ash Chrome side change is landed and backward compatibility is
+// no longer needed, replace this method with
+// |StartBrowserDataMigrationInternal|.
+void SessionManagerImpl::StartBrowserDataMigration(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender sender) {
+  dbus::MessageReader reader(method_call);
+
+  std::string in_account_id;
+  if (!reader.PopString(&in_account_id)) {
+    std::unique_ptr<dbus::ErrorResponse> error_response =
+        dbus::ErrorResponse::FromMethodCall(
+            method_call, dbus_error::kInvalidArgs,
+            "First argument is required and should be a string.");
+    std::move(sender).Run(std::move(error_response));
+    return;
+  }
+
+  // We run copy migration if the second argument for the
+  // DBus call is not provided.
+  bool in_is_move = false;
+  if (reader.HasMoreData()) {
+    if (!reader.PopBool(&in_is_move)) {
+      std::unique_ptr<dbus::ErrorResponse> error_response =
+          dbus::ErrorResponse::FromMethodCall(
+              method_call, dbus_error::kInvalidArgs,
+              "Optional second argument was provided but was not type bool.");
+      std::move(sender).Run(std::move(error_response));
+      return;
+    }
+  }
+
+  brillo::ErrorPtr error;
+  if (!StartBrowserDataMigrationInternal(&error, in_account_id, in_is_move)) {
+    DCHECK(error);
+    std::unique_ptr<dbus::Response> response =
+        brillo::dbus_utils::GetDBusError(method_call, error.get());
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  std::move(sender).Run(std::move(response));
+}
+
+bool SessionManagerImpl::StartBrowserDataMigrationInternal(
+    brillo::ErrorPtr* error,
+    const std::string& in_account_id,
+    const bool in_is_move) {
   std::string actual_account_id;
   if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
     DCHECK(*error);
@@ -1041,7 +1090,8 @@ bool SessionManagerImpl::StartBrowserDataMigration(
     return false;
   }
 
-  manager_->SetBrowserDataMigrationArgsForUser(iter->second->userhash);
+  manager_->SetBrowserDataMigrationArgsForUser(iter->second->userhash,
+                                               in_is_move);
   return true;
 }
 

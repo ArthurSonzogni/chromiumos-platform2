@@ -720,14 +720,19 @@
     </method>
 
     <!--
+        TODO(crbug.com/1261730): Once Ash Chrome side change is landed and
+        backward compatibility is no longer needed, revert it to using <arg />
+        instead of receiving raw method call value.
+
         StartBrowserDataMigration:
         @account_id: Account ID of the user to start data migration for.
+        @is_move: Whether to run move migration.
 
         Makes ash-chrome run browser data migration for lacros-chrome on the
         subsequent ash-chrome run.
     -->
     <method name="StartBrowserDataMigration">
-      <arg type="s" name="account_id" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
     </method>
   </interface>
   <!-- ********************************************************************* -->

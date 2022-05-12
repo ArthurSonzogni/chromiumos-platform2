@@ -671,24 +671,39 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
 
 TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
   job_->StartSession(kUser, kHash);
-  job_->SetBrowserDataMigrationArgsForUser(kHash);
+  job_->SetBrowserDataMigrationArgsForUser(kHash, false /* is_move */);
 
   // Check that |job_args_1| has args set for data migration.
   std::vector<std::string> job_args_1 = job_->ExportArgv();
   ExpectArgsToContainFlag(job_args_1, BrowserJob::kLoginManagerFlag, "");
   ExpectArgsToContainFlag(job_args_1,
                           BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
+  ExpectArgsNotToContainFlag(job_args_1,
+                             BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
   ExpectArgsNotToContainFlag(job_args_1, BrowserJob::kLoginUserFlag, kUser);
-
   job_->ClearBrowserDataMigrationArgs();
 
-  // Check that calling |RunInBackground()| once clears args for data migration
-  // and |job_args_2| has args set to launch chrome for regular user session.
+  job_->SetBrowserDataMigrationArgsForUser(kHash, true /* is_move */);
+  // Check that |job_args_2| has args set for data migration.
   std::vector<std::string> job_args_2 = job_->ExportArgv();
-  ExpectArgsToContainFlag(job_args_2, BrowserJob::kLoginUserFlag, kUser);
-  ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kLoginManagerFlag, "");
+  ExpectArgsToContainFlag(job_args_2, BrowserJob::kLoginManagerFlag, "");
+  ExpectArgsToContainFlag(job_args_2,
+                          BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
+  ExpectArgsToContainFlag(job_args_2,
+                          BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
+  ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kLoginUserFlag, kUser);
+  job_->ClearBrowserDataMigrationArgs();
+
+  // Check that calling |ClearBrowserDataMigrationArgs()| once clears args for
+  // data migration and |job_args_3| has args set to launch chrome for regular
+  // user session.
+  std::vector<std::string> job_args_3 = job_->ExportArgv();
+  ExpectArgsToContainFlag(job_args_3, BrowserJob::kLoginUserFlag, kUser);
+  ExpectArgsNotToContainFlag(job_args_3, BrowserJob::kLoginManagerFlag, "");
   ExpectArgsNotToContainFlag(
-      job_args_2, BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
+      job_args_3, BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
+  ExpectArgsNotToContainFlag(job_args_3,
+                             BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
 }
 
 }  // namespace login_manager

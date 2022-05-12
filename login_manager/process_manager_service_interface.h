@@ -70,8 +70,8 @@ class ProcessManagerServiceInterface {
 
   // Calls |BrowserJob::SetBrowserDataMigrationArgsForUser()| in order to run
   // browser data migration on chrome launched subsequently.
-  virtual void SetBrowserDataMigrationArgsForUser(
-      const std::string& userhash) = 0;
+  virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
+                                                  const bool is_move) = 0;
 
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;

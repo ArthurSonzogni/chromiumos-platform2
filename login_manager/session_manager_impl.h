@@ -247,9 +247,9 @@ class SessionManagerImpl
                     const std::string& in_unique_identifier) override;
   void StopSession(const std::string& in_unique_identifier) override;
   void StopSessionWithReason(uint32_t reason) override;
-  bool StartBrowserDataMigration(brillo::ErrorPtr* error,
-                                 const std::string& in_account_id) override;
-
+  void StartBrowserDataMigration(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender sender) override;
   bool LoadShillProfile(brillo::ErrorPtr* error,
                         const std::string& in_account_id) override;
 
@@ -354,6 +354,14 @@ class SessionManagerImpl
           password_provider) {
     password_provider_ = std::move(password_provider);
   }
+
+  // TODO(crbug.com/1328643): Once backward compatibility is no longer a
+  // concern, stop manual handling of raw DBus message and replace
+  // |StartBrowserDataMigration()| with this method. Called by
+  // |StartBrowserDataMigration()|. Exponsed for testing.
+  bool StartBrowserDataMigrationInternal(brillo::ErrorPtr* error,
+                                         const std::string& in_account_id,
+                                         const bool is_move);
 
  private:
   class DBusService;

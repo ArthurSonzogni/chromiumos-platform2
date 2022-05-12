@@ -40,6 +40,8 @@ const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
 const char BrowserJobInterface::kBrowserDataMigrationForUserFlag[] =
     "--browser-data-migration-for-user=";
+const char BrowserJobInterface::kBrowserDataMigrationMoveModeFlag[] =
+    "--browser-data-migration-move-mode";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
@@ -519,11 +521,16 @@ bool BrowserJob::ShouldDropExtraArguments() const {
               kRestartWindowSeconds);
 }
 
-void BrowserJob::SetBrowserDataMigrationArgsForUser(
-    const std::string& userhash) {
+void BrowserJob::SetBrowserDataMigrationArgsForUser(const std::string& userhash,
+                                                    const bool is_move) {
   browser_data_migration_arguments_.clear();
   browser_data_migration_arguments_.push_back(kBrowserDataMigrationForUserFlag +
                                               userhash);
+  if (is_move) {
+    browser_data_migration_arguments_.push_back(
+        kBrowserDataMigrationMoveModeFlag);
+  }
+
   browser_data_migration_arguments_.push_back(kLoginManagerFlag);
 }
 

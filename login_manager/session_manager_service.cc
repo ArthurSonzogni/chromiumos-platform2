@@ -363,10 +363,8 @@ void SessionManagerService::SetFeatureFlagsForUser(
 }
 
 void SessionManagerService::SetBrowserDataMigrationArgsForUser(
-    const std::string& userhash) {
-  // Setting this to true ensures that |ClearBrowserDataMigrationArgs()| is
-  // called after |BrowserJob::RunInBackground()| is called in |RunBrowser()|.
-  browser_->SetBrowserDataMigrationArgsForUser(userhash);
+    const std::string& userhash, bool is_move) {
+  browser_->SetBrowserDataMigrationArgsForUser(userhash, is_move);
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {
