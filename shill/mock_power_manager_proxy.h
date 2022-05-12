@@ -37,7 +37,7 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
               RecordDarkResumeWakeReason,
               (const std::string&),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(void,
               ChangeRegDomain,
               (power_manager::WifiRegDomainDbus),
               (override));

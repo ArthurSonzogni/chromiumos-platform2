@@ -150,8 +150,7 @@ class PowerManagerTest : public Test {
 
   void AddProxyExpectationForChangeRegDomain(
       power_manager::WifiRegDomainDbus domain, bool return_value) {
-    EXPECT_CALL(*power_manager_proxy_, ChangeRegDomain(domain))
-        .WillOnce(Return(return_value));
+    EXPECT_CALL(*power_manager_proxy_, ChangeRegDomain(domain));
   }
 
   void RegisterSuspendDelays() {

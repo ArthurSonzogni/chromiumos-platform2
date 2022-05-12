@@ -155,24 +155,24 @@ bool PowerManagerProxy::RecordDarkResumeWakeReason(
   return true;
 }
 
-bool PowerManagerProxy::ChangeRegDomain(
+void PowerManagerProxy::ChangeRegDomain(
     power_manager::WifiRegDomainDbus domain) {
   LOG(INFO) << __func__;
 
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return false;
+    return;
   }
-  brillo::ErrorPtr error;
 
-  proxy_->ChangeWifiRegDomain(domain, &error);
-
-  if (error) {
-    LOG(ERROR) << "Failed to change reg domain: " << error->GetCode() << " "
-               << error->GetMessage();
-    return false;
-  }
-  return true;
+  proxy_->ChangeWifiRegDomainAsync(
+      domain, base::DoNothing(),
+      base::BindOnce(
+          [](power_manager::WifiRegDomainDbus domain, brillo::Error* error) {
+            LOG(ERROR) << "Failed to change reg domain to " << domain
+                       << ", reason : " << error->GetCode() << " "
+                       << error->GetMessage();
+          },
+          domain));
 }
 
 bool PowerManagerProxy::RegisterSuspendDelayInternal(

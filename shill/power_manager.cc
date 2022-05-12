@@ -102,7 +102,7 @@ bool PowerManager::RecordDarkResumeWakeReason(const std::string& wake_reason) {
   return power_manager_proxy_->RecordDarkResumeWakeReason(wake_reason);
 }
 
-bool PowerManager::ChangeRegDomain(nl80211_dfs_regions domain) {
+void PowerManager::ChangeRegDomain(nl80211_dfs_regions domain) {
   auto new_domain = power_manager::WIFI_REG_DOMAIN_NONE;
   switch (domain) {
     case NL80211_DFS_FCC:
@@ -120,15 +120,15 @@ bool PowerManager::ChangeRegDomain(nl80211_dfs_regions domain) {
     default:
       LOG(WARNING) << "Unrecognized WiFi reg domain: "
                    << std::to_string(domain);
-      return false;
+      return;
   }
   wifi_reg_domain_is_set = true;
 
-  if (new_domain != wifi_reg_domain_) {
-    wifi_reg_domain_ = new_domain;
-    return power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
+  if (new_domain == wifi_reg_domain_) {
+    return;
   }
-  return false;
+  wifi_reg_domain_ = new_domain;
+  power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
 }
 
 void PowerManager::OnSuspendImminent(int suspend_id) {

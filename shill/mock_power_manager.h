@@ -31,7 +31,7 @@ class MockPowerManager : public PowerManager {
                const PowerManager::DarkSuspendImminentCallback&),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
-  MOCK_METHOD(bool, ChangeRegDomain, (nl80211_dfs_regions), (override));
+  MOCK_METHOD(void, ChangeRegDomain, (nl80211_dfs_regions), (override));
 };
 
 }  // namespace shill

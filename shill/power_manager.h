@@ -82,7 +82,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // Record the wake reason for the current dark resume.
   bool RecordDarkResumeWakeReason(const std::string& wake_reason);
 
-  virtual bool ChangeRegDomain(nl80211_dfs_regions domain);
+  virtual void ChangeRegDomain(nl80211_dfs_regions domain);
 
   // Methods inherited from PowerManagerProxyDelegate.
   void OnSuspendImminent(int suspend_id) override;

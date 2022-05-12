@@ -51,7 +51,7 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   bool UnregisterDarkSuspendDelay(int delay_id) override;
   bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) override;
   bool RecordDarkResumeWakeReason(const std::string& wake_reason) override;
-  bool ChangeRegDomain(power_manager::WifiRegDomainDbus domain) override;
+  void ChangeRegDomain(power_manager::WifiRegDomainDbus domain) override;
 
  private:
   // Signal handlers.

@@ -60,7 +60,9 @@ class PowerManagerProxyInterface {
   // wake reason for the current dark resume. Returns true on success.
   virtual bool RecordDarkResumeWakeReason(const std::string& wake_reason) = 0;
 
-  virtual bool ChangeRegDomain(power_manager::WifiRegDomainDbus domain) = 0;
+  // Calls the power manager's ChangeWifiRegDomain method asynchronously in a
+  // best-effort way. On called, this function will return immediately.
+  virtual void ChangeRegDomain(power_manager::WifiRegDomainDbus domain) = 0;
 };
 
 // PowerManager signal delegate to be associated with the proxy.
