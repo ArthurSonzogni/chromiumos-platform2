@@ -302,6 +302,7 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
 
 bool KeysetManagement::GetVaultKeysetLabels(
     const std::string& obfuscated_username,
+    bool include_le_labels,
     std::vector<std::string>* labels) const {
   CHECK(labels);
   base::FilePath user_dir = UserPath(obfuscated_username);
@@ -329,6 +330,11 @@ bool KeysetManagement::GetVaultKeysetLabels(
     std::unique_ptr<VaultKeyset> vk =
         LoadVaultKeysetForUser(obfuscated_username, index);
     if (!vk) {
+      continue;
+    }
+
+    if (!include_le_labels &&
+        (vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL)) {
       continue;
     }
 

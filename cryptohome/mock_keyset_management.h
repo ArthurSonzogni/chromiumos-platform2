@@ -53,7 +53,7 @@ class MockKeysetManagement : public KeysetManagement {
               (const, override));
   MOCK_METHOD(bool,
               GetVaultKeysetLabels,
-              (const std::string&, std::vector<std::string>*),
+              (const std::string&, bool, std::vector<std::string>*),
               (const, override));
   MOCK_METHOD(bool,
               GetVaultKeysetLabelsAndData,

@@ -54,6 +54,7 @@ class KeysetManagement {
   // There is no guarantee the keysets are valid nor is the ordering guaranteed.
   // Returns true on success, false if no keysets are found.
   virtual bool GetVaultKeysetLabels(const std::string& obfuscated_username,
+                                    bool include_le_labels,
                                     std::vector<std::string>* labels) const;
 
   // Outputs a map of present keysets by label and the associate key data for a

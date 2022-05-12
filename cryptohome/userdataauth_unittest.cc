@@ -2188,7 +2188,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
@@ -2298,7 +2298,7 @@ TEST_F(UserDataAuthTest,
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
@@ -2755,7 +2755,7 @@ TEST_F(UserDataAuthExTest, MountFailsWithUnrecoverableVault) {
 
   // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
   // there no VaultKeysets are found in disk.
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(true));
 
@@ -2798,7 +2798,7 @@ TEST_F(UserDataAuthExTest, MountWithEmptyLabelFailsWithUnrecoverableVault) {
 
   // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
   // there no VaultKeysets are found in disk.
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(true));
 
@@ -2958,8 +2958,8 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
 
     std::vector<std::string> key_labels;
     key_labels.push_back("label");
-    EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(key_labels), Return(true)));
+    EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<2>(key_labels), Return(true)));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
         .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -3016,8 +3016,8 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
 
   std::vector<std::string> key_labels;
   key_labels.push_back("label");
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(key_labels), Return(true)));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(key_labels), Return(true)));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -3638,7 +3638,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysGetLabelsFailed) {
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(false));
 
   EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
@@ -3655,7 +3655,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysForceSuccess) {
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
 
   EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
@@ -3675,14 +3675,14 @@ TEST_F(UserDataAuthExTest, ListKeysValidity) {
 
   // Success case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
-      .WillOnce(Invoke(
-          [](const std::string& ignored, std::vector<std::string>* output) {
-            output->clear();
-            output->push_back(ListKeysValidityTest_label1);
-            output->push_back(ListKeysValidityTest_label2);
-            return true;
-          }));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
+      .WillOnce(Invoke([](const std::string& ignored, bool include_le_labels,
+                          std::vector<std::string>* output) {
+        output->clear();
+        output->push_back(ListKeysValidityTest_label1);
+        output->push_back(ListKeysValidityTest_label2);
+        return true;
+      }));
 
   std::vector<std::string> labels;
   EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
@@ -3698,7 +3698,7 @@ TEST_F(UserDataAuthExTest, ListKeysValidity) {
 
   // Test for key not found case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillOnce(Return(false));
   EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);

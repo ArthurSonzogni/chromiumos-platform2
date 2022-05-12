@@ -265,8 +265,11 @@ bool GetKeyLabels(const KeysetManagement& keyset_management,
                   const Credentials& credentials,
                   std::vector<std::string>& out_labels) {
   std::vector<std::string> key_labels;
+  // Don't get LE labels because LE credentials are discluded from wildcard and
+  // we don't want unnecessary wrong authentication attempts on LE credentials.
   if (!keyset_management.GetVaultKeysetLabels(
-          credentials.GetObfuscatedUsername(), &key_labels)) {
+          credentials.GetObfuscatedUsername(), /*include_le_labels*/ false,
+          &key_labels)) {
     return false;
   }
 
@@ -3039,7 +3042,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(
 
   // get all labels under the username
   std::vector<std::string> labels;
-  if (!keyset_management_->GetVaultKeysetLabels(obfuscated_username, &labels)) {
+  if (!keyset_management_->GetVaultKeysetLabels(
+          obfuscated_username, /*include_le_labels*/ true, &labels)) {
     return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
 
@@ -3086,8 +3090,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::ListKeys(
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
 
-  if (!keyset_management_->GetVaultKeysetLabels(obfuscated_username,
-                                                labels_out)) {
+  if (!keyset_management_->GetVaultKeysetLabels(
+          obfuscated_username, /*include_le_labels*/ true, labels_out)) {
     return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

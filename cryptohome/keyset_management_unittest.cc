@@ -956,14 +956,55 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabels) {
   // TEST
 
   std::vector<std::string> labels;
-  EXPECT_TRUE(
-      keyset_management_->GetVaultKeysetLabels(users_[0].obfuscated, &labels));
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabels(
+      users_[0].obfuscated,
+      /*include_le_label*/ true, &labels));
 
   // VERIFY
   // Labels of the initial and newly added keysets are returned.
 
   ASSERT_EQ(2, labels.size());
   EXPECT_THAT(labels, UnorderedElementsAre(kPasswordLabel, kAltPasswordLabel));
+}
+
+// List non LE labels.
+TEST_F(KeysetManagementTest, GetNonLEVaultKeysetLabels) {
+  // SETUP
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+
+  // Setup initial user.
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Add pin credentials.
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(users_[0].credentials);
+  ASSERT_TRUE(vk_status.ok());
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(new_credentials,
+                                          *vk_status.value().get(), true));
+
+  // TEST
+
+  std::vector<std::string> labels;
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabels(
+      users_[0].obfuscated,
+      /*include_le_label*/ false, &labels));
+
+  // VERIFY
+  // Labels of only non LE credentials returned.
+
+  ASSERT_EQ(1, labels.size());
+  EXPECT_EQ(kPasswordLabel, labels[0]);
 }
 
 // List labels for legacy keyset.
@@ -975,8 +1016,9 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
 
   // TEST
 
-  EXPECT_TRUE(
-      keyset_management_->GetVaultKeysetLabels(users_[0].obfuscated, &labels));
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabels(
+      users_[0].obfuscated,
+      /*include_le_label*/ true, &labels));
 
   // VERIFY
   // Initial keyset has no key data thus shall provide "legacy" label.
