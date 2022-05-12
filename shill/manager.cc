@@ -2001,7 +2001,16 @@ void Manager::SetAlwaysOnVpn(const std::string& mode,
 
   const std::string previous_mode = always_on_vpn_mode_;
   always_on_vpn_mode_ = mode;
+  const VPNServiceRefPtr previous_service = always_on_vpn_service_;
   always_on_vpn_service_ = service;
+
+  if (previous_service != always_on_vpn_service_) {
+    // As the service changed, the backoff mechanism has to be reset to avoid to
+    // apply a connection retry/delay on a new service. It also cancels any
+    // in-flight connect task to connect to prevent the connection of a null
+    // service (see b/218005248).
+    ResetAlwaysOnVpnBackoff();
+  }
 
   // Update VpnLockdown mode below if necessary.
   if (!patchpanel_client_ || previous_mode == mode)
