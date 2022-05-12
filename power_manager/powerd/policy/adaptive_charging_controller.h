@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <brillo/timers/alarm_timer.h>
