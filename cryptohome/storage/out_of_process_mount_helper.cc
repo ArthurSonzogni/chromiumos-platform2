@@ -5,6 +5,7 @@
 #include "cryptohome/storage/out_of_process_mount_helper.h"
 
 #include <poll.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sysexits.h>
 
