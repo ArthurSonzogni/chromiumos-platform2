@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
@@ -265,7 +266,9 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
       // state.
       json_store_->SetValue(kCcdBlocked, false);
       if (cr50_utils_->IsFactoryModeEnabled()) {
-        json_store_->SetValue(kWpDisableSkipped, true);
+        json_store_->SetValue(kWpDisableMethod,
+                              WpDisableMethod_Name(WpDisableMethod::SKIPPED));
+        // TODO(chenghan): Remove this.
         json_store_->SetValue(
             kWriteProtectDisableMethod,
             static_cast<int>(WriteProtectDisableMethod::SKIPPED));

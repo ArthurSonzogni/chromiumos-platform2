@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/system/fake_power_manager_client.h"
@@ -107,12 +108,25 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
   // enabling factory mode (either factory mode is already enabled, or we want
   // to keep the device open).
   if (CanSkipEnablingFactoryMode() && IsHwwpDisabled()) {
-    json_store_->SetValue(
-        kWriteProtectDisableMethod,
-        static_cast<int>(
-            cr50_utils_->IsFactoryModeEnabled()
-                ? WriteProtectDisableMethod::PHYSICAL_ASSEMBLE_DEVICE
-                : WriteProtectDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
+    if (cr50_utils_->IsFactoryModeEnabled()) {
+      json_store_->SetValue(
+          kWpDisableMethod,
+          WpDisableMethod_Name(WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
+      // TODO(chenghan): Remove this.
+      json_store_->SetValue(
+          kWriteProtectDisableMethod,
+          static_cast<int>(
+              WriteProtectDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
+    } else {
+      json_store_->SetValue(
+          kWpDisableMethod,
+          WpDisableMethod_Name(WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
+      // TODO(chenghan): Remove this.
+      json_store_->SetValue(
+          kWriteProtectDisableMethod,
+          static_cast<int>(
+              WriteProtectDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
+    }
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
   // Wait for HWWP being disabled, or the follow-up preparations are done.

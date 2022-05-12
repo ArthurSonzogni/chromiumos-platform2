@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/wipe_selection_state_handler.h"
@@ -52,22 +53,18 @@ class WipeSelectionStateHandlerTest : public StateHandlerTest {
   }
 
   void CheckJsonStoreWpDisableSkipped(bool expected_skipped) {
-    bool wp_disable_skipped;
-    int wp_disable_method;
+    std::string wp_disable_method_name;
+    WpDisableMethod wp_disable_method;
 
     if (expected_skipped) {
       EXPECT_TRUE(
-          json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
-      EXPECT_TRUE(wp_disable_skipped);
-      EXPECT_TRUE(json_store_->GetValue(kWriteProtectDisableMethod,
-                                        &wp_disable_method));
-      EXPECT_EQ(wp_disable_method,
-                static_cast<int>(WriteProtectDisableMethod::SKIPPED));
+          json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
+      EXPECT_TRUE(
+          WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
+      EXPECT_EQ(wp_disable_method, WpDisableMethod::SKIPPED);
     } else {
       EXPECT_FALSE(
-          json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
-      EXPECT_FALSE(json_store_->GetValue(kWriteProtectDisableMethod,
-                                         &wp_disable_method));
+          json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
     }
   }
 };

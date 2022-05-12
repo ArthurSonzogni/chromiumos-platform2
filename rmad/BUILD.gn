@@ -44,6 +44,11 @@ pkg_config("target_defaults") {
   ]
 }
 
+static_library("libcommon") {
+  sources = [ "common/types.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
 static_library("libsystem") {
   sources = [
     "system/cros_disks_client_impl.cc",
@@ -131,6 +136,7 @@ static_library("libstate_handler") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":libcommon",
     ":libmetrics",
     ":libsystem",
     ":libutils",

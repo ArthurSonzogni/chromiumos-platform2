@@ -5,10 +5,13 @@
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/fake_flashrom_utils.h"
@@ -40,29 +43,43 @@ WriteProtectDisableCompleteStateHandler::
       flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
-  // Always check again when entering the state.
-  auto wp_disable_complete =
-      std::make_unique<WriteProtectDisableCompleteState>();
-  bool wp_disable_skipped = false;
-  json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped);
-  bool wipe_device = false;
-  json_store_->GetValue(kWipeDevice, &wipe_device);
-
-  if (wp_disable_skipped) {
-    wp_disable_complete->set_action(
-        WriteProtectDisableCompleteState::
-            RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE);
-  } else if (wipe_device) {
-    wp_disable_complete->set_action(
-        WriteProtectDisableCompleteState::
-            RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE);
-  } else {
-    wp_disable_complete->set_action(
-        WriteProtectDisableCompleteState::
-            RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
+  WpDisableMethod wp_disable_method;
+  if (std::string wp_disable_method_name;
+      !json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name) ||
+      !WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method)) {
+    LOG(ERROR) << "Failed to get |wp_disable_method|";
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
-  state_.set_allocated_wp_disable_complete(wp_disable_complete.release());
+  switch (wp_disable_method) {
+    case WpDisableMethod::UNKNOWN:
+      // This should not happen.
+      LOG(ERROR) << "WP disable method should not be UNKNOWN";
+      return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+    case WpDisableMethod::SKIPPED:
+      state_.mutable_wp_disable_complete()->set_action(
+          WriteProtectDisableCompleteState::RMAD_WP_DISABLE_COMPLETE_NO_OP);
+      break;
+
+    case WpDisableMethod::RSU:
+      state_.mutable_wp_disable_complete()->set_action(
+          WriteProtectDisableCompleteState::RMAD_WP_DISABLE_COMPLETE_NO_OP);
+      break;
+    case WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE:
+      state_.mutable_wp_disable_complete()->set_action(
+          WriteProtectDisableCompleteState::
+              RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE);
+      break;
+    case WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN:
+      state_.mutable_wp_disable_complete()->set_action(
+          WriteProtectDisableCompleteState::
+              RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
+      break;
+    default:
+      // We already enumerated all the enums.
+      NOTREACHED();
+  }
+
   return RMAD_ERROR_OK;
 }
 

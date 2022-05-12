@@ -11,6 +11,7 @@
 
 #include <base/strings/string_util.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
@@ -121,6 +122,9 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   // If factory mode is already enabled, we can transition to the next state
   // immediately.
   if (IsFactoryModeEnabled()) {
+    json_store_->SetValue(kWpDisableMethod,
+                          WpDisableMethod_Name(WpDisableMethod::RSU));
+    // TODO(chenghan): Remove this.
     json_store_->SetValue(kWriteProtectDisableMethod,
                           static_cast<int>(WriteProtectDisableMethod::RSU));
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);

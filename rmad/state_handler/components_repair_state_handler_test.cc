@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -220,15 +221,12 @@ TEST_F(ComponentsRepairStateHandlerTest,
   EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
   EXPECT_TRUE(wipe_device);
 
-  bool wp_disable_skipped;
-  EXPECT_TRUE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
-  EXPECT_TRUE(wp_disable_skipped);
-
-  int wp_disable_method;
+  std::string wp_disable_method_name;
+  WpDisableMethod wp_disable_method;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
   EXPECT_TRUE(
-      json_store_->GetValue(kWriteProtectDisableMethod, &wp_disable_method));
-  EXPECT_EQ(wp_disable_method,
-            static_cast<int>(WriteProtectDisableMethod::SKIPPED));
+      WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
+  EXPECT_EQ(wp_disable_method, WpDisableMethod::SKIPPED);
 }
 
 TEST_F(ComponentsRepairStateHandlerTest,

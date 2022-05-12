@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
@@ -163,12 +164,12 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
 
-  int wp_disable_method;
+  std::string wp_disable_method_name;
+  WpDisableMethod wp_disable_method;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
   EXPECT_TRUE(
-      json_store_->GetValue(kWriteProtectDisableMethod, &wp_disable_method));
-  EXPECT_EQ(
-      wp_disable_method,
-      static_cast<int>(WriteProtectDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
+      WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
+  EXPECT_EQ(wp_disable_method, WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE);
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
@@ -193,12 +194,12 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
 
-  int wp_disable_method;
+  std::string wp_disable_method_name;
+  WpDisableMethod wp_disable_method;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
   EXPECT_TRUE(
-      json_store_->GetValue(kWriteProtectDisableMethod, &wp_disable_method));
-  EXPECT_EQ(
-      wp_disable_method,
-      static_cast<int>(WriteProtectDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
+      WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
+  EXPECT_EQ(wp_disable_method, WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN);
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))

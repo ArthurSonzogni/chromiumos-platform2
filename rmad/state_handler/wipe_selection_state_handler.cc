@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
@@ -114,7 +115,9 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
   if (wp_disable_required_) {
     if (cr50_utils_->IsFactoryModeEnabled()) {
       // Skip WP disabling steps if factory mode is already turned on.
-      json_store_->SetValue(kWpDisableSkipped, true);
+      json_store_->SetValue(kWpDisableMethod,
+                            WpDisableMethod_Name(WpDisableMethod::SKIPPED));
+      // TODO(chenghan): Remove this.
       json_store_->SetValue(
           kWriteProtectDisableMethod,
           static_cast<int>(WriteProtectDisableMethod::SKIPPED));
