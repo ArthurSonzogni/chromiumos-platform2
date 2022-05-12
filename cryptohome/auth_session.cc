@@ -229,11 +229,9 @@ CryptohomeStatus AuthSession::OnUserCreated() {
       // The USS experiment is on, hence create the USS for the newly created
       // non-ephemeral user. Keep the USS in memory: it will be persisted after
       // the first auth factor gets added.
-      user_secret_stash_ =
+      CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
           UserSecretStash::CreateRandom(file_system_keyset_.value());
-      // TODO(b/229834676): Migrate UserSecretStash and wrap the resulting
-      // error.
-      if (!user_secret_stash_) {
+      if (!uss_status.ok()) {
         LOG(ERROR) << "User secret stash creation failed";
         return MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateUSSFailedInOnUserCreated),
@@ -241,6 +239,7 @@ CryptohomeStatus AuthSession::OnUserCreated() {
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
       }
+      user_secret_stash_ = std::move(uss_status).value();
       user_secret_stash_main_key_ = UserSecretStash::CreateRandomMainKey();
     }
   }
@@ -1196,16 +1195,15 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   // 3. Add the new factor into the USS in-memory.
   // This wraps the USS Main Key with the credential secret. The wrapping_id
   // field is defined equal to the factor's label.
-  if (!user_secret_stash_->AddWrappedMainKey(
-          user_secret_stash_main_key_.value(),
-          /*wrapping_id=*/auth_factor_label, uss_credential_secret.value())) {
+  CryptohomeStatus status = user_secret_stash_->AddWrappedMainKey(
+      user_secret_stash_main_key_.value(),
+      /*wrapping_id=*/auth_factor_label, uss_credential_secret.value());
+  if (!status.ok()) {
     LOG(ERROR) << "Failed to add created auth factor into user secret stash";
-    // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionAddMainKeyFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+               CRYPTOHOME_ERR_LOC(kLocAuthSessionAddMainKeyFailedInAddViaUSS),
+               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+        .Wrap(std::move(status));
   }
 
   if (auth_input.reset_secret.has_value() &&
@@ -1220,18 +1218,16 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   }
 
   // 4. Encrypt the updated USS.
-  std::optional<brillo::Blob> encrypted_uss_container =
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
       user_secret_stash_->GetEncryptedContainer(
           user_secret_stash_main_key_.value());
-  if (!encrypted_uss_container.has_value()) {
+  if (!encrypted_uss_container.ok()) {
     LOG(ERROR)
         << "Failed to encrypt user secret stash after auth factor creation";
-    // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+               CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInAddViaUSS),
+               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+        .Wrap(std::move(encrypted_uss_container).status());
   }
 
   // 5. Persist the factor.
@@ -1239,7 +1235,7 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   // writing files after all validity checks (like the label duplication check).
   std::unique_ptr<AuthFactor> auth_factor =
       std::move(auth_factor_or_status).value();
-  CryptohomeStatus status =
+  status =
       auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to persist created auth factor";
@@ -1255,16 +1251,15 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   // inconsistent state on the disk: a created/updated USS and a missing auth
   // factor (note that we're using file system syncs to have best-effort
   // ordering guarantee).
-  if (!user_secret_stash_storage_->Persist(encrypted_uss_container.value(),
-                                           obfuscated_username_)) {
+  status = user_secret_stash_storage_->Persist(encrypted_uss_container.value(),
+                                               obfuscated_username_);
+  if (!status.ok()) {
     LOG(ERROR)
         << "Failed to persist user secret stash after auth factor creation";
-    // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionPersistUSSFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+               CRYPTOHOME_ERR_LOC(kLocAuthSessionPersistUSSFailedInAddViaUSS),
+               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+        .Wrap(std::move(status));
   }
 
   label_to_auth_factor_.emplace(auth_factor_label, std::move(auth_factor));
@@ -1319,16 +1314,15 @@ CryptohomeStatus AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // 2. Load the USS container with the encrypted payload.
-  std::optional<brillo::Blob> encrypted_uss =
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       user_secret_stash_storage_->LoadPersisted(obfuscated_username_);
-  if (!encrypted_uss.has_value()) {
+  if (!encrypted_uss.ok()) {
     LOG(ERROR) << "Failed to load the user secret stash";
     // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionLoadUSSFailedInLoadUSS),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+               CRYPTOHOME_ERR_LOC(kLocAuthSessionLoadUSSFailedInLoadUSS),
+               user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
+        .Wrap(std::move(encrypted_uss).status());
   }
 
   // 3. Decrypt the USS payload.
@@ -1336,18 +1330,20 @@ CryptohomeStatus AuthSession::LoadUSSMainKeyAndFsKeyset(
   // USS payload using the USS Main Key. The wrapping_id field is defined equal
   // to the factor's label.
   brillo::SecureBlob decrypted_main_key;
-  user_secret_stash_ = UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      encrypted_uss.value(), /*wrapping_id=*/auth_factor_label,
-      /*wrapping_key=*/uss_credential_secret.value(), &decrypted_main_key);
-  if (!user_secret_stash_) {
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+      user_secret_stash_status =
+          UserSecretStash::FromEncryptedContainerWithWrappingKey(
+              encrypted_uss.value(), /*wrapping_id=*/auth_factor_label,
+              /*wrapping_key=*/uss_credential_secret.value(),
+              &decrypted_main_key);
+  if (!user_secret_stash_status.ok()) {
     LOG(ERROR) << "Failed to decrypt the user secret stash";
-    // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionDecryptUSSFailedInLoadUSS),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kIncorrectAuth}),
-        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+               CRYPTOHOME_ERR_LOC(kLocAuthSessionDecryptUSSFailedInLoadUSS),
+               user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
+        .Wrap(std::move(user_secret_stash_status).status());
   }
+  user_secret_stash_ = std::move(user_secret_stash_status).value();
   user_secret_stash_main_key_ = decrypted_main_key;
 
   // 4. Populate data fields from the USS.

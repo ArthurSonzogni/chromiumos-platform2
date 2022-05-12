@@ -36,13 +36,14 @@ class UserSecretStashStorageTest : public ::testing::Test {
 TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
   // Write the USS.
   EXPECT_TRUE(
-      uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername));
+      uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername)
+          .ok());
   EXPECT_TRUE(platform_.FileExists(UserSecretStashPath(kObfuscatedUsername)));
 
   // Load the USS and check it didn't change.
-  std::optional<Blob> loaded_uss_container =
+  CryptohomeStatusOr<Blob> loaded_uss_container =
       uss_storage_.LoadPersisted(kObfuscatedUsername);
-  ASSERT_TRUE(loaded_uss_container.has_value());
+  ASSERT_TRUE(loaded_uss_container.ok());
   EXPECT_EQ(BlobToString(loaded_uss_container.value()), kUssContainer);
 }
 
@@ -52,12 +53,13 @@ TEST_F(UserSecretStashStorageTest, PersistFailure) {
                              UserSecretStashPath(kObfuscatedUsername), _, _))
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(
-      uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername));
+      uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername)
+          .ok());
 }
 
 // Test that the loading fails when the USS file doesn't exist.
 TEST_F(UserSecretStashStorageTest, LoadFailureNonExisting) {
-  EXPECT_FALSE(uss_storage_.LoadPersisted(kObfuscatedUsername));
+  EXPECT_FALSE(uss_storage_.LoadPersisted(kObfuscatedUsername).ok());
 }
 
 }  // namespace cryptohome

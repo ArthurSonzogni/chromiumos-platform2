@@ -173,24 +173,24 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                           &mutated_uss_main_key);
 
   // The USS decryption may succeed or fail, but never crash.
-  std::unique_ptr<UserSecretStash> stash =
-      UserSecretStash::FromEncryptedContainer(mutated_uss_container,
-                                              mutated_uss_main_key);
+  cryptohome::CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+      stash_status = UserSecretStash::FromEncryptedContainer(
+          mutated_uss_container, mutated_uss_main_key);
 
-  if (stash) {
+  if (stash_status.ok()) {
     // If the USS was decrypted successfully, its reencryption must succeed as
     // well.
-    std::optional<Blob> reencrypted =
-        stash->GetEncryptedContainer(mutated_uss_main_key);
-    CHECK(reencrypted);
+    cryptohome::CryptohomeStatusOr<Blob> reencrypted =
+        stash_status.value()->GetEncryptedContainer(mutated_uss_main_key);
+    CHECK(reencrypted.ok());
 
     // Decryption of the reencrypted USS must succeed as well, and the result
     // must be equal to the original USS.
-    std::unique_ptr<UserSecretStash> stash2 =
-        UserSecretStash::FromEncryptedContainer(*reencrypted,
-                                                mutated_uss_main_key);
-    CHECK(stash2);
-    AssertStashesEqual(*stash, *stash2);
+    cryptohome::CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+        stash2_status = UserSecretStash::FromEncryptedContainer(
+            reencrypted.value(), mutated_uss_main_key);
+    CHECK(stash2_status.ok());
+    AssertStashesEqual(*stash_status.value(), *stash2_status.value());
   }
 
   return 0;

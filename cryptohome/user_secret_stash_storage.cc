@@ -12,8 +12,16 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -25,7 +33,7 @@ UserSecretStashStorage::UserSecretStashStorage(Platform* platform)
 
 UserSecretStashStorage::~UserSecretStashStorage() = default;
 
-bool UserSecretStashStorage::Persist(
+CryptohomeStatus UserSecretStashStorage::Persist(
     const brillo::Blob& uss_container_flatbuffer,
     const std::string& obfuscated_username) {
   if (!platform_->WriteFileAtomicDurable(
@@ -33,19 +41,28 @@ bool UserSecretStashStorage::Persist(
           kUserSecretStashFilePermissions)) {
     LOG(ERROR) << "Failed to store the UserSecretStash file for "
                << obfuscated_username;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSStorageWriteFailedInPersist),
+        ErrorActionSet(
+            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  return true;
+  return OkStatus<CryptohomeError>();
 }
 
-std::optional<brillo::Blob> UserSecretStashStorage::LoadPersisted(
+CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
     const std::string& obfuscated_username) {
   brillo::Blob uss_container_flatbuffer;
   if (!platform_->ReadFile(UserSecretStashPath(obfuscated_username),
                            &uss_container_flatbuffer)) {
     LOG(ERROR) << "Failed to load the UserSecretStash file for "
                << obfuscated_username;
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSStorageReadFailedInLoadPersisted),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault,
+                        ErrorAction::kAuth,
+                        ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return uss_container_flatbuffer;
 }

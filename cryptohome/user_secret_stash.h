@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
@@ -64,22 +65,23 @@ class UserSecretStash {
 
   // Sets up a UserSecretStash with random contents (reset secret, etc.) and the
   // values from the specified file system keyset.
-  static std::unique_ptr<UserSecretStash> CreateRandom(
+  static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> CreateRandom(
       const FileSystemKeyset& file_system_keyset);
   // This deserializes the |flatbuffer| into a UserSecretStashContainer table.
   // Besides unencrypted data, that table contains a ciphertext, which is
   // decrypted with the |main_key| using AES-GCM-256. It doesn't return the
   // plaintext, it populates the fields of the class with the encrypted message.
-  static std::unique_ptr<UserSecretStash> FromEncryptedContainer(
-      const brillo::Blob& flatbuffer, const brillo::SecureBlob& main_key);
+  static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+  FromEncryptedContainer(const brillo::Blob& flatbuffer,
+                         const brillo::SecureBlob& main_key);
   // Same as |FromEncryptedContainer()|, but the main key is unwrapped from the
   // USS container using the given wrapping key. The |main_key| output argument
   // is populated with the unwrapped main key on success.
-  static std::unique_ptr<UserSecretStash> FromEncryptedContainerWithWrappingKey(
-      const brillo::Blob& flatbuffer,
-      const std::string& wrapping_id,
-      const brillo::SecureBlob& wrapping_key,
-      brillo::SecureBlob* main_key);
+  static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+  FromEncryptedContainerWithWrappingKey(const brillo::Blob& flatbuffer,
+                                        const std::string& wrapping_id,
+                                        const brillo::SecureBlob& wrapping_key,
+                                        brillo::SecureBlob* main_key);
 
   // Randomly generates a USS Main Key. This is intended to be used when
   // creating a fresh USS via |CreateRandom()|.
@@ -116,19 +118,19 @@ class UserSecretStash {
   // Returns whether there's a wrapped key block with the given wrapping ID.
   bool HasWrappedMainKey(const std::string& wrapping_id) const;
   // Unwraps (decrypts) the USS main key from the wrapped key block with the
-  // given wrapping ID. Returns null if it doesn't exist or the unwrapping
+  // given wrapping ID. Returns a status if it doesn't exist or the unwrapping
   // fails.
-  std::optional<brillo::SecureBlob> UnwrapMainKey(
+  CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKey(
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key) const;
   // Wraps (encrypts) the USS main key using the given wrapped key. The wrapped
   // data is added into the USS as a wrapped key block with the given wrapping
   // ID. |main_key| must be non-empty, and |wrapping_key| - of
-  // |kAesGcm256KeySize| length. Returns false if the wrapping ID is already
+  // |kAesGcm256KeySize| length. Returns a status if the wrapping ID is already
   // used or the wrapping fails.
-  bool AddWrappedMainKey(const brillo::SecureBlob& main_key,
-                         const std::string& wrapping_id,
-                         const brillo::SecureBlob& wrapping_key);
+  CryptohomeStatus AddWrappedMainKey(const brillo::SecureBlob& main_key,
+                                     const std::string& wrapping_id,
+                                     const brillo::SecureBlob& wrapping_key);
   // Removes the wrapped key with the given ID. If it doesn't exist, returns
   // false.
   bool RemoveWrappedMainKey(const std::string& wrapping_id);
@@ -137,14 +139,15 @@ class UserSecretStash {
   // encrypt this UserSecretStash class. The object is converted to a
   // UserSecretStashPayload table, serialized, encrypted with AES-GCM-256, and
   // serialized as a UserSecretStashContainer table.
-  std::optional<brillo::Blob> GetEncryptedContainer(
+  CryptohomeStatusOr<brillo::Blob> GetEncryptedContainer(
       const brillo::SecureBlob& main_key);
 
  private:
   // Decrypts the USS payload flatbuffer using the passed main key and
   // constructs the USS instance from it. Returns null on decryption or
   // validation failure.
-  static std::unique_ptr<UserSecretStash> FromEncryptedPayload(
+  static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+  FromEncryptedPayload(
       const brillo::Blob& ciphertext,
       const brillo::Blob& iv,
       const brillo::Blob& gcm_tag,

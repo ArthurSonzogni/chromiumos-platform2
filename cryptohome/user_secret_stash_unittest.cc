@@ -24,9 +24,11 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/file_system_keyset_test_utils.h"
 
+using ::cryptohome::error::CryptohomeError;
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::kAesGcm256KeySize;
+using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::utility::CreateSecureRandomBlob;
 
 namespace cryptohome {
@@ -67,8 +69,10 @@ class UserSecretStashTest : public ::testing::Test {
       brillo::SecureBlob(kAesGcm256KeySize, 0xA);
 
   void SetUp() override {
-    stash_ = UserSecretStash::CreateRandom(kFileSystemKeyset);
-    ASSERT_TRUE(stash_);
+    CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
+        UserSecretStash::CreateRandom(kFileSystemKeyset);
+    ASSERT_TRUE(uss_status.ok());
+    stash_ = std::move(uss_status).value();
   }
 
   std::unique_ptr<UserSecretStash> stash_;
@@ -108,23 +112,25 @@ TEST_F(UserSecretStashTest, MainKeyWrapping) {
   EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId2));
 
   // And the main key wrapped with two wrapping keys.
-  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
+  EXPECT_TRUE(
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1).ok());
   EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
-  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2));
+  EXPECT_TRUE(
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2).ok());
   EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId2));
   // Duplicate wrapping IDs aren't allowed.
   EXPECT_FALSE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1).ok());
 
   // The main key can be unwrapped using any of the wrapping keys.
-  std::optional<brillo::SecureBlob> got_main_key1 =
+  CryptohomeStatusOr<brillo::SecureBlob> got_main_key1 =
       stash_->UnwrapMainKey(kWrappingId1, kWrappingKey1);
-  ASSERT_TRUE(got_main_key1);
-  EXPECT_EQ(*got_main_key1, kMainKey);
-  std::optional<brillo::SecureBlob> got_main_key2 =
+  ASSERT_TRUE(got_main_key1.ok());
+  EXPECT_EQ(got_main_key1.value(), kMainKey);
+  CryptohomeStatusOr<brillo::SecureBlob> got_main_key2 =
       stash_->UnwrapMainKey(kWrappingId2, kWrappingKey2);
-  ASSERT_TRUE(got_main_key2);
-  EXPECT_EQ(*got_main_key2, kMainKey);
+  ASSERT_TRUE(got_main_key2.ok());
+  EXPECT_EQ(got_main_key2.value(), kMainKey);
 
   // Removal of one wrapped key block preserves the other.
   EXPECT_TRUE(stash_->RemoveWrappedMainKey(kWrappingId1));
@@ -143,9 +149,9 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
 
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
   // No raw secrets in the encrypted USS, which is written to disk.
   EXPECT_FALSE(
@@ -157,18 +163,18 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", {0xAA, 0xBB}));
 
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
-  std::unique_ptr<UserSecretStash> stash2 =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
-  ASSERT_TRUE(stash2);
+  ASSERT_TRUE(stash2.ok());
 
   EXPECT_THAT(stash_->GetFileSystemKeyset(),
-              FileSystemKeysetEquals(stash2->GetFileSystemKeyset()));
+              FileSystemKeysetEquals(stash2.value()->GetFileSystemKeyset()));
   EXPECT_EQ(stash_->GetResetSecretForLabel("label1").value(),
-            stash2->GetResetSecretForLabel("label1").value());
+            stash2.value()->GetResetSecretForLabel("label1").value());
 }
 
 // Test that deserialization fails on an empty blob. Normally this never occurs,
@@ -176,59 +182,64 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
 // corruption.
 TEST_F(UserSecretStashTest, DecryptErrorEmptyBuf) {
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      /*flatbuffer=*/brillo::Blob(), kMainKey));
+                   /*flatbuffer=*/brillo::Blob(), kMainKey)
+                   .ok());
 }
 
 // Test that deserialization fails on a corrupted flatbuffer. Normally this
 // never occurs, but we verify to be resilient against accidental or intentional
 // file corruption.
 TEST_F(UserSecretStashTest, DecryptErrorCorruptedBuf) {
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
-  brillo::Blob corrupted_uss_container = *uss_container;
+  brillo::Blob corrupted_uss_container = uss_container.value();
   for (uint8_t& byte : corrupted_uss_container)
     byte ^= 1;
 
-  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(corrupted_uss_container,
-                                                       kMainKey));
+  EXPECT_FALSE(
+      UserSecretStash::FromEncryptedContainer(corrupted_uss_container, kMainKey)
+          .ok());
 }
 
 // Test that decryption fails on an empty decryption key.
 TEST_F(UserSecretStashTest, DecryptErrorEmptyKey) {
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
-  EXPECT_FALSE(
-      UserSecretStash::FromEncryptedContainer(*uss_container, /*main_key=*/{}));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(uss_container.value(),
+                                                       /*main_key=*/{})
+                   .ok());
 }
 
 // Test that decryption fails on a decryption key of a wrong size.
 TEST_F(UserSecretStashTest, DecryptErrorKeyBadSize) {
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
   brillo::SecureBlob bad_size_main_key = kMainKey;
   bad_size_main_key.resize(kAesGcm256KeySize - 1);
 
-  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(*uss_container,
-                                                       bad_size_main_key));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(uss_container.value(),
+                                                       bad_size_main_key)
+                   .ok());
 }
 
 // Test that decryption fails on a wrong decryption key.
 TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
   brillo::SecureBlob wrong_main_key = kMainKey;
   wrong_main_key[0] ^= 1;
 
-  EXPECT_FALSE(
-      UserSecretStash::FromEncryptedContainer(*uss_container, wrong_main_key));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(uss_container.value(),
+                                                       wrong_main_key)
+                   .ok());
 }
 
 // Test that wrapped key blocks are [de]serialized correctly.
@@ -239,25 +250,27 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
   const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xC);
 
   // Add wrapped key blocks.
-  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
-  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2));
+  EXPECT_TRUE(
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1).ok());
+  EXPECT_TRUE(
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2).ok());
 
   // Do the serialization-deserialization roundtrip with the USS.
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
-  std::unique_ptr<UserSecretStash> stash2 =
+  ASSERT_TRUE(uss_container.ok());
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
-  ASSERT_TRUE(stash2);
+  ASSERT_TRUE(stash2.ok());
 
   // The wrapped key blocks are present in the loaded stash and can be
   // decrypted.
-  EXPECT_TRUE(stash2->HasWrappedMainKey(kWrappingId1));
-  EXPECT_TRUE(stash2->HasWrappedMainKey(kWrappingId2));
-  std::optional<brillo::SecureBlob> got_main_key1 =
-      stash2->UnwrapMainKey(kWrappingId1, kWrappingKey1);
-  ASSERT_TRUE(got_main_key1);
-  EXPECT_EQ(*got_main_key1, kMainKey);
+  EXPECT_TRUE(stash2.value()->HasWrappedMainKey(kWrappingId1));
+  EXPECT_TRUE(stash2.value()->HasWrappedMainKey(kWrappingId2));
+  CryptohomeStatusOr<brillo::SecureBlob> got_main_key1 =
+      stash2.value()->UnwrapMainKey(kWrappingId1, kWrappingKey1);
+  ASSERT_TRUE(got_main_key1.ok());
+  EXPECT_EQ(got_main_key1.value(), kMainKey);
 }
 
 // Test that the USS can be loaded and decrypted using the wrapping key stored
@@ -266,22 +279,23 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   // Add a wrapped key block.
   const char kWrappingId[] = "id";
   const brillo::SecureBlob kWrappingKey(kAesGcm256KeySize, 0xB);
-  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey));
+  EXPECT_TRUE(
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey).ok());
 
   // Encrypt the USS.
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(std::nullopt, uss_container);
+  ASSERT_TRUE(uss_container.ok());
 
   // The USS can be decrypted using the wrapping key.
   brillo::SecureBlob unwrapped_main_key;
-  std::unique_ptr<UserSecretStash> stash2 =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
       UserSecretStash::FromEncryptedContainerWithWrappingKey(
           uss_container.value(), kWrappingId, kWrappingKey,
           &unwrapped_main_key);
-  ASSERT_TRUE(stash2);
+  ASSERT_TRUE(stash2.ok());
   EXPECT_THAT(stash_->GetFileSystemKeyset(),
-              FileSystemKeysetEquals(stash2->GetFileSystemKeyset()));
+              FileSystemKeysetEquals(stash2.value()->GetFileSystemKeyset()));
   EXPECT_EQ(unwrapped_main_key, kMainKey);
 }
 
@@ -306,10 +320,10 @@ TEST_F(UserSecretStashTest, OsVersion) {
   base::test::ScopedChromeOSVersionInfo scoped_version(
       kLsbRelease, /*lsb_release_time=*/base::Time());
 
-  std::unique_ptr<UserSecretStash> stash1 =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash1 =
       UserSecretStash::CreateRandom(kFileSystemKeyset);
-  ASSERT_TRUE(stash1);
-  EXPECT_EQ(stash1->GetCreatedOnOsVersion(), "11012.0.2018_08_28_1422");
+  ASSERT_TRUE(stash1.ok());
+  EXPECT_EQ(stash1.value()->GetCreatedOnOsVersion(), "11012.0.2018_08_28_1422");
 }
 
 // Test that the OS version is stored in the USS and doesn't change even when
@@ -323,15 +337,17 @@ TEST_F(UserSecretStashTest, OsVersionStays) {
       "OS\nCHROMEOS_RELEASE_VERSION=22222.0.2028_01_01_9999\n";
 
   // Create and encrypt the USS on the version 1.
-  std::optional<brillo::Blob> uss_container;
+  brillo::Blob uss_container;
   {
     base::test::ScopedChromeOSVersionInfo scoped_version1(
         kLsbRelease1, /*lsb_release_time=*/base::Time());
-    std::unique_ptr<UserSecretStash> stash1 =
+    CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash1 =
         UserSecretStash::CreateRandom(kFileSystemKeyset);
-    ASSERT_TRUE(stash1);
-    uss_container = stash1->GetEncryptedContainer(kMainKey);
-    ASSERT_TRUE(uss_container.has_value());
+    ASSERT_TRUE(stash1.ok());
+    CryptohomeStatusOr<brillo::Blob> uss_container_status =
+        stash1.value()->GetEncryptedContainer(kMainKey);
+    ASSERT_TRUE(uss_container_status.ok());
+    uss_container = std::move(uss_container_status).value();
   }
 
   // Decrypt the USS on the version 2. Check that the field still mentions
@@ -339,11 +355,11 @@ TEST_F(UserSecretStashTest, OsVersionStays) {
   {
     base::test::ScopedChromeOSVersionInfo scoped_version2(
         kLsbRelease2, /*lsb_release_time=*/base::Time());
-    std::unique_ptr<UserSecretStash> stash2 =
-        UserSecretStash::FromEncryptedContainer(uss_container.value(),
-                                                kMainKey);
-    ASSERT_TRUE(stash2);
-    EXPECT_EQ(stash2->GetCreatedOnOsVersion(), "11012.0.2018_08_28_1422");
+    CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
+        UserSecretStash::FromEncryptedContainer(uss_container, kMainKey);
+    ASSERT_TRUE(stash2.ok());
+    EXPECT_EQ(stash2.value()->GetCreatedOnOsVersion(),
+              "11012.0.2018_08_28_1422");
   }
 }
 
@@ -357,19 +373,19 @@ TEST_F(UserSecretStashTest, MissingOsVersion) {
       /*lsb_release=*/"", /*lsb_release_time=*/base::Time());
 
   // A newly created USS should have an empty OS version.
-  std::unique_ptr<UserSecretStash> stash =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash =
       UserSecretStash::CreateRandom(kFileSystemKeyset);
-  ASSERT_TRUE(stash);
-  EXPECT_TRUE(stash->GetCreatedOnOsVersion().empty());
+  ASSERT_TRUE(stash.ok());
+  EXPECT_TRUE(stash.value()->GetCreatedOnOsVersion().empty());
 
   // Do a encrypt-decrypt roundtrip and verify the OS version is still empty.
-  std::optional<brillo::Blob> uss_container =
+  CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_TRUE(uss_container.has_value());
-  std::unique_ptr<UserSecretStash> stash2 =
+  ASSERT_TRUE(uss_container.ok());
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
-  ASSERT_TRUE(stash2);
-  EXPECT_TRUE(stash2->GetCreatedOnOsVersion().empty());
+  ASSERT_TRUE(stash2.ok());
+  EXPECT_TRUE(stash2.value()->GetCreatedOnOsVersion().empty());
 }
 
 // Test that SetResetSecretForLabel does not overwrite if a reset secret already
@@ -399,9 +415,9 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
   // |stash_|.
   void UpdateBindingStrusts() {
     // Encrypt the USS.
-    std::optional<brillo::Blob> uss_container =
+    CryptohomeStatusOr<brillo::Blob> uss_container =
         stash_->GetEncryptedContainer(kMainKey);
-    ASSERT_TRUE(uss_container);
+    ASSERT_TRUE(uss_container.ok());
 
     // Unpack the wrapped USS flatbuffer to |uss_container_struct_|.
     std::optional<UserSecretStashContainer> uss_container_struct =
@@ -482,12 +498,16 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
 // Verify that the test fixture correctly generates the USS flatbuffers from the
 // binding structs.
 TEST_F(UserSecretStashInternalsTest, SmokeTest) {
+  EXPECT_TRUE(
+      UserSecretStash::FromEncryptedContainer(
+          GetFlatbufferFromUssPayloadBlob(PackUssPayloadStruct()), kMainKey)
+          .ok());
   EXPECT_TRUE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadBlob(PackUssPayloadStruct()), kMainKey));
+                  GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                  .ok());
   EXPECT_TRUE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
-  EXPECT_TRUE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                  GetFlatbufferFromUssContainerStruct(), kMainKey)
+                  .ok());
 }
 
 // Test that decryption fails when the USS payload is a corrupted flatbuffer.
@@ -499,7 +519,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorBadPayload) {
     byte ^= 1;
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadBlob(uss_payload), kMainKey));
+                   GetFlatbufferFromUssPayloadBlob(uss_payload), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the USS payload is a truncated flatbuffer.
@@ -510,7 +531,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorPayloadBadSize) {
   uss_payload.resize(uss_payload.size() / 2);
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadBlob(uss_payload), kMainKey));
+                   GetFlatbufferFromUssPayloadBlob(uss_payload), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the encryption algorithm is not set. Normally
@@ -520,7 +542,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoAlgorithm) {
   uss_container_struct_.encryption_algorithm.reset();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the encryption algorithm is unknown. Normally
@@ -533,7 +556,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorUnknownAlgorithm) {
           std::underlying_type_t<UserSecretStashEncryptionAlgorithm>>::max());
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the ciphertext field is missing. Normally
@@ -543,7 +567,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoCiphertext) {
   uss_container_struct_.ciphertext.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the ciphertext field is corrupted. Normally
@@ -554,7 +579,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorCorruptedCiphertext) {
     byte ^= 1;
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the iv field is missing. Normally this never
@@ -564,7 +590,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoIv) {
   uss_container_struct_.iv.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the iv field has a wrong value. Normally this
@@ -574,7 +601,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorWrongIv) {
   uss_container_struct_.iv[0] ^= 1;
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the iv field is of a wrong size. Normally
@@ -584,7 +612,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorIvBadSize) {
   uss_container_struct_.iv.resize(uss_container_struct_.iv.size() - 1);
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the gcm_tag field is missing. Normally this
@@ -594,7 +623,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoGcmTag) {
   uss_container_struct_.gcm_tag.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the gcm_tag field has a wrong value.
@@ -602,7 +632,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorWrongGcmTag) {
   uss_container_struct_.gcm_tag[0] ^= 1;
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test that decryption fails when the gcm_tag field is of a wrong size.
@@ -613,7 +644,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorGcmTagBadSize) {
                                        1);
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssContainerStruct(), kMainKey));
+                   GetFlatbufferFromUssContainerStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's FEK field is missing. Normally
@@ -623,7 +655,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFek) {
   uss_payload_struct_.fek.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's FNEK field is missing. Normally
@@ -633,7 +666,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnek) {
   uss_payload_struct_.fnek.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's FEK salt field is missing.
@@ -643,7 +677,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFekSalt) {
   uss_payload_struct_.fek_salt.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's FNEK salt field is missing.
@@ -653,7 +688,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnekSalt) {
   uss_payload_struct_.fnek_salt.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's FEK signature field is missing.
@@ -663,7 +699,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFekSig) {
   uss_payload_struct_.fek_sig.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's FNEK signature field is missing.
@@ -673,7 +710,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnekSig) {
   uss_payload_struct_.fnek_sig.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Test the decryption fails when the payload's Chaps key field is missing.
@@ -683,7 +721,8 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoChapsKey) {
   uss_payload_struct_.chaps_key.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+                   GetFlatbufferFromUssPayloadStruct(), kMainKey)
+                   .ok());
 }
 
 // Fixture that prebundles the USS object with a wrapped key block.
@@ -696,7 +735,8 @@ class UserSecretStashInternalsWrappingTest
 
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(UserSecretStashInternalsTest::SetUp());
-    EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey));
+    EXPECT_TRUE(
+        stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey).ok());
     ASSERT_NO_FATAL_FAILURE(UpdateBindingStrusts());
   }
 };
@@ -706,8 +746,9 @@ class UserSecretStashInternalsWrappingTest
 TEST_F(UserSecretStashInternalsWrappingTest, SmokeTest) {
   brillo::SecureBlob main_key;
   EXPECT_TRUE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                  GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                  kWrappingKey, &main_key)
+                  .ok());
   EXPECT_EQ(main_key, kMainKey);
 }
 
@@ -719,8 +760,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorNoWrappingId) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key succeeds despite having an extra block
@@ -735,8 +777,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, SuccessWithExtraNoWrappingId) {
 
   brillo::SecureBlob main_key;
   EXPECT_TRUE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                  GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                  kWrappingKey, &main_key)
+                  .ok());
 }
 
 // Test that decryption via wrapping key succeeds despite having an extra block
@@ -750,8 +793,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, SuccessWithDuplicateWrappingId) {
 
   brillo::SecureBlob main_key;
   EXPECT_TRUE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                  GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                  kWrappingKey, &main_key)
+                  .ok());
 }
 
 // Test that decryption via wrapping key fails when the algorithm is not
@@ -763,8 +807,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorNoAlgorithm) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the algorithm is unknown.
@@ -778,8 +823,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorUnknownAlgorithm) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the encrypted_key is empty
@@ -789,8 +835,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorEmptyEncryptedKey) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the encrypted_key in the
@@ -800,8 +847,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorBadEncryptedKey) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the iv is empty in the
@@ -812,8 +860,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorNoIv) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the iv in the stored block
@@ -824,8 +873,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorWrongIv) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the iv in the stored block
@@ -837,8 +887,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorIvBadSize) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the gcm_tag is empty in the
@@ -849,8 +900,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorNoGcmTag) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the gcm_tag in the stored
@@ -861,8 +913,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorWrongGcmTag) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 // Test that decryption via wrapping key fails when the gcm_tag in the stored
@@ -874,8 +927,9 @@ TEST_F(UserSecretStashInternalsWrappingTest, ErrorGcmTagBadSize) {
 
   brillo::SecureBlob main_key;
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
-      GetFlatbufferFromUssContainerStruct(), kWrappingId, kWrappingKey,
-      &main_key));
+                   GetFlatbufferFromUssContainerStruct(), kWrappingId,
+                   kWrappingKey, &main_key)
+                   .ok());
 }
 
 }  // namespace cryptohome

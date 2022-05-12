@@ -953,9 +953,10 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  std::unique_ptr<UserSecretStash> uss =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
-  ASSERT_NE(uss, nullptr);
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
@@ -974,12 +975,14 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value()));
-  std::optional<brillo::Blob> encrypted_uss =
+                                     wrapping_key.value())
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
-  ASSERT_TRUE(encrypted_uss.has_value());
-  EXPECT_TRUE(user_secret_stash_storage_.Persist(encrypted_uss.value(),
-                                                 obfuscated_username));
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
   // Creating the auth session.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,
@@ -1029,9 +1032,10 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  std::unique_ptr<UserSecretStash> uss =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
-  ASSERT_NE(uss, nullptr);
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
@@ -1050,12 +1054,14 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
-                                     wrapping_key.value()));
-  std::optional<brillo::Blob> encrypted_uss =
+                                     wrapping_key.value())
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
-  ASSERT_TRUE(encrypted_uss.has_value());
-  EXPECT_TRUE(user_secret_stash_storage_.Persist(encrypted_uss.value(),
-                                                 obfuscated_username));
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
   // Creating the auth session.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,

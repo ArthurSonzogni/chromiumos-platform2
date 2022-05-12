@@ -24,17 +24,24 @@
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::kAesGcmIVSize;
 using ::hwsec_foundation::kAesGcmTagSize;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -84,35 +91,56 @@ std::string GetCurrentOsVersion() {
 
 // Extracts the file system keyset from the given USS payload. Returns nullopt
 // on failure.
-std::optional<FileSystemKeyset> GetFileSystemKeyFromPayload(
+CryptohomeStatusOr<FileSystemKeyset> GetFileSystemKeyFromPayload(
     const UserSecretStashPayload& uss_payload) {
   if (uss_payload.fek.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FEK";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoFEKInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fnek.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FNEK";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoFNEKInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fek_salt.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FEK salt";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoFEKSaltInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fnek_salt.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FNEK salt";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoFNEKSaltInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fek_sig.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FEK signature";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoFEKSigInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fnek_sig.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FNEK signature";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoFNEKSigInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.chaps_key.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no Chaps key";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoChapsKeyInGetFSKeyFromPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   FileSystemKey file_system_key = {
       .fek = uss_payload.fek,
@@ -199,7 +227,7 @@ GetKeyBlocksFromSerializableStructs(
 // Parses the USS container flatbuffer. On success, populates `ciphertext`,
 // `iv`, `tag`, `wrapped_key_blocks`, `created_on_os_version`; on failure,
 // returns false.
-bool GetContainerFromFlatbuffer(
+CryptohomeStatus GetContainerFromFlatbuffer(
     const brillo::Blob& flatbuffer,
     brillo::Blob* ciphertext,
     brillo::Blob* iv,
@@ -210,47 +238,71 @@ bool GetContainerFromFlatbuffer(
       UserSecretStashContainer::Deserialize(flatbuffer);
   if (!deserialized.has_value()) {
     LOG(ERROR) << "Failed to deserialize UserSecretStashContainer";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   if (!deserialized.value().encryption_algorithm.has_value()) {
     LOG(ERROR) << "UserSecretStashContainer has no algorithm set";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoAlgInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (deserialized.value().encryption_algorithm.value() !=
       UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
     LOG(ERROR) << "UserSecretStashContainer uses unknown algorithm: "
                << static_cast<int>(deserialized->encryption_algorithm.value());
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSUnknownAlgInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   if (deserialized.value().ciphertext.empty()) {
     LOG(ERROR) << "UserSecretStash has empty ciphertext";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoCiphertextInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   *ciphertext = deserialized.value().ciphertext;
 
   if (deserialized.value().iv.empty()) {
     LOG(ERROR) << "UserSecretStash has empty IV";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoIVInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (deserialized.value().iv.size() != kAesGcmIVSize) {
     LOG(ERROR) << "UserSecretStash has IV of wrong length: "
                << deserialized.value().iv.size()
                << ", expected: " << kAesGcmIVSize;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSIVWrongSizeInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   *iv = deserialized.value().iv;
 
   if (deserialized.value().gcm_tag.empty()) {
     LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoGCMTagInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (deserialized.value().gcm_tag.size() != kAesGcmTagSize) {
     LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
                << deserialized.value().gcm_tag.size()
                << ", expected: " << kAesGcmTagSize;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSTagWrongSizeInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   *tag = deserialized.value().gcm_tag;
 
@@ -259,10 +311,10 @@ bool GetContainerFromFlatbuffer(
 
   *created_on_os_version = deserialized.value().created_on_os_version;
 
-  return true;
+  return OkStatus<CryptohomeError>();
 }
 
-std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
+CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
     const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
         wrapped_key_blocks,
     const std::string& wrapping_id,
@@ -271,14 +323,20 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
   if (wrapping_id.empty()) {
     NOTREACHED() << "Empty wrapping ID is passed for UserSecretStash main key "
                     "unwrapping.";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSEmptyWrappingIDInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapping_key.size() != kAesGcm256KeySize) {
     NOTREACHED() << "Wrong wrapping key size is passed for UserSecretStash "
                     "main key unwrapping. Received: "
                  << wrapping_key.size() << ", expected " << kAesGcm256KeySize
                  << ".";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSWrongWKSizeInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   // Find the wrapped key block.
@@ -286,7 +344,10 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
   if (wrapped_key_block_iter == wrapped_key_blocks.end()) {
     LOG(ERROR)
         << "UserSecretStash wrapped key block with the given ID not found.";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSWrappedBlockNotFoundInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   const UserSecretStash::WrappedKeyBlock& wrapped_key_block =
       wrapped_key_block_iter->second;
@@ -298,24 +359,36 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
     LOG(ERROR) << "UserSecretStash wrapped main key uses unknown algorithm: "
                << static_cast<int>(wrapped_key_block.encryption_algorithm)
                << ".";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSUnknownAlgInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapped_key_block.encrypted_key.empty()) {
     LOG(ERROR) << "UserSecretStash wrapped main key has empty encrypted key.";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSEmptyEncKeyInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapped_key_block.iv.size() != kAesGcmIVSize) {
     LOG(ERROR) << "UserSecretStash wrapped main key has IV of wrong length: "
                << wrapped_key_block.iv.size() << ", expected: " << kAesGcmIVSize
                << ".";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSWrongIVSizeInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapped_key_block.gcm_tag.size() != kAesGcmTagSize) {
     LOG(ERROR)
         << "UserSecretStash wrapped main key has AES-GCM tag of wrong length: "
         << wrapped_key_block.gcm_tag.size() << ", expected: " << kAesGcmTagSize
         << ".";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSWrongTagSizeInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   // Attempt the unwrapping.
@@ -325,7 +398,10 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
           /*ad=*/std::nullopt, brillo::SecureBlob(wrapped_key_block.gcm_tag),
           wrapping_key, brillo::SecureBlob(wrapped_key_block.iv), &main_key)) {
     LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSDecryptFailedInUnwrapMKFromBlocks),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return main_key;
 }
@@ -373,8 +449,8 @@ void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {
 }
 
 // static
-std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom(
-    const FileSystemKeyset& file_system_keyset) {
+CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+UserSecretStash::CreateRandom(const FileSystemKeyset& file_system_keyset) {
   std::string current_os_version = GetCurrentOsVersion();
 
   // Note: make_unique() wouldn't work due to the constructor being private.
@@ -385,30 +461,45 @@ std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom(
 }
 
 // static
-std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
-    const brillo::Blob& flatbuffer, const brillo::SecureBlob& main_key) {
+CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+UserSecretStash::FromEncryptedContainer(const brillo::Blob& flatbuffer,
+                                        const brillo::SecureBlob& main_key) {
   if (main_key.size() != kAesGcm256KeySize) {
     LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
                << main_key.size() << ", expected: " << kAesGcm256KeySize;
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSInvalidKeySizeInFromEncContainer),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   brillo::Blob ciphertext, iv, gcm_tag;
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
   std::string created_on_os_version;
-  if (!GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                  &wrapped_key_blocks,
-                                  &created_on_os_version)) {
+  CryptohomeStatus status =
+      GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
+                                 &wrapped_key_blocks, &created_on_os_version);
+  if (!status.ok()) {
     // Note: the error is already logged.
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocUSSGetFromFBFailedInFromEncContainer))
+        .Wrap(std::move(status));
   }
 
-  return FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                              created_on_os_version, main_key);
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> result =
+      FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
+                           created_on_os_version, main_key);
+  if (!result.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocUSSFromPayloadFailedInFromEncContainer))
+        .Wrap(std::move(result).status());
+  }
+  return result;
 }
 
 // static
-std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
+CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+UserSecretStash::FromEncryptedPayload(
     const brillo::Blob& ciphertext,
     const brillo::Blob& iv,
     const brillo::Blob& gcm_tag,
@@ -420,22 +511,30 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
                      brillo::SecureBlob(gcm_tag), main_key,
                      brillo::SecureBlob(iv), &serialized_uss_payload)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash payload";
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSAesGcmFailedInFromEncPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   std::optional<UserSecretStashPayload> uss_payload =
       UserSecretStashPayload::Deserialize(serialized_uss_payload);
   if (!uss_payload.has_value()) {
     LOG(ERROR) << "Failed to deserialize UserSecretStashPayload";
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInFromEncPayload),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  std::optional<FileSystemKeyset> file_system_keyset =
+  CryptohomeStatusOr<FileSystemKeyset> file_system_keyset_status =
       GetFileSystemKeyFromPayload(uss_payload.value());
-  if (!file_system_keyset.has_value()) {
+  if (!file_system_keyset_status.ok()) {
     LOG(ERROR)
         << "UserSecretStashPayload has invalid file system keyset information";
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocUSSGetFSKeyFailedInFromEncPayload))
+        .Wrap(std::move(file_system_keyset_status).status());
   }
 
   std::map<std::string, brillo::SecureBlob> reset_secrets;
@@ -451,14 +550,14 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
 
   // Note: make_unique() wouldn't work due to the constructor being private.
   std::unique_ptr<UserSecretStash> stash(
-      new UserSecretStash(file_system_keyset.value(), reset_secrets));
+      new UserSecretStash(file_system_keyset_status.value(), reset_secrets));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
   stash->created_on_os_version_ = created_on_os_version;
   return stash;
 }
 
 // static
-std::unique_ptr<UserSecretStash>
+CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
 UserSecretStash::FromEncryptedContainerWithWrappingKey(
     const brillo::Blob& flatbuffer,
     const std::string& wrapping_id,
@@ -467,29 +566,39 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
   brillo::Blob ciphertext, iv, gcm_tag;
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
   std::string created_on_os_version;
-  if (!GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                  &wrapped_key_blocks,
-                                  &created_on_os_version)) {
+  CryptohomeStatus status =
+      GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
+                                 &wrapped_key_blocks, &created_on_os_version);
+  if (!status.ok()) {
     // Note: the error is already logged.
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUSSGetFromFBFailedInFromEncContainerWithWK))
+        .Wrap(std::move(status));
   }
 
-  std::optional<brillo::SecureBlob> main_key_optional =
+  CryptohomeStatusOr<brillo::SecureBlob> main_key_optional =
       UnwrapMainKeyFromBlocks(wrapped_key_blocks, wrapping_id, wrapping_key);
-  if (!main_key_optional) {
+  if (!main_key_optional.ok()) {
     // Note: the error is already logged.
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUSSUnwrapMKFailedInFromEncContainerWithWK))
+        .Wrap(std::move(main_key_optional).status());
   }
 
-  std::unique_ptr<UserSecretStash> stash =
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash =
       FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                           created_on_os_version, *main_key_optional);
-  if (!stash) {
+                           created_on_os_version, main_key_optional.value());
+  if (!stash.ok()) {
     // Note: the error is already logged.
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUSSFromPayloadFailedInFromEncContainerWithWK))
+        .Wrap(std::move(stash).status());
   }
-  *main_key = *main_key_optional;
-  return stash;
+  *main_key = main_key_optional.value();
+  return std::move(stash).value();
 }
 
 // static
@@ -524,40 +633,59 @@ bool UserSecretStash::HasWrappedMainKey(const std::string& wrapping_id) const {
   return wrapped_key_blocks_.count(wrapping_id);
 }
 
-std::optional<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
+CryptohomeStatusOr<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key) const {
-  return UnwrapMainKeyFromBlocks(wrapped_key_blocks_, wrapping_id,
-                                 wrapping_key);
+  CryptohomeStatusOr<brillo::SecureBlob> result =
+      UnwrapMainKeyFromBlocks(wrapped_key_blocks_, wrapping_id, wrapping_key);
+  if (!result.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocUSSUnwrapMKFailedInUnwrapMK))
+        .Wrap(std::move(result).status());
+  }
+  return result.value();
 }
 
-bool UserSecretStash::AddWrappedMainKey(
+CryptohomeStatus UserSecretStash::AddWrappedMainKey(
     const brillo::SecureBlob& main_key,
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key) {
   // Verify preconditions.
   if (main_key.empty()) {
     NOTREACHED() << "Empty UserSecretStash main key is passed for wrapping.";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSMainKeyEmptyInAddWrappedMainKey),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   if (wrapping_id.empty()) {
     NOTREACHED()
         << "Empty wrapping ID is passed for UserSecretStash main key wrapping.";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSWrappingIDEmptyInAddWrappedMainKey),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   if (wrapping_key.size() != kAesGcm256KeySize) {
     NOTREACHED() << "Wrong wrapping key size is passed for UserSecretStash "
                     "main key wrapping. Received: "
                  << wrapping_key.size() << ", expected " << kAesGcm256KeySize
                  << ".";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSWrappingWrongSizeInAddWrappedMainKey),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
   // Protect from duplicate wrapping IDs.
   if (wrapped_key_blocks_.count(wrapping_id)) {
     LOG(ERROR) << "A UserSecretStash main key with the given wrapping_id "
                   "already exists.";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSDuplicateWrappingInAddWrappedMainKey),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
   // Perform the wrapping.
@@ -565,7 +693,10 @@ bool UserSecretStash::AddWrappedMainKey(
   if (!AesGcmEncrypt(main_key, /*ad=*/std::nullopt, wrapping_key, &iv, &gcm_tag,
                      &encrypted_key)) {
     LOG(ERROR) << "Failed to wrap UserSecretStash main key.";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSEncryptFailedInAddWrappedMainKey),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
   wrapped_key_blocks_[wrapping_id] = WrappedKeyBlock{
@@ -574,7 +705,7 @@ bool UserSecretStash::AddWrappedMainKey(
       .iv = brillo::Blob(iv.begin(), iv.end()),
       .gcm_tag = brillo::Blob(gcm_tag.begin(), gcm_tag.end()),
   };
-  return true;
+  return OkStatus<CryptohomeError>();
 }
 
 bool UserSecretStash::RemoveWrappedMainKey(const std::string& wrapping_id) {
@@ -588,7 +719,7 @@ bool UserSecretStash::RemoveWrappedMainKey(const std::string& wrapping_id) {
   return true;
 }
 
-std::optional<brillo::Blob> UserSecretStash::GetEncryptedContainer(
+CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
     const brillo::SecureBlob& main_key) {
   UserSecretStashPayload payload = {
       .fek = file_system_keyset_.Key().fek,
@@ -614,14 +745,22 @@ std::optional<brillo::Blob> UserSecretStash::GetEncryptedContainer(
   std::optional<brillo::SecureBlob> serialized_payload = payload.Serialize();
   if (!serialized_payload.has_value()) {
     LOG(ERROR) << "Failed to serialize UserSecretStashPayload";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSPayloadSerializeFailedInGetEncContainer),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   brillo::SecureBlob tag, iv, ciphertext;
   if (!AesGcmEncrypt(serialized_payload.value(), /*ad=*/std::nullopt, main_key,
                      &iv, &tag, &ciphertext)) {
     LOG(ERROR) << "Failed to encrypt UserSecretStash";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSPayloadEncryptFailedInGetEncContainer),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   UserSecretStashContainer container = {
@@ -649,7 +788,11 @@ std::optional<brillo::Blob> UserSecretStash::GetEncryptedContainer(
   std::optional<brillo::Blob> serialized_contaner = container.Serialize();
   if (!serialized_contaner.has_value()) {
     LOG(ERROR) << "Failed to serialize UserSecretStashContainer";
-    return std::nullopt;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSContainerSerializeFailedInGetEncContainer),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return serialized_contaner.value();
 }

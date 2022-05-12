@@ -10,6 +10,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -25,13 +26,13 @@ class UserSecretStashStorage final {
 
   // Persists the serialized USS container, as created by
   // `UserSecretStash::GetEncryptedContainer()`, in the given user's directory
-  // in the shadow root. Returns false on failure.
-  bool Persist(const brillo::Blob& uss_container_flatbuffer,
-               const std::string& obfuscated_username);
+  // in the shadow root. Returns a status on failure.
+  CryptohomeStatus Persist(const brillo::Blob& uss_container_flatbuffer,
+                           const std::string& obfuscated_username);
   // Loads the serialized USS container flatbuffer (to be used with
   // `UserSecretStash::FromEncryptedContainer()`) from the given user's
   // directory in the shadow root. Returns nullopt on failure.
-  std::optional<brillo::Blob> LoadPersisted(
+  CryptohomeStatusOr<brillo::Blob> LoadPersisted(
       const std::string& obfuscated_username);
 
  private:
