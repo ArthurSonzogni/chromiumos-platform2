@@ -4,6 +4,7 @@
 
 #include "cros-disks/sandboxed_process.h"
 
+#include <iostream>
 #include <utility>
 
 #include <stdlib.h>
@@ -27,7 +28,21 @@
 namespace cros_disks {
 namespace {
 
-int Exec(char* const args[], char* const env[]) {
+void SimulateProgressForTesting() {
+  PCHECK(signal(SIGTERM, SIG_IGN) != SIG_ERR);
+  for (int i = 0; i < 100; ++i) {
+    std::cerr << "Simulating progress " << i << "%" << std::endl;
+    usleep(100'000);
+  }
+  PCHECK(signal(SIGTERM, SIG_DFL) != SIG_ERR);
+}
+
+int Exec(char* const args[],
+         char* const env[],
+         const bool simulate_progress_for_testing) {
+  if (simulate_progress_for_testing)
+    SimulateProgressForTesting();
+
   const char* const path = args[0];
   execve(path, args, env);
   const int ret =
@@ -197,9 +212,10 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
 
     if (child_pid == 0) {
       // In child 'init' process.
-      SandboxedInit(base::BindOnce(Exec, args, env),
-                    std::move(launcher_pipe_.child_fd),
-                    std::move(termination_pipe.child_fd))
+      SandboxedInit(
+          base::BindOnce(Exec, args, env, simulate_progress_for_testing_),
+          std::move(launcher_pipe_.child_fd),
+          std::move(termination_pipe.child_fd))
           .Run();
       NOTREACHED();
     } else {

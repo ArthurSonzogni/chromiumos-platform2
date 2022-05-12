@@ -96,7 +96,16 @@ class SandboxedProcess : public Process {
   // process.
   void PreserveFile(int fd);
 
- private:
+  // Sets the flag that will simulate progress by delaying the execution of the
+  // sandboxed program by 10 seconds.
+  //
+  // Precondition: NewPidNamespace() was called.
+  void SimulateProgressForTesting() {
+    DCHECK(use_pid_namespace_);
+    simulate_progress_for_testing_ = true;
+  }
+
+ protected:
   // Process overrides:
   pid_t StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) override;
   int WaitImpl() override;
@@ -107,6 +116,9 @@ class SandboxedProcess : public Process {
 
   // Does this SandboxedProcess use a PID namespace?
   bool use_pid_namespace_ = false;
+
+  // Should simulate progress and delay the start of the process for testing?
+  bool simulate_progress_for_testing_ = false;
 
   // Write end of the pipe used to terminate the init process inside the PID
   // namespace. This end of the pipe is closed when the SandboxedProcess
@@ -134,6 +146,10 @@ struct SandboxedExecutable {
 class FakeSandboxedProcess : public SandboxedProcess {
  public:
   virtual int OnProcessLaunch(const std::vector<std::string>& argv);
+
+  bool GetSimulateProgressForTesting() const {
+    return simulate_progress_for_testing_;
+  }
 
  private:
   pid_t StartImpl(base::ScopedFD, base::ScopedFD) final;

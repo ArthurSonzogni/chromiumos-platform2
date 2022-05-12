@@ -38,6 +38,7 @@ using testing::_;
 using testing::Contains;
 using testing::ElementsAre;
 using testing::IsEmpty;
+using testing::IsSupersetOf;
 using testing::Not;
 using testing::PrintToStringParamName;
 using testing::Return;
@@ -878,6 +879,27 @@ TEST(PidNamespaceRunAsRootTest, RepeatedSigTerm) {
   // too.
   EXPECT_GT(timer.Elapsed(), base::Seconds(2));
   EXPECT_EQ(process.pid(), pid);
+}
+
+TEST(PidNamespaceRunAsRootTest, SimulatesProgress) {
+  SandboxedProcess process;
+  process.NewPidNamespace();
+  process.SimulateProgressForTesting();
+
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument(R"(
+      echo Finished;
+      exit 42;
+    )");
+
+  base::ElapsedTimer timer;
+  EXPECT_EQ(process.Run(), 42);
+  EXPECT_GT(timer.Elapsed(), base::Seconds(10));
+  EXPECT_THAT(process.GetCapturedOutput(), SizeIs(101));
+  EXPECT_THAT(process.GetCapturedOutput(),
+              IsSupersetOf({"Simulating progress 0%", "Simulating progress 73%",
+                            "Simulating progress 99%", "Finished"}));
 }
 
 TEST(ProcessTerminationTest, RunAsRoot_InitTerminatesAfterDestroyingProcess) {
