@@ -218,3 +218,12 @@ There will not be any requirement for AuthSession here as this account is totall
 
 Note that if the global ephemeral policy is enabled, Chrome will need to remove
 any persistent users present.
+
+### Chrome wants to migrate eCryptfs to DirCrypto encryption scheme
+
+1.  `StartAuthSession` – Chrome initiates an AuthSession.
+2.  `AuthenticateAuthSession`
+3.  `PrepareVaultForMigration`
+4.  `StartMigrateToDircrypto`
+    -   Ensure that this is called with the ```auth_session_id``` field set.
+5.  `InvalidateAuthSession`

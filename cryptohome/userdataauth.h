@@ -1422,6 +1422,10 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthExTest, RemoveValidityWithAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSessionUnusableClobber);
+  FRIEND_TEST(UserDataAuthExTest,
+              StartMigrateToDircryptoWithAuthenticatedAuthSession);
+  FRIEND_TEST(UserDataAuthExTest,
+              StartMigrateToDircryptoWithUnAuthenticatedAuthSession);
 
   friend class AuthSessionInterfaceTest;
 };

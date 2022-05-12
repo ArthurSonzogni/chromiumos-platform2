@@ -3125,6 +3125,143 @@ TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+TEST_F(UserDataAuthExTest,
+       StartMigrateToDircryptoWithAuthenticatedAuthSession) {
+  // Setup.
+  PrepareArguments();
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  start_auth_session_req_->mutable_account_id()->set_account_id(kUsername1);
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  ASSERT_TRUE(auth_session_id.has_value());
+
+  AuthSession* auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  ASSERT_THAT(auth_session, NotNull());
+
+  // Migration only happens for authenticated auth session.
+  auth_session->SetAuthSessionAsAuthenticated();
+
+  user_data_auth::StartMigrateToDircryptoRequest request;
+  request.set_auth_session_id(auth_session_reply.auth_session_id());
+  request.set_minimal_migration(false);
+
+  SetupMount(kUsername1);
+
+  EXPECT_CALL(*session_, MigrateVault(_, MigrationType::FULL))
+      .WillOnce(Return(true));
+
+  int success_cnt = 0;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartMigrateToDircrypto(
+        request,
+        base::BindRepeating(
+            [](int* success_cnt_ptr,
+               const user_data_auth::DircryptoMigrationProgress& progress) {
+              EXPECT_EQ(progress.status(),
+                        user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
+              (*success_cnt_ptr)++;
+            },
+            base::Unretained(&success_cnt)));
+  }
+  EXPECT_EQ(success_cnt, 1);
+}
+
+TEST_F(UserDataAuthExTest,
+       StartMigrateToDircryptoWithUnAuthenticatedAuthSession) {
+  // Setup.
+  PrepareArguments();
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  start_auth_session_req_->mutable_account_id()->set_account_id(kUsername1);
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  ASSERT_TRUE(auth_session_id.has_value());
+
+  AuthSession* auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  ASSERT_THAT(auth_session, NotNull());
+
+  user_data_auth::StartMigrateToDircryptoRequest request;
+  request.set_auth_session_id(auth_session_reply.auth_session_id());
+  request.set_minimal_migration(false);
+
+  int called_ctr = 0;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartMigrateToDircrypto(
+        request,
+        base::BindRepeating(
+            [](int* called_ctr_ptr,
+               const user_data_auth::DircryptoMigrationProgress& progress) {
+              EXPECT_EQ(progress.status(),
+                        user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+              (*called_ctr_ptr)++;
+            },
+            base::Unretained(&called_ctr)));
+  }
+  EXPECT_EQ(called_ctr, 1);
+}
+
+TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
+  // Setup.
+  PrepareArguments();
+  constexpr char kFakeAuthSessionId[] = "foo";
+  user_data_auth::StartMigrateToDircryptoRequest request;
+  request.set_auth_session_id(kFakeAuthSessionId);
+  request.set_minimal_migration(false);
+
+  int called_ctr = 0;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartMigrateToDircrypto(
+        request,
+        base::BindRepeating(
+            [](int* called_ctr_ptr,
+               const user_data_auth::DircryptoMigrationProgress& progress) {
+              EXPECT_EQ(progress.status(),
+                        user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+              (*called_ctr_ptr)++;
+            },
+            base::Unretained(&called_ctr)));
+  }
+  EXPECT_EQ(called_ctr, 1);
+}
+
 TEST_F(UserDataAuthExTest, AddKeyNoObfuscatedName) {
   // HomeDirs cant find the existing obfuscated username.
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);

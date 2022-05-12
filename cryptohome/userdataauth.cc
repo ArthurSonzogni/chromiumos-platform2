@@ -3233,9 +3233,22 @@ void UserDataAuth::StartMigrateToDircrypto(
   // this is why they are left with the default value of 0 here. Please see
   // MigrationHelper::ProgressCallback for more details.
   user_data_auth::DircryptoMigrationProgress progress;
+  AuthSession* auth_session = nullptr;
+  if (!request.auth_session_id().empty()) {
+    CryptohomeStatusOr<AuthSession*> auth_session_status =
+        GetAuthenticatedAuthSession(request.auth_session_id());
+    if (!auth_session_status.ok()) {
+      LOG(ERROR) << "StartMigrateToDircrypto: Invalid auth_session_id.";
+      progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+      progress_callback.Run(progress);
+      return;
+    }
+    auth_session = auth_session_status.value();
+  }
 
-  scoped_refptr<UserSession> session =
-      GetUserSession(GetAccountId(request.account_id()));
+  std::string account_id = auth_session ? auth_session->username()
+                                        : GetAccountId(request.account_id());
+  scoped_refptr<UserSession> session = GetUserSession(account_id);
   if (!session.get()) {
     LOG(ERROR) << "StartMigrateToDircrypto: Failed to get session.";
     progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);

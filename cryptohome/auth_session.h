@@ -411,6 +411,8 @@ class AuthSession final {
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
+  FRIEND_TEST(UserDataAuthExTest,
+              StartMigrateToDircryptoWithAuthenticatedAuthSession);
 };
 
 }  // namespace cryptohome
