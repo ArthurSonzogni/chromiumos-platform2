@@ -268,10 +268,6 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
       if (cr50_utils_->IsFactoryModeEnabled()) {
         json_store_->SetValue(kWpDisableMethod,
                               WpDisableMethod_Name(WpDisableMethod::SKIPPED));
-        // TODO(chenghan): Remove this.
-        json_store_->SetValue(
-            kWriteProtectDisableMethod,
-            static_cast<int>(WriteProtectDisableMethod::SKIPPED));
         return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
       }
       // If HWWP is already disabled, assume the user will select the physical

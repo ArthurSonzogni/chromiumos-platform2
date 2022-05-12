@@ -12,6 +12,7 @@
 #include <base/time/time.h>
 #include <metrics/structured/structured_events.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
@@ -106,18 +107,16 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   }
   report.SetMainboardReplacement(static_cast<int64_t>(mlb_replacement));
 
-  int wp_disable_method = static_cast<int>(WriteProtectDisableMethod::UNKNOWN);
+  std::string wp_disable_method_name;
+  WpDisableMethod wp_disable_method = WpDisableMethod::UNKNOWN;
   // Ignore the else part, because we may not have decided on it.
-  if (json_store->GetValue(kWriteProtectDisableMethod, &wp_disable_method)) {
-    if (std::find(kValidWpDisableMethods.begin(), kValidWpDisableMethods.end(),
-                  static_cast<WriteProtectDisableMethod>(wp_disable_method)) ==
-        kValidWpDisableMethods.end()) {
-      LOG(ERROR) << "Failed to parse [" << wp_disable_method
-                 << "] as write protect disable method to append to metrics.";
+  if (json_store->GetValue(kWpDisableMethod, &wp_disable_method_name)) {
+    if (!WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method)) {
+      LOG(ERROR) << "Failed to parse |wp_disable_method|";
       return false;
     }
   }
-  report.SetWriteProtectDisableMethod(wp_disable_method);
+  report.SetWriteProtectDisableMethod(static_cast<int64_t>(wp_disable_method));
 
   if (record_to_system_ && !report.Record()) {
     LOG(ERROR) << "Failed to record shimless rma report to metrics.";

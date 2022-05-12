@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
+#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
@@ -114,9 +115,13 @@ TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
   // The write protect disable method hasn't been set yet.
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
 
-  for (auto wp_disable_method : kValidWpDisableMethods) {
-    EXPECT_TRUE(json_store_->SetValue(kWriteProtectDisableMethod,
-                                      static_cast<int>(wp_disable_method)));
+  std::array<WpDisableMethod, 5> methods = {
+      WpDisableMethod::UNKNOWN, WpDisableMethod::SKIPPED, WpDisableMethod::RSU,
+      WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE,
+      WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN};
+  for (auto wp_disable_method : methods) {
+    EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod,
+                                      WpDisableMethod_Name(wp_disable_method)));
     EXPECT_TRUE(metrics_utils->Record(json_store_, true));
   }
 }
@@ -173,7 +178,7 @@ TEST_F(MetricsUtilsImplTest, Record_RunningTimeFailed) {
 TEST_F(MetricsUtilsImplTest, Record_UnknownWriteProtectDisableFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
   EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kWriteProtectDisableMethod, 123));
+  EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod, "abc"));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }

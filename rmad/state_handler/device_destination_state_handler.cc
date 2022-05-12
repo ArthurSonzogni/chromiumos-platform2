@@ -15,7 +15,6 @@
 
 #include "rmad/common/types.h"
 #include "rmad/constants.h"
-#include "rmad/metrics/metrics_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
 #include "rmad/system/fake_cryptohome_client.h"
@@ -132,10 +131,6 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
       if (cr50_utils_->IsFactoryModeEnabled()) {
         json_store_->SetValue(kWpDisableMethod,
                               WpDisableMethod_Name(WpDisableMethod::SKIPPED));
-        // TODO(chenghan): Remove this.
-        json_store_->SetValue(
-            kWriteProtectDisableMethod,
-            static_cast<int>(WriteProtectDisableMethod::SKIPPED));
         return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
       }
       // If HWWP is already disabled, assume the user will select the physical

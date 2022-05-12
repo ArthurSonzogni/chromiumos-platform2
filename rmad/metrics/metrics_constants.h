@@ -16,8 +16,6 @@ inline constexpr char kFirstSetupTimestamp[] = "first_setup_timestamp";
 inline constexpr char kSetupTimestamp[] = "setup_timestamp";
 inline constexpr char kRunningTime[] = "running_time";
 inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
-inline constexpr char kWriteProtectDisableMethod[] =
-    "write_protect_disable_method";
 inline constexpr char kOccurredErrors[] = "occurred_errors";
 inline constexpr char kAdditionalActivities[] = "additional_activities";
 
@@ -41,20 +39,6 @@ enum class MainboardReplacement : int {
   REPLACED = 1,
   ORIGINAL = 2,
 };
-
-// Defined write protection disable method.
-enum class WriteProtectDisableMethod : int {
-  UNKNOWN = 0,
-  SKIPPED = 1,
-  RSU = 2,
-  PHYSICAL_ASSEMBLE_DEVICE = 3,
-  PHYSICAL_KEEP_DEVICE_OPEN = 4,
-};
-
-constexpr std::array<WriteProtectDisableMethod, 4> kValidWpDisableMethods = {
-    WriteProtectDisableMethod::SKIPPED, WriteProtectDisableMethod::RSU,
-    WriteProtectDisableMethod::PHYSICAL_ASSEMBLE_DEVICE,
-    WriteProtectDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN};
 
 // Defined additional activities.
 enum class AdditionalActivity : int {

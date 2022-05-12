@@ -11,7 +11,6 @@
 
 #include "rmad/common/types.h"
 #include "rmad/constants.h"
-#include "rmad/metrics/metrics_constants.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
@@ -112,20 +111,10 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
       json_store_->SetValue(
           kWpDisableMethod,
           WpDisableMethod_Name(WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
-      // TODO(chenghan): Remove this.
-      json_store_->SetValue(
-          kWriteProtectDisableMethod,
-          static_cast<int>(
-              WriteProtectDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
     } else {
       json_store_->SetValue(
           kWpDisableMethod,
           WpDisableMethod_Name(WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
-      // TODO(chenghan): Remove this.
-      json_store_->SetValue(
-          kWriteProtectDisableMethod,
-          static_cast<int>(
-              WriteProtectDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
     }
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }

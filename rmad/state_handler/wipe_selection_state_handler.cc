@@ -117,10 +117,6 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
       // Skip WP disabling steps if factory mode is already turned on.
       json_store_->SetValue(kWpDisableMethod,
                             WpDisableMethod_Name(WpDisableMethod::SKIPPED));
-      // TODO(chenghan): Remove this.
-      json_store_->SetValue(
-          kWriteProtectDisableMethod,
-          static_cast<int>(WriteProtectDisableMethod::SKIPPED));
       next_state = RmadState::StateCase::kWpDisableComplete;
     } else if (ccd_blocked_) {
       if (wipe_device) {

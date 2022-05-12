@@ -124,9 +124,6 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   if (IsFactoryModeEnabled()) {
     json_store_->SetValue(kWpDisableMethod,
                           WpDisableMethod_Name(WpDisableMethod::RSU));
-    // TODO(chenghan): Remove this.
-    json_store_->SetValue(kWriteProtectDisableMethod,
-                          static_cast<int>(WriteProtectDisableMethod::RSU));
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
 
