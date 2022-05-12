@@ -18,7 +18,6 @@
 #include "cros-disks/platform.h"
 
 namespace cros_disks {
-
 namespace {
 
 using testing::_;
@@ -41,7 +40,9 @@ class MockFUSEPlatform : public Platform {
 class FakeSandboxedProcessFactory : public SandboxedProcessFactory {
  public:
   std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const override {
-    return std::make_unique<FakeSandboxedProcess>();
+    auto process = std::make_unique<FakeSandboxedProcess>();
+    process->NewPidNamespace();
+    return process;
   }
 };
 
@@ -91,19 +92,27 @@ TEST_F(ArchiveMounterTest, CanMount) {
 
 TEST_F(ArchiveMounterTest, InvalidPathsRejected) {
   auto mounter = CreateMounter({});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto sandbox = PrepareSandbox(*mounter, "foo.archive", {}, &error);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
-  EXPECT_FALSE(sandbox);
-  sandbox = PrepareSandbox(*mounter, "/foo/../etc/foo.archive", {}, &error);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
-  EXPECT_FALSE(sandbox);
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
+        PrepareSandbox(*mounter, "foo.archive", {}, &error);
+    EXPECT_NE(MOUNT_ERROR_NONE, error);
+    EXPECT_FALSE(sandbox);
+  }
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
+        PrepareSandbox(*mounter, "/foo/../etc/foo.archive", {}, &error);
+    EXPECT_NE(MOUNT_ERROR_NONE, error);
+    EXPECT_FALSE(sandbox);
+  }
 }
 
 TEST_F(ArchiveMounterTest, AppArgs) {
   auto mounter = CreateMounter({});
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto sandbox = PrepareSandbox(*mounter, kSomeSource, {}, &error);
+  const std::unique_ptr<FakeSandboxedProcess> sandbox =
+      PrepareSandbox(*mounter, kSomeSource, {}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
   ASSERT_TRUE(sandbox);
   EXPECT_THAT(sandbox->arguments(), ElementsAre("-o", _, kSomeSource));
@@ -114,11 +123,56 @@ TEST_F(ArchiveMounterTest, AppArgs) {
               UnorderedElementsAre("umask=0222", "uid=1000", "gid=1001", "ro"));
 }
 
+TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
+  auto mounter = CreateMounter({});
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
+        PrepareSandbox(*mounter, kSomeSource, {}, &error);
+    EXPECT_EQ(MOUNT_ERROR_NONE, error);
+    ASSERT_TRUE(sandbox);
+    EXPECT_FALSE(sandbox->GetSimulateProgressForTesting());
+  }
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
+        PrepareSandbox(*mounter, "/home/user/b1238564_.zip", {}, &error);
+    EXPECT_EQ(MOUNT_ERROR_NONE, error);
+    ASSERT_TRUE(sandbox);
+    EXPECT_FALSE(sandbox->GetSimulateProgressForTesting());
+  }
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
+        PrepareSandbox(*mounter, "/home/user/b1238564", {}, &error);
+    EXPECT_EQ(MOUNT_ERROR_NONE, error);
+    ASSERT_TRUE(sandbox);
+    EXPECT_FALSE(sandbox->GetSimulateProgressForTesting());
+  }
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
+        PrepareSandbox(*mounter, "/home/user/b1238564.zip", {}, &error);
+    EXPECT_EQ(MOUNT_ERROR_NONE, error);
+    ASSERT_TRUE(sandbox);
+    EXPECT_TRUE(sandbox->GetSimulateProgressForTesting());
+  }
+  {
+    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    const std::unique_ptr<FakeSandboxedProcess> sandbox = PrepareSandbox(
+        *mounter, "/home/user/b1238564.something.zip", {}, &error);
+    EXPECT_EQ(MOUNT_ERROR_NONE, error);
+    ASSERT_TRUE(sandbox);
+    EXPECT_TRUE(sandbox->GetSimulateProgressForTesting());
+  }
+}
+
 TEST_F(ArchiveMounterTest, FileNotFound) {
   EXPECT_CALL(platform_, PathExists(kSomeSource)).WillRepeatedly(Return(false));
   auto mounter = CreateMounter({});
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto sandbox = PrepareSandbox(*mounter, kSomeSource, {}, &error);
+  const std::unique_ptr<FakeSandboxedProcess> sandbox =
+      PrepareSandbox(*mounter, kSomeSource, {}, &error);
   EXPECT_NE(MOUNT_ERROR_NONE, error);
   EXPECT_FALSE(sandbox);
 }
@@ -128,7 +182,7 @@ TEST_F(ArchiveMounterTest, WithPassword) {
 
   auto mounter = CreateMounter({kPasswordNeededCode});
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto sandbox =
+  const std::unique_ptr<FakeSandboxedProcess> sandbox =
       PrepareSandbox(*mounter, kSomeSource, {"password=" + password}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
   ASSERT_TRUE(sandbox);
@@ -144,14 +198,15 @@ TEST_F(ArchiveMounterTest, WithPassword) {
 TEST_F(ArchiveMounterTest, NoPassword) {
   auto mounter = CreateMounter({kPasswordNeededCode});
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto sandbox = PrepareSandbox(*mounter, kSomeSource,
-                                {
-                                    "Password=1",  // Options are case sensitive
-                                    "password =2",  // Space is significant
-                                    " password=3",  // Space is significant
-                                    "password",     // Not a valid option
-                                },
-                                &error);
+  const std::unique_ptr<FakeSandboxedProcess> sandbox =
+      PrepareSandbox(*mounter, kSomeSource,
+                     {
+                         "Password=1",   // Options are case sensitive
+                         "password =2",  // Space is significant
+                         " password=3",  // Space is significant
+                         "password",     // Not a valid option
+                     },
+                     &error);
   ASSERT_TRUE(sandbox);
   EXPECT_EQ("", sandbox->input());
 }
@@ -166,7 +221,7 @@ TEST_F(ArchiveMounterTest, CopiesPassword) {
        }) {
     auto mounter = CreateMounter({kPasswordNeededCode});
     MountErrorType error = MOUNT_ERROR_UNKNOWN;
-    auto sandbox =
+    const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, kSomeSource, {"password=" + password}, &error);
     ASSERT_TRUE(sandbox);
     EXPECT_EQ(password, sandbox->input());
@@ -189,7 +244,7 @@ TEST_F(ArchiveMounterTest, EncodingOption) {
 
   auto mounter = CreateMounter({});
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  auto sandbox = PrepareSandbox(
+  const std::unique_ptr<FakeSandboxedProcess> sandbox = PrepareSandbox(
       *mounter, kSomeSource,
       {"option1=dummy", "encoding=" + encoding, "option2=dummy2"}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);

@@ -106,20 +106,21 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     mount_ns = brillo::ScopedMountNamespace::CreateFromPath(
         base::FilePath(kChromeNamespace));
     if (!mount_ns) {
-      PLOG(ERROR) << "Cannot find archive " << redact(path)
-                  << " in mount namespace " << quote(kChromeNamespace);
-
-      // TODO(dats): These probably should be MOUNT_ERROR_INVALID_DEVICE_PATH or
-      //             something like that, but tast tests expect
-      //             MOUNT_ERROR_MOUNT_PROGRAM_FAILED.
+      PLOG(ERROR) << "Cannot enter mount namespace " << quote(kChromeNamespace);
       *error = MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
       return nullptr;
     }
+
     if (!platform()->PathExists(path.value())) {
       PLOG(ERROR) << "Cannot find archive " << redact(path);
       *error = MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
       return nullptr;
     }
+  }
+
+  if (base::StartsWith(path.BaseName().value(), "b1238564.")) {
+    LOG(INFO) << "Simulating progress for " << quote(path);
+    sandbox->SimulateProgressForTesting();
   }
 
   // Archives are typically under /home, /media or /run. To bind-mount the
