@@ -254,6 +254,37 @@
       </summary>
     </metric>
   </event>
+
+  <event name="BluetoothChipsetInfoReport">
+    <summary>
+      Records the bluetooth chipset info.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the bluetooth controller.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the bluetooth controller.
+      </summary>
+    </metric>
+    <metric name="Transport" type="int">
+      <summary>
+        Which transport the bluetooth controller uses.
+      </summary>
+    </metric>
+    <metric name="ChipsetStringHashValue" type="int">
+      <summary>
+        The first 8 bytes of SHA-256 of modalias of the bluetooth controller.
+      </summary>
+    </metric>
+  </event>
 </project>
 
 <project name="BluetoothDevice">

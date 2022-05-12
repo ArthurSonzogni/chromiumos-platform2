@@ -121,6 +121,20 @@ extern "C" void BluetoothAudioQualityReport(const char* boot_id,
       .Record();
 }
 
+extern "C" void BluetoothChipsetInfoReport(const char* boot_id,
+                                           int vendor_id,
+                                           int product_id,
+                                           int transport,
+                                           uint64_t chipset_string_hval) {
+  bluetooth::BluetoothChipsetInfoReport()
+      .SetBootId(boot_id)
+      .SetVendorId(vendor_id)
+      .SetProductId(product_id)
+      .SetTransport(transport)
+      .SetChipsetStringHashValue(chipset_string_hval)
+      .Record();
+}
+
 extern "C" void BluetoothDeviceInfo(int device_type,
                                     int device_class,
                                     int device_category,
