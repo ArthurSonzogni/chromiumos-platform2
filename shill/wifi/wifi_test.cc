@@ -4476,8 +4476,7 @@ TEST_F(WiFiMainTest, FullScanConnectingToConnected) {
 }
 
 TEST_F(WiFiMainTest, ScanStateUma) {
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _))
-      .Times(0);
+  EXPECT_CALL(*metrics(), ReportDeviceScanResultToUma(_)).Times(0);
   EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
   SetScanState(WiFi::kScanScanning, WiFi::kScanMethodFull, __func__);
 
@@ -4487,7 +4486,7 @@ TEST_F(WiFiMainTest, ScanStateUma) {
 
   ExpectScanIdle();  // After connected.
   EXPECT_CALL(*metrics(), NotifyDeviceConnectFinished(_));
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _));
+  EXPECT_CALL(*metrics(), ReportDeviceScanResultToUma(_));
   SetScanState(WiFi::kScanConnected, WiFi::kScanMethodFull, __func__);
 }
 
@@ -4498,8 +4497,7 @@ TEST_F(WiFiMainTest, ScanStateNotScanningNoUma) {
 
   ExpectScanIdle();  // After connected.
   EXPECT_CALL(*metrics(), NotifyDeviceConnectFinished(_));
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _))
-      .Times(0);
+  EXPECT_CALL(*metrics(), ReportDeviceScanResultToUma(_)).Times(0);
   SetScanState(WiFi::kScanConnected, WiFi::kScanMethodNone, __func__);
 }
 
@@ -4542,8 +4540,7 @@ TEST_F(WiFiMainTest, ConnectToWithError) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillOnce(Return(false));
   EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_)).Times(0);
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _))
-      .Times(0);
+  EXPECT_CALL(*metrics(), ReportDeviceScanResultToUma(_)).Times(0);
   EXPECT_CALL(*adaptor_, EmitBoolChanged(kScanningProperty, false));
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
@@ -4569,8 +4566,7 @@ TEST_F(WiFiMainTest, ScanStateHandleDisconnect) {
   // Disconnect from the pending service.
   ExpectScanIdle();
   EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_)).Times(0);
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _))
-      .Times(0);
+  EXPECT_CALL(*metrics(), ReportDeviceScanResultToUma(_)).Times(0);
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 }

@@ -3541,8 +3541,7 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
   }
 
   if (result != Metrics::kScanResultMax) {
-    metrics()->SendEnumToUMA(Metrics::kMetricScanResult, result,
-                             Metrics::kScanResultMax);
+    metrics()->ReportDeviceScanResultToUma(result);
   }
 }
 

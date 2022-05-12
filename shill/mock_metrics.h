@@ -31,6 +31,10 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, DeregisterDevice, (int), (override));
   MOCK_METHOD(void, NotifyDeviceScanStarted, (int), (override));
   MOCK_METHOD(void, NotifyDeviceScanFinished, (int), (override));
+  MOCK_METHOD(void,
+              ReportDeviceScanResultToUma,
+              (Metrics::WiFiScanResult),
+              (override));
   MOCK_METHOD(void, ResetScanTimer, (int), (override));
   MOCK_METHOD(void, NotifyDeviceConnectStarted, (int), (override));
   MOCK_METHOD(void, NotifyDeviceConnectFinished, (int), (override));

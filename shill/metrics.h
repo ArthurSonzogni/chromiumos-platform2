@@ -1251,6 +1251,9 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object that a device has completed the scanning process.
   virtual void NotifyDeviceScanFinished(int interface_index);
 
+  // Report the status of the scan.
+  mockable void ReportDeviceScanResultToUma(Metrics::WiFiScanResult result);
+
   // Terminates an underway scan (does nothing if a scan wasn't underway).
   virtual void ResetScanTimer(int interface_index);
 

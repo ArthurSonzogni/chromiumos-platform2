@@ -534,6 +534,16 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 }
 
+TEST_F(MetricsTest, ReportDeviceScanResultToUma) {
+  Metrics::WiFiScanResult result =
+      Metrics::kScanResultProgressiveAndFullConnected;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricScanResult,
+                            Metrics::kScanResultProgressiveAndFullConnected,
+                            Metrics::kScanResultMax));
+  metrics_.ReportDeviceScanResultToUma(result);
+}
+
 TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
   EXPECT_CALL(library_,
               SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,

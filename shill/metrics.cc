@@ -879,6 +879,10 @@ void Metrics::NotifyDeviceScanFinished(int interface_index) {
     device_metrics->scan_timer->ReportMilliseconds();
 }
 
+void Metrics::ReportDeviceScanResultToUma(Metrics::WiFiScanResult result) {
+  SendEnumToUMA(Metrics::kMetricScanResult, result, Metrics::kScanResultMax);
+}
+
 void Metrics::ResetScanTimer(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
