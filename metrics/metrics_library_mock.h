@@ -20,6 +20,10 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
               (const std::string&, int, int, int, int),
               (override));
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
+  MOCK_METHOD(bool,
+              SendLinearToUMA,
+              (const std::string&, int, int),
+              (override));
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
   MOCK_METHOD(bool, SendUserActionToUMA, (const std::string&), (override));

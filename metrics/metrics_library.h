@@ -41,6 +41,9 @@ class MetricsLibraryInterface {
   virtual bool SendEnumToUMA(const std::string& name,
                              int sample,
                              int exclusive_max) = 0;
+  virtual bool SendLinearToUMA(const std::string& name,
+                               int sample,
+                               int max) = 0;
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
@@ -133,7 +136,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // Sends linear histogram data to Chrome for transport to UMA and
   // returns true on success. These methods result in the equivalent of
   // an asynchronous non-blocking RPC to UMA_HISTOGRAM_ENUMERATION
-  // inside Chrome (see base/histogram.h).
+  // inside Chrome (see base/metrics/histogram_macros.h).
   //
   // |sample| is the value to be recorded (0 <= |sample| < |exclusive_max|).
   // |exclusive_max| should be set to 1 more than the largest enum value.
@@ -147,7 +150,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // normal, while 100 is high).
   //
   // The new metric must be documented in
-  // //tools/metrics/histograms/histograms.xml in the Chromium repository.
+  // //tools/metrics/histograms/metadata/platform/histograms.xml in the Chromium
+  // repository.
   // Sample usage:
   //   // These values are logged to UMA. Entries should not be renumbered and
   //   // numeric values should never be reused. Please keep in sync with
@@ -168,6 +172,24 @@ class MetricsLibrary : public MetricsLibraryInterface {
   bool SendEnumToUMA(const std::string& name,
                      int sample,
                      int exclusive_max) override;
+
+  // Sends linear histogram data to Chrome for transport to UMA and
+  // returns true on success. These methods result in the equivalent of an
+  // asynchronous non-blocking RPC to UMA_HISTOGRAM_EXACT_LINEAR inside Chrome
+  // (see base/metrics/histogram_macros.h).
+  //
+  // |sample| is the value to be recorded (0 <= |sample| < |exclusive_max|).
+  // (-infinity, 0) is the implicit underflow bucket.
+  // [|exclusive_max|,infinity) is the implicit overflow bucket.
+  //
+  // |exclusive_max| should be 101 or less.
+  //
+  // The new metric must be documented in
+  // //tools/metrics/histograms/metadata/platform/histograms.xml in the Chromium
+  // repository.
+  bool SendLinearToUMA(const std::string& name,
+                       int sample,
+                       int exclusive_max) override;
 
   // Specialization of SendEnumToUMA for boolean values.
   bool SendBoolToUMA(const std::string& name, bool sample) override;

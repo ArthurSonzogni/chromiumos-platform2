@@ -338,6 +338,14 @@ bool MetricsLibrary::SendEnumToUMA(const std::string& name,
       uma_events_file_.value());
 }
 
+bool MetricsLibrary::SendLinearToUMA(const std::string& name,
+                                     int sample,
+                                     int max) {
+  return metrics::SerializationUtils::WriteMetricsToFile(
+      {metrics::MetricSample::LinearHistogramSample(name, sample, max)},
+      uma_events_file_.value());
+}
+
 bool MetricsLibrary::SendBoolToUMA(const std::string& name, bool sample) {
   return metrics::SerializationUtils::WriteMetricsToFile(
       {metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2)},

@@ -189,6 +189,11 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
+  bool SendLinearToUMA(const std::string& name, int sample, int max) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendBoolToUMA(const std::string& name, bool sample) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
