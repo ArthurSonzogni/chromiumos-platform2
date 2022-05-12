@@ -41,7 +41,8 @@ inline constexpr char kDmcryptContainerMountType[] = "ext4";
 inline constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
 
 inline constexpr char kUserSecretStashDir[] = "user_secret_stash";
-inline constexpr char kUserSecretStashFile[] = "uss";
+inline constexpr char kUserSecretStashFileBase[] = "uss";
+constexpr int kUserSecretStashDefaultSlot = 0;
 inline constexpr char kAuthFactorsDir[] = "auth_factors";
 
 base::FilePath ShadowRoot();
@@ -53,7 +54,8 @@ base::FilePath VaultKeysetPath(const std::string& obfuscated, int index);
 base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
                                                  int index);
 base::FilePath UserActivityTimestampPath(const std::string& obfuscated);
-base::FilePath UserSecretStashPath(const std::string& obfuscated_username);
+base::FilePath UserSecretStashPath(const std::string& obfuscated_username,
+                                   int slot);
 base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username);
 base::FilePath AuthFactorPath(const std::string& obfuscated_username,
                               const std::string& auth_factor_type_string,

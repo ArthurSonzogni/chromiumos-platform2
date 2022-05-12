@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
@@ -36,9 +37,12 @@ UserSecretStashStorage::~UserSecretStashStorage() = default;
 CryptohomeStatus UserSecretStashStorage::Persist(
     const brillo::Blob& uss_container_flatbuffer,
     const std::string& obfuscated_username) {
-  if (!platform_->WriteFileAtomicDurable(
-          UserSecretStashPath(obfuscated_username), uss_container_flatbuffer,
-          kUserSecretStashFilePermissions)) {
+  // TODO(b:232299885): Write to the next available slot, and clean up old slots
+  // when necessary.
+  const base::FilePath path =
+      UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);
+  if (!platform_->WriteFileAtomicDurable(path, uss_container_flatbuffer,
+                                         kUserSecretStashFilePermissions)) {
     LOG(ERROR) << "Failed to store the UserSecretStash file for "
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(
@@ -52,9 +56,11 @@ CryptohomeStatus UserSecretStashStorage::Persist(
 
 CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
     const std::string& obfuscated_username) {
+  // TODO(b:232299885): Read from the latest available slot.
+  const base::FilePath path =
+      UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);
   brillo::Blob uss_container_flatbuffer;
-  if (!platform_->ReadFile(UserSecretStashPath(obfuscated_username),
-                           &uss_container_flatbuffer)) {
+  if (!platform_->ReadFile(path, &uss_container_flatbuffer)) {
     LOG(ERROR) << "Failed to load the UserSecretStash file for "
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(

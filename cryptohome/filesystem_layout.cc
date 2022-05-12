@@ -96,10 +96,13 @@ base::FilePath VaultKeysetPath(const std::string& obfuscated, int index) {
       .AddExtension(base::NumberToString(index));
 }
 
-base::FilePath UserSecretStashPath(const std::string& obfuscated_username) {
+base::FilePath UserSecretStashPath(const std::string& obfuscated_username,
+                                   int slot) {
+  DCHECK_GE(slot, 0);
   return UserPath(obfuscated_username)
       .Append(kUserSecretStashDir)
-      .Append(kUserSecretStashFile);
+      .Append(kUserSecretStashFileBase)
+      .AddExtension(std::to_string(slot));
 }
 
 base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username) {

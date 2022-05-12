@@ -6,6 +6,7 @@
 
 #include <optional>
 
+#include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -38,7 +39,9 @@ TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
   EXPECT_TRUE(
       uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername)
           .ok());
-  EXPECT_TRUE(platform_.FileExists(UserSecretStashPath(kObfuscatedUsername)));
+  const base::FilePath path =
+      UserSecretStashPath(kObfuscatedUsername, kUserSecretStashDefaultSlot);
+  EXPECT_TRUE(platform_.FileExists(path));
 
   // Load the USS and check it didn't change.
   CryptohomeStatusOr<Blob> loaded_uss_container =
@@ -49,8 +52,9 @@ TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
 
 // Test that the persisting fails when the USS file writing fails.
 TEST_F(UserSecretStashStorageTest, PersistFailure) {
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(
-                             UserSecretStashPath(kObfuscatedUsername), _, _))
+  const base::FilePath path =
+      UserSecretStashPath(kObfuscatedUsername, kUserSecretStashDefaultSlot);
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(path, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(
       uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername)
