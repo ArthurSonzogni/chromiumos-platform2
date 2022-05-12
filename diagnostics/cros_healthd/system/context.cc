@@ -97,6 +97,7 @@ std::unique_ptr<Context> Context::Create(
       std::make_unique<NetworkHealthAdapterImpl>();
   context->network_diagnostics_adapter_ =
       std::make_unique<NetworkDiagnosticsAdapterImpl>();
+  context->chromium_data_collector_relay_.InitNewPipeAndWaitForIncomingRemote();
 
   // Create others.
   auto cros_config = std::make_unique<brillo::CrosConfig>();

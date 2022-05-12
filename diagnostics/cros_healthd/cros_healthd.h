@@ -67,6 +67,10 @@ class CrosHealthd final
       mojo::PendingRemote<
           chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
           network_diagnostics_routines) override;
+  void SendChromiumDataCollector(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
+          remote) override;
 
   // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
   // exposed by the cros_healthd daemon (see constants for the API methods at

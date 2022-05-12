@@ -27,7 +27,9 @@
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
+#include "diagnostics/cros_healthd/utils/mojo_relay.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace brillo {
 class Udev;
@@ -74,6 +76,7 @@ class Context {
   virtual std::unique_ptr<PciUtil> CreatePciUtil();
 
   // Accessors for the various helper objects:
+  // TODO(b/232198240): Make these getters inline.
 
   // Use the object returned by attestation_proxy() to get the attestation
   // information from attestation service.
@@ -133,6 +136,12 @@ class Context {
   // Use the object returned by udev() to access udev related interfaces.
   brillo::Udev* udev() const;
 
+  // Use for access the chromium data collector.
+  MojoRelay<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>&
+  chromium_data_collector_relay() {
+    return chromium_data_collector_relay_;
+  }
+
  private:
   Context();
 
@@ -154,6 +163,8 @@ class Context {
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::bluezProxy> bluetooth_proxy_;
+  MojoRelay<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
+      chromium_data_collector_relay_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;

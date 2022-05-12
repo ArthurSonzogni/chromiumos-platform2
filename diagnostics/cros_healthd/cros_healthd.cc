@@ -210,6 +210,13 @@ void CrosHealthd::SendNetworkDiagnosticsRoutines(
       std::move(network_diagnostics_routines));
 }
 
+void CrosHealthd::SendChromiumDataCollector(
+    mojo::PendingRemote<
+        chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
+        remote) {
+  context_->chromium_data_collector_relay().Bind(std::move(remote));
+}
+
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {
   // Our daemon has to be restarted to be prepared for future Mojo connection
   // bootstraps. We can't do this without a restart since Mojo EDK gives no
