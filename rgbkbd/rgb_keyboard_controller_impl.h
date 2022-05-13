@@ -35,9 +35,9 @@ static constexpr Color kCapsLockHighlightDefault =
 // Default background color.
 static constexpr Color kDefaultBackgroundColor =
     Color(/*r=*/255, /*g=*/255, /*b=*/255);
-// TODO(michaelcheco): Update values for the left and right shift keys.
-static constexpr uint32_t kLeftShiftKey = 1;
-static constexpr uint32_t kRightShiftKey = 2;
+
+static constexpr uint32_t kLeftShiftKey = 44;
+static constexpr uint32_t kRightShiftKey = 57;
 
 // Rainbow mode constants.
 static constexpr Color kRainbowRed = Color(/*r=*/197, /*g=*/34, /*b=*/31);
