@@ -342,7 +342,7 @@ CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeysetWithKeyBlobs(
     const std::string& obfuscated_username,
     const KeyData& key_data,
-    const SerializedVaultKeyset_SignatureChallengeInfo&
+    const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
         challenge_credentials_keyset_info,
     const FileSystemKeyset& file_system_keyset,
     KeyBlobs key_blobs,
@@ -358,9 +358,12 @@ CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeyset(const Credentials& credentials,
                                    const FileSystemKeyset& file_system_keyset) {
   std::string obfuscated_username = credentials.GetObfuscatedUsername();
-  SerializedVaultKeyset_SignatureChallengeInfo
-      challenge_credentials_keyset_info =
-          credentials.challenge_credentials_keyset_info();
+  std::optional<SerializedVaultKeyset_SignatureChallengeInfo>
+      challenge_credentials_keyset_info;
+  if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    challenge_credentials_keyset_info =
+        credentials.challenge_credentials_keyset_info();
+  }
   return AddInitialKeysetImpl(
       obfuscated_username, credentials.key_data(),
       challenge_credentials_keyset_info, file_system_keyset,
@@ -372,7 +375,7 @@ CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeysetImpl(
     const std::string& obfuscated_username,
     const KeyData& key_data,
-    const SerializedVaultKeyset_SignatureChallengeInfo&
+    const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
         challenge_credentials_keyset_info,
     const FileSystemKeyset& file_system_keyset,
     EncryptVkCallback encrypt_vk_callback) {
@@ -386,7 +389,9 @@ KeysetManagement::AddInitialKeysetImpl(
   if (key_data.type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
     vk->SetFlags(vk->GetFlags() |
                  SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
-    vk->SetSignatureChallengeInfo(challenge_credentials_keyset_info);
+    if (challenge_credentials_keyset_info.has_value()) {
+      vk->SetSignatureChallengeInfo(challenge_credentials_keyset_info.value());
+    }
   }
 
   CryptohomeStatus callback_result =

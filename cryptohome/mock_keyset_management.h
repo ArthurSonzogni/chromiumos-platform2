@@ -123,15 +123,16 @@ class MockKeysetManagement : public KeysetManagement {
                std::unique_ptr<AuthBlockState>,
                bool clobber),
               (override));
-  MOCK_METHOD(CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
-              AddInitialKeysetWithKeyBlobs,
-              (const std::string&,
-               const KeyData&,
-               const SerializedVaultKeyset_SignatureChallengeInfo&,
-               const FileSystemKeyset&,
-               KeyBlobs,
-               std::unique_ptr<AuthBlockState>),
-              (override));
+  MOCK_METHOD(
+      CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
+      AddInitialKeysetWithKeyBlobs,
+      (const std::string&,
+       const KeyData&,
+       const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&,
+       const FileSystemKeyset&,
+       KeyBlobs,
+       std::unique_ptr<AuthBlockState>),
+      (override));
   MOCK_METHOD(bool,
               AddResetSeedIfMissing,
               (VaultKeyset & vault_keyset),

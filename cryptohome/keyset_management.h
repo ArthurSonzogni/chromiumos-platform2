@@ -201,7 +201,7 @@ class KeysetManagement {
   AddInitialKeysetWithKeyBlobs(
       const std::string& obfuscated_username,
       const KeyData& key_data,
-      const SerializedVaultKeyset_SignatureChallengeInfo&
+      const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
           challenge_credentials_keyset_info,
       const FileSystemKeyset& file_system_keyset,
       KeyBlobs key_blobs,
@@ -260,7 +260,7 @@ class KeysetManagement {
   CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> AddInitialKeysetImpl(
       const std::string& obfuscated_username,
       const KeyData& key_data,
-      const SerializedVaultKeyset_SignatureChallengeInfo&
+      const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
           challenge_credentials_keyset_info,
       const FileSystemKeyset& file_system_keyset,
       EncryptVkCallback encrypt_vk_callback);
