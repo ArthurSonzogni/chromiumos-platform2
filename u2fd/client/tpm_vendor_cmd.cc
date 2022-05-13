@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/client/tpm_vendor_cmd.h"
+
 #include <array>
 #include <string>
 #include <utility>
@@ -12,8 +14,6 @@
 #include <base/strings/string_util.h>
 #include <base/sys_byteorder.h>
 #include <trunks/trunks_dbus_proxy.h>
-
-#include "u2fd/tpm_vendor_cmd.h"
 
 namespace {
 

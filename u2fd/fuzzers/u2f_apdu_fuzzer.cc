@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "u2fd/u2f_apdu.h"
+#include "u2fd/client/u2f_apdu.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const char* begin = reinterpret_cast<const char*>(data);

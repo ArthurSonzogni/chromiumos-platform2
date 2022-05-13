@@ -14,8 +14,9 @@
 #include <metrics/metrics_library.h>
 
 #include "u2fd/allowlisting_util.h"
-#include "u2fd/tpm_vendor_cmd.h"
-#include "u2fd/u2f_apdu.h"
+#include "u2fd/client/tpm_vendor_cmd.h"
+#include "u2fd/client/u2f_apdu.h"
+#include "u2fd/u2f_corp_processor_interface.h"
 #include "u2fd/u2f_msg_handler_interface.h"
 #include "u2fd/user_state.h"
 
@@ -90,6 +91,7 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
   UserState* user_state_;
   TpmVendorCommandProxy* proxy_;
   MetricsLibraryInterface* metrics_;
+  std::unique_ptr<U2fCorpProcessorInterface> u2f_corp_processor_;
 
   const bool allow_legacy_kh_sign_;
   const bool allow_g2f_attestation_;

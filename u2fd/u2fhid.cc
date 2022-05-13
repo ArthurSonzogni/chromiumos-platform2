@@ -17,7 +17,7 @@
 #include <openssl/ecdsa.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/u2f_apdu.h"
+#include "u2fd/client/u2f_apdu.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/user_state.h"
 #include "u2fd/util.h"

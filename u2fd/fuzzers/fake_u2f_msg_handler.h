@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "u2fd/u2f_apdu.h"
+#include "u2fd/client/u2f_apdu.h"
 #include "u2fd/u2f_msg_handler_interface.h"
 
 namespace u2f {

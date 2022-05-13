@@ -18,7 +18,7 @@
 #include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
-#include "u2fd/tpm_vendor_cmd.h"
+#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/user_state.h"
 #include "u2fd/util.h"
 #include "u2fd/webauthn_handler.h"

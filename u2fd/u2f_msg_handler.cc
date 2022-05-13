@@ -13,7 +13,8 @@
 #include <brillo/secure_blob.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/tpm_vendor_cmd.h"
+#include "u2fd/client/tpm_vendor_cmd.h"
+#include "u2fd/u2f_corp_processor_interface.h"
 #include "u2fd/util.h"
 
 namespace u2f {
@@ -64,12 +65,14 @@ U2fMessageHandler::U2fMessageHandler(
     bool allow_g2f_attestation)
     : allowlisting_util_(std::move(allowlisting_util)),
       request_user_presence_(request_user_presence),
-
       user_state_(user_state),
       proxy_(proxy),
       metrics_(metrics),
+      u2f_corp_processor_(std::make_unique<U2fCorpProcessorInterface>()),
       allow_legacy_kh_sign_(allow_legacy_kh_sign),
-      allow_g2f_attestation_(allow_g2f_attestation) {}
+      allow_g2f_attestation_(allow_g2f_attestation) {
+  u2f_corp_processor_->Initialize();
+}
 
 U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
   uint16_t u2f_status = 0;

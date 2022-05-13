@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/client/u2f_apdu.h"
+
 #include <array>
 #include <map>
 #include <optional>
@@ -11,8 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/u2f_apdu.h"
-#include "u2fd/util.h"
+#include "u2fd/client/util.h"
 
 namespace u2f {
 
@@ -225,8 +226,8 @@ bool ParseApduBody(
     if (field_start < 0 || (field_start + field_length) > body.size())
       return false;
 
-    util::AppendSubstringToVector(body, field_start, field_length,
-                                  field.second);
+    clientutil::AppendSubstringToVector(body, field_start, field_length,
+                                        field.second);
   }
   return true;
 }

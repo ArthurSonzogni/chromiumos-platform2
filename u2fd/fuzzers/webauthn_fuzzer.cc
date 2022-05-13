@@ -28,10 +28,10 @@
 #include <trunks/fuzzed_command_transceiver.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
+#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/fuzzers/fuzzed_allowlisting_util_factory.h"
 #include "u2fd/fuzzers/fuzzed_user_state.h"
 #include "u2fd/fuzzers/webauthn_fuzzer_data.pb.h"
-#include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_command_processor_gsc.h"
 #include "u2fd/webauthn_handler.h"
 

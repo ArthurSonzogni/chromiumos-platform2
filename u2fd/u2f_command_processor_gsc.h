@@ -5,15 +5,15 @@
 #ifndef U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
 #define U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
 
-#include <brillo/dbus/dbus_method_response.h>
-#include <trunks/cr50_headers/u2f.h>
-#include <u2f/proto_bindings/u2f_interface.pb.h>
-
 #include <functional>
 #include <optional>
 #include <vector>
 
-#include "u2fd/tpm_vendor_cmd.h"
+#include <brillo/dbus/dbus_method_response.h>
+#include <trunks/cr50_headers/u2f.h>
+#include <u2f/proto_bindings/u2f_interface.pb.h>
+
+#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/u2f_command_processor.h"
 #include "u2fd/user_state.h"
 #include "u2fd/webauthn_handler.h"

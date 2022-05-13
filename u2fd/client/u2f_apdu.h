@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_U2F_APDU_H_
-#define U2FD_U2F_APDU_H_
+#ifndef U2FD_CLIENT_U2F_APDU_H_
+#define U2FD_CLIENT_U2F_APDU_H_
 
 #include <stdint.h>
 
@@ -11,7 +11,8 @@
 #include <string>
 #include <vector>
 
-#include "u2fd/util.h"
+#include "u2fd/client/u2f_client_export.h"
+#include "u2fd/client/util.h"
 
 // Classes for dealing with command and response APDUs, as described in the "U2F
 // Raw Message Formats" specification.
@@ -19,7 +20,7 @@
 namespace u2f {
 
 // INS codes used in U2F Command APDUs.
-enum class U2fIns : uint8_t {
+enum class U2F_CLIENT_EXPORT U2fIns : uint8_t {
   kU2fRegister = 1,      // U2F_REGISTER
   kU2fAuthenticate = 2,  // U2F_AUTHENTICATE
   kU2fVersion = 3,       // U2F_VERSION
@@ -30,7 +31,7 @@ enum class U2fIns : uint8_t {
 };
 
 // Represents a command APDU.
-class U2fCommandApdu {
+class U2F_CLIENT_EXPORT U2fCommandApdu {
  public:
   // Fixed-size header of a command APDU.
   struct Header {
@@ -75,7 +76,7 @@ class U2fCommandApdu {
 };
 
 // Represents an APDU for a U2F_REGISTER request.
-class U2fRegisterRequestApdu {
+class U2F_CLIENT_EXPORT U2fRegisterRequestApdu {
  public:
   // Attempt to parse the body of the specified APDU as a U2F_REGISTER request.
   // Returns a valid U2fRegisterRequestApdu if successful, or std::nullopt
@@ -103,7 +104,7 @@ class U2fRegisterRequestApdu {
   std::vector<uint8_t> challenge_;
 };
 
-class U2fAuthenticateRequestApdu {
+class U2F_CLIENT_EXPORT U2fAuthenticateRequestApdu {
  public:
   // Attempt to parse the body of the specified APDU as a U2F_AUTHENTICATE
   // request. Returns a valid U2fRegisterRequestApdu if successful, or
@@ -132,7 +133,7 @@ class U2fAuthenticateRequestApdu {
 
 // Represents a response APDU. Provides methods for building  nd serializing a
 // response.
-class U2fResponseApdu {
+class U2F_CLIENT_EXPORT U2fResponseApdu {
  public:
   // Constructs an empty response.
   U2fResponseApdu() = default;
@@ -143,14 +144,14 @@ class U2fResponseApdu {
   // Methods to append data to the response.
   void AppendByte(uint8_t byte) { data_.push_back(byte); }
   void AppendBytes(const std::vector<uint8_t>& bytes) {
-    util::AppendToVector(bytes, &data_);
+    clientutil::AppendToVector(bytes, &data_);
   }
   void AppendString(const std::string& string) {
-    util::AppendToVector(string, &data_);
+    clientutil::AppendToVector(string, &data_);
   }
   template <typename T>
   void AppendObject(const T& obj) {
-    util::AppendToVector(obj, &data_);
+    clientutil::AppendToVector(obj, &data_);
   }
 
   // Sets the return status for the response.
@@ -167,4 +168,4 @@ class U2fResponseApdu {
 
 }  // namespace u2f
 
-#endif  // U2FD_U2F_APDU_H_
+#endif  // U2FD_CLIENT_U2F_APDU_H_

@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_TPM_VENDOR_CMD_H_
-#define U2FD_TPM_VENDOR_CMD_H_
+#ifndef U2FD_CLIENT_TPM_VENDOR_CMD_H_
+#define U2FD_CLIENT_TPM_VENDOR_CMD_H_
 
 #include <memory>
 #include <string>
 
 #include <trunks/command_transceiver.h>
 #include <trunks/cr50_headers/u2f.h>
+
+#include "u2fd/client/u2f_client_export.h"
 
 namespace u2f {
 
@@ -33,7 +35,7 @@ const uint32_t kVendorRcInvalidResponse = 0xffffffff;
 // TpmVendorCommandProxy sends vendor commands to the TPM security chip
 // by using the D-Bus connection to the trunksd daemon which communicates
 // with the physical TPM through the kernel driver exposing /dev/tpm0.
-class TpmVendorCommandProxy {
+class U2F_CLIENT_EXPORT TpmVendorCommandProxy {
  public:
   TpmVendorCommandProxy();
   explicit TpmVendorCommandProxy(
@@ -116,4 +118,4 @@ class TpmVendorCommandProxy {
 
 }  // namespace u2f
 
-#endif  // U2FD_TPM_VENDOR_CMD_H_
+#endif  // U2FD_CLIENT_TPM_VENDOR_CMD_H_

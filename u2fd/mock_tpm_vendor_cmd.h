@@ -5,7 +5,7 @@
 #ifndef U2FD_MOCK_TPM_VENDOR_CMD_H_
 #define U2FD_MOCK_TPM_VENDOR_CMD_H_
 
-#include "u2fd/tpm_vendor_cmd.h"
+#include "u2fd/client/tpm_vendor_cmd.h"
 
 #include <string>
 

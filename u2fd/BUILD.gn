@@ -42,21 +42,19 @@ pkg_config("target_defaults") {
 }
 
 pkg_config("u2fd_config") {
-  # NOSORT
   pkg_deps = [
     "libattestation-client",
     "libmetrics",
     "libpower_manager-client",
     "libuser_data_auth-client",
     "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
     "system_api",
   ]
   if (use.cr50_onboard || use.ti50_onboard) {
-    pkg_deps += [ "libtrunks" ]
+    pkg_deps += [
+      "libtrunks",
+      "libu2fd-client",
+    ]
   }
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
@@ -98,14 +96,14 @@ static_library("libu2fd") {
   }
   if (use.cr50_onboard || use.ti50_onboard) {
     sources += [
-      "tpm_vendor_cmd.cc",
-      "u2f_apdu.cc",
       "u2f_command_processor_gsc.cc",
+      "u2f_corp_processor_interface.cc",
       "u2f_msg_handler.cc",
       "u2fhid.cc",
       "u2fhid_service_impl.cc",
       "uhid_device.cc",
     ]
+    libs += [ "dl" ]
   }
 }
 
@@ -224,8 +222,6 @@ if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
   executable("u2f_apdu_fuzzer") {
     sources = [
       "fuzzers/u2f_apdu_fuzzer.cc",
-      "tpm_vendor_cmd.cc",
-      "u2f_apdu.cc",
       "util.cc",
     ]
     configs += [
@@ -234,6 +230,7 @@ if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
     ]
     pkg_deps = [
       "libtrunks",
+      "libu2fd-client",
       "openssl",
     ]
   }
@@ -243,8 +240,6 @@ if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
       "fuzzers/fake_u2f_msg_handler.cc",
       "fuzzers/fake_uhid_device.cc",
       "fuzzers/u2fhid_fuzzer.cc",
-      "tpm_vendor_cmd.cc",
-      "u2f_apdu.cc",
       "u2fhid.cc",
       "util.cc",
     ]
@@ -254,6 +249,7 @@ if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
     ]
     pkg_deps = [
       "libtrunks",
+      "libu2fd-client",
       "openssl",
     ]
   }
