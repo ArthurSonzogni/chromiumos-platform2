@@ -122,7 +122,7 @@ class Port {
 
   // Returns true if the port's partner supports a higher USB gen than the
   // cable.
-  bool CableLimitingUSBSpeed();
+  virtual bool CableLimitingUSBSpeed();
 
   // Calls the |partner_|'s metrics reporting function, if a |partner_| is
   // registered.

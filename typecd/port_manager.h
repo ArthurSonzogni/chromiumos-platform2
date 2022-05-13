@@ -71,6 +71,19 @@ class PortManager : public UdevMonitor::TypecObserver,
               ModeSwitchDPandTBTPeripheralDataAccessChangingLockUnlock);
   FRIEND_TEST(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging);
   FRIEND_TEST(PortManagerTest, ModeEntryDPOnlySystem);
+  FRIEND_TEST(PortManagerNotificationTest, ModeEntryUSB4NotifyThunderboltDp);
+  FRIEND_TEST(PortManagerNotificationTest, ModeEntryTBTNotifyThunderboltOnly);
+  FRIEND_TEST(PortManagerNotificationTest, ModeEntryDpAltModeNoNotifications);
+  FRIEND_TEST(PortManagerNotificationTest,
+              ModeEntryUSB4NotifySpeedLimitingCable);
+  FRIEND_TEST(PortManagerNotificationTest,
+              ModeEntryTBTNotifyInvalidUSB4ValidTBTCable);
+  FRIEND_TEST(PortManagerNotificationTest,
+              ModeEntryDpAltModeNotifyInvalidUSB4Cable);
+  FRIEND_TEST(PortManagerNotificationTest,
+              ModeEntryDpAltModeNotifyInvalidTBTCable);
+  FRIEND_TEST(PortManagerNotificationTest,
+              ModeEntryDpAltModeNotifyInvalidDpCable);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,
