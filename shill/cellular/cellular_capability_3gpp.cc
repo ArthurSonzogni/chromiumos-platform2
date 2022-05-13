@@ -58,10 +58,6 @@ const int64_t CellularCapability3gpp::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
     CellularCapability3gpp::kRegistrationDroppedUpdateTimeoutMilliseconds =
         15000;
-// The modem sends a new attach request every 10 seconds(See 3gpp T3411).
-// The next value allows for 2 attach requests. If the modem sends 5
-// consecutive requests using the same invalid APN, the UE will be blocked for
-// 12 minutes(See 3gpp T3402).
 const RpcIdentifier CellularCapability3gpp::kRootPath = RpcIdentifier("/");
 const char CellularCapability3gpp::kStatusProperty[] = "status";
 const char CellularCapability3gpp::kOperatorLongProperty[] = "operator-long";

@@ -182,6 +182,10 @@ class CellularCapability3gpp : public CellularCapability {
 
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
+  // The modem sends a new attach request every 10 seconds(See 3gpp T3411).
+  // The next value allows for 2 attach requests. If the modem sends 5
+  // consecutive requests using the same invalid APN, the UE will be blocked for
+  // 12 minutes(See 3gpp T3402).
   static constexpr base::TimeDelta kSetNextAttachApnTimeout =
       base::Milliseconds(12500);
   static const int kSetPowerStateTimeoutMilliseconds;
