@@ -253,17 +253,39 @@ template void ReplyWithError(
         on_done,
     const user_data_auth::AuthenticateAuthFactorReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
-
 template void ReplyWithError(
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
         on_done,
     const user_data_auth::AddCredentialsReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
-
 template void ReplyWithError(
     base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
         on_done,
     const user_data_auth::UpdateCredentialReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::PreparePersistentVaultReply&)>
+        on_done,
+    const user_data_auth::PreparePersistentVaultReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::PrepareEphemeralVaultReply&)>
+        on_done,
+    const user_data_auth::PrepareEphemeralVaultReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::PrepareGuestVaultReply&)>
+        on_done,
+    const user_data_auth::PrepareGuestVaultReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<
+        void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done,
+    const user_data_auth::PrepareVaultForMigrationReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)> on_done,
+    const user_data_auth::AddAuthFactorReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
 
 template void ReplyWithError(

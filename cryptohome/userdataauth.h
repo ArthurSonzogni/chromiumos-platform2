@@ -1066,11 +1066,10 @@ class UserDataAuth {
 
   // The method takes serialized auth session id and returns an authenticated
   // auth session associated with the id. If the session is missing or not
-  // authenticated, |nullptr| is returned. The returned pointer is owner by
-  // |auth_session_manager|.
-  AuthSession* GetAuthenticatedAuthSession(
-      const std::string& auth_session_id,
-      user_data_auth::CryptohomeErrorCode* error);
+  // authenticated, an error status is returned. The returned pointer is owner
+  // by |auth_session_manager|.
+  CryptohomeStatusOr<AuthSession*> GetAuthenticatedAuthSession(
+      const std::string& auth_session_id);
 
   // Returns sanitized username for an existing auth session or an empty string
   // if the session wasn't found.
@@ -1080,8 +1079,8 @@ class UserDataAuth {
   // session is mountable if it is not already mounted, and the guest is not
   // mounted. If user session object doesn't exist, this method will create
   // one.
-  scoped_refptr<UserSession> GetMountableUserSession(
-      AuthSession* auth_session, user_data_auth::CryptohomeErrorCode* error);
+  CryptohomeStatusOr<scoped_refptr<UserSession>> GetMountableUserSession(
+      AuthSession* auth_session);
 
   // Pre-mount hook specifies operations that need to be executed before doing
   // mount. Eventually those actions should be triggered outside of mount code.
@@ -1091,7 +1090,8 @@ class UserDataAuth {
   // Post-mount hook specifies operations that need to be executed after doing
   // mount. Eventually those actions should be triggered outside of mount code.
   // Not applicable to guest user.
-  void PostMountHook(scoped_refptr<UserSession> user_session, MountError error);
+  void PostMountHook(scoped_refptr<UserSession> user_session,
+                     const MountStatus& error);
 
   // Converts the Dbus value for encryption type into internal representation.
   EncryptedContainerType DbusEncryptionTypeToContainerType(
@@ -1101,12 +1101,12 @@ class UserDataAuth {
   // new API. They are split from the actual end-points to simplify unit
   // testing. The E2E test of the calls is done in tast.
 
-  user_data_auth::CryptohomeErrorCode PrepareGuestVaultImpl();
+  CryptohomeStatus PrepareGuestVaultImpl();
 
-  user_data_auth::CryptohomeErrorCode PrepareEphemeralVaultImpl(
+  CryptohomeStatus PrepareEphemeralVaultImpl(
       const std::string& auth_session_id);
 
-  user_data_auth::CryptohomeErrorCode PreparePersistentVaultImpl(
+  CryptohomeStatus PreparePersistentVaultImpl(
       const std::string& auth_session_id,
       const CryptohomeVault::Options& vault_options);
 

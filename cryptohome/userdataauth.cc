@@ -3905,19 +3905,20 @@ void UserDataAuth::UpdateCredential(
         on_done) {
   AssertOnMountThread();
 
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
   user_data_auth::UpdateCredentialReply reply;
-  AuthSession* auth_session =
-      GetAuthenticatedAuthSession(request.auth_session_id(), &error);
-  if (!auth_session) {
-    reply.set_error(error);
-    std::move(on_done).Run(reply);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInUpdateCredential))
+            .Wrap(std::move(auth_session_status).status()));
     return;
   }
   // Update credentials using data in AuthorizationRequest and
   // auth_session_token.
-  auth_session->UpdateCredential(request, std::move(on_done));
+  auth_session_status.value()->UpdateCredential(request, std::move(on_done));
   return;
 }
 
@@ -4009,25 +4010,30 @@ void UserDataAuth::ExtendAuthSession(
   ReplyWithError(std::move(on_done), reply, std::move(err));
 }
 
-AuthSession* UserDataAuth::GetAuthenticatedAuthSession(
-    const std::string& auth_session_id,
-    user_data_auth::CryptohomeErrorCode* error) {
+CryptohomeStatusOr<AuthSession*> UserDataAuth::GetAuthenticatedAuthSession(
+    const std::string& auth_session_id) {
   AssertOnMountThread();
 
   // Check if the token refers to a valid AuthSession.
   AuthSession* auth_session =
       auth_session_manager_->FindAuthSession(auth_session_id);
   if (!auth_session) {
-    *error = user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
     LOG(ERROR) << "AuthSession not found.";
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetAuthedAS),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
 
   // Check if the AuthSession is properly authenticated.
   if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
-    *error = user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
     LOG(ERROR) << "AuthSession is not authenticated.";
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthedInGetAuthedAS),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
   return auth_session;
@@ -4043,8 +4049,8 @@ std::string UserDataAuth::SanitizedUserNameForSession(
   return auth_session->obfuscated_username();
 }
 
-scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
-    AuthSession* auth_session, user_data_auth::CryptohomeErrorCode* error) {
+CryptohomeStatusOr<scoped_refptr<UserSession>>
+UserDataAuth::GetMountableUserSession(AuthSession* auth_session) {
   AssertOnMountThread();
 
   const std::string& obfuscated_username = auth_session->obfuscated_username();
@@ -4053,8 +4059,10 @@ scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
   scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
   if (guest_session && guest_session->IsActive()) {
     LOG(ERROR) << "Can not mount non-anonymous while guest session is active.";
-    *error = user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthGuestAlreadyMountedInGetMountableUS),
+        ErrorActionSet({ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
   // Check the user is not already mounted.
@@ -4062,8 +4070,11 @@ scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
       GetOrCreateUserSession(auth_session->username());
   if (session->IsActive()) {
     LOG(ERROR) << "User is already mounted: " << obfuscated_username;
-    *error = user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
-    return nullptr;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthSessionAlreadyMountedInGetMountableUS),
+        ErrorActionSet({ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
   return session;
@@ -4093,11 +4104,11 @@ void UserDataAuth::PreMountHook(const std::string& obfuscated_username) {
 }
 
 void UserDataAuth::PostMountHook(scoped_refptr<UserSession> user_session,
-                                 MountError mount_error) {
+                                 const MountStatus& status) {
   AssertOnMountThread();
 
-  if (mount_error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Finished mounting with status code: " << mount_error;
+  if (!status.ok()) {
+    LOG(ERROR) << "Finished mounting with status code: " << status;
     return;
   }
   LOG(INFO) << "Mount succeeded.";
@@ -4132,9 +4143,9 @@ void UserDataAuth::PrepareGuestVault(
 
   LOG(INFO) << "Preparing guest vault";
   user_data_auth::PrepareGuestVaultReply reply;
-  reply.set_error(PrepareGuestVaultImpl());
+  CryptohomeStatus status = PrepareGuestVaultImpl();
   reply.set_sanitized_username(SanitizeUserName(guest_user_));
-  std::move(on_done).Run(reply);
+  ReplyWithError(std::move(on_done), reply, status);
   return;
 }
 
@@ -4146,10 +4157,11 @@ void UserDataAuth::PrepareEphemeralVault(
 
   LOG(INFO) << "Preparing ephemeral vault";
   user_data_auth::PrepareEphemeralVaultReply reply;
-  reply.set_error(PrepareEphemeralVaultImpl(request.auth_session_id()));
+  CryptohomeStatus status =
+      PrepareEphemeralVaultImpl(request.auth_session_id());
   reply.set_sanitized_username(
       SanitizedUserNameForSession(request.auth_session_id()));
-  std::move(on_done).Run(reply);
+  ReplyWithError(std::move(on_done), reply, status);
 }
 
 void UserDataAuth::PreparePersistentVault(
@@ -4165,11 +4177,11 @@ void UserDataAuth::PreparePersistentVault(
       .block_ecryptfs = request.block_ecryptfs(),
   };
   user_data_auth::PreparePersistentVaultReply reply;
-  reply.set_error(
-      PreparePersistentVaultImpl(request.auth_session_id(), options));
+  CryptohomeStatus status =
+      PreparePersistentVaultImpl(request.auth_session_id(), options);
   reply.set_sanitized_username(
       SanitizedUserNameForSession(request.auth_session_id()));
-  std::move(on_done).Run(reply);
+  ReplyWithError(std::move(on_done), reply, status);
 }
 
 void UserDataAuth::PrepareVaultForMigration(
@@ -4183,11 +4195,16 @@ void UserDataAuth::PrepareVaultForMigration(
       .migrate = true,
   };
   user_data_auth::PrepareVaultForMigrationReply reply;
-  reply.set_error(
-      PreparePersistentVaultImpl(request.auth_session_id(), options));
+  CryptohomeStatus status =
+      PreparePersistentVaultImpl(request.auth_session_id(), options);
   reply.set_sanitized_username(
       SanitizedUserNameForSession(request.auth_session_id()));
-  std::move(on_done).Run(reply);
+  ReplyWithError(
+      std::move(on_done), reply,
+      MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocUserDataAuthPrepareVaultFailedInPrepareForMigration))
+          .Wrap(std::move(status)));
 }  // namespace cryptohome
 
 void UserDataAuth::CreatePersistentUser(
@@ -4205,12 +4222,16 @@ void UserDataAuth::CreatePersistentUser(
   ReplyWithError(std::move(on_done), reply, ret);
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareGuestVaultImpl() {
+CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
   AssertOnMountThread();
 
   if (sessions_.size() != 0) {
     LOG(ERROR) << "Can not mount guest while other sessions are active.";
-    return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthOtherSessionActiveInPrepareGuestVault),
+        ErrorActionSet({ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 
   scoped_refptr<UserSession> session = GetOrCreateUserSession(guest_user_);
@@ -4223,86 +4244,109 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareGuestVaultImpl() {
     DCHECK(status->mount_error() != MOUNT_ERROR_NONE);
     LOG(ERROR) << "Finished mounting with status code: "
                << status->mount_error();
-    return MountErrorToCryptohomeError(status->mount_error());
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthMountFailedInPrepareGuestVault))
+        .Wrap(std::move(status));
   }
   LOG(INFO) << "Mount succeeded.";
-  return MountErrorToCryptohomeError(MountError::MOUNT_ERROR_NONE);
+  return OkStatus<CryptohomeError>();
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareEphemeralVaultImpl(
+CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     const std::string& auth_session_id) {
   AssertOnMountThread();
 
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
-  AuthSession* auth_session =
-      GetAuthenticatedAuthSession(auth_session_id, &error);
-  if (!auth_session) {
-    return error;
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      GetAuthenticatedAuthSession(auth_session_id);
+  if (!auth_session_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault))
+        .Wrap(std::move(auth_session_status).status());
   }
-  scoped_refptr<UserSession> session =
-      GetMountableUserSession(auth_session, &error);
-  if (!session.get()) {
-    return error;
+  CryptohomeStatusOr<scoped_refptr<UserSession>> session_status =
+      GetMountableUserSession(auth_session_status.value());
+  if (!session_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthGetSessionFailedInPrepareEphemeralVault))
+        .Wrap(std::move(session_status).status());
   }
 
-  const std::string& obfuscated_username = auth_session->obfuscated_username();
+  const std::string& obfuscated_username =
+      auth_session_status.value()->obfuscated_username();
   PreMountHook(obfuscated_username);
   ReportTimerStart(kMountExTimer);
-  MountStatus mount_status = session->MountEphemeral(auth_session->username());
+  MountStatus mount_status = session_status.value()->MountEphemeral(
+      auth_session_status.value()->username());
   ReportTimerStop(kMountExTimer);
-  if (mount_status.ok()) {
-    PostMountHook(session, MOUNT_ERROR_NONE);
-    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  PostMountHook(session_status.value(), mount_status);
+  if (!mount_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthMountFailedInPrepareEphemeralVault))
+        .Wrap(std::move(mount_status).status());
   }
-  PostMountHook(session, mount_status->mount_error());
-  return MountErrorToCryptohomeError(mount_status->mount_error());
+  return OkStatus<CryptohomeError>();
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::PreparePersistentVaultImpl(
+CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     const std::string& auth_session_id,
     const CryptohomeVault::Options& vault_options) {
   AssertOnMountThread();
 
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
-  AuthSession* auth_session =
-      GetAuthenticatedAuthSession(auth_session_id, &error);
-  if (!auth_session) {
-    return error;
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      GetAuthenticatedAuthSession(auth_session_id);
+  if (!auth_session_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthNoAuthSessionInPreparePersistentVault))
+        .Wrap(std::move(auth_session_status).status());
   }
 
-  const std::string& obfuscated_username = auth_session->obfuscated_username();
+  const std::string& obfuscated_username =
+      auth_session_status.value()->obfuscated_username();
   if (!homedirs_->Exists(obfuscated_username)) {
-    return user_data_auth::CryptohomeErrorCode::
-        CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthNonExistentInPreparePersistentVault),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kDeleteVault, ErrorAction::kReboot,
+                        ErrorAction::kPowerwash}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   }
 
-  scoped_refptr<UserSession> session =
-      GetMountableUserSession(auth_session, &error);
-  if (!session.get()) {
-    return error;
+  CryptohomeStatusOr<scoped_refptr<UserSession>> session_status =
+      GetMountableUserSession(auth_session_status.value());
+  if (!session_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthGetSessionFailedInPreparePersistentVault))
+        .Wrap(std::move(session_status).status());
   }
 
   PreMountHook(obfuscated_username);
   ReportTimerStart(kMountExTimer);
-  MountStatus mount_status =
-      session->MountVault(auth_session->username(),
-                          auth_session->file_system_keyset(), vault_options);
+  MountStatus mount_status = session_status.value()->MountVault(
+      auth_session_status.value()->username(),
+      auth_session_status.value()->file_system_keyset(), vault_options);
   if (!mount_status.ok() &&
       mount_status->mount_error() == MOUNT_ERROR_TPM_COMM_ERROR) {
     LOG(WARNING) << "TPM communication error. Retrying.";
-    mount_status =
-        session->MountVault(auth_session->username(),
-                            auth_session->file_system_keyset(), vault_options);
+    mount_status = session_status.value()->MountVault(
+        auth_session_status.value()->username(),
+        auth_session_status.value()->file_system_keyset(), vault_options);
   }
   ReportTimerStop(kMountExTimer);
-  if (mount_status.ok()) {
-    PostMountHook(session, MOUNT_ERROR_NONE);
-    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  PostMountHook(session_status.value(), mount_status);
+  if (!mount_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthMountFailedInPreparePersistentVault))
+        .Wrap(std::move(mount_status).status());
   }
-  PostMountHook(session, mount_status->mount_error());
-  return MountErrorToCryptohomeError(mount_status->mount_error());
+  return OkStatus<CryptohomeError>();
 }
 
 CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
@@ -4389,28 +4433,27 @@ void UserDataAuth::AddAuthFactor(
   AssertOnMountThread();
   // TODO(b/3319388): Implement AddAuthFactor.
   user_data_auth::AddAuthFactorReply reply;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
-  AuthSession* auth_session =
-      GetAuthenticatedAuthSession(request.auth_session_id(), &error);
-  if (!auth_session) {
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    std::move(on_done).Run(reply);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInAddAuthFactor))
+            .Wrap(std::move(auth_session_status).status()));
     return;
   }
   // TODO(b/229708597): Migrate and wrap the returned status.
-  CryptohomeStatus status = auth_session->AddAuthFactor(request);
+  CryptohomeStatus status = auth_session_status.value()->AddAuthFactor(request);
   if (!status.ok()) {
-    if (status->local_legacy_error().has_value()) {
-      error = status->local_legacy_error().value();
-    } else {
-      error =
-          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_UNKNOWN_LEGACY;
-    }
-    reply.set_error(error);
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthAddAuthFactorFailedInAddAuthFactor))
+                       .Wrap(std::move(status)));
+  } else {
+    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
   }
-
-  std::move(on_done).Run(reply);
 }
 
 void UserDataAuth::AuthenticateAuthFactor(

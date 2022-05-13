@@ -112,16 +112,16 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 
   // Accessors functions to avoid making each test a friend.
 
-  user_data_auth::CryptohomeErrorCode PrepareGuestVaultImpl() {
+  CryptohomeStatus PrepareGuestVaultImpl() {
     return userdataauth_.PrepareGuestVaultImpl();
   }
 
-  user_data_auth::CryptohomeErrorCode PrepareEphemeralVaultImpl(
+  CryptohomeStatus PrepareEphemeralVaultImpl(
       const std::string& auth_session_id) {
     return userdataauth_.PrepareEphemeralVaultImpl(auth_session_id);
   }
 
-  user_data_auth::CryptohomeErrorCode PreparePersistentVaultImpl(
+  CryptohomeStatus PreparePersistentVaultImpl(
       const std::string& auth_session_id,
       const CryptohomeVault::Options& vault_options) {
     return userdataauth_.PreparePersistentVaultImpl(auth_session_id,
@@ -177,25 +177,30 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername2)))
       .WillRepeatedly(Return(true));
 
-  ASSERT_THAT(PrepareGuestVaultImpl(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(PrepareGuestVaultImpl().ok());
 
   // Trying to prepare another session should fail, whether it is guest, ...
-  ASSERT_THAT(PrepareGuestVaultImpl(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL));
+  CryptohomeStatus status = PrepareGuestVaultImpl();
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // ... ephemeral, ...
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
-  ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  status = PrepareEphemeralVaultImpl(auth_session->serialized_token());
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
   // ... or regular.
   auth_session = auth_session_manager_->CreateAuthSession(kUsername2, 0);
   ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword2)).ok());
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  status = PreparePersistentVaultImpl(auth_session->serialized_token(), {});
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 }
 
 TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
@@ -204,8 +209,10 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
           DoAll(SetArgPointee<0>(std::string("whoever")), Return(true)));
 
   // No auth session.
-  ASSERT_THAT(PrepareEphemeralVaultImpl(""),
-              Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+  CryptohomeStatus status = PrepareEphemeralVaultImpl("");
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
 
   // Auth session is authed for ephemeral users.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
@@ -220,16 +227,19 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(*user_session, MountEphemeral(kUsername))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
-  ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(PrepareEphemeralVaultImpl(auth_session->serialized_token()).ok());
 
   // Trying to mount again will yield busy.
-  ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  status = PrepareEphemeralVaultImpl(auth_session->serialized_token());
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
   // Guest fails if other sessions present.
-  ASSERT_THAT(PrepareGuestVaultImpl(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL));
+  status = PrepareGuestVaultImpl();
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // But ephemeral succeeds ...
   scoped_refptr<MockUserSession> user_session2 =
@@ -244,8 +254,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-  ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session2->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(
+      PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
   ASSERT_THAT(HandleAddCredentialForEphemeralVault(
                   CreateAuthorization(kPassword3), auth_session2),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
@@ -267,8 +277,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
   ASSERT_TRUE(
       auth_session3->Authenticate(CreateAuthorization(kPassword3)).ok());
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session3->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(
+      PreparePersistentVaultImpl(auth_session3->serialized_token(), {}).ok());
 }
 
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
@@ -277,14 +287,18 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
           DoAll(SetArgPointee<0>(std::string("whoever")), Return(true)));
 
   // No auth session.
-  ASSERT_THAT(PreparePersistentVaultImpl("", {}),
-              Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+  CryptohomeStatus status = PreparePersistentVaultImpl("", {});
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
 
   // Auth session not authed.
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  status = PreparePersistentVaultImpl(auth_session->serialized_token(), {});
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Auth and prepare.
   scoped_refptr<MockUserSession> user_session =
@@ -304,22 +318,28 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // If no shadow homedir - we do not have a user.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillRepeatedly(Return(false));
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND));
+  status = PreparePersistentVaultImpl(auth_session->serialized_token(), {});
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   // User authed and exists.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillRepeatedly(Return(true));
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(
+      PreparePersistentVaultImpl(auth_session->serialized_token(), {}).ok());
 
   // Trying to mount again will yield busy.
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  status = PreparePersistentVaultImpl(auth_session->serialized_token(), {});
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
   // Guest fails if other sessions present.
-  ASSERT_THAT(PrepareGuestVaultImpl(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL));
+  status = PrepareGuestVaultImpl();
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // But ephemeral succeeds ...
   scoped_refptr<MockUserSession> user_session2 =
@@ -335,8 +355,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   ASSERT_TRUE(
       auth_session2->Authenticate(CreateAuthorization(kPassword2)).ok());
-  ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session2->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(
+      PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
 
   // ... and so regular.
   scoped_refptr<MockUserSession> user_session3 =
@@ -355,8 +375,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
   ASSERT_TRUE(
       auth_session3->Authenticate(CreateAuthorization(kPassword3)).ok());
-  ASSERT_THAT(PreparePersistentVaultImpl(auth_session3->serialized_token(), {}),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(
+      PreparePersistentVaultImpl(auth_session3->serialized_token(), {}).ok());
 }
 
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {

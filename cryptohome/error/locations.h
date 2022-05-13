@@ -767,6 +767,40 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNoResetSecretInCreate = 470,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoUserInputInDerive = 471,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInUpdateCredential = 472,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInGetAuthedAS = 473,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthedInGetAuthedAS = 474,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGuestAlreadyMountedInGetMountableUS = 475,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionAlreadyMountedInGetMountableUS = 476,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthPrepareVaultFailedInPrepareForMigration = 477,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthOtherSessionActiveInPrepareGuestVault = 478,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountFailedInPrepareGuestVault = 479,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault = 480,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetSessionFailedInPrepareEphemeralVault = 481,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountFailedInPrepareEphemeralVault = 482,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInPreparePersistentVault = 483,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNonExistentInPreparePersistentVault = 484,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetSessionFailedInPreparePersistentVault = 485,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountFailedInPreparePersistentVault = 486,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInAddAuthFactor = 487,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAddAuthFactorFailedInAddAuthFactor = 488,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
