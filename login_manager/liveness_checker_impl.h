@@ -106,7 +106,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   bool enable_aborting_;
   const base::TimeDelta interval_;
   bool last_ping_acked_ = true;
-  base::CancelableClosure liveness_check_;
+  base::CancelableOnceClosure liveness_check_;
   base::TimeTicks ping_sent_;
   LoginMetrics* metrics_ = nullptr;
   base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_{this};

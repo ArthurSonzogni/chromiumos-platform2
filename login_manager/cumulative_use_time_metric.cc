@@ -241,10 +241,10 @@ void CumulativeUseTimeMetric::Start() {
   IncreaseActiveTimeAndSendUmaIfNeeded(base::TimeDelta());
 
   // Timer will be stopped when this goes out of scope, so Unretained is safe.
-  update_stats_timer_.Start(FROM_HERE,
-                            base::Seconds(kMetricsUpdateIntervalSeconds),
-                            base::Bind(&CumulativeUseTimeMetric::UpdateStats,
-                                       base::Unretained(this)));
+  update_stats_timer_.Start(
+      FROM_HERE, base::Seconds(kMetricsUpdateIntervalSeconds),
+      base::BindRepeating(&CumulativeUseTimeMetric::UpdateStats,
+                          base::Unretained(this)));
 }
 
 void CumulativeUseTimeMetric::Stop() {

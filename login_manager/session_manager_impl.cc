@@ -543,18 +543,18 @@ bool SessionManagerImpl::Initialize() {
   powerd_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
-      base::Bind(&SessionManagerImpl::OnSuspendImminent,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&HandleDBusSignalConnected));
-  powerd_proxy_->ConnectToSignal(power_manager::kPowerManagerInterface,
-                                 power_manager::kSuspendDoneSignal,
-                                 base::Bind(&SessionManagerImpl::OnSuspendDone,
-                                            weak_ptr_factory_.GetWeakPtr()),
-                                 base::Bind(&HandleDBusSignalConnected));
+      base::BindRepeating(&SessionManagerImpl::OnSuspendImminent,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleDBusSignalConnected));
+  powerd_proxy_->ConnectToSignal(
+      power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
+      base::BindRepeating(&SessionManagerImpl::OnSuspendDone,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleDBusSignalConnected));
 
   system_clock_proxy_->WaitForServiceToBeAvailable(
-      base::Bind(&SessionManagerImpl::OnSystemClockServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&SessionManagerImpl::OnSystemClockServiceAvailable,
+                     weak_ptr_factory_.GetWeakPtr()));
 
   // Note: If SetPolicyServicesForTesting has been called, all services have
   // already been set and initialized.
@@ -1311,8 +1311,8 @@ void SessionManagerImpl::GetSystemClockLastSyncInfo() {
                                system_clock::kSystemLastSyncInfo);
   system_clock_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&SessionManagerImpl::OnGotSystemClockLastSyncInfo,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&SessionManagerImpl::OnGotSystemClockLastSyncInfo,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
@@ -1322,8 +1322,8 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
                << system_clock::kSystemLastSyncInfo << " request failed.";
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
-                   weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&SessionManagerImpl::GetSystemClockLastSyncInfo,
+                       weak_ptr_factory_.GetWeakPtr()),
         system_clock_last_sync_info_retry_delay_);
     return;
   }
@@ -1345,8 +1345,8 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
   } else {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
-                   weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&SessionManagerImpl::GetSystemClockLastSyncInfo,
+                       weak_ptr_factory_.GetWeakPtr()),
         system_clock_last_sync_info_retry_delay_);
   }
 }
@@ -1456,7 +1456,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
   // Stop the existing instance if it fails to continue to boot an existing
   // container. Using Unretained() is okay because the closure will be called
   // before this function returns. If container was not running, this is no op.
-  base::ScopedClosureRunner scoped_runner(base::Bind(
+  base::ScopedClosureRunner scoped_runner(base::BindOnce(
       &SessionManagerImpl::OnContinueArcBootFailed, base::Unretained(this)));
 
   UpgradeArcContainerRequest request;
@@ -1666,7 +1666,7 @@ void SessionManagerImpl::EnableAdbSideload(
     return;
   }
 
-  arc_sideload_status_->EnableAdbSideload(base::Bind(
+  arc_sideload_status_->EnableAdbSideload(base::BindOnce(
       &SessionManagerImpl::EnableAdbSideloadCallbackAdaptor,
       weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
 }
@@ -1685,7 +1685,7 @@ void SessionManagerImpl::QueryAdbSideloadCallbackAdaptor(
 
 void SessionManagerImpl::QueryAdbSideload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  arc_sideload_status_->QueryAdbSideload(base::Bind(
+  arc_sideload_status_->QueryAdbSideload(base::BindOnce(
       &SessionManagerImpl::QueryAdbSideloadCallbackAdaptor,
       weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
 }

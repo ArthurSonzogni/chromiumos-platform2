@@ -224,7 +224,7 @@ bool AddWallpaperFlags(
     ChromiumCommandBuilder* builder,
     const std::string& flag_type,
     const std::string& file_type,
-    base::Callback<bool(const base::FilePath&)> path_exists) {
+    const base::RepeatingCallback<bool(const base::FilePath&)>& path_exists) {
   const base::FilePath large_path(base::StringPrintf(
       "/usr/share/chromeos-assets/wallpaper/%s_large.jpg", file_type.c_str()));
   const base::FilePath small_path(base::StringPrintf(
@@ -581,7 +581,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpAutoDimFlag(builder, cros_config);
   SetUpFormFactorFlag(builder, cros_config);
 
-  SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
+  SetUpWallpaperFlags(builder, cros_config,
+                      base::BindRepeating(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
   // at crbug.com/309806.
@@ -675,7 +676,7 @@ void SetUpRegulatoryLabelFlag(ChromiumCommandBuilder* builder,
 void SetUpWallpaperFlags(
     ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config,
-    base::Callback<bool(const base::FilePath&)> path_exists) {
+    const base::RepeatingCallback<bool(const base::FilePath&)>& path_exists) {
   AddWallpaperFlags(builder, "guest", "guest", path_exists);
   AddWallpaperFlags(builder, "child", "child", path_exists);
 

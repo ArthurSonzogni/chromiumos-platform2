@@ -25,8 +25,8 @@ ChildExitDispatcher::ChildExitDispatcher(
     const std::vector<ChildExitHandler*>& handlers)
     : signal_handler_(signal_handler), handlers_(handlers) {
   signal_handler_->RegisterHandler(
-      SIGCHLD,
-      base::Bind(&ChildExitDispatcher::OnSigChld, base::Unretained(this)));
+      SIGCHLD, base::BindRepeating(&ChildExitDispatcher::OnSigChld,
+                                   base::Unretained(this)));
 }
 
 ChildExitDispatcher::~ChildExitDispatcher() {

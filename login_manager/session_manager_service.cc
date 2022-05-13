@@ -139,8 +139,8 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   }
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::HandleExit),
-                 session_manager_service_, info));
+      base::BindOnce(base::IgnoreResult(&SessionManagerService::HandleExit),
+                     session_manager_service_, info));
 }
 
 SessionManagerService::SessionManagerService(
@@ -194,9 +194,9 @@ bool SessionManagerService::Initialize() {
       vm_tools::concierge::kVmConciergeServiceName,
       dbus::ObjectPath(vm_tools::concierge::kVmConciergeServicePath));
 
-  vm_concierge_dbus_proxy_->SetNameOwnerChangedCallback(base::Bind(
+  vm_concierge_dbus_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
       &SessionManagerService::VmConciergeOwnerChanged, base::Unretained(this)));
-  vm_concierge_dbus_proxy_->WaitForServiceToBeAvailable(base::Bind(
+  vm_concierge_dbus_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
       &SessionManagerService::VmConciergeAvailable, base::Unretained(this)));
 
   dbus::ObjectProxy* system_clock_proxy = bus_->GetObjectProxy(
@@ -300,8 +300,8 @@ void SessionManagerService::RunBrowser() {
   if (chrome_features_service_client_) {
     chrome_features_service_client_->IsFeatureEnabled(
         kFeatureNamelSessionManagerLongKillTimeout,
-        base::Bind(&SessionManagerService::OnLongKillTimeoutEnabled,
-                   base::Unretained(this)));
+        base::BindOnce(&SessionManagerService::OnLongKillTimeoutEnabled,
+                       base::Unretained(this)));
 
     chrome_features_service_client_->IsFeatureEnabled(
         kFeatureNameSessionManagerLivenessCheck,
@@ -500,8 +500,9 @@ void SessionManagerService::SetUpHandlers() {
                                      android_container_.get()});
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
-        kSignals[i], base::Bind(&SessionManagerService::OnTerminationSignal,
-                                base::Unretained(this)));
+        kSignals[i],
+        base::BindRepeating(&SessionManagerService::OnTerminationSignal,
+                            base::Unretained(this)));
   }
 }
 
@@ -566,9 +567,9 @@ void SessionManagerService::AllowGracefulExitOrRunForever() {
   if (exit_on_child_done_) {
     LOG(INFO) << "SessionManagerService set to exit on child done";
     brillo::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
-                   this));
+        FROM_HERE, base::BindOnce(base::IgnoreResult(
+                                      &SessionManagerService::ScheduleShutdown),
+                                  this));
   } else {
     DLOG(INFO) << "OK, running forever...";
   }
@@ -595,8 +596,9 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   impl_->AnnounceSessionStopped();
 
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&brillo::MessageLoop::BreakLoop,
-                            base::Unretained(brillo::MessageLoop::current())));
+      FROM_HERE,
+      base::BindOnce(&brillo::MessageLoop::BreakLoop,
+                     base::Unretained(brillo::MessageLoop::current())));
   LOG(INFO) << "SessionManagerService quitting run loop";
 }
 
@@ -667,8 +669,9 @@ void SessionManagerService::MaybeStopAllVms() {
   // for the VMs to exit before restarting chrome.
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kStopAllVmsMethod);
-  vm_concierge_dbus_proxy_->CallMethod(&method_call, kStopAllVmsTimeoutMs,
-                                       base::Bind(&HandleStopAllVmsResponse));
+  vm_concierge_dbus_proxy_->CallMethod(
+      &method_call, kStopAllVmsTimeoutMs,
+      base::BindOnce(&HandleStopAllVmsResponse));
 }
 
 void SessionManagerService::WriteBrowserPidFile(base::FilePath path) {

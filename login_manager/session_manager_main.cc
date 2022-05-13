@@ -260,7 +260,8 @@ int main(int argc, char* argv[]) {
     // Allows devs to start/stop browser manually.
     if (should_run_browser) {
       brillo_loop.PostTask(
-          FROM_HERE, base::Bind(&SessionManagerService::RunBrowser, manager));
+          FROM_HERE,
+          base::BindOnce(&SessionManagerService::RunBrowser, manager));
     }
     // Returns when brillo_loop.BreakLoop() is called.
     brillo_loop.Run();

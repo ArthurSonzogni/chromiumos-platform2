@@ -117,13 +117,13 @@ void AddSerializedAshSwitches(chromeos::ui::ChromiumCommandBuilder* builder,
 // Add flags to specify the wallpaper to use. This is called by
 // PerformChromeSetup and only present in the header for testing.
 // Flags are added to |builder|, and |path_exists| is called to test whether a
-// given file exists (e.g. use base::Bind(base::PathExists)).
+// given file exists (e.g. use base::BindRepeating(base::PathExists)).
 // |cros_config| (if non-null) provides the device model configuration (used to
 // look up the default wallpaper filename).
 void SetUpWallpaperFlags(
     chromeos::ui::ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config,
-    base::Callback<bool(const base::FilePath&)> path_exists);
+    const base::RepeatingCallback<bool(const base::FilePath&)>& path_exists);
 
 // Add "--device-help-content-id" switch to specify the help content
 // to be displayed in the Showoff app.

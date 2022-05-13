@@ -4,6 +4,8 @@
 
 #include "login_manager/arc_sideload_status_stub.h"
 
+#include <utility>
+
 namespace login_manager {
 
 void ArcSideloadStatusStub::Initialize() {}
@@ -14,13 +16,13 @@ bool ArcSideloadStatusStub::IsAdbSideloadAllowed() {
 
 void ArcSideloadStatusStub::EnableAdbSideload(
     EnableAdbSideloadCallback callback) {
-  callback.Run(ArcSideloadStatusInterface::Status::DISABLED,
-               "ARC is not supported");
+  std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,
+                          "ARC is not supported");
 }
 
 void ArcSideloadStatusStub::QueryAdbSideload(
     QueryAdbSideloadCallback callback) {
-  callback.Run(ArcSideloadStatusInterface::Status::DISABLED);
+  std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED);
 }
 
 }  // namespace login_manager

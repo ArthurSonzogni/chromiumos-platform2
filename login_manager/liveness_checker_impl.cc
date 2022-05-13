@@ -57,8 +57,8 @@ void LivenessCheckerImpl::Start() {
   Stop();  // To be certain.
   last_ping_acked_ = true;
   liveness_check_.Reset(
-      base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
-                 weak_ptr_factory_.GetWeakPtr(), interval_));
+      base::BindOnce(&LivenessCheckerImpl::CheckAndSendLivenessPing,
+                     weak_ptr_factory_.GetWeakPtr(), interval_));
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, liveness_check_.callback(), interval_);
 }
@@ -123,13 +123,13 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // hangs, so the above changes need to wait until this is resolved in order to
   // avoid disturbing data collection.
   dbus_proxy_->CallMethod(&ping, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                          base::Bind(&LivenessCheckerImpl::HandleAck,
-                                     weak_ptr_factory_.GetWeakPtr()));
+                          base::BindOnce(&LivenessCheckerImpl::HandleAck,
+                                         weak_ptr_factory_.GetWeakPtr()));
 
   DVLOG(1) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
   liveness_check_.Reset(
-      base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
-                 weak_ptr_factory_.GetWeakPtr(), interval));
+      base::BindOnce(&LivenessCheckerImpl::CheckAndSendLivenessPing,
+                     weak_ptr_factory_.GetWeakPtr(), interval));
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, liveness_check_.callback(), interval);
 }

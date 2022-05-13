@@ -114,13 +114,13 @@ class ArcSideloadStatusTest : public ::testing::Test {
 
   static ArcSideloadStatusInterface::QueryAdbSideloadCallback
   CaptureQueryCallback(ArcSideloadStatusInterface::Status* status) {
-    return base::Bind(&QueryCallbackAdaptor, status);
+    return base::BindOnce(&QueryCallbackAdaptor, status);
   }
 
   static ArcSideloadStatusInterface::EnableAdbSideloadCallback
   CaptureEnableCallback(ArcSideloadStatusInterface::Status* sideload_status,
                         char** error) {
-    return base::Bind(&EnableCallbackAdaptor, sideload_status, error);
+    return base::BindOnce(&EnableCallbackAdaptor, sideload_status, error);
   }
 
   scoped_refptr<dbus::MockObjectProxy> boot_lockbox_proxy_;

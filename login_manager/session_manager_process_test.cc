@@ -283,11 +283,11 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
 
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
-      base::Bind(&SessionManagerService::RunBrowser, manager_.get()));
+      base::BindOnce(&SessionManagerService::RunBrowser, manager_.get()));
 
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
-      base::Bind(&SessionManagerService::ScheduleShutdown, manager_.get()));
+      base::BindOnce(&SessionManagerService::ScheduleShutdown, manager_.get()));
 
   ForceRunLoop();
 }

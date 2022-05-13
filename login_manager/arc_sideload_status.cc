@@ -44,8 +44,8 @@ ArcSideloadStatus::~ArcSideloadStatus() {}
 
 void ArcSideloadStatus::Initialize() {
   boot_lockbox_proxy_->WaitForServiceToBeAvailable(
-      base::Bind(&ArcSideloadStatus::OnBootLockboxServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&ArcSideloadStatus::OnBootLockboxServiceAvailable,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 bool ArcSideloadStatus::IsAdbSideloadAllowed() {
@@ -76,8 +76,8 @@ void ArcSideloadStatus::EnableAdbSideload(EnableAdbSideloadCallback callback) {
 
   boot_lockbox_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&ArcSideloadStatus::OnEnableAdbSideloadSet,
-                 weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+      base::BindOnce(&ArcSideloadStatus::OnEnableAdbSideloadSet,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void ArcSideloadStatus::QueryAdbSideload(QueryAdbSideloadCallback callback) {
@@ -99,7 +99,7 @@ void ArcSideloadStatus::OnBootLockboxServiceAvailable(bool service_available) {
     return;
   }
 
-  GetAdbSideloadAllowed(base::Bind(&DoNothing));
+  GetAdbSideloadAllowed(base::BindOnce(&DoNothing));
 }
 
 void ArcSideloadStatus::GetAdbSideloadAllowed(
@@ -114,8 +114,8 @@ void ArcSideloadStatus::GetAdbSideloadAllowed(
 
   boot_lockbox_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&ArcSideloadStatus::OnGotAdbSideloadAllowed,
-                 weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+      base::BindOnce(&ArcSideloadStatus::OnGotAdbSideloadAllowed,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
@@ -234,7 +234,7 @@ void ArcSideloadStatus::SetAdbSideloadStatusAndNotify(
 
 void ArcSideloadStatus::SendQueryAdbSideloadResponse(
     QueryAdbSideloadCallback callback) {
-  callback.Run(sideload_status_);
+  std::move(callback).Run(sideload_status_);
 }
 
 }  // namespace login_manager

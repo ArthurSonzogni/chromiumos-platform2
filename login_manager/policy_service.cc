@@ -194,15 +194,16 @@ void PolicyService::SetStoreForTesting(const PolicyNamespace& ns,
 
 void PolicyService::PostPersistKeyTask() {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&PolicyService::PersistKey, weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&PolicyService::PersistKey,
+                                weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PolicyService::PostPersistPolicyTask(const PolicyNamespace& ns,
                                           const Completion& completion) {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&PolicyService::PersistPolicy,
-                            weak_ptr_factory_.GetWeakPtr(), ns, completion));
+      FROM_HERE,
+      base::BindOnce(&PolicyService::PersistPolicy,
+                     weak_ptr_factory_.GetWeakPtr(), ns, completion));
 }
 
 bool PolicyService::StorePolicy(const PolicyNamespace& ns,

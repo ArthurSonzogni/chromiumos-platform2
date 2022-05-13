@@ -47,8 +47,9 @@ class ChromeSetupTest : public ::testing::Test {
   const std::string kOldDisplay = "old";
   const std::string kShelfFlag = "--enable-dim-shelf";
   const std::string kFeatureFlag = "--enable-features";
-  const base::Callback<bool(const base::FilePath&)> kPathInSetCallback =
-      base::Bind(&ChromeSetupTest::PathInSet, base::Unretained(this));
+  const base::RepeatingCallback<bool(const base::FilePath&)>
+      kPathInSetCallback = base::BindRepeating(&ChromeSetupTest::PathInSet,
+                                               base::Unretained(this));
 
   // This returns true if the path is found in the paths_ set.
   bool PathInSet(const base::FilePath& path) {
