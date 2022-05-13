@@ -78,6 +78,8 @@ class UssExperimentConfigFetcher {
 
   // Retry count of fetching the config.
   int retries_ = 0;
+  // Whether we already initiated the config fetching.
+  bool fetch_initiated_ = false;
   // Used for determining the channel as different channel will have different
   // configs.
   std::string chromeos_release_track_;

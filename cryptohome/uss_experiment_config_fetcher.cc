@@ -90,6 +90,9 @@ void UssExperimentConfigFetcher::OnManagerPropertyChangeRegistration(
 
 void UssExperimentConfigFetcher::OnManagerPropertyChange(
     const std::string& property_name, const brillo::Any& property_value) {
+  if (fetch_initiated_) {
+    return;
+  }
   // Only handle changes to the connection state.
   if (property_name != shill::kConnectionStateProperty) {
     return;
@@ -106,6 +109,7 @@ void UssExperimentConfigFetcher::OnManagerPropertyChange(
                                        kConnectionStateOnline)) {
     Fetch(base::BindRepeating(&UssExperimentConfigFetcher::SetUssExperimentFlag,
                               weak_factory_.GetWeakPtr()));
+    fetch_initiated_ = true;
   }
 }
 
