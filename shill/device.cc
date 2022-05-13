@@ -657,6 +657,14 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
 
 void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
   StartIPv6();
+
+  // Only apply static config if the address is link local. This is a workaround
+  // for b/230336493.
+  IPAddress link_local_mask("fe80::", 10);
+  if (!link_local_mask.CanReachAddress(IPAddress(properties.address))) {
+    return;
+  }
+
   ipv6_static_properties_ = properties;
   dispatcher()->PostTask(
       FROM_HERE,
