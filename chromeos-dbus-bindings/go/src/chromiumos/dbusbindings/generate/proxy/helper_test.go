@@ -45,11 +45,11 @@ func TestMakeMethodParams(t *testing.T) {
 			Type: "i",
 		}},
 		want: []param{
-			{Type: "int32_t", Name: "in_3"},
+			{Type: "int32_t", Name: "in_4"},
 			{Type: "int32_t", Name: "in_iarg2"},
-			{Type: "int32_t", Name: "in_5"},
+			{Type: "int32_t", Name: "in_6"},
 			{Type: "int32_t", Name: "in_iarg4"},
-			{Type: "int32_t", Name: "in_7"},
+			{Type: "int32_t", Name: "in_8"},
 		},
 	}, {
 		offset: 0,
@@ -79,16 +79,96 @@ func TestMakeMethodParams(t *testing.T) {
 			Type: "i", Direction: "out",
 		}},
 		want: []param{
-			{Type: "int32_t*", Name: "out_5"},
+			{Type: "int32_t*", Name: "out_6"},
 			{Type: "int32_t*", Name: "out_oarg2"},
-			{Type: "int32_t*", Name: "out_7"},
+			{Type: "int32_t*", Name: "out_8"},
 			{Type: "int32_t*", Name: "out_oarg4"},
-			{Type: "int32_t*", Name: "out_9"},
+			{Type: "int32_t*", Name: "out_10"},
 		},
 	}}
 
 	for _, tc := range cases {
 		got, err := makeMethodParams(tc.offset, tc.args)
+		if err != nil {
+			t.Errorf("Unexpected method params format error: %v", err)
+		} else if diff := cmp.Diff(got, tc.want); diff != "" {
+			t.Errorf("Unexpected method params format: got %v, want %v", got, tc.want)
+		}
+	}
+}
+
+func TestMakeMockMethodParams(t *testing.T) {
+	cases := []struct {
+		args []introspect.MethodArg
+		want []string
+	}{{
+		args: []introspect.MethodArg{{
+			Name: "iarg1", Type: "i",
+		}, {
+			Name: "iarg2", Type: "h",
+		}, {
+			Name: "iarg3", Type: "o",
+		}},
+		want: []string{
+			"int32_t /*in_iarg1*/",
+			"const brillo::dbus_utils::FileDescriptor& /*in_iarg2*/",
+			"const dbus::ObjectPath& /*in_iarg3*/",
+		},
+	}, {
+		args: []introspect.MethodArg{{
+			Type: "i",
+		}, {
+			Name: "iarg2", Type: "i",
+		}, {
+			Type: "i",
+		}, {
+			Name: "iarg4", Type: "i",
+		}, {
+			Type: "i",
+		}},
+		want: []string{
+			"int32_t",
+			"int32_t /*in_iarg2*/",
+			"int32_t",
+			"int32_t /*in_iarg4*/",
+			"int32_t",
+		},
+	}, {
+		args: []introspect.MethodArg{{
+			Name: "oarg1", Type: "i", Direction: "out",
+		}, {
+			Name: "oarg2", Type: "h", Direction: "out",
+		}, {
+			Name: "oarg3", Type: "o", Direction: "out",
+		}},
+		want: []string{
+			"int32_t* /*out_oarg1*/",
+			"base::ScopedFD* /*out_oarg2*/",
+			"dbus::ObjectPath* /*out_oarg3*/",
+		},
+	}, {
+		args: []introspect.MethodArg{{
+			Type: "i", Direction: "out",
+		}, {
+			Name: "oarg2", Type: "i", Direction: "out",
+		}, {
+			Type: "i", Direction: "out",
+		}, {
+			Name: "oarg4", Type: "i", Direction: "out",
+		}, {
+			Type: "i", Direction: "out",
+		}},
+		want: []string{
+			"int32_t*",
+			"int32_t* /*out_oarg2*/",
+			"int32_t*",
+			"int32_t* /*out_oarg4*/",
+			"int32_t*",
+		},
+	}}
+
+	for _, tc := range cases {
+		got, err := makeMockMethodParams(tc.args)
 		if err != nil {
 			t.Errorf("Unexpected method params format error: %v", err)
 		} else if diff := cmp.Diff(got, tc.want); diff != "" {

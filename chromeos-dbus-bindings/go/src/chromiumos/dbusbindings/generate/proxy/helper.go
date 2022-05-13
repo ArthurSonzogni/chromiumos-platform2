@@ -28,7 +28,8 @@ func makeMethodParams(offset int, args []introspect.MethodArg) ([]param, error) 
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, param{t, genutil.ArgName(prefix, a.Name, i+offset)})
+		// The number-suffix is 1-indexed.
+		ret = append(ret, param{t, genutil.ArgName(prefix, a.Name, i+offset+1)})
 	}
 
 	return ret, nil
@@ -41,10 +42,35 @@ func makeMethodCallbackType(args []introspect.MethodArg) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		params = append(params, fmt.Sprintf("%s /*%s*/", t, a.Name))
+		if a.Name == "" {
+			params = append(params, t)
+		} else {
+			params = append(params, fmt.Sprintf("%s /*%s*/", t, a.Name))
+		}
 	}
 	return fmt.Sprintf("base::OnceCallback<void(%s)>", strings.Join(params, ", ")), nil
 
+}
+
+func makeMockMethodParams(args []introspect.MethodArg) ([]string, error) {
+	var ret []string
+	for _, a := range args {
+		argType, prefix := a.InArgType, "in"
+		if a.Direction == "out" {
+			argType, prefix = a.OutArgType, "out"
+		}
+		t, err := argType(dbustype.ReceiverProxy)
+		if err != nil {
+			return nil, err
+		}
+		if a.Name == "" {
+			ret = append(ret, t)
+		} else {
+			ret = append(ret, fmt.Sprintf("%s /*%s_%s*/", t, prefix, a.Name))
+		}
+	}
+
+	return ret, nil
 }
 
 // Returns stringified C++ type for signal callback.

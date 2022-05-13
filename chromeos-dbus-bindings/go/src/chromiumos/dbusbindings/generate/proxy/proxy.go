@@ -26,6 +26,7 @@ var funcMap = template.FuncMap{
 	"makeFullProxyInterfaceName":      genutil.MakeFullProxyInterfaceName,
 	"makeMethodParams":                makeMethodParams,
 	"makeMethodCallbackType":          makeMethodCallbackType,
+	"makeMockMethodParams":            makeMockMethodParams,
 	"makeProxyInterfaceArgs":          makeProxyInterfaceArgs,
 	"makeProxyInterfaceName":          genutil.MakeProxyInterfaceName,
 	"makeProxyName":                   genutil.MakeProxyName,

@@ -50,8 +50,8 @@ class {{$mockName}} : public {{$itfName}} {
   {{$mockName}}(const {{$mockName}}&) = delete;
   {{$mockName}}& operator=(const {{$mockName}}&) = delete;
 {{range .Methods -}}
-{{- $inParams := makeMethodParams 0 .InputArguments -}}
-{{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments -}}
+{{- $inParams := makeMockMethodParams .InputArguments -}}
+{{- $outParams := makeMockMethodParams .OutputArguments -}}
 {{- $arity := gmockArity (len $inParams) (len $outParams) -}}
 {{- /* TODO(crbug.com/983008): The following format is to make the output compatible with C++. */}}
 {{- if ge $arity.Sync 11}}
@@ -59,10 +59,10 @@ class {{$mockName}} : public {{$itfName}} {
 {{- $indent := repeat " " (add (len "  bool (") (len .Name))}}
   bool {{.Name}}(
 {{- range $inParams -}}
-{{.Type}} /*{{.Name}}*/,
+{{.}},
 {{$indent}}{{end -}}
 {{- range $outParams -}}
-{{.Type}} /*{{.Name}}*/,
+{{.}},
 {{$indent}}{{end -}}
 brillo::ErrorPtr* /*error*/,
 {{$indent}}int /*timeout_ms*/) override {
@@ -73,10 +73,10 @@ brillo::ErrorPtr* /*error*/,
   MOCK_METHOD{{$arity.Sync}}({{.Name}},
                {{if ge $arity.Sync 10}} {{end}}bool(
 {{- range $inParams -}}
-{{.Type}} /*{{.Name}}*/,
+{{.}},
                     {{if ge $arity.Sync 10}} {{end}}{{end -}}
 {{- range $outParams -}}
-{{.Type}} /*{{.Name}}*/,
+{{.}},
                     {{if ge $arity.Sync 10}} {{end}}{{end -}}
                     brillo::ErrorPtr* /*error*/,
                     {{if ge $arity.Sync 10}} {{end}}int /*timeout_ms*/));
@@ -86,7 +86,7 @@ brillo::ErrorPtr* /*error*/,
 {{- $indent := repeat " " (add 13 (len .Name))}}
   void {{.Name}}Async(
 {{- range $inParams -}}
-{{.Type}} /*{{.Name}}*/,
+{{.}},
 {{$indent}}{{end -}}
 {{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
 {{$indent}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
@@ -97,7 +97,7 @@ brillo::ErrorPtr* /*error*/,
   MOCK_METHOD{{$arity.Async}}({{.Name}}Async,
                {{if ge $arity.Async 10}} {{end}}void(
 {{- range $inParams -}}
-{{.Type}} /*{{.Name}}*/,
+{{.}},
                     {{if ge $arity.Async 10}} {{end}}{{end -}}
                     {{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
                     {{if ge $arity.Async 10}} {{end}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
