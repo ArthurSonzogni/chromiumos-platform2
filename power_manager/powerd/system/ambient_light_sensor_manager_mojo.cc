@@ -352,9 +352,6 @@ void AmbientLightSensorManagerMojo::AllDevicesFound() {
     light.second.ignored = true;
     light.second.remote.reset();
   }
-
-  // Don't need to wait for other devices.
-  sensor_service_handler_->RemoveObserver(this);
 }
 
 void AmbientLightSensorManagerMojo::SetSensorDeviceMojo(Sensor* sensor,

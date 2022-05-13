@@ -25,8 +25,10 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   mojo::ReceiverId AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);
   bool HasReceivers() const;
-  void ClearReceiverWithReason(cros::mojom::SensorDeviceDisconnectReason reason,
-                               const std::string& description);
+  void ClearReceiverWithReason(
+      cros::mojom::SensorDeviceDisconnectReason reason =
+          cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED,
+      const std::string& description = "");
 
   void ResetObserverRemote(mojo::ReceiverId id);
 

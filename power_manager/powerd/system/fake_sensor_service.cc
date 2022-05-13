@@ -19,6 +19,9 @@ void FakeSensorService::AddReceiver(
 
 void FakeSensorService::ClearReceivers() {
   receiver_set_.Clear();
+
+  for (auto& [_, sensor_device] : sensor_devices_)
+    sensor_device->ClearReceiverWithReason();
 }
 
 bool FakeSensorService::HasReceivers() const {
