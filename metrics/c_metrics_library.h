@@ -40,6 +40,11 @@ int CMetricsLibrarySendLinearToUMA(CMetricsLibrary handle,
                                    int sample,
                                    int max);
 
+// C wrapper for MetricsLibrary::SendLinearToUMA.
+int CMetricsLibrarySendPercentageToUMA(CMetricsLibrary handle,
+                                       const char* name,
+                                       int sample);
+
 // C wrapper for MetricsLibrary::SendSparseToUMA.
 int CMetricsLibrarySendSparseToUMA(CMetricsLibrary handle,
                                    const char* name,

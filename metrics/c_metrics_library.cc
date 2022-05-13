@@ -60,6 +60,15 @@ extern "C" int CMetricsLibrarySendLinearToUMA(CMetricsLibrary handle,
   return lib->SendLinearToUMA(std::string(name), sample, max);
 }
 
+extern "C" int CMetricsLibrarySendPercentageToUMA(CMetricsLibrary handle,
+                                                  const char* name,
+                                                  int sample) {
+  MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
+  if (lib == NULL)
+    return 0;
+  return lib->SendPercentageToUMA(std::string(name), sample);
+}
+
 extern "C" int CMetricsLibrarySendSparseToUMA(CMetricsLibrary handle,
                                               const char* name,
                                               int sample) {

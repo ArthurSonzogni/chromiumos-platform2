@@ -194,6 +194,11 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
+  bool SendPercentageToUMA(const std::string& name, int sample) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendBoolToUMA(const std::string& name, bool sample) override {
     ADD_FAILURE() << "Should not be reached";
     return false;

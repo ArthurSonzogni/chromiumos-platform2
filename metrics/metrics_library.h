@@ -44,6 +44,7 @@ class MetricsLibraryInterface {
   virtual bool SendLinearToUMA(const std::string& name,
                                int sample,
                                int max) = 0;
+  virtual bool SendPercentageToUMA(const std::string& name, int sample) = 0;
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
@@ -190,6 +191,13 @@ class MetricsLibrary : public MetricsLibraryInterface {
   bool SendLinearToUMA(const std::string& name,
                        int sample,
                        int exclusive_max) override;
+
+  // Sends percentage histogram data to Chrome for transport to UMA and
+  // returns true on success.  This is a specialization of SendLinearToUMA with
+  // |exclusive_max| = 101 for percentage values. These methods result in the
+  // equivalent of an asynchronous non-blocking RPC to UMA_HISTOGRAM_PERCENTAGE
+  // inside Chrome (see base/metrics/histogram_macros.h).
+  bool SendPercentageToUMA(const std::string& name, int sample) override;
 
   // Specialization of SendEnumToUMA for boolean values.
   bool SendBoolToUMA(const std::string& name, bool sample) override;
