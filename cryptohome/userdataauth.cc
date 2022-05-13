@@ -3818,8 +3818,14 @@ void UserDataAuth::StartAuthSession(
   if (!auth_session->user_has_configured_credential() &&
       !auth_session->user_has_configured_auth_factor() &&
       auth_session->user_exists()) {
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
-    std::move(on_done).Run(reply);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNotConfiguredInStartAuthSession),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                            ErrorAction::kDeleteVault, ErrorAction::kAuth}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_UNUSABLE_VAULT));
     return;
   }
 

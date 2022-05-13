@@ -887,6 +887,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSPayloadEncryptFailedInGetEncContainer = 530,
   /* ./user_secret_stash.cc */
   kLocUSSContainerSerializeFailedInGetEncContainer = 531,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNotConfiguredInStartAuthSession = 532,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
