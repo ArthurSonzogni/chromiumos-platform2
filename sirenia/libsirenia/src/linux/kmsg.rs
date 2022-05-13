@@ -187,12 +187,22 @@ impl fmt::Display for KmsgRecord<'_> {
     }
 }
 
-// The kernel docs claim that unprintable chars are escaped, but that is a lie.
-fn escape(line: &str) -> String {
-    line.strip_suffix('\n')
-        .unwrap_or(line)
-        .escape_default()
-        .to_string()
+/// Escape strings for logging.
+///
+/// Replace ASCII control characters and non-ASCII characters with escape
+/// sequences using char::escape_default(). Also remove one trailing newline.
+/// Note: Even though kmesg docs claim that the kernel escapes unprintable
+/// characters, that does not seem to be true in practice.
+pub fn escape(line: &str) -> String {
+    let mut result = String::with_capacity(line.len() + 10);
+    for c in line.strip_suffix('\n').unwrap_or(line).chars() {
+        if c.is_ascii() && !c.is_ascii_control() {
+            result.push(c);
+        } else {
+            result.extend(c.escape_default());
+        }
+    }
+    result
 }
 
 pub fn kmsg_tail(nbytes: usize) -> Result<VecDeque<String>> {
@@ -231,5 +241,24 @@ mod test {
         assert_eq!(format_kernel_ts("1234567"),       "[    1.234567]");
         assert_eq!(format_kernel_ts("123456789"),     "[  123.456789]");
         assert_eq!(format_kernel_ts("123456123456"), "[123456.123456]");
+    }
+
+    #[test]
+    fn log_escape() {
+        assert_eq!(escape("Hello, World!\n"), "Hello, World!");
+        assert_eq!(
+            escape("I said, \"It wasn't me.\""),
+            "I said, \"It wasn't me.\""
+        );
+        assert_eq!(
+            escape("So... tabs(\t) or spaces(\u{20})?"),
+            "So... tabs(\\t) or spaces( )?"
+        );
+        assert_eq!(
+            escape("When is a \0 not a NULL?\n\n"),
+            "When is a \\u{0} not a NULL?\\n"
+        );
+        assert_eq!(escape("α is for Alpha"), "\\u{3b1} is for Alpha");
+        assert_eq!(escape("♥"), "\\u{2665}");
     }
 }

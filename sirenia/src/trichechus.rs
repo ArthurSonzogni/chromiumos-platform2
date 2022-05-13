@@ -289,10 +289,10 @@ impl SyslogReceiverMut for TrichechusState {
         if let Some(kmsgf) = self.kmsg.borrow_mut().deref_mut() {
             let rawmsg = String::from_utf8_lossy(&data);
             let (sev, msg) = get_severity_and_msg(&rawmsg);
-            let r = writeln!(kmsgf, "syslog: [{}] {}", sev, msg.escape_default())
+            let r = writeln!(kmsgf, "syslog: [{}] {}", sev, kmsg::escape(msg))
                 .and_then(|_| kmsgf.flush());
             if let Err(e) = r {
-                eprintln!("syslog: {}", rawmsg.escape_default());
+                eprintln!("syslog: {}", kmsg::escape(&rawmsg));
                 eprintln!("Can't write to /dev/kmsg: {}", e);
             }
         }
