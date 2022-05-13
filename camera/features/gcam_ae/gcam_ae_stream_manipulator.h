@@ -30,9 +30,6 @@ class GcamAeStreamManipulator : public StreamManipulator {
       "/run/camera/gcam_ae_config.json";
 
   struct Options {
-    // Enables Gcam AE to produce exposure settings and HDR ratio.
-    bool gcam_ae_enable = true;
-
     // Whether to log per-frame metadata using MetadataLogger.
     bool log_frame_metadata = false;
   };

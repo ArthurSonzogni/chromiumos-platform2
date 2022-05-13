@@ -37,7 +37,7 @@ class FeatureProfile {
   // Creates a FeatureProfile instance with the given |feature_config| JSON data
   // and |device_config| hardware device configuration.
   //
-  // If |feature_config| is nullopt, then by default  the config stored in
+  // If |feature_config| is nullopt, then by default the config stored in
   // kFeatureProfileFilePath will be loaded. If |device_config| is nullopt, then
   // the default DeviceConfig instance from DeviceConfig::Create() will be used.
   FeatureProfile(std::optional<base::Value> feature_config = std::nullopt,

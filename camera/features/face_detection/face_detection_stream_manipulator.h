@@ -30,7 +30,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
 
   struct Options {
     // Uses CrOS face detector for face detection instead of the vendor one.
-    bool enable = true;
+    bool enable = false;
 
     // Controls the duty cycle of CrOS face detector. The face detector will run
     // every |fd_frame_interval| frames.

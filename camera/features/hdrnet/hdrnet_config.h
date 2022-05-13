@@ -27,7 +27,7 @@ class HdrNetConfig {
 
   struct Options {
     // Enables the HDRnet pipeline to produce output frames.
-    bool hdrnet_enable = true;
+    bool hdrnet_enable = false;
 
     // Dumps intermediate processing buffers for debugging.
     bool dump_buffer = false;

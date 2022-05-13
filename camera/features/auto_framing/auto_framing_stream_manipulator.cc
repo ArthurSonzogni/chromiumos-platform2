@@ -18,10 +18,12 @@
 #include <base/callback_helpers.h>
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/task/bind_post_task.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "cros-camera/camera_metadata_utils.h"
+#include "cros-camera/constants.h"
 #include "gpu/egl/egl_fence.h"
 
 namespace cros {
@@ -216,14 +218,25 @@ struct AutoFramingStreamManipulator::CaptureContext {
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
     RuntimeOptions* runtime_options)
-    : config_(base::FilePath(kDefaultAutoFramingConfigFile),
-              base::FilePath(kOverrideAutoFramingConfigFile)),
+    : config_(ReloadableConfigFile::Options{
+          base::FilePath(kDefaultAutoFramingConfigFile),
+          base::FilePath(kOverrideAutoFramingConfigFile)}),
       runtime_options_(runtime_options),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
       thread_("AutoFramingThread") {
   DCHECK_NE(runtime_options_, nullptr);
   CHECK(thread_.Start());
 
+  if (!config_.IsValid()) {
+    if (base::PathExists(
+            base::FilePath(constants::kForceEnableAutoFramingPath))) {
+      LOGF(INFO) << "AutoFramingStreamManipulator forcibly turned on";
+      options_.enable = true;
+    } else {
+      LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+      options_.enable = false;
+    }
+  }
   config_.SetCallback(base::BindRepeating(
       &AutoFramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }

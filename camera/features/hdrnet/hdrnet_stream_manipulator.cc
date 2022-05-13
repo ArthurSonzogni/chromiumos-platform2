@@ -146,12 +146,17 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
               : base::BindRepeating(HdrNetProcessorImpl::CreateInstance)),
-      config_(config_file_path,
-              base::FilePath(HdrNetConfig::kOverrideHdrNetConfigFile)),
+      config_(ReloadableConfigFile::Options{
+          config_file_path,
+          base::FilePath(HdrNetConfig::kOverrideHdrNetConfigFile)}),
       still_capture_processor_(std::move(still_capture_processor)),
       camera_metrics_(CameraMetrics::New()),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
   CHECK(gpu_thread_.Start());
+  if (!config_.IsValid()) {
+    LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+    options_.hdrnet_enable = false;
+  }
   config_.SetCallback(base::BindRepeating(
       &HdrNetStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }

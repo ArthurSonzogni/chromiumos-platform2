@@ -19,19 +19,13 @@
 
 namespace cros {
 
-ReloadableConfigFile::ReloadableConfigFile(
-    base::FilePath default_config_file_path,
-    base::FilePath override_config_file_path)
-    : default_config_file_path_(default_config_file_path) {
+ReloadableConfigFile::ReloadableConfigFile(const Options& options)
+    : default_config_file_path_(options.default_config_file_path),
+      override_config_file_path_(options.override_config_file_path) {
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(default_config_file_path_);
-  if (!override_config_file_path.empty()) {
-    override_config_file_path_ = base::FilePath(override_config_file_path);
-    // Override config file is optional and may not exist. Check before read to
-    // avoid printing the error message in ReadConfigFileLocked().
-    if (base::PathExists(override_config_file_path_)) {
-      ReadConfigFileLocked(override_config_file_path_);
-    }
+  if (!override_config_file_path_.empty()) {
+    ReadConfigFileLocked(override_config_file_path_);
     bool ret = override_file_path_watcher_.Watch(
         override_config_file_path_, base::FilePathWatcher::Type::kNonRecursive,
         base::BindRepeating(&ReloadableConfigFile::OnConfigFileUpdated,
@@ -55,11 +49,14 @@ void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
   WriteConfigFileLocked(override_config_file_path_);
 }
 
+bool ReloadableConfigFile::IsValid() const {
+  return !json_values_.is_none();
+}
+
 void ReloadableConfigFile::ReadConfigFileLocked(
     const base::FilePath& file_path) {
   options_lock_.AssertAcquired();
-  if (!base::PathExists(file_path)) {
-    LOGF(ERROR) << "Config file does not exist: " << file_path;
+  if (file_path.empty() || !base::PathExists(file_path)) {
     return;
   }
   // Limiting config file size to 64KB. Increase this if needed.

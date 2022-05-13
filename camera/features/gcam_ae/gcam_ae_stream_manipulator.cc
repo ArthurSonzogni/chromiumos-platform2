@@ -21,7 +21,6 @@ namespace {
 
 constexpr char kMetadataDumpPath[] = "/run/camera/gcam_ae_frame_metadata.json";
 
-constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
 constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 
 }  // namespace
@@ -33,12 +32,19 @@ constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 GcamAeStreamManipulator::GcamAeStreamManipulator(
     base::FilePath config_file_path,
     GcamAeController::Factory gcam_ae_controller_factory)
-    : config_(config_file_path, base::FilePath(kOverrideGcamAeConfigFile)),
+    : config_(ReloadableConfigFile::Options{
+          config_file_path, base::FilePath(kOverrideGcamAeConfigFile)}),
       gcam_ae_controller_factory_(
           !gcam_ae_controller_factory.is_null()
               ? std::move(gcam_ae_controller_factory)
               : base::BindRepeating(GcamAeControllerImpl::CreateInstance)),
-      metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {}
+      metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
+  if (!config_.IsValid()) {
+    // The switch is in |ae_controller_| created in Initialize() below. The
+    // enable control is set to false by default.
+    LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+  }
+}
 
 bool GcamAeStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
@@ -170,8 +176,6 @@ bool GcamAeStreamManipulator::Flush() {
 }
 
 void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
-  LoadIfExist(json_values, kGcamAeEnableKey, &options_.gcam_ae_enable);
-
   bool log_frame_metadata;
   if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
     if (options_.log_frame_metadata && !log_frame_metadata) {
@@ -186,7 +190,6 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Gcam AE config:"
-             << " gcam_ae_enable=" << options_.gcam_ae_enable
              << " log_frame_metadata=" << options_.log_frame_metadata;
   }
 

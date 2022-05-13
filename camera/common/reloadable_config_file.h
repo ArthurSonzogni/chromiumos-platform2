@@ -24,24 +24,30 @@ namespace cros {
 // override config file when the file content changes.
 class ReloadableConfigFile {
  public:
+  struct Options {
+    // The path to the default config file. The config is read from
+    // |default_config_file_path| first if the path exists.
+    base::FilePath default_config_file_path;
+
+    // The path to the override config file. |override_config_file_path| will be
+    // actively monitored at run-time, and we will overwrite the existing
+    // |options_| values with the ones present in the override config file. The
+    // config in the override file doesn't have to include all the options and
+    // it can update only a subset of the options.
+    base::FilePath override_config_file_path = base::FilePath();
+  };
+
   using OptionsUpdateCallback =
       base::RepeatingCallback<void(const base::Value&)>;
 
-  // The config is read from |default_config_file_path| first if the path
-  // exists, otherwise we use the default values set above.
-  // |override_config_file_path| will be actively monitored at run-time, and we
-  // will overwrite the existing |options_| values with the ones present in the
-  // override config file. The config in the override file doesn't have to
-  // include all the options and it can update only a subset of the options.
-  ReloadableConfigFile(
-      base::FilePath default_config_file_path,
-      base::FilePath override_config_file_path = base::FilePath());
+  explicit ReloadableConfigFile(const Options& options);
   ReloadableConfigFile(const ReloadableConfigFile& other) = delete;
   ReloadableConfigFile& operator=(const ReloadableConfigFile& other) = delete;
   ~ReloadableConfigFile() = default;
 
   void SetCallback(OptionsUpdateCallback callback);
   void UpdateOption(std::string key, base::Value value);
+  bool IsValid() const;
 
  private:
   void ReadConfigFileLocked(const base::FilePath& file_path);

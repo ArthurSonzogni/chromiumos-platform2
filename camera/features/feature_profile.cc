@@ -33,7 +33,8 @@ std::optional<FeatureProfile::FeatureType> GetFeatureType(
 
 FeatureProfile::FeatureProfile(std::optional<base::Value> feature_config,
                                std::optional<DeviceConfig> device_config)
-    : config_file_(base::FilePath(kFeatureProfileFilePath)),
+    : config_file_(ReloadableConfigFile::Options{
+          base::FilePath(kFeatureProfileFilePath), base::FilePath()}),
       device_config_(device_config ? std::move(device_config).value()
                                    : DeviceConfig::Create()) {
   if (feature_config.has_value()) {

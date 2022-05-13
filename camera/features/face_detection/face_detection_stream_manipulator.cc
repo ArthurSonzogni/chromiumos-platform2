@@ -47,9 +47,13 @@ void LogFaceInfo(int frame_number, const human_sensing::CrosFace& face) {
 FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
     base::FilePath config_file_path)
     : face_detector_(FaceDetector::Create()),
-      config_(config_file_path,
-              base::FilePath(kOverrideFaceDetectionConfigFile)),
+      config_(ReloadableConfigFile::Options{
+          config_file_path, base::FilePath(kOverrideFaceDetectionConfigFile)}),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
+  if (!config_.IsValid()) {
+    LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+    options_.enable = false;
+  }
   config_.SetCallback(
       base::BindRepeating(&FaceDetectionStreamManipulator::OnOptionsUpdated,
                           base::Unretained(this)));

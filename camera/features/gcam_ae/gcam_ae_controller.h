@@ -37,7 +37,7 @@ class GcamAeController {
 
   struct Options {
     // Whether the GcamAeController is enabled.
-    bool enabled = true;
+    bool enabled = false;
 
     // The duty cycle of the GcamAeController. The AE controller will
     // calculate and update AE parameters once every |ae_frame_interval| frames.
