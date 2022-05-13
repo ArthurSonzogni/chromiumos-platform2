@@ -24,6 +24,7 @@
 #include "fusebox/dbus_adaptors/org.chromium.FuseBoxReverseService.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
+#include "fusebox/file_system_type.h"
 #include "fusebox/fuse_file_handles.h"
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/fuse_path_inodes.h"
@@ -485,8 +486,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     readdir_.erase(request->fh());
     request->ReplyOk();
   }
-
-  static constexpr char kMTPType[] = "mtp";
 
   void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "open " << ino;
