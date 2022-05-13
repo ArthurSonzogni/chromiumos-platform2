@@ -246,9 +246,14 @@ is_arc_vm(`
   allow cros_cryptohomed self:capability {
     dac_override
     dac_read_search
+    fsetid
     mknod
     sys_nice
   };
+  # TODO(232457984): Relabel properly
+  allow cros_cryptohomed unlabeled:{ dir file } relabelto;
+  allow cros_cryptohomed unlabeled:{ dir file } setattr;
+  create_dir_file(cros_cryptohomed, unlabeled);
   allow cros_cryptohomed unlabeled:filesystem {
     mount
     remount
@@ -285,9 +290,14 @@ is_arc_vm(`
     allow cros_cryptohomed self:capability {
       dac_override
       dac_read_search
+      fsetid
       mknod
       sys_nice
     };
+    # TODO(232457984): Relabel properly
+    allow cros_cryptohomed unlabeled:{ dir file } relabelto;
+    allow cros_cryptohomed unlabeled:{ dir file } setattr;
+    create_dir_file(cros_cryptohomed, unlabeled);
     allow cros_cryptohomed unlabeled:filesystem {
       mount
       remount
