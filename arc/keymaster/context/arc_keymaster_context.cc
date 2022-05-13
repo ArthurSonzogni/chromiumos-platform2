@@ -313,8 +313,8 @@ keymaster_error_t ArcKeymasterContext::ParseKeyBlob(
     return KM_ERROR_INVALID_ARGUMENT;
 
   ::keymaster::KeyFactory* factory = GetKeyFactory(algorithm.value());
-  return factory->LoadKey(move(key_material), additional_params,
-                          move(hw_enforced), move(sw_enforced), key);
+  return factory->LoadKey(std::move(key_material), additional_params,
+                          std::move(hw_enforced), std::move(sw_enforced), key);
 }
 
 keymaster_error_t ArcKeymasterContext::UpgradeKeyBlob(
