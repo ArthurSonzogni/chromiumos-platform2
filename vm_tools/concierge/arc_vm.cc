@@ -13,6 +13,7 @@
 // Needs to be included after sys/socket.h
 #include <linux/vm_sockets.h>
 
+#include <csignal>
 #include <optional>
 #include <tuple>
 #include <utility>
