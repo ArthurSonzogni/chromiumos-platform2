@@ -103,7 +103,7 @@ class U2fMessageHandlerTest : public ::testing::Test {
         std::unique_ptr<AllowlistingUtil>(mock_allowlisting_util_),
         [this]() { presence_requested_count_++; }, &mock_user_state_,
         &mock_tpm_proxy_, &mock_metrics_, allow_legacy_kh,
-        allow_g2f_attestation));
+        allow_g2f_attestation, false));
   }
 
   void ExpectGetUserSecret() { ExpectGetUserSecretForTimes(1); }

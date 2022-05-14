@@ -127,6 +127,7 @@ void OnPolicySignalConnected(const std::string& interface,
 
 U2fDaemon::U2fDaemon(bool force_u2f,
                      bool force_g2f,
+                     bool enable_corp_protocol,
                      bool g2f_allowlist_data,
                      bool legacy_kh_fallback,
                      uint32_t vendor_id,
@@ -138,8 +139,8 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false) {
 #if USE_GSC
-  u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(legacy_kh_fallback,
-                                                        vendor_id, product_id);
+  u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(
+      enable_corp_protocol, legacy_kh_fallback, vendor_id, product_id);
 #endif  // USE_GSC
 }
 

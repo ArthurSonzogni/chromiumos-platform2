@@ -5,6 +5,7 @@
 #ifndef U2FD_U2F_CORP_PROCESSOR_INTERFACE_H_
 #define U2FD_U2F_CORP_PROCESSOR_INTERFACE_H_
 
+#include "u2fd/client/u2f_apdu.h"
 #include "u2fd/client/u2f_corp_processor.h"
 
 namespace u2f {
@@ -20,6 +21,7 @@ class U2fCorpProcessorInterface {
   ~U2fCorpProcessorInterface();
 
   void Initialize();
+  U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu);
 
  private:
   void* handle_;

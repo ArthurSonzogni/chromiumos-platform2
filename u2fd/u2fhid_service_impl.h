@@ -25,7 +25,8 @@ namespace u2f {
 // U2F HID service. Initialized by U2F Daemon.
 class U2fHidServiceImpl : public U2fHidService {
  public:
-  U2fHidServiceImpl(bool legacy_kh_fallback,
+  U2fHidServiceImpl(bool enable_corp_protocol,
+                    bool legacy_kh_fallback,
                     uint32_t vendor_id,
                     uint32_t product_id);
   U2fHidServiceImpl(const U2fHidServiceImpl&) = delete;
@@ -50,6 +51,7 @@ class U2fHidServiceImpl : public U2fHidService {
   TpmVendorCommandProxy* tpm_proxy() override { return &tpm_proxy_; }
 
  private:
+  const bool enable_corp_protocol_;
   const bool legacy_kh_fallback_;
 
   // Virtual USB Device ID

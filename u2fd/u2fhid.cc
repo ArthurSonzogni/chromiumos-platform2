@@ -198,11 +198,13 @@ struct U2fHid::Transaction {
 };
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
-               U2fMessageHandlerInterface* msg_handler)
+               U2fMessageHandlerInterface* msg_handler,
+               bool enable_corp_protocol)
     : hid_(std::move(hid)),
       free_cid_(1),
       locked_cid_(0),
-      msg_handler_(msg_handler) {
+      msg_handler_(msg_handler),
+      enable_corp_protocol_(enable_corp_protocol) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
       base::BindRepeating(&U2fHid::ProcessReport, base::Unretained(this)));
@@ -322,6 +324,13 @@ int U2fHid::CmdLock(std::string* resp) {
 }
 
 int U2fHid::CmdSysInfo(std::string* resp) {
+  if (enable_corp_protocol_) {
+    VLOG(1) << "Received SysInfo command";
+    // 8 bytes name + 3 bytes firmware version + 3 bytes applet version.
+    *resp = std::string("built-in") + std::string(6, '\x01');
+    return 0;
+  }
+
   LOG(WARNING) << "Received unsupported SysInfo command";
   ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
   return -EINVAL;

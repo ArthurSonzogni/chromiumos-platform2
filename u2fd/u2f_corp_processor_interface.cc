@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 
 #include <base/logging.h>
+#include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/client/u2f_corp_processor.h"
 
@@ -55,8 +56,19 @@ void U2fCorpProcessorInterface::Initialize() {
   if (processor_) {
     processor_->Initialize();
   } else {
-    LOG(INFO) << "Stub initialized.";
+    VLOG(1) << "Stub initialized.";
   }
+}
+
+U2fResponseApdu U2fCorpProcessorInterface::ProcessApdu(
+    const U2fCommandApdu& apdu) {
+  if (processor_) {
+    return processor_->ProcessApdu(apdu);
+  }
+  VLOG(1) << "Stub received ProcessApdu, doing nothing.";
+  U2fResponseApdu resp_apdu;
+  resp_apdu.SetStatus(U2F_SW_INS_NOT_SUPPORTED);
+  return resp_apdu;
 }
 
 }  // namespace u2f

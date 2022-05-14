@@ -33,7 +33,8 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
                     TpmVendorCommandProxy* proxy,
                     MetricsLibraryInterface* metrics,
                     bool allow_legacy_kh_sign,
-                    bool allow_g2f_attestation);
+                    bool allow_g2f_attestation,
+                    bool enable_corp_protocol);
 
   // Processes the APDU and builds a response locally, making using of cr50
   // vendor commands where necessary.

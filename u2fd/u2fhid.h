@@ -74,7 +74,8 @@ class U2fHid {
   // Create a new virtual U2F HID Device. Does not take ownership of
   // msg_handler, which must outlive this instance.
   U2fHid(std::unique_ptr<HidInterface> hid,
-         U2fMessageHandlerInterface* msg_handler);
+         U2fMessageHandlerInterface* msg_handler,
+         bool enable_corp_protocol);
   U2fHid(const U2fHid&) = delete;
   U2fHid& operator=(const U2fHid&) = delete;
 
@@ -120,6 +121,7 @@ class U2fHid {
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;
   U2fMessageHandlerInterface* msg_handler_;
+  bool enable_corp_protocol_;
 
   class HidPacket;
   class HidMessage;

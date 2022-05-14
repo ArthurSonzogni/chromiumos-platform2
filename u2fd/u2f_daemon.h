@@ -32,6 +32,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
  public:
   U2fDaemon(bool force_u2f,
             bool force_g2f,
+            bool enable_corp_protocol,
             bool g2f_allowlist_data,
             bool legacy_kh_fallback,
             uint32_t vendor_id,

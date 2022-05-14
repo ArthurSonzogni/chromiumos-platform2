@@ -26,10 +26,12 @@ constexpr char kKeyLabelEmk[] = "attest-ent-machine";
 
 }  // namespace
 
-U2fHidServiceImpl::U2fHidServiceImpl(bool legacy_kh_fallback,
+U2fHidServiceImpl::U2fHidServiceImpl(bool enable_corp_protocol,
+                                     bool legacy_kh_fallback,
                                      uint32_t vendor_id,
                                      uint32_t product_id)
-    : legacy_kh_fallback_(legacy_kh_fallback),
+    : enable_corp_protocol_(enable_corp_protocol),
+      legacy_kh_fallback_(legacy_kh_fallback),
       vendor_id_(vendor_id),
       product_id_(product_id) {}
 
@@ -66,12 +68,13 @@ bool U2fHidServiceImpl::CreateU2fHid(
 
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
       std::move(allowlisting_util), request_user_presence, user_state,
-      &tpm_proxy_, metrics, legacy_kh_fallback_, allow_g2f_attestation);
+      &tpm_proxy_, metrics, legacy_kh_fallback_, allow_g2f_attestation,
+      enable_corp_protocol_);
 
   u2fhid_ = std::make_unique<u2f::U2fHid>(
       std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                         "u2fd-tpm-cr50"),
-      u2f_msg_handler_.get());
+      u2f_msg_handler_.get(), enable_corp_protocol_);
 
   return u2fhid_->Init();
 }

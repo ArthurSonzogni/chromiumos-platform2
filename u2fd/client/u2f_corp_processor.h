@@ -5,6 +5,8 @@
 #ifndef U2FD_CLIENT_U2F_CORP_PROCESSOR_H_
 #define U2FD_CLIENT_U2F_CORP_PROCESSOR_H_
 
+#include "u2fd/client/u2f_apdu.h"
+
 namespace u2f {
 
 class U2fCorpProcessor {
@@ -13,6 +15,8 @@ class U2fCorpProcessor {
   virtual ~U2fCorpProcessor() = default;
 
   virtual void Initialize() = 0;
+
+  virtual U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu) = 0;
 };
 
 }  // namespace u2f

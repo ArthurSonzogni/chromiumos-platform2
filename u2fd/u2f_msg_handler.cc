@@ -62,16 +62,19 @@ U2fMessageHandler::U2fMessageHandler(
     TpmVendorCommandProxy* proxy,
     MetricsLibraryInterface* metrics,
     bool allow_legacy_kh_sign,
-    bool allow_g2f_attestation)
+    bool allow_g2f_attestation,
+    bool enable_corp_protocol)
     : allowlisting_util_(std::move(allowlisting_util)),
       request_user_presence_(request_user_presence),
       user_state_(user_state),
       proxy_(proxy),
       metrics_(metrics),
-      u2f_corp_processor_(std::make_unique<U2fCorpProcessorInterface>()),
       allow_legacy_kh_sign_(allow_legacy_kh_sign),
       allow_g2f_attestation_(allow_g2f_attestation) {
-  u2f_corp_processor_->Initialize();
+  if (enable_corp_protocol) {
+    u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
+    u2f_corp_processor_->Initialize();
+  }
 }
 
 U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
@@ -86,11 +89,13 @@ U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
 
   U2fIns ins = apdu->Ins();
 
-  // TODO(crbug.com/1218246) Change UMA enum name kU2fCommand if new enums for
-  // U2fIns are added to avoid data discontinuity, then use <largest-enum>+1
-  // rather than <largest-enum>.
-  metrics_->SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
-                          static_cast<int>(U2fIns::kU2fVersion));
+  if (static_cast<int>(ins) <= static_cast<int>(U2fIns::kU2fVersion)) {
+    // TODO(crbug.com/1218246) Change UMA enum name kU2fCommand if new enums for
+    // U2fIns are added to avoid data discontinuity, then use <largest-enum>+1
+    // rather than <largest-enum>.
+    metrics_->SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
+                            static_cast<int>(U2fIns::kU2fVersion));
+  }
 
   // TODO(louiscollard): Check expected response length is large enough.
 
@@ -130,6 +135,9 @@ U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
       return response;
     }
     default:
+      if (u2f_corp_processor_) {
+        return u2f_corp_processor_->ProcessApdu(*apdu);
+      }
       u2f_status = U2F_SW_INS_NOT_SUPPORTED;
       break;
   }
