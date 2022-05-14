@@ -1668,9 +1668,11 @@ TEST_F(LogicalVolumeStatefulPartitionTest, CreateLogicalVolumeStackCheck) {
       .Times(1)
       .WillOnce(Return(true));
 
-  std::vector<std::string> tp_create = {
-      "lvcreate", "--size",     "5017M",    "--poolmetadatasize",
-      "50M",      "--thinpool", "thinpool", "STATEFULSTATEFUL"};
+  std::vector<std::string> tp_create = {"lvcreate", "--zero",
+                                        "n",        "--size",
+                                        "5017M",    "--poolmetadatasize",
+                                        "50M",      "--thinpool",
+                                        "thinpool", "STATEFULSTATEFUL"};
   EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(tp_create))
       .Times(1)
       .WillOnce(Return(true));

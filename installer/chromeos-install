@@ -579,7 +579,7 @@ wipe_stateful() {
     local thinpool_metadata_size="$(get_thinpool_metadata_size \
       "${thinpool_size}")"
 
-    lvcreate --size "${thinpool_size}M" --poolmetadatasize \
+    lvcreate --zero n --size "${thinpool_size}M" --poolmetadatasize \
       "${thinpool_metadata_size}M" --thinpool "thinpool" "${vg_name}/thinpool"
 
     echo "Creating unencrypted volume"

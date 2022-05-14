@@ -198,8 +198,8 @@ std::optional<Thinpool> LogicalVolumeManager::CreateThinpool(
   }
 
   cmd.insert(cmd.end(),
-             {"--size", *size + "M", "--poolmetadatasize", *metadata_size + "M",
-              "--thinpool", *name, vg.GetName()});
+             {"--zero", "n", "--size", *size + "M", "--poolmetadatasize",
+              *metadata_size + "M", "--thinpool", *name, vg.GetName()});
 
   return lvm_->RunCommand(cmd)
              ? std::make_optional(Thinpool(*name, vg.GetName(), lvm_))
