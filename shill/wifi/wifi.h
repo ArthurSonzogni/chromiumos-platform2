@@ -656,6 +656,48 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnGetDHCPLease() override;
   void OnGetSLAACAddress() override;
 
+  // These Device functions are overridden for retrieving link statistics.
+  void OnGetDHCPFailure() override;
+  void OnNetworkValidationStart() override;
+  void OnNetworkValidationSuccess() override;
+  void OnNetworkValidationFailure() override;
+
+  // Enum corresponding to various network layer events defined in the
+  // base Device class. This enum is used for labelling link statistics obtained
+  // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
+  // these events.
+  enum class NetworkEvent {
+    kUnknown,
+    // IPv4 and IPv6 dynamic configuration is starting for this network. This
+    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
+    // and to the start of IPv6 SLAAC in the kernel.
+    kIPConfigurationStart,
+    // The network is connected and one of IPv4 or IPv6 is provisioned. This
+    // corresponds to the beginning of the first network validation event if
+    // PortalDetector is used for validating the network Internet access.
+    kConnected,
+    // A roaming event is triggering a DHCP renew.
+    kDHCPRenewOnRoam,
+    // DHCPv4 lease acquisation has successfully completed.
+    kDHCPSuccess,
+    // DHCPv4 lease acquisation has failed. This event happens whenever the
+    // DHCPController instance associated with the network invokes its
+    // FailureCallback.
+    kDHCPFailure,
+    // IPv6 SLAAC has completed successfully. On IPv4-only networks where IPv6
+    // is not available, there is no timeout event of failure event recorded.
+    kSlaacFinished,
+    // A network validation attempt by PortalDetector is starting.
+    kNetworkValidationStart,
+    // A network validation attempt has completed and verified Internet
+    // connectivity.
+    kNetworkValidationSuccess,
+    // A network validation attempt has completed but Internet connectivity
+    // was not verified.
+    kNetworkValidationFailure,
+  };
+  void RetrieveLinkStatistics(NetworkEvent event);
+
   // Returns true iff the WiFi device is connected to the current service.
   bool IsConnectedToCurrentService();
 

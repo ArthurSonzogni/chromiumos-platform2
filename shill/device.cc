@@ -826,8 +826,11 @@ void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
 }
 
 void Device::OnGetDHCPLease() {}
-
+void Device::OnGetDHCPFailure() {}
 void Device::OnGetSLAACAddress() {}
+void Device::OnNetworkValidationStart() {}
+void Device::OnNetworkValidationSuccess() {}
+void Device::OnNetworkValidationFailure() {}
 
 void Device::OnIPv4ConfigUpdated() {
   SLOG(this, 2) << __func__;
@@ -852,6 +855,8 @@ void Device::OnIPv4ConfigUpdated() {
 
 void Device::OnDHCPFailure() {
   SLOG(this, 2) << __func__;
+
+  OnGetDHCPFailure();
 
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
@@ -1145,6 +1150,7 @@ bool Device::StartPortalDetection() {
   }
 
   SLOG(this, 2) << link_name() << ": Portal detection has started.";
+  OnNetworkValidationStart();
 
   return true;
 }
@@ -1226,6 +1232,10 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
       return;
     }
     LOG(INFO) << link_name() << ": Portal detection retrying in " << next_delay;
+    // TODO(b/216351118): this ignores the portal detection retry delay. The
+    // callback should be triggered when the next attempt starts, not when it
+    // is scheduled.
+    OnNetworkValidationStart();
   } else {
     LOG(INFO) << link_name() << ": Portal detection finished";
     StopPortalDetection();
@@ -1252,7 +1262,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   }
   if (state == Service::kStateOnline) {
     SetServiceConnectedState(state);
-
+    OnNetworkValidationSuccess();
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
             Metrics::kMetricPortalAttemptsToOnlineSuffix, technology()),
@@ -1268,6 +1278,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
           result.http_status_code);
     }
     SetServiceConnectedState(state);
+    OnNetworkValidationFailure();
     // If portal detection was not conclusive, also start additional connection
     // diagnostics for the current network connection.
     if (state == Service::kStateNoConnectivity ||

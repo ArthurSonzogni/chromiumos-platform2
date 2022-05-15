@@ -2319,6 +2319,7 @@ void WiFi::StateChanged(const std::string& new_state) {
         is_roaming_in_progress_ = false;
         if (dhcp_controller()) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
+          RetrieveLinkStatistics(NetworkEvent::kDHCPRenewOnRoam);
           dhcp_controller()->RenewIP();
           affected_service->SetRoamState(Service::kRoamStateConfiguring);
         }
@@ -2333,6 +2334,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       if (AcquireIPConfigWithLeaseName(
               GetServiceLeaseName(*affected_service))) {
         LOG(INFO) << link_name() << " is up; started L3 configuration.";
+        RetrieveLinkStatistics(NetworkEvent::kIPConfigurationStart);
         affected_service->SetState(Service::kStateConfiguring);
         if (affected_service->IsSecurityMatch(kSecurityWep)) {
           // With the overwhelming majority of WEP networks, we cannot assume
@@ -2784,6 +2786,7 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
 
 void WiFi::OnConnected() {
   Device::OnConnected();
+  RetrieveLinkStatistics(NetworkEvent::kConnected);
   if (current_service_ && current_service_->IsSecurityMatch(kSecurityWep)) {
     // With a WEP network, we are now reasonably certain the credentials are
     // correct, whereas with other network types we were able to determine
@@ -3760,6 +3763,7 @@ void WiFi::RemoveSupplicantNetworks() {
 }
 
 void WiFi::OnGetDHCPLease() {
+  RetrieveLinkStatistics(NetworkEvent::kDHCPSuccess);
   if (!wake_on_wifi_) {
     return;
   }
@@ -3768,16 +3772,38 @@ void WiFi::OnGetDHCPLease() {
   wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
 }
 
+void WiFi::OnGetDHCPFailure() {
+  RetrieveLinkStatistics(NetworkEvent::kDHCPFailure);
+}
+
+void WiFi::OnNetworkValidationStart() {
+  RetrieveLinkStatistics(NetworkEvent::kNetworkValidationStart);
+}
+
+void WiFi::OnNetworkValidationSuccess() {
+  RetrieveLinkStatistics(NetworkEvent::kNetworkValidationSuccess);
+}
+
+void WiFi::OnNetworkValidationFailure() {
+  RetrieveLinkStatistics(NetworkEvent::kNetworkValidationFailure);
+}
+
 void WiFi::OnGetSLAACAddress() {
   if (!IsConnectedToCurrentService()) {
     return;
   }
+  RetrieveLinkStatistics(NetworkEvent::kSlaacFinished);
   if (!wake_on_wifi_) {
     return;
   }
   SLOG(this, 3) << __func__ << ": "
                 << "IPv6 configuration obtained through SLAAC";
   wake_on_wifi_->OnConnectedAndReachable(std::nullopt);
+}
+
+void WiFi::RetrieveLinkStatistics(NetworkEvent event) {
+  // TODO(b/216351118): pull RTNL link statistics from the kernel and NL80211
+  // station info link statistics from the driver.
 }
 
 bool WiFi::IsConnectedToCurrentService() {

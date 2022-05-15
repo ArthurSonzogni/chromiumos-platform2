@@ -454,15 +454,34 @@ class Device : public base::RefCounted<Device> {
   void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                  bool new_lease_acquired);
 
-  // Called on when we get a new DHCP lease for this device. Derived class
+  // Called when a new DHCPv4 lease is obtained for this device. Derived class
   // should implement this function to listen to this event. Base class does
   // nothing.
   virtual void OnGetDHCPLease();
 
-  // Called on when an IPv6 address is obtained from SLAAC. Derived class
-  // should implement this function to listen to this event. Base class does
-  // nothing.
+  // Called when DHCPv4 fails to acquire a lease. Derived class should implement
+  // this function to listen to this event. Base class does nothing.
+  virtual void OnGetDHCPFailure();
+
+  // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
+  // by the kernel when the link is connected and is currently not monitored by
+  // shill. Derived class should implement this function to listen to this
+  // event. Base class does nothing.
   virtual void OnGetSLAACAddress();
+
+  // Called every time PortalDetector finishes a network validation attempt
+  // starts. If network validation is used for this Service, PortalDetector
+  // starts the first attempt when OnConnected() is called. PortalDetector may
+  // run multiple times for the same network. Derived class should implement
+  // this function to listen to this event. Base class does nothing.
+  virtual void OnNetworkValidationStart();
+  // Called every time PortalDetector finishes and Internet connectivity is
+  // validated.
+  virtual void OnNetworkValidationSuccess();
+  // Called every time PortalDetector finishes and Internet connectivity is not
+  // validated. In that case a new validation attempt is scheduled to run at a
+  // later time.
+  virtual void OnNetworkValidationFailure();
 
   // Callback invoked on successful IPv4 configuration updates.
   void OnIPv4ConfigUpdated();
