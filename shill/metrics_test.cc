@@ -104,6 +104,54 @@ class MetricsTest : public Test {
   scoped_refptr<MockService> service_;
 };
 
+TEST_F(MetricsTest, EnumMetric) {
+  Metrics::EnumMetric<Metrics::FixedName> metric1 = {
+      .n = Metrics::FixedName{"Fake.Metric"},
+      .max = 25,
+  };
+  EXPECT_CALL(library_, SendEnumToUMA("Fake.Metric", 10, 25));
+  metrics_.SendEnumToUMA(metric1, 10);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  Metrics::EnumMetric<Metrics::NameByTechnology> metric2 = {
+      .n = Metrics::NameByTechnology{"FakeEnum"},
+      .max = 13,
+  };
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.FakeEnum", 3, 13));
+  metrics_.SendEnumToUMA(metric2, Technology(Technology::kWiFi), 3);
+  Mock::VerifyAndClearExpectations(&library_);
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Vpn.FakeEnum", 8, 13));
+  metrics_.SendEnumToUMA(metric2, Technology(Technology::kVPN), 8);
+  Mock::VerifyAndClearExpectations(&library_);
+}
+
+TEST_F(MetricsTest, HistogramMetric) {
+  Metrics::HistogramMetric<Metrics::FixedName> metric1 = {
+      .n = Metrics::FixedName{"Fake.Histogram"},
+      .min = 11,
+      .max = 66,
+      .num_buckets = 32,
+  };
+  EXPECT_CALL(library_, SendToUMA("Fake.Histogram", 23, 11, 66, 32));
+  metrics_.SendToUMA(metric1, 23);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  Metrics::HistogramMetric<Metrics::NameByTechnology> metric2 = {
+      .n = Metrics::NameByTechnology{"FakeBuckets"},
+      .min = 0,
+      .max = 250,
+      .num_buckets = 64,
+  };
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.Wifi.FakeBuckets", 148, 0, 250, 64));
+  metrics_.SendToUMA(metric2, Technology(Technology::kWiFi), 148);
+  Mock::VerifyAndClearExpectations(&library_);
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.Ethernet.FakeBuckets", 13, 0, 250, 64));
+  metrics_.SendToUMA(metric2, Technology(Technology::kEthernet), 13);
+  Mock::VerifyAndClearExpectations(&library_);
+}
+
 TEST_F(MetricsTest, TimeToConfig) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToConfig", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,

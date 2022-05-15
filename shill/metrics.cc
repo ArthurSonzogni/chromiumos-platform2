@@ -42,6 +42,8 @@ static std::string ObjectID(const Metrics* m) {
 
 namespace {
 
+// Name prefix used for Shill UMA metrics whose names are generated
+// dynamically at event recording time.
 constexpr char kMetricPrefix[] = "Network.Shill";
 
 Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
@@ -169,6 +171,31 @@ Metrics::Metrics()
 }
 
 Metrics::~Metrics() = default;
+
+void Metrics::SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample) {
+  library_->SendEnumToUMA(metric.n.name, sample, metric.max);
+}
+
+void Metrics::SendEnumToUMA(const EnumMetric<NameByTechnology>& metric,
+                            Technology tech,
+                            int sample) {
+  library_->SendEnumToUMA(GetFullMetricName(metric.n.suffix, tech), sample,
+                          metric.max);
+}
+
+void Metrics::SendToUMA(const Metrics::HistogramMetric<FixedName>& metric,
+                        int sample) {
+  library_->SendToUMA(metric.n.name, sample, metric.min, metric.max,
+                      metric.num_buckets);
+}
+
+void Metrics::SendToUMA(
+    const Metrics::HistogramMetric<NameByTechnology>& metric,
+    Technology tech,
+    int sample) {
+  library_->SendToUMA(GetFullMetricName(metric.n.suffix, tech), sample,
+                      metric.min, metric.max, metric.num_buckets);
+}
 
 // static
 Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
@@ -544,6 +571,7 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
   service.SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
 }
 
+// static
 std::string Metrics::GetFullMetricName(const char* metric_suffix,
                                        Technology technology_id) {
   std::string technology = technology_id.GetName();

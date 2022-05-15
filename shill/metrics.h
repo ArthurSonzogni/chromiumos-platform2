@@ -33,6 +33,58 @@ class WiFiEndPoint;
 
 class Metrics : public DefaultServiceObserver {
  public:
+  // Helper type for describing a UMA enum metrics.
+  // The template parameter is used for deriving the name of the metric. See
+  // FixedName and NameByTechnology.
+  template <typename N>
+  struct EnumMetric {
+    N n;
+    int max;
+    // Necessary for testing.
+    bool operator==(const EnumMetric<N>& that) const {
+      return n == that.n && max == that.max;
+    }
+  };
+
+  // Helper type for describing a UMA histogram metrics.
+  // The template parameter is used for deriving the name of the metric. See
+  // FixedName and NameByTechnology.
+  template <typename N>
+  struct HistogramMetric {
+    N n;
+    int min;
+    int max;
+    int num_buckets;
+    // Necessary for testing.
+    bool operator==(const HistogramMetric<N>& that) const {
+      return n == that.n && min == that.min && max == that.max &&
+             num_buckets == that.num_buckets;
+    }
+  };
+
+  static constexpr size_t kMaxMetricNameLen = 256;
+
+  // Represents a fixed UMA metric name for a metric represented with EnumMetric
+  // or HistogramMetric.
+  struct FixedName {
+    const char* name;
+    // Necessary for testing.
+    bool operator==(const FixedName& that) const {
+      return strncmp(name, that.name, kMaxMetricNameLen) == 0;
+    }
+  };
+
+  // Represents a UMA metric name that can be declined by technology for a
+  // metric represented with EnumMetric or HistogramMetric, following the
+  // pattern "$kMetricPrefix.$TECH.$suffix".
+  struct NameByTechnology {
+    const char* suffix;
+    // Necessary for testing.
+    bool operator==(const NameByTechnology& that) const {
+      return strncmp(suffix, that.suffix, kMaxMetricNameLen) == 0;
+    }
+  };
+
   enum WiFiChannel {
     kWiFiChannelUndef = 0,
     kWiFiChannel2412 = 1,
@@ -1151,8 +1203,8 @@ class Metrics : public DefaultServiceObserver {
                                               Service::ConnectState stop_state);
 
   // Specializes |metric_suffix| for the specified |technology_id|.
-  std::string GetFullMetricName(const char* metric_suffix,
-                                Technology technology_id);
+  static std::string GetFullMetricName(const char* metric_suffix,
+                                       Technology technology_id);
 
   // Implements DefaultServiceObserver.
   void OnDefaultLogicalServiceChanged(
@@ -1473,6 +1525,24 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the time elapsed between a WiFi service failure
   // after the latest rekey event.
   void NotifyWiFiServiceFailureAfterRekey(int seconds);
+
+  // Sends linear histogram data to UMA for a metric with a fixed name.
+  virtual void SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample);
+
+  // Sends linear histogram data to UMA for a metric split by shill
+  // Technology.
+  virtual void SendEnumToUMA(const EnumMetric<NameByTechnology>& metric,
+                             Technology tech,
+                             int sample);
+
+  // Sends logarithmic histogram data to UMA for a metric with a fixed name.
+  virtual void SendToUMA(const HistogramMetric<FixedName>& metric, int sample);
+
+  // Sends logarithmic histogram data to UMA for a metric split by shill
+  // Technology.
+  virtual void SendToUMA(const HistogramMetric<NameByTechnology>& metric,
+                         Technology tech,
+                         int sample);
 
  private:
   friend class MetricsTest;
