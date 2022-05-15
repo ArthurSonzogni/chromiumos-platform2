@@ -487,6 +487,84 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     request->ReplyOk();
   }
 
+  void MkDir(std::unique_ptr<EntryRequest> request,
+             ino_t parent,
+             const char* name,
+             mode_t mode) override {
+    VLOG(1) << "mkdir " << parent << "/" << name;
+
+    if (request->IsInterrupted())
+      return;
+
+    errno = 0;
+    if ((request->flags() & O_ACCMODE) != O_RDONLY) {
+      errno = request->ReplyError(EACCES);
+      PLOG(ERROR) << "mkdir";
+      return;
+    }
+
+    Node* parent_node = GetInodeTable().Lookup(parent);
+    if (!parent_node || parent <= FUSE_ROOT_ID) {
+      errno = request->ReplyError(errno ? errno : EPERM);
+      PLOG(ERROR) << "mkdir";
+      return;
+    }
+
+    Device device = GetInodeTable().GetDevice(parent_node);
+    bool read_only = device.mode == "ro";
+
+    if (read_only) {
+      errno = request->ReplyError(EROFS);
+      PLOG(ERROR) << "mkdir";
+      return;
+    }
+
+    Node* node = GetInodeTable().Create(parent, name);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "mkdir child";
+      return;
+    }
+
+    // TODO(crbug.com/1244007): add "MkDir" to //platfrom2.
+    dbus::MethodCall method(kFuseBoxServiceInterface, "MkDir");
+    dbus::MessageWriter writer(&method);
+
+    auto path = GetInodeTable().GetDevicePath(node);
+    writer.AppendString(path);
+
+    auto mkdir_response =
+        base::BindOnce(&FuseBoxClient::MkDirResponse, base::Unretained(this),
+                       std::move(request), node->ino);
+    CallFuseBoxServerMethod(&method, std::move(mkdir_response));
+  }
+
+  void MkDirResponse(std::unique_ptr<EntryRequest> request,
+                     ino_t ino,
+                     dbus::Response* response) {
+    VLOG(1) << "mkdir-resp " << ino;
+
+    if (request->IsInterrupted()) {
+      GetInodeTable().Forget(ino);
+      return;
+    }
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      GetInodeTable().Forget(ino);
+      request->ReplyError(error);
+      return;
+    }
+
+    fuse_entry_param entry = {0};
+    entry.ino = static_cast<fuse_ino_t>(ino);
+    entry.attr = GetServerStat(ino, &reader);
+    entry.attr_timeout = kEntryTimeoutSeconds;
+    entry.entry_timeout = kEntryTimeoutSeconds;
+
+    request->ReplyEntry(entry);
+  }
+
   void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "open " << ino;
 
