@@ -809,6 +809,84 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     request->ReplyOk();
   }
 
+  void Create(std::unique_ptr<CreateRequest> request,
+              ino_t parent,
+              const char* name,
+              mode_t mode) override {
+    VLOG(1) << "create " << parent << "/" << name;
+
+    if (request->IsInterrupted())
+      return;
+
+    errno = 0;
+    if (!S_ISREG(mode)) {
+      errno = request->ReplyError(ENOTSUP);
+      PLOG(ERROR) << "create: regular file expected";
+      return;
+    }
+
+    Node* parent_node = GetInodeTable().Lookup(parent);
+    if (!parent_node || parent <= FUSE_ROOT_ID) {
+      errno = request->ReplyError(errno ? errno : EPERM);
+      PLOG(ERROR) << "create";
+      return;
+    }
+
+    Device device = GetInodeTable().GetDevice(parent_node);
+    bool read_only = device.mode == "ro";
+
+    if (read_only) {
+      errno = request->ReplyError(EROFS);
+      PLOG(ERROR) << "create";
+      return;
+    }
+
+    Node* node = GetInodeTable().Create(parent, name);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "create child";
+      return;
+    }
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kCreateMethod);
+    dbus::MessageWriter writer(&method);
+
+    auto path = GetInodeTable().GetDevicePath(node);
+    writer.AppendString(path);
+    VLOG(1) << "create flags " << OpenFlagsToString(request->flags());
+    writer.AppendInt32(request->flags());
+
+    auto create_response =
+        base::BindOnce(&FuseBoxClient::CreateResponse, base::Unretained(this),
+                       std::move(request), node->ino);
+    CallFuseBoxServerMethod(&method, std::move(create_response));
+  }
+
+  void CreateResponse(std::unique_ptr<CreateRequest> request,
+                      ino_t ino,
+                      dbus::Response* response) {
+    VLOG(1) << "create-resp " << ino;
+
+    if (request->IsInterrupted()) {
+      GetInodeTable().Forget(ino);
+      return;
+    }
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      GetInodeTable().Forget(ino);
+      request->ReplyError(error);
+      return;
+    }
+
+    fuse_entry_param entry = {0};
+    entry.ino = static_cast<fuse_ino_t>(ino);
+    entry.attr = GetServerStat(ino, &reader);
+
+    request->SetEntry(entry);
+    Open(std::move(request), ino);
+  }
+
   int32_t AttachStorage(const std::string& name) override {
     VLOG(1) << "attach-storage " << name;
 

@@ -59,20 +59,30 @@ void EntryRequest::ReplyEntry(const fuse_entry_param& entry) {
 
 void OpenRequest::ReplyOpen(uint64_t fh) {
   DCHECK(!replied_);
+  replied_ = true;
+
   DCHECK_NE(0, fh);
   fuse_file_info fi = {0};
   fi.fh = fh;
-  fuse_reply_open(req_, &fi);
-  replied_ = true;
+
+  if (create_) {
+    DCHECK_GT(entry_.ino, FUSE_ROOT_ID);
+    fuse_reply_create(req_, &entry_, &fi);
+  } else {
+    fuse_reply_open(req_, &fi);
+  }
 }
 
 void CreateRequest::ReplyCreate(const fuse_entry_param& entry, uint64_t fh) {
   DCHECK(!replied_);
+  replied_ = true;
+
   DCHECK_NE(0, fh);
   fuse_file_info fi = {0};
   fi.fh = fh;
+
+  DCHECK(create_);
   fuse_reply_create(req_, &entry, &fi);
-  replied_ = true;
 }
 
 void BufferRequest::ReplyBuffer(const void* data, size_t size) {

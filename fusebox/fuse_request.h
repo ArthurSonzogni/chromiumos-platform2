@@ -79,14 +79,25 @@ class OpenRequest : public FuseRequest {
  public:
   OpenRequest(fuse_req_t req, fuse_file_info* fi) : FuseRequest(req, fi) {}
   void ReplyOpen(uint64_t fh);
+
+ protected:
+  // Set true, iff |this| is a CreateRequest.
+  bool create_ = false;
+  // Entry for fuse_reply_create(3) response.
+  fuse_entry_param entry_ = {0};
 };
 
 // FUSE request with an entry create response.
-class CreateRequest : public FuseRequest {
+class CreateRequest : public OpenRequest {
  public:
   explicit CreateRequest(fuse_req_t req, fuse_file_info* fi)
-      : FuseRequest(req, fi) {}
+      : OpenRequest(req, fi) {
+    create_ = true;
+  }
   void ReplyCreate(const fuse_entry_param& entry, uint64_t fh);
+
+  // Entry for fuse_reply_create(3) response.
+  void SetEntry(const fuse_entry_param& entry) { entry_ = entry; }
 };
 
 // FUSE request with a data buffer response.
