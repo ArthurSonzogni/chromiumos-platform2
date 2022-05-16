@@ -1727,7 +1727,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			"redirect-found" Layer 3 setup is complete but the HTTP
 					probe found a redirect.
 
-			"portal suspected" Layer 3 setup is complete but HTTP
+			"portal-suspected" Layer 3 setup is complete but HTTP
 					probe failed with no redirect or HTTPS
 					probe failed.
 
