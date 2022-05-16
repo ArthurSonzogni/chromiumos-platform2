@@ -151,8 +151,7 @@ using base::FilePath;
 using base::StringPrintf;
 
 bool ValidatePathAndOpen(const FilePath& dir, int* outfd) {
-  std::vector<FilePath::StringType> components;
-  dir.GetComponents(&components);
+  std::vector<std::string> components = dir.GetComponents();
   int parentfd = AT_FDCWD;
 
   for (const auto& component : components) {

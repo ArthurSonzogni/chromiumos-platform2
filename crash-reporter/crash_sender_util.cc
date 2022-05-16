@@ -160,8 +160,7 @@ bool DoesPauseFileExist() {
 }
 
 base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name) {
-  std::vector<std::string> components;
-  file_name.GetComponents(&components);
+  std::vector<std::string> components = file_name.GetComponents();
 
   std::vector<std::string> parts = base::SplitString(
       components.back(), ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
