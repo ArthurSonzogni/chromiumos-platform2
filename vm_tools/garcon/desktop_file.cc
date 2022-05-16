@@ -251,8 +251,8 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
                << file_path.value();
     return false;
   }
-  std::vector<std::string> path_comps;
-  file_path.RemoveFinalExtension().GetComponents(&path_comps);
+  std::vector<std::string> path_comps =
+      file_path.RemoveFinalExtension().GetComponents();
   bool found_path_delim = false;
   for (const auto& comp : path_comps) {
     if (!found_path_delim) {

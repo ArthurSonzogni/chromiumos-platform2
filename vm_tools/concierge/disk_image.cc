@@ -656,8 +656,7 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
       }
 
       // Drop the top level <directory>.pvm prefix, if it is present.
-      std::vector<std::string> path_parts;
-      path.GetComponents(&path_parts);
+      std::vector<std::string> path_parts = path.GetComponents();
       DCHECK(!path_parts.empty());
 
       auto dest_path = output_dir_.GetPath();

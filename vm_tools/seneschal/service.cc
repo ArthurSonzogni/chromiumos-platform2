@@ -95,8 +95,7 @@ bool MkdirRecursively(const base::FilePath& full_path) {
   }
 
   // Collect a list of all parent directories.
-  std::vector<std::string> components;
-  full_path.GetComponents(&components);
+  std::vector<std::string> components = full_path.GetComponents();
   DCHECK(!components.empty());
 
   base::ScopedFD fd(open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW));
@@ -1061,11 +1060,9 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
   // <server_root>/MyFiles/a/b2, then we only delete from
   // <server_root>/MyFiles/a/b1.
   base::FilePath path_to_delete = server_root;
-  std::vector<std::string> server_root_components;
-  server_root.GetComponents(&server_root_components);
+  std::vector<std::string> server_root_components = server_root.GetComponents();
   size_t path_to_delete_depth = server_root_components.size();
-  std::vector<std::string> dst_components;
-  dst.GetComponents(&dst_components);
+  std::vector<std::string> dst_components = dst.GetComponents();
 
   // Ensure path is listed in /proc/self/mounts and has no parents within
   // server_root.
@@ -1098,8 +1095,8 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
       path_has_parent_mount = true;
     } else {
       // Modify path_to_delete if required so it does not contain mount_point.
-      std::vector<std::string> mount_point_components;
-      mount_point.GetComponents(&mount_point_components);
+      std::vector<std::string> mount_point_components =
+          mount_point.GetComponents();
       for (size_t i = 0;
            i < dst_components.size() - 1 && i < mount_point_components.size() &&
            dst_components[i] == mount_point_components[i];

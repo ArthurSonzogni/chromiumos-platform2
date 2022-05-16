@@ -82,8 +82,7 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
   // A valid demo image path looks like:
   //   /run/imageloader/demo-mode-resources/<version>/android_demo_apps.squash
   //   <version> part looks like 0.12.34.56 ("[0-9]+(.[0-9]+){0,3}" in regex).
-  std::vector<std::string> components;
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
   return components.size() == 6 && components[0] == "/" &&
          components[1] == "run" && components[2] == "imageloader" &&
          components[3] == "demo-mode-resources" &&
@@ -96,8 +95,7 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
 bool IsValidDataImagePath(const base::FilePath& path) {
   // A valid data image path looks like:
   // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
-  std::vector<std::string> components;
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
   return components.size() == 6 && components[0] == "/" &&
          components[1] == "run" && components[2] == "daemon-store" &&
          components[3] == "crosvm" &&
