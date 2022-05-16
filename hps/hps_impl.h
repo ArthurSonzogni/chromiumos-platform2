@@ -57,12 +57,15 @@ class HPS_impl : public HPS {
   enum class BootResult {
     kOk,
     kUpdate,
+    kRetry,
   };
 
-  // This is is virtual to allow unit tests to override
+  // These are virtual to allow unit tests to override.
   virtual void Sleep(base::TimeDelta duration) {
     base::PlatformThread::Sleep(duration);
   }
+  virtual base::TimeDelta GetSystemSuspendTime();
+
   BootResult TryBoot();
   bool CheckMagic();
   BootResult CheckStage0();
@@ -70,8 +73,12 @@ class HPS_impl : public HPS {
   BootResult CheckStage1();
   BootResult CheckApplication();
   bool Reboot();
+
   [[noreturn]] void OnBootFault(const base::Location&);
   [[noreturn]] void OnFatalError(const base::Location&, const std::string& msg);
+  void OnTransientBootFault(const base::Location&, const std::string& msg);
+  void LogStateOnError();
+
   bool WaitForBankReady(uint8_t bank);
   void SendStage1Update();
   void SendApplicationUpdate();
@@ -82,6 +89,7 @@ class HPS_impl : public HPS {
                  const std::vector<uint8_t>& contents);
   std::unique_ptr<DevInterface> device_;
   base::TimeTicks boot_start_time_;
+  base::TimeDelta boot_start_suspend_time_;
   std::unique_ptr<WakeLock> wake_lock_;
   std::unique_ptr<HpsMetricsInterface> hps_metrics_;
   uint16_t hw_rev_;

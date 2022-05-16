@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <optional>
@@ -68,7 +69,16 @@ class HPS_fake_sleep_for_test : public HPS_impl {
   void Sleep(base::TimeDelta duration) override {
     task_environment_->AdvanceClock(duration);
   }
+  base::TimeDelta GetSystemSuspendTime() override {
+    if (suspend_times_.empty())
+      return base::TimeDelta();
+    auto result = suspend_times_.front();
+    suspend_times_.pop_front();
+    return result;
+  }
+
   base::test::TaskEnvironment* task_environment_;
+  std::deque<base::TimeDelta> suspend_times_;
 };
 
 // A duplicate of HPSTest, but using a MockHpsDev, existing only while the
@@ -123,7 +133,7 @@ class HPSTest : public testing::Test {
 
   hps::FakeDev* fake_;
   MockHpsMetrics* metrics_;
-  std::unique_ptr<hps::HPS_impl> hps_;
+  std::unique_ptr<hps::HPS_fake_sleep_for_test> hps_;
 };
 
 class MockDownloadObserver {
@@ -399,6 +409,45 @@ TEST_F(HPSTest, PowerOnRecoveryFailed) {
         hps_->Boot();
       },
       "HPS device recovery failed");
+}
+
+TEST_F(HPSTest, TransientBootErrorWithSystemSuspend) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Make the reset command fail once.
+  fake_->Set(hps::FakeDev::Flags::kFailResetCmd);
+
+  // Simulate a 10 second system suspend.
+  hps_->suspend_times_ = {base::TimeDelta(), base::Seconds(10)};
+
+  // The transient error should be ignored, and booting eventually succeeds.
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
+      .Times(1);
+  hps_->Boot();
+}
+
+TEST_F(HPSTest, TransientBootErrorWithoutSystemSuspend) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Make the reset command fail once.
+  fake_->Set(hps::FakeDev::Flags::kFailResetCmd);
+
+  // Since a system suspend isn't detected, the transient error becomes fatal.
+  EXPECT_DEATH({ hps_->Boot(); }, "Terminating for boot fault");
 }
 
 /*

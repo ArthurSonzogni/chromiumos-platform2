@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -23,6 +24,7 @@
 #include "hps/utils.h"
 
 namespace hps {
+namespace {
 
 // Observed times are
 // MCU: ~4ms for a normal write, ~27ms for a erase write
@@ -51,9 +53,21 @@ static constexpr base::TimeDelta kPowerOnDelay = base::Milliseconds(1000);
 // Time for letting the sensor settle after powering it off.
 static constexpr base::TimeDelta kPowerOffDelay = base::Milliseconds(100);
 
+// If the system is suspended for longer than this, we consider it a system
+// suspend event.
+static constexpr base::TimeDelta kSuspendThreshold = base::Milliseconds(1000);
+
 // Special exit code to prevent upstart respawning us and crash
 // service-failure-hpsd from being uploaded. See normal exit.
 static constexpr int kNoRespawnExit = 5;
+
+base::TimeDelta GetTime(clockid_t clk_id) {
+  struct timespec ts = {};
+  CHECK_EQ(clock_gettime(clk_id, &ts), 0);
+  return base::TimeDelta::FromTimeSpec(ts);
+}
+
+}  // namespace
 
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t stage1_version,
@@ -67,7 +81,6 @@ void HPS_impl::Init(uint32_t stage1_version,
 }
 
 // Attempt the boot sequence
-// returns true if booting completed
 void HPS_impl::Boot() {
   // Make sure blobs are set etc.
   if (this->mcu_blob_.empty() || this->fpga_bitstream_.empty() ||
@@ -75,20 +88,32 @@ void HPS_impl::Boot() {
     LOG(FATAL) << "No HPS firmware to download.";
   }
 
-  this->Reboot();
+  this->boot_start_suspend_time_ = GetSystemSuspendTime();
 
-  this->boot_start_time_ = base::TimeTicks::Now();
   // If the boot process sent an update, reboot and try again
   // A full update takes 3 boots, so try 3 times.
-  for (int i = 0; i < 3; ++i) {
+  constexpr int kMaxBootAttempts = 3;
+  for (int i = 0; i < kMaxBootAttempts; ++i) {
+    if (!this->Reboot()) {
+      LOG(INFO) << "Reboot failed, retrying";
+      i = -1;
+      continue;
+    }
+    if (!i)
+      this->boot_start_time_ = base::TimeTicks::Now();
+
     switch (this->TryBoot()) {
       case BootResult::kOk:
         LOG(INFO) << "HPS device booted";
         return;
       case BootResult::kUpdate:
         LOG(INFO) << "Update sent, rebooting";
-        this->Reboot();
         continue;
+      case BootResult::kRetry: {
+        LOG(INFO) << "Transient boot failure, retrying";
+        i = -1;
+        continue;
+      }
     }
   }
   OnFatalError(FROM_HERE, "Boot failure, too many updates.");
@@ -172,6 +197,7 @@ FeatureResult HPS_impl::Result(int feature) {
 // Check stage2 flags, send a SPI update or continue
 // returns BootResult::kOk if booting completed
 // returns BootResult::kUpdate if an update was sent
+// returns BootResult::kRetry if we detect a transient error.
 // else returns BootResult::kFail
 hps::HPS_impl::BootResult HPS_impl::TryBoot() {
   // Inspect stage0 flags and either fail, update, or launch stage1 and continue
@@ -195,6 +221,8 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       mcu_update_sent_ = true;
       SendStage1Update();
       return BootResult::kUpdate;
+    case BootResult::kRetry:
+      return BootResult::kRetry;
   }
 
   // Inspect stage1 flags and either fail, update, or launch application and
@@ -225,6 +253,8 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       }
       SendStage1Update();
       return BootResult::kUpdate;
+    case BootResult::kRetry:
+      return BootResult::kRetry;
   }
 
   // Inspect application flags and either fail, send an update, or succeed
@@ -243,6 +273,8 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       spi_update_sent_ = true;
       SendApplicationUpdate();
       return BootResult::kUpdate;
+    case BootResult::kRetry:
+      return BootResult::kRetry;
   }
 }
 
@@ -254,6 +286,10 @@ bool HPS_impl::CheckMagic() {
   base::ElapsedTimer timer;
   for (;;) {
     std::optional<uint16_t> magic = this->device_->ReadReg(HpsReg::kMagic);
+    // Note that we don't treat a read failure here as a retryable transient
+    // error, but rely on the caller to map a failure to an appropriate error.
+    // In general failure to read the magic register is a fatal error, because
+    // even a v3 stage0 should come online before this loop times out.
     if (!magic) {
       if (timer.Elapsed() < kMagicTimeout) {
         Sleep(kMagicSleep);
@@ -281,18 +317,21 @@ bool HPS_impl::CheckMagic() {
 // Check stage1 verification and version.
 // Return BootResult::kOk if booting should continue.
 // Return BootResult::kUpdate if an update should be sent.
+// Return BootResult::kRetry if we detect a transient error.
 hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   if (!CheckMagic()) {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kNoResponse,
         base::TimeTicks::Now() - this->boot_start_time_);
-    OnFatalError(FROM_HERE, "Timeout waiting for stage0 magic number");
+    OnTransientBootFault(FROM_HERE, "Timeout waiting for stage0 magic number");
+    return BootResult::kRetry;
   }
 
   std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
   if (!status) {
     // TODO(evanbenn) log a metric
-    OnFatalError(FROM_HERE, "ReadReg failure");
+    OnTransientBootFault(FROM_HERE, "ReadReg failure");
+    return BootResult::kRetry;
   }
 
   if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
@@ -302,7 +341,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   std::optional<uint16_t> hwrev = this->device_->ReadReg(HpsReg::kHwRev);
   if (!hwrev) {
     // TODO(evanbenn) log a metric
-    OnFatalError(FROM_HERE, "Failed to read hwrev");
+    OnTransientBootFault(FROM_HERE, "Failed to read hwrev");
+    return BootResult::kRetry;
   }
   this->hw_rev_ = hwrev.value();
 
@@ -339,7 +379,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
 
 // Checks that stage1 version matches the version we expected.
 // Returns BootResult::kOk if it does.
-// Returns Bootresult::kUpdate if it doesn't.
+// Returns BootResult::kUpdate if it doesn't.
+// Returns BootResult::kRetry if we detect a transient error.
 //
 // This is extracted to a helper function because it would normally be called
 // during CheckStage1, but for the older boot flow (stage0 version 3 and older)
@@ -355,7 +396,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1Version() {
       this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
   if (!version_low || !version_high) {
     // TODO(evanbenn) log a metric
-    OnFatalError(FROM_HERE, "ReadReg failure");
+    OnTransientBootFault(FROM_HERE, "ReadReg failure");
+    return BootResult::kRetry;
   }
   this->actual_stage1_version_ =
       static_cast<uint32_t>(version_high.value() << 16) | version_low.value();
@@ -381,18 +423,21 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1Version() {
 // Check spi verification.
 // Return BootResult::kOk if stage1 is running and up-to-date.
 // Return BootResult::kUpdate if an update should be sent.
+// Return BootResult::kRetry if we detect a transient error.
 hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
   if (!CheckMagic()) {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kStage1NotStarted,
         base::TimeTicks::Now() - this->boot_start_time_);
-    OnFatalError(FROM_HERE, "Timeout waiting for stage1 magic number");
+    OnTransientBootFault(FROM_HERE, "Timeout waiting for stage1 magic number");
+    return BootResult::kRetry;
   }
 
   std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
   if (!status) {
     // TODO(evanbenn) log a metric
-    OnFatalError(FROM_HERE, "ReadReg failure");
+    OnTransientBootFault(FROM_HERE, "ReadReg failure");
+    return BootResult::kRetry;
   }
 
   if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
@@ -401,7 +446,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     // Check for those first.
     std::optional<uint16_t> error = this->device_->ReadReg(HpsReg::kError);
     if (!error) {
-      OnFatalError(FROM_HERE, "ReadReg failure");
+      OnTransientBootFault(FROM_HERE, "ReadReg failure");
+      return BootResult::kRetry;
     }
     if (error.value() == RError::kStage1NotFound ||
         error.value() == RError::kStage1TooOld ||
@@ -427,7 +473,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
       // If we see it, send an update to get back to the real stage1.
       return BootResult::kUpdate;
     }
-    OnFatalError(FROM_HERE, "Stage 1 did not start");
+    OnTransientBootFault(FROM_HERE, "Stage 1 did not start");
+    return BootResult::kRetry;
   }
   VLOG(1) << "Stage 1 OK";
 
@@ -438,6 +485,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
 // Check status flags.
 // Return BootResult::kOk if application is running.
 // Return BootResult::kUpdate if an update should be sent.
+// Return BootResult::kRetry if we detect a transient error.
 hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
   // Poll for kAppl (started) or kSpiNotVer (not started)
   base::ElapsedTimer timer;
@@ -445,7 +493,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
     std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
     if (!status) {
       // TODO(evanbenn) log a metric
-      OnFatalError(FROM_HERE, "ReadReg failure");
+      OnTransientBootFault(FROM_HERE, "ReadReg failure");
+      return BootResult::kRetry;
     }
     if (status.value() & R2::kAppl) {
       VLOG(1) << "Application boot after " << timer.Elapsed().InMilliseconds()
@@ -459,7 +508,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
     std::optional<uint16_t> error = this->device_->ReadReg(HpsReg::kError);
     if (!error) {
       // TODO(evanbenn) log a metric
-      OnFatalError(FROM_HERE, "ReadReg failure");
+      OnTransientBootFault(FROM_HERE, "ReadReg failure");
+      return BootResult::kRetry;
     }
     if (error.value() == RError::kSpiFlashNotVerified) {
       VLOG(1) << "SPI verification failed after "
@@ -478,7 +528,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
   hps_metrics_->SendHpsTurnOnResult(
       HpsTurnOnResult::kApplNotStarted,
       base::TimeTicks::Now() - this->boot_start_time_);
-  OnFatalError(FROM_HERE, "Application did not start");
+  OnTransientBootFault(FROM_HERE, "Application did not start");
+  return BootResult::kRetry;
 }
 
 // Reboot the hardware module.
@@ -511,7 +562,8 @@ bool HPS_impl::Reboot() {
 
   // Also send a reset cmd in case the kernel driver isn't present.
   if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
-    OnFatalError(FROM_HERE, "Reboot failed");
+    OnTransientBootFault(FROM_HERE, "Reboot failed");
+    return false;
   }
   return true;
 }
@@ -555,6 +607,32 @@ bool HPS_impl::IsRunning() {
 [[noreturn]] void HPS_impl::OnFatalError(const base::Location& location,
                                          const std::string& msg) {
   LOG(ERROR) << "Fatal error at " << location.ToString() << ": " << msg;
+  LogStateOnError();
+  LOG(FATAL) << "Terminating for fatal error at " << location.ToString() << ": "
+             << msg;
+  abort();
+}
+
+void HPS_impl::OnTransientBootFault(const base::Location& location,
+                                    const std::string& msg) {
+  LOG(WARNING) << "Boot attempt failed with transient error at "
+               << location.ToString() << ": " << msg;
+  base::TimeDelta suspend_time = GetSystemSuspendTime();
+  // If the system got suspended during booting, HPS is now probably in an
+  // indeterminate state. In this case, ignore transient errors and try booting
+  // again from scratch, hoping we don't get interrupted again.
+  if (suspend_time - boot_start_suspend_time_ > kSuspendThreshold) {
+    boot_start_suspend_time_ = suspend_time;
+    LOG(INFO) << "System suspend detected, retrying boot";
+    return;
+  }
+  LogStateOnError();
+  LOG(FATAL) << "Terminating for boot fault at " << location.ToString() << ": "
+             << msg;
+  abort();
+}
+
+void HPS_impl::LogStateOnError() {
   LOG(ERROR) << base::StringPrintf("- Requested feature status: 0x%04x",
                                    feat_enabled_);
   LOG(ERROR) << base::StringPrintf("- Stage1 rootfs version: 0x%08x",
@@ -567,9 +645,6 @@ bool HPS_impl::IsRunning() {
   LOG(ERROR) << base::StringPrintf("- Wake lock: %d", !!wake_lock_);
   DumpHpsRegisters(*device_,
                    [](const std::string& s) { LOG(ERROR) << "- " << s; });
-  LOG(FATAL) << "Terminating for fatal error at " << location.ToString() << ": "
-             << msg;
-  abort();
 }
 
 // Send the stage1 MCU flash update.
@@ -753,6 +828,17 @@ bool HPS_impl::WaitForBankReady(uint8_t bank) {
     Sleep(kBankReadySleep);
   } while (timer.Elapsed() < kBankReadyTimeout);
   return false;
+}
+
+base::TimeDelta HPS_impl::GetSystemSuspendTime() {
+  // Estimates how much time the system has spend in a suspended state since
+  // boot. The boot time clock keeps running in suspend state while the
+  // monotonic one pauses, so their difference gives an indication on the total
+  // time spent suspended. Note that the returned absolute value is mostly
+  // meaningless since the clocks likely have different epochs, but differences
+  // in measurements taken at different points in time can estimate the time
+  // spent suspended during that interval.
+  return GetTime(CLOCK_BOOTTIME) - GetTime(CLOCK_MONOTONIC);
 }
 
 }  // namespace hps

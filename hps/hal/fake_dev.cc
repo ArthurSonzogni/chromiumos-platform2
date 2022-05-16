@@ -68,7 +68,7 @@ bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
       if (len > 1) {
         value |= data[1];
       }
-      this->WriteRegister(static_cast<HpsReg>(cmd & 0x7F), value);
+      return this->WriteRegister(static_cast<HpsReg>(cmd & 0x7F), value);
     }
   } else if ((cmd & 0xC0) == 0) {
     // Memory write.
@@ -187,12 +187,16 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
   return v;
 }
 
-void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
+bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
   VLOG(2) << "Write reg " << HpsRegToString(reg) << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
     case HpsReg::kSysCmd:
       if (value & hps::R3::kReset) {
+        if (Flag(Flags::kFailResetCmd)) {
+          Clear(Flags::kFailResetCmd);
+          return false;
+        }
         this->SetStage(Stage::kStage0);
       } else if (value & hps::R3::kLaunch1) {
         // Only valid in stage0
@@ -257,6 +261,7 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kMax:
       break;
   }
+  return true;
 }
 
 // Returns the number of bytes written.

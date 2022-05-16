@@ -47,6 +47,8 @@ class FakeDev : public DevInterface {
     kIncrementVersion = 7,
     // Set MCU flash ECC error bit when launching stage1.
     kFlashEccError = 8,
+    // Fail the reset command once.
+    kFailResetCmd = 9,
   };
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
@@ -79,7 +81,7 @@ class FakeDev : public DevInterface {
   friend class FakeWakeLock;
 
   uint16_t ReadRegister(HpsReg r);
-  void WriteRegister(HpsReg r, uint16_t v);
+  bool WriteRegister(HpsReg r, uint16_t v);
   bool WriteMemory(HpsBank bank, const uint8_t* mem, size_t len);
   bool Flag(Flags f) {
     return (this->flags_ & (1 << static_cast<int>(f))) != 0;
