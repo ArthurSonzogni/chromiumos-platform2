@@ -46,18 +46,40 @@ const GPT_MAGIC: u64 = 0x5452415020494645; // 'EFI PART'
 /// whole sector. Define the offset towards the end of the region where the
 /// cookie will be written.
 const COOKIE_MAGIC_OFFSET: usize = 0x3E0;
-/// Define the magic token we write to indicate a valid hibernate partition.
-/// This is both big (as in bigger than a single bit), and points the finger at
-/// an obvious culprit, in the case this does end up unintentionally writing
-/// over important data. This is made arbitrarily, but intentionally, to be 16
-/// bytes.
-const COOKIE_VALID_VALUE: &[u8] = b"HibernateCookie!";
+/// Define the magic token values we write to indicate a valid hibernate
+/// partition. This is both big (as in bigger than a single bit), and points the
+/// finger at an obvious culprit, in the case this does end up unintentionally
+/// writing over important data. This is made arbitrarily, but intentionally, to
+/// be 16 bytes. If this is seen on a booting system, we initialize and prepare
+/// dm-snapshots for stateful systems in preparation for resuming from
+/// hibernate.
+const COOKIE_RESUME_READY_VALUE: &[u8] = b"HibernateCookie!";
 /// Define a known "not valid" value as well. This is treated identically to
 /// anything else that is invalid, but again could serve as a more useful
-/// breadcrumb to someone debugging than 16 vanilla zeroes.
-const COOKIE_POISON_VALUE: &[u8] = b"HibernateInvalid";
+/// breadcrumb to someone debugging than 16 vanilla zeroes. If this is seen on
+/// boot, a normal boot continues with no preparations for resume from
+/// hibernate.
+const COOKIE_NO_RESUME_VALUE: &[u8] = b"No_Hiber_Resume!";
+/// As soon as a valid cookie is read, it's changed to in-progress, to avoid
+/// boot loops that get stuck in a hibernate resume. If a booting system sees
+/// this value, it will not attempt resume, but treat it instead the same as
+/// the aborting case.
+const COOKIE_RESUME_IN_PROGRESS_VALUE: &[u8] = b"ResumeInProgress";
+/// This cookie value indicates a resume abort was started but got interrupted.
+/// If a booting system sees this, it should re-install the dm-snapshots and
+/// restart the merge back to stateful.
+const COOKIE_RESUME_ABORTING_VALUE: &[u8] = b"ResumeIsAborting";
 /// Define the size of the magic token, in bytes.
 const COOKIE_SIZE: usize = 16;
+
+#[derive(PartialEq)]
+pub enum HibernateCookieValue {
+    Uninitialized,
+    NoResume,
+    ResumeReady,
+    ResumeInProgress,
+    ResumeAborting,
+}
 
 impl HibernateCookie {
     /// Create a new HibernateCookie structure. This allocates resources but
@@ -77,7 +99,7 @@ impl HibernateCookie {
     /// Read the contents of the disk to determine if the cookie is set or not.
     /// On success, returns a boolean that is true if the hibernate cookie is
     /// set (indicating the on-disk file systems should not be altered).
-    pub fn read(&mut self) -> Result<bool> {
+    pub fn read(&mut self) -> Result<HibernateCookieValue> {
         self.blockdev
             .seek(SeekFrom::Start(0))
             .context("Failed to seek in hibernate cookie")?;
@@ -106,8 +128,18 @@ impl HibernateCookie {
 
         let magic_start = COOKIE_MAGIC_OFFSET;
         let magic_end = magic_start + COOKIE_SIZE;
-        let equal = buffer_slice[magic_start..magic_end] == *COOKIE_VALID_VALUE;
-        Ok(equal)
+        let value = &buffer_slice[magic_start..magic_end];
+        if value == COOKIE_NO_RESUME_VALUE {
+            Ok(HibernateCookieValue::NoResume)
+        } else if value == COOKIE_RESUME_READY_VALUE {
+            Ok(HibernateCookieValue::ResumeReady)
+        } else if value == COOKIE_RESUME_IN_PROGRESS_VALUE {
+            Ok(HibernateCookieValue::ResumeInProgress)
+        } else if value == COOKIE_RESUME_ABORTING_VALUE {
+            Ok(HibernateCookieValue::ResumeAborting)
+        } else {
+            Ok(HibernateCookieValue::Uninitialized)
+        }
     }
 
     /// Write the hibernate cookie to disk via a fresh read modify write
@@ -115,21 +147,23 @@ impl HibernateCookie {
     /// hibernate cookie (true, indicating on-disk file systems should be
     /// altered), or poison value (false, indicating no impending hibernate
     /// resume, file systems can be mounted RW).
-    pub fn write(&mut self, valid: bool) -> Result<()> {
+    pub fn write(&mut self, value: HibernateCookieValue) -> Result<()> {
         let existing = self.read()?;
         self.blockdev
             .seek(SeekFrom::Start(0))
             .context("Failed to seek hibernate cookie")?;
-        if valid == existing {
+        if value == existing {
             return Ok(());
         }
 
         let magic_start = COOKIE_MAGIC_OFFSET;
         let magic_end = magic_start + COOKIE_SIZE;
-        let cookie = if valid {
-            COOKIE_VALID_VALUE
-        } else {
-            COOKIE_POISON_VALUE
+        let cookie = match value {
+            HibernateCookieValue::Uninitialized => COOKIE_NO_RESUME_VALUE,
+            HibernateCookieValue::NoResume => COOKIE_NO_RESUME_VALUE,
+            HibernateCookieValue::ResumeReady => COOKIE_RESUME_READY_VALUE,
+            HibernateCookieValue::ResumeInProgress => COOKIE_RESUME_IN_PROGRESS_VALUE,
+            HibernateCookieValue::ResumeAborting => COOKIE_RESUME_ABORTING_VALUE,
         };
 
         let buffer_slice = self.buffer.u8_slice_mut();
@@ -150,21 +184,34 @@ impl HibernateCookie {
     }
 }
 
-/// Public function to read the hibernate cookie and return whether or not it is
-/// set. The optional path parameter contains the path to the disk to examine.
-/// If not supplied, the boot disk will be examined.
-pub fn get_hibernate_cookie<P: AsRef<Path>>(path_str: Option<P>) -> Result<bool> {
+/// Public function to read the hibernate cookie and return its current value.
+/// The optional path parameter contains the path to the disk to examine. If not
+/// supplied, the boot disk will be examined.
+pub fn get_hibernate_cookie<P: AsRef<Path>>(path_str: Option<P>) -> Result<HibernateCookieValue> {
     let mut cookie = open_hibernate_cookie(path_str)?;
     cookie.read()
 }
 
-/// Public function to set the hibernate cookie value. The valid parameter, if
-/// true, indicates that upon the next boot file systems should not be altered
-/// on disk, since there's a valid resume image. The optional path parameter
+/// Public function to set the hibernate cookie value. The value parameter
+/// specified what the cookie should be set to. The optional path parameter
 /// contains the path to the disk to examine.
-pub fn set_hibernate_cookie<P: AsRef<Path>>(path: Option<P>, valid: bool) -> Result<()> {
+pub fn set_hibernate_cookie<P: AsRef<Path>>(
+    path: Option<P>,
+    value: HibernateCookieValue,
+) -> Result<()> {
     let mut cookie = open_hibernate_cookie(path)?;
-    cookie.write(valid)
+    cookie.write(value)
+}
+
+/// Convert a hibernate cookie value to a human description
+pub fn cookie_description(value: HibernateCookieValue) -> &'static str {
+    match value {
+        HibernateCookieValue::Uninitialized => "Uninitialized",
+        HibernateCookieValue::NoResume => "No Resume",
+        HibernateCookieValue::ResumeReady => "Resume Ready",
+        HibernateCookieValue::ResumeInProgress => "Resume in Progress",
+        HibernateCookieValue::ResumeAborting => "Resume Aborting",
+    }
 }
 
 fn open_hibernate_cookie<P: AsRef<Path>>(path_ref: Option<P>) -> Result<HibernateCookie> {

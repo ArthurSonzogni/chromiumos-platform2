@@ -14,7 +14,7 @@ use libc::{loff_t, reboot, RB_POWER_OFF};
 use log::{debug, error, info, warn};
 use sys_util::syscall;
 
-use crate::cookie::set_hibernate_cookie;
+use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
 use crate::crypto::{CryptoMode, CryptoWriter};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
@@ -248,7 +248,7 @@ impl SuspendConductor {
             drop(meta_file);
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);
-            set_hibernate_cookie(Some(&block_path), true)?;
+            set_hibernate_cookie(Some(&block_path), HibernateCookieValue::ResumeReady)?;
             if dry_run {
                 info!("Not powering off due to dry run");
             } else if platform_mode {
@@ -277,7 +277,7 @@ impl SuspendConductor {
 
             // Unset the hibernate cookie.
             info!("Unsetting hibernate cookie at {}", block_path);
-            set_hibernate_cookie(Some(&block_path), false)?;
+            set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)?;
         } else {
             // This is the resume path. First, forcefully reset the logger, which is some
             // stale partial state that the suspend path ultimately flushed and closed.

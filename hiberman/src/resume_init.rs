@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use log::info;
 
-use crate::cookie::{get_hibernate_cookie, set_hibernate_cookie};
+use crate::cookie::{get_hibernate_cookie, set_hibernate_cookie, HibernateCookieValue};
 use crate::hiberutil::{HibernateError, ResumeInitOptions};
 use crate::volume::VolumeManager;
 
@@ -25,7 +25,7 @@ impl ResumeInitConductor {
     pub fn resume_init(&mut self) -> Result<()> {
         let cookie =
             get_hibernate_cookie::<PathBuf>(None).context("Failed to get hibernate cookie")?;
-        if !cookie {
+        if cookie != HibernateCookieValue::ResumeReady {
             if self.options.force {
                 info!("Hibernate cookie was not set, continuing anyway due to --force");
             } else {
@@ -38,7 +38,8 @@ impl ResumeInitConductor {
         }
 
         // Clear the cookie immediately to avoid boot loops.
-        set_hibernate_cookie::<PathBuf>(None, false).context("Failed to set hibernate cookie")?;
+        set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
+            .context("Failed to set hibernate cookie")?;
         let mut volmgr = VolumeManager::new().context("Failed to create volume manager")?;
         volmgr
             .setup_hibernate_lv(false)

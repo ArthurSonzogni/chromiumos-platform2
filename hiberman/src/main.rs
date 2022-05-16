@@ -5,6 +5,7 @@
 //! Coordinates suspend-to-disk activities
 
 use getopts::{self, Options};
+use hiberman::cookie::HibernateCookieValue;
 use hiberman::metrics::{log_hibernate_failure, log_resume_failure};
 use hiberman::{self, HibernateOptions, ResumeInitOptions, ResumeOptions};
 use log::{error, warn};
@@ -30,7 +31,7 @@ fn cookie_usage(error: bool, options: &Options) {
     let brief = r#"Usage: hiberman cookie <path> [options]
 Get or set the hibernate cookie info. With no options, gets the
 current status of the hibernate cookie. Returns 0 if the cookie
-indicates a valid hibernate image, or 1 if no image.
+indicates a valid hibernate image, or 1 otherwise.
 "#;
 
     print_usage(&options.usage(brief), error);
@@ -52,6 +53,10 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
         "Set the cookie to indicate a valid hibernate image",
     );
     opts.optflag("v", "verbose", "Print more during the command");
+    opts.optopt("V",
+                "value",
+                "Set the cookie to a specific value (options are no_resume, resume_ready, in_progress, or aborting)",
+                "value");
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -70,6 +75,7 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     let clear_cookie = matches.opt_present("c");
     let set_cookie = matches.opt_present("s");
     let verbose = matches.opt_present("v");
+    let value = matches.opt_str("V");
     let path = matches.free.get(0).cloned();
 
     // In verbose mode, or for anything other than "get", fire up logging.
@@ -77,29 +83,54 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
         init_logging()?;
     }
 
-    if set_cookie || clear_cookie {
-        if let Err(e) = hiberman::cookie::set_hibernate_cookie(path.as_ref(), set_cookie) {
+    if set_cookie || clear_cookie || value.is_some() {
+        let value = if let Some(value) = value {
+            if set_cookie || clear_cookie {
+                eprintln!("Cannot mix --set/--clear with --value");
+                return Err(());
+            }
+
+            match value.as_str() {
+                "no_resume" => HibernateCookieValue::NoResume,
+                "resume_ready" => HibernateCookieValue::ResumeReady,
+                "in_progress" => HibernateCookieValue::ResumeInProgress,
+                "aborting" => HibernateCookieValue::ResumeAborting,
+                _ => {
+                    eprintln!("Invalid cookie value: {}", value);
+                    cookie_usage(true, &opts);
+                    return Err(());
+                }
+            }
+        } else if set_cookie {
+            if clear_cookie {
+                eprintln!("Cannot set both --set and --clear");
+                return Err(());
+            }
+            HibernateCookieValue::ResumeReady
+        } else {
+            HibernateCookieValue::NoResume
+        };
+
+        if let Err(e) = hiberman::cookie::set_hibernate_cookie(path.as_ref(), value) {
             error!("Failed to write hibernate cookie: {}", e);
             return Err(());
         }
     } else {
-        let is_set = match hiberman::cookie::get_hibernate_cookie(path.as_ref()) {
-            Ok(s) => s,
+        let value = match hiberman::cookie::get_hibernate_cookie(path.as_ref()) {
+            Ok(v) => v,
             Err(e) => {
                 error!("Failed to get hibernate cookie: {}", e);
                 return Err(());
             }
         };
 
+        let is_ready = value == hiberman::cookie::HibernateCookieValue::ResumeReady;
+        let description = hiberman::cookie::cookie_description(value);
         if verbose {
-            if is_set {
-                println!("Hibernate cookie is set");
-            } else {
-                println!("Hibernate cookie is not set");
-            }
+            println!("Hibernate cookie is set to: {}", description);
         }
 
-        if !is_set {
+        if !is_ready {
             return Err(());
         }
     }

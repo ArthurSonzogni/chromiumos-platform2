@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
 use zeroize::Zeroize;
 
-use crate::cookie::set_hibernate_cookie;
+use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
 use crate::crypto::{CryptoMode, CryptoReader};
 use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
@@ -107,7 +107,7 @@ impl ResumeConductor {
         // try to resume but fail.
         let block_path = path_to_stateful_block()?;
         info!("Clearing hibernate cookie at '{}'", block_path);
-        set_hibernate_cookie(Some(&block_path), false)?;
+        set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)?;
         info!("Cleared cookie");
         let mut meta_file = open_metafile()?;
         debug!("Loading metadata");
