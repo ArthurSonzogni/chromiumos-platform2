@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <limits.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <syslog.h>
 #include <unistd.h>
