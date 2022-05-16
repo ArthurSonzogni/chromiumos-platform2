@@ -109,8 +109,7 @@ base::FilePath DisplayWatcher::GetSysPath(const base::FilePath& drm_dir) {
   sys_path = base::MakeAbsoluteFilePath(sys_path);
 
   // EVDI devices have an additional symlink to their parent device.
-  std::vector<std::string> components;
-  sys_path.GetComponents(&components);
+  std::vector<std::string> components = sys_path.GetComponents();
   for (const auto& component : components) {
     if (base::StartsWith(component, "evdi", base::CompareCase::SENSITIVE) &&
         base::PathExists(sys_path.Append("device"))) {

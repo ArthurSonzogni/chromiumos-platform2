@@ -381,10 +381,8 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
 
 int ExternalBacklightController::CalculateAssociationScore(
     const base::FilePath& a, const base::FilePath& b) {
-  std::vector<std::string> a_components;
-  std::vector<std::string> b_components;
-  a.GetComponents(&a_components);
-  b.GetComponents(&b_components);
+  std::vector<std::string> a_components = a.GetComponents();
+  std::vector<std::string> b_components = b.GetComponents();
 
   size_t score = 0;
   while (score < a_components.size() && score < b_components.size() &&
