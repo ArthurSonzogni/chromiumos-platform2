@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
@@ -49,26 +50,29 @@ TEST_F(PasspointCredentialsTest, CreateChecksMatchDomains) {
   Error error;
 
   // No domain fails
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds1, result1] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds1, nullptr);
+  EXPECT_EQ(result1, Metrics::kPasspointProvisioningNoOrInvalidFqdn);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Invalid domain fails
   error.Reset();
   properties.Set(kPasspointCredentialsDomainsProperty, kInvalidDomains);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds2, result2] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds2, nullptr);
+  EXPECT_EQ(result2, Metrics::kPasspointProvisioningNoOrInvalidFqdn);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // No realm or invalid realm fails
   error.Reset();
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds3, result3] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds3, nullptr);
+  EXPECT_EQ(result3, Metrics::kPasspointProvisioningNoOrInvalidRealm);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Invalid realm fails
@@ -76,9 +80,10 @@ TEST_F(PasspointCredentialsTest, CreateChecksMatchDomains) {
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kInvalidDomain);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds4, result4] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds4, nullptr);
+  EXPECT_EQ(result4, Metrics::kPasspointProvisioningNoOrInvalidRealm);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 }
 
@@ -103,9 +108,10 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   // No EAP credentials fails.
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds1, result1] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds1, nullptr);
+  EXPECT_EQ(result1, Metrics::kPasspointProvisioningInvalidEapProperties);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Invalid EAP method
@@ -118,9 +124,10 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Set(kEapMethodProperty, std::string(kEapMethodPEAP));
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds2, result2] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds2, nullptr);
+  EXPECT_EQ(result2, Metrics::kPasspointProvisioningInvalidEapMethod);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Invalid inner EAP method with TTLS
@@ -133,9 +140,10 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Set(kEapPhase2AuthProperty, std::string(kEapPhase2AuthTTLSMD5));
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds3, result3] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds3, nullptr);
+  EXPECT_EQ(result3, Metrics::kPasspointProvisioningInvalidEapProperties);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // No CA cert and only a subject name match.
@@ -149,9 +157,10 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
   properties.Set(kEapSubjectMatchProperty, kSubjectNameMatch);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds4, result4] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds4, nullptr);
+  EXPECT_EQ(result4, Metrics::kPasspointProvisioningInvalidEapProperties);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Incorrect home OIs
@@ -165,9 +174,11 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Set(kEapCaCertPemProperty, kCaCertPem);
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds6, result6] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds6, nullptr);
+  EXPECT_EQ(result6,
+            Metrics::kPasspointProvisioningInvalidOrganizationIdentifier);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Incorrect required home OIs
@@ -181,9 +192,11 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Set(kEapCaCertPemProperty, kCaCertPem);
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds7, result7] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds7, nullptr);
+  EXPECT_EQ(result7,
+            Metrics::kPasspointProvisioningInvalidOrganizationIdentifier);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
   // Incorrect roaming consortia OIs
@@ -197,9 +210,11 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Set(kEapCaCertPemProperty, kCaCertPem);
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
+  auto [creds8, result8] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_EQ(creds8, nullptr);
+  EXPECT_EQ(result8,
+            Metrics::kPasspointProvisioningInvalidOrganizationIdentifier);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 }
 
@@ -250,22 +265,23 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Set(kEapPinProperty, std::string("111111"));
   properties.Set(kEapIdentityProperty, kUser);
 
-  PasspointCredentialsRefPtr creds =
+  auto [creds1, result1] =
       PasspointCredentials::CreatePasspointCredentials(properties, &error);
 
-  EXPECT_NE(nullptr, creds);
-  EXPECT_EQ(kValidFQDNs, creds->domains());
-  EXPECT_EQ(kValidFQDN, creds->realm());
-  EXPECT_EQ(kOIs, creds->home_ois());
-  EXPECT_EQ(kOIs, creds->required_home_ois());
-  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
-  EXPECT_TRUE(creds->metered_override());
-  EXPECT_EQ(kPackageName, creds->android_package_name());
-  EXPECT_EQ(std::string(), creds->friendly_name());
+  EXPECT_NE(nullptr, creds1);
+  EXPECT_EQ(kValidFQDNs, creds1->domains());
+  EXPECT_EQ(kValidFQDN, creds1->realm());
+  EXPECT_EQ(kOIs, creds1->home_ois());
+  EXPECT_EQ(kOIs, creds1->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds1->roaming_consortia());
+  EXPECT_TRUE(creds1->metered_override());
+  EXPECT_EQ(kPackageName, creds1->android_package_name());
+  EXPECT_EQ(std::string(), creds1->friendly_name());
   EXPECT_EQ(std::numeric_limits<int64_t>::min(),
-            creds->expiration_time_milliseconds());
-  EXPECT_TRUE(creds->eap().IsConnectable());
-  EXPECT_FALSE(creds->eap().use_system_cas());
+            creds1->expiration_time_milliseconds());
+  EXPECT_TRUE(creds1->eap().IsConnectable());
+  EXPECT_FALSE(creds1->eap().use_system_cas());
+  EXPECT_EQ(result1, Metrics::kPasspointProvisioningSuccess);
 
   // Verify Passpoint+EAP-TTLS with CA cert
   properties.Clear();
@@ -287,20 +303,22 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Set(kEapCaCertPemProperty, kCaCertPem);
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  EXPECT_FALSE(creds->eap().use_system_cas());
+  EXPECT_FALSE(creds1->eap().use_system_cas());
 
-  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
-  EXPECT_NE(nullptr, creds);
-  EXPECT_EQ(kValidFQDNs, creds->domains());
-  EXPECT_EQ(kValidFQDN, creds->realm());
-  EXPECT_EQ(kOIs, creds->home_ois());
-  EXPECT_EQ(kOIs, creds->required_home_ois());
-  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
-  EXPECT_TRUE(creds->metered_override());
-  EXPECT_EQ(kPackageName, creds->android_package_name());
-  EXPECT_EQ(kFriendlyName, creds->friendly_name());
-  EXPECT_EQ(kExpirationTimeValue, creds->expiration_time_milliseconds());
-  EXPECT_TRUE(creds->eap().IsConnectable());
+  auto [creds2, result2] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds2);
+  EXPECT_EQ(kValidFQDNs, creds2->domains());
+  EXPECT_EQ(kValidFQDN, creds2->realm());
+  EXPECT_EQ(kOIs, creds2->home_ois());
+  EXPECT_EQ(kOIs, creds2->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds2->roaming_consortia());
+  EXPECT_TRUE(creds2->metered_override());
+  EXPECT_EQ(kPackageName, creds2->android_package_name());
+  EXPECT_EQ(kFriendlyName, creds2->friendly_name());
+  EXPECT_EQ(kExpirationTimeValue, creds2->expiration_time_milliseconds());
+  EXPECT_TRUE(creds2->eap().IsConnectable());
+  EXPECT_EQ(result2, Metrics::kPasspointProvisioningSuccess);
 
   // Verify Passpoint+EAP-TTLS without CA cert and with altname match list
   properties.Clear();
@@ -321,17 +339,19 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Set(kEapSubjectAlternativeNameMatchProperty,
                  kAlternativeNameMatchList);
 
-  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
-  EXPECT_NE(nullptr, creds);
-  EXPECT_EQ(kValidFQDNs, creds->domains());
-  EXPECT_EQ(kValidFQDN, creds->realm());
-  EXPECT_EQ(kOIs, creds->home_ois());
-  EXPECT_EQ(kOIs, creds->required_home_ois());
-  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
-  EXPECT_TRUE(creds->metered_override());
-  EXPECT_EQ(kPackageName, creds->android_package_name());
-  EXPECT_TRUE(creds->eap().IsConnectable());
-  EXPECT_TRUE(creds->eap().use_system_cas());
+  auto [creds3, result3] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds3);
+  EXPECT_EQ(kValidFQDNs, creds3->domains());
+  EXPECT_EQ(kValidFQDN, creds3->realm());
+  EXPECT_EQ(kOIs, creds3->home_ois());
+  EXPECT_EQ(kOIs, creds3->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds3->roaming_consortia());
+  EXPECT_TRUE(creds3->metered_override());
+  EXPECT_EQ(kPackageName, creds3->android_package_name());
+  EXPECT_TRUE(creds3->eap().IsConnectable());
+  EXPECT_TRUE(creds3->eap().use_system_cas());
+  EXPECT_EQ(result3, Metrics::kPasspointProvisioningSuccess);
 
   // Verify Passpoint+EAP-TTLS without CA cert and with subject alternative name
   // match list.
@@ -353,17 +373,19 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Set(kEapSubjectAlternativeNameMatchProperty,
                  kAlternativeNameMatchList);
 
-  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
-  EXPECT_NE(nullptr, creds);
-  EXPECT_EQ(kValidFQDNs, creds->domains());
-  EXPECT_EQ(kValidFQDN, creds->realm());
-  EXPECT_EQ(kOIs, creds->home_ois());
-  EXPECT_EQ(kOIs, creds->required_home_ois());
-  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
-  EXPECT_TRUE(creds->metered_override());
-  EXPECT_EQ(kPackageName, creds->android_package_name());
-  EXPECT_TRUE(creds->eap().IsConnectable());
-  EXPECT_TRUE(creds->eap().use_system_cas());
+  auto [creds4, result4] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds4);
+  EXPECT_EQ(kValidFQDNs, creds4->domains());
+  EXPECT_EQ(kValidFQDN, creds4->realm());
+  EXPECT_EQ(kOIs, creds4->home_ois());
+  EXPECT_EQ(kOIs, creds4->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds4->roaming_consortia());
+  EXPECT_TRUE(creds4->metered_override());
+  EXPECT_EQ(kPackageName, creds4->android_package_name());
+  EXPECT_TRUE(creds4->eap().IsConnectable());
+  EXPECT_TRUE(creds4->eap().use_system_cas());
+  EXPECT_EQ(result4, Metrics::kPasspointProvisioningSuccess);
 
   // Verify Passpoint+EAP-TTLS without CA cert and with domain suffix name match
   // list.
@@ -384,17 +406,19 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Set(kEapPasswordProperty, kPassword);
   properties.Set(kEapDomainSuffixMatchProperty, kDomainSuffixMatchList);
 
-  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
-  EXPECT_NE(nullptr, creds);
-  EXPECT_EQ(kValidFQDNs, creds->domains());
-  EXPECT_EQ(kValidFQDN, creds->realm());
-  EXPECT_EQ(kOIs, creds->home_ois());
-  EXPECT_EQ(kOIs, creds->required_home_ois());
-  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
-  EXPECT_TRUE(creds->metered_override());
-  EXPECT_EQ(kPackageName, creds->android_package_name());
-  EXPECT_TRUE(creds->eap().IsConnectable());
-  EXPECT_TRUE(creds->eap().use_system_cas());
+  auto [creds5, result5] =
+      PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds5);
+  EXPECT_EQ(kValidFQDNs, creds5->domains());
+  EXPECT_EQ(kValidFQDN, creds5->realm());
+  EXPECT_EQ(kOIs, creds5->home_ois());
+  EXPECT_EQ(kOIs, creds5->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds5->roaming_consortia());
+  EXPECT_TRUE(creds5->metered_override());
+  EXPECT_EQ(kPackageName, creds5->android_package_name());
+  EXPECT_TRUE(creds5->eap().IsConnectable());
+  EXPECT_TRUE(creds5->eap().use_system_cas());
+  EXPECT_EQ(result5, Metrics::kPasspointProvisioningSuccess);
 }
 
 TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {

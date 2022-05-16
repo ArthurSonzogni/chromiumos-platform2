@@ -2976,11 +2976,12 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
 
-  PasspointCredentialsRefPtr creds =
+  auto [creds, result] =
       PasspointCredentials::CreatePasspointCredentials(properties, error);
   if (!creds) {
     // We expect |error| to be filled by the Passpoint credentials "factory".
     LOG(ERROR) << "failed to create Passpoint credentials";
+    PasspointCredentials::RecordProvisioningEvent(metrics_, result, nullptr);
     return false;
   }
 
@@ -2988,6 +2989,8 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "failed to save credentials to profile " + profile_rpcid);
+    PasspointCredentials::RecordProvisioningEvent(
+        metrics_, Metrics::kPasspointProvisioningShillProfileError, nullptr);
     return false;
   }
 
@@ -2998,6 +3001,7 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
     wifi_provider_->AddCredentials(creds);
   }
 
+  PasspointCredentials::RecordProvisioningEvent(metrics_, result, creds);
   return true;
 }
 

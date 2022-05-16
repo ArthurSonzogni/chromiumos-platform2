@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -184,6 +185,7 @@ WiFi::WiFi(Manager* manager,
       interworking_select_enabled_(true),
       hs20_bss_count_(0),
       need_interworking_select_(false),
+      last_interworking_select_timestamp_(std::nullopt),
       receive_byte_count_at_connect_(0),
       wifi_link_statistics_(new WiFiLinkStatistics()),
       phy_index_(phy_index),
@@ -542,6 +544,17 @@ void WiFi::InterworkingAPAdded(const RpcIdentifier& BSS,
 
 void WiFi::InterworkingSelectDone() {
   SLOG(this, 2) << __func__;
+
+  metrics()->SendSparseToUMA(Metrics::kMetricPasspointInterworkingMatches,
+                             pending_matches_.size());
+
+  if (last_interworking_select_timestamp_) {
+    metrics()->SendToUMA(
+        Metrics::kMetricPasspointInterworkingDurationMillis,
+        (base::Time::Now() - *last_interworking_select_timestamp_)
+            .InMilliseconds());
+  }
+  last_interworking_select_timestamp_ = std::nullopt;
 
   if (!enabled()) {
     SLOG(this, 2) << "Ignoring interworking done while being disabled.";
@@ -2267,6 +2280,7 @@ void WiFi::ScanDoneTask() {
     // around and there's credentials to match because such selection
     // takes time.
     supplicant_interface_proxy_->InterworkingSelect();
+    last_interworking_select_timestamp_ = base::Time::Now();
   }
   need_interworking_select_ = false;
 }

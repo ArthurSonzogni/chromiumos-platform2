@@ -79,6 +79,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -906,6 +907,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // scan, either because a new  set of credentials was added or a Passpoint
   // compatible endpoint appeared.
   bool need_interworking_select_;
+
+  // Timestamp of the start of last interworkign select call to the supplicant.
+  std::optional<base::Time> last_interworking_select_timestamp_;
 
   // Holds the list of interworking matches waiting to be processed.
   std::vector<InterworkingBSS> pending_matches_;

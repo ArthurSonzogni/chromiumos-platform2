@@ -949,6 +949,8 @@ void WiFiProvider::OnPasspointCredentialsMatches(
     WiFiServiceRefPtr service = FindServiceForEndpoint(m.endpoint);
     if (!service) {
       SLOG(1) << "No service for endpoint " << m.endpoint->bssid_string();
+      metrics()->SendEnumToUMA(Metrics::kMetricPasspointMatch,
+                               Metrics::kPasspointMatchServiceNotFound);
       continue;
     }
 
@@ -956,6 +958,8 @@ void WiFiProvider::OnPasspointCredentialsMatches(
         service->match_priority() <= m.priority) {
       // The current match brought better or as good credentials than the
       // new one, we won't override it.
+      metrics()->SendEnumToUMA(Metrics::kMetricPasspointMatch,
+                               Metrics::kPasspointMatchPriorPasspointMatch);
       continue;
     }
 
@@ -978,6 +982,8 @@ void WiFiProvider::OnPasspointCredentialsMatches(
     if (service->connectable() && !service->parent_credentials()) {
       // The service already has non-Passpoint credentials, we don't want to
       // override it.
+      metrics()->SendEnumToUMA(Metrics::kMetricPasspointMatch,
+                               Metrics::kPasspointMatchPriorCredentials);
       continue;
     }
 
@@ -986,9 +992,37 @@ void WiFiProvider::OnPasspointCredentialsMatches(
       // The service is populated with Passpoint credentials and the
       // previous match priority is better than the one we got now.
       // We don't want to override it.
+      metrics()->SendEnumToUMA(Metrics::kMetricPasspointMatch,
+                               Metrics::kPasspointMatchPriorPasspointMatch);
       continue;
     }
 
+    auto match_type = Metrics::kPasspointNoMatch;
+    if (service->parent_credentials() == nullptr) {
+      switch (match.priority) {
+        case MatchPriority::kHome:
+          match_type = Metrics::kPasspointMatchNewHomeMatch;
+          break;
+        case MatchPriority::kRoaming:
+          match_type = Metrics::kPasspointMatchNewRoamingMatch;
+          break;
+        default:
+          match_type = Metrics::kPasspointMatchNewUnknownMatch;
+          break;
+      }
+    } else {
+      switch (match.priority) {
+        case MatchPriority::kHome:
+          match_type = Metrics::kPasspointMatchUpgradeToHomeMatch;
+          break;
+        case MatchPriority::kRoaming:
+          match_type = Metrics::kPasspointMatchUpgradeToRoamingMatch;
+          break;
+        default:
+          break;
+      }
+    }
+    metrics()->SendEnumToUMA(Metrics::kMetricPasspointMatch, match_type);
     // Ensure the service is updated with the credentials and saved in the same
     // profile as the credentials set.
     LOG(INFO) << __func__ << " updating service " << service->log_name()

@@ -19,6 +19,7 @@
 #include "shill/dbus/dbus_control.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
@@ -199,8 +200,9 @@ std::string PasspointCredentials::GenerateIdentifier() {
   return uuid;
 }
 
-PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
-    const KeyValueStore& args, Error* error) {
+std::pair<PasspointCredentialsRefPtr, Metrics::PasspointProvisioningResult>
+PasspointCredentials::CreatePasspointCredentials(const KeyValueStore& args,
+                                                 Error* error) {
   std::vector<std::string> domains;
   std::string realm;
   std::vector<uint64_t> home_ois, required_home_ois, roaming_consortia;
@@ -219,13 +221,13 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
         FROM_HERE, error, Error::kInvalidArguments,
         "at least one FQDN is required in " +
             std::string(kPasspointCredentialsDomainsProperty));
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningNoOrInvalidFqdn};
   }
   for (const auto& domain : domains) {
     if (!EapCredentials::ValidDomainSuffixMatch(domain)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "domain '" + domain + "' is not a valid FQDN");
-      return nullptr;
+      return {nullptr, Metrics::kPasspointProvisioningNoOrInvalidFqdn};
     }
   }
 
@@ -233,28 +235,31 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           std::string(kPasspointCredentialsRealmProperty) +
                               " property is mandatory");
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningNoOrInvalidRealm};
   }
   realm = args.Get<std::string>(kPasspointCredentialsRealmProperty);
   if (!EapCredentials::ValidDomainSuffixMatch(realm)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "realm '" + realm + "' is not a valid FQDN");
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningNoOrInvalidRealm};
   }
 
   if (!ParsePasspointOiList(args, kPasspointCredentialsHomeOIsProperty,
                             &home_ois, error)) {
-    return nullptr;
+    return {nullptr,
+            Metrics::kPasspointProvisioningInvalidOrganizationIdentifier};
   }
 
   if (!ParsePasspointOiList(args, kPasspointCredentialsRequiredHomeOIsProperty,
                             &required_home_ois, error)) {
-    return nullptr;
+    return {nullptr,
+            Metrics::kPasspointProvisioningInvalidOrganizationIdentifier};
   }
 
   if (!ParsePasspointOiList(args, kPasspointCredentialsRoamingConsortiaProperty,
                             &roaming_consortia, error)) {
-    return nullptr;
+    return {nullptr,
+            Metrics::kPasspointProvisioningInvalidOrganizationIdentifier};
   }
 
   metered_override =
@@ -273,7 +278,7 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
             std::string(
                 kPasspointCredentialsExpirationTimeMillisecondsProperty) +
             ": \"" + value + "\" was not a valid decimal string");
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningInvalidExpirationTime};
   }
 
   // Create the set of credentials with a unique identifier.
@@ -300,7 +305,7 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
                             "EAP credentials with no CA certificate must have "
                             "a Subject Alternative Name match list or a Domain "
                             "Suffix match list");
-      return nullptr;
+      return {nullptr, Metrics::kPasspointProvisioningInvalidEapProperties};
     }
   }
 
@@ -308,7 +313,7 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
   if (!creds->eap().IsConnectable()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "EAP credendials not connectable");
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningInvalidEapProperties};
   }
 
   // Our Passpoint implementation only supports EAP TLS or TTLS. SIM based EAP
@@ -318,7 +323,7 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments,
         "EAP method '" + method + "' is not supported by Passpoint");
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningInvalidEapMethod};
   }
 
   // Passpoint supported Non-EAP inner methods. Refer to
@@ -335,10 +340,54 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "TTLS inner EAP method '" + inner_method +
                               "' is not supported by Passpoint");
-    return nullptr;
+    return {nullptr, Metrics::kPasspointProvisioningInvalidEapProperties};
   }
 
-  return creds;
+  return {creds, Metrics::kPasspointProvisioningSuccess};
+}
+
+// static
+void PasspointCredentials::RecordProvisioningEvent(
+    Metrics* metrics,
+    Metrics::PasspointProvisioningResult result,
+    const PasspointCredentialsRefPtr creds) {
+  metrics->SendEnumToUMA(Metrics::kMetricPasspointProvisioningResult, result);
+  if (!creds) {
+    return;
+  }
+  // TODO(b/207730857) Update |kMetricPasspointSecurity| metrics reporting when
+  // EAP-SIM support is added.
+  auto security = Metrics::kPasspointSecurityUnknown;
+  if (creds->eap().method() == kEapMethodTLS) {
+    security = Metrics::kPasspointSecurityTLS;
+  } else if (creds->eap().method() == kEapMethodTTLS) {
+    if (creds->eap().inner_method() == kEapPhase2AuthTTLSPAP) {
+      security = Metrics::kPasspointSecurityTTLSPAP;
+    } else if (creds->eap().inner_method() == kEapPhase2AuthTTLSMSCHAP) {
+      security = Metrics::kPasspointSecurityTTLSMSCHAP;
+    } else if (creds->eap().inner_method() == kEapPhase2AuthTTLSMSCHAPV2) {
+      security = Metrics::kPasspointSecurityTTLSMSCHAPV2;
+    } else {
+      security = Metrics::kPasspointSecurityTTLSUnknown;
+    }
+  }
+  metrics->SendEnumToUMA(Metrics::kMetricPasspointSecurity, security);
+  // TODO(b/207361432) Update |kMetricPasspointOrigin| metrics when more origins
+  // are added.
+  metrics->SendEnumToUMA(Metrics::kMetricPasspointOrigin,
+                         Metrics::kPasspointOriginAndroid);
+  metrics->SendEnumToUMA(Metrics::kMetricPasspointMeteredness,
+                         creds->metered_override()
+                             ? Metrics::kPasspointMetered
+                             : Metrics::kPasspointNotMetered);
+  metrics->SendSparseToUMA(Metrics::kMetricPasspointDomains,
+                           creds->domains().size());
+  metrics->SendSparseToUMA(Metrics::kMetricPasspointHomeOis,
+                           creds->home_ois().size());
+  metrics->SendSparseToUMA(Metrics::kMetricPasspointRequiredHomeOis,
+                           creds->required_home_ois().size());
+  metrics->SendSparseToUMA(Metrics::kMetricPasspointRoamingOis,
+                           creds->roaming_consortia().size());
 }
 
 std::string PasspointCredentials::GetFQDN() {

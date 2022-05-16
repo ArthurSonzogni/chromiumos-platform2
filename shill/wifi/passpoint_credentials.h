@@ -7,6 +7,7 @@
 
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -15,6 +16,7 @@
 #include "shill/data_types.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
@@ -62,11 +64,21 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   // Set PKCS#11 slot getter for |eap_|.
   void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
 
-  // Create a set of Passpoint credentials from a dictionary. The content of
+  // Creates a set of Passpoint credentials from a dictionary. The content of
   // the dictionary is validated (including EAP credentials) according to
-  // the requirements of Passpoint specifications.
-  static PasspointCredentialsRefPtr CreatePasspointCredentials(
-      const KeyValueStore& args, Error* error);
+  // the requirements of Passpoint specifications. Returns the valid
+  // PasspointCredentials object and Metrics::kPasspointProvisioningSuccess, or
+  // nullptr and the relevant metric error value in case of failure.
+  static std::pair<PasspointCredentialsRefPtr,
+                   Metrics::PasspointProvisioningResult>
+  CreatePasspointCredentials(const KeyValueStore& args, Error* error);
+
+  // Records UMA Passpoint metrics describing a newly provisioned
+  // PasspointCredentials object.
+  static void RecordProvisioningEvent(
+      Metrics* metrics,
+      Metrics::PasspointProvisioningResult result,
+      const PasspointCredentialsRefPtr creds);
 
   // Get the first fully qualified domain name (FQDN) from the FQDNs stored in
   // |domains_|.
