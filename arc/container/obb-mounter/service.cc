@@ -25,8 +25,7 @@ namespace {
 
 bool IsValidObbMountPath(const base::FilePath& path) {
   // OBB mount path should look like /var/run/arc/obb/obb:1.
-  std::vector<std::string> components;
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
   return components.size() == 6 && components[0] == "/" &&
          components[1] == "var" && components[2] == "run" &&
          components[3] == "arc" && components[4] == "obb" &&
