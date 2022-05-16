@@ -44,6 +44,9 @@ constexpr base::TimeDelta kVmSuspendTimeout = base::Seconds(25);
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
+// The CPU cgroup where all the PluginVm crosvm processes should belong to.
+constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/plugin";
+
 // Offset in a subnet of the client/guest.
 constexpr size_t kGuestAddressOffset = 1;
 
@@ -261,9 +264,7 @@ base::ScopedFD PluginVm::CreateUnixSocket(const base::FilePath& path,
 // static
 bool PluginVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
   return VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kPluginVmCpuCgroup) &&
-         VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kPluginVmVcpuCpuCgroup);
+                                         kPluginVmCpuCgroup);
 }
 
 bool PluginVm::CreateUsbListeningSocket() {

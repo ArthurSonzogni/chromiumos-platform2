@@ -214,8 +214,6 @@ StartVmResponse Service::StartPluginVm(
 
   VmBuilder vm_builder;
   vm_builder.SetCpus(request.cpus());
-  vm_builder.AppendCustomParam("--vcpu-cgroup-path",
-                               base::FilePath(kPluginVmVcpuCpuCgroup).value());
   for (auto& param : params) {
     // Because additional parameters may start with a '--', we should use
     // --params=<Param> instead of --params <Param> to make explicit <Param>

@@ -34,12 +34,6 @@
 namespace vm_tools {
 namespace concierge {
 
-// The CPU cgroup where all the PluginVm crosvm processes (other than vcpu)
-// should belong to.
-constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/plugin";
-// The CPU cgroup where all the PluginVm crosvm vcpu processes should belong to.
-constexpr char kPluginVmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/plugin-vcpus";
-
 class PluginVm final : public VmBaseImpl {
  public:
   static std::unique_ptr<PluginVm> Create(

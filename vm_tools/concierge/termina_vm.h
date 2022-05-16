@@ -35,12 +35,6 @@
 namespace vm_tools {
 namespace concierge {
 
-// The CPU cgroup where all the Termina main crosvm process should belong to.
-constexpr char kTerminaVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/termina-vcpus";
-// The CPU cgroup where all the Termina crosvm processes other than main should
-// belong to.
-constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/termina";
-
 struct VmFeatures {
   // Enable GPU in the started VM.
   bool gpu;
