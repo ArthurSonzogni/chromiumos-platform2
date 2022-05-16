@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <base/command_line.h>
 #include <base/logging.h>
