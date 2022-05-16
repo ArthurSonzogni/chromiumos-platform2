@@ -81,17 +81,28 @@ bool ArchiveManager::Initialize() {
   // program, not the fuse-archive program. More recently, we use fuse-archive
   // which is a drop-in replacement, featurewise, but is faster.
   const char* const archivemount_extensions[] = {
-      // The empty // comments make clang-format place one entry per line.
-      "7z",    //
-      "bz2",   //
-      "crx",   //
-      "gz",    //
-      "iso",   //
-      "tar",   //
-      "tbz",   //
-      "tbz2",  //
-      "tgz",   //
-      "xz",    //
+      "7z",     //
+      "bz",     //
+      "bz2",    //
+      "crx",    //
+      "gz",     //
+      "iso",    //
+      "lzma",   //
+      "tar",    //
+      "taz",    // Short for .tar.gz or .tar.Z
+      "tb2",    // Short for .tar.bz2
+      "tbz",    // Short for .tar.bz2
+      "tbz2",   // Short for .tar.bz2
+      "tgz",    // Short for .tar.gz
+      "tlz",    // Short for .tar.lzma
+      "tlzma",  // Short for .tar.lzma
+      "txz",    // Short for .tar.xz
+      "tz",     // Short for .tar.Z
+      "tz2",    // Short for .tar.bz2
+      "tzst",   // Short for .tar.zst
+      "xz",     //
+      "z",      //
+      "zst",    //
   };
   for (const char* const ext : archivemount_extensions) {
     SandboxedExecutable executable = {
