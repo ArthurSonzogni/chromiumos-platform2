@@ -47,6 +47,7 @@ shared_library("libstructuredmetrics") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "protobuf-lite",
   ]
 
   sources = [
@@ -69,4 +70,14 @@ shared_library("libstructuredmetrics") {
     ":storage",
     "//metrics:libmetrics",
   ]
+}
+
+generate_pkg_config("libstructuredmetrics_pkg_config") {
+  name = "libstructuredmetrics"
+  deps = [ ":libstructuredmetrics" ]
+  description = "Chrome OS structured metrics library"
+  version = "${libbase_ver}"
+  requires_private = [ "libmetrics" ]
+  cflags = [ "-I/usr/include/metrics" ]
+  libs = [ "-lstructuredmetrics" ]
 }
