@@ -36,10 +36,8 @@ bool MapperParametersToLoop(const std::string& verity_mount_parameters,
 
 bool IsAncestor(const base::FilePath& ancenstor,
                 const base::FilePath& descendant) {
-  std::vector<std::string> ancenstor_components;
-  ancenstor.GetComponents(&ancenstor_components);
-  std::vector<std::string> descendant_components;
-  descendant.GetComponents(&descendant_components);
+  std::vector<std::string> ancenstor_components = ancenstor.GetComponents();
+  std::vector<std::string> descendant_components = descendant.GetComponents();
   if (descendant_components.size() <= ancenstor_components.size()) {
     return false;
   }
