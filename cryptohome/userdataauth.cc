@@ -2370,18 +2370,21 @@ MountStatus UserDataAuth::AttemptUserMount(
   MountError error = MOUNT_ERROR_NONE;
   const std::string obfuscated_username = credentials.GetObfuscatedUsername();
   bool created = false;
-  if (!homedirs_->CryptohomeExists(obfuscated_username, &error)) {
-    if (error != MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Failed to check cryptohome existence for : "
-                 << obfuscated_username << " error = " << error;
-      return MakeStatus<CryptohomeMountError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocUserDataAuthCheckExistenceFailedInAttemptUserMountCred),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                          ErrorAction::kRetry, ErrorAction::kReboot,
-                          ErrorAction::kDeleteVault}),
-          error);
-    }
+  auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
+
+  if (!exists_or.ok()) {
+    LOG(ERROR) << "Failed to check cryptohome existence for : "
+               << obfuscated_username << " error = " << error;
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthCheckExistenceFailedInAttemptUserMountCred),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kRetry, ErrorAction::kReboot,
+                        ErrorAction::kDeleteVault}),
+        exists_or.status()->error());
+  }
+
+  if (!exists_or.value()) {
     if (!mount_args.create_if_missing) {
       LOG(ERROR) << "Asked to mount nonexistent user";
       return MakeStatus<CryptohomeMountError>(
@@ -4463,11 +4466,11 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
   }
 
   const std::string& obfuscated_username = auth_session->obfuscated_username();
-  MountError mount_error = MOUNT_ERROR_NONE;
 
   // This checks presence of the actual encrypted vault. We fail if Create is
   // called while actual persistent vault is present.
-  if (homedirs_->CryptohomeExists(obfuscated_username, &mount_error)) {
+  auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
+  if (exists_or.ok() && exists_or.value()) {
     LOG(ERROR) << "User already exists: " << obfuscated_username;
     // TODO(b/208898186, dlunev): replace with a more appropriate error
     return MakeStatus<CryptohomeError>(
@@ -4477,7 +4480,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
             CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
-  if (mount_error != MOUNT_ERROR_NONE) {
+  if (!exists_or.ok()) {
+    MountError mount_error = exists_or.status()->error();
     LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
                << ", code: " << mount_error;
     return MakeStatus<CryptohomeMountError>(

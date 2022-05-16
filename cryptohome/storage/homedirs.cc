@@ -15,6 +15,7 @@
 #include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -24,6 +25,7 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/key.pb.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -35,6 +37,7 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_helper.h"
 
 using base::FilePath;
@@ -150,11 +153,11 @@ bool HomeDirs::Exists(const std::string& obfuscated_username) const {
   return platform_->DirectoryExists(user_dir);
 }
 
-bool HomeDirs::CryptohomeExists(const std::string& obfuscated_username,
-                                MountError* error) const {
-  *error = MOUNT_ERROR_NONE;
-  return EcryptfsCryptohomeExists(obfuscated_username) ||
-         DircryptoCryptohomeExists(obfuscated_username, error) ||
+StorageStatusOr<bool> HomeDirs::CryptohomeExists(
+    const std::string& obfuscated_username) const {
+  ASSIGN_OR_RETURN(bool dircrypto_exists,
+                   DircryptoCryptohomeExists(obfuscated_username));
+  return EcryptfsCryptohomeExists(obfuscated_username) || dircrypto_exists ||
          DmcryptCryptohomeExists(obfuscated_username);
 }
 
@@ -165,8 +168,8 @@ bool HomeDirs::EcryptfsCryptohomeExists(
       GetEcryptfsUserVaultPath(obfuscated_username));
 }
 
-bool HomeDirs::DircryptoCryptohomeExists(const std::string& obfuscated_username,
-                                         MountError* error) const {
+StorageStatusOr<bool> HomeDirs::DircryptoCryptohomeExists(
+    const std::string& obfuscated_username) const {
   // Check for the presence of an encrypted mount directory for dircrypto.
   FilePath mount_path = GetUserMountDirectory(obfuscated_username);
 
@@ -181,10 +184,11 @@ bool HomeDirs::DircryptoCryptohomeExists(const std::string& obfuscated_username,
     case dircrypto::KeyState::ENCRYPTED:
       return true;
     case dircrypto::KeyState::UNKNOWN:
-      *error = MOUNT_ERROR_FATAL;
-      PLOG(ERROR) << "Directory has inconsistent Fscrypt state:"
-                  << mount_path.value();
-      return false;
+      return StorageStatus::Make(
+          FROM_HERE,
+          std::string("Directory has inconsistent Fscrypt state: ") +
+              mount_path.value(),
+          MOUNT_ERROR_FATAL);
   }
   return false;
 }
@@ -361,17 +365,21 @@ EncryptedContainerType HomeDirs::ChooseVaultType() {
   }
 }
 
-EncryptedContainerType HomeDirs::GetVaultType(
-    const std::string& obfuscated_username, MountError* error) {
+StorageStatusOr<EncryptedContainerType> HomeDirs::GetVaultType(
+    const std::string& obfuscated_username) {
+  ASSIGN_OR_RETURN(bool dircrypto_exists,
+                   DircryptoCryptohomeExists(obfuscated_username),
+                   (_.LogError() << "Can't get vault type"));
+
   if (EcryptfsCryptohomeExists(obfuscated_username)) {
-    if (DircryptoCryptohomeExists(obfuscated_username, error)) {
+    if (dircrypto_exists) {
       return EncryptedContainerType::kEcryptfsToFscrypt;
     }
     if (DmcryptCryptohomeExists(obfuscated_username)) {
       return EncryptedContainerType::kEcryptfsToDmcrypt;
     }
     return EncryptedContainerType::kEcryptfs;
-  } else if (DircryptoCryptohomeExists(obfuscated_username, error)) {
+  } else if (dircrypto_exists) {
     if (DmcryptCryptohomeExists(obfuscated_username)) {
       return EncryptedContainerType::kFscryptToDmcrypt;
     }
@@ -382,12 +390,12 @@ EncryptedContainerType HomeDirs::GetVaultType(
   return EncryptedContainerType::kUnknown;
 }
 
-EncryptedContainerType HomeDirs::PickVaultType(
+StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
     const std::string& obfuscated_username,
-    const CryptohomeVault::Options& options,
-    MountError* error) {
+    const CryptohomeVault::Options& options) {
   // See if the vault exists.
-  EncryptedContainerType vault_type = GetVaultType(obfuscated_username, error);
+  ASSIGN_OR_RETURN(EncryptedContainerType vault_type,
+                   GetVaultType(obfuscated_username));
   // If existing vault is ecryptfs and migrate == true - make migrating vault.
   if (vault_type == EncryptedContainerType::kEcryptfs && options.migrate) {
     if (lvm_migration_enabled_) {
@@ -400,19 +408,37 @@ EncryptedContainerType HomeDirs::PickVaultType(
     vault_type = EncryptedContainerType::kFscryptToDmcrypt;
   }
 
-  // Validate exiting vault options.
+  if (vault_type == EncryptedContainerType::kEcryptfs &&
+      options.block_ecryptfs) {
+    return StorageStatus::Make(FROM_HERE,
+                               "Mount attempt with block_ecryptfs on eCryptfs.",
+                               MOUNT_ERROR_OLD_ENCRYPTION);
+  }
+
+  if (EncryptedContainer::IsMigratingType(vault_type) && !options.migrate) {
+    return StorageStatus::Make(
+        FROM_HERE,
+        "Mount failed because both eCryptfs and dircrypto home"
+        " directories were found. Need to resume and finish"
+        " migration first.",
+        MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE);
+  }
+
+  if (!EncryptedContainer::IsMigratingType(vault_type) && options.migrate) {
+    return StorageStatus::Make(
+        FROM_HERE, "Mount attempt with migration on non-eCryptfs mount",
+        MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE);
+  }
+
+  // Vault exists, so we return its type.
   if (vault_type != EncryptedContainerType::kUnknown) {
-    *error = VerifyVaultType(vault_type, options);
-    if (*error != MOUNT_ERROR_NONE) {
-      return EncryptedContainerType::kUnknown;
-    }
     return vault_type;
   }
 
   if (options.migrate) {
-    LOG(ERROR) << "Can not set up migration for a non-existing vault.";
-    *error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
-    return EncryptedContainerType::kUnknown;
+    return StorageStatus::Make(
+        FROM_HERE, "Can not set up migration for a non-existing vault.",
+        MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE);
   }
 
   if (options.block_ecryptfs) {
@@ -424,27 +450,6 @@ EncryptedContainerType HomeDirs::PickVaultType(
   return options.force_type != EncryptedContainerType::kUnknown
              ? options.force_type
              : ChooseVaultType();
-}
-
-// TODO(dlunev): this should merge with PickVaultType when we have absl.
-MountError HomeDirs::VerifyVaultType(EncryptedContainerType vault_type,
-                                     const CryptohomeVault::Options& options) {
-  if (vault_type == EncryptedContainerType::kEcryptfs &&
-      options.block_ecryptfs) {
-    LOG(ERROR) << "Mount attempt with block_ecryptfs on eCryptfs.";
-    return MOUNT_ERROR_OLD_ENCRYPTION;
-  }
-  if (EncryptedContainer::IsMigratingType(vault_type) && !options.migrate) {
-    LOG(ERROR) << "Mount failed because both eCryptfs and dircrypto home"
-               << " directories were found. Need to resume and finish"
-               << " migration first.";
-    return MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
-  }
-  if (!EncryptedContainer::IsMigratingType(vault_type) && options.migrate) {
-    LOG(ERROR) << "Mount attempt with migration on non-eCryptfs mount";
-    return MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
-  }
-  return MOUNT_ERROR_NONE;
 }
 
 bool HomeDirs::GetPlainOwner(std::string* owner) {

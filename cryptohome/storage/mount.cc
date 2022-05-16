@@ -151,14 +151,9 @@ StorageStatus Mount::MountCryptohome(
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
-  // XXX: replace with StatusOr
-  MountError mount_error = MOUNT_ERROR_NONE;
-  EncryptedContainerType vault_type = homedirs_->PickVaultType(
-      obfuscated_username, vault_options, &mount_error);
-  if (mount_error != MOUNT_ERROR_NONE) {
-    return StorageStatus::Make(FROM_HERE, "Could't determine vault type",
-                               mount_error);
-  }
+  ASSIGN_OR_RETURN(EncryptedContainerType vault_type,
+                   homedirs_->PickVaultType(obfuscated_username, vault_options),
+                   (_.LogError() << "Could't pick vault type"));
 
   user_cryptohome_vault_ = homedirs_->GetVaultFactory()->Generate(
       obfuscated_username, file_system_keyset.KeyReference(), vault_type,

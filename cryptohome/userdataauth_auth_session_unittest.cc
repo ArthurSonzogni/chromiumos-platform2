@@ -53,6 +53,7 @@ using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using error::CryptohomeMountError;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::OkStatus;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
@@ -519,16 +520,16 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // Vault already exists.
-  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
+      .WillOnce(ReturnValue(true));
   ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token())
                   ->local_legacy_error()
                   .value(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 
   // User doesn't exist and failed to create.
-  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
@@ -538,16 +539,16 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   // User doesn't exist and created.
-  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
 
   // User exists but vault doesn't.
-  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());

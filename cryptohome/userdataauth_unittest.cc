@@ -82,6 +82,7 @@ using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
@@ -2187,7 +2188,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
-  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
@@ -2297,7 +2298,7 @@ TEST_F(UserDataAuthTest,
 
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
-  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
@@ -2751,7 +2752,7 @@ TEST_F(UserDataAuthExTest, MountFailsWithUnrecoverableVault) {
   InitializeUserDataAuth();
   PrepareArguments();
   SetupMount(kUser);
-  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
 
   // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
   // there no VaultKeysets are found in disk.
@@ -2793,7 +2794,7 @@ TEST_F(UserDataAuthExTest, MountWithEmptyLabelFailsWithUnrecoverableVault) {
   InitializeUserDataAuth();
   PrepareArguments();
   SetupMount(kUser);
-  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
 
   // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
@@ -2954,7 +2955,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
     SetupMount(kUser);
-    EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
 
     std::vector<std::string> key_labels;
     key_labels.push_back("label");
@@ -3002,7 +3003,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   add_key->mutable_data()->set_label("public_mount");
 
   SetupMount(kUser);
-  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
 
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))

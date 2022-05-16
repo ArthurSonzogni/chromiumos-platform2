@@ -34,6 +34,7 @@
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
+#include "cryptohome/storage/error.h"
 
 namespace cryptohome {
 
@@ -114,8 +115,8 @@ class HomeDirs {
   virtual bool Exists(const std::string& obfuscated_username) const;
 
   // Checks if a cryptohome vault exists for the given obfuscated username.
-  virtual bool CryptohomeExists(const std::string& obfuscated_username,
-                                MountError* error) const;
+  virtual StorageStatusOr<bool> CryptohomeExists(
+      const std::string& obfuscated_username) const;
 
   // Checks if a eCryptfs cryptohome vault exists for the given obfuscated
   // username.
@@ -124,8 +125,8 @@ class HomeDirs {
 
   // Checks if a dircrypto cryptohome vault exists for the given obfuscated
   // username.
-  virtual bool DircryptoCryptohomeExists(const std::string& obfuscated_username,
-                                         MountError* error) const;
+  virtual StorageStatusOr<bool> DircryptoCryptohomeExists(
+      const std::string& obfuscated_username) const;
 
   // Check if a dm-crypt container exists for the given obfuscated username.
   virtual bool DmcryptContainerExists(
@@ -173,10 +174,9 @@ class HomeDirs {
   }
 
   // Pick the most appropriate vault type for the user.
-  virtual EncryptedContainerType PickVaultType(
+  virtual StorageStatusOr<EncryptedContainerType> PickVaultType(
       const std::string& obfuscated_username,
-      const CryptohomeVault::Options& options,
-      MountError* error);
+      const CryptohomeVault::Options& options);
 
   virtual CryptohomeVaultFactory* GetVaultFactory() {
     return vault_factory_.get();
@@ -186,13 +186,9 @@ class HomeDirs {
   // Choose the vault type for new vaults.
   EncryptedContainerType ChooseVaultType();
 
-  // Verifies that flags match the vault type.
-  MountError VerifyVaultType(EncryptedContainerType vault_type,
-                             const CryptohomeVault::Options& options);
-
   // Get the type of an existing vault.
-  EncryptedContainerType GetVaultType(const std::string& obfuscated_username,
-                                      MountError* error);
+  StorageStatusOr<EncryptedContainerType> GetVaultType(
+      const std::string& obfuscated_username);
 
   base::TimeDelta GetUserInactivityThresholdForRemoval();
   // Loads the device policy, either by initializing it or reloading the

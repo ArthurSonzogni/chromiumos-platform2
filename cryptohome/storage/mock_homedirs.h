@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
@@ -45,9 +46,9 @@ class MockHomeDirs : public HomeDirs {
               RemoveDmcryptCacheContainer,
               (const std::string&),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(StorageStatusOr<bool>,
               CryptohomeExists,
-              (const std::string&, MountError*),
+              (const std::string&),
               (const, override));
   MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
 

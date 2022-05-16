@@ -17,6 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/credentials.h"
@@ -27,9 +28,14 @@
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
+#include "cryptohome/storage/encrypted_container/fake_backing_device.h"
+#include "cryptohome/storage/error.h"
+#include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
 
+using ::cryptohome::storage::testing::IsError;
+using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;
@@ -690,13 +696,17 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
                       HomeDirs::RemoveCallback(), std::move(vault_factory));
 
     PrepareTestCase(test_case, &platform, &homedirs);
-    MountError error = MOUNT_ERROR_NONE;
-    auto vault_type =
-        homedirs.PickVaultType(user_.obfuscated, test_case.options, &error);
-    EXPECT_THAT(vault_type, Eq(test_case.expected_type))
-        << "TestCase: " << test_case.name;
-    ASSERT_THAT(error, Eq(test_case.expected_error))
-        << "TestCase: " << test_case.name;
+    auto vault_type_or =
+        homedirs.PickVaultType(user_.obfuscated, test_case.options);
+
+    if (test_case.expected_error == MOUNT_ERROR_NONE) {
+      ASSERT_THAT(vault_type_or, IsOk()) << "TestCase: " << test_case.name;
+      EXPECT_THAT(vault_type_or.value(), Eq(test_case.expected_type))
+          << "TestCase: " << test_case.name;
+    } else {
+      ASSERT_THAT(vault_type_or, IsError(test_case.expected_error))
+          << "TestCase: " << test_case.name;
+    }
   }
 }
 }  // namespace
