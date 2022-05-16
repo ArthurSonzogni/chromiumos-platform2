@@ -135,7 +135,7 @@ class {{$proxyName}} final : public {{$itfName}} {
       const dbus::ObjectPath& object_path
 {{- end}}
 {{- if and $.ObjectManagerName .Properties}},
-      PropertySet property_set
+      PropertySet* property_set
 {{- end}}) :
           bus_{bus},
 {{- if not $.ServiceName}}
@@ -296,11 +296,10 @@ class {{$proxyName}} final : public {{$itfName}} {
   dbus::ObjectProxy* dbus_object_proxy_;
 {{- if and (not $.ObjectManagerName) .Properties}}
   std::unique_ptr<PropertySet> property_set_;
-{{- end}}
+{{- end}}{{"\n"}}
 {{- if and $.ObjectManagerName .Properties}}
   friend class {{makeFullProxyName $.ObjectManagerName}};
 {{- end}}
-
 };
 
 {{range extractNameSpaces .Name | reverse -}}
@@ -386,8 +385,7 @@ class {{$className}} : public dbus::ObjectManager::Interface {
       const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_{{$varName}}_removed_ = callback;
   }
-{{- end}}{{end}}
-
+{{end}}{{end}}
  private:
 {{- $itfsWithProps := extractInterfacesWithProperties .Introspects -}}
 {{- if $itfsWithProps }}
@@ -396,7 +394,7 @@ class {{$className}} : public dbus::ObjectManager::Interface {
                          const std::string& property_name) {
 {{- range $itfsWithProps }}
     if (interface_name == "{{.Name}}") {
-{{- $instancesName := makeVariableName .Name | print "%s_instances_" }}
+{{- $instancesName := makeVariableName .Name | printf "%s_instances_" }}
       auto p = {{$instancesName}}.find(object_path);
       if (p == {{$instancesName}}.end())
         return;

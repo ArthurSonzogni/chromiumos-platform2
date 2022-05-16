@@ -214,7 +214,7 @@ class InterfaceProxy final : public InterfaceProxyInterface {
   InterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
-      PropertySet property_set) :
+      PropertySet* property_set) :
           bus_{bus},
           service_name_{service_name},
           property_set_{property_set},
@@ -338,8 +338,8 @@ class InterfaceProxy final : public InterfaceProxyInterface {
   PropertySet* property_set_;
   base::RepeatingCallback<void(InterfaceProxyInterface*, const std::string&)> on_property_changed_;
   dbus::ObjectProxy* dbus_object_proxy_;
-  friend class foo::bar::ObjectManagerProxy;
 
+  friend class foo::bar::ObjectManagerProxy;
 };
 
 }  // namespace wpa_supplicant1
@@ -461,6 +461,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
       const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_interface_removed_ = callback;
   }
+
   EmptyInterfaceProxyInterface* GetEmptyInterfaceProxy(
       const dbus::ObjectPath& object_path) {
     auto p = empty_interface_instances_.find(object_path);
@@ -489,8 +490,8 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
                          const std::string& interface_name,
                          const std::string& property_name) {
     if (interface_name == "fi.w1.wpa_supplicant1.Interface") {
-      auto p = %s_instances_interface.find(object_path);
-      if (p == %s_instances_interface.end())
+      auto p = interface_instances_.find(object_path);
+      if (p == interface_instances_.end())
         return;
       p->second->OnPropertyChanged(property_name);
       return;
@@ -2273,7 +2274,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
       const dbus::ObjectPath& object_path,
-      PropertySet property_set) :
+      PropertySet* property_set) :
           bus_{bus},
           service_name_{service_name},
           object_path_{object_path},
@@ -2324,8 +2325,8 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   PropertySet* property_set_;
   base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)> on_property_changed_;
   dbus::ObjectProxy* dbus_object_proxy_;
-  friend class test::ObjectManagerProxy;
 
+  friend class test::ObjectManagerProxy;
 };
 
 }  // namespace test
@@ -2383,8 +2384,8 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
                          const std::string& interface_name,
                          const std::string& property_name) {
     if (interface_name == "test.EmptyInterface") {
-      auto p = %s_instances_empty_interface.find(object_path);
-      if (p == %s_instances_empty_interface.end())
+      auto p = empty_interface_instances_.find(object_path);
+      if (p == empty_interface_instances_.end())
         return;
       p->second->OnPropertyChanged(property_name);
       return;
