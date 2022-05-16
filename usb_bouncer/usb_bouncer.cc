@@ -8,6 +8,8 @@
 #include <cstdlib>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -51,6 +53,7 @@ class Configuration {
 
 static constexpr char kLogPath[] = "/dev/log";
 static constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
+static constexpr char kNoLoginPath[] = "/run/nologin";
 
 void DropPrivileges(const Configuration& config) {
   if (!CanChown()) {
@@ -210,6 +213,12 @@ int HandleUdev(const Configuration& config,
   if (argv.size() != 2) {
     LOG(ERROR) << "Invalid options!";
     return EXIT_FAILURE;
+  }
+
+  // Ignore all events during shutdown.
+  if (base::PathExists(base::FilePath(kNoLoginPath))) {
+    LOG(INFO) << "Skipping udev event because of shutdown.";
+    return EXIT_SUCCESS;
   }
 
   EntryManager::UdevAction action;

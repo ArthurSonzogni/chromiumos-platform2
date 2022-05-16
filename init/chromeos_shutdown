@@ -14,6 +14,10 @@ bootstat shutdown-start
 
 . /sbin/killers
 
+# Set nologin so services (like usb_bouncer) can check that a shutdown is
+# happening.
+touch /run/nologin
+
 # Remount root in case a developer has remounted it rw for some reason.
 mount -n -o remount,ro /
 
