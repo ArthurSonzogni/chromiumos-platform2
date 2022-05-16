@@ -4021,11 +4021,6 @@ struct IPP_EXPORT Request_Get_Printer_Attributes : public Request {
     SingleValue<std::string> attributes_natural_language{
         this, AttrName::attributes_natural_language};
     SingleValue<std::string> printer_uri{this, AttrName::printer_uri};
-    SingleValue<StringWithLanguage> requesting_user_name{
-        this, AttrName::requesting_user_name};
-    OpenSetOfValues<E_requested_attributes> requested_attributes{
-        this, AttrName::requested_attributes};
-    SingleValue<std::string> document_format{this, AttrName::document_format};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
     std::vector<const Attribute*> GetKnownAttributes() const override;
