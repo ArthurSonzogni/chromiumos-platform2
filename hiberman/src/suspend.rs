@@ -38,6 +38,7 @@ use crate::metrics::{log_hibernate_attempt, read_and_send_metrics, MetricsFile, 
 use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspUserKey};
 use crate::splitter::ImageSplitter;
 use crate::sysfs::Swappiness;
+use crate::volume::VolumeManager;
 
 /// Define the swappiness value we'll set during hibernation.
 const SUSPEND_SWAPPINESS: i32 = 100;
@@ -51,6 +52,7 @@ pub struct SuspendConductor {
     options: HibernateOptions,
     metadata: HibernateMetadata,
     metrics: MetricsLogger,
+    volume_manager: VolumeManager,
 }
 
 impl SuspendConductor {
@@ -60,6 +62,7 @@ impl SuspendConductor {
             options: Default::default(),
             metadata: HibernateMetadata::new()?,
             metrics: MetricsLogger::new()?,
+            volume_manager: VolumeManager::new()?,
         })
     }
 
@@ -73,6 +76,8 @@ impl SuspendConductor {
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
+
+        self.volume_manager.setup_hibernate_lv(true)?;
         let is_lvm = is_lvm_system()?;
         let files_exist = does_hiberfile_exist();
         let should_zero = is_lvm && !files_exist;

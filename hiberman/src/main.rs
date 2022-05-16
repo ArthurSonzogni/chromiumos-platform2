@@ -6,7 +6,7 @@
 
 use getopts::{self, Options};
 use hiberman::metrics::{log_hibernate_failure, log_resume_failure};
-use hiberman::{self, HibernateOptions, ResumeOptions};
+use hiberman::{self, HibernateOptions, ResumeInitOptions, ResumeOptions};
 use log::{error, warn};
 
 fn print_usage(message: &str, error: bool) {
@@ -212,6 +212,59 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     Ok(())
 }
 
+fn resume_init_usage(error: bool, options: &Options) {
+    let brief = r#"Usage: hiberman resume-init [options]
+Perform early init preparations, if required, to make resume from
+hibernation possible this boot.
+"#;
+
+    print_usage(&options.usage(brief), error);
+}
+
+fn hiberman_resume_init(args: &mut std::env::Args) -> std::result::Result<(), ()> {
+    let mut opts = Options::new();
+    opts.optflag(
+        "f",
+        "force",
+        "Set up a resume world even if the resume cookie is not set",
+    );
+    opts.optflag("h", "help", "Print this help text");
+    opts.optflag("v", "verbose", "Print more logs");
+    let args: Vec<String> = args.collect();
+    let matches = match opts.parse(args) {
+        Ok(m) => m,
+        Err(e) => {
+            error!("Failed to parse arguments: {}", e);
+            resume_init_usage(true, &opts);
+            return Err(());
+        }
+    };
+
+    if matches.opt_present("h") {
+        resume_init_usage(false, &opts);
+        return Ok(());
+    }
+
+    let verbosity = if matches.opt_present("v") { 9 } else { 1 };
+
+    // Syslog is not yet available, so just log to stderr.
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(verbosity)
+        .init()
+        .unwrap();
+    let options = ResumeInitOptions {
+        force: matches.opt_present("f"),
+    };
+
+    if let Err(e) = hiberman::resume_init(options) {
+        error!("Failed to initialize resume: {:#?}", e);
+        return Err(());
+    }
+
+    Ok(())
+}
+
 fn resume_usage(error: bool, options: &Options) {
     let brief = r#"Usage: hiberman resume [options]
 Resume the system now. On success, does not return, but jumps back into the
@@ -274,6 +327,7 @@ hiberman <subcommand> --help for details on specific subcommands.
 Valid subcommands are:
     help -- Print this help text.
     hibernate -- Suspend the machine to disk now.
+    resume-init -- Perform early initialization for resume.
     resume -- Resume the system now.
     cat -- Write a disk file contents to stdout.
     cookie -- Read or write the hibernate cookie.
@@ -304,6 +358,7 @@ fn hiberman_main() -> std::result::Result<(), ()> {
         "cat" => hiberman_cat(&mut args),
         "cookie" => hiberman_cookie(&mut args),
         "hibernate" => hiberman_hibernate(&mut args),
+        "resume-init" => hiberman_resume_init(&mut args),
         "resume" => hiberman_resume(&mut args),
         _ => {
             eprintln!("unknown subcommand: {}", subcommand);

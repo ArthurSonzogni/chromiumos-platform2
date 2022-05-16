@@ -80,9 +80,9 @@ pub enum HibernateError {
     /// Snapshot ioctl error.
     #[error("Snapshot ioctl error: {0}: {1}")]
     SnapshotIoctlError(String, sys_util::Error),
-    /// Stateful partition not found.
-    #[error("Stateful partition not found")]
-    StatefulPartitionNotFoundError(),
+    /// Mount not found.
+    #[error("Mount not found")]
+    MountNotFoundError(),
     /// Swap information not found.
     #[error("Swap information not found")]
     SwapInfoNotFoundError(),
@@ -92,6 +92,12 @@ pub enum HibernateError {
     /// End of file
     #[error("End of file")]
     EndOfFile(),
+    /// Hibernate volume error
+    #[error("Hibernate volume error")]
+    HibernateVolumeError(),
+    /// Spawned process error
+    #[error("Spawned process error: {0}")]
+    SpawnedProcessError(i32),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -102,6 +108,12 @@ pub struct HibernateOptions {
     pub test_keys: bool,
     pub force_platform_mode: bool,
     pub no_kernel_encryption: bool,
+}
+
+/// Options taken from the command line affecting resume-init.
+#[derive(Default)]
+pub struct ResumeInitOptions {
+    pub force: bool,
 }
 
 /// Options taken from the command line affecting resume.
@@ -314,9 +326,9 @@ pub fn is_lvm_system() -> Result<bool> {
 }
 
 /// Look through /proc/mounts to find the block device supporting the
-/// unencrypted stateful partition.
-fn path_to_mounted_stateful_part() -> Result<String> {
-    // Go look through the mounts to see where /mnt/stateful_partition is.
+/// given directory. The directory must be the root of a mount.
+pub fn get_device_mounted_at_dir(mount_path: &str) -> Result<String> {
+    // Go look through the mounts to see where the given mount is.
     let f = File::open("/proc/mounts")?;
     let buf_reader = BufReader::new(f);
     for line in buf_reader.lines().flatten() {
@@ -324,7 +336,7 @@ fn path_to_mounted_stateful_part() -> Result<String> {
         let blk = split.next();
         let path = split.next();
         if let Some(path) = path {
-            if path == "/mnt/stateful_partition" {
+            if path == mount_path {
                 if let Some(blk) = blk {
                     return Ok(blk.to_string());
                 }
@@ -332,12 +344,18 @@ fn path_to_mounted_stateful_part() -> Result<String> {
         }
     }
 
-    Err(HibernateError::StatefulPartitionNotFoundError())
-        .context("Failed to find mounted stateful partition")
+    Err(HibernateError::MountNotFoundError())
+        .context(format!("Failed to find mount at {}", mount_path))
+}
+
+/// Look through /proc/mounts to find the block device supporting the
+/// unencrypted stateful partition.
+fn path_to_mounted_stateful_part() -> Result<String> {
+    get_device_mounted_at_dir("/mnt/stateful_partition")
 }
 
 /// Return the path to partition one (stateful) on the root block device.
-fn stateful_block_partition_one() -> Result<String> {
+pub fn stateful_block_partition_one() -> Result<String> {
     let rootdev = path_to_stateful_block()?;
     let last = rootdev.chars().last();
     if let Some(last) = last {
@@ -352,19 +370,21 @@ fn stateful_block_partition_one() -> Result<String> {
 /// Determine the path to the block device containing the stateful partition.
 /// Farm this out to rootdev to keep the magic in one place.
 pub fn path_to_stateful_block() -> Result<String> {
-    let output = Command::new("/usr/bin/rootdev")
-        .args(["-d", "-s"])
-        .output()
+    let output = checked_command_output(Command::new("/usr/bin/rootdev").args(["-d", "-s"]))
         .context("Cannot get rootdev")?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 /// Get the volume group name for the stateful block device.
-fn get_vg_name(blockdev: &str) -> Result<String> {
-    let output = Command::new("/sbin/pvdisplay")
-        .args(["-C", "--noheadings", "-o", "vg_name", blockdev])
-        .output()
-        .context("Cannot run pvdisplay to get volume group name")?;
+pub fn get_vg_name(blockdev: &str) -> Result<String> {
+    let output = checked_command_output(Command::new("/sbin/pvdisplay").args([
+        "-C",
+        "--noheadings",
+        "-o",
+        "vg_name",
+        blockdev,
+    ]))
+    .context("Cannot run pvdisplay to get volume group name")?;
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
@@ -385,9 +405,7 @@ impl ActivatedVolumeGroup {
             return Ok(Self { vg_name: None });
         }
 
-        Command::new("/sbin/vgchange")
-            .args(["-ay", &vg_name])
-            .output()
+        checked_command(Command::new("/sbin/vgchange").args(["-ay", &vg_name]))
             .context("Cannot activate volume group")?;
 
         Ok(Self {
@@ -399,9 +417,7 @@ impl ActivatedVolumeGroup {
 impl Drop for ActivatedVolumeGroup {
     fn drop(&mut self) {
         if let Some(vg_name) = &self.vg_name {
-            let r = Command::new("/sbin/vgchange")
-                .args(["-an", vg_name])
-                .output();
+            let r = checked_command(Command::new("/sbin/vgchange").args(["-an", vg_name]));
 
             match r {
                 Ok(_) => {
@@ -489,4 +505,39 @@ pub fn log_io_duration(action: &str, io_bytes: i64, duration: Duration) {
         io_bytes,
         rate
     );
+}
+
+/// Wait for a std::process::Command, and convert the exit status into a Result
+pub fn checked_command(command: &mut std::process::Command) -> Result<()> {
+    let mut child = command.spawn().context("Failed to spawn child process")?;
+    let exit_status = child.wait().context("Failed to wait for child")?;
+    if exit_status.success() {
+        Ok(())
+    } else {
+        let code = exit_status.code().unwrap_or(-2);
+        Err(HibernateError::SpawnedProcessError(code)).context(format!(
+            "Command {} failed with code {}",
+            command.get_program().to_string_lossy(),
+            &code
+        ))
+    }
+}
+
+/// Wait for a std::process::Command, convert its exit status into a Result, and
+/// collect the output on success.
+pub fn checked_command_output(command: &mut std::process::Command) -> Result<std::process::Output> {
+    let output = command
+        .output()
+        .context("Failed to get output for child process")?;
+    let exit_status = output.status;
+    if exit_status.success() {
+        Ok(output)
+    } else {
+        let code = exit_status.code().unwrap_or(-2);
+        Err(HibernateError::SpawnedProcessError(code)).context(format!(
+            "Command {} failed with code {}",
+            command.get_program().to_string_lossy(),
+            &code
+        ))
+    }
 }
