@@ -155,8 +155,7 @@ template std::optional<Value> MapFilesToDict<pair<string, string>>(
     const vector<pair<string, string>>& optional_keys);
 
 std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
-  std::vector<std::string> components;
-  pattern.GetComponents(&components);
+  std::vector<std::string> components = pattern.GetComponents();
   int iterate_counter = 0;
   auto res = GlobInternal(base::FilePath(components[0]), components, 1,
                           &iterate_counter);
