@@ -211,8 +211,8 @@ bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
   //
   base::FilePath file_path(source_path);
   if (base::FilePath(kUserRootDirectory).IsParent(file_path)) {
-    std::vector<std::string> components;
-    file_path.StripTrailingSeparators().GetComponents(&components);
+    std::vector<std::string> components =
+        file_path.StripTrailingSeparators().GetComponents();
     // The file path of an image file under a user's Downloads, MyFiles or
     // GCache directory path is split into the following components:
     //   '/', 'home', 'chronos', 'user', 'Downloads', ..., <file>
@@ -229,8 +229,8 @@ bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
   }
 
   if (base::FilePath(kMediaDirectory).IsParent(file_path)) {
-    std::vector<std::string> components;
-    file_path.StripTrailingSeparators().GetComponents(&components);
+    std::vector<std::string> components =
+        file_path.StripTrailingSeparators().GetComponents();
     // A mount directory is always created under /media/<sub type>/<mount dir>,
     // so the file path of an image file under a mount directory is split
     // into more than 4 components:
