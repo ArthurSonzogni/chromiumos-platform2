@@ -202,8 +202,7 @@ bool DiskCleanupRoutines::GetTrackedDirectoryForDirCrypto(
 
   // Iterate over name components. This way, we don't have to inspect every
   // directory under |mount_dir|.
-  std::vector<std::string> name_components;
-  tracked_dir_name.GetComponents(&name_components);
+  std::vector<std::string> name_components = tracked_dir_name.GetComponents();
   for (const auto& name_component : name_components) {
     FilePath next_path;
     std::unique_ptr<FileEnumerator> enumerator(

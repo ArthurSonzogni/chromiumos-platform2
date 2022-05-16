@@ -976,8 +976,7 @@ void MigrationHelper::RecordFileError(
   //   root/android-data/data/data/<package name>/cache
   //   root/android-data/data/media/0/Android/data/<package name>/cache
   if (path == kMigrationFailedUnderAndroidOther) {
-    std::vector<std::string> components;
-    child.GetComponents(&components);
+    std::vector<std::string> components = child.GetComponents();
     if ((components.size() >= 7u && components[2] == "data" &&
          components[3] == "data" && components[5] == "cache") ||
         (components.size() >= 10u && components[2] == "data" &&

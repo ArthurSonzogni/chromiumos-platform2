@@ -41,10 +41,9 @@ base::FilePath StripTestFilePath(const base::FilePath& tmpfs,
 
 base::FilePath NormalizePath(const base::FilePath& path) {
   DCHECK(path.IsAbsolute());
-  std::vector<std::string> components;
+  std::vector<std::string> components = path.GetComponents();
   std::vector<std::string> normalized_components;
 
-  path.GetComponents(&components);
   for (const auto& component : components) {
     if (component == ".") {
       continue;

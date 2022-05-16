@@ -285,8 +285,7 @@ bool MountHelper::EnsurePathComponent(const FilePath& check_path,
 }
 
 bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
-  std::vector<std::string> path_parts;
-  dir.GetComponents(&path_parts);
+  std::vector<std::string> path_parts = dir.GetComponents();
   FilePath check_path(path_parts[0]);
   if (path_parts[0] != "/") {
     return false;
