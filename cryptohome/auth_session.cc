@@ -248,6 +248,167 @@ CryptohomeStatus AuthSession::OnUserCreated() {
   return OkStatus<CryptohomeError>();
 }
 
+template <typename AddKeyReply>
+void AuthSession::AddVaultKeyset(
+    const KeyData& key_data,
+    base::OnceCallback<void(const AddKeyReply&)> on_done,
+    CryptoStatus callback_error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_state) {
+  AddKeyReply reply;
+  // callback_error, key_blobs and auth_state are returned by
+  // AuthBlock::CreateCallback.
+  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
+    // TODO(b/229830217): Change the CreateCallback to pass StatusChainOr of
+    // (key_blobs, auth_state) and error instead.
+    if (callback_error.ok()) {
+      callback_error = MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInAddKeyset),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO,
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    }
+    LOG(ERROR) << "KeyBlobs derivation failed before adding keyset.";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateFailedInAddKeyset),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(callback_error)));
+    return;
+  }
+
+  if (user_has_configured_credential_) {  // AddKeyset
+    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
+    user_data_auth::CryptohomeErrorCode error =
+        static_cast<user_data_auth::CryptohomeErrorCode>(
+            keyset_management_->AddKeysetWithKeyBlobs(
+                obfuscated_username_, key_data, *vault_keyset_.get(),
+                std::move(*key_blobs.get()), std::move(auth_state),
+                true /*clobber*/));
+    if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
+              ErrorActionSet({ErrorAction::kReboot}), error));
+      return;
+    }
+  } else {  // AddInitialKeyset
+    if (!file_system_keyset_.has_value()) {
+      LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
+      ReplyWithError(std::move(on_done), reply,
+                     MakeStatus<CryptohomeError>(
+                         CRYPTOHOME_ERR_LOC(kLocAuthSessionNoFSKeyInAddKeyset),
+                         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                         ErrorAction::kReboot}),
+                         user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+      return;
+    }
+    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->AddInitialKeysetWithKeyBlobs(
+            obfuscated_username_, key_data,
+            /*challenge_credentials_keyset_info*/ std::nullopt,
+            file_system_keyset_.value(), std::move(*key_blobs.get()),
+            std::move(auth_state));
+    if (!vk_status.ok()) {
+      vault_keyset_ = nullptr;
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionAddInitialFailedInAddKeyset),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                              ErrorAction::kReboot}),
+              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+      return;
+    }
+    vault_keyset_ = std::move(vk_status).value();
+
+    // Flip the flag, so that our future invocations go through AddKeyset()
+    // and not AddInitialKeyset().
+    user_has_configured_credential_ = true;
+  }
+
+  std::unique_ptr<AuthFactor> added_auth_factor =
+      converter_->VaultKeysetToAuthFactor(username_, key_data.label());
+  if (added_auth_factor) {
+    LOG(INFO) << "Label to AuthFactor map is created for the keyset.";
+    label_to_auth_factor_.emplace(key_data.label(),
+                                  std::move(added_auth_factor));
+  }
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
+template <typename AddKeyReply>
+void AuthSession::CreateKeyBlobsToAddKeyset(
+    const cryptohome::AuthorizationRequest& authorization,
+    AuthInput auth_input,
+    const KeyData& key_data,
+    bool initial_keyset,
+    base::OnceCallback<void(const AddKeyReply&)> on_done) {
+  AddKeyReply reply;
+  AuthBlockType auth_block_type;
+  bool is_le_credential = key_data.policy().low_entropy_credential();
+  bool is_challenge_credential =
+      key_data.type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
+
+  // Generate KeyBlobs and AuthBlockState used for VaultKeyset encryption.
+  auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddKeyset),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    return;
+  }
+
+  // Update reset_secret for auth_input. |auth_state| will be the input to
+  // AuthSession::AddVaultKeyset(), which calls VaultKeyset::Encrypt().
+  AuthBlock::CreateCallback create_callback;
+  if (initial_keyset) {  // AddInitialKeyset operation
+    if (auth_block_type == AuthBlockType::kPinWeaver) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionPinweaverUnsupportedInAddKeyset),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+      return;
+    }
+    // For the AddInitialKeyset operation, credential type is never le
+    // credentials. So |reset_secret| is given to be std::nullopt.
+  } else {  // AddKeyset operation
+    if (auth_block_type == AuthBlockType::kPinWeaver) {
+      auth_input.reset_secret = vault_keyset_->GetOrGenerateResetSecret();
+    }
+  }
+
+  if (auth_block_type == AuthBlockType::kChallengeCredential) {
+    if (!ConstructAuthInputForChallengeCredentials(authorization, auth_input)) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionAddCredentialInvalidAuthInput),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return;
+    }
+  }
+
+  create_callback =
+      base::BindOnce(&AuthSession::AddVaultKeyset<AddKeyReply>,
+                     weak_factory_.GetWeakPtr(), key_data, std::move(on_done));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input, std::move(create_callback));
+}
+
 void AuthSession::AddCredentials(
     const user_data_auth::AddCredentialsRequest& request,
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
@@ -300,7 +461,6 @@ void AuthSession::AddCredentials(
       ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
       return;
     }
-
     DCHECK(!vault_keyset_);
     if (!file_system_keyset_.has_value()) {
       // Creating file_system_keyset to the prepareVault call next.
@@ -310,190 +470,17 @@ void AuthSession::AddCredentials(
       file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
   }
-
-  CreateKeyBlobsToAddKeyset(request, *credentials.get(),
-                            /*initial_keyset=*/!user_has_configured_credential_,
-                            std::move(on_done));
-  return;
-}
-
-void AuthSession::CreateKeyBlobsToAddKeyset(
-    const user_data_auth::AddCredentialsRequest& request,
-    const Credentials& credentials,
-    bool initial_keyset,
-    base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-        on_done) {
-  user_data_auth::AddCredentialsReply reply;
-  AuthBlockType auth_block_type;
-  bool is_le_credential =
-      credentials.key_data().policy().low_entropy_credential();
-  bool is_challenge_credential =
-      credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
-
-  // Generate KeyBlobs and AuthBlockState used for VaultKeyset encryption.
-  auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddKeyset),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
-    return;
-  }
-
-  // Create and initialize fields for auth_input. |auth_state|
-  // will be the input to AuthSession::AddVaultKeyset(), which calls
-  // VaultKeyset::Encrypt().
-  std::optional<brillo::SecureBlob> reset_secret;
-  AuthBlock::CreateCallback create_callback;
-  if (initial_keyset) {  // AddInitialKeyset operation
-    if (auth_block_type == AuthBlockType::kPinWeaver) {
-      ReplyWithError(
-          std::move(on_done), reply,
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(
-                  kLocAuthSessionPinweaverUnsupportedInAddKeyset),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-    // For the AddInitialKeyset operation, credential type is never le
-    // credentials. So |reset_secret| is given to be std::nullopt.
-    reset_secret = std::nullopt;
-    create_callback = base::BindOnce(
-        &AuthSession::AddVaultKeyset, weak_factory_.GetWeakPtr(),
-        credentials.key_data(), credentials.challenge_credentials_keyset_info(),
-        std::move(on_done));
-  } else {  // AddKeyset operation
-    // Create and initialize fields for auth_input.
-    if (auth_block_type == AuthBlockType::kPinWeaver) {
-      reset_secret = vault_keyset_->GetOrGenerateResetSecret();
-    }
-    create_callback = base::BindOnce(
-        &AuthSession::AddVaultKeyset, weak_factory_.GetWeakPtr(),
-        credentials.key_data(), std::nullopt, std::move(on_done));
-  }
-  // |reset_secret| is not processed in the AuthBlocks, the value is copied to
-  // the |key_blobs| directly. |reset_secret| will be added to the |key_blobs|
-  // in the VaultKeyset, if missing.
-  AuthInput auth_input = {credentials.passkey(),
+  // |reset_secret| is updated in CreateKeyBlobsToAddKeyset() if the key type
+  // is LE credentials.
+  AuthInput auth_input = {credentials->passkey(),
                           /*locked_to_single_user=*/std::nullopt,
-                          obfuscated_username_, reset_secret};
-  if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    if (!ConstructAuthInputForChallengeCredentials(request.authorization(),
-                                                   auth_input)) {
-      ReplyWithError(
-          std::move(on_done), reply,
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocAuthSessionAddCredentialInvalidAuthInput),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-              user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-      return;
-    }
-  }
-  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, std::move(create_callback));
-  return;
-}
+                          obfuscated_username_, std::nullopt /*reset_secret*/};
 
-void AuthSession::AddVaultKeyset(
-    const KeyData& key_data,
-    const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
-        challenge_credentials_keyset_info,
-    base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-        on_done,
-    CryptoStatus callback_error,
-    std::unique_ptr<KeyBlobs> key_blobs,
-    std::unique_ptr<AuthBlockState> auth_state) {
-  user_data_auth::AddCredentialsReply reply;
-  // callback_error, key_blobs and auth_state are returned by
-  // AuthBlock::CreateCallback.
-  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
-    DCHECK(!callback_error.ok());
-    // TODO(b/229830217): Change the CreateCallback to pass StatusChainOr of
-    // (key_blobs, auth_state) and error instead.
-    if (callback_error.ok()) {
-      callback_error = MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInAddKeyset),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          CryptoError::CE_OTHER_CRYPTO,
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-    }
-    LOG(ERROR) << "KeyBlobs derivation failed before adding initial keyset.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateFailedInAddKeyset),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-            .Wrap(std::move(callback_error)));
-    return;
-  }
+  bool is_initial_keyset = !user_has_configured_credential_;
 
-  if (user_has_configured_credential_) {  // AddKeyset
-    user_data_auth::CryptohomeErrorCode error =
-        static_cast<user_data_auth::CryptohomeErrorCode>(
-            keyset_management_->AddKeysetWithKeyBlobs(
-                obfuscated_username_, key_data, *vault_keyset_.get(),
-                std::move(*key_blobs.get()), std::move(auth_state),
-                true /*clobber*/));
-    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
-                       ErrorActionSet({ErrorAction::kReboot}), error));
-    return;
-  } else {  // AddInitialKeyset
-    if (!file_system_keyset_.has_value()) {
-      LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
-      ReplyWithError(std::move(on_done), reply,
-                     MakeStatus<CryptohomeError>(
-                         CRYPTOHOME_ERR_LOC(kLocAuthSessionNoFSKeyInAddKeyset),
-                         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                                         ErrorAction::kReboot}),
-                         user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-    if (!challenge_credentials_keyset_info.has_value()) {
-      LOG(ERROR)
-          << "AddInitialKeyset: challenge_credentials_keyset_info is invalid.";
-      ReplyWithError(
-          std::move(on_done), reply,
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocAuthSessionNoChallengeInfoInAddKeyset),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                              ErrorAction::kReboot}),
-              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->AddInitialKeysetWithKeyBlobs(
-            obfuscated_username_, key_data,
-            challenge_credentials_keyset_info.value(),
-            file_system_keyset_.value(), std::move(*key_blobs.get()),
-            std::move(auth_state));
-    if (!vk_status.ok()) {
-      vault_keyset_ = nullptr;
-      ReplyWithError(
-          std::move(on_done), reply,
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocAuthSessionAddInitialFailedInAddKeyset),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                              ErrorAction::kReboot}),
-              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-    vault_keyset_ = std::move(vk_status).value();
-
-    // Flip the flag, so that our future invocations go through AddKeyset()
-    // and not AddInitialKeyset().
-    user_has_configured_credential_ = true;
-    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-    return;
-  }
+  CreateKeyBlobsToAddKeyset<user_data_auth::AddCredentialsReply>(
+      request.authorization(), auth_input, credentials->key_data(),
+      is_initial_keyset, std::move(on_done));
 }
 
 void AuthSession::UpdateCredential(
@@ -577,16 +564,6 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
     return;
   }
-  if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    LOG(ERROR) << "UpdateCredentials: ChallengeCredential not supported";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionChalCredUnsupportedInUpdate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
-    return;
-  }
 
   std::optional<brillo::SecureBlob> reset_secret;
   if (auth_block_type == AuthBlockType::kPinWeaver) {
@@ -614,7 +591,6 @@ void AuthSession::UpdateVaultKeyset(
     std::unique_ptr<AuthBlockState> auth_state) {
   user_data_auth::UpdateCredentialReply reply;
   if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
-    DCHECK(!callback_error.ok());
     // TODO(b/229830217): Change the CreateCallback to pass StatusOr of
     // (key_blobs, auth_state) and error instead.
     if (callback_error.ok()) {
@@ -1186,20 +1162,25 @@ bool AuthSession::ConstructAuthInputForChallengeCredentials(
   return true;
 }
 
-CryptohomeStatus AuthSession::AddAuthFactor(
-    const user_data_auth::AddAuthFactorRequest& request) {
+void AuthSession::AddAuthFactor(
+    const user_data_auth::AddAuthFactorRequest& request,
+    base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+        on_done) {
   // Preconditions:
   DCHECK_EQ(request.auth_session_id(), serialized_token_);
-
+  user_data_auth::AddAuthFactorReply reply;
   // TODO(b/216804305): Verify the auth session is authenticated, after
   // `OnUserCreated()` is changed to mark the session authenticated.
   // At this point AuthSession should be authenticated as it needs
   // FileSystemKeys to wrap the new credentials.
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInAddAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
   }
 
   AuthFactorMetadata auth_factor_metadata;
@@ -1208,10 +1189,13 @@ CryptohomeStatus AuthSession::AddAuthFactor(
   if (!GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
                              auth_factor_type, auth_factor_label)) {
     LOG(ERROR) << "Failed to parse new auth factor parameters";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInAddAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
   std::optional<AuthInput> auth_input =
@@ -1220,10 +1204,13 @@ CryptohomeStatus AuthSession::AddAuthFactor(
                       /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for new auth factor";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInAddAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
   if (user_secret_stash_) {
@@ -1238,16 +1225,53 @@ CryptohomeStatus AuthSession::AddAuthFactor(
           CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH));
     }
 
-    return AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
-                                           auth_factor_metadata,
-                                           auth_input.value());
+    CryptohomeStatus error = AddAuthFactorViaUserSecretStash(
+        auth_factor_type, auth_factor_label, auth_factor_metadata,
+        auth_input.value());
+    if (error.ok()) {
+      ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+      return;
+    }
+
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionAddViaUSSFailedInAddAuthFactor),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(error)));
+    return;
   }
 
-  // TODO(b/3319388): Implement for the vault keyset case.
-  return MakeStatus<CryptohomeError>(
-      CRYPTOHOME_ERR_LOC(kLocAuthSessionVKUnsupportedInAddAuthFactor),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-      user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  AddAuthFactorViaVaultKeyset(auth_factor_type, auth_factor_label,
+                              auth_input.value(), std::move(on_done));
+}
+
+void AuthSession::AddAuthFactorViaVaultKeyset(
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label,
+    AuthInput auth_input,
+    base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+        on_done) {
+  user_data_auth::AddAuthFactorReply reply;
+  KeyData key_data;
+  user_data_auth::CryptohomeErrorCode error = converter_->AuthFactorToKeyData(
+      auth_factor_label, auth_factor_type, key_data);
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailsInAddAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
+    return;
+  }
+
+  // TODO(b/223221875): |authorization| needs to be populated with the
+  // challenge_response_key from the request once the Challenge Credential
+  // support is added to AuthFactor APIs.
+  cryptohome::AuthorizationRequest authorization;
+  CreateKeyBlobsToAddKeyset<user_data_auth::AddAuthFactorReply>(
+      authorization, auth_input, key_data,
+      /*initial_keyset*/ !user_has_configured_credential_, std::move(on_done));
 }
 
 CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(

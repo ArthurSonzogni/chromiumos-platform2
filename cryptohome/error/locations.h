@@ -903,6 +903,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAddCredentialInvalidAuthInput = 538,
   /* ./auth_session.cc */
   kLocAuthSessionAuthenticateInvalidAuthInput = 539,
+  /* ./auth_session.cc */
+  kLocAuthSessionVKConverterFailsInAddAuthFactor = 540,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddViaUSSFailedInAddAuthFactor = 541,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

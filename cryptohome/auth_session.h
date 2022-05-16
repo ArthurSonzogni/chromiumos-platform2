@@ -103,11 +103,12 @@ class AuthSession final {
       base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
           on_done);
 
-  // AddCredentials is called when newly created or existing user wants to add
-  // new credentials.
-  // Note: only USS users are supported currently.
-  CryptohomeStatus AddAuthFactor(
-      const user_data_auth::AddAuthFactorRequest& request);
+  // AddAuthFactor is called when newly created or existing user wants to add
+  // new AuthFactor.
+  void AddAuthFactor(
+      const user_data_auth::AddAuthFactorRequest& request,
+      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+          on_done);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
@@ -256,12 +257,14 @@ class AuthSession final {
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
   // add a VaultKeyset.
+  template <typename AddKeyReply>
   void CreateKeyBlobsToAddKeyset(
-      const user_data_auth::AddCredentialsRequest& request,
-      const Credentials& credentials,
+      const cryptohome::AuthorizationRequest& authorization,
+      AuthInput auth_input,
+      const KeyData& key_data,
       bool initial_keyset,
-      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-          on_done);
+      base::OnceCallback<void(const AddKeyReply&)> on_done);
+
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to create KeyBlobs for the AuthSession to
   // update a VaultKeyset.
@@ -275,15 +278,12 @@ class AuthSession final {
   // based on whether any keyset is generated for the user or not. This function
   // is needed for processing callback results in an asynchronous manner through
   // |on_done| callback.
-  void AddVaultKeyset(
-      const KeyData& key_data,
-      const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
-          challenge_credentials_keyset_info,
-      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-          on_done,
-      CryptoStatus callback_error,
-      std::unique_ptr<KeyBlobs> key_blobs,
-      std::unique_ptr<AuthBlockState> auth_state);
+  template <typename AddKeyReply>
+  void AddVaultKeyset(const KeyData& key_data,
+                      base::OnceCallback<void(const AddKeyReply&)> on_done,
+                      CryptoStatus callback_error,
+                      std::unique_ptr<KeyBlobs> key_blobs,
+                      std::unique_ptr<AuthBlockState> auth_state);
 
   // Updates a VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::UpdateKeysetWithKeyBlobs(). The VaultKeyset and it's
@@ -299,15 +299,24 @@ class AuthSession final {
       std::unique_ptr<AuthBlockState> auth_state);
 
   // Creates a new per-credential secret, adds the key block for the new secret
-  // to the USS and persist to the disk.
+  // to the USS and persists it to disk.
   CryptohomeStatus AddAuthFactorViaUserSecretStash(
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input);
 
-  // Loads and decrypts the USS payload with |auth_factor_label| using the given
-  // KeyBlobs.
+  // Adds a new VaultKeyset for the |obfuscated_username_| and persists it to
+  // disk.
+  void AddAuthFactorViaVaultKeyset(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      AuthInput auth_input,
+      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+          on_done);
+
+  // Loads and decrypts the USS payload with |auth_factor_label| using the
+  // given KeyBlobs.
   CryptohomeStatus LoadUSSMainKeyAndFsKeyset(
       const std::string& auth_factor_label, const KeyBlobs& key_blobs);
 
@@ -427,6 +436,8 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
+  FRIEND_TEST(AuthSessionTest, AddAuthFactorNewUser);
+  FRIEND_TEST(AuthSessionTest, AddMultipleAuthFactor);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave);

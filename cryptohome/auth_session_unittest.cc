@@ -842,6 +842,159 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave) {
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
+// Test if AddAuthFactor correctly adds initial VaultKeyset password AuthFactor
+// for a new user.
+TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+
+  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl =
+      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
+                                             &platform_);
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, auth_block_utility_impl.get(),
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+
+  // Setting the expectation that the user does not exist.
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_FALSE(auth_session.user_exists());
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
+
+  // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
+}
+
+// Test that AddAuthFactor can add multiple VaultKeyset-AuthFactor. The first
+// one is added as initial factor, the second is added as the second password
+// factor, and the third one as added as a PIN factor.
+TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+
+  // Setting the expectation that the user does not exist.
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_FALSE(auth_session.user_exists());
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  // GetauthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlockAsync() are
+  // called for each of the key addition operations below.
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+      .WillRepeatedly([&](AuthBlockType auth_block_type,
+                          const AuthInput& auth_input,
+                          AuthBlock::CreateCallback create_callback) {
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(),
+                 std::make_unique<KeyBlobs>(),
+                 std::make_unique<AuthBlockState>());
+        return true;
+      });
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
+
+  // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
+
+  // Test adding new password AuthFactor
+  user_data_auth::AddAuthFactorRequest request2;
+  request2.set_auth_session_id(auth_session.serialized_token());
+  request2.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request2.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  request2.mutable_auth_factor()->mutable_password_metadata();
+  request2.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+
+  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _))
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+
+  called = false;
+  error = user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request2, base::BindOnce(
+                    [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                       const user_data_auth::AddAuthFactorReply& reply) {
+                      called = true;
+                      error = reply.error();
+                    },
+                    std::ref(called), std::ref(error)));
+
+  // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
+
+  // TODO(b:223222440) Add test to for adding a PIN after reset secret
+  // generation function is updated.
+}
+
 // A variant of the auth session test that has the UserSecretStash experiment
 // enabled.
 class AuthSessionWithUssExperimentTest : public AuthSessionTest {
@@ -941,9 +1094,22 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   request.mutable_auth_factor()->set_label(kFakeLabel);
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  EXPECT_TRUE(auth_session.AddAuthFactor(request).ok());
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
 
   // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
   std::map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
@@ -973,10 +1139,19 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   // Test and Verify.
-  CryptohomeStatus status = auth_session.AddAuthFactor(request);
-  ASSERT_FALSE(status.ok());
-  EXPECT_EQ(status->local_legacy_error().value(),
-            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
+  EXPECT_TRUE(called);
+  EXPECT_EQ(CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION, error);
 }
 
 // Test that a new auth factor and a pin can be added to the newly created user,
@@ -1018,9 +1193,23 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   request.mutable_auth_factor()->set_label(kFakeLabel);
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  EXPECT_TRUE(auth_session.AddAuthFactor(request).ok());
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
 
   // Test.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
+
   // Setting the expectation that the auth block utility will create key blobs.
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthFactorType(AuthFactorType::kPin,
@@ -1044,9 +1233,21 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
   add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(
       kFakePin);
-  EXPECT_TRUE(auth_session.AddAuthFactor(add_pin_request).ok());
+  called = false;
+  error = user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      add_pin_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AddAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(called), std::ref(error)));
 
   // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
   std::map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
@@ -1257,9 +1458,21 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   request.mutable_auth_input()
       ->mutable_cryptohome_recovery_input()
       ->set_mediator_pub_key("mediator pub key");
-  EXPECT_TRUE(auth_session.AddAuthFactor(request).ok());
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
 
   // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
   std::map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(
@@ -1343,6 +1556,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
                    std::ref(called), std::ref(error))));
 
   // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_TRUE(auth_session.cryptohome_recovery_ephemeral_pub_key_for_testing()

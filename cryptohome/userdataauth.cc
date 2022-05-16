@@ -4544,17 +4544,8 @@ void UserDataAuth::AddAuthFactor(
             .Wrap(std::move(auth_session_status).status()));
     return;
   }
-  // TODO(b/229708597): Migrate and wrap the returned status.
-  CryptohomeStatus status = auth_session_status.value()->AddAuthFactor(request);
-  if (!status.ok()) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthAddAuthFactorFailedInAddAuthFactor))
-                       .Wrap(std::move(status)));
-  } else {
-    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-  }
+
+  auth_session_status.value()->AddAuthFactor(request, std::move(on_done));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
