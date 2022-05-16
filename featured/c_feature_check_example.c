@@ -14,5 +14,20 @@ int main(int argc, char* argv[]) {
   CFeatureLibrary lib = CFeatureLibraryNew();
   printf("%d\n",
          CFeatureLibraryIsEnabledBlocking(lib, &kCrOSLateBootMyAwesomeFeature));
+
+  const struct VariationsFeature* const arr[] = {
+      &kCrOSLateBootMyAwesomeFeature};
+  struct VariationsFeatureGetParamsResponseEntry entry;
+  if (!CFeatureLibraryGetParamsAndEnabledBlocking(lib, arr, 1, &entry)) {
+    printf("name: %s\n", entry.name);
+    printf("   enabled: %d\n", entry.is_enabled);
+    for (size_t i = 0; i < entry.num_params; i++) {
+      printf("    params[%zu] = {key: '%s', value: '%s'}\n", i,
+             entry.params[i].key, entry.params[i].value);
+    }
+    CFeatureLibraryFreeEntries(&entry, 1);
+  } else {
+    printf("Error getting feature\n");
+  }
   CFeatureLibraryDelete(lib);
 }

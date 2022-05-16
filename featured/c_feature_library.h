@@ -4,6 +4,8 @@
 #ifndef FEATURED_C_FEATURE_LIBRARY_H_
 #define FEATURED_C_FEATURE_LIBRARY_H_
 
+#include <stddef.h>
+
 #include "featured/feature_export.h"
 
 #if defined(__cplusplus)
@@ -38,6 +40,18 @@ struct FEATURE_EXPORT VariationsFeature {
   const enum FeatureState default_state;
 };
 
+struct FEATURE_EXPORT VariationsFeatureParam {
+  char* key;
+  char* value;
+};
+
+struct FEATURE_EXPORT VariationsFeatureGetParamsResponseEntry {
+  char* name;
+  int is_enabled;
+  struct VariationsFeatureParam* params;
+  size_t num_params;
+};
+
 typedef struct CFeatureLibraryOpaque* CFeatureLibrary;
 
 // C wrapper for PlatformFeatures::New()
@@ -54,6 +68,39 @@ void FEATURE_EXPORT CFeatureLibraryDelete(CFeatureLibrary handle);
 int FEATURE_EXPORT CFeatureLibraryIsEnabledBlocking(
     CFeatureLibrary handle, const struct VariationsFeature* const feature);
 
+// C wrapper for PlatformFeatures::GetParamsAndEnabled is NOT defined, since
+// different language thread runtimes will likely be incompatible with C++'s
+// SequencedTaskRunner.
+
+// Looks up the parameters for the given features, populating |entries| with
+// |num_features| responses, as appropriate.
+// |entries| must point to at least
+// |num_features*sizeof(VariationsFeatureGetParamsResponseEntry)| allocated
+// bytes.
+//
+// |features| should be an array of pointers to VariationsFeature objects
+//
+// If this function returns 0, it will populate |entries| and |num_params|. The
+// caller is responsible for calling CFeatureLibraryFreeEntries() to deallocate
+// any allocated memory internal to the struct.
+// If this function returns -1, it will free any memory allocated. The value of
+// |entries| is unspecified.
+//
+// The caller retains ownership of |entries| and is responsible for deallocating
+// it, if necessary.
+int FEATURE_EXPORT CFeatureLibraryGetParamsAndEnabledBlocking(
+    CFeatureLibrary handle,
+    const struct VariationsFeature* const* features,
+    size_t num_features,
+    struct VariationsFeatureGetParamsResponseEntry* entries);
+
+// Free the contents of the entries structure allocated by
+// CFeatureLibraryGetParamsBlocking.
+// Does *not* free entries--caller is responsible for managing that memory.
+void FEATURE_EXPORT CFeatureLibraryFreeEntries(
+    struct VariationsFeatureGetParamsResponseEntry* entries,
+    size_t num_features);
+
 // C wrapper for `new FakePlatformFeatures()`
 CFeatureLibrary FEATURE_EXPORT FakeCFeatureLibraryNew();
 
@@ -65,6 +112,16 @@ void FEATURE_EXPORT FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
 // C wrapper for FakePlatformFeatures::ClearEnabled()
 void FEATURE_EXPORT FakeCFeatureLibraryClearEnabled(CFeatureLibrary handle,
                                                     const char* const feature);
+
+// C wrapper for FakePlatformFeatures::SetParam()
+void FEATURE_EXPORT FakeCFeatureLibrarySetParam(CFeatureLibrary handle,
+                                                const char* const feature,
+                                                const char* const key,
+                                                const char* const value);
+
+// C wrapper for FakePlatformFeatures::ClearParams()
+void FEATURE_EXPORT FakeCFeatureLibraryClearParams(CFeatureLibrary handle,
+                                                   const char* const feature);
 
 #if defined(__cplusplus)
 }  // extern "C"

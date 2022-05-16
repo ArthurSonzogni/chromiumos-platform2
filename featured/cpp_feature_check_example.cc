@@ -20,12 +20,26 @@ void EnabledCallback(base::RepeatingClosure quit_closure, bool enabled) {
   quit_closure.Run();
 }
 
+void GetParamsCallback(base::RepeatingClosure quit_closure,
+                       feature::PlatformFeatures::ParamsResult result) {
+  for (const auto& [name, entry] : result) {
+    LOG(INFO) << "Feature: " << name;
+    LOG(INFO) << "  Enabled?: " << entry.enabled;
+    LOG(INFO) << "  Params?:";
+    if (entry.params.empty()) {
+      LOG(INFO) << "    No params";
+      break;
+    }
+    for (const auto& [key, value] : entry.params) {
+      LOG(INFO) << "   params['" << key << "'] = '" << value << "'";
+    }
+  }
+  quit_closure.Run();
+}
+
 int main(int argc, char* argv[]) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher(task_executor.task_runner());
-
-  base::RunLoop run_loop;
-  auto quit_closure = run_loop.QuitClosure();
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -33,7 +47,20 @@ int main(int argc, char* argv[]) {
 
   std::unique_ptr<feature::PlatformFeatures> feature_lib =
       feature::PlatformFeatures::New(bus);
-  feature_lib->IsEnabled(kCrOSLateBootMyAwesomeFeature,
-                         base::BindOnce(&EnabledCallback, quit_closure));
-  run_loop.Run();
+  {
+    base::RunLoop run_loop;
+    auto quit_closure = run_loop.QuitClosure();
+
+    feature_lib->IsEnabled(kCrOSLateBootMyAwesomeFeature,
+                           base::BindOnce(&EnabledCallback, quit_closure));
+    run_loop.Run();
+  }
+  {
+    base::RunLoop run_loop;
+    auto quit_closure = run_loop.QuitClosure();
+    feature_lib->GetParamsAndEnabled(
+        {&kCrOSLateBootMyAwesomeFeature},
+        base::BindOnce(&GetParamsCallback, quit_closure));
+    run_loop.Run();
+  }
 }
