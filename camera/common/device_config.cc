@@ -323,13 +323,12 @@ void DeviceConfig::PopulatePlatformCameraInfo() {
   //                             \- 2-0058 - 2-00580 - nvmem
   std::set<const V4L2SensorInfo*> associated_sensors;
   for (const EepromInfo& eeprom : eeproms_) {
-    std::vector<std::string> path;
-    eeprom.nvmem_path.GetComponents(&path);
+    std::vector<std::string> path = eeprom.nvmem_path.GetComponents();
     CHECK_GE(path.size(), 4u);
     auto iter = std::find_if(v4l2_sensors_.begin(), v4l2_sensors_.end(),
                              [&](const V4L2SensorInfo& sensor) {
-                               std::vector<std::string> p;
-                               sensor.subdev_path.GetComponents(&p);
+                               std::vector<std::string> p =
+                                   sensor.subdev_path.GetComponents();
                                return std::equal(path.begin(), path.end() - 3,
                                                  p.begin());
                              });
