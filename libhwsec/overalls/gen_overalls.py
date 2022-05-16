@@ -49,6 +49,14 @@ _GENERATOR_INFO = """
 // %s
 """.strip() % (_THIS_FILE_PATH, ' '.join(sys.argv[1:]))
 
+_EXTENDED_APIS = [
+    (
+        "TSS_RESULT",
+        "Tspi_Context_SecureFreeMemory",
+        [("TSS_HCONTEXT", "hContext"), ("BYTE*", "rgbMemory")],
+    )
+]
+
 
 def build_filter(wd):
   """Builds a filter function based on used |trousers| APIs in under |wd|.
@@ -366,6 +374,7 @@ def main(args):
   with open(tss_h_path, 'r') as f:
     input_string = f.read()
   result += process_tspi_h(input_string)
+  result += _EXTENDED_APIS
 
   if opts.filter_by_usage:
     print('filtering by usage...')
@@ -377,7 +386,8 @@ def main(args):
           (old_size - new_size, old_size, new_size))
 
   include_guard = generate_include_guard(opts.subdir, 'overalls.h')
-  includes = ('#include <trousers/trousers.h>\n#include <trousers/tss.h>')
+  includes = ('#include <trousers/trousers.h>\n#include <trousers/tss.h>\n\n'
+              '#include "libhwsec/tss_utils/extended_apis.h"')
   namespaces = ('hwsec', 'overalls')
   file_path = os.path.join(opts.output_dir, 'overalls.h')
   generate_source_code_file(file_path, include_guard, includes, namespaces,

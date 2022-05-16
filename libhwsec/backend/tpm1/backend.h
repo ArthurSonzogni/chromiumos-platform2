@@ -17,13 +17,13 @@
 #include <absl/container/flat_hash_set.h>
 #include <base/gtest_prod_util.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <trousers/scoped_tss_type.h>
+#include <trousers/trousers.h>
 #include <trousers/tss.h>
-#include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy.h"
+#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 namespace hwsec {
 
@@ -79,10 +79,7 @@ class BackendTpm1 : public Backend {
     TSS_HTPM tpm_handle;
   };
 
-  trousers::ScopedTssContext tss_user_context_;
-  std::optional<TssTpmContext> tss_user_context_cache_;
-
-  StatusOr<trousers::ScopedTssContext> GetScopedTssContext();
+  StatusOr<ScopedTssContext> GetScopedTssContext();
   StatusOr<TssTpmContext> GetTssUserContext();
 
   State* GetState() override { return &state_; }
@@ -104,6 +101,9 @@ class BackendTpm1 : public Backend {
   Proxy& proxy_;
 
   OverallsContext overall_context_;
+
+  ScopedTssContext tss_user_context_;
+  std::optional<TssTpmContext> tss_user_context_cache_;
 
   StateTpm1 state_{*this};
   ConfigTpm1 config_{*this};

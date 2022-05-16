@@ -60,15 +60,18 @@ class BackendTpm1TestBase : public ::testing::Test {
                 Ospi_Context_GetTpmObject(kDefaultContext, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<1>(kDefaultTpm), Return(TPM_SUCCESS)));
+
+    EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kDefaultContext))
+        .WillRepeatedly(Return(TPM_SUCCESS));
   }
 
  protected:
   static inline constexpr TSS_HCONTEXT kDefaultContext = 9876;
   static inline constexpr TSS_HTPM kDefaultTpm = 6543;
 
+  std::unique_ptr<ProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
   std::unique_ptr<Middleware> middleware_;
-  std::unique_ptr<ProxyForTest> proxy_;
   BackendTpm1* backend_;
 };
 

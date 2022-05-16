@@ -13,6 +13,8 @@
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
 
+#include "libhwsec/tss_utils/extended_apis.h"
+
 namespace hwsec {
 namespace overalls {
 
@@ -424,6 +426,10 @@ class Overalls {
                                        UINT32* ulDataLength,
                                        BYTE** rgbDataRead) {
     return Tspi_NV_ReadValue(hNVStore, offset, ulDataLength, rgbDataRead);
+  }
+  virtual TSS_RESULT Ospi_Context_SecureFreeMemory(TSS_HCONTEXT hContext,
+                                                   BYTE* rgbMemory) {
+    return Tspi_Context_SecureFreeMemory(hContext, rgbMemory);
   }
 };
 

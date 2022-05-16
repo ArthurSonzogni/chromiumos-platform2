@@ -83,7 +83,7 @@ Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
   brillo::Blob extention = Sha1(brillo::BlobFromString(current_user));
 
   uint32_t new_pcr_value_length = 0;
-  trousers::ScopedTssMemory new_pcr_value(user_context.context);
+  ScopedTssMemory new_pcr_value(overalls, user_context.context);
 
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrExtend(
                       user_context.tpm_handle, kCurrentUserPcr,
@@ -119,7 +119,7 @@ StatusOr<brillo::Blob> ConfigTpm1::ReadPcr(uint32_t pcr_index) {
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
   uint32_t length = 0;
-  trousers::ScopedTssMemory buffer(user_context.context);
+  ScopedTssMemory buffer(overalls, user_context.context);
 
   RETURN_IF_ERROR(
       MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrRead(

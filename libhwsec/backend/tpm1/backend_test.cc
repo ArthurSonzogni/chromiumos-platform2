@@ -33,6 +33,9 @@ TEST_F(BackendTpm1Test, GetScopedTssContext) {
               Ospi_Context_Connect(kFakeContext, nullptr))
       .WillOnce(Return(TPM_SUCCESS));
 
+  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+      .WillOnce(Return(TPM_SUCCESS));
+
   auto result = backend_->GetScopedTssContext();
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result->value(), kFakeContext);
@@ -52,6 +55,9 @@ TEST_F(BackendTpm1Test, GetTssUserContext) {
   EXPECT_CALL(proxy_->GetMock().overalls,
               Ospi_Context_GetTpmObject(kFakeContext, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFakeTpm), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+      .WillOnce(Return(TPM_SUCCESS));
 
   auto result = backend_->GetTssUserContext();
   ASSERT_TRUE(result.ok());

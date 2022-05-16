@@ -11,9 +11,9 @@
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 using hwsec_foundation::status::MakeStatus;
-using trousers::ScopedTssContext;
 
 namespace hwsec {
 
@@ -23,6 +23,7 @@ BackendTpm1::BackendTpm1(Proxy& proxy,
       overall_context_(OverallsContext{
           .overalls = proxy_.GetOveralls(),
       }),
+      tss_user_context_(overall_context_.overalls),
       middleware_derivative_(middleware_derivative) {}
 
 BackendTpm1::~BackendTpm1() {}
@@ -30,7 +31,7 @@ BackendTpm1::~BackendTpm1() {}
 StatusOr<ScopedTssContext> BackendTpm1::GetScopedTssContext() {
   overalls::Overalls& overalls = overall_context_.overalls;
 
-  ScopedTssContext local_context_handle;
+  ScopedTssContext local_context_handle(overalls);
 
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(
                       overalls.Ospi_Context_Create(local_context_handle.ptr())))

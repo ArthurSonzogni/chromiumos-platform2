@@ -11,6 +11,7 @@
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 using brillo::BlobFromString;
 using hwsec_foundation::status::MakeStatus;
@@ -33,14 +34,13 @@ StatusOr<brillo::SecureBlob> RandomTpm1::RandomSecureBlob(size_t size) {
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
   brillo::SecureBlob random(size);
-  trousers::ScopedTssMemory tpm_data(user_context.context);
+  ScopedTssSecureMemory tpm_data(overalls, user_context.context);
 
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_TPM_GetRandom(
                       user_context.tpm_handle, random.size(), tpm_data.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_GetRandom");
 
   memcpy(random.data(), tpm_data.value(), random.size());
-  brillo::SecureClearBytes(tpm_data.value(), random.size());
   return random;
 }
 

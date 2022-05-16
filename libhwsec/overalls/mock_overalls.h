@@ -142,6 +142,7 @@ class MockOveralls : public Overalls {
                TSS_RESULT(TSS_HNVSTORE, UINT32, UINT32, BYTE*));
   MOCK_METHOD4(Ospi_NV_ReadValue,
                TSS_RESULT(TSS_HNVSTORE, UINT32, UINT32*, BYTE**));
+  MOCK_METHOD2(Ospi_Context_SecureFreeMemory, TSS_RESULT(TSS_HCONTEXT, BYTE*));
 };
 
 }  // namespace overalls
