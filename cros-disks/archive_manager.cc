@@ -155,8 +155,7 @@ bool ArchiveManager::ResolvePath(const std::string& path,
 }
 
 bool ArchiveManager::IsInAllowedFolder(const std::string& source_path) {
-  std::vector<std::string> parts;
-  base::FilePath(source_path).GetComponents(&parts);
+  std::vector<std::string> parts = base::FilePath(source_path).GetComponents();
 
   if (parts.size() < 2 || parts[0] != "/")
     return false;

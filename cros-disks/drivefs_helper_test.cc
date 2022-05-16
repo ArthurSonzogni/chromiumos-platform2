@@ -66,8 +66,7 @@ class PlatformForTest : public MockPlatform {
   }
 
   bool GetRealPathImpl(const std::string& path, std::string* real_path) const {
-    std::vector<std::string> components;
-    base::FilePath(path).GetComponents(&components);
+    std::vector<std::string> components = base::FilePath(path).GetComponents();
     base::FilePath result(components[0]);
     components.erase(components.begin());
     for (const auto& part : components) {
