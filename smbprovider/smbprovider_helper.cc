@@ -147,8 +147,7 @@ int32_t GetOpenFilePermissions(const bool writeable) {
 PathParts SplitPath(const std::string& full_path) {
   DCHECK(!full_path.empty());
   base::FilePath path(full_path);
-  std::vector<std::string> result;
-  path.GetComponents(&result);
+  std::vector<std::string> result = path.GetComponents();
   return result;
 }
 
