@@ -12,16 +12,23 @@ const char kFuseBoxServiceInterface[] = "org.chromium.FuseBoxService";
 const char kFuseBoxServiceName[] = "org.chromium.FuseBoxService";
 const char kFuseBoxServicePath[] = "/org/chromium/FuseBoxService";
 
-// FuseBoxService methods.
+// FuseBoxService entry stat method.
+const char kStatMethod[] = "Stat";
+
+// FuseBoxService directory entry methods.
+const char kReadDirMethod[] = "ReadDir";
+const char kMkDirMethod[] = "MkDir";
+const char kRmDirMethod[] = "RmDir";
+
+// FuseBoxService file entry methods.
+const char kOpenMethod[] = "Open";
+const char kReadMethod[] = "Read";
+const char kWriteMethod[] = "Write";
+const char kTruncateMethod[] = "Truncate";
+const char kFlushMethod[] = "Flush";
 const char kCloseMethod[] = "Close";
 const char kCreateMethod[] = "Create";
-const char kFlushMethod[] = "Flush";
-const char kOpenMethod[] = "Open";
-const char kReadDirMethod[] = "ReadDir";
-const char kReadMethod[] = "Read";
-const char kStatMethod[] = "Stat";
-const char kTruncateMethod[] = "Truncate";
-const char kWriteMethod[] = "Write";
+const char kUnlinkMethod[] = "Unlink";
 
 // FuseBoxReverseService interface/name/path (chromeos /usr/bin/fusebox daemon)
 const char kFuseBoxReverseServiceInterface[] =
