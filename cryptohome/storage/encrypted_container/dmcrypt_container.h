@@ -50,9 +50,11 @@ class DmcryptContainer : public EncryptedContainer {
 
   bool Teardown() override;
 
-  EncryptedContainerType GetType() override {
+  EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kDmcrypt;
   }
+
+  bool IsLazyTeardownSupported() const override { return true; }
 
   bool SetLazyTeardownWhenUnused() override;
 

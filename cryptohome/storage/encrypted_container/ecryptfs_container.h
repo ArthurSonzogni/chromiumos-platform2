@@ -29,10 +29,9 @@ class EcryptfsContainer : public EncryptedContainer {
   bool Teardown() override;
   bool Exists() override;
   bool Purge() override;
-  EncryptedContainerType GetType() override {
+  EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kEcryptfs;
   }
-  bool SetLazyTeardownWhenUnused() override;
   base::FilePath GetBackingLocation() const override;
 
  private:

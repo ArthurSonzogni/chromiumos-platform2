@@ -65,11 +65,12 @@ class EncryptedContainer {
   // Checks if the container exists on disk.
   virtual bool Exists() = 0;
   // Gets the type of the encrypted container.
-  virtual EncryptedContainerType GetType() = 0;
+  virtual EncryptedContainerType GetType() const = 0;
   // Marks the container for lazy teardown; once the last reference to the
   // container is dropped, the constructs of the container are automatically
   // torn down and the container can be safely purged afterwards.
-  virtual bool SetLazyTeardownWhenUnused() = 0;
+  virtual bool SetLazyTeardownWhenUnused() { return false; }
+  virtual bool IsLazyTeardownSupported() const { return false; }
   // Returns the backing location if any.
   virtual base::FilePath GetBackingLocation() const = 0;
 

@@ -34,9 +34,7 @@ class EphemeralContainer final : public EncryptedContainer {
 
   bool Teardown() override;
 
-  bool SetLazyTeardownWhenUnused() override;
-
-  EncryptedContainerType GetType() override {
+  EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kEphemeral;
   }
 

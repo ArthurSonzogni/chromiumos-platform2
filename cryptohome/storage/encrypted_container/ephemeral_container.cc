@@ -98,11 +98,6 @@ bool EphemeralContainer::Teardown() {
   return backing_device_->Purge();
 }
 
-bool EphemeralContainer::SetLazyTeardownWhenUnused() {
-  // TODO(dlunev): decide if it needs to be implemented.
-  return false;
-}
-
 base::FilePath EphemeralContainer::GetBackingLocation() const {
   if (backing_device_ != nullptr && backing_device_->GetPath().has_value()) {
     return *(backing_device_->GetPath());

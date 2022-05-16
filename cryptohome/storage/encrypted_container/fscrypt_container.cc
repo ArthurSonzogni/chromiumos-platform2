@@ -63,11 +63,6 @@ bool FscryptContainer::Setup(const FileSystemKey& encryption_key) {
   return true;
 }
 
-bool FscryptContainer::SetLazyTeardownWhenUnused() {
-  LOG(WARNING) << "fscrypt containers do not support lazy teardown";
-  return false;
-}
-
 bool FscryptContainer::Teardown() {
   auto key_type = UseV2() ? Keyring::KeyType::kFscryptV2Key
                           : Keyring::KeyType::kFscryptV1Key;

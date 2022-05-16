@@ -43,11 +43,6 @@ bool EcryptfsContainer::Setup(const FileSystemKey& encryption_key) {
                           &key_reference_);
 }
 
-bool EcryptfsContainer::SetLazyTeardownWhenUnused() {
-  LOG(WARNING) << "ecryptfs containers do not support lazy teardown";
-  return false;
-}
-
 bool EcryptfsContainer::Teardown() {
   return keyring_->RemoveKey(Keyring::KeyType::kEcryptfsKey, key_reference_);
 }
