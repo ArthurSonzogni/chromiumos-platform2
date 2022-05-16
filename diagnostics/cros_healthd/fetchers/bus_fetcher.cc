@@ -223,9 +223,8 @@ mojo_ipc::BusDevicePtr FetchUsbDevice(
 
 mojo_ipc::ThunderboltBusInterfaceInfoPtr FetchThunderboltBusInterfaceInfo(
     const base::FilePath& path, const std::string& domain_id) {
-  std::vector<std::string> components;
   // Check sysfs directory for interface attached to same domain.
-  path.GetComponents(&components);
+  std::vector<std::string> components = path.GetComponents();
   // Get interface directory name which is the last component in path.
   auto interface_dir_name = components.back();
   // Check interface directory name starting with same domain number.
@@ -289,8 +288,7 @@ mojo_ipc::ThunderboltBusInfoPtr FetchThunderboltBusInfo(
   // directory level, it is required to iterate interface directories which
   // are connected to same controller only. e.g. domain0 is directory for
   // controller 0 and connected interface directory is 0-0:1:0.
-  std::vector<std::string> components;
-  dev_path.GetComponents(&components);
+  std::vector<std::string> components = dev_path.GetComponents();
   auto domain_dir = components.back();
   std::string domain_id;
 
