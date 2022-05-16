@@ -56,8 +56,7 @@ bool DenyFwUpdateHidrawDeviceRule::IsFwUpdateDevice(
   }
 
   // Split the path by directories.
-  std::vector<std::string> dirs;
-  base::FilePath(path).GetComponents(&dirs);
+  std::vector<std::string> dirs = base::FilePath(path).GetComponents();
 
   for (const auto& dir : dirs) {
     // Split the path by colons (:). We are searching for the pattern:
