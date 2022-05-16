@@ -27,6 +27,7 @@
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount.h"
 
 using brillo::cryptohome::home::kGuestUserName;
@@ -66,15 +67,14 @@ MountStatus RealUserSession::MountVault(
     const std::string username,
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
-  MountError error = MOUNT_ERROR_NONE;
-
-  error = mount_->MountCryptohome(username, fs_keyset, vault_options);
-  if (error != MOUNT_ERROR_NONE) {
+  StorageStatus status =
+      mount_->MountCryptohome(username, fs_keyset, vault_options);
+  if (!status.ok()) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountVault),
         ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
                         ErrorAction::kDeleteVault, ErrorAction::kPowerwash}),
-        error);
+        status->error());
   }
 
   obfuscated_username_ = SanitizeUserName(username);
@@ -99,8 +99,8 @@ MountStatus RealUserSession::MountEphemeral(const std::string username) {
         MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER);
   }
 
-  MountError error = mount_->MountEphemeralCryptohome(username);
-  if (error == MOUNT_ERROR_NONE) {
+  StorageStatus status = mount_->MountEphemeralCryptohome(username);
+  if (status.ok()) {
     pkcs11_token_ = pkcs11_token_factory_->New(
         username_, homedirs_->GetChapsTokenDir(username_),
         brillo::SecureBlob());
@@ -111,19 +111,19 @@ MountStatus RealUserSession::MountEphemeral(const std::string username) {
       CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountEphemeral),
       ErrorActionSet(
           {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
-      error);
+      status->error());
 }
 
 MountStatus RealUserSession::MountGuest() {
-  MountError mount_error = mount_->MountEphemeralCryptohome(kGuestUserName);
-  if (mount_error == MOUNT_ERROR_NONE) {
+  StorageStatus status = mount_->MountEphemeralCryptohome(kGuestUserName);
+  if (status.ok()) {
     return OkStatus<CryptohomeMountError>();
   }
   return MakeStatus<CryptohomeMountError>(
       CRYPTOHOME_ERR_LOC(kLocUserSessionMountEphemeralFailed),
       ErrorActionSet(
           {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
-      mount_error, std::nullopt);
+      status->error(), std::nullopt);
 }
 
 bool RealUserSession::Unmount() {

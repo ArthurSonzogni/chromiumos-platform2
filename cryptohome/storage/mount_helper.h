@@ -22,6 +22,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_stack.h"
 
 using base::FilePath;
@@ -49,7 +50,7 @@ class MountHelperInterface {
   virtual bool IsPathMounted(const base::FilePath& path) const = 0;
 
   // Carries out an ephemeral mount for user |username|.
-  virtual MountError PerformEphemeralMount(
+  virtual StorageStatus PerformEphemeralMount(
       const std::string& username,
       const base::FilePath& ephemeral_loop_device) = 0;
 
@@ -57,10 +58,10 @@ class MountHelperInterface {
   virtual void UnmountAll() = 0;
 
   // Carries out mount operations for a regular cryptohome.
-  virtual MountError PerformMount(MountType mount_type,
-                                  const std::string& username,
-                                  const std::string& fek_signature,
-                                  const std::string& fnek_signature) = 0;
+  virtual StorageStatus PerformMount(MountType mount_type,
+                                     const std::string& username,
+                                     const std::string& fek_signature,
+                                     const std::string& fnek_signature) = 0;
 };
 
 class MountHelper : public MountHelperInterface {
@@ -102,14 +103,14 @@ class MountHelper : public MountHelperInterface {
 
   // Carries out eCryptfs/dircrypto mount(2) operations for a regular
   // cryptohome.
-  MountError PerformMount(MountType mount_type,
-                          const std::string& username,
-                          const std::string& fek_signature,
-                          const std::string& fnek_signature) override;
+  StorageStatus PerformMount(MountType mount_type,
+                             const std::string& username,
+                             const std::string& fek_signature,
+                             const std::string& fnek_signature) override;
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
-  MountError PerformEphemeralMount(
+  StorageStatus PerformEphemeralMount(
       const std::string& username,
       const base::FilePath& ephemeral_loop_device) override;
 

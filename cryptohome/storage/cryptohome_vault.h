@@ -14,6 +14,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 
 namespace cryptohome {
@@ -48,7 +49,7 @@ class CryptohomeVault {
   ~CryptohomeVault();
 
   // Sets up the cryptohome vault for mounting.
-  MountError Setup(const FileSystemKey& filesystem_key);
+  StorageStatus Setup(const FileSystemKey& filesystem_key);
 
   // Removes the vault.
   bool Purge();

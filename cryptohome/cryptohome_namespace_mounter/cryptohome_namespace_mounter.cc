@@ -34,6 +34,7 @@
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -168,8 +169,9 @@ int main(int argc, char** argv) {
           &cryptohome::MountHelper::UnmountAll, base::Unretained(&mounter)));
   if (is_ephemeral) {
     cryptohome::ReportTimerStart(cryptohome::kPerformEphemeralMountTimer);
-    error = mounter.PerformEphemeralMount(
+    cryptohome::StorageStatus status = mounter.PerformEphemeralMount(
         request.username(), base::FilePath(request.ephemeral_loop_device()));
+    error = status.ok() ? cryptohome::MOUNT_ERROR_NONE : status->error();
 
     cryptohome::ReportTimerStop(cryptohome::kPerformEphemeralMountTimer);
   } else {
@@ -177,9 +179,10 @@ int main(int argc, char** argv) {
         static_cast<cryptohome::MountType>(request.type());
 
     cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-    error =
+    cryptohome::StorageStatus status =
         mounter.PerformMount(mount_type, request.username(),
                              request.fek_signature(), request.fnek_signature());
+    error = status.ok() ? cryptohome::MOUNT_ERROR_NONE : status->error();
 
     cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
   }
@@ -195,11 +198,6 @@ int main(int argc, char** argv) {
   }
 
   if (error != cryptohome::MOUNT_ERROR_NONE) {
-    if (is_ephemeral) {
-      cryptohome::ForkAndCrash("PerformEphemeralMount failed");
-    } else {
-      cryptohome::ForkAndCrash("PerformMount failed");
-    }
     return EX_SOFTWARE;
   }
 

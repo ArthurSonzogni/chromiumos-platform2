@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <dbus/cryptohome/dbus-constants.h>
@@ -19,6 +20,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 
 namespace cryptohome {
@@ -42,40 +44,41 @@ CryptohomeVault::~CryptohomeVault() {
   std::ignore = Teardown();
 }
 
-MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
+StorageStatus CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
   if (!platform_->ClearUserKeyring()) {
     LOG(ERROR) << "Failed to clear user keyring";
   }
 
   if (!platform_->SetupProcessKeyring()) {
-    LOG(ERROR) << "Failed to set up a process keyring.";
-    return MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED;
+    return StorageStatus::Make(FROM_HERE, "Failed to set up a process keyring.",
+                               MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED);
   }
 
   // If there is a migrating data container, we need to set up the existing
   // data container.
   if (!container_->Setup(filesystem_key)) {
-    LOG(ERROR) << "Failed to setup container.";
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced with
     // a more specific type.
-    return MOUNT_ERROR_KEYRING_FAILED;
+    return StorageStatus::Make(FROM_HERE, "Failed to setup container.",
+                               MOUNT_ERROR_KEYRING_FAILED);
   }
 
   // If migration is allowed, set up the migrating container, depending on
   // whether it has already been set up or not.
   if (migrating_container_ && !migrating_container_->Setup(filesystem_key)) {
-    LOG(ERROR) << "Failed to setup migrating container.";
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
     //  with a more specific type.
-    return MOUNT_ERROR_KEYRING_FAILED;
+    return StorageStatus::Make(FROM_HERE,
+                               "Failed to setup migrating container.",
+                               MOUNT_ERROR_KEYRING_FAILED);
   }
 
   // If we are mounting a dm-crypt cryptohome, setup a separate cache container.
   if (cache_container_ && !cache_container_->Setup(filesystem_key)) {
-    LOG(ERROR) << "Failed to setup cache container.";
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
     //  with a more specific type.
-    return MOUNT_ERROR_KEYRING_FAILED;
+    return StorageStatus::Make(FROM_HERE, "Failed to setup cache container.",
+                               MOUNT_ERROR_KEYRING_FAILED);
   }
 
   for (auto& container : application_containers_) {
@@ -83,20 +86,23 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
       LOG(ERROR) << "Failed to setup an application container.";
       // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
       //  with a more specific type.
-      return MOUNT_ERROR_KEYRING_FAILED;
+      return StorageStatus::Make(FROM_HERE,
+                                 "Failed to setup an application container.",
+                                 MOUNT_ERROR_KEYRING_FAILED);
     }
   }
 
   if (container_->GetType() == EncryptedContainerType::kEphemeral) {
     // Do not create /home/.shadow/<hash>/mount for ephemeral.
-    return MOUNT_ERROR_NONE;
+    return StorageStatus::Ok();
   }
 
   base::FilePath mount_point = GetUserMountDirectory(obfuscated_username_);
   if (!platform_->CreateDirectory(mount_point)) {
-    PLOG(ERROR) << "User mount directory creation failed for "
-                << mount_point.value();
-    return MOUNT_ERROR_DIR_CREATION_FAILED;
+    return StorageStatus::Make(
+        FROM_HERE,
+        "User mount directory creation failed for " + mount_point.value(),
+        MOUNT_ERROR_DIR_CREATION_FAILED);
   }
 
   // During migration, the existing ecryptfs container is mounted at
@@ -105,9 +111,11 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
     base::FilePath temporary_mount_point =
         GetUserTemporaryMountDirectory(obfuscated_username_);
     if (!platform_->CreateDirectory(temporary_mount_point)) {
-      PLOG(ERROR) << "User temporary mount directory creation failed for "
-                  << temporary_mount_point.value();
-      return MOUNT_ERROR_DIR_CREATION_FAILED;
+      return StorageStatus::Make(
+          FROM_HERE,
+          "User temporary mount directory creation failed for " +
+              temporary_mount_point.value(),
+          MOUNT_ERROR_DIR_CREATION_FAILED);
     }
   }
 
@@ -116,13 +124,14 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
     base::FilePath cache_mount_point =
         GetDmcryptUserCacheDirectory(obfuscated_username_);
     if (!platform_->CreateDirectory(cache_mount_point)) {
-      PLOG(ERROR) << "Cache mount directory creation failed for "
-                  << cache_mount_point.value();
-      return MOUNT_ERROR_DIR_CREATION_FAILED;
+      return StorageStatus::Make(FROM_HERE,
+                                 "Cache mount directory creation failed for " +
+                                     cache_mount_point.value(),
+                                 MOUNT_ERROR_DIR_CREATION_FAILED);
     }
   }
 
-  return MOUNT_ERROR_NONE;
+  return StorageStatus::Ok();
 }
 
 void CryptohomeVault::ReportVaultEncryptionType() {

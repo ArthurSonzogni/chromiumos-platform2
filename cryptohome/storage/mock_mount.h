@@ -19,13 +19,13 @@ class MockMount : public Mount {
  public:
   MockMount() = default;
   ~MockMount() override = default;
-  MOCK_METHOD(MountError,
+  MOCK_METHOD(StorageStatus,
               MountCryptohome,
               (const std::string&,
                const FileSystemKeyset&,
                const CryptohomeVault::Options&),
               (override));
-  MOCK_METHOD(MountError,
+  MOCK_METHOD(StorageStatus,
               MountEphemeralCryptohome,
               (const std::string&),
               (override));

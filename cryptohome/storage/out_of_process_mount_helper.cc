@@ -19,6 +19,7 @@
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -113,6 +114,15 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
          cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
 };
 
+cryptohome::StorageStatus OopErrorCodeToStatus(cryptohome::MountError error) {
+  if (error == cryptohome::MOUNT_ERROR_NONE) {
+    return cryptohome::StorageStatus::Ok();
+  }
+  // The error is already reported from OOP, so no need to report it here.
+  return cryptohome::StorageStatus::Make(FROM_HERE, "OOP mount failed", error,
+                                         /*report=*/false);
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -169,7 +179,7 @@ void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
   helper_process_->Reset(0);
 }
 
-MountError OutOfProcessMountHelper::PerformEphemeralMount(
+StorageStatus OutOfProcessMountHelper::PerformEphemeralMount(
     const std::string& username, const base::FilePath& ephemeral_loop_device) {
   OutOfProcessMountRequest request;
   request.set_username(username);
@@ -184,7 +194,8 @@ MountError OutOfProcessMountHelper::PerformEphemeralMount(
 
   OutOfProcessMountResponse response;
   if (!LaunchOutOfProcessHelper(request, &response)) {
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE, "Failed to launch OOP-mounter",
+                               MOUNT_ERROR_FATAL);
   }
 
   username_ = request.username();
@@ -194,7 +205,7 @@ MountError OutOfProcessMountHelper::PerformEphemeralMount(
     }
   }
 
-  return static_cast<MountError>(response.mount_error());
+  return OopErrorCodeToStatus(static_cast<MountError>(response.mount_error()));
 }
 
 bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
@@ -275,7 +286,7 @@ bool OutOfProcessMountHelper::TearDownExistingMount() {
   return true;
 }
 
-MountError OutOfProcessMountHelper::PerformMount(
+StorageStatus OutOfProcessMountHelper::PerformMount(
     MountType mount_type,
     const std::string& username,
     const std::string& fek_signature,
@@ -292,7 +303,8 @@ MountError OutOfProcessMountHelper::PerformMount(
 
   OutOfProcessMountResponse response;
   if (!LaunchOutOfProcessHelper(request, &response)) {
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE, "Failed to launch OOP-mounter",
+                               MOUNT_ERROR_FATAL);
   }
 
   username_ = request.username();
@@ -302,7 +314,7 @@ MountError OutOfProcessMountHelper::PerformMount(
     }
   }
 
-  return static_cast<MountError>(response.mount_error());
+  return OopErrorCodeToStatus(static_cast<MountError>(response.mount_error()));
 }
 
 }  // namespace cryptohome

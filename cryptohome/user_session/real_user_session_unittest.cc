@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
@@ -33,6 +34,8 @@
 
 using brillo::SecureBlob;
 using hwsec_foundation::HmacSha256;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
 
 using ::testing::_;
 using ::testing::ByRef;
@@ -185,7 +188,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   FileSystemKeyset fs_keyset(*vk_status.value().get());
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnOk<StorageError>());
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs1));
 
   // TEST
@@ -222,7 +225,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   session_->SetCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnOk<StorageError>());
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs2));
 
   // TEST
@@ -263,7 +266,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
 TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
   EXPECT_CALL(*mount_, MountEphemeralCryptohome(_))
-      .WillRepeatedly(Return(MOUNT_ERROR_NONE));
+      .WillRepeatedly(ReturnOk<StorageError>());
 
   struct PolicyTestCase {
     std::string name;
@@ -347,7 +350,7 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
   FileSystemKeyset fs_keyset(*vk_status.value().get());
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnOk<StorageError>());
 
   EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
   const std::string message(kWebAuthnSecretHmacMessage);
@@ -400,7 +403,7 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(ReturnOk<StorageError>());
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
       keyset_management_->GetValidKeyset(users_[0].credentials);

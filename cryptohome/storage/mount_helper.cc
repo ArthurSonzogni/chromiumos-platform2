@@ -15,6 +15,7 @@
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -731,24 +732,26 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
   return true;
 }
 
-MountError MountHelper::PerformMount(MountType mount_type,
-                                     const std::string& username,
-                                     const std::string& fek_signature,
-                                     const std::string& fnek_signature) {
+StorageStatus MountHelper::PerformMount(MountType mount_type,
+                                        const std::string& username,
+                                        const std::string& fek_signature,
+                                        const std::string& fnek_signature) {
   const std::string obfuscated_username = SanitizeUserName(username);
 
   if (!EnsureUserMountPoints(username)) {
-    LOG(ERROR) << "Error creating mountpoint.";
-    return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
+    return StorageStatus::Make(FROM_HERE, "Error creating mountpoints",
+                               MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED);
   }
 
   // Since Service::Mount cleans up stale mounts, we should only reach
   // this point if someone attempts to re-mount an in-use mount point.
   if (platform_->IsDirectoryMounted(
           GetUserMountDirectory(obfuscated_username))) {
-    LOG(ERROR) << "Mount point is busy: "
-               << GetUserMountDirectory(obfuscated_username);
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(
+        FROM_HERE,
+        std::string("Mount point is busy: ") +
+            GetUserMountDirectory(obfuscated_username).value(),
+        MOUNT_ERROR_FATAL);
   }
 
   switch (mount_type) {
@@ -756,32 +759,43 @@ MountError MountHelper::PerformMount(MountType mount_type,
       if (!SetUpEcryptfsMount(obfuscated_username, fek_signature,
                               fnek_signature,
                               GetUserMountDirectory(obfuscated_username))) {
-        return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+        return StorageStatus::Make(FROM_HERE, "Can't setup ecryptfs",
+                                   MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED);
       }
       break;
     case MountType::ECRYPTFS_TO_DIR_CRYPTO:
       if (!SetUpEcryptfsMount(
               obfuscated_username, fek_signature, fnek_signature,
               GetUserTemporaryMountDirectory(obfuscated_username))) {
-        return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+        return StorageStatus::Make(
+            FROM_HERE, "Can't setup ecryptfs for migration to fscrypt",
+            MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED);
       }
       SetUpDircryptoMount(obfuscated_username);
-      return MOUNT_ERROR_NONE;
+      return StorageStatus::Ok();
     case MountType::ECRYPTFS_TO_DMCRYPT:
       if (!SetUpEcryptfsMount(
               obfuscated_username, fek_signature, fnek_signature,
               GetUserTemporaryMountDirectory(obfuscated_username))) {
-        return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+        return StorageStatus::Make(
+            FROM_HERE, "Can't setup ecryptfs for migration to dmcrypt",
+            MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED);
       }
       if (!SetUpDmcryptMount(obfuscated_username,
-                             GetUserMountDirectory(obfuscated_username)) ||
-          !MountCacheSubdirectories(
+                             GetUserMountDirectory(obfuscated_username))) {
+        return StorageStatus::Make(
+            FROM_HERE, "Can't setup dmcrypt to migrate from ecryptfs",
+            MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
+      }
+
+      if (!MountCacheSubdirectories(
               obfuscated_username,
               GetUserMountDirectory(obfuscated_username))) {
-        LOG(ERROR) << "Dm-crypt mount failed";
-        return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+        return StorageStatus::Make(
+            FROM_HERE, "Can't setup dmcrypt cache to migrate from ecryptfs",
+            MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
       }
-      return MOUNT_ERROR_NONE;
+      return StorageStatus::Ok();
     case MountType::DIR_CRYPTO:
       SetUpDircryptoMount(obfuscated_username);
       break;
@@ -789,19 +803,25 @@ MountError MountHelper::PerformMount(MountType mount_type,
       SetUpDircryptoMount(obfuscated_username);
       if (!SetUpDmcryptMount(
               obfuscated_username,
-              GetUserTemporaryMountDirectory(obfuscated_username)) ||
-          !MountCacheSubdirectories(
+              GetUserTemporaryMountDirectory(obfuscated_username))) {
+        return StorageStatus::Make(
+            FROM_HERE, "Can't setup dmcrypt to migrate from fscrypt",
+            MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
+      }
+
+      if (!MountCacheSubdirectories(
               obfuscated_username,
               GetUserTemporaryMountDirectory(obfuscated_username))) {
-        LOG(ERROR) << "Dm-crypt mount failed";
-        return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+        return StorageStatus::Make(
+            FROM_HERE, "Can't setup dmcrypt cache to migrate from fscrypt",
+            MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
       }
-      return MOUNT_ERROR_NONE;
+      return StorageStatus::Ok();
     case MountType::DMCRYPT:
       if (!SetUpDmcryptMount(obfuscated_username,
                              GetUserMountDirectory(obfuscated_username))) {
-        LOG(ERROR) << "Dm-crypt mount failed";
-        return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+        return StorageStatus::Make(FROM_HERE, "Dm-crypt mount failed",
+                                   MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
       }
       break;
     case MountType::EPHEMERAL:
@@ -819,7 +839,9 @@ MountError MountHelper::PerformMount(MountType mount_type,
   // When migrating, it's better to avoid exposing the new ext4 crypto dir.
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
-    return MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
+    return StorageStatus::Make(
+        FROM_HERE, "Can't mount home or daemonstore",
+        MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED);
   }
 
   // TODO(sarthakkukreti): This can't be moved due to child mount propagation
@@ -828,17 +850,18 @@ MountError MountHelper::PerformMount(MountType mount_type,
   if (mount_type == MountType::DMCRYPT &&
       !MountCacheSubdirectories(obfuscated_username,
                                 GetUserMountDirectory(obfuscated_username))) {
-    LOG(ERROR)
-        << "Failed to mount tracked subdirectories from the cache volume";
-    return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+    return StorageStatus::Make(
+        FROM_HERE,
+        "Failed to mount tracked subdirectories from the cache volume",
+        MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
   }
 
-  return MOUNT_ERROR_NONE;
+  return StorageStatus::Ok();
 }
 
 // TODO(dlunev): make specific errors returned. MOUNT_ERROR_FATAL for now
 // to preserve the existing expectations..
-MountError MountHelper::PerformEphemeralMount(
+StorageStatus MountHelper::PerformEphemeralMount(
     const std::string& username, const FilePath& ephemeral_loop_device) {
   const std::string obfuscated_username = SanitizeUserName(username);
   const FilePath mount_point =
@@ -846,24 +869,27 @@ MountError MountHelper::PerformEphemeralMount(
   LOG(ERROR) << "Directory is" << mount_point.value();
 
   if (!platform_->CreateDirectory(mount_point)) {
-    PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(
+        FROM_HERE, "Directory creation failed for " + mount_point.value(),
+        MOUNT_ERROR_FATAL);
   }
   if (!MountAndPush(ephemeral_loop_device, mount_point, kEphemeralMountType,
                     kEphemeralMountOptions)) {
-    LOG(ERROR) << "Can't mount ephemeral mount point";
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE, "Can't mount ephemeral",
+                               MOUNT_ERROR_FATAL);
   }
 
   // Set SELinux context first, so that the created user & root directory have
   // the correct context.
   if (!SetUpSELinuxContextForEphemeralCryptohome(platform_, mount_point)) {
-    // Logging already done in SetUpSELinuxContextForEphemeralCryptohome.
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE,
+                               "Can't setup SELinux context for ephemeral",
+                               MOUNT_ERROR_FATAL);
   }
 
   if (!EnsureUserMountPoints(username)) {
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(
+        FROM_HERE, "Can't ensure mountpoints for ephemeral", MOUNT_ERROR_FATAL);
   }
 
   const FilePath user_home =
@@ -874,17 +900,21 @@ MountError MountHelper::PerformEphemeralMount(
 
   if (!CreateVaultDirectoryStructure(platform_,
                                      GetCommonSubdirectories(mount_point))) {
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE,
+                               "Can't create vault structure for ephemeral",
+                               MOUNT_ERROR_FATAL);
   }
 
   CopySkeleton(user_home);
 
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE,
+                               "Can't mount home and daemonstore for ephemeral",
+                               MOUNT_ERROR_FATAL);
   }
 
-  return MOUNT_ERROR_NONE;
+  return StorageStatus::Ok();
 }
 
 void MountHelper::UnmountAll() {

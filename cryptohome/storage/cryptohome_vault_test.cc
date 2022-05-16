@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
@@ -20,9 +21,13 @@
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/error.h"
+#include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_homedirs.h"
 
+using ::cryptohome::storage::testing::IsError;
+using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;
@@ -256,7 +261,8 @@ TEST_P(CryptohomeVaultTest, FailedProcessKeyringSetup) {
                 /*create_migrating_container=*/false,
                 /*create_cache_container=*/false);
   EXPECT_CALL(platform_, SetupProcessKeyring()).WillOnce(Return(false));
-  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED);
+  EXPECT_THAT(vault_->Setup(key_),
+              IsError(MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED));
 }
 
 // Tests the failure path on Setup if setting up the container fails.
@@ -266,7 +272,7 @@ TEST_P(CryptohomeVaultTest, ContainerSetupFailed) {
                 /*create_cache_container=*/false);
   ExpectVaultSetup();
   keyring_->SetShouldFail(true);
-  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_KEYRING_FAILED);
+  EXPECT_THAT(vault_->Setup(key_), IsError(MOUNT_ERROR_KEYRING_FAILED));
 }
 
 // Tests the failure path on Setup if setting up the container fails.
@@ -287,12 +293,11 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
   }
   keyring_->SetShouldFailAfter(good_key_calls);
 
-  MountError error =
-      MigratingContainerType() != EncryptedContainerType::kUnknown
-          ? MOUNT_ERROR_KEYRING_FAILED
-          : MOUNT_ERROR_NONE;
-
-  EXPECT_EQ(vault_->Setup(key_), error);
+  if (MigratingContainerType() != EncryptedContainerType::kUnknown) {
+    EXPECT_THAT(vault_->Setup(key_), IsError(MOUNT_ERROR_KEYRING_FAILED));
+  } else {
+    EXPECT_THAT(vault_->Setup(key_), IsOk());
+  }
 }
 
 // Tests the setup path of a pristine cryptohome.
@@ -305,7 +310,7 @@ TEST_P(CryptohomeVaultTest, CreateVault) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   CheckContainersExist();
 }
@@ -321,7 +326,7 @@ TEST_P(CryptohomeVaultTest, ExistingVaultNoMigratingVault) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   CheckContainersExist();
 }
@@ -336,7 +341,7 @@ TEST_P(CryptohomeVaultTest, ExistingMigratingVault) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   CheckContainersExist();
 }
@@ -351,7 +356,7 @@ TEST_P(CryptohomeVaultTest, ExistingCacheContainer) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   CheckContainersExist();
 }

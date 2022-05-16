@@ -20,6 +20,7 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/hash/sha1.h>
 #include <base/strings/string_number_conversions.h>
@@ -32,6 +33,7 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -39,6 +41,7 @@
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/tpm.h"
@@ -108,7 +111,7 @@ Mount::~Mount() {
     UnmountCryptohome();
 }
 
-MountError Mount::MountEphemeralCryptohome(const std::string& username) {
+StorageStatus Mount::MountEphemeralCryptohome(const std::string& username) {
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
@@ -123,41 +126,38 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
       EncryptedContainerType::kEphemeral);
 
   if (!user_cryptohome_vault_) {
-    LOG(ERROR) << "Failed to generate ephemeral vault";
-    return MOUNT_ERROR_FATAL;
+    return StorageStatus::Make(FROM_HERE, "Failed to generate ephemeral vault.",
+                               MOUNT_ERROR_FATAL);
   }
 
-  MountError error = user_cryptohome_vault_->Setup(FileSystemKey());
-  if (error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to setup ephemeral vault with error=" << error;
-    user_cryptohome_vault_.reset();
-    return error;
-  }
+  RETURN_IF_ERROR(user_cryptohome_vault_->Setup(FileSystemKey())).LogError()
+      << "Failed to setup ephemeral vault";
 
-  error = active_mounter_->PerformEphemeralMount(
-      username, user_cryptohome_vault_->GetContainerBackingLocation());
-  if (error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
-    return error;
-  }
+  RETURN_IF_ERROR(
+      active_mounter_->PerformEphemeralMount(
+          username, user_cryptohome_vault_->GetContainerBackingLocation()))
+          .LogError()
+      << "PerformEphemeralMount() failed, aborting ephemeral mount";
 
   cleanup_runner.ReplaceClosure(base::DoNothing());
 
-  return MOUNT_ERROR_NONE;
+  return StorageStatus::Ok();
 }
 
-MountError Mount::MountCryptohome(
+StorageStatus Mount::MountCryptohome(
     const std::string& username,
     const FileSystemKeyset& file_system_keyset,
     const CryptohomeVault::Options& vault_options) {
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
+  // XXX: replace with StatusOr
   MountError mount_error = MOUNT_ERROR_NONE;
   EncryptedContainerType vault_type = homedirs_->PickVaultType(
       obfuscated_username, vault_options, &mount_error);
   if (mount_error != MOUNT_ERROR_NONE) {
-    return mount_error;
+    return StorageStatus::Make(FROM_HERE, "Could't determine vault type",
+                               mount_error);
   }
 
   user_cryptohome_vault_ = homedirs_->GetVaultFactory()->Generate(
@@ -168,13 +168,8 @@ MountError Mount::MountCryptohome(
     // TODO(dlunev): there should be a more proper error code set. CREATE_FAILED
     // is a temporary returned error to keep the behaviour unchanged while
     // refactoring.
-    return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
-  }
-
-  // Set up the cryptohome vault for mount.
-  mount_error = user_cryptohome_vault_->Setup(file_system_keyset.Key());
-  if (mount_error != MOUNT_ERROR_NONE) {
-    return mount_error;
+    return StorageStatus::Make(FROM_HERE, "Could't generate vault",
+                               MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED);
   }
 
   // Ensure we don't leave any mounts hanging on intermediate errors.
@@ -184,18 +179,21 @@ MountError Mount::MountCryptohome(
   base::ScopedClosureRunner cleanup_runner(base::BindOnce(
       base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
 
+  // Set up the cryptohome vault for mount.
+  RETURN_IF_ERROR(user_cryptohome_vault_->Setup(file_system_keyset.Key()))
+          .LogError()
+      << "Failed to setup persisten vault";
+
   std::string key_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fek_sig);
   std::string fnek_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
 
   cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-  mount_error = active_mounter_->PerformMount(GetMountType(), username_,
-                                              key_signature, fnek_signature);
-  if (mount_error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "MountHelper::PerformMount failed, error = " << mount_error;
-    return mount_error;
-  }
+  RETURN_IF_ERROR(active_mounter_->PerformMount(GetMountType(), username_,
+                                                key_signature, fnek_signature))
+          .LogError()
+      << "MountHelper::PerformMount failed";
 
   cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
 
@@ -240,7 +238,7 @@ MountError Mount::MountCryptohome(
   if (!RemoveLargeChromeLogs())
     LOG(ERROR) << "Failed to remove Chrome logs";
 
-  return MOUNT_ERROR_NONE;
+  return StorageStatus::Ok();
 }
 
 bool Mount::UnmountCryptohome() {

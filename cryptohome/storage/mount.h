@@ -33,6 +33,7 @@
 #include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -71,7 +72,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //                * Whether to create the cryptohome if it doesn't exist.
   //                * Whether to ensure that the mount is ephemeral.
   //   error - The specific error condition on failure
-  virtual MountError MountCryptohome(
+  virtual StorageStatus MountCryptohome(
       const std::string& username,
       const FileSystemKeyset& file_system_keys,
       const CryptohomeVault::Options& vault_options);
@@ -80,7 +81,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   username - name of the user to mount
-  virtual MountError MountEphemeralCryptohome(const std::string& username);
+  virtual StorageStatus MountEphemeralCryptohome(const std::string& username);
 
   // Unmounts any mount at the cryptohome mount point
   virtual bool UnmountCryptohome();

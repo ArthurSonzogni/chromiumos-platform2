@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/platform.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 
@@ -46,7 +47,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome,
   // but does so out of process.
-  MountError PerformEphemeralMount(
+  StorageStatus PerformEphemeralMount(
       const std::string& username,
       const base::FilePath& ephemeral_loop_device) override;
 
@@ -62,10 +63,10 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   bool IsPathMounted(const base::FilePath& path) const override;
 
   // Carries out dircrypto mount(2) operations for a regular cryptohome.
-  MountError PerformMount(MountType mount_type,
-                          const std::string& username,
-                          const std::string& fek_signature,
-                          const std::string& fnek_signature) override;
+  StorageStatus PerformMount(MountType mount_type,
+                             const std::string& username,
+                             const std::string& fek_signature,
+                             const std::string& fnek_signature) override;
 
  private:
   // Launches an out-of-process helper, sends |request|, and waits until it
