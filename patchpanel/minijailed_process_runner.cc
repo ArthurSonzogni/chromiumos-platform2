@@ -5,6 +5,8 @@
 #include "patchpanel/minijailed_process_runner.h"
 
 #include <linux/capability.h>
+#include <unistd.h>
+
 #include <utility>
 
 #include <base/check.h>

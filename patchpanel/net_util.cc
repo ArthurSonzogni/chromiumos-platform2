@@ -7,6 +7,7 @@
 #include <net/if.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 #include <fstream>
 #include <iostream>
