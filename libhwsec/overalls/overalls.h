@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2022 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,8 +10,8 @@
 #ifndef LIBHWSEC_OVERALLS_OVERALLS_H_
 #define LIBHWSEC_OVERALLS_OVERALLS_H_
 
+#include <trousers/trousers.h>
 #include <trousers/tss.h>
-#include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
 namespace hwsec {
 namespace overalls {
@@ -33,15 +33,22 @@ class Overalls {
                                        BYTE* blob) {
     return Trspi_UnloadBlob_UINT32(offset, out, blob);
   }
+  virtual TSS_RESULT Orspi_UnloadBlob_UINT32_s(UINT64* offset,
+                                               UINT32* out,
+                                               BYTE* blob,
+                                               UINT64 capacity) {
+    return Trspi_UnloadBlob_UINT32_s(offset, out, blob, capacity);
+  }
   virtual void Orspi_UnloadBlob_UINT16(UINT64* offset,
                                        UINT16* out,
                                        BYTE* blob) {
     return Trspi_UnloadBlob_UINT16(offset, out, blob);
   }
-  virtual TSS_RESULT Orspi_UnloadBlob_PUBKEY(UINT64* offset,
-                                             BYTE* blob,
-                                             TCPA_PUBKEY* pubKey) {
-    return Trspi_UnloadBlob_PUBKEY(offset, blob, pubKey);
+  virtual TSS_RESULT Orspi_UnloadBlob_PUBKEY_s(UINT64* offset,
+                                               BYTE* blob,
+                                               UINT64 capacity,
+                                               TCPA_PUBKEY* pubKey) {
+    return Trspi_UnloadBlob_PUBKEY_s(offset, blob, capacity, pubKey);
   }
   virtual TSS_RESULT Orspi_UnloadBlob_KEY12(UINT64* offset,
                                             BYTE* blob,
@@ -51,10 +58,21 @@ class Overalls {
   virtual void Orspi_LoadBlob_UINT32(UINT64* offset, UINT32 in, BYTE* blob) {
     return Trspi_LoadBlob_UINT32(offset, in, blob);
   }
+  virtual void Orspi_LoadBlob_UINT16(UINT64* offset, UINT16 in, BYTE* blob) {
+    return Trspi_LoadBlob_UINT16(offset, in, blob);
+  }
+  virtual void Orspi_LoadBlob_BYTE(UINT64* offset, BYTE data, BYTE* blob) {
+    return Trspi_LoadBlob_BYTE(offset, data, blob);
+  }
   virtual void Orspi_LoadBlob_PUBKEY(UINT64* offset,
                                      BYTE* blob,
                                      TCPA_PUBKEY* pubKey) {
     return Trspi_LoadBlob_PUBKEY(offset, blob, pubKey);
+  }
+  virtual void Orspi_LoadBlob_KEY12(UINT64* offset,
+                                    BYTE* blob,
+                                    TPM_KEY12* key) {
+    return Trspi_LoadBlob_KEY12(offset, blob, key);
   }
   virtual TSS_RESULT Orspi_SymDecrypt(UINT16 alg,
                                       UINT16 mode,

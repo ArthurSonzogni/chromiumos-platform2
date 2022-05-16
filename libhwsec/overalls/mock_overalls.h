@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2022 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,12 +22,17 @@ class MockOveralls : public Overalls {
   MockOveralls() = default;
   ~MockOveralls() override = default;
   MOCK_METHOD3(Orspi_UnloadBlob_UINT32, void(UINT64*, UINT32*, BYTE*));
+  MOCK_METHOD4(Orspi_UnloadBlob_UINT32_s,
+               TSS_RESULT(UINT64*, UINT32*, BYTE*, UINT64));
   MOCK_METHOD3(Orspi_UnloadBlob_UINT16, void(UINT64*, UINT16*, BYTE*));
-  MOCK_METHOD3(Orspi_UnloadBlob_PUBKEY,
-               TSS_RESULT(UINT64*, BYTE*, TCPA_PUBKEY*));
+  MOCK_METHOD4(Orspi_UnloadBlob_PUBKEY_s,
+               TSS_RESULT(UINT64*, BYTE*, UINT64, TCPA_PUBKEY*));
   MOCK_METHOD3(Orspi_UnloadBlob_KEY12, TSS_RESULT(UINT64*, BYTE*, TPM_KEY12*));
   MOCK_METHOD3(Orspi_LoadBlob_UINT32, void(UINT64*, UINT32, BYTE*));
+  MOCK_METHOD3(Orspi_LoadBlob_UINT16, void(UINT64*, UINT16, BYTE*));
+  MOCK_METHOD3(Orspi_LoadBlob_BYTE, void(UINT64*, BYTE, BYTE*));
   MOCK_METHOD3(Orspi_LoadBlob_PUBKEY, void(UINT64*, BYTE*, TCPA_PUBKEY*));
+  MOCK_METHOD3(Orspi_LoadBlob_KEY12, void(UINT64*, BYTE*, TPM_KEY12*));
   MOCK_METHOD8(
       Orspi_SymDecrypt,
       TSS_RESULT(UINT16, UINT16, BYTE*, BYTE*, BYTE*, UINT32, BYTE*, UINT32*));

@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 
+
 _LICENSE_STRING = """
 // Copyright %d The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -62,12 +63,15 @@ def build_filter(wd):
     A filter function that returns |True| iff the usage is found by |git grep|.
   """
   cmd = [
-      'git', 'grep', '-oh', '-E', r'\bTr?spi_([a-zA-Z0-9]+_)?[a-zA-Z0-9]+\b',
+      'git', 'grep', '-oh', '-E',
+      r'\b(T|O)r?spi_([a-zA-Z0-9]+_)?[a-zA-Z0-9]+(_s)?\b',
       ':(exclude)libhwsec/overalls/*'
   ]
   all_usages = subprocess.check_output(cmd, cwd=wd).decode('utf-8')
-  all_usages = set(all_usages.splitlines())
-  return lambda x: x in all_usages
+  all_usages_set = set()
+  for usage in all_usages.splitlines():
+    all_usages_set.add('T'+usage[1:])
+  return lambda x: x in all_usages_set
 
 
 def parse_trousers_input_args(s):
@@ -373,8 +377,7 @@ def main(args):
           (old_size - new_size, old_size, new_size))
 
   include_guard = generate_include_guard(opts.subdir, 'overalls.h')
-  includes = ('#include <trousers/tss.h>\n#include <trousers/trousers.h> // '
-              'NOLINT(build/include_alpha) - needs tss.h')
+  includes = ('#include <trousers/trousers.h>\n#include <trousers/tss.h>')
   namespaces = ('hwsec', 'overalls')
   file_path = os.path.join(opts.output_dir, 'overalls.h')
   generate_source_code_file(file_path, include_guard, includes, namespaces,
