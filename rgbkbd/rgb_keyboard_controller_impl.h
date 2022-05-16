@@ -21,6 +21,10 @@ struct Color {
   uint8_t r = 0;
   uint8_t g = 0;
   uint8_t b = 0;
+
+  bool operator==(const Color& rhs) const {
+    return (r == rhs.r) && (g == rhs.g) && (b == rhs.b);
+  }
 };
 
 struct KeyColor {
@@ -32,8 +36,12 @@ struct KeyColor {
 // Default color for caps lock highlight color.
 static constexpr Color kCapsLockHighlightDefault =
     Color(/*r=*/255, /*g=*/255, /*b=*/210);
+
+static constexpr Color kCapsLockHighlightAlternate =
+    Color(/*r=*/25, /*g=*/55, /*b=*/210);
+
 // Default background color.
-static constexpr Color kDefaultBackgroundColor =
+static constexpr Color kWhiteBackgroundColor =
     Color(/*r=*/255, /*g=*/255, /*b=*/255);
 
 static constexpr uint32_t kLeftShiftKey = 44;
@@ -111,11 +119,6 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   const std::vector<KeyColor> GetRainbowModeColorsWithoutShiftKeysForTesting();
 
  private:
-  Color GetCapsLockHighlightColor() const {
-    // TODO(michaelcheco): Choose color based on background.
-    return kCapsLockHighlightDefault;
-  }
-
   void SetKeyColor(const KeyColor& key_color);
   void SetAllKeyColors(const Color& color);
 
@@ -125,6 +128,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
 
   Color GetColorForBackgroundType() const;
   Color GetCurrentCapsLockColor() const;
+  Color GetCapsLockHighlightColor() const;
 
   std::optional<RgbKeyboardCapabilities> capabilities_;
   RgbKeyboard* keyboard_;

@@ -13,7 +13,7 @@
 namespace rgbkbd {
 
 RgbKeyboardControllerImpl::RgbKeyboardControllerImpl(RgbKeyboard* keyboard)
-    : keyboard_(keyboard), background_color_(kDefaultBackgroundColor) {}
+    : keyboard_(keyboard), background_color_(kWhiteBackgroundColor) {}
 RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
@@ -111,6 +111,12 @@ RgbKeyboardControllerImpl::GetRainbowModeColorsWithoutShiftKeysForTesting() {
     vec.push_back(entry);
   }
   return vec;
+}
+
+Color RgbKeyboardControllerImpl::GetCapsLockHighlightColor() const {
+  return (background_color_ == kWhiteBackgroundColor)
+             ? kCapsLockHighlightAlternate
+             : kCapsLockHighlightDefault;
 }
 
 }  // namespace rgbkbd
