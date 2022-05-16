@@ -18,10 +18,9 @@ use std::time::Instant;
 use crate::files::HIBERNATE_DIR;
 use crate::hiberutil::{
     checked_command, checked_command_output, get_device_mounted_at_dir, get_page_size,
-    get_total_memory_pages, get_vg_name, log_io_duration, stateful_block_partition_one,
-    HibernateError,
+    get_total_memory_pages, log_io_duration, stateful_block_partition_one, HibernateError,
 };
-use crate::lvm::{create_thin_volume, lv_path, thicken_thin_volume};
+use crate::lvm::{create_thin_volume, get_vg_name, lv_path, thicken_thin_volume};
 
 /// Define the name of the hibernate logical volume.
 const HIBER_VOLUME_NAME: &str = "hibervol";

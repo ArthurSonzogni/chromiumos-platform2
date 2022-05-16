@@ -277,24 +277,6 @@ pub fn prealloc_mem(metrics_logger: &mut MetricsLogger) -> Result<()> {
     Ok(())
 }
 
-/// Helper function to determine if this is a system where the stateful
-/// partition is running on top of LVM.
-pub fn is_lvm_system() -> Result<bool> {
-    let partition1 = stateful_block_partition_one()?;
-    let mut file = File::open(&partition1)?;
-    let mut buffer = MmapBuffer::new(4096)?;
-    let buf = buffer.u8_slice_mut();
-    file.read_exact(buf)
-        .context(format!("Failed to read {}", partition1))?;
-    // LVM systems have a Physical Volume Label header that starts with
-    // "LABELONE" as its magic. If that's found, this is an LVM system.
-    // https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/4/html/cluster_logical_volume_manager/lvm_metadata
-    match str::from_utf8(&buf[512..520]) {
-        Ok(l) => Ok(l == "LABELONE"),
-        Err(_) => Ok(false),
-    }
-}
-
 /// Look through /proc/mounts to find the block device supporting the
 /// given directory. The directory must be the root of a mount.
 pub fn get_device_mounted_at_dir(mount_path: &str) -> Result<String> {
@@ -339,78 +321,9 @@ pub fn path_to_stateful_block() -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-/// Get the volume group name for the stateful block device.
-pub fn get_vg_name(blockdev: &str) -> Result<String> {
-    let output = checked_command_output(Command::new("/sbin/pvdisplay").args([
-        "-C",
-        "--noheadings",
-        "-o",
-        "vg_name",
-        blockdev,
-    ]))
-    .context("Cannot run pvdisplay to get volume group name")?;
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
 /// Determines if the stateful-rw snapshot is active, indicating a resume boot.
-fn is_snapshot_active() -> bool {
+pub fn is_snapshot_active() -> bool {
     fs::metadata("/dev/mapper/stateful-rw").is_ok()
-}
-
-pub struct ActivatedVolumeGroup {
-    vg_name: Option<String>,
-}
-
-impl ActivatedVolumeGroup {
-    fn new(vg_name: String) -> Result<Self> {
-        // If it already exists, don't reactivate it.
-        if fs::metadata(format!("/dev/{}/unencrypted", vg_name)).is_ok() {
-            return Ok(Self { vg_name: None });
-        }
-
-        checked_command(Command::new("/sbin/vgchange").args(["-ay", &vg_name]))
-            .context("Cannot activate volume group")?;
-
-        Ok(Self {
-            vg_name: Some(vg_name),
-        })
-    }
-}
-
-impl Drop for ActivatedVolumeGroup {
-    fn drop(&mut self) {
-        if let Some(vg_name) = &self.vg_name {
-            let r = checked_command(Command::new("/sbin/vgchange").args(["-an", vg_name]));
-
-            match r {
-                Ok(_) => {
-                    info!("Deactivated vg {}", vg_name);
-                }
-                Err(e) => {
-                    warn!("Failed to deactivate VG {}: {}", vg_name, e);
-                }
-            }
-        }
-    }
-}
-
-pub fn activate_physical_vg() -> Result<Option<ActivatedVolumeGroup>> {
-    if !is_snapshot_active() {
-        return Ok(None);
-    }
-
-    let partition1 = stateful_block_partition_one()?;
-    // Assume that a failure to get the VG name indicates a non-LVM system.
-    let vg_name = match get_vg_name(&partition1) {
-        Ok(vg) => vg,
-        Err(_) => {
-            return Ok(None);
-        }
-    };
-
-    let vg = ActivatedVolumeGroup::new(vg_name)?;
-    Ok(Some(vg))
 }
 
 pub struct LockedProcessMemory {}

@@ -27,11 +27,12 @@ use crate::hibermeta::{
 };
 use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::{
-    activate_physical_vg, get_page_size, lock_process_memory, log_duration, log_io_duration,
-    path_to_stateful_block, HibernateError, BUFFER_PAGES,
+    get_page_size, lock_process_memory, log_duration, log_io_duration, path_to_stateful_block,
+    HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
+use crate::lvm::activate_physical_vg;
 use crate::metrics::{read_and_send_metrics, MetricsFile, MetricsLogger};
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;

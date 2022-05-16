@@ -29,11 +29,12 @@ use crate::hibermeta::{
 };
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::{
-    get_page_size, is_lvm_system, lock_process_memory, log_duration, log_io_duration,
-    path_to_stateful_block, prealloc_mem, HibernateError, BUFFER_PAGES,
+    get_page_size, lock_process_memory, log_duration, log_io_duration, path_to_stateful_block,
+    prealloc_mem, HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
+use crate::lvm::is_lvm_system;
 use crate::metrics::{log_hibernate_attempt, read_and_send_metrics, MetricsFile, MetricsLogger};
 use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspUserKey};
 use crate::splitter::ImageSplitter;
