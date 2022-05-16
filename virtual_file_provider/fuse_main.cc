@@ -4,6 +4,8 @@
 
 #include "virtual_file_provider/fuse_main.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <iterator>
 #include <optional>
