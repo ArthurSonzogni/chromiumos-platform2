@@ -7,6 +7,8 @@
 #ifndef LIBBRILLO_BRILLO_FILES_FILE_UTIL_H_
 #define LIBBRILLO_BRILLO_FILES_FILE_UTIL_H_
 
+#include <unistd.h>
+
 #include <string>
 
 #include <brillo/files/safe_fd.h>

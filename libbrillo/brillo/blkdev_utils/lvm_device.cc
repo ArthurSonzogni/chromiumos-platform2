@@ -4,6 +4,8 @@
 
 #include "brillo/blkdev_utils/lvm_device.h"
 
+#include <unistd.h>
+
 #include <optional>
 #include <utility>
 

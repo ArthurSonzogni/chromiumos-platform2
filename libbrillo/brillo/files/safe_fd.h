@@ -31,6 +31,7 @@
 #define LIBBRILLO_BRILLO_FILES_SAFE_FD_H_
 
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <string>
 #include <utility>
