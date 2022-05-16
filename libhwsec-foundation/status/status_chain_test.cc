@@ -107,6 +107,16 @@ class Fake4Error : public FakeBaseError {
   }
 };
 
+TEST_F(StatusChainTest, StaticOkAndMake) {
+  StatusChain<Fake1Error> ok = StatusChain<Fake1Error>::Ok();
+  EXPECT_TRUE(ok.ok());
+
+  StatusChain<Fake1Error> err = StatusChain<Fake1Error>::Make("e1", 1);
+  EXPECT_FALSE(err.ok());
+  EXPECT_EQ(err->ToString(), "Fake1: e1");
+  EXPECT_EQ(err->val(), 1);
+}
+
 TEST_F(StatusChainTest, CtorAssign) {
   StatusChain<Fake1Error> ok;
   EXPECT_TRUE(ok.ok());

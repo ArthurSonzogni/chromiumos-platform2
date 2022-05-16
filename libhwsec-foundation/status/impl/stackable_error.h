@@ -261,6 +261,17 @@ class [[nodiscard]] StackableError {
   // backend object, but they should not introspect into them. Other methods can
   // only use the backend interface methods.
 
+  // Creates a chain that represents an Ok result.
+  static StackableError<_Et> Ok() { return StackableError<_Et>(nullptr); }
+
+  // Creates a chain that represents an error case. Delegates Status creation to
+  // the class'es trait.
+  template <typename... Args>
+  static StackableError<_Et> Make(Args&&... args) {
+    using MakeStatusTrait = typename _Et::MakeStatusTrait;
+    return MakeStatusTrait()(std::forward<Args>(args)...);
+  }
+
   // Default constructor creates an empty stack to represent success.
   constexpr StackableError() noexcept : error_stack_() {}
 
