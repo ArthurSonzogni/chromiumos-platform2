@@ -77,11 +77,15 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
 
       // Calculate size for dm-crypt partition.
       stateful_device = platform_->GetStatefulDevice();
-      if (stateful_device.empty())
+      if (stateful_device.empty()) {
+        PLOG(ERROR) << "Can't get stateful device";
         return nullptr;
+      }
 
-      if (!platform_->GetBlkSize(stateful_device, &stateful_size))
+      if (!platform_->GetBlkSize(stateful_device, &stateful_size)) {
+        PLOG(ERROR) << "Can't get size of stateful device";
         return nullptr;
+      }
 
       LOG_IF(INFO, dm_options.keylocker_enabled)
           << "Using Keylocker for encryption";
@@ -121,6 +125,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       // The migrating type is handled by the higher level abstraction.
       // FALLTHROUGH
     case EncryptedContainerType::kUnknown:
+      LOG(ERROR) << "Incorrect container type: " << static_cast<int>(type);
       return nullptr;
   }
 
