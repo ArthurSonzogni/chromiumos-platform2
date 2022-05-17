@@ -9,6 +9,8 @@
 
 #include "debugd/src/shill_scripts_tool.h"
 
+#include <unistd.h>
+
 #include <memory>
 #include <string>
 #include <utility>

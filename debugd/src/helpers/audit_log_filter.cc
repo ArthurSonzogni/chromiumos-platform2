@@ -6,6 +6,8 @@
 // Internally calls ausearch command and processes its output by filtering out
 // tokens that shouldn't be included in a CrOS feedback report.
 
+#include <unistd.h>
+
 #include <iostream>
 #include <string>
 

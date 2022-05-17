@@ -4,6 +4,8 @@
 
 #include "debugd/src/systrace_tool.h"
 
+#include <unistd.h>
+
 #include <string>
 #include <vector>
 
