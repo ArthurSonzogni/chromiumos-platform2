@@ -1,3 +1,7 @@
+# Filesystem types
+type efivarfs, fs_type;
+
+# File types
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
 type cros_system_file, exec_type, file_type, cros_system_file_type, cros_file_type;
 type cros_usr_dirs, file_type, cros_system_file_type, cros_file_type;
@@ -559,7 +563,6 @@ type sysfs_class_devcoredump, sysfs_type;
 type sysfs_net, sysfs_type;
 type sysfs_tpm, sysfs_type;
 type sysfs_dm, sysfs_type;
-type sysfs_efi_vars, sysfs_type;
 
 type debugfs_gpu, debugfs_type;
 

@@ -42,5 +42,7 @@ allow cros_installer vfat:filesystem { mount unmount };
 # rules. CTS neverallow rules are only tested on the ARC Container
 # and these permissions are only needed for the no_arc board reven.
 no_arc(`
-  rw_dir_file(cros_installer, sysfs_efi_vars);
+  rw_dir_file(cros_installer, efivarfs);
+  allow cros_installer efivarfs:filesystem getattr;
+  allow cros_installer efivarfs:file { create unlink };
 ')

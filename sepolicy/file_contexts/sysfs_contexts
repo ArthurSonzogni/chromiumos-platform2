@@ -15,7 +15,7 @@
 /sys/kernel/tracing/instances/(/.*)?       u:object_r:debugfs_tracing_instances:s0
 /sys/kernel/tracing/trace_marker           u:object_r:debugfs_trace_marker:s0
 
-/sys/firmware/efi/vars(/.*)?               u:object_r:sysfs_efi_vars:s0
+/sys/firmware/efi/efivars(/.*)?            u:object_r:efivarfs:s0
 
 /sys/class/net(/.*)?                       u:object_r:sysfs_net:s0
 /sys/class/tpm(/.*)?                       u:object_r:sysfs_tpm:s0

@@ -1,1 +1,3 @@
 genfscon debugfs /dri/ u:object_r:debugfs_gpu:s0
+
+genfscon efivarfs / u:object_r:efivarfs:s0

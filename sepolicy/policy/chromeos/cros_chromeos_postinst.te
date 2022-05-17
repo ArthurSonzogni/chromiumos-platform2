@@ -31,6 +31,7 @@ allow cros_chromeos_postinst {
   cros_stateful_partition
   cros_var
   device
+  efivarfs
   rootfs
   sysfs
   tmpfs
