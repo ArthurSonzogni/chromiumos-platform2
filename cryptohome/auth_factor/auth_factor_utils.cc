@@ -30,6 +30,13 @@ void GetPinMetadata(const user_data_auth::AuthFactor& auth_factor,
   out_auth_factor_metadata.metadata = PinAuthFactorMetadata();
 }
 
+// Set cryptohome recovery metadata here, which happens to be empty.
+void GetCryptohomeRecoveryMetadata(
+    const user_data_auth::AuthFactor& auth_factor,
+    AuthFactorMetadata& out_auth_factor_metadata) {
+  out_auth_factor_metadata.metadata = CryptohomeRecoveryAuthFactorMetadata();
+}
+
 // Creates a D-Bus proto for a password auth factor.
 std::optional<user_data_auth::AuthFactor> ToPasswordProto(
     const PasswordAuthFactorMetadata& metadata) {
@@ -50,6 +57,15 @@ std::optional<user_data_auth::AuthFactor> ToPinProto(
   return proto;
 }
 
+// Creates a D-Bus proto for a cryptohome recovery auth factor.
+std::optional<user_data_auth::AuthFactor> ToCryptohomeRecoveryProto(
+    const CryptohomeRecoveryAuthFactorMetadata& metadata) {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  // TODO(b/232896212): There's no metadata for recovery auth factor currently.
+  proto.mutable_cryptohome_recovery_metadata();
+  return proto;
+}
 }  // namespace
 
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
@@ -68,6 +84,11 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       DCHECK(auth_factor.has_pin_metadata());
       GetPinMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPin;
+      break;
+    case user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY:
+      DCHECK(auth_factor.has_cryptohome_recovery_metadata());
+      GetCryptohomeRecoveryMetadata(auth_factor, out_auth_factor_metadata);
+      out_auth_factor_type = AuthFactorType::kCryptohomeRecovery;
       break;
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
@@ -100,6 +121,15 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
       auto* pin_metadata =
           std::get_if<PinAuthFactorMetadata>(&auth_factor_metadata.metadata);
       proto = pin_metadata ? ToPinProto(*pin_metadata) : std::nullopt;
+      break;
+    }
+    case AuthFactorType::kCryptohomeRecovery: {
+      auto* cryptohome_recovery_metadata =
+          std::get_if<CryptohomeRecoveryAuthFactorMetadata>(
+              &auth_factor_metadata.metadata);
+      proto = cryptohome_recovery_metadata
+                  ? ToCryptohomeRecoveryProto(*cryptohome_recovery_metadata)
+                  : std::nullopt;
       break;
     }
     case AuthFactorType::kUnspecified: {

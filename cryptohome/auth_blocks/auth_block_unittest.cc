@@ -1321,8 +1321,13 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
   // Save data required for key derivation in auth_input.
-  derive_cryptohome_recovery_auth_input.recovery_response = response_proto;
-  derive_cryptohome_recovery_auth_input.epoch_response = epoch_response_;
+  std::string serialized_response_proto, serialized_epoch_response;
+  EXPECT_TRUE(response_proto.SerializeToString(&serialized_response_proto));
+  EXPECT_TRUE(epoch_response_.SerializeToString(&serialized_epoch_response));
+  derive_cryptohome_recovery_auth_input.recovery_response =
+      brillo::SecureBlob(serialized_response_proto);
+  derive_cryptohome_recovery_auth_input.epoch_response =
+      brillo::SecureBlob(serialized_epoch_response);
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   auth_input.cryptohome_recovery_auth_input =
       derive_cryptohome_recovery_auth_input;
@@ -1393,8 +1398,13 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
   // Save data required for key derivation in auth_input.
-  derive_cryptohome_recovery_auth_input.recovery_response = response_proto;
-  derive_cryptohome_recovery_auth_input.epoch_response = epoch_response_;
+  std::string serialized_response_proto, serialized_epoch_response;
+  EXPECT_TRUE(response_proto.SerializeToString(&serialized_response_proto));
+  EXPECT_TRUE(epoch_response_.SerializeToString(&serialized_epoch_response));
+  derive_cryptohome_recovery_auth_input.recovery_response =
+      brillo::SecureBlob(serialized_response_proto);
+  derive_cryptohome_recovery_auth_input.epoch_response =
+      brillo::SecureBlob(serialized_epoch_response);
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   auth_input.cryptohome_recovery_auth_input =
       derive_cryptohome_recovery_auth_input;

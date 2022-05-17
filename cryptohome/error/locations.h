@@ -889,6 +889,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSContainerSerializeFailedInGetEncContainer = 531,
   /* ./userdataauth.cc */
   kLocUserDataAuthNotConfiguredInStartAuthSession = 532,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockCantParseEpochResponseInDerive = 533,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockCantParseResponseInDerive = 534,
+  /* ./auth_session.cc */
+  kLocWrongAuthFactorInGetRecoveryRequest = 535,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

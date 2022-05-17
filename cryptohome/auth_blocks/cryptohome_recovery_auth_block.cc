@@ -191,14 +191,33 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
   DCHECK(cryptohome_recovery_auth_input.epoch_response.has_value());
-  cryptorecovery::CryptoRecoveryEpochResponse epoch_response =
+  brillo::SecureBlob serialized_epoch_response =
       cryptohome_recovery_auth_input.epoch_response.value();
   DCHECK(cryptohome_recovery_auth_input.ephemeral_pub_key.has_value());
   const brillo::SecureBlob& ephemeral_pub_key =
       cryptohome_recovery_auth_input.ephemeral_pub_key.value();
   DCHECK(cryptohome_recovery_auth_input.recovery_response.has_value());
-  cryptorecovery::CryptoRecoveryRpcResponse response_proto =
+  brillo::SecureBlob serialized_response_proto =
       cryptohome_recovery_auth_input.recovery_response.value();
+
+  cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
+  if (!epoch_response.ParseFromString(serialized_epoch_response.to_string())) {
+    LOG(ERROR) << "Failed to parse CryptoRecoveryEpochResponse";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockCantParseEpochResponseInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+  cryptorecovery::CryptoRecoveryRpcResponse response_proto;
+  if (!response_proto.ParseFromString(serialized_response_proto.to_string())) {
+    LOG(ERROR) << "Failed to parse CryptoRecoveryRpcResponse";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockCantParseResponseInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
 
   brillo::SecureBlob plaintext_destination_share =
       auth_state->plaintext_destination_share.value();

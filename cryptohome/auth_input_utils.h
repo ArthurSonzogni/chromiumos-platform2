@@ -15,10 +15,12 @@
 namespace cryptohome {
 
 // Converts the AuthInput D-Bus proto into the cryptohome struct.
-std::optional<AuthInput> FromProto(
+std::optional<AuthInput> CreateAuthInput(
     const user_data_auth::AuthInput& auth_input_proto,
     const std::string& obfuscated_username,
-    bool locked_to_single_user);
+    bool locked_to_single_user,
+    const std::optional<brillo::SecureBlob>&
+        cryptohome_recovery_ephemeral_pub_key);
 
 }  // namespace cryptohome
 

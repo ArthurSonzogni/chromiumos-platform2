@@ -50,7 +50,9 @@ constexpr int kFlatbufferAllocatorInitialSize = 4096;
 // Note: The string values in this constant must stay stable, as they're used in
 // file names.
 constexpr std::pair<AuthFactorType, const char*> kAuthFactorTypeStrings[] = {
-    {AuthFactorType::kPassword, "password"}, {AuthFactorType::kPin, "pin"}};
+    {AuthFactorType::kPassword, "password"},
+    {AuthFactorType::kPin, "pin"},
+    {AuthFactorType::kCryptohomeRecovery, "cryptohome_recovery"}};
 
 // Converts the auth factor type enum into a string.
 std::string GetAuthFactorTypeString(AuthFactorType type) {
@@ -92,6 +94,14 @@ flatbuffers::Offset<SerializedPinMetadata> SerializeMetadataToOffset(
   return metadata_builder.Finish();
 }
 
+flatbuffers::Offset<SerializedCryptohomeRecoveryMetadata>
+SerializeMetadataToOffset(
+    const CryptohomeRecoveryAuthFactorMetadata& password_metadata,
+    flatbuffers::FlatBufferBuilder* builder) {
+  SerializedCryptohomeRecoveryMetadataBuilder metadata_builder(*builder);
+  return metadata_builder.Finish();
+}
+
 // Serializes the password metadata into the given flatbuffer builder. Returns
 // the flatbuffer offset, to be used for building the outer table.
 flatbuffers::Offset<void> SerializeMetadataToOffset(
@@ -106,6 +116,12 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
                  std::get_if<PinAuthFactorMetadata>(&metadata.metadata)) {
     *metadata_type = SerializedAuthFactorMetadata::SerializedPinMetadata;
     return SerializeMetadataToOffset(*pin_metadata, builder).Union();
+  } else if (const auto* recovery_metadata =
+                 std::get_if<CryptohomeRecoveryAuthFactorMetadata>(
+                     &metadata.metadata)) {
+    *metadata_type =
+        SerializedAuthFactorMetadata::SerializedCryptohomeRecoveryMetadata;
+    return SerializeMetadataToOffset(*recovery_metadata, builder).Union();
   }
   LOG(ERROR) << "Missing or unexpected auth factor metadata: "
              << metadata.metadata.index();
@@ -161,6 +177,14 @@ bool ConvertPinMetadataFromFlatbuffer(
   return true;
 }
 
+bool ConvertCryptohomeRecoveryMetadataFromFlatbuffer(
+    const SerializedCryptohomeRecoveryMetadata& flatbuffer_table,
+    AuthFactorMetadata* metadata) {
+  // There's no metadata currently.
+  metadata->metadata = CryptohomeRecoveryAuthFactorMetadata();
+  return true;
+}
+
 bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                                AuthBlockState* auth_block_state,
                                AuthFactorMetadata* metadata) {
@@ -194,6 +218,14 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                  auth_factor_table->metadata_as_SerializedPinMetadata()) {
     if (!ConvertPinMetadataFromFlatbuffer(*pin_metadata, metadata)) {
       LOG(ERROR) << "Failed to convert SerializedAuthFactor pin metadata";
+      return false;
+    }
+  } else if (const SerializedCryptohomeRecoveryMetadata* recovery_metadata =
+                 auth_factor_table
+                     ->metadata_as_SerializedCryptohomeRecoveryMetadata()) {
+    if (!ConvertCryptohomeRecoveryMetadataFromFlatbuffer(*recovery_metadata,
+                                                         metadata)) {
+      LOG(ERROR) << "Failed to convert SerializedAuthFactor recovery metadata";
       return false;
     }
   } else {

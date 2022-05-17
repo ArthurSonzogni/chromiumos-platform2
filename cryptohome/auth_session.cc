@@ -732,8 +732,9 @@ bool AuthSession::AuthenticateAuthFactor(
 
   // Fill up the auth input.
   std::optional<AuthInput> auth_input =
-      FromProto(request.auth_input(), obfuscated_username_,
-                auth_block_utility_->GetLockedToSingleUser());
+      CreateAuthInput(request.auth_input(), obfuscated_username_,
+                      auth_block_utility_->GetLockedToSingleUser(),
+                      cryptohome_recovery_ephemeral_pub_key_);
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for authenticating auth factor";
     ReplyWithError(
@@ -818,6 +819,19 @@ bool AuthSession::GetRecoveryRequest(
 
   // Read CryptohomeRecoveryAuthBlockState.
   AuthFactor* auth_factor = label_to_auth_factor_iter->second.get();
+  if (auth_factor->type() != AuthFactorType::kCryptohomeRecovery) {
+    LOG(ERROR) << "GetRecoveryRequest can be called only for "
+                  "kCryptohomeRecovery auth factor";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocWrongAuthFactorInGetRecoveryRequest),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return false;
+  }
+
   auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
       &(auth_factor->auth_block_state().state));
   if (!state) {
@@ -1121,8 +1135,9 @@ CryptohomeStatus AuthSession::AddAuthFactor(
   }
 
   std::optional<AuthInput> auth_input =
-      FromProto(request.auth_input(), obfuscated_username_,
-                auth_block_utility_->GetLockedToSingleUser());
+      CreateAuthInput(request.auth_input(), obfuscated_username_,
+                      auth_block_utility_->GetLockedToSingleUser(),
+                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for new auth factor";
     return MakeStatus<CryptohomeError>(

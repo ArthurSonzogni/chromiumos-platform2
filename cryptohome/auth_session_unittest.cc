@@ -32,6 +32,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -1096,6 +1097,174 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
             error = reply.error();
           },
           std::ref(called), std::ref(error))));
+
+  // Verify.
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+  // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
+                                       AuthFactorType::kCryptohomeRecovery,
+                                       /*auth_input=*/_,
+                                       /*out_auth_block_state=*/_,
+                                       /*out_key_blobs=*/_))
+      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+                   AuthBlockState& out_auth_block_state,
+                   KeyBlobs& out_key_blobs) {
+        // An arbitrary auth block state type can be used in this test.
+        out_auth_block_state.state = CryptohomeRecoveryAuthBlockState();
+        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+        return OkStatus<CryptohomeCryptoError>();
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_cryptohome_recovery_metadata();
+  request.mutable_auth_input()
+      ->mutable_cryptohome_recovery_input()
+      ->set_mediator_pub_key("mediator pub key");
+  EXPECT_TRUE(auth_session.AddAuthFactor(request).ok());
+
+  // Verify.
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(
+      stored_factors,
+      ElementsAre(Pair(kFakeLabel, AuthFactorType::kCryptohomeRecovery)));
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       AuthenticateCryptohomeRecoveryAuthFactor) {
+  // Setup.
+  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
+      UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
+  std::optional<brillo::SecureBlob> uss_main_key =
+      UserSecretStash::CreateRandomMainKey();
+  ASSERT_TRUE(uss_main_key.has_value());
+  // Creating the auth factor.
+  AuthFactor auth_factor(
+      AuthFactorType::kCryptohomeRecovery, kFakeLabel,
+      AuthFactorMetadata{.metadata = CryptohomeRecoveryAuthFactorMetadata()},
+      AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor)
+          .ok());
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
+                                     wrapping_key.value())
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
+      uss->GetEncryptedContainer(uss_main_key.value());
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
+  // Creating the auth session.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // Test.
+  // Setting the expectation that the auth block utility will generate recovery
+  // request.
+  EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _))
+      .WillOnce([&](const cryptorecovery::RequestMetadata& request_metadata,
+                    const brillo::Blob& epoch_response,
+                    const CryptohomeRecoveryAuthBlockState& state, Tpm* tpm,
+                    brillo::SecureBlob* out_recovery_request,
+                    brillo::SecureBlob* out_ephemeral_pub_key) {
+        *out_ephemeral_pub_key = brillo::SecureBlob("test");
+        return OkStatus<CryptohomeCryptoError>();
+      });
+  EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
+
+  // Calling GetRecoveryRequest.
+  user_data_auth::GetRecoveryRequestRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  EXPECT_TRUE(auth_session.GetRecoveryRequest(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::GetRecoveryRequestReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error))));
+
+  // Verify.
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_TRUE(auth_session.cryptohome_recovery_ephemeral_pub_key_for_testing()
+                  .has_value());
+  EXPECT_EQ(
+      auth_session.cryptohome_recovery_ephemeral_pub_key_for_testing().value(),
+      brillo::SecureBlob("test"));
+
+  // Test.
+  // Setting the expectation that the auth block utility will derive key blobs.
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _))
+      .WillOnce([&](const AuthInput& auth_input,
+                    const AuthBlockState& auth_block_state,
+                    KeyBlobs& out_key_blobs) {
+        out_key_blobs.vkk_key = kFakePerCredentialSecret;
+        return OkStatus<CryptohomeCryptoError>();
+      });
+  // Calling AuthenticateAuthFactor.
+  user_data_auth::AuthenticateAuthFactorRequest authenticate_request;
+  authenticate_request.set_auth_session_id(auth_session.serialized_token());
+  authenticate_request.set_auth_factor_label(kFakeLabel);
+  authenticate_request.mutable_auth_input()
+      ->mutable_cryptohome_recovery_input()
+      ->mutable_recovery_response();
+  bool authenticate_called = false;
+  user_data_auth::CryptohomeErrorCode authenticate_error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      authenticate_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(authenticate_called), std::ref(authenticate_error))));
 
   // Verify.
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);

@@ -32,12 +32,31 @@ AuthInput FromPinAuthInput(const user_data_auth::PinAuthInput& proto) {
   };
 }
 
+AuthInput FromCryptohomeRecoveryAuthInput(
+    const user_data_auth::CryptohomeRecoveryAuthInput& proto,
+    const std::optional<brillo::SecureBlob>&
+        cryptohome_recovery_ephemeral_pub_key) {
+  CryptohomeRecoveryAuthInput recovery_auth_input{
+      // These fields are used for `Create`:
+      .mediator_pub_key = SecureBlob(proto.mediator_pub_key()),
+      // These fields are used for `Derive`:
+      .epoch_response = SecureBlob(proto.epoch_response()),
+      .ephemeral_pub_key =
+          cryptohome_recovery_ephemeral_pub_key.value_or(SecureBlob()),
+      .recovery_response = SecureBlob(proto.recovery_response()),
+  };
+
+  return AuthInput{.cryptohome_recovery_auth_input = recovery_auth_input};
+}
+
 }  // namespace
 
-std::optional<AuthInput> FromProto(
+std::optional<AuthInput> CreateAuthInput(
     const user_data_auth::AuthInput& auth_input_proto,
     const std::string& obfuscated_username,
-    bool locked_to_single_user) {
+    bool locked_to_single_user,
+    const std::optional<brillo::SecureBlob>&
+        cryptohome_recovery_ephemeral_pub_key) {
   std::optional<AuthInput> auth_input;
   switch (auth_input_proto.input_case()) {
     case user_data_auth::AuthInput::kPasswordInput:
@@ -45,6 +64,11 @@ std::optional<AuthInput> FromProto(
       break;
     case user_data_auth::AuthInput::kPinInput:
       auth_input = FromPinAuthInput(auth_input_proto.pin_input());
+      break;
+    case user_data_auth::AuthInput::kCryptohomeRecoveryInput:
+      auth_input = FromCryptohomeRecoveryAuthInput(
+          auth_input_proto.cryptohome_recovery_input(),
+          cryptohome_recovery_ephemeral_pub_key);
       break;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       break;

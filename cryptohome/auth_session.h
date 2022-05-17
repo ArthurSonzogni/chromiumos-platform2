@@ -190,6 +190,11 @@ class AuthSession final {
     return user_secret_stash_main_key_;
   }
 
+  const std::optional<brillo::SecureBlob>&
+  cryptohome_recovery_ephemeral_pub_key_for_testing() const {
+    return cryptohome_recovery_ephemeral_pub_key_;
+  }
+
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized

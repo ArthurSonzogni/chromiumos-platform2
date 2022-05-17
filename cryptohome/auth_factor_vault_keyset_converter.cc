@@ -182,6 +182,7 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
       out_key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
       out_key_data.mutable_policy()->set_low_entropy_credential(true);
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kUnspecified:
       LOG(ERROR) << "Unimplemented AuthFactorType.";
       return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
