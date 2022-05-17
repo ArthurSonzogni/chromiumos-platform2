@@ -16,6 +16,7 @@ source_set("libfake_cros_healthd") {
   configs += [ ":libfake_cros_healthd_pkg_deps" ]
   deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
   sources = [
+    "fake_chromium_data_collector.cc",
     "fake_probe_service.cc",
     "fake_routine_service.cc",
   ]
