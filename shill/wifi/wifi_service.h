@@ -312,8 +312,14 @@ class WiFiService : public Service {
                                  bool (WiFiService::*set)(const uint16_t& value,
                                                           Error* error),
                                  void (WiFiService::*clear)(Error* error));
+  void HelpRegisterConstDerivedInt32(const std::string& name,
+                                     int32_t (WiFiService::*get)(Error* error));
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
+
+  // Wrapper for |WiFiService::SignalLevel()| to register it in
+  // |Service::store_|.
+  int32_t GetSignalLevel(Error* error);
 
   void ClearPassphrase(Error* error);
 

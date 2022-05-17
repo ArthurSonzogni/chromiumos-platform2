@@ -1305,6 +1305,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
+                                      kOkEndpointSignal));
   EXPECT_CALL(adaptor,
               EmitUint16Changed(kWifiPhyMode, Metrics::kWiFiNetworkPhyMode11b));
   service->AddEndpoint(ok_endpoint);
@@ -1317,6 +1319,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kGoodEndpointBssId));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kGoodEndpointStrength));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
+                                      kGoodEndpointSignal));
   // However, both endpoints are 11b.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(good_endpoint);
@@ -1327,6 +1331,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
+      .Times(0);
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(bad_endpoint);
   EXPECT_EQ(3, service->GetEndpointCount());
@@ -1336,6 +1342,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
+      .Times(0);
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(bad_endpoint);
   EXPECT_EQ(2, service->GetEndpointCount());
@@ -1346,6 +1354,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
+                                      kOkEndpointSignal));
   // However, both endpoints are 11b.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(good_endpoint);
@@ -1356,6 +1366,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _));
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _));
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _));
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode,
                                          Metrics::kWiFiNetworkPhyModeUndef));
   service->RemoveEndpoint(ok_endpoint);
@@ -1380,6 +1391,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kBadEndpointBssId));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kBadEndpointStrength));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
+                                      kBadEndpointSignal));
   service->NotifyCurrentEndpoint(bad_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
@@ -1387,6 +1400,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
+      .Times(0);
   service->AddEndpoint(good_endpoint);
   EXPECT_EQ(3, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1395,6 +1410,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
+      .Times(0);
   service->RemoveEndpoint(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
@@ -1403,6 +1420,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
+                                      kOkEndpointSignal));
   service->RemoveEndpoint(bad_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
@@ -1412,6 +1431,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
+      .Times(0);
   service->NotifyCurrentEndpoint(nullptr);
   Mock::VerifyAndClearExpectations(&adaptor);
 }
@@ -1430,6 +1451,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
+      .Times(0);
   ok_endpoint->signal_strength_ = (kOkEndpointSignal + kGoodEndpointSignal) / 2;
   service->NotifyEndpointUpdated(ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1438,6 +1461,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _));
   good_endpoint->signal_strength_ = kGoodEndpointSignal + 1;
   service->NotifyEndpointUpdated(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1446,6 +1470,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _));
   ok_endpoint->signal_strength_ = kGoodEndpointSignal + 2;
   service->NotifyEndpointUpdated(ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);

@@ -1977,6 +1977,12 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 				Microsoft nor Epigram identifiers (the former
 				two are used for platform-neutral information).
 
+		int32 WiFi.SignalStrengthRssi [readonly]
+
+			(WiFi only) Indicates the RSSI value in dBm of the signal strength
+			of the service. This is typically between -90 and -20 dBm. Unknown
+			value is represented as -32768 dBm (int16 min value).
+
 		array{dict} WireGuard.Peers [writeonly]
 
 			(VPN services of type WireGuard only) The list of peers

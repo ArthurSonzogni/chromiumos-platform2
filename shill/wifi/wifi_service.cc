@@ -189,6 +189,8 @@ WiFiService::WiFiService(Manager* manager,
                                  &WiFiService::GetPasspointID);
   HelpRegisterConstDerivedString(kPasspointMatchTypeProperty,
                                  &WiFiService::GetPasspointMatchType);
+  HelpRegisterConstDerivedInt32(kWifiSignalStrengthRssiProperty,
+                                &WiFiService::GetSignalLevel);
 
   SetEapCredentials(new EapCredentials());
 
@@ -772,6 +774,13 @@ void WiFiService::HelpRegisterDerivedUint16(
                 this, get, set, clear)));
 }
 
+void WiFiService::HelpRegisterConstDerivedInt32(
+    const std::string& name, int32_t (WiFiService::*get)(Error* error)) {
+  mutable_store()->RegisterDerivedInt32(
+      name, Int32Accessor(
+                new CustomAccessor<WiFiService, int32_t>(this, get, nullptr)));
+}
+
 void WiFiService::OnConnect(Error* error) {
   WiFiRefPtr wifi = wifi_;
   if (!wifi) {
@@ -1135,6 +1144,7 @@ void WiFiService::UpdateFromEndpoints() {
   Stringmap vendor_information;
   uint16_t physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
   std::string security;
+  int16_t prev_raw_signal_strength = raw_signal_strength_;
   // Represent "unknown raw signal strength" as 0.
   raw_signal_strength_ = 0;
   if (representative_endpoint) {
@@ -1174,7 +1184,10 @@ void WiFiService::UpdateFromEndpoints() {
     adaptor()->EmitUint16Changed(kWifiPhyMode, physical_mode_);
   }
   adaptor()->EmitUint16sChanged(kWifiFrequencyListProperty, frequency_list_);
-  SetStrength(SignalToStrength(signal));
+  if (prev_raw_signal_strength != raw_signal_strength_) {
+    adaptor()->EmitIntChanged(kWifiSignalStrengthRssiProperty, SignalLevel());
+    SetStrength(SignalToStrength(signal));
+  }
 
   if (security != security_) {
     security_ = security;
@@ -1404,6 +1417,10 @@ int16_t WiFiService::SignalLevel() const {
   // on the theory that the service probably exists somewhere in
   // the world but is too far away to hear.
   return HasEndpoints() ? raw_signal_strength_ : WiFiService::SignalLevelMin;
+}
+
+int32_t WiFiService::GetSignalLevel(Error* /*error*/) {
+  return SignalLevel();
 }
 
 // static
