@@ -7,9 +7,9 @@
         uint64_t handle (opendir(2) file handle).
       </tp:docstring>
       </arg>
-      <arg name="result" type="i" direction="in">
+      <arg name="error" type="i" direction="in">
       <tp:docstring>
-        int32_t(base::File::Error) result.
+        int32_t(base::File::Error or POSIX errno).
       </tp:docstring>
       </arg>
       <arg name="list" type="ay" direction="in">
