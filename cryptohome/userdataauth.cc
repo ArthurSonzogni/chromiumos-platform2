@@ -195,8 +195,8 @@ CryptoStatus CreateKeyBlobs(const AuthBlockUtility& auth_block_utility,
                             KeyBlobs& out_key_blobs,
                             AuthBlockState& out_state) {
   AuthBlockType auth_block_type =
-      auth_block_utility.GetAuthBlockTypeForCreation(is_le_credential,
-                                                     is_challenge_credential);
+      auth_block_utility.GetAuthBlockTypeForCreation(
+          is_le_credential, /*is_recovery=*/false, is_challenge_credential);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR) << "Error in obtaining AuthBlock type.";
     return MakeStatus<CryptohomeCryptoError>(

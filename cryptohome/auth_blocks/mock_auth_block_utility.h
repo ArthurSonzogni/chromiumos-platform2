@@ -59,7 +59,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (override));
   MOCK_METHOD(AuthBlockType,
               GetAuthBlockTypeForCreation,
-              (const bool, const bool),
+              (const bool, const bool, const bool),
               (const, override));
   MOCK_METHOD(AuthBlockType,
               GetAuthBlockTypeForDerive,

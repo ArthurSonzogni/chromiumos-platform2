@@ -330,7 +330,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
 
   // Generate KeyBlobs and AuthBlockState used for VaultKeyset encryption.
   auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, is_challenge_credential);
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -563,7 +563,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
 
   AuthBlockType auth_block_type;
   auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, is_challenge_credential);
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -1003,7 +1003,8 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
   // we don't need the asynchronous KeyBlob creation.
   AuthBlockType auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
-          vault_keyset_->IsLECredential(), /*is_challenge_credential*/ false);
+          vault_keyset_->IsLECredential(), /*is_recovery=*/false,
+          /*is_challenge_credential*/ false);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset.";

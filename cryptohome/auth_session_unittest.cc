@@ -685,7 +685,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave) {
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _))
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
       .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(keyset_management_, ReSaveKeysetWithKeyBlobs(_, _, _));
 

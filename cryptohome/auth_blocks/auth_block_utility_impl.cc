@@ -24,6 +24,7 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
@@ -253,9 +254,16 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
-    const bool is_le_credential, const bool is_challenge_credential) const {
+    const bool is_le_credential,
+    const bool is_recovery,
+    const bool is_challenge_credential) const {
+  DCHECK_LE(is_le_credential + is_recovery + is_challenge_credential, 1);
   if (is_le_credential) {
     return AuthBlockType::kPinWeaver;
+  }
+
+  if (is_recovery) {
+    return AuthBlockType::kCryptohomeRecovery;
   }
 
   if (is_challenge_credential) {
@@ -335,14 +343,8 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
       return std::make_unique<LibScryptCompatAuthBlock>();
 
     case AuthBlockType::kCryptohomeRecovery:
-      LOG(ERROR)
-          << "CryptohomeRecovery is not a supported AuthBlockType for now.";
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilCHRecoveryUnsupportedInGetAuthBlockWithType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          CryptoError::CE_OTHER_CRYPTO);
+      return std::make_unique<CryptohomeRecoveryAuthBlock>(
+          crypto_->tpm(), crypto_->le_manager());
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
@@ -488,8 +490,9 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
     AuthBlockState& out_auth_block_state,
     KeyBlobs& out_key_blobs) const {
   bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
+  bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
   AuthBlockType auth_block_type =
-      GetAuthBlockTypeForCreation(is_le_credential,
+      GetAuthBlockTypeForCreation(is_le_credential, is_recovery,
                                   /*is_challenge_credential =*/false);
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";
@@ -527,6 +530,9 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerive(
   } else if (const auto& state = std::get_if<ChallengeCredentialAuthBlockState>(
                  &auth_block_state.state)) {
     auth_block_type = AuthBlockType::kChallengeCredential;
+  } else if (const auto& state = std::get_if<CryptohomeRecoveryAuthBlockState>(
+                 &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kCryptohomeRecovery;
   }
 
   return auth_block_type;
