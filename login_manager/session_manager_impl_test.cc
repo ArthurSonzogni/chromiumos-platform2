@@ -314,6 +314,10 @@ std::string ExpectedSkipGmsCoreCacheSetupFlagValue(bool enabled) {
   return base::StringPrintf("SKIP_GMS_CORE_CACHE_SETUP=%d", enabled);
 }
 
+std::string ExpectedSkipTtsCacheSetupFlagValue(bool enabled) {
+  return base::StringPrintf("SKIP_TTS_CACHE_SETUP=%d", enabled);
+}
+
 #endif  // USE_CHEETS
 
 }  // namespace
@@ -734,6 +738,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    UpgradeContainerExpectationsBuilder& SetSkipTtsCache(bool v) {
+      skip_tts_cache_ = v;
+      return *this;
+    }
+
     std::vector<std::string> Build() const {
       return {
           "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
@@ -751,6 +760,7 @@ class SessionManagerImplTest : public ::testing::Test,
           ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
           ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
           ExpectedSkipGmsCoreCacheSetupFlagValue(skip_gms_core_cache_),
+          ExpectedSkipTtsCacheSetupFlagValue(skip_tts_cache_),
           "LOCALE=" + locale_, "PREFERRED_LANGUAGES=" + preferred_languages_};
     }
 
@@ -768,6 +778,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool enable_adb_sideload_ = false;
     bool enable_arc_nearby_share_ = false;
     bool disable_ureadahead_ = false;
+    bool skip_tts_cache_ = false;
   };
 #endif
 
@@ -1116,7 +1127,7 @@ class SessionManagerImplTest : public ::testing::Test,
 class SessionManagerPackagesCacheTest
     : public SessionManagerImplTest,
       public testing::WithParamInterface<
-          std::tuple<UpgradeArcContainerRequest_PackageCacheMode, bool>> {
+          std::tuple<UpgradeArcContainerRequest_PackageCacheMode, bool, bool>> {
  public:
   SessionManagerPackagesCacheTest() = default;
   SessionManagerPackagesCacheTest(const SessionManagerPackagesCacheTest&) =
@@ -2938,6 +2949,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
                       .SetSkipPackagesCache(skip_packages_cache_setup)
                       .SetCopyPackagesCache(copy_cache_setup)
                       .SetSkipGmsCoreCache(std::get<1>(GetParam()))
+                      .SetSkipTtsCache(std::get<2>(GetParam()))
                       .Build(),
                   InitDaemonController::TriggerMode::SYNC,
                   SessionManagerImpl::kArcBootContinueTimeout, _))
@@ -2951,6 +2963,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_packages_cache_mode(std::get<0>(GetParam()));
   upgrade_request.set_skip_gms_core_cache(std::get<1>(GetParam()));
+  upgrade_request.set_skip_tts_cache(std::get<2>(GetParam()));
   EXPECT_TRUE(
       impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_TRUE(android_container_.running());
@@ -2967,6 +2980,7 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(UpgradeArcContainerRequest::DEFAULT,
                           UpgradeArcContainerRequest::COPY_ON_INIT,
                           UpgradeArcContainerRequest::SKIP_SETUP_COPY_ON_INIT),
+        ::testing::Bool(),
         ::testing::Bool()));
 
 TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {

@@ -163,5 +163,8 @@ message UpgradeArcContainerRequest {
   // Option to enable Arc Nearby Share.
   optional bool enable_arc_nearby_share = 17 [default = false];
 
-  // Next ID to use: 18
+  // Option to skip pregenerated TTS cache setup.
+  optional bool skip_tts_cache = 18 [default = false];
+
+  // Next ID to use: 19
 }

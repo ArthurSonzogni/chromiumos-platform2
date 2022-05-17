@@ -2006,7 +2006,8 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       config_.GetStringOrDie("MANAGEMENT_TRANSITION"),
       "--enable-adb-sideloading", config_.GetStringOrDie("ENABLE_ADB_SIDELOAD"),
       "--enable-arc-nearby-share",
-      config_.GetStringOrDie("ENABLE_ARC_NEARBY_SHARE")};
+      config_.GetStringOrDie("ENABLE_ARC_NEARBY_SHARE"),
+      "--skip-tts-cache-setup", config_.GetStringOrDie("SKIP_TTS_CACHE_SETUP")};
 
   base::ElapsedTimer timer;
   if (!LaunchAndWait(command_line)) {
