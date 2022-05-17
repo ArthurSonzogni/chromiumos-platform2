@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
@@ -29,6 +30,7 @@ FakeWriteProtectDisablePhysicalStateHandler::
         const base::FilePath& working_dir_path)
     : WriteProtectDisablePhysicalStateHandler(
           json_store,
+          working_dir_path,
           std::make_unique<FakeCr50Utils>(working_dir_path),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
@@ -38,6 +40,7 @@ FakeWriteProtectDisablePhysicalStateHandler::
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store),
+      working_dir_path_(kDefaultWorkingDirPath),
       write_protect_signal_sender_(base::DoNothing()) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
@@ -48,10 +51,12 @@ WriteProtectDisablePhysicalStateHandler::
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
+        const base::FilePath& working_dir_path,
         std::unique_ptr<Cr50Utils> cr50_utils,
         std::unique_ptr<CrosSystemUtils> crossystem_utils,
         std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store),
+      working_dir_path_(working_dir_path),
       write_protect_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
@@ -143,15 +148,19 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
 
 void WriteProtectDisablePhysicalStateHandler::EnableFactoryMode() {
   // Sync state file.
+  // TODO(chenghan): Do we still need this after we can trigger the reboot?
   json_store_->Sync();
-  // Enable cr50 factory mode.
-  if (cr50_utils_->EnableFactoryMode()) {
-    // cr50 triggers a reboot shortly after enabling factory mode.
-    return;
+  // Enable cr50 factory mode. This no longer reboots the device, so we need to
+  // trigger a reboot ourselves.
+  if (!cr50_utils_->EnableFactoryMode()) {
+    LOG(ERROR) << "Failed to enable factory mode.";
   }
-  LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode.";
-  // Still do a reboot when failed to enable factory mode, just for
-  // consistent behavior.
+  // Inject rma-mode powerwash.
+  if (!brillo::TouchFile(
+          working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+    LOG(ERROR) << "Failed to request powerwash";
+  }
+  // Reboot.
   power_manager_client_->Restart();
 }
 

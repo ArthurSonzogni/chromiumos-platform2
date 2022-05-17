@@ -32,6 +32,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   // and |power_manager_client_| for testing.
   WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
+      const base::FilePath& working_dir_path,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<PowerManagerClient> power_manager_client);
@@ -62,6 +63,8 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   bool CanSkipEnablingFactoryMode() const;
   void CheckWriteProtectOffTask();
   void EnableFactoryMode();
+
+  base::FilePath working_dir_path_;
 
   base::OneShotTimer reboot_timer_;
   base::RepeatingTimer signal_timer_;

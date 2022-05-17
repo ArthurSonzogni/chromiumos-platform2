@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -77,7 +78,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
     auto handler =
         base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
-            json_store_, std::move(mock_cr50_utils),
+            json_store_, GetTempDirPath(), std::move(mock_cr50_utils),
             std::move(mock_crossystem_utils),
             std::move(mock_power_manager_client));
     auto callback =
@@ -233,11 +234,13 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_FALSE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
-  // Try to enable factory mode after a delay.
+  // Try to enable factory mode, request a powerwash, and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(factory_mode_toggled);
-  EXPECT_FALSE(reboot_toggled);
+  EXPECT_TRUE(reboot_toggled);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
@@ -274,11 +277,13 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_FALSE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
-  // Try to enable factory mode after a delay.
+  // Try to enable factory mode, request a powerwash, and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_TRUE(reboot_toggled);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
