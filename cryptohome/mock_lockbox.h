@@ -22,8 +22,6 @@ class MockLockbox : public Lockbox {
 
   MOCK_METHOD(void, set_tpm, (Tpm*), (override));
   MOCK_METHOD(Tpm*, tpm, (), (override));
-
-  MOCK_METHOD(void, set_platform, (Platform*), (override));
 };
 
 }  // namespace cryptohome

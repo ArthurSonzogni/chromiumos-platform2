@@ -9,7 +9,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -58,7 +57,6 @@ class LockboxTest : public ::testing::TestWithParam<Tpm::TpmVersion> {
     // This generates the expected NVRAM value and serialized file data.
     file_data_.assign(kFileData, kFileData + strlen(kFileData));
     lockbox_.set_tpm(&tpm_);
-    lockbox_.set_process(&process_);
   }
 
   uint32_t GetExpectedNvramSpaceFlags() {
@@ -77,7 +75,6 @@ class LockboxTest : public ::testing::TestWithParam<Tpm::TpmVersion> {
   static const char* kFileData;
   Lockbox lockbox_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<brillo::ProcessMock> process_;
   brillo::Blob file_data_;
 };
 
@@ -209,13 +206,6 @@ TEST_P(LockboxTest, StoreOk) {
     EXPECT_CALL(tpm_, WriteLockNvram(0xdeadbeef)).WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef)).WillOnce(Return(true));
   }
-  EXPECT_CALL(process_, Reset(0)).Times(1);
-  EXPECT_CALL(process_, AddArg("/usr/sbin/mount-encrypted")).Times(1);
-  EXPECT_CALL(process_, AddArg("finalize")).Times(1);
-  EXPECT_CALL(process_, AddArg(SecureBlobToHex(Sha256(key_material)))).Times(1);
-  EXPECT_CALL(process_, BindFd(_, 1)).Times(1);
-  EXPECT_CALL(process_, BindFd(_, 2)).Times(1);
-  EXPECT_CALL(process_, Run()).WillOnce(Return(0));
 
   LockboxError error;
   EXPECT_TRUE(lockbox_.Store(file_data_, &error));

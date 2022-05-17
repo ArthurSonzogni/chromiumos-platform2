@@ -37,13 +37,6 @@ using hwsec_foundation::SecureBlobToHex;
 using hwsec_foundation::Sha256;
 
 namespace cryptohome {
-namespace {
-
-// Literals for running mount-encrypted helper.
-constexpr char kMountEncrypted[] = "/usr/sbin/mount-encrypted";
-constexpr char kMountEncryptedFinalize[] = "finalize";
-
-}  // namespace
 
 std::ostream& operator<<(std::ostream& out, LockboxError error) {
   return out << static_cast<int>(error);
@@ -61,12 +54,7 @@ int GetNvramVersionNumber(NvramVersion version) {
 }
 
 Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
-    : tpm_(tpm),
-      nvram_index_(nvram_index),
-      default_process_(new brillo::ProcessImpl()),
-      process_(default_process_.get()),
-      default_platform_(new Platform()),
-      platform_(default_platform_.get()) {}
+    : tpm_(tpm), nvram_index_(nvram_index) {}
 
 Lockbox::~Lockbox() {}
 
@@ -194,64 +182,7 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
     return false;
   }
 
-  // Call out to mount-encrypted now that salt has been written.
-  FinalizeMountEncrypted(contents->version() == NvramVersion::kVersion1
-                             ? nvram_blob
-                             : key_material);
-
   return true;
-}
-
-// TODO(keescook) Write unittests for this.
-void Lockbox::FinalizeMountEncrypted(const brillo::SecureBlob& entropy) const {
-  std::string hex;
-  FilePath outfile_path;
-  FILE* outfile;
-  int rc;
-
-  // Take hash of entropy and convert to hex string for cmdline.
-  SecureBlob hash = Sha256(entropy);
-  hex = SecureBlobToHex(hash);
-
-  process_->Reset(0);
-  process_->AddArg(kMountEncrypted);
-  process_->AddArg(kMountEncryptedFinalize);
-  process_->AddArg(hex);
-
-  // Redirect stdout/stderr somewhere useful for error reporting.
-  outfile = platform_->CreateAndOpenTemporaryFile(&outfile_path);
-  if (outfile) {
-    process_->BindFd(fileno(outfile), STDOUT_FILENO);
-    process_->BindFd(fileno(outfile), STDERR_FILENO);
-  }
-
-  rc = process_->Run();
-
-  if (rc) {
-    LOG(ERROR) << "Request to finalize encrypted mount failed ('"
-               << kMountEncrypted << " " << kMountEncryptedFinalize << " "
-               << hex << "', rc:" << rc << ")";
-    if (outfile) {
-      std::vector<std::string> output;
-      std::vector<std::string>::iterator it;
-      std::string contents;
-
-      if (platform_->ReadFileToString(outfile_path, &contents)) {
-        output = base::SplitString(contents, "\n", base::KEEP_WHITESPACE,
-                                   base::SPLIT_WANT_ALL);
-        for (it = output.begin(); it < output.end(); it++) {
-          LOG(ERROR) << *it;
-        }
-      }
-    }
-  } else {
-    LOG(INFO) << "Encrypted partition finalized.";
-  }
-
-  if (outfile)
-    platform_->CloseFile(outfile);
-
-  return;
 }
 
 // static

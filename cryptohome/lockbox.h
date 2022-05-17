@@ -11,7 +11,6 @@
 #include <openssl/sha.h>
 
 #include <base/strings/string_util.h>
-#include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/platform.h"
@@ -104,14 +103,6 @@ class Lockbox {
   // Does NOT take ownership of the pointer.
   virtual void set_tpm(Tpm* tpm) { tpm_ = tpm; }
 
-  // Replaces the process spawning implementation.
-  // Does NOT take ownership of the pointer.
-  virtual void set_process(brillo::Process* p) { process_ = p; }
-
-  // Replaces the Platform class (only used for mount-encrypted).
-  // Does NOT take ownership of the pointer.
-  virtual void set_platform(Platform* p) { platform_ = p; }
-
   // Return NVRAM index.
   virtual uint32_t nvram_index() const { return nvram_index_; }
   // Return NVRAM version.
@@ -131,18 +122,10 @@ class Lockbox {
     return tpm_->GetVersion() != Tpm::TpmVersion::TPM_2_0;
   }
 
- protected:
-  // Call out to the mount-encrypted helper to encrypt the key.
-  virtual void FinalizeMountEncrypted(const brillo::SecureBlob& entropy) const;
-
  private:
   Tpm* tpm_;
   uint32_t nvram_index_;
   NvramVersion nvram_version_ = NvramVersion::kDefault;
-  std::unique_ptr<brillo::Process> default_process_;
-  brillo::Process* process_;
-  std::unique_ptr<Platform> default_platform_;
-  Platform* platform_;
 };
 
 // Represents decoded lockbox NVRAM space contents and provides operations to

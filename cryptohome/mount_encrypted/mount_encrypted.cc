@@ -101,50 +101,6 @@ static bool shall_use_tpm_for_system_key() {
   return USE_TPM2_SIMULATOR && USE_VTPM_PROXY;
 }
 
-// This triggers the live encryption key to be written to disk, encrypted by the
-// system key. It is intended to be called by Cryptohome once the TPM is done
-// being set up. If the system key is passed as an argument, use it, otherwise
-// attempt to query the TPM again.
-static result_code finalize_from_cmdline(
-    const base::FilePath& rootdir,
-    const char* key) {
-  // Load the system key.
-  brillo::SecureBlob system_key;
-  if (!brillo::SecureBlob::HexStringToSecureBlob(std::string(key),
-                                                 &system_key) ||
-      system_key.size() != DIGEST_LENGTH) {
-    LOG(ERROR) << "Failed to parse system key.";
-    return RESULT_FAIL_FATAL;
-  }
-
-  mount_encrypted::FixedSystemKeyLoader loader(system_key);
-  mount_encrypted::EncryptionKey key_manager(&loader, rootdir);
-  result_code rc = key_manager.SetTpmSystemKey();
-  if (rc != RESULT_SUCCESS) {
-    return rc;
-  }
-
-  // If there already is an encrypted system key on disk, there is nothing to
-  // do. This also covers cases where the system key is not derived from the
-  // lockbox space contents (e.g. TPM 2.0 devices, TPM 1.2 devices with
-  // encrypted stateful space, factory keys, etc.), for which it is not
-  // appropriate to replace the system key. For cases where finalization is
-  // unfinished, we clear any stale system keys from disk to make sure we pass
-  // the check here.
-  if (base::PathExists(key_manager.key_path())) {
-    return RESULT_SUCCESS;
-  }
-
-  // Load the encryption key and persist to disk.
-  rc = key_manager.LoadEncryptionKey();
-  if (rc != RESULT_SUCCESS) {
-    LOG(ERROR) << "Could not get mount encryption key";
-    return RESULT_FAIL_FATAL;
-  }
-
-  return RESULT_SUCCESS;
-}
-
 static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
                                const base::FilePath& rootdir) {
   mount_encrypted::Tpm tpm;
@@ -396,9 +352,6 @@ int main(int argc, const char* argv[]) {
     } else if (args[0] == "info") {
       // Report info from the encrypted mount.
       return report_info(encrypted_fs.get(), rootdir);
-    } else if (args[0] == "finalize") {
-      return finalize_from_cmdline(rootdir,
-                                   args.size() >= 2 ? args[1].c_str() : NULL);
     } else if (args[0] == "set") {
       return set_system_key(rootdir, args.size() >= 2 ? args[1].c_str() : NULL,
                             &platform);
