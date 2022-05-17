@@ -73,6 +73,20 @@ TEST(UtilTest, FileErrorToErrno) {
   EXPECT_EQ(EIO, FileErrorToErrno(io));
 }
 
+TEST(UtilTest, ResponseErrorToErrno) {
+  int posix_ok = 0;
+  EXPECT_EQ(0, ResponseErrorToErrno(posix_ok));
+
+  int file_ok = static_cast<int>(base::File::Error::FILE_OK);
+  EXPECT_EQ(0, ResponseErrorToErrno(file_ok));
+
+  int posix_error = ENOMEM;
+  EXPECT_EQ(ENOMEM, ResponseErrorToErrno(posix_error));
+
+  int file_error = static_cast<int>(base::File::Error::FILE_ERROR_IO);
+  EXPECT_EQ(EIO, ResponseErrorToErrno(file_error));
+}
+
 TEST(UtilTest, OpenFlagsToString) {
   std::string flags = OpenFlagsToString(O_RDONLY);
   EXPECT_EQ("O_RDONLY", flags);

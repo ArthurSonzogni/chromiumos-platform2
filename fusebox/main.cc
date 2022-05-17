@@ -109,7 +109,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "getattr " << ino;
+      PLOG(ERROR) << "getattr";
       return;
     }
 
@@ -151,7 +151,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "getattr-resp " << ino;
+      PLOG(ERROR) << "getattr-resp";
       return;
     }
 
@@ -173,7 +173,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* parent_node = GetInodeTable().Lookup(parent);
     if (!parent_node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "lookup parent " << parent;
+      PLOG(ERROR) << "lookup parent";
       return;
     }
 
@@ -204,7 +204,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     auto it = device_dir_entry_.find(name);
     if (it == device_dir_entry_.end()) {
       errno = request->ReplyError(ENOENT);
-      PLOG(ERROR) << "lookup-local " << parent << "/" << name;
+      PLOG(ERROR) << "lookup-local";
       return;
     }
 
@@ -235,7 +235,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Ensure(parent, name.c_str());
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "lookup-resp " << parent << "/" << name;
+      PLOG(ERROR) << "lookup-resp";
       return;
     }
 
@@ -263,7 +263,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " setattr " << ino;
+      PLOG(ERROR) << "setattr";
       return;
     }
 
@@ -278,10 +278,10 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return 0;
     };
 
-    VLOG(1) << " to_set " << ToSetFlagsToString(to_set);
+    VLOG(1) << "to_set " << ToSetFlagsToString(to_set);
     if (errno = allowed_to_set(to_set); errno) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " setattr to_set";
+      PLOG(ERROR) << "setattr";
       return;
     }
 
@@ -315,7 +315,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " truncate-resp " << ino;
+      PLOG(ERROR) << "truncate-resp";
       return;
     }
 
@@ -334,14 +334,14 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if ((request->flags() & O_ACCMODE) != O_RDONLY) {
       errno = request->ReplyError(EACCES);
-      PLOG(ERROR) << "opendir " << ino;
+      PLOG(ERROR) << "opendir";
       return;
     }
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "opendir " << ino;
+      PLOG(ERROR) << "opendir";
       return;
     }
 
@@ -360,14 +360,14 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "readdir " << ino;
+      PLOG(ERROR) << "readdir";
       return;
     }
 
     uint64_t handle = fusebox::GetFile(request->fh());
     if (!handle) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "readdir fh " << request->fh();
+      PLOG(ERROR) << "readdir";
       return;
     }
 
@@ -426,7 +426,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
   }
 
   void ReplyToReadDir(uint64_t handle,
-                      int32_t file_error,
+                      int32_t error,
                       const std::vector<uint8_t>& list,
                       bool has_more) override {
     VLOG(1) << "reply-to-readdir fh " << handle;
@@ -436,16 +436,16 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     DirEntryResponse* response = it->second.get();
-    if (file_error) {
-      errno = response->Append(FileErrorToErrno(file_error));
-      PLOG(ERROR) << "reply-to-readdir [" << file_error << "]";
+    if (error) {
+      errno = response->Append(ResponseErrorToErrno(error));
+      PLOG(ERROR) << "reply-to-readdir";
       return;
     }
 
     const ino_t parent = response->parent();
     if (!GetInodeTable().Lookup(parent)) {
       response->Append(errno);
-      PLOG(ERROR) << "reply-to-readdir parent " << parent;
+      PLOG(ERROR) << "reply-to-readdir parent";
       return;
     }
 
@@ -462,7 +462,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
         entries.push_back({node->ino, item.name(), item_perms});
       } else {
         response->Append(errno);
-        PLOG(ERROR) << "parent ino: " << parent << " name: " << item.name();
+        PLOG(ERROR) << "reply-to-readdir";
         return;
       }
     }
@@ -478,7 +478,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "releasedir fh " << request->fh();
+      PLOG(ERROR) << "releasedir";
       return;
     }
 
@@ -573,7 +573,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "open " << ino;
+      PLOG(ERROR) << "open";
       return;
     }
 
@@ -598,7 +598,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (device.mode == "ro") {
       errno = request->ReplyError(EACCES);
-      PLOG(ERROR) << "open " << ino;
+      PLOG(ERROR) << "open";
       return;
     }
 
@@ -663,13 +663,13 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (size > SSIZE_MAX) {
       errno = request->ReplyError(EINVAL);
-      PLOG(ERROR) << "read size";
+      PLOG(ERROR) << "read";
       return;
     }
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "read fh " << request->fh();
+      PLOG(ERROR) << "read";
       return;
     }
 
@@ -712,7 +712,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "read-resp fh " << request->fh();
+      PLOG(ERROR) << "read-resp";
       return;
     }
 
@@ -738,7 +738,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     ssize_t length = HANDLE_EINTR(pread(fd, buf.data(), size, off));
     if (length == -1) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "read-fd fh " << request->fh();
+      PLOG(ERROR) << "read-fd";
       return;
     }
 
@@ -757,13 +757,13 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (size > SSIZE_MAX) {
       errno = request->ReplyError(EINVAL);
-      PLOG(ERROR) << "write size";
+      PLOG(ERROR) << "write";
       return;
     }
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "write fh " << request->fh();
+      PLOG(ERROR) << "write";
       return;
     }
 
@@ -806,7 +806,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "read-resp fh " << request->fh();
+      PLOG(ERROR) << "read-resp";
       return;
     }
 
@@ -831,7 +831,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     ssize_t length = HANDLE_EINTR(pwrite(fd, buf, size, off));
     if (length == -1) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "write-fd fh " << request->fh();
+      PLOG(ERROR) << "write-fd";
       return;
     }
 
@@ -846,7 +846,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "release fh " << request->fh();
+      PLOG(ERROR) << "release";
       return;
     }
 

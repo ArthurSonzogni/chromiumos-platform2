@@ -40,6 +40,13 @@ int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
   return 0;
 }
 
+int ResponseErrorToErrno(int error) {
+  // base::File::Errors are negative, POSIX errors are positive.
+  if (error < 0)
+    return FileErrorToErrno(error);
+  return error;
+}
+
 int FileErrorToErrno(int error) {
   const auto file_error = static_cast<base::File::Error>(error);
 

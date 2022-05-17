@@ -12,7 +12,10 @@
 // Returns errno from |reader| containing the |response| message.
 int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response);
 
-// Returns errno for an |error| that matches base::File::Error codes.
+// Returns errno for POSIX or base::File::Error |error| code.
+int ResponseErrorToErrno(int error);
+
+// Returns errno for a base::File::Error |error| code.
 int FileErrorToErrno(int error);
 
 // Returns fuse open flags string: eg., "O_RDWR|O_CREAT|O_TRUNC".
