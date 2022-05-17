@@ -18,10 +18,54 @@
 #include "ml/mojom/big_buffer.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
 #include "ml/process.h"
+#include "ml/request_metrics.h"
 
 namespace ml {
 
 namespace {
+
+constexpr char kModelName[] = "WebPlatformTfLiteFlatBufferModel";
+
+// The status code for loading model for metrics report. We don't reuse existing
+// enums like `model_loader::mojom::LoadModelResult` because they do not exactly
+// match.
+// Note that the "direct" mojo receiver function of loading a model is
+// `WebPlatformModelLoaderImpl::Load`, but the real work is done in this class
+// in `WebPlatformModelImpl::Load`. So we can report more detailed events here
+// and without passing the `request_metrics` object around.
+enum class MetricEventForLoad {
+  kSuccess = 0,
+  // The input BigBuffer is invalid.
+  kInvalidInputBigBuffer = 1,
+  // The input BigBuffer is backed by shared buffer but is invalid.
+  kInvalidSharedBuffer = 2,
+  // The type of the input BigBuffer is unknown.
+  kUnknownTypeOfInputBigBuffer = 3,
+  // Failed to build the model.
+  kBuildModelFailed = 4,
+  // Failed to interpret the model.
+  kInterpretModelFailed = 5,
+  // Failed to allocate tensors.
+  kAllocateTensorFailed = 6,
+  // `kMaxValue` must equal to the maximum value in this enum.
+  kMaxValue = kAllocateTensorFailed,
+};
+
+// The status code for computing for metrics report. We don't reuse existing
+// enums because they do not exactly match.
+enum class MetricEventForCompute {
+  kSuccess = 0,
+  // The number of input tensors is wrong.
+  kIncorrectNumberOfInputs = 1,
+  // Some required input tensor is not provided.
+  kMissingInput = 2,
+  // The input buffer size does match that required by the model.
+  kInvalidInputBufferSize = 3,
+  // Failed to do the computation.
+  kFailToCompute = 4,
+  // `kMaxValue` must equal to the maximum value in this enum.
+  kMaxValue = kFailToCompute,
+};
 
 std::vector<unsigned int> ConvertTfLiteDimensions(
     TfLiteIntArray* tflite_int_array) {
@@ -183,26 +227,37 @@ void WebPlatformModelImpl::CollectTensorInformation(
 bool WebPlatformModelImpl::Load(
     mojo_base::mojom::BigBufferPtr model_content,
     WebPlatformModelLoaderImpl::LoadCallback& callback) {
+  RequestMetrics request_metrics(kModelName, "Load");
+  request_metrics.StartRecordingPerformanceMetrics();
+
   if (model_content->is_invalid_buffer()) {
     std::move(callback).Run(model_loader::mojom::LoadModelResult::kUnknownError,
                             mojo::NullRemote(), nullptr);
+    request_metrics.RecordRequestEvent(
+        MetricEventForLoad::kInvalidInputBigBuffer);
     return false;
   } else if (model_content->is_bytes()) {
     BuildModelFromBytes(model_content);
   } else if (model_content->is_shared_memory()) {
-    if (!BuildModelFromSharedBuffer(model_content, callback))
+    if (!BuildModelFromSharedBuffer(model_content, callback)) {
       // The `callback` has already called with appropriate error messages in
       // `BuildModelFromSharedBuffer`.
+      request_metrics.RecordRequestEvent(
+          MetricEventForLoad::kInvalidSharedBuffer);
       return false;
+    }
   } else {
     LOG(FATAL) << "Unknown type of input BigBuffer. Please check if "
                   "mojom::BigBuffer has been extended.";
+    request_metrics.RecordRequestEvent(
+        MetricEventForLoad::kUnknownTypeOfInputBigBuffer);
   }
 
   if (model_ == nullptr) {
     std::move(callback).Run(model_loader::mojom::LoadModelResult::kInvalidModel,
                             mojo::NullRemote(), nullptr);
     brillo::MessageLoop::current()->BreakLoop();
+    request_metrics.RecordRequestEvent(MetricEventForLoad::kBuildModelFailed);
     return false;
   }
 
@@ -215,6 +270,8 @@ bool WebPlatformModelImpl::Load(
   if (resolve_status != kTfLiteOk || !interpreter_) {
     std::move(callback).Run(model_loader::mojom::LoadModelResult::kInvalidModel,
                             mojo::NullRemote(), nullptr);
+    request_metrics.RecordRequestEvent(
+        MetricEventForLoad::kInterpretModelFailed);
     return false;
   }
 
@@ -225,9 +282,13 @@ bool WebPlatformModelImpl::Load(
   if (interpreter_->AllocateTensors() != kTfLiteOk) {
     std::move(callback).Run(model_loader::mojom::LoadModelResult::kUnknownError,
                             mojo::NullRemote(), nullptr);
+    request_metrics.RecordRequestEvent(
+        MetricEventForLoad::kAllocateTensorFailed);
     return false;
   }
 
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(MetricEventForLoad::kSuccess);
   return true;
 }
 
@@ -243,12 +304,17 @@ model_loader::mojom::ModelInfoPtr WebPlatformModelImpl::GetModelInfo() {
 void WebPlatformModelImpl::Compute(
     const base::flat_map<std::string, std::vector<uint8_t>>& name_tensors,
     ComputeCallback callback) {
+  RequestMetrics request_metrics(kModelName, "Compute");
+  request_metrics.StartRecordingPerformanceMetrics();
+
   // Sets up the input.
-  // Checks if the input and output matches.
+  // Checks if the number of input tensors is correct.
   if (interpreter_->inputs().size() != name_tensors.size()) {
     std::move(callback).Run(
         model_loader::mojom::ComputeResult::kIncorrectNumberOfInputs,
         std::nullopt);
+    request_metrics.RecordRequestEvent(
+        MetricEventForCompute::kIncorrectNumberOfInputs);
     return;
   }
 
@@ -259,12 +325,15 @@ void WebPlatformModelImpl::Compute(
     if (iter == name_tensors.end()) {
       std::move(callback).Run(model_loader::mojom::ComputeResult::kMissingInput,
                               std::nullopt);
+      request_metrics.RecordRequestEvent(MetricEventForCompute::kMissingInput);
       return;
     }
     if (iter->second.size() != interpreter_->tensor(tensor_idx)->bytes) {
       std::move(callback).Run(
           model_loader::mojom::ComputeResult::kInvalidInputBufferSize,
           std::nullopt);
+      request_metrics.RecordRequestEvent(
+          MetricEventForCompute::kInvalidInputBufferSize);
       return;
     }
   }
@@ -281,6 +350,7 @@ void WebPlatformModelImpl::Compute(
   if (interpreter_->Invoke() != kTfLiteOk) {
     std::move(callback).Run(model_loader::mojom::ComputeResult::kUnknownError,
                             std::nullopt);
+    request_metrics.RecordRequestEvent(MetricEventForCompute::kFailToCompute);
     return;
   }
 
@@ -297,6 +367,9 @@ void WebPlatformModelImpl::Compute(
 
   std::move(callback).Run(model_loader::mojom::ComputeResult::kOk,
                           std::move(output_buffer_infos));
+
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(MetricEventForCompute::kSuccess);
 }
 
 }  // namespace ml

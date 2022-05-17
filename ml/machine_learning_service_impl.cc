@@ -822,7 +822,8 @@ void MachineLearningServiceImpl::CreateWebPlatformModelLoader(
   }
 
   // From here below is the worker process.
-  RequestMetrics request_metrics("WebPlatformModel", kMetricsRequestName);
+  RequestMetrics request_metrics("WebPlatformTfLiteFlatBufferModel",
+                                 "CreateModelLoaderResult");
   request_metrics.StartRecordingPerformanceMetrics();
 
   WebPlatformModelLoaderImpl::Create(std::move(receiver), std::move(options));
@@ -830,7 +831,8 @@ void MachineLearningServiceImpl::CreateWebPlatformModelLoader(
   std::move(callback).Run(model_loader::mojom::CreateModelLoaderResult::kOk);
 
   request_metrics.FinishRecordingPerformanceMetrics();
-  request_metrics.RecordRequestEvent(LoadModelResult::OK);
+  request_metrics.RecordRequestEvent(
+      model_loader::mojom::CreateModelLoaderResult::kOk);
 }
 
 }  // namespace ml

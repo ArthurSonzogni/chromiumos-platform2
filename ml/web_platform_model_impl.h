@@ -68,7 +68,7 @@ class WebPlatformModelImpl : public model_loader::mojom::Model {
       base::flat_map<std::string, model_loader::mojom::TensorInfoPtr>&
           io_tensor_info);
 
-  // Actually loads the model and build interpreters.
+  // A helper function to load the model and build interpreters.
   // Returns true if succeeded and the `callback` will be untouched.
   // Otherwise, returns false and the `callback` is called.
   bool Load(mojo_base::mojom::BigBufferPtr model_content,
@@ -76,6 +76,7 @@ class WebPlatformModelImpl : public model_loader::mojom::Model {
 
   model_loader::mojom::ModelInfoPtr GetModelInfo();
 
+  // model_loader::mojom::Model:
   void Compute(
       const base::flat_map<std::string, std::vector<uint8_t>>& name_tensors,
       ComputeCallback callback) override;
