@@ -1188,10 +1188,7 @@ properties:
             cros-healthd:
               type: object
               description: Contains properties used by cros_healthd for
-                model-specific telemetry. Each property represents a category of
-                information and contains boolean properties that indicate
-                whether a device supports a particular telemetry item. See
-                cros_healthd_probe.mojom for descriptions of each property.
+                model-specific telemetry and diagnostics.
               properties:
                 battery:
                   type: object
@@ -1204,6 +1201,23 @@ properties:
                   properties:
                     has-sku-number:
                       type: boolean
+                  additionalProperties: false
+                routines:
+                  type: object
+                  properties:
+                    battery-health:
+                      type: object
+                      properties:
+                        percent-battery-wear-allowed:
+                          type: integer
+                          description: |
+                            Upper bound for the battery's wear percentage.
+                            Battery health routine in cros_healthd uses this
+                            field as a threshold to determine whether the
+                            battery is in good condition.
+                          minimum: 0
+                          maximum: 100
+                      additionalProperties: false
                   additionalProperties: false
               additionalProperties: false
             scheduler-tune:

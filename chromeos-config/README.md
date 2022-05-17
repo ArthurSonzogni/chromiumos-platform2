@@ -415,7 +415,7 @@ In the tables below,
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | branding | [branding](#branding) |  | False |  | False | Contains branding characteristics for this model. |
 | camera | [camera](#camera) |  | False |  | False |  |
-| cros-healthd | [cros-healthd](#cros_healthd) |  | False |  | False | Contains properties used by cros_healthd for model-specific telemetry. Each property represents a category of information and contains boolean properties that indicate whether a device supports a particular telemetry item. See cros_healthd_probe.mojom for descriptions of each property. |
+| cros-healthd | [cros-healthd](#cros_healthd) |  | False |  | False | Contains properties used by cros_healthd for model-specific telemetry and diagnostics. |
 | cross-device | [cross-device](#cross_device) |  | False |  | False | Contains properties to configure cross-device features between ChromeOS devices and other devices, such as Instant Tethering and Smart Lock. |
 | demo-mode | [demo-mode](#demo_mode) |  | False |  | False | Properties related to the ChromeOS Demo Mode, defining the user experience when the device is used in retail. |
 | detachable-base | [detachable-base](#detachable_base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
@@ -555,6 +555,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | battery | [battery](#battery) |  | False |  | False |  |
 | cached-vpd | [cached-vpd](#cached_vpd) |  | False |  | False |  |
+| routines | [routines](#routines) |  | False |  | False |  |
 
 ### battery
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -565,6 +566,16 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | has-sku-number | boolean |  | False |  | False |  |
+
+### routines
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| battery-health | [battery-health](#battery_health) |  | False |  | False |  |
+
+### battery-health
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| percent-battery-wear-allowed | integer |  | False |  | False | Upper bound for the battery's wear percentage. Battery health routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. Maximum value: 0x64. |
 
 ### cross-device
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
