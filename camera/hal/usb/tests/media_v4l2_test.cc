@@ -870,7 +870,12 @@ TEST_P(V4L2TestWithResolution, Required30FpsResolution) {
 // and check actual fps. Otherwise, use the default setting of
 // V4L2_CID_EXPOSURE_AUTO_PRIORITY.
 TEST_F(V4L2Test, SupportedFormats) {
+  constexpr uint32_t kMinWidth = 320;
+  constexpr uint32_t kMinHeight = 240;
   for (const SupportedFormat& format : GetSupportedFormats()) {
+    if (format.width < kMinWidth || format.height < kMinHeight) {
+      continue;
+    }
     for (float fps : format.frame_rates) {
       ExerciseFormat(format.width, format.height, fps);
     }
