@@ -526,8 +526,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
-    // TODO(crbug.com/1244007): add "MkDir" to //platfrom2.
-    dbus::MethodCall method(kFuseBoxServiceInterface, "MkDir");
+    dbus::MethodCall method(kFuseBoxServiceInterface, kMkDirMethod);
     dbus::MessageWriter writer(&method);
 
     auto path = GetInodeTable().GetDevicePath(node);
