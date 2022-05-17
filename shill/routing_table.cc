@@ -62,6 +62,8 @@ static_assert(
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
 
+constexpr int kKernelSlaacRouteMetric = 1024;
+
 bool ParseRoutingTableMessage(const RTNLMessage& message,
                               int* interface_index,
                               RoutingTableEntry* entry) {
@@ -319,6 +321,26 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
                   << (*entry)->metric;
     return true;
   }
+}
+
+bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
+                                             RoutingTableEntry* entry) {
+  SLOG(this, 2) << __func__ << " index " << interface_index;
+
+  RouteTables::iterator table = tables_.find(interface_index);
+  if (table == tables_.end()) {
+    SLOG(this, 2) << __func__ << " no table";
+    return false;
+  }
+
+  for (auto& nent : table->second) {
+    if (nent.dst.IsDefault() && nent.dst.family() == IPAddress::kFamilyIPv6 &&
+        nent.metric == kKernelSlaacRouteMetric) {
+      *entry = nent;
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RoutingTable::SetDefaultRoute(int interface_index,

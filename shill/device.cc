@@ -425,8 +425,8 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   properties.subnet_prefix = address->prefix();
 
   RoutingTableEntry default_route;
-  if (routing_table_->GetDefaultRoute(interface_index_, IPAddress::kFamilyIPv6,
-                                      &default_route)) {
+  if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
+                                                &default_route)) {
     if (!default_route.gateway.IntoString(&properties.gateway)) {
       LOG(ERROR) << "Unable to convert IPv6 gateway into a string";
       return;
@@ -443,7 +443,8 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
     ip6config_ = std::make_unique<IPConfig>(control_interface(), link_name_);
   } else if (properties.address == ip6config_->properties().address &&
              properties.subnet_prefix ==
-                 ip6config_->properties().subnet_prefix) {
+                 ip6config_->properties().subnet_prefix &&
+             properties.gateway == ip6config_->properties().gateway) {
     SLOG(this, 2) << __func__ << " primary address for " << link_name_
                   << " is unchanged";
     return;
