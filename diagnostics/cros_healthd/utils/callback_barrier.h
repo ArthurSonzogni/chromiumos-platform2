@@ -34,13 +34,46 @@ namespace diagnostics {
 //   2. |CallbackBarrier| should be dropped once we add all the dependencies.
 //      Otherwise, it will keep the last reference to the final callbacks and
 //      they won't be called.
+//   3. Sometimes, calling a callback may do nothing (e.g. a method bind to an
+//      invalidated |WeakPtr|, a canceled |CancelableCallback|), but it is still
+//      considered as "called". This is because we only track if the caller
+//      has called the callback or not. The users need to maintain the state
+//      (e.g. the callback being canceled) themselves.
 //
-// Example:
+// Example: Basic usage:
 //   // Use local variable to ensure that |barrier| will be destructed
 //   CallbackBarrier barrier{/*on_success*/base::BindOnce(...),
 //                           /*on_error=*/base::BindOnce(...)};
 //   foo->DoSomeThing(barrier.Depend(base::BindOnce(...)));
 //   foo->DoOtherThing(barrier.Depend(base::BindOnce(...)));
+//
+// Example: Access member variable:
+//    class MyState {
+//      void HandleXXX() {...}
+//      void HandleYYY() {...}
+//      void HandleResult(CallbackType callback, bool success) {...}
+//    };
+//
+//    void DoStuff(CallbackType callback) {
+//      // Use unique_ptr so the address of |state| won't be changed.
+//      auto state = std::make_unique<MyState>();
+//      auto state_ptr = state.get();
+//
+//      // The |state| is moved into the result callback so it will be valid
+//      // until all the dependencies are called or dropped.
+//      CallbackBarrier barrier{
+//        base::BindOnce(&MyState::HandleResult,
+//          std::move(state) std::move(callback))};
+//
+//      // Using |base::Unretained()| is safe because it is guaranteed to be
+//      // valid.
+//      AsyncXXX(
+//        barrier.Depend(base::BindOnce(&MyState::HandleXXX,
+//          base::Unretained(state_ptr))));
+//      AsyncYYY(
+//        barrier.Depend(base::BindOnce(&MyState::HandleYYY,
+//          base::Unretained(state_ptr))));
+//    }
 //
 class CallbackBarrier {
  public:
