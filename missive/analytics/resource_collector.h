@@ -29,8 +29,12 @@ class ResourceCollector {
  private:
   friend class ResourceCollectorTest;
 
-  // collect resource usage info and send it to the UMA Chrome client.
-  // Log any errors but ignore them.
+  // The implementation of this method should collects analytics data, such as
+  // resource usage info, and send them to the UMA Chrome client, typically via
+  // |MetricsLibrary| in libmetrics (//platform2/metrics/README.md). It should
+  // log any errors but ignore them.
+  //
+  // This method is called on a fixed time interval.
   virtual void Collect() = 0;
 
   // Timer for executing the resource usage collection task.

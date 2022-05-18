@@ -1,12 +1,13 @@
 # Missive Daemon
 
-The Missive Daemon encrypts, stores, and forwards reporting records enqueued on
-its DBus interface. The interface allows other CrOS daemons and Chrome to
-enqueue records which are then encrypted and stored on disk. Records are
-enqueued in different priority queues, which have different upload periods.
-Once the storage daemon determines that a queue is ready for upload (i.e. the
-requisite period has elapsed), it sends records to Chrome to be uploaded to
-the Reporting Server. On successful upload, records are deleted from disk.
+The Missive Daemon is part of the Encrypted Reporting Pipeline (ERP). It
+encrypts, stores, and forwards reporting records enqueued on its DBus interface.
+The interface allows other CrOS daemons and Chrome to enqueue records which are
+then encrypted and stored on disk. Records are enqueued in different priority
+queues, which have different upload periods. Once the storage daemon determines
+that a queue is ready for upload (i.e. the requisite period has elapsed), it
+sends records to Chrome to be uploaded to the Reporting Server. On successful
+upload, records are deleted from disk.
 
 Note: This is a complementary daemon to the
 `//chrome/browser/policy/messaging_layer` package in chromium.
