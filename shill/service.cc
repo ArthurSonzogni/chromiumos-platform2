@@ -1321,8 +1321,7 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
       break;
     case kStateFailure:
       result = Metrics::kUserInitiatedConnectionResultFailure;
-      metrics()->NotifyUserInitiatedConnectionFailureReason(
-          Metrics::kMetricWifiUserInitiatedConnectionFailureReason, failure_);
+      metrics()->NotifyUserInitiatedConnectionFailureReason(failure_);
       break;
     case kStateIdle:
       // This assumes the device specific class (wifi, cellular) will advance
@@ -1334,8 +1333,8 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
       return;
   }
 
-  metrics()->NotifyUserInitiatedConnectionResult(
-      Metrics::kMetricWifiUserInitiatedConnectionResult, result);
+  metrics()->SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
+                           result);
 }
 
 bool Service::HasRecentConnectionIssues() {

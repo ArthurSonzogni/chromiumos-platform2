@@ -282,6 +282,7 @@ class Metrics : public DefaultServiceObserver {
     kPortalResultMax
   };
 
+  // patchpanel::NeighborLinkMonitor statistics.
   enum NeighborLinkMonitorFailure {
     kNeighborLinkMonitorFailureUnknown = 0,
     kNeighborIPv4GatewayFailure = 1,
@@ -293,6 +294,12 @@ class Metrics : public DefaultServiceObserver {
 
     kNeighborLinkMonitorFailureMax
   };
+  static constexpr EnumMetric<FixedName> kMetricNeighborLinkMonitorFailure = {
+      // The name uses "Wifi" instead of "WiFi" to be compatible with data
+      // previously recorded using GetFullMetricName().
+      .n = FixedName{"Network.Shill.Wifi.NeighborLinkMonitorFailure"},
+      .max = kNeighborLinkMonitorFailureMax,
+  };
 
   enum WiFiApChannelSwitch {
     kWiFiApChannelSwitchUndef = 0,
@@ -303,13 +310,22 @@ class Metrics : public DefaultServiceObserver {
 
     kWiFiApChannelSwitchMax
   };
+  static constexpr EnumMetric<FixedName> kMetricApChannelSwitch = {
+      .n = FixedName{"Network.Shill.WiFi.ApChannelSwitch"},
+      .max = kWiFiApChannelSwitchMax,
+  };
 
+  // AP 802.11r support statistics.
   enum WiFiAp80211rSupport {
     kWiFiAp80211rNone = 0,
     kWiFiAp80211rOTA = 1,
     kWiFiAp80211rOTDS = 2,
 
     kWiFiAp80211rMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricAp80211rSupport = {
+      .n = FixedName{"Network.Shill.WiFi.Ap80211rSupport"},
+      .max = kWiFiAp80211rMax,
   };
 
   enum WiFiRoamComplete {
@@ -333,6 +349,14 @@ class Metrics : public DefaultServiceObserver {
     kReasonCodeTypeConsideredDead,
     kReasonCodeTypeMax
   };
+  static constexpr EnumMetric<FixedName> kMetricLinkClientDisconnectType = {
+      .n = FixedName{"Network.Shill.WiFi.ClientDisconnectType"},
+      .max = kReasonCodeTypeMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricLinkApDisconnectType = {
+      .n = FixedName{"Network.Shill.WiFi.ApDisconnectType"},
+      .max = kReasonCodeTypeMax,
+  };
 
   enum WiFiDisconnectByWhom { kDisconnectedByAp, kDisconnectedNotByAp };
 
@@ -347,11 +371,19 @@ class Metrics : public DefaultServiceObserver {
     kScanResultInternalError,
     kScanResultMax
   };
+  static constexpr EnumMetric<FixedName> kMetricScanResult = {
+      .n = FixedName{"Network.Shill.WiFi.ScanResult"},
+      .max = kScanResultMax,
+  };
 
   enum SuspendActionResult {
     kSuspendActionResultSuccess,
     kSuspendActionResultFailure,
     kSuspendActionResultMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricSuspendActionResult = {
+      .n = FixedName{"Network.Shill.SuspendActionResult"},
+      .max = kSuspendActionResultMax,
   };
 
   enum Cellular3GPPRegistrationDelayedDrop {
@@ -359,6 +391,11 @@ class Metrics : public DefaultServiceObserver {
     kCellular3GPPRegistrationDelayedDropCanceled = 1,
     kCellular3GPPRegistrationDelayedDropMax
   };
+  static constexpr EnumMetric<FixedName>
+      kMetricCellular3GPPRegistrationDelayedDrop = {
+          .n = FixedName{"Network.Shill.Cellular.3GPPRegistrationDelayedDrop"},
+          .max = kCellular3GPPRegistrationDelayedDropMax,
+      };
 
   enum CellularApnSource {
     kCellularApnSourceMoDb = 0,
@@ -381,6 +418,10 @@ class Metrics : public DefaultServiceObserver {
     kCellularDropTechnology5gNr = 10,
     kCellularDropTechnologyMax
   };
+  static constexpr EnumMetric<FixedName> kMetricCellularDrop = {
+      .n = FixedName{"Network.Shill.Cellular.Drop"},
+      .max = kCellularDropTechnologyMax,
+  };
 
   // These values are persisted to logs for
   // Network.Shill.Cellular.ConnectResult. CellularConnectResult entries should
@@ -399,6 +440,10 @@ class Metrics : public DefaultServiceObserver {
     kCellularConnectResultInvalidApn = 10,
     kCellularConnectResultMax
   };
+  static constexpr EnumMetric<FixedName> kMetricCellularConnectResult = {
+      .n = FixedName{"Network.Shill.Cellular.ConnectResult"},
+      .max = static_cast<int>(CellularConnectResult::kCellularConnectResultMax),
+  };
 
   enum CellularRoamingState {
     kCellularRoamingStateUnknown = 0,
@@ -407,8 +452,14 @@ class Metrics : public DefaultServiceObserver {
     kCellularRoamingStateMax
   };
 
+  // Profile statistics.
   enum CorruptedProfile { kCorruptedProfile = 1, kCorruptedProfileMax };
+  static constexpr EnumMetric<FixedName> kMetricCorruptedProfile = {
+      .n = FixedName{"Network.Shill.CorruptedProfile"},
+      .max = kCorruptedProfileMax,
+  };
 
+  // Connection diagnostics issue produced by ConnectionDiagnostics.
   enum ConnectionDiagnosticsIssue {
     kConnectionDiagnosticsIssueIPCollision = 0,
     kConnectionDiagnosticsIssueRouting = 1,
@@ -436,7 +487,12 @@ class Metrics : public DefaultServiceObserver {
     kConnectionDiagnosticsIssuePlaceholder4 = 22,
     kConnectionDiagnosticsIssueMax
   };
+  static constexpr EnumMetric<FixedName> kMetricConnectionDiagnosticsIssue = {
+      .n = FixedName{"Network.Shill.ConnectionDiagnosticsIssue"},
+      .max = kConnectionDiagnosticsIssueMax,
+  };
 
+  // Portal detection results produced by PortalDetector.
   enum PortalDetectionMultiProbeResult {
     kPortalDetectionMultiProbeResultUndefined = 0,
     kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked = 1,
@@ -447,6 +503,11 @@ class Metrics : public DefaultServiceObserver {
     kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked = 6,
     kPortalDetectionMultiProbeResultMax
   };
+  static constexpr EnumMetric<FixedName>
+      kMetricPortalDetectionMultiProbeResult = {
+          .n = FixedName{"Network.Shill.PortalDetectionMultiProbeResult"},
+          .max = kPortalDetectionMultiProbeResultMax,
+      };
 
   enum VpnDriver {
     kVpnDriverOpenVpn = 0,
@@ -584,6 +645,11 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionResultAborted = 2,
     kUserInitiatedConnectionResultMax
   };
+  static constexpr EnumMetric<FixedName>
+      kMetricWifiUserInitiatedConnectionResult = {
+          .n = FixedName{"Network.Shill.WiFi.UserInitiatedConnectionResult"},
+          .max = kUserInitiatedConnectionResultMax,
+      };
 
   // Device's connection status.
   enum ConnectionStatus {
@@ -591,6 +657,10 @@ class Metrics : public DefaultServiceObserver {
     kConnectionStatusConnected = 1,
     kConnectionStatusOnline = 2,
     kConnectionStatusMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricDeviceConnectionStatus = {
+      .n = FixedName{"Network.Shill.DeviceConnectionStatus"},
+      .max = kConnectionStatusMax,
   };
 
   // Reason when a connection initiated by Service::UserInitiatedConnect fails.
@@ -613,22 +683,39 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionFailureReasonMax
   };
 
+  // Network connection IP type.
   enum NetworkConnectionIPType {
     kNetworkConnectionIPTypeIPv4 = 0,
     kNetworkConnectionIPTypeIPv6 = 1,
     kNetworkConnectionIPTypeMax
   };
+  static constexpr EnumMetric<NameByTechnology> kMetricNetworkConnectionIPType =
+      {
+          .n = NameByTechnology{"NetworkConnectionIPType"},
+          .max = kNetworkConnectionIPTypeMax,
+      };
 
+  // IPv6 connectivity status.
   enum IPv6ConnectivityStatus {
     kIPv6ConnectivityStatusNo = 0,
     kIPv6ConnectivityStatusYes = 1,
     kIPv6ConnectivityStatusMax
   };
+  static constexpr EnumMetric<NameByTechnology> kMetricIPv6ConnectivityStatus =
+      {
+          .n = NameByTechnology{"IPv6ConnectivityStatus"},
+          .max = kIPv6ConnectivityStatusMax,
+      };
 
+  // Device presence.
   enum DevicePresenceStatus {
     kDevicePresenceStatusNo = 0,
     kDevicePresenceStatusYes = 1,
     kDevicePresenceStatusMax
+  };
+  static constexpr EnumMetric<NameByTechnology> kMetricDevicePresenceStatus = {
+      .n = NameByTechnology{"DevicePresenceStatus"},
+      .max = kDevicePresenceStatusMax,
   };
 
   enum DeviceTechnologyType {
@@ -674,6 +761,10 @@ class Metrics : public DefaultServiceObserver {
     kNetworkServiceErrorNotRegistered = 27,
     kNetworkServiceErrorMax
   };
+  static constexpr EnumMetric<NameByTechnology> kMetricNetworkServiceError = {
+      .n = NameByTechnology{"ServiceErrors"},
+      .max = kNetworkServiceErrorMax,
+  };
 
   // Corresponds to RegulatoryDomain enum values in
   // /chromium/src/tools/metrics/histograms/enums.xml.
@@ -687,6 +778,7 @@ class Metrics : public DefaultServiceObserver {
     kRegDomMaxValue
   };
 
+  // Hotspot 2.0 version number metric.
   enum HS20Support {
     kHS20Unsupported = 0,
     kHS20VersionInvalid = 1,
@@ -695,12 +787,22 @@ class Metrics : public DefaultServiceObserver {
     kHS20Version3 = 4,
     kHS20SupportMax
   };
+  static constexpr EnumMetric<FixedName> kMetricHS20Support = {
+      .n = FixedName{"Network.Shill.WiFi.HS20Support"},
+      .max = kHS20SupportMax,
+  };
 
+  // Is the WiFi adapter detected on the system in the allowlist of adapters
+  // that can be reported through structured metrics or not?
   enum WiFiAdapterInAllowlist {
     kNotInAllowlist = 0,
     kInAVL = 1,
     kInAllowlist = 2,
     kAllowlistMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricAdapterInfoAllowlisted = {
+      .n = FixedName{"Network.Shill.WiFi.AdapterAllowlisted"},
+      .max = kAllowlistMax,
   };
 
   // Our disconnect enumeration values are 0 (System Disconnect) and
@@ -733,7 +835,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricNetworkPhyModeMax = kWiFiNetworkPhyModeMax;
   static constexpr char kMetricNetworkSecuritySuffix[] = "Security";
   static constexpr int kMetricNetworkSecurityMax = kWiFiSecurityMax;
-  static constexpr char kMetricNetworkServiceErrorSuffix[] = "ServiceErrors";
   static constexpr char kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
   static constexpr int kMetricNetworkSignalStrengthMin = 1;
   static constexpr int kMetricNetworkSignalStrengthMax = 200;
@@ -824,15 +925,10 @@ class Metrics : public DefaultServiceObserver {
   // The result of the portal detection.
   static constexpr char kMetricPortalResultSuffix[] = "PortalResult";
 
-  static constexpr char kMetricScanResult[] = "Network.Shill.WiFi.ScanResult";
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
       "Network.Shill.WiFi.ScanTimeInEbusy";
 
   static constexpr char kMetricPowerManagerKey[] = "metrics";
-
-  // patchpanel::NeighborLinkMonitor statistics.
-  static constexpr char kMetricNeighborLinkMonitorFailureSuffix[] =
-      "NeighborLinkMonitorFailure";
 
   // Signal strength when link becomes unreliable (multiple link monitor
   // failures in short period of time).
@@ -845,8 +941,6 @@ class Metrics : public DefaultServiceObserver {
   // AP 802.11r/k/v support statistics.
   static constexpr char kMetricAp80211kSupport[] =
       "Network.Shill.WiFi.Ap80211kSupport";
-  static constexpr char kMetricAp80211rSupport[] =
-      "Network.Shill.WiFi.Ap80211rSupport";
   static constexpr char kMetricAp80211vDMSSupport[] =
       "Network.Shill.WiFi.Ap80211vDMSSupport";
   static constexpr char kMetricAp80211vBSSMaxIdlePeriodSupport[] =
@@ -854,14 +948,14 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricAp80211vBSSTransitionSupport[] =
       "Network.Shill.WiFi.Ap80211vBSSTransitionSupport";
 
-  static constexpr char kMetricLinkClientDisconnectReason[] =
-      "Network.Shill.WiFi.ClientDisconnectReason";
-  static constexpr char kMetricLinkApDisconnectReason[] =
-      "Network.Shill.WiFi.ApDisconnectReason";
-  static constexpr char kMetricLinkClientDisconnectType[] =
-      "Network.Shill.WiFi.ClientDisconnectType";
-  static constexpr char kMetricLinkApDisconnectType[] =
-      "Network.Shill.WiFi.ApDisconnectType";
+  static constexpr EnumMetric<FixedName> kMetricLinkApDisconnectReason = {
+      .n = FixedName{"Network.Shill.WiFi.ApDisconnectReason"},
+      .max = IEEE_80211::kReasonCodeMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricLinkClientDisconnectReason = {
+      .n = FixedName{"Network.Shill.WiFi.ClientDisconnectReason"},
+      .max = IEEE_80211::kReasonCodeMax,
+  };
 
   // 802.11 Status Codes for auth/assoc failures
   static constexpr char kMetricWiFiAssocFailureType[] =
@@ -893,32 +987,18 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricWifiEAPSuffix[] = "EAP";
   static constexpr char kMetricWifiFTEAPSuffix[] = "FTEAP";
 
-  static constexpr char kMetricApChannelSwitch[] =
-      "Network.Shill.WiFi.ApChannelSwitch";
-
   // Shill suspend action statistics.
   static constexpr char kMetricSuspendActionTimeTaken[] =
       "Network.Shill.SuspendActionTimeTaken";
-  static constexpr char kMetricSuspendActionResult[] =
-      "Network.Shill.SuspendActionResult";
   static constexpr int kMetricSuspendActionTimeTakenMillisecondsMax = 20000;
   static constexpr int kMetricSuspendActionTimeTakenMillisecondsMin = 1;
 
   // Cellular specific statistics.
-  static constexpr char kMetricCellular3GPPRegistrationDelayedDrop[] =
-      "Network.Shill.Cellular.3GPPRegistrationDelayedDrop";
-  static constexpr char kMetricCellularDrop[] = "Network.Shill.Cellular.Drop";
-  static constexpr char kMetricCellularConnectResult[] =
-      "Network.Shill.Cellular.ConnectResult";
   static constexpr char kMetricCellularSignalStrengthBeforeDrop[] =
       "Network.Shill.Cellular.SignalStrengthBeforeDrop";
   static constexpr int kMetricCellularSignalStrengthBeforeDropMax = 100;
   static constexpr int kMetricCellularSignalStrengthBeforeDropMin = 1;
   static constexpr int kMetricCellularSignalStrengthBeforeDropNumBuckets = 10;
-
-  // Profile statistics.
-  static constexpr char kMetricCorruptedProfile[] =
-      "Network.Shill.CorruptedProfile";
 
   // VPN connection statistics.
   static constexpr char kMetricVpnDriver[] = "Network.Shill.Vpn.Driver";
@@ -1054,10 +1134,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricWifiTxBitrateMin = 1;
   static constexpr int kMetricWifiTxBitrateNumBuckets = 100;
 
-  // User-initiated wifi connection attempt result.
-  static constexpr char kMetricWifiUserInitiatedConnectionResult[] =
-      "Network.Shill.WiFi.UserInitiatedConnectionResult";
-
   // The reason of failed user-initiated wifi connection attempt.
   static constexpr char kMetricWifiUserInitiatedConnectionFailureReason[] =
       "Network.Shill.WiFi.UserInitiatedConnectionFailureReason";
@@ -1070,39 +1146,12 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricWifiSupplicantAttemptsMin = 1;
   static constexpr int kMetricWifiSupplicantAttemptsNumBuckets = 11;
 
-  // Device's connection status.
-  static constexpr char kMetricDeviceConnectionStatus[] =
-      "Network.Shill.DeviceConnectionStatus";
-
   // Assigned MTU values from PPP.
   static constexpr char kMetricPPPMTUValue[] = "Network.Shill.PPPMTUValue";
-
-  // Network connection IP type.
-  static constexpr char kMetricNetworkConnectionIPTypeSuffix[] =
-      "NetworkConnectionIPType";
-
-  // IPv6 connectivity status.
-  static constexpr char kMetricIPv6ConnectivityStatusSuffix[] =
-      "IPv6ConnectivityStatus";
-
-  // Device presence.
-  static constexpr char kMetricDevicePresenceStatusSuffix[] =
-      "DevicePresenceStatus";
-
-  // Connection diagnostics issue.
-  static constexpr char kMetricConnectionDiagnosticsIssue[] =
-      "Network.Shill.ConnectionDiagnosticsIssue";
-
-  // Portal detection results.
-  static constexpr char kMetricPortalDetectionMultiProbeResult[] =
-      "Network.Shill.PortalDetectionMultiProbeResult";
 
   // Wireless regulatory domain metric.
   static constexpr char kMetricRegulatoryDomain[] =
       "Network.Shill.WiFi.RegulatoryDomain";
-
-  // Hotspot 2.0 version number metric.
-  static constexpr char kMetricHS20Support[] = "Network.Shill.WiFi.HS20Support";
 
   // MBO support metric.
   static constexpr char kMetricMBOSupport[] = "Network.Shill.WiFi.MBOSupport";
@@ -1113,11 +1162,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricTimeFromRekeyToFailureSecondsMin = 0;
   static constexpr int kMetricTimeFromRekeyToFailureSecondsMax = 180;
   static constexpr int kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
-
-  // Is the WiFi adapter detected on the system in the allowlist of adapters
-  // that can be reported through structured metrics or not?
-  static constexpr char kMetricAdapterInfoAllowlisted[] =
-      "Network.Shill.WiFi.AdapterAllowlisted";
 
   // Version number of the format of WiFi structured metrics. Changed when the
   // formatting of the metrics changes, so that the server-side code knows
@@ -1233,9 +1277,9 @@ class Metrics : public DefaultServiceObserver {
   // |success| is true, if the suspend actions completed successfully.
   void NotifySuspendActionsCompleted(bool success);
 
-  // Notifies this object of a failure in patchpanel::NeighborLinkMonitor.
+  // Notifies this object of a failure in patchpanel::NeighborLinkMonitor for
+  // a WiFi connection.
   void NotifyNeighborLinkMonitorFailure(
-      Technology technology,
       IPAddress::Family family,
       patchpanel::NeighborReachabilityEventSignal::Role role);
 
@@ -1366,15 +1410,10 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object about WIFI TX bitrate in Mbps.
   virtual void NotifyWifiTxBitrate(int bitrate);
 
-  // Notifies this object about the result of user-initiated connection
-  // attempt.
-  virtual void NotifyUserInitiatedConnectionResult(const std::string& name,
-                                                   int result);
-
   // Notifies this object about the reason of failed user-initiated connection
   // attempt.
   virtual void NotifyUserInitiatedConnectionFailureReason(
-      const std::string& name, const Service::ConnectFailure failure);
+      const Service::ConnectFailure failure);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();

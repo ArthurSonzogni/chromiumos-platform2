@@ -3889,8 +3889,7 @@ void WiFi::OnNeighborReachabilityEvent(
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
 
   if (event_type == EventSignal::FAILED) {
-    metrics()->NotifyNeighborLinkMonitorFailure(Technology::kWiFi,
-                                                ip_address.family(), role);
+    metrics()->NotifyNeighborLinkMonitorFailure(ip_address.family(), role);
   }
 
   if (!selected_service()) {

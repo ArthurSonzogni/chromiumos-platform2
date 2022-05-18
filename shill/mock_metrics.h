@@ -89,6 +89,10 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropCanceled, (), (override));
   MOCK_METHOD(void, NotifyCorruptedProfile, (), (override));
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
+  MOCK_METHOD(void,
+              SendEnumToUMA,
+              (const Metrics::EnumMetric<Metrics::FixedName>& metric, int),
+              (override));
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool,
               SendToUMA,
@@ -99,12 +103,8 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, NotifyWifiAvailableBSSes, (int), (override));
   MOCK_METHOD(void, NotifyWifiTxBitrate, (int), (override));
   MOCK_METHOD(void,
-              NotifyUserInitiatedConnectionResult,
-              (const std::string&, int),
-              (override));
-  MOCK_METHOD(void,
               NotifyUserInitiatedConnectionFailureReason,
-              (const std::string&, const Service::ConnectFailure),
+              (const Service::ConnectFailure),
               (override));
   MOCK_METHOD(void,
               NotifyDeviceConnectionStatus,

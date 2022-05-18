@@ -586,23 +586,24 @@ TEST_F(MetricsTest, ReportDeviceScanResultToUma) {
   Metrics::WiFiScanResult result =
       Metrics::kScanResultProgressiveAndFullConnected;
   EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricScanResult,
+              SendEnumToUMA(Metrics::kMetricScanResult.n.name,
                             Metrics::kScanResultProgressiveAndFullConnected,
                             Metrics::kScanResultMax));
   metrics_.ReportDeviceScanResultToUma(result);
 }
 
 TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
-                            Metrics::kCellular3GPPRegistrationDelayedDropPosted,
-                            Metrics::kCellular3GPPRegistrationDelayedDropMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop.n.name,
+                    Metrics::kCellular3GPPRegistrationDelayedDropPosted,
+                    Metrics::kCellular3GPPRegistrationDelayedDropMax));
   metrics_.Notify3GPPRegistrationDelayedDropPosted();
   Mock::VerifyAndClearExpectations(&library_);
 
   EXPECT_CALL(
       library_,
-      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop.n.name,
                     Metrics::kCellular3GPPRegistrationDelayedDropCanceled,
                     Metrics::kCellular3GPPRegistrationDelayedDropMax));
   metrics_.Notify3GPPRegistrationDelayedDropCanceled();
@@ -621,8 +622,9 @@ TEST_F(MetricsTest, CellularDrop) {
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   for (size_t index = 0; index < std::size(kUMATechnologyStrings); ++index) {
-    EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCellularDrop, index,
-                                        Metrics::kCellularDropTechnologyMax));
+    EXPECT_CALL(library_,
+                SendEnumToUMA(Metrics::kMetricCellularDrop.n.name, index,
+                              Metrics::kCellularDropTechnologyMax));
     EXPECT_CALL(
         library_,
         SendToUMA(Metrics::kMetricCellularSignalStrengthBeforeDrop,
@@ -641,7 +643,7 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Valid) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricCellularConnectResult,
+          Metrics::kMetricCellularConnectResult.n.name,
           static_cast<int>(Metrics::CellularConnectResult::
                                kCellularConnectResultOperationFailed),
           static_cast<int>(
@@ -654,7 +656,7 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Unknown) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricCellularConnectResult,
+          Metrics::kMetricCellularConnectResult.n.name,
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultUnknown),
           static_cast<int>(
@@ -663,7 +665,7 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Unknown) {
 }
 
 TEST_F(MetricsTest, CorruptedProfile) {
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCorruptedProfile,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCorruptedProfile.n.name,
                                       Metrics::kCorruptedProfile,
                                       Metrics::kCorruptedProfileMax));
   metrics_.NotifyCorruptedProfile();
@@ -707,16 +709,6 @@ TEST_F(MetricsTest, NotifyWifiTxBitrate) {
   metrics_.NotifyWifiTxBitrate(1);
 }
 
-TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
-                            Metrics::kUserInitiatedConnectionResultSuccess,
-                            Metrics::kUserInitiatedConnectionResultMax));
-  metrics_.NotifyUserInitiatedConnectionResult(
-      Metrics::kMetricWifiUserInitiatedConnectionResult,
-      Metrics::kUserInitiatedConnectionResultSuccess);
-}
-
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
   base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
   chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
@@ -732,9 +724,10 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
                         Metrics::kMetricSuspendActionTimeTakenMillisecondsMin,
                         Metrics::kMetricSuspendActionTimeTakenMillisecondsMax,
                         Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricSuspendActionResult,
-                                      Metrics::kSuspendActionResultSuccess,
-                                      Metrics::kSuspendActionResultMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricSuspendActionResult.n.name,
+                            Metrics::kSuspendActionResultSuccess,
+                            Metrics::kSuspendActionResultMax));
   metrics_.NotifySuspendActionsCompleted(true);
 }
 
@@ -753,9 +746,10 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
                         Metrics::kMetricSuspendActionTimeTakenMillisecondsMin,
                         Metrics::kMetricSuspendActionTimeTakenMillisecondsMax,
                         Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricSuspendActionResult,
-                                      Metrics::kSuspendActionResultFailure,
-                                      Metrics::kSuspendActionResultMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricSuspendActionResult.n.name,
+                            Metrics::kSuspendActionResultFailure,
+                            Metrics::kSuspendActionResultMax));
   metrics_.NotifySuspendActionsCompleted(false);
 }
 
@@ -768,7 +762,7 @@ TEST_F(MetricsTest, NotifySuspendActionsStarted) {
 TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
   const std::string& issue = ConnectionDiagnostics::kIssueIPCollision;
   EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricConnectionDiagnosticsIssue,
+              SendEnumToUMA(Metrics::kMetricConnectionDiagnosticsIssue.n.name,
                             Metrics::kConnectionDiagnosticsIssueIPCollision,
                             Metrics::kConnectionDiagnosticsIssueMax));
   metrics_.NotifyConnectionDiagnosticsIssue(issue);
@@ -789,7 +783,7 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
           Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
@@ -799,7 +793,7 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
           Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected,
           Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
@@ -809,7 +803,7 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
           Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
@@ -819,7 +813,7 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
           Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
@@ -829,7 +823,7 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
           Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected,
           Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
@@ -839,17 +833,18 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
           Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kRedirect;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricPortalDetectionMultiProbeResult,
-                            Metrics::kPortalDetectionMultiProbeResultUndefined,
-                            Metrics::kPortalDetectionMultiProbeResultMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(Metrics::kMetricPortalDetectionMultiProbeResult.n.name,
+                    Metrics::kPortalDetectionMultiProbeResultUndefined,
+                    Metrics::kPortalDetectionMultiProbeResultMax));
   metrics_.NotifyPortalDetectionMultiProbeResult(result);
 }
 
@@ -868,19 +863,19 @@ TEST_F(MetricsTest, NotifyAp80211kSupport) {
 TEST_F(MetricsTest, NotifyAp80211rSupport) {
   bool ota_ft_supported = false;
   bool otds_ft_supported = false;
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport.n.name,
                                       Metrics::kWiFiAp80211rNone,
                                       Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 
   ota_ft_supported = true;
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport.n.name,
                                       Metrics::kWiFiAp80211rOTA,
                                       Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 
   otds_ft_supported = true;
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport.n.name,
                                       Metrics::kWiFiAp80211rOTDS,
                                       Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
@@ -927,27 +922,27 @@ TEST_F(MetricsTest, NotifyAp80211vBSSTransitionSupport) {
 }
 
 TEST_F(MetricsTest, NotifyApChannelSwitch) {
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
                                       Metrics::kWiFiApChannelSwitch24To24,
                                       Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(2417, 2472);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
                                       Metrics::kWiFiApChannelSwitch24To5,
                                       Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(2462, 5805);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
                                       Metrics::kWiFiApChannelSwitch5To24,
                                       Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(5210, 2422);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
                                       Metrics::kWiFiApChannelSwitch5To5,
                                       Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(5500, 5320);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
                                       Metrics::kWiFiApChannelSwitchUndef,
                                       Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(3000, 3000);
@@ -960,42 +955,40 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv4GatewayFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, NeighborSignal::GATEWAY);
+  metrics_.NotifyNeighborLinkMonitorFailure(IPAddress::kFamilyIPv4,
+                                            NeighborSignal::GATEWAY);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv4DNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, NeighborSignal::DNS_SERVER);
+  metrics_.NotifyNeighborLinkMonitorFailure(IPAddress::kFamilyIPv4,
+                                            NeighborSignal::DNS_SERVER);
 
   EXPECT_CALL(
       library_,
       SendEnumToUMA(histogram, Metrics::kNeighborIPv4GatewayAndDNSServerFailure,
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4,
-      NeighborSignal::GATEWAY_AND_DNS_SERVER);
+      IPAddress::kFamilyIPv4, NeighborSignal::GATEWAY_AND_DNS_SERVER);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv6GatewayFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY);
+  metrics_.NotifyNeighborLinkMonitorFailure(IPAddress::kFamilyIPv6,
+                                            NeighborSignal::GATEWAY);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv6DNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, NeighborSignal::DNS_SERVER);
+  metrics_.NotifyNeighborLinkMonitorFailure(IPAddress::kFamilyIPv6,
+                                            NeighborSignal::DNS_SERVER);
 
   EXPECT_CALL(
       library_,
       SendEnumToUMA(histogram, Metrics::kNeighborIPv6GatewayAndDNSServerFailure,
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6,
-      NeighborSignal::GATEWAY_AND_DNS_SERVER);
+      IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY_AND_DNS_SERVER);
 }
 
 TEST_F(MetricsTest, NotifyWiFiServiceFailureAfterRekey) {

@@ -913,10 +913,10 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   // User-initiated connection attempt succeed.
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
-                              Metrics::kMetricWifiUserInitiatedConnectionResult,
-                              Metrics::kUserInitiatedConnectionResultSuccess));
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
+                            Metrics::kUserInitiatedConnectionResultSuccess));
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_))
       .Times(0);
   service_->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(metrics());
@@ -924,13 +924,11 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   // User-initiated connection attempt failed.
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
-                              Metrics::kMetricWifiUserInitiatedConnectionResult,
-                              Metrics::kUserInitiatedConnectionResultFailure));
   EXPECT_CALL(*metrics(),
-              NotifyUserInitiatedConnectionFailureReason(
-                  Metrics::kMetricWifiUserInitiatedConnectionFailureReason,
-                  Service::kFailureDHCP));
+              SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
+                            Metrics::kUserInitiatedConnectionResultFailure));
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(
+                              Service::kFailureDHCP));
   service_->SetFailure(Service::kFailureDHCP);
   Mock::VerifyAndClearExpectations(metrics());
 
@@ -938,10 +936,10 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   service_->SetState(Service::kStateAssociating);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
-                              Metrics::kMetricWifiUserInitiatedConnectionResult,
-                              Metrics::kUserInitiatedConnectionResultAborted));
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
+                            Metrics::kUserInitiatedConnectionResultAborted));
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_))
       .Times(0);
   service_->SetState(Service::kStateIdle);
   Mock::VerifyAndClearExpectations(metrics());
@@ -949,8 +947,11 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   // No metric reporting for other state transition.
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult, _))
+      .Times(0);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_))
       .Times(0);
   service_->SetState(Service::kStateAssociating);
   service_->SetState(Service::kStateConfiguring);
@@ -959,8 +960,11 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   // No metric reporting for non-user-initiated connection.
   service_->SetState(Service::kStateIdle);
   service_->Connect(&error, "in test");
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult, _))
+      .Times(0);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_))
       .Times(0);
   service_->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(metrics());
@@ -969,8 +973,11 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->technology_ = Technology::kCellular;
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult, _))
+      .Times(0);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_))
       .Times(0);
   service_->SetFailure(Service::kFailureDHCP);
   Mock::VerifyAndClearExpectations(metrics());

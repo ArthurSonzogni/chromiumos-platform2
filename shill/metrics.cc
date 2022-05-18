@@ -612,30 +612,22 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   if (!time_suspend_actions_timer->HasStarted())
     return;
 
-  SuspendActionResult result =
-      success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
-
   base::TimeDelta elapsed_time;
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
   time_suspend_actions_timer->Reset();
-  std::string time_metric, result_metric;
-  time_metric = kMetricSuspendActionTimeTaken;
-  result_metric = kMetricSuspendActionResult;
-
-  SendToUMA(time_metric, elapsed_time.InMilliseconds(),
+  SendToUMA(kMetricSuspendActionTimeTaken, elapsed_time.InMilliseconds(),
             kMetricSuspendActionTimeTakenMillisecondsMin,
             kMetricSuspendActionTimeTakenMillisecondsMax,
             kTimerHistogramNumBuckets);
 
-  SendEnumToUMA(result_metric, result, kSuspendActionResultMax);
+  SuspendActionResult result =
+      success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
+  SendEnumToUMA(kMetricSuspendActionResult, result);
 }
 
 void Metrics::NotifyNeighborLinkMonitorFailure(
-    Technology technology,
     IPAddress::Family family,
     patchpanel::NeighborReachabilityEventSignal::Role role) {
-  const auto histogram =
-      GetFullMetricName(kMetricNeighborLinkMonitorFailureSuffix, technology);
   NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
   if (family == IPAddress::kFamilyIPv4) {
@@ -671,7 +663,7 @@ void Metrics::NotifyNeighborLinkMonitorFailure(
     return;
   }
 
-  SendEnumToUMA(histogram, failure, kNeighborLinkMonitorFailureMax);
+  SendEnumToUMA(kMetricNeighborLinkMonitorFailure, failure);
 }
 
 void Metrics::NotifyApChannelSwitch(uint16_t frequency,
@@ -693,8 +685,7 @@ void Metrics::NotifyApChannelSwitch(uint16_t frequency,
              new_range == kWiFiFrequencyRange5) {
     channel_switch = kWiFiApChannelSwitch5To5;
   }
-  SendEnumToUMA(kMetricApChannelSwitch, channel_switch,
-                kWiFiApChannelSwitchMax);
+  SendEnumToUMA(kMetricApChannelSwitch, channel_switch);
 }
 
 void Metrics::NotifyAp80211kSupport(bool neighbor_list_supported) {
@@ -709,7 +700,7 @@ void Metrics::NotifyAp80211rSupport(bool ota_ft_supported,
   } else if (ota_ft_supported) {
     support = kWiFiAp80211rOTA;
   }
-  SendEnumToUMA(kMetricAp80211rSupport, support, kWiFiAp80211rMax);
+  SendEnumToUMA(kMetricAp80211rSupport, support);
 }
 
 void Metrics::NotifyAp80211vDMSSupport(bool dms_supported) {
@@ -730,8 +721,8 @@ void Metrics::NotifyAp80211vBSSTransitionSupport(
 #if !defined(DISABLE_WIFI)
 void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                     IEEE_80211::WiFiReasonCode reason) {
-  std::string metric_disconnect_reason;
-  std::string metric_disconnect_type;
+  EnumMetric<FixedName> metric_disconnect_reason;
+  EnumMetric<FixedName> metric_disconnect_type;
   WiFiReasonType type;
 
   if (by_whom == kDisconnectedByAp) {
@@ -756,8 +747,8 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
         break;
     }
   }
-  SendEnumToUMA(metric_disconnect_reason, reason, IEEE_80211::kReasonCodeMax);
-  SendEnumToUMA(metric_disconnect_type, type, kReasonCodeTypeMax);
+  SendEnumToUMA(metric_disconnect_reason, reason);
+  SendEnumToUMA(metric_disconnect_type, type);
 }
 #endif  // DISABLE_WIFI
 
@@ -913,7 +904,7 @@ void Metrics::NotifyDeviceScanFinished(int interface_index) {
 }
 
 void Metrics::ReportDeviceScanResultToUma(Metrics::WiFiScanResult result) {
-  SendEnumToUMA(Metrics::kMetricScanResult, result, Metrics::kScanResultMax);
+  SendEnumToUMA(kMetricScanResult, result);
 }
 
 void Metrics::ResetScanTimer(int interface_index) {
@@ -953,14 +944,12 @@ void Metrics::ResetConnectTimer(int interface_index) {
 
 void Metrics::Notify3GPPRegistrationDelayedDropPosted() {
   SendEnumToUMA(kMetricCellular3GPPRegistrationDelayedDrop,
-                kCellular3GPPRegistrationDelayedDropPosted,
-                kCellular3GPPRegistrationDelayedDropMax);
+                kCellular3GPPRegistrationDelayedDropPosted);
 }
 
 void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
   SendEnumToUMA(kMetricCellular3GPPRegistrationDelayedDrop,
-                kCellular3GPPRegistrationDelayedDropCanceled,
-                kCellular3GPPRegistrationDelayedDropMax);
+                kCellular3GPPRegistrationDelayedDropCanceled);
 }
 
 void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
@@ -989,8 +978,7 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
   } else if (network_technology == kNetworkTechnology5gNr) {
     drop_technology = kCellularDropTechnology5gNr;
   }
-  SendEnumToUMA(kMetricCellularDrop, drop_technology,
-                kCellularDropTechnologyMax);
+  SendEnumToUMA(kMetricCellularDrop, drop_technology);
   SendToUMA(kMetricCellularSignalStrengthBeforeDrop, signal_strength,
             kMetricCellularSignalStrengthBeforeDropMin,
             kMetricCellularSignalStrengthBeforeDropMax,
@@ -1002,10 +990,7 @@ void Metrics::NotifyCellularConnectionResult(Error::Type error) {
 
   CellularConnectResult connect_result =
       ConvertErrorToCellularConnectResult(error);
-
-  SendEnumToUMA(
-      kMetricCellularConnectResult, static_cast<int>(connect_result),
-      static_cast<int>(CellularConnectResult::kCellularConnectResultMax));
+  SendEnumToUMA(kMetricCellularConnectResult, static_cast<int>(connect_result));
 }
 
 int64_t Metrics::HashApn(const std::string& uuid,
@@ -1128,8 +1113,7 @@ void Metrics::NotifyDetailedCellularConnectionResult(
 }
 
 void Metrics::NotifyCorruptedProfile() {
-  SendEnumToUMA(kMetricCorruptedProfile, kCorruptedProfile,
-                kCorruptedProfileMax);
+  SendEnumToUMA(kMetricCorruptedProfile, kCorruptedProfile);
 }
 
 void Metrics::NotifyWifiAutoConnectableServices(int num_services) {
@@ -1149,13 +1133,8 @@ void Metrics::NotifyWifiTxBitrate(int bitrate) {
             kMetricWifiTxBitrateMax, kMetricWifiTxBitrateNumBuckets);
 }
 
-void Metrics::NotifyUserInitiatedConnectionResult(const std::string& name,
-                                                  int result) {
-  SendEnumToUMA(name, result, kUserInitiatedConnectionResultMax);
-}
-
 void Metrics::NotifyUserInitiatedConnectionFailureReason(
-    const std::string& name, const Service::ConnectFailure failure) {
+    const Service::ConnectFailure failure) {
   UserInitiatedConnectionFailureReason reason;
   switch (failure) {
     case Service::kFailureNone:
@@ -1204,36 +1183,29 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
       reason = kUserInitiatedConnectionFailureReasonUnknown;
       break;
   }
-  SendEnumToUMA(name, reason, kUserInitiatedConnectionFailureReasonMax);
+  SendEnumToUMA(kMetricWifiUserInitiatedConnectionResult, reason);
 }
 
 void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
-  SendEnumToUMA(kMetricDeviceConnectionStatus, status, kConnectionStatusMax);
+  SendEnumToUMA(kMetricDeviceConnectionStatus, status);
 }
 
 void Metrics::NotifyNetworkConnectionIPType(Technology technology_id,
                                             NetworkConnectionIPType type) {
-  const auto histogram =
-      GetFullMetricName(kMetricNetworkConnectionIPTypeSuffix, technology_id);
-  SendEnumToUMA(histogram, type, kNetworkConnectionIPTypeMax);
+  SendEnumToUMA(kMetricNetworkConnectionIPType, technology_id, type);
 }
 
 void Metrics::NotifyIPv6ConnectivityStatus(Technology technology_id,
                                            bool status) {
-  const auto histogram =
-      GetFullMetricName(kMetricIPv6ConnectivityStatusSuffix, technology_id);
-  IPv6ConnectivityStatus ipv6_status =
+  auto ipv6_status =
       status ? kIPv6ConnectivityStatusYes : kIPv6ConnectivityStatusNo;
-  SendEnumToUMA(histogram, ipv6_status, kIPv6ConnectivityStatusMax);
+  SendEnumToUMA(kMetricIPv6ConnectivityStatus, technology_id, ipv6_status);
 }
 
 void Metrics::NotifyDevicePresenceStatus(Technology technology_id,
                                          bool status) {
-  const auto histogram =
-      GetFullMetricName(kMetricDevicePresenceStatusSuffix, technology_id);
-  DevicePresenceStatus presence =
-      status ? kDevicePresenceStatusYes : kDevicePresenceStatusNo;
-  SendEnumToUMA(histogram, presence, kDevicePresenceStatusMax);
+  auto presence = status ? kDevicePresenceStatusYes : kDevicePresenceStatusNo;
+  SendEnumToUMA(kMetricDevicePresenceStatus, technology_id, presence);
 }
 
 void Metrics::NotifyUnreliableLinkSignalStrength(Technology technology_id,
@@ -1312,8 +1284,7 @@ void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
     return;
   }
 
-  SendEnumToUMA(kMetricConnectionDiagnosticsIssue, issue_enum,
-                kConnectionDiagnosticsIssueMax);
+  SendEnumToUMA(kMetricConnectionDiagnosticsIssue, issue_enum);
 }
 
 void Metrics::NotifyPortalDetectionMultiProbeResult(
@@ -1341,13 +1312,12 @@ void Metrics::NotifyPortalDetectionMultiProbeResult(
     result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked;
   }
 
-  SendEnumToUMA(kMetricPortalDetectionMultiProbeResult, result_enum,
-                kPortalDetectionMultiProbeResultMax);
+  SendEnumToUMA(kMetricPortalDetectionMultiProbeResult, result_enum);
 }
 
 void Metrics::NotifyHS20Support(bool hs20_supported, int hs20_version_number) {
   if (!hs20_supported) {
-    SendEnumToUMA(kMetricHS20Support, kHS20Unsupported, kHS20SupportMax);
+    SendEnumToUMA(kMetricHS20Support, kHS20Unsupported);
     return;
   }
   int hotspot_version = kHS20VersionInvalid;
@@ -1366,7 +1336,7 @@ void Metrics::NotifyHS20Support(bool hs20_supported, int hs20_version_number) {
     default:
       break;
   }
-  SendEnumToUMA(kMetricHS20Support, hotspot_version, kHS20SupportMax);
+  SendEnumToUMA(kMetricHS20Support, hotspot_version);
 }
 
 void Metrics::NotifyMBOSupport(bool mbo_support) {
@@ -1400,7 +1370,7 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
     // Monitor through UMA how often adapters are not in the allowlist.
     WiFiAdapterInAllowlist allowed =
         adapter_supported ? kInAVL : kNotInAllowlist;
-    SendEnumToUMA(kMetricAdapterInfoAllowlisted, allowed, kAllowlistMax);
+    SendEnumToUMA(kMetricAdapterInfoAllowlisted, allowed);
   }
 
   int v_id = adapter_supported ? info.vendor_id
@@ -1620,14 +1590,10 @@ void Metrics::UpdateServiceStateTransitionMetrics(
 void Metrics::SendServiceFailure(const Service& service) {
   NetworkServiceError error =
       ConnectFailureToServiceErrorEnum(service.failure());
-
-  const auto histogram =
-      GetFullMetricName(kMetricNetworkServiceErrorSuffix, service.technology());
-
   // Publish technology specific connection failure metrics. This will
   // account for all the connection failures happening while connected to
   // a particular interface e.g. wifi, cellular etc.
-  library_->SendEnumToUMA(histogram, error, kNetworkServiceErrorMax);
+  SendEnumToUMA(kMetricNetworkServiceError, service.technology(), error);
 }
 
 Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {
