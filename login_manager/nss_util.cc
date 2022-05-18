@@ -76,6 +76,8 @@ class NssUtilImpl : public NssUtil {
       const base::FilePath& user_homedir,
       const OptionalFilePath& ns_mnt_path) override;
 
+  ScopedPK11SlotDescriptor GetInternalSlot() override;
+
   std::unique_ptr<crypto::RSAPrivateKey> GetPrivateKeyForUser(
       const std::vector<uint8_t>& public_key_der,
       PK11SlotDescriptor* user_slot) override;
@@ -158,6 +160,13 @@ ScopedPK11SlotDescriptor NssUtilImpl::OpenUserDB(
   }
 
   res->slot = std::move(db_slot);
+  return res;
+}
+
+ScopedPK11SlotDescriptor NssUtilImpl::GetInternalSlot() {
+  auto res = std::make_unique<PK11SlotDescriptor>();
+  res->slot = crypto::ScopedPK11Slot(PK11_GetInternalKeySlot());
+  DCHECK_EQ(PK11_IsReadOnly(res->slot.get()), true);
   return res;
 }
 

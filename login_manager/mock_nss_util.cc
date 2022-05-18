@@ -62,6 +62,13 @@ ScopedPK11SlotDescriptor MockNssUtil::OpenUserDB(
   return res;
 }
 
+ScopedPK11SlotDescriptor MockNssUtil::GetInternalSlot() {
+  auto res = std::make_unique<PK11SlotDescriptor>();
+  res->slot = crypto::ScopedPK11Slot(PK11_GetInternalKeySlot());
+  DCHECK_EQ(PK11_IsReadOnly(res->slot.get()), true);
+  return res;
+}
+
 base::FilePath MockNssUtil::GetOwnerKeyFilePath() {
   if (!EnsureTempDir())
     return base::FilePath();

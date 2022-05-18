@@ -49,11 +49,11 @@ class MockDevicePolicyService : public DevicePolicyService {
               ListComponentIds,
               (PolicyDomain),
               (override));
-  MOCK_METHOD(
-      bool,
-      CheckAndHandleOwnerLogin,
-      (const std::string&, PK11SlotDescriptor*, bool*, brillo::ErrorPtr*),
-      (override));
+  MOCK_METHOD(bool,
+              CheckAndHandleOwnerLogin,
+              (const std::string&, PK11SlotDescriptor*, brillo::ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool, UserIsOwner, (const std::string&), (override));
   MOCK_METHOD(bool,
               ValidateAndStoreOwnerKey,
               (const std::string&,

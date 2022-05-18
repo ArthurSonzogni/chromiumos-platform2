@@ -397,6 +397,7 @@ class SessionManagerImpl
   std::unique_ptr<UserSession> CreateUserSession(
       const std::string& username,
       const OptionalFilePath& ns_mnt_path,
+      bool might_be_owner_user,
       bool is_incognito,
       brillo::ErrorPtr* error);
 

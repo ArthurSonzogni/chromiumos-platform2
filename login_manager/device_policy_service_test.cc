@@ -362,9 +362,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
-  bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
-                                                 &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(owner_);
+  EXPECT_TRUE(
+      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
@@ -380,10 +380,12 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
+  const std::string regular_user = "regular_user@somewhere";
+
   brillo::ErrorPtr error;
-  bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      "regular_user@somewhere", nss.GetDescriptor(), &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(regular_user);
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(regular_user,
+                                                 nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
@@ -400,9 +402,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
   brillo::ErrorPtr error;
-  bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
-                                                 &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(owner_);
+  EXPECT_TRUE(
+      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
@@ -421,9 +423,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
-  bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
-                                                 &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(owner_);
+  EXPECT_TRUE(
+      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
@@ -443,9 +445,9 @@ TEST_F(DevicePolicyServiceTest,
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
-  bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
-                                                 &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(owner_);
+  EXPECT_TRUE(
+      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
@@ -462,10 +464,12 @@ TEST_F(DevicePolicyServiceTest,
   ExpectKeyPopulated(false);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
+  const std::string regular_user = "other@somwhere";
+
   brillo::ErrorPtr error;
-  bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      "other@somwhere", nss.GetDescriptor(), &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(regular_user);
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(regular_user,
+                                                 nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
@@ -484,10 +488,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
-  bool is_owner = false;
-  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
-                                                  &is_owner, &error));
+  const bool is_owner = service_->UserIsOwner(owner_);
+  EXPECT_FALSE(
+      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_TRUE(error.get());
+  EXPECT_TRUE(is_owner);
   EXPECT_EQ(dbus_error::kPubkeySetIllegal, error->GetCode());
 }
 

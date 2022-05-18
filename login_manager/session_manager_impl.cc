@@ -64,6 +64,7 @@
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
+#include "login_manager/policy_store.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/proto_bindings/login_screen_storage.pb.h"
@@ -157,6 +158,11 @@ const char kCpuSharesFile[] =
     "/sys/fs/cgroup/cpu/session_manager_containers/cpu.shares";
 const unsigned int kCpuSharesForeground = 1024;
 const unsigned int kCpuSharesBackground = 64;
+
+// Workaround for a presubmit check about long lines.
+constexpr auto
+    kStartArcMiniContainerRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT =
+        StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_DEFAULT;
 #endif
 
 // The interval used to periodically check if time sync was done by tlsdated.
@@ -701,12 +707,18 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   }
 
   // Create a UserSession object for this user.
+  const bool user_is_owner = device_policy_->UserIsOwner(actual_account_id);
+  // NSS is used to store the private key which is generated and used only by
+  // consumer owner users. If no key is present, the current user might become
+  // the owner and also needs the database.
+  const bool might_be_owner_user =
+      device_policy_->KeyMissing() || user_is_owner;
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
   const OptionalFilePath ns_mnt_path = is_incognito || IsolateUserSession()
                                            ? chrome_mount_ns_path_
                                            : std::nullopt;
-  auto user_session =
-      CreateUserSession(actual_account_id, ns_mnt_path, is_incognito, error);
+  auto user_session = CreateUserSession(
+      actual_account_id, ns_mnt_path, might_be_owner_user, is_incognito, error);
   if (!user_session) {
     DCHECK(*error);
     return false;
@@ -714,10 +726,8 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
   // Check whether the current user is the owner, and if so make sure they are
   // allowlisted and have an owner key.
-  bool user_is_owner = false;
-  if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
-                                                user_session->descriptor.get(),
-                                                &user_is_owner, error)) {
+  if (!device_policy_->CheckAndHandleOwnerLogin(
+          user_session->username, user_session->descriptor.get(), error)) {
     DCHECK(*error);
     return false;
   }
@@ -1423,7 +1433,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
   }
 
   switch (request.dalvik_memory_profile()) {
-    case StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_DEFAULT:
+    case kStartArcMiniContainerRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT:
       break;
     case StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_4G:
       env_vars.emplace_back("DALVIK_MEMORY_PROFILE=4G");
@@ -1779,6 +1789,7 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
 std::unique_ptr<SessionManagerImpl::UserSession>
 SessionManagerImpl::CreateUserSession(const std::string& username,
                                       const OptionalFilePath& ns_mnt_path,
+                                      bool might_be_owner_user,
                                       bool is_incognito,
                                       brillo::ErrorPtr* error) {
   std::unique_ptr<PolicyService> user_policy =
@@ -1789,17 +1800,30 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
     return nullptr;
   }
 
-  ScopedPK11SlotDescriptor desc(
-      nss_->OpenUserDB(GetUserPath(username), ns_mnt_path));
+  ScopedPK11SlotDescriptor nss_desc;
+  // If the user could be the owner of the device, session_manager may need to
+  // use its owner key.
+  if (might_be_owner_user) {
+    nss_desc = nss_->OpenUserDB(GetUserPath(username), ns_mnt_path);
+  } else {
+    // We're sure that the user is not the owner of the device so they don't
+    // have the owner key.
+    // session_manager has code which expects a NSS slot to be associated with
+    // the user session unconditionally and may try to find the owner key on the
+    // slot. This is then expected to return nothing. Avoid opening the user's
+    // real NSS database in this case due to https://crbug.com/1163303 and pass
+    // the read-only NSS internal slot instead.
+    nss_desc = nss_->GetInternalSlot();
+  }
 
-  if (!desc->slot) {
+  if (!nss_desc->slot) {
     LOG(ERROR) << "Could not open the current user's NSS database.";
     *error = CreateError(dbus_error::kNoUserNssDb, "Can't create session.");
     return nullptr;
   }
 
   return std::make_unique<UserSession>(username, SanitizeUserName(username),
-                                       is_incognito, std::move(desc),
+                                       is_incognito, std::move(nss_desc),
                                        std::move(user_policy));
 }
 

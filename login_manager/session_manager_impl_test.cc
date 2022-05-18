@@ -1039,11 +1039,15 @@ class SessionManagerImplTest : public ::testing::Test,
                               StrEq(SanitizeUserName(account_id_string))))
         .Times(1);
     // Expect initialization of the device policy service, return success.
+    EXPECT_CALL(*device_policy_service_, UserIsOwner)
+        .WillOnce(Return(for_owner));
     EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _, _))
-        .WillOnce(DoAll(SetArgPointee<2>(for_owner), Return(true)));
+                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _))
+        .WillOnce(Return(true));
     // Confirm that the key is present.
-    EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(false));
+    EXPECT_CALL(*device_policy_service_, KeyMissing())
+        .Times(2)
+        .WillRepeatedly(Return(false));
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
     EXPECT_CALL(*init_controller_,
@@ -1068,13 +1072,16 @@ class SessionManagerImplTest : public ::testing::Test,
         .Times(1);
 
     // Expect initialization of the device policy service, return success.
+    EXPECT_CALL(*device_policy_service_, UserIsOwner).WillOnce(Return(false));
     EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _, _))
-        .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)));
+                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _))
+        .WillOnce(Return(true));
 
     // Indicate that there is no owner key in order to trigger a new one to be
     // generated.
-    EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(true));
+    EXPECT_CALL(*device_policy_service_, KeyMissing())
+        .Times(2)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
     if (key_gen)
@@ -1317,6 +1324,8 @@ TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
 
 TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
   nss_.MakeBadDB();
+  // Force SessionManagerImpl to attempt opening the NSS database.
+  EXPECT_CALL(*device_policy_service_, KeyMissing).WillOnce(Return(true));
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->StartSession(&error, kSaneEmail, kNothing));
   ASSERT_TRUE(error.get());
@@ -1327,8 +1336,8 @@ TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
   // Upon the owner login check, return an error.
 
   EXPECT_CALL(*device_policy_service_,
-              CheckAndHandleOwnerLogin(StrEq(kSaneEmail), _, _, _))
-      .WillOnce(WithArg<3>(Invoke([](brillo::ErrorPtr* error) {
+              CheckAndHandleOwnerLogin(StrEq(kSaneEmail), _, _))
+      .WillOnce(WithArg<2>(Invoke([](brillo::ErrorPtr* error) {
         *error = CreateError(dbus_error::kPubkeySetIllegal, "test");
         return false;
       })));

@@ -42,6 +42,7 @@ class MockNssUtil : public NssUtil {
   ScopedPK11SlotDescriptor OpenUserDB(
       const base::FilePath& user_homedir,
       const OptionalFilePath& ns_mnt_path) override;
+  ScopedPK11SlotDescriptor GetInternalSlot() override;
   MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
               GetPrivateKeyForUser,
               (const std::vector<uint8_t>&, PK11SlotDescriptor*),
