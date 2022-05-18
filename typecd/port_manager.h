@@ -84,6 +84,8 @@ class PortManager : public UdevMonitor::TypecObserver,
               ModeEntryDpAltModeNotifyInvalidTBTCable);
   FRIEND_TEST(PortManagerNotificationTest,
               ModeEntryDpAltModeNotifyInvalidDpCable);
+  FRIEND_TEST(PortManagerNotificationTest, ECModeEntryNoCableNotification);
+  FRIEND_TEST(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,

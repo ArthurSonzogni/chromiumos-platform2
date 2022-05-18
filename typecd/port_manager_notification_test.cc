@@ -339,4 +339,57 @@ TEST_F(PortManagerNotificationTest, ModeEntryDpAltModeNotifyInvalidDpCable) {
   port_manager_->RunModeEntry(0);
 }
 
+// Test case for notifications during EC mode entry.
+// Port does not enter mode, or send any notifications.
+// - OWC TBT4 dock and Caldigit TBT4 cable.
+TEST_F(PortManagerNotificationTest, ECModeEntryNoCableNotification) {
+  // Add OWC TBT4 dock and Caldigit TBT4 cable.
+  AddOWCTBT4Dock(*port_);
+  AddCalDigitTBT4Cable(*port_);
+
+  // Set AP mode entry to false for test case covering EC driven mode entry.
+  port_manager_->SetModeEntrySupported(false);
+
+  // Expect |port_manager| to check for cable notifications. This happens
+  // when GetModeEntrySupported returns false.
+  EXPECT_CALL(*port_, CanEnterDPAltMode(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(true)));
+
+  // Configure |port_manager| and run mode entry.
+  port_manager_->SetUserActive(true);
+  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
+  port_manager_->RunModeEntry(0);
+}
+
+// Test case for notifications during EC mode entry.
+// Port does not enter a mode, but sends CableWarningType::kInvalidDpCable.
+// - OWC TBT4 dock and unbranded USB 2.0 cable.
+TEST_F(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable) {
+  // Add OWC TBT4 dock and unbranded USB 2.0 cable.
+  AddOWCTBT4Dock(*port_);
+  AddUnbrandedUSB2Cable(*port_);
+
+  // Set AP mode entry to false for test case covering EC driven mode entry.
+  port_manager_->SetModeEntrySupported(false);
+
+  // Expect |port_manager| to check for cable notifications. This happens
+  // when GetModeEntrySupported returns false.
+  EXPECT_CALL(*port_, CanEnterDPAltMode(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(true), Return(true)));
+
+  // Expect to send CableWarningType::kInvalidDpCable.
+  EXPECT_CALL(*notification_manager_,
+              NotifyCableWarning(CableWarningType::kInvalidDpCable))
+      .Times(1);
+
+  // Configure |port_manager| and run mode entry.
+  port_manager_->SetUserActive(true);
+  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
+  port_manager_->RunModeEntry(0);
+}
+
 }  // namespace typecd

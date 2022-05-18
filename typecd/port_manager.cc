@@ -317,9 +317,6 @@ void PortManager::RunModeEntry(int port_num) {
     return;
   }
 
-  if (!GetModeEntrySupported())
-    return;
-
   auto it = ports_.find(port_num);
   if (it == ports_.end()) {
     LOG(WARNING) << "Mode entry attempted for non-existent port " << port_num;
@@ -349,6 +346,20 @@ void PortManager::RunModeEntry(int port_num) {
   if (port->GetCurrentMode() != TypeCMode::kNone) {
     LOG(INFO) << "Mode entry already executed for port " << port_num
               << ", mode: " << ModeToString(port->GetCurrentMode());
+    return;
+  }
+
+  if (!GetModeEntrySupported()) {
+    if (!notify_mgr_)
+      return;
+
+    // If mode entry is not attempted because the AP cannot enter modes, still
+    // check for cable notifications.
+    bool invalid_dpalt_cable = false;
+    bool can_enter_dp_alt_mode = port->CanEnterDPAltMode(&invalid_dpalt_cable);
+    if (can_enter_dp_alt_mode && invalid_dpalt_cable)
+      notify_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
+
     return;
   }
 
