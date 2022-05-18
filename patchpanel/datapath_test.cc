@@ -32,6 +32,7 @@ using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Mock;
 using testing::Return;
+using testing::Sequence;
 using testing::SetArgPointee;
 using testing::StrEq;
 
@@ -219,6 +220,28 @@ void Verify_iptables(MockProcessRunner& runner,
     EXPECT_CALL(runner,
                 ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr))
         .Times(call_count);
+}
+
+void Verify_iptables_in_sequence(MockProcessRunner& runner,
+                                 IpFamily family,
+                                 const std::string& command,
+                                 const Sequence& sequence,
+                                 int call_count = 1) {
+  auto args =
+      base::SplitString(command, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+  const auto table = args[0];
+  args.erase(args.begin());
+  if (family & IPv4)
+    EXPECT_CALL(runner,
+                iptables(StrEq(table), ElementsAreArray(args), _, nullptr))
+        .Times(call_count)
+        .InSequence(sequence);
+  if (family & IPv6)
+    EXPECT_CALL(runner,
+                ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr))
+        .Times(call_count)
+        .InSequence(sequence);
 }
 
 void Verify_ip_netns_add(MockProcessRunner& runner,
@@ -1413,37 +1436,44 @@ TEST(DatapathTest, StartDnsRedirection_User) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
+  Sequence sequence;
 
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w");
-  Verify_iptables(
+  Verify_iptables_in_sequence(
       *runner, IPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w");
-  Verify_iptables(
+      "0 -j DNAT --to-destination 8.8.8.8 -w",
+      sequence);
+  Verify_iptables_in_sequence(
       *runner, IPv4,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w");
-  Verify_iptables(
+      "0 -j DNAT --to-destination 8.4.8.4 -w",
+      sequence);
+  Verify_iptables_in_sequence(
+      *runner, IPv4,
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "0 -j DNAT --to-destination 1.1.1.1 -w",
+      sequence);
+  Verify_iptables_in_sequence(
       *runner, IPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w");
+      "0 -j DNAT --to-destination 8.8.8.8 -w",
+      sequence);
+  Verify_iptables_in_sequence(
+      *runner, IPv4,
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
+      "0 -j DNAT --to-destination 8.4.8.4 -w",
+      sequence);
+  Verify_iptables_in_sequence(
+      *runner, IPv4,
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "0 -j DNAT --to-destination 1.1.1.1 -w",
+      sequence);
   Verify_iptables(*runner, IPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
@@ -1451,26 +1481,30 @@ TEST(DatapathTest, StartDnsRedirection_User) {
                   "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
 
-  Verify_iptables(
-      *runner, IPv6,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
-  Verify_iptables(
+  Verify_iptables_in_sequence(
       *runner, IPv6,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
-  Verify_iptables(
+      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w",
+      sequence);
+  Verify_iptables_in_sequence(
       *runner, IPv6,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
-  Verify_iptables(
+      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w",
+      sequence);
+  Verify_iptables_in_sequence(
       *runner, IPv6,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
+      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w",
+      sequence);
+  Verify_iptables_in_sequence(
+      *runner, IPv6,
+      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w",
+      sequence);
   Verify_iptables(*runner, IPv6,
                   "nat -A snat_user_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
@@ -1632,7 +1666,7 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(
       *runner, IPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables(
       *runner, IPv4,
@@ -1642,12 +1676,12 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(
       *runner, IPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(
       *runner, IPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables(
       *runner, IPv4,
@@ -1657,7 +1691,7 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(
       *runner, IPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner, IPv4,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
@@ -1669,22 +1703,22 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(
       *runner, IPv6,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables(
       *runner, IPv6,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(
       *runner, IPv6,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables(
       *runner, IPv6,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
+      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(*runner, IPv6,
                   "nat -D snat_user_dns -p udp --dport 53 -j "
