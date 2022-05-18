@@ -98,10 +98,14 @@ class PrefsStoreInterface : public PrefsSourceInterface {
 };
 
 // PrefsInterface implementation that reads and writes prefs from/to disk and
-// from libcros_config.
+// from libcros_config and cros_ec.
 // Multiple directories are supported; this allows a default set of prefs
 // to be placed on the readonly root partition and a second set of
 // prefs under /var to be overlaid and changed at runtime.
+//
+// Default pref read priority when using GetDefaultStore() and
+// GetDefaultSources() is in decreasing order: read-write directory, cros_ec,
+// libcros_config, read-only directories.
 class Prefs : public PrefsInterface {
  public:
   // Helper class for tests.

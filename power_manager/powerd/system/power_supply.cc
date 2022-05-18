@@ -638,15 +638,10 @@ void PowerSupply::Init(
     low_battery_shutdown_time_ = base::Seconds(shutdown_time_sec);
   }
 
-  if (!GetDisplayStateOfChargeFromEC(nullptr)) {
-    // Fall back to old method.
-    import_display_soc_ = false;
-    prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
-    full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
-    LOG(WARNING) << "Setting full factor in OS is deprecated.";
-    prefs_->GetDouble(kLowBatteryShutdownPercentPref,
-                      &low_battery_shutdown_percent_);
-  }
+  prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
+  full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
+  prefs_->GetDouble(kLowBatteryShutdownPercentPref,
+                    &low_battery_shutdown_percent_);
 
   // The percentage-based threshold takes precedence over the time-based
   // threshold. This behavior is duplicated in check_powerd_config.
@@ -655,6 +650,8 @@ void PowerSupply::Init(
   }
 
   LOG(INFO) << "Using full factor of " << full_factor_;
+
+  import_display_soc_ = GetDisplayStateOfChargeFromEC(nullptr);
 
   int64_t samples = 0;
   CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
@@ -785,8 +782,6 @@ bool PowerSupply::GetDisplayStateOfChargeFromEC(double* display_soc) {
   if (display_soc != nullptr) {
     *display_soc = cmd.CurrentPercentCharge();
   }
-  full_factor_ = cmd.FullFactor();
-  low_battery_shutdown_percent_ = cmd.ShutdownPercentCharge();
 
   return true;
 }

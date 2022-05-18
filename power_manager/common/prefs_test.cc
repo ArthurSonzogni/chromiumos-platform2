@@ -5,6 +5,7 @@
 #include "power_manager/common/prefs.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -13,10 +14,13 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <cros_config/fake_cros_config.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/cros_config_prefs_source.h"
+#include "power_manager/common/cros_ec_prefs_source.h"
 #include "power_manager/common/file_prefs_store.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/test_main_loop_runner.h"
 
@@ -409,6 +413,66 @@ TEST_F(PrefsTest, TestLibCrosConfigExternalTrailingWhitespace) {
   std::string value;
   EXPECT_TRUE(prefs_.GetExternalString("/external", "name", &value));
   EXPECT_EQ("value", value);
+}
+
+class MockDisplayStateOfChargeCommand : public ec::DisplayStateOfChargeCommand {
+ public:
+  using DisplayStateOfChargeCommand::DisplayStateOfChargeCommand;
+  MOCK_METHOD(struct ec_response_display_soc*, Resp, (), (const, override));
+};
+
+std::unique_ptr<ec::DisplayStateOfChargeCommand> ReturnMockCommand(
+    std::unique_ptr<MockDisplayStateOfChargeCommand> cmd) {
+  return cmd;
+}
+
+TEST_F(PrefsTest, CrosEcSuccess) {
+  auto mock_command = std::make_unique<MockDisplayStateOfChargeCommand>();
+  struct ec_response_display_soc response = {
+      .display_soc = 990, .full_factor = 980, .shutdown_soc = 51};
+  EXPECT_CALL(*mock_command, Resp).WillRepeatedly(testing::Return(&response));
+
+  auto prefs_source =
+      std::make_unique<CrosEcPrefsSource>(std::move(mock_command));
+  auto sources = GetSources();
+  cros_config_->SetString("/power", "low-battery-shutdown-percent", "4");
+  cros_config_->SetString("/power", "power-supply-full-factor", "0.9");
+  cros_config_->SetString("/power", "low-battery-shutdown-time-s", "200");
+  sources.insert(sources.begin(), std::move(prefs_source));
+  ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
+                          std::move(sources)));
+  double shutdown_percent, full_factor;
+  int64_t shutdown_time;
+  ASSERT_TRUE(prefs_.GetInt64(kLowBatteryShutdownTimePref, &shutdown_time));
+  ASSERT_TRUE(
+      prefs_.GetDouble(kLowBatteryShutdownPercentPref, &shutdown_percent));
+  ASSERT_TRUE(prefs_.GetDouble(kPowerSupplyFullFactorPref, &full_factor));
+  EXPECT_EQ(5.1, shutdown_percent);
+  EXPECT_EQ(0.98, full_factor);
+  EXPECT_EQ(200, shutdown_time);
+  std::string value;
+  EXPECT_FALSE(prefs_.GetExternalString("/external", "name", &value));
+}
+
+TEST_F(PrefsTest, CrosEcUnsupported) {
+  auto prefs_source = std::make_unique<CrosEcPrefsSource>(nullptr);
+  auto sources = GetSources();
+  cros_config_->SetString("/power", "low-battery-shutdown-percent", "4");
+  cros_config_->SetString("/power", "power-supply-full-factor", "0.9");
+  cros_config_->SetString("/power", "low-battery-shutdown-time-s", "200");
+  sources.insert(sources.begin(), std::move(prefs_source));
+  ASSERT_TRUE(prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]),
+                          std::move(sources)));
+  std::string pref;
+  double shutdown_percent, full_factor;
+  int64_t shutdown_time;
+  ASSERT_TRUE(prefs_.GetInt64(kLowBatteryShutdownTimePref, &shutdown_time));
+  ASSERT_TRUE(
+      prefs_.GetDouble(kLowBatteryShutdownPercentPref, &shutdown_percent));
+  ASSERT_TRUE(prefs_.GetDouble(kPowerSupplyFullFactorPref, &full_factor));
+  EXPECT_EQ(4, shutdown_percent);
+  EXPECT_EQ(0.9, full_factor);
+  EXPECT_EQ(200, shutdown_time);
 }
 
 }  // namespace power_manager

@@ -20,6 +20,7 @@
 #include <cros_config/cros_config.h>
 
 #include "power_manager/common/cros_config_prefs_source.h"
+#include "power_manager/common/cros_ec_prefs_source.h"
 #include "power_manager/common/file_prefs_store.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/util.h"
@@ -73,6 +74,9 @@ PrefsSourceInterfaceVector Prefs::GetDefaultSources() {
   PrefsSourceInterfaceVector sources;
 
   const base::FilePath read_only_path(kReadOnlyPrefsDir);
+
+  if (CrosEcPrefsSource::IsSupported())
+    sources.emplace_back(new CrosEcPrefsSource);
 
   auto config = std::make_unique<brillo::CrosConfig>();
   if (config->Init()) {
