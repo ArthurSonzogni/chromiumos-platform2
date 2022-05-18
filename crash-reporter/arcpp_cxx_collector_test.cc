@@ -17,6 +17,7 @@
 using brillo::ClearLog;
 using brillo::FindLog;
 using brillo::GetLog;
+using ::testing::HasSubstr;
 
 namespace {
 
@@ -85,15 +86,17 @@ class ArcppCxxCollectorTest : public Test {
     void SetArcPid(pid_t pid) { arc_pid_ = pid; }
     void AddProcess(pid_t pid,
                     const char* ns,
-                    const char* exe,
+                    const char* exec,
+                    const char* directory,
                     const char* cmd,
                     const char* auxv) {
       DCHECK_EQ(processes_.count(pid), 0u);
       DCHECK(ns);
-      DCHECK(exe);
+      DCHECK(exec);
       auto& process = processes_[pid];
       process.ns = ns;
-      process.exe = exe;
+      process.exec = exec;
+      process.directory = directory;
       process.cmd = cmd;
       process.auxv = auxv;
     }
@@ -101,7 +104,8 @@ class ArcppCxxCollectorTest : public Test {
    private:
     struct Process {
       const char* ns;
-      const char* exe;
+      const char* exec;
+      const char* directory;
       const char* cmd;
       const char* auxv;
     };
@@ -119,11 +123,15 @@ class ArcppCxxCollectorTest : public Test {
       ns->assign(it->second.ns);
       return true;
     }
-    bool GetExeBaseName(pid_t pid, std::string* exe) const override {
+    bool GetExecBaseNameAndDirectory(
+        pid_t pid,
+        std::string* exec,
+        base::FilePath* exec_directory) const override {
       const auto it = processes_.find(pid);
       if (it == processes_.end())
         return false;
-      exe->assign(it->second.exe);
+      exec->assign(it->second.exec);
+      *exec_directory = base::FilePath::FromASCII(it->second.directory);
       return true;
     }
     bool GetCommand(pid_t pid, std::string* command) const override {
@@ -191,15 +199,15 @@ TEST_F(ArcppCxxCollectorTest, IsArcProcess) {
   EXPECT_TRUE(FindLog("Failed to get PID namespace of ARC container"));
   ClearLog();
 
-  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(100, "arc", "init", "/sbin", "/sbin/init", k32BitAuxv);
 
   EXPECT_FALSE(collector_->IsArcProcess(123));
   EXPECT_TRUE(FindLog("Failed to get PID namespace of process"));
   ClearLog();
 
-  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
-                       k32BitAuxv);
-  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
+  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome",
+                       "/opt/google/chrome/chrome", k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin", "/sbin/arc_service",
                        k32BitAuxv);
 
   EXPECT_TRUE(collector_->IsArcProcess(123));
@@ -209,46 +217,59 @@ TEST_F(ArcppCxxCollectorTest, IsArcProcess) {
   EXPECT_TRUE(GetLog().empty());
 }
 
-TEST_F(ArcppCxxCollectorTest, GetExeBaseNameForUserCrash) {
+TEST_F(ArcppCxxCollectorTest, GetExecBaseNameForUserCrash) {
   context_->SetArcPid(100);
-  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
-  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
-                       k32BitAuxv);
+  context_->AddProcess(100, "arc", "init", "/sbin", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome",
+                       "/opt/google/chrome/chrome", k32BitAuxv);
 
-  std::string exe;
-  EXPECT_TRUE(collector_->GetExecutableBaseNameFromPid(50, &exe));
-  EXPECT_EQ("chrome", exe);
+  std::string exec;
+  base::FilePath exec_directory;
+  EXPECT_TRUE(collector_->GetExecutableBaseNameAndDirectoryFromPid(
+      50, &exec, &exec_directory));
+  EXPECT_EQ("chrome", exec);
+  EXPECT_EQ("/opt/google/chrome", exec_directory.value());
 }
 
-TEST_F(ArcppCxxCollectorTest, GetExeBaseNameForArcCrash) {
+TEST_F(ArcppCxxCollectorTest, GetExecBaseNameForArcCrash) {
   context_->SetArcPid(100);
-  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
-  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
+  context_->AddProcess(100, "arc", "init", "/sbin", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin", "/sbin/arc_service",
                        k32BitAuxv);
-  context_->AddProcess(456, "arc", "app_process32", nullptr, k32BitAuxv);
-  context_->AddProcess(789, "arc", "app_process32", "com.arc.app", k32BitAuxv);
+  context_->AddProcess(456, "arc", "app_process32", "/sbin", nullptr,
+                       k32BitAuxv);
+  context_->AddProcess(789, "arc", "app_process32", "/sbin", "com.arc.app",
+                       k32BitAuxv);
 
-  std::string exe;
+  std::string exec;
+  base::FilePath exec_directory;
 
-  EXPECT_TRUE(collector_->GetExecutableBaseNameFromPid(123, &exe));
-  EXPECT_EQ("arc_service", exe);
+  EXPECT_TRUE(collector_->GetExecutableBaseNameAndDirectoryFromPid(
+      123, &exec, &exec_directory));
+  EXPECT_EQ("arc_service", exec);
+  EXPECT_EQ("/sbin", exec_directory.value());
 
-  EXPECT_TRUE(collector_->GetExecutableBaseNameFromPid(456, &exe));
+  EXPECT_TRUE(collector_->GetExecutableBaseNameAndDirectoryFromPid(
+      456, &exec, &exec_directory));
   EXPECT_TRUE(FindLog("Failed to get package name"));
-  EXPECT_EQ("app_process32", exe);
+  EXPECT_EQ("app_process32", exec);
+  EXPECT_EQ("/sbin", exec_directory.value());
 
-  EXPECT_TRUE(collector_->GetExecutableBaseNameFromPid(789, &exe));
-  EXPECT_EQ("com.arc.app", exe);
+  EXPECT_TRUE(collector_->GetExecutableBaseNameAndDirectoryFromPid(
+      789, &exec, &exec_directory));
+  EXPECT_EQ("com.arc.app", exec);
+  EXPECT_EQ("/sbin", exec_directory.value());
 }
 
 TEST_F(ArcppCxxCollectorTest, ShouldDump) {
   context_->SetArcPid(100);
-  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
+  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome",
+                       "/opt/google/chrome/chrome", k32BitAuxv);
+  context_->AddProcess(100, "arc", "init", "/sbin", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin", "/sbin/arc_service",
                        k32BitAuxv);
-  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
-  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
+  context_->AddProcess(789, "arc", "app_process32", "/sbin", "com.arc.app",
                        k32BitAuxv);
-  context_->AddProcess(789, "arc", "app_process32", "com.arc.app", k32BitAuxv);
 
   std::string reason;
   EXPECT_FALSE(collector_->ShouldDump(50, 1234, "chrome", &reason));
@@ -265,12 +286,14 @@ TEST_F(ArcppCxxCollectorTest, ShouldDump) {
 TEST_F(ArcppCxxCollectorTest, CorrectlyDetectBitness) {
   bool is_64_bit;
 
-  context_->AddProcess(100, "arc", "app_process64", "zygote64", k64BitAuxv);
+  context_->AddProcess(100, "arc", "app_process64", "/sbin", "zygote64",
+                       k64BitAuxv);
   EXPECT_EQ(ArcppCxxCollector::kErrorNone,
             collector_->Is64BitProcess(100, &is_64_bit));
   EXPECT_TRUE(is_64_bit);
 
-  context_->AddProcess(101, "arc", "app_process32", "zygote32", k32BitAuxv);
+  context_->AddProcess(101, "arc", "app_process32", "/sbin", "zygote32",
+                       k32BitAuxv);
   EXPECT_EQ(ArcppCxxCollector::kErrorNone,
             collector_->Is64BitProcess(101, &is_64_bit));
   EXPECT_FALSE(is_64_bit);
@@ -289,10 +312,19 @@ TEST_F(ArcContextTest, GetPidNamespace) {
   EXPECT_THAT(ns, testing::MatchesRegex("^pid:\\[[0-9]+\\]$"));
 }
 
-TEST_F(ArcContextTest, GetExeBaseName) {
-  std::string exe;
-  EXPECT_TRUE(collector_->context().GetExeBaseName(pid_, &exe));
-  EXPECT_EQ("crash_reporter_test", exe);
+TEST_F(ArcContextTest, GetExecBaseNameAndDirectory) {
+  std::string exec;
+  base::FilePath exec_directory;
+  EXPECT_TRUE(collector_->context().GetExecBaseNameAndDirectory(
+      pid_, &exec, &exec_directory));
+  EXPECT_EQ("crash_reporter_test", exec);
+  // Unit tests currently always run in
+  // /var/cache/portage/chromeos-base/crash-reporter/out/Default. Make sure that
+  // ArcppCxxCollector::Context::GetExecBaseNameAndDirectory gets the correct
+  // directory. I chose the chromeos-base/crash-reporter substring as the least
+  // likely to change out of those directory names.
+  EXPECT_THAT(exec_directory.value(),
+              HasSubstr("chromeos-base/crash-reporter"));
 }
 
 // TODO(crbug.com/590044)

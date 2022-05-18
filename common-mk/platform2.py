@@ -13,6 +13,8 @@ import glob
 import json
 import os
 
+import common_utils
+import ebuild_function
 import six
 
 from chromite.lib import commandline
@@ -20,8 +22,6 @@ from chromite.lib import cros_build_lib
 from chromite.lib import osutils
 from chromite.lib import portage_util
 
-import common_utils
-import ebuild_function
 
 # USE flags used in BUILD.gn should be listed in _IUSE or _IUSE_TRUE.
 
@@ -71,6 +71,7 @@ _IUSE = [
     'factory_runtime_probe',
     'fake_drivefs_launcher',
     'feedback',
+    'force_breakpad',
     'fp_on_power_button',
     'fsverity',
     'ftdi_tpm',

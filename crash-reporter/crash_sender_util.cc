@@ -912,7 +912,7 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
 
   report_id = response->ExtractDataAsString();
 
-  if (product_name == "Chrome_ChromeOS")
+  if (product_name == constants::kProductNameChromeAsh)
     product_name = "Chrome";
   if (!util::IsOfficialImage()) {
     base::ReplaceSubstringsAfterOffset(&product_name, 0, "Chrome", "Chromium");

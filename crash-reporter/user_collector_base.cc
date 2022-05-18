@@ -84,14 +84,19 @@ bool UserCollectorBase::HandleCrash(
   GetUptime(&crash_time);
 
   std::string exec;
+  base::FilePath exec_directory;
   if (force_exec) {
     exec.assign(force_exec);
-  } else if (!GetExecutableBaseNameFromPid(attrs.pid, &exec)) {
+    // Leave exec_directory blank.
+  } else if (!GetExecutableBaseNameAndDirectoryFromPid(attrs.pid, &exec,
+                                                       &exec_directory)) {
     // If we cannot find the exec name, use the kernel supplied name.
     // We don't always use the kernel's since it truncates the name to
     // 16 characters.
     exec = StringPrintf("supplied_%s", attrs.exec_name.c_str());
   }
+
+  BeginHandlingCrash(attrs.pid, exec, exec_directory);
 
   std::string reason;
   bool dump = ShouldDump(attrs.pid, attrs.uid, exec, &reason);
@@ -133,6 +138,9 @@ UserCollectorBase::ParseCrashAttributes(const std::string& crash_attributes) {
   }
   return attrs;
 }
+
+void UserCollectorBase::BeginHandlingCrash(
+    pid_t pid, const std::string& exec, const base::FilePath& exec_directory) {}
 
 bool UserCollectorBase::ShouldDump(std::optional<pid_t> pid,
                                    std::string* reason) const {

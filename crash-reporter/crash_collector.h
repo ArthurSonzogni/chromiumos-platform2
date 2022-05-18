@@ -157,6 +157,10 @@ class CrashCollector {
     return std::move(in_memory_files_);
   }
 
+  // Allow tests to control the current machine uptime returned from
+  // GetUptime().
+  void set_current_uptime_for_test(base::TimeDelta uptime);
+
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
   void Initialize(bool early);
@@ -220,6 +224,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetLogContents);
   FRIEND_TEST(CrashCollectorTest, GetMultipleLogContents);
   FRIEND_TEST(CrashCollectorTest, GetProcessTree);
+  FRIEND_TEST(CrashCollectorTest, GetProcessPath);
   FRIEND_TEST(CrashCollectorTest, GetUptime);
   FRIEND_TEST(CrashCollectorTest, Initialize);
   FRIEND_TEST(CrashCollectorParameterizedTest, MetaData);
@@ -246,6 +251,8 @@ class CrashCollector {
               RemoveNewFileRemovesCorrectFileInCrashLoopMode);
   FRIEND_TEST(CrashCollectorTest,
               DISABLED_RemoveNewFileRemovesCorrectFileInCrashLoopMode);
+  FRIEND_TEST(CopyFirstNBytesParameterizedTest, CopyFirstNBytes);
+  FRIEND_TEST(CrashCollectorTest, CopyFirstNBytesFailsOnExistingFile);
   FRIEND_TEST(CrashCollectorTest, RemoveNewFileRemovesNormalFiles);
   FRIEND_TEST(CrashCollectorTest,
               RemoveNewFileRemovesNormalFilesInCrashLoopMode);
@@ -284,9 +291,9 @@ class CrashCollector {
   // Copies |source_fd| to |target_path|, which must be a new file.
   // If the file already exists or writing fails, return false.
   // Otherwise returns true.
-  // Does _not_ incerement get_bytes_written().
+  // Does _not_ increment get_bytes_written().
   // Probably does not do what you want in kCrashLoopSendingMode (will create a
-  // memfd file)
+  // memfd file).
   bool CopyFdToNewFile(base::ScopedFD source_fd,
                        const base::FilePath& target_path);
 
@@ -296,6 +303,19 @@ class CrashCollector {
   // Otherwise returns true.
   bool CopyFdToNewCompressedFile(base::ScopedFD source_fd,
                                  const base::FilePath& target_path);
+
+  // Copies up to |bytes_to_copy| bytes from |source_pipe_fd|, which must be a
+  // pipe, to |target_path|, which must be a new file. If the file already
+  // exists or writing fails, return std::nullopt. Otherwise returns the actual
+  // number of bytes written. Note that both underflow (reaching EOF before
+  // writing |bytes_to_copy| bytes) and overflow (reaching |bytes_to_copy| bytes
+  // before EOF) return success (returns an integer byte count not
+  // std::nullopt).
+  // Does _not_ increment get_bytes_written().
+  // Probably does not do what you want in kCrashLoopSendingMode (will create a
+  // memfd file).
+  std::optional<int> CopyFirstNBytesOfFdToNewFile(
+      int source_pipe_fd, const base::FilePath& target_path, int bytes_to_copy);
 
   // Writes |data| of |size| to |filename|, which must be a new file ending in
   // ".gz". File will be a gzip-compressed file. Returns true on success,
@@ -377,10 +397,15 @@ class CrashCollector {
   // Returns the path /proc/<pid>.
   static base::FilePath GetProcessPath(pid_t pid);
 
-  static bool GetUptime(base::TimeDelta* uptime);
+  // Sets |*uptime| to the amount of time since the computer booted.
+  bool GetUptime(base::TimeDelta* uptime);
+
+  // Sets |*uptime| to the uptime (the amount of time since the computer booted)
+  // at the time the process started.
   static bool GetUptimeAtProcessStart(pid_t pid, base::TimeDelta* uptime);
 
-  virtual bool GetExecutableBaseNameFromPid(pid_t pid, std::string* base_name);
+  virtual bool GetExecutableBaseNameAndDirectoryFromPid(
+      pid_t pid, std::string* base_name, base::FilePath* exec_directory);
 
   // Check given crash directory still has remaining capacity for another
   // crash.
@@ -565,6 +590,9 @@ class CrashCollector {
   // which is reported to the crash server along with the
   // crash_reporter-user-collection signature.
   std::string GetErrorTypeSignature(ErrorType error_type) const;
+
+  // If not null, GetUptime() will return *override_uptime_for_testing_;
+  std::unique_ptr<base::TimeDelta> override_uptime_for_testing_;
 
   // Prepended to log messages to differentiate between collectors.
   const std::string tag_;

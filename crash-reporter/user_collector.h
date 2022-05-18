@@ -59,10 +59,20 @@ class UserCollector : public UserCollectorBase {
     filter_path_ = filter_path;
   }
 
+  // Normally, /proc/<pid>/cmdline uses \0 to separate args.
+  static constexpr char kNormalCmdlineSeparator = '\0';
+  // However, chrome subprocesses of Chrome end up with spaces separating
+  // args because they rewrite their command lines.
+  static constexpr char kChromeSubprocessCmdlineSeparator = ' ';
+
  protected:
   void FinishCrash(const base::FilePath& meta_path,
                    const std::string& exec_name,
                    const std::string& payload_name) override;
+
+  void BeginHandlingCrash(pid_t pid,
+                          const std::string& exec,
+                          const base::FilePath& exec_directory) override;
 
  private:
   friend class UserCollectorTest;
@@ -73,7 +83,6 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, GetFirstLineWithPrefix);
   FRIEND_TEST(UserCollectorTest, GetIdFromStatus);
   FRIEND_TEST(UserCollectorTest, GetStateFromStatus);
-  FRIEND_TEST(UserCollectorTest, GetProcessPath);
   FRIEND_TEST(UserCollectorTest, ParseCrashAttributes);
   FRIEND_TEST(UserCollectorTest, ShouldDumpFiltering);
   FRIEND_TEST(UserCollectorTest, ShouldDumpChromeOverridesDeveloperImage);
@@ -81,6 +90,33 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, ShouldDumpUserConsentProductionImage);
   FRIEND_TEST(UserCollectorTest, ValidateProcFiles);
   FRIEND_TEST(UserCollectorTest, ValidateCoreFile);
+  FRIEND_TEST(UserCollectorNoFixtureTest, GuessChromeProductNameTest);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, BasicTrue);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_BasicTrue);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfBreakpad);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_FalseIfBreakpad);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfCrashpadIsChild);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfRenderer);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfNonChrome);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_BadProcFilesIgnored);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, BadProcFilesIgnored);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfTooOld);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfNotChrome);
+  friend class CopyStdinToCoreFileTest;
+  FRIEND_TEST(CopyStdinToCoreFileTest, Test);
+
+  // Returns true if we want to try to capture a crash of Chrome because we
+  // think it may have happened early -- specifically, before crashpad was
+  // initialized. Such crashes won't be captured through the normal
+  // ChromeCollector. We get less information by capturing them through
+  // UserCollector, but we can still get stack traces.
+  bool ShouldCaptureEarlyChromeCrash(const std::string& exec, pid_t pid);
+
+  // Guess at whether a crash in the Chrome executable located in
+  // |exec_directory| should have a product name of Chrome_Lacros or
+  // Chrome_ChromeOS.
+  static const char* GuessChromeProductName(
+      const base::FilePath& exec_directory);
 
   std::string GetPattern(bool enabled, bool early) const;
   bool SetUpInternal(bool enabled, bool early);
@@ -100,7 +136,11 @@ class UserCollector : public UserCollectorBase {
   // platform), which is due to the limitation in core2md. It returns an error
   // type otherwise.
   ErrorType ValidateCoreFile(const base::FilePath& core_path) const;
+  // Copy off stdin to a core file.
   bool CopyStdinToCoreFile(const base::FilePath& core_path);
+  // Heart of CopyStdinToCoreFile. Split out for easier unit testing. Does NOT
+  // take ownership of input_fd and will not close it. input_fd must be a pipe.
+  bool CopyPipeToCoreFile(int input_fd, const base::FilePath& core_path);
   bool RunCoreToMinidump(const base::FilePath& core_path,
                          const base::FilePath& procfs_directory,
                          const base::FilePath& minidump_path,
@@ -127,6 +167,31 @@ class UserCollector : public UserCollectorBase {
   std::string core_pipe_limit_file_;
   std::string our_path_;
   std::string filter_path_;
+
+  // Invoke special handling for early Chrome crashes. In particular, this
+  // limits the size of the core file we're willing to process.
+  //
+  // For the most part, we accept whatever cores we're given; the user pain of
+  // programs crashing outweighs user pain from the slowdown caused by writing
+  // out a large core file. However, for chrome it's different. The core files
+  // are massive (well over a GB), take 20+ seconds to write out, and in most
+  // cases, crashes are being caught by the much-faster crashpad-to-
+  // chrome_collector path anyways. We sometimes try to grab a Chrome core
+  // (if we think it's likely crashpad will miss it -- see
+  // ShouldCaptureEarlyChromeCrash), but we protect ourselves by stopping if
+  // the core file exceeds kMaxChromeCoreSize.
+  bool handling_early_chrome_crash_;
+
+  // For handling_early_chrome_crash_ mode:
+  // Chrome core dumps can be extremely large. Writing them to disk will lock
+  // up the machine for up to a minute. The pre-crashpad-init core files
+  // should be much smaller; however, to avoid problems if we accidentally try
+  // to ingest a post-crashpad-init core file, only copy the first 40MiB and
+  // error out if there's more data after that first 40MiB. (In May 2022,
+  // core size of an early crash on eve is 17MiB; this gives us a little room
+  // for growth while still protecting us from filling up the disk with a
+  // massively-oversized core.)
+  static constexpr int kMaxChromeCoreSize = 40 * 1024 * 1024;
 
   // Force a core2md failure for testing.
   bool core2md_failure_;

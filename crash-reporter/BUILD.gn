@@ -12,6 +12,7 @@ shared_defines = [
   "USE_ARCVM=${use.arcvm}",
   "USE_KVM_GUEST=${use.kvm_guest}",
   "USE_CHROMELESS_TTY=${use.chromeless_tty}",
+  "USE_FORCE_BREAKPAD=${use.force_breakpad}",
 ]
 
 group("all") {

@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -27,7 +28,8 @@ class ArcppCxxCollector : public UserCollectorBase {
 
     virtual bool GetArcPid(pid_t* pid) const = 0;
     virtual bool GetPidNamespace(pid_t pid, std::string* ns) const = 0;
-    virtual bool GetExeBaseName(pid_t pid, std::string* exe) const = 0;
+    virtual bool GetExecBaseNameAndDirectory(
+        pid_t pid, std::string* exec, base::FilePath* exec_directory) const = 0;
     virtual bool GetCommand(pid_t pid, std::string* command) const = 0;
     virtual bool ReadAuxvForProcess(pid_t pid, std::string* contents) const = 0;
   };
@@ -54,8 +56,8 @@ class ArcppCxxCollector : public UserCollectorBase {
 
  private:
   FRIEND_TEST(ArcppCxxCollectorTest, CorrectlyDetectBitness);
-  FRIEND_TEST(ArcppCxxCollectorTest, GetExeBaseNameForUserCrash);
-  FRIEND_TEST(ArcppCxxCollectorTest, GetExeBaseNameForArcCrash);
+  FRIEND_TEST(ArcppCxxCollectorTest, GetExecBaseNameForUserCrash);
+  FRIEND_TEST(ArcppCxxCollectorTest, GetExecBaseNameForArcCrash);
   FRIEND_TEST(ArcppCxxCollectorTest, ShouldDump);
 
   // Shift for UID namespace in ARC.
@@ -70,7 +72,10 @@ class ArcppCxxCollector : public UserCollectorBase {
 
     bool GetArcPid(pid_t* pid) const override;
     bool GetPidNamespace(pid_t pid, std::string* ns) const override;
-    bool GetExeBaseName(pid_t pid, std::string* exe) const override;
+    bool GetExecBaseNameAndDirectory(
+        pid_t pid,
+        std::string* exec,
+        base::FilePath* exec_directory) const override;
     bool GetCommand(pid_t pid, std::string* command) const override;
     bool ReadAuxvForProcess(pid_t pid, std::string* contents) const override;
 
@@ -80,7 +85,10 @@ class ArcppCxxCollector : public UserCollectorBase {
 
   // CrashCollector overrides.
   std::string GetProductVersion() const override;
-  bool GetExecutableBaseNameFromPid(pid_t pid, std::string* base_name) override;
+  bool GetExecutableBaseNameAndDirectoryFromPid(
+      pid_t pid,
+      std::string* base_name,
+      base::FilePath* exec_directory) override;
 
   // UserCollectorBase overrides.
   bool ShouldDump(pid_t pid,

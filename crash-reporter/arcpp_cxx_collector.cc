@@ -142,9 +142,10 @@ bool ArcppCxxCollector::ArcContext::GetPidNamespace(pid_t pid,
   return true;
 }
 
-bool ArcppCxxCollector::ArcContext::GetExeBaseName(pid_t pid,
-                                                   std::string* exe) const {
-  return collector_->CrashCollector::GetExecutableBaseNameFromPid(pid, exe);
+bool ArcppCxxCollector::ArcContext::GetExecBaseNameAndDirectory(
+    pid_t pid, std::string* exec, base::FilePath* exec_directory) const {
+  return collector_->CrashCollector::GetExecutableBaseNameAndDirectoryFromPid(
+      pid, exec, exec_directory);
 }
 
 bool ArcppCxxCollector::ArcContext::GetCommand(pid_t pid,
@@ -170,9 +171,9 @@ std::string ArcppCxxCollector::GetProductVersion() const {
   return arc_util::GetProductVersion();
 }
 
-bool ArcppCxxCollector::GetExecutableBaseNameFromPid(pid_t pid,
-                                                     std::string* base_name) {
-  if (!context_->GetExeBaseName(pid, base_name))
+bool ArcppCxxCollector::GetExecutableBaseNameAndDirectoryFromPid(
+    pid_t pid, std::string* base_name, base::FilePath* exec_directory) {
+  if (!context_->GetExecBaseNameAndDirectory(pid, base_name, exec_directory))
     return false;
 
   // The runtime for non-native ARC apps overwrites its command line with the
@@ -245,7 +246,9 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
 
   if (exit_code == EX_OK) {
     std::string process;
-    ArcppCxxCollector::GetExecutableBaseNameFromPid(pid, &process);
+    base::FilePath exec_directory;
+    ArcppCxxCollector::GetExecutableBaseNameAndDirectoryFromPid(
+        pid, &process, &exec_directory);
     AddArcMetaData(process);
     return kErrorNone;
   }

@@ -394,7 +394,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         }
       }
       AddCrashMetaUploadData(name, value_str);
-      if (name == "prod" && value_str == "Chrome_Lacros") {
+      if (name == constants::kUploadDataKeyProductKey &&
+          value_str == constants::kProductNameChromeLacros) {
         *is_lacros_crash = true;
       }
     }

@@ -11,17 +11,24 @@
 
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/containers/contains.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/user_collector_base.h"
 #include "crash-reporter/util.h"
 #include "crash-reporter/vm_support.h"
@@ -30,6 +37,13 @@ using base::FilePath;
 using base::StringPrintf;
 
 namespace {
+
+// The length of a process name stored in the kernel. Appears on our command
+// line and also in /proc/[pid] places. See PR_SET_NAME in
+// http://www.kernel.org/doc/man-pages/online/pages/man2/prctl.2.html and also
+// TASK_COMM_LEN. Both of those say "16 bytes" which includes the terminating
+// nul byte; the strlen is 15 characters.
+constexpr int kKernelProcessNameLength = 15;
 
 // This procfs file is used to cause kernel core file writing to
 // instead pipe the core file into a user space process.  See
@@ -48,6 +62,10 @@ const char kCorePatternLockFile[] = "/proc/sys/kernel/lock_core_pattern";
 
 // Filename we touch in our state directory when we get enabled.
 constexpr char kCrashHandlingEnabledFlagFile[] = "crash-handling-enabled";
+
+// The name of the main chrome executable. Currently, both lacros and ash use
+// the same executable name.
+constexpr char kChromeExecName[] = "chrome";
 
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
@@ -77,6 +95,73 @@ bool LockCorePattern() {
   return true;
 }
 
+// Given an exec name like "chrome", return the string we'd get in |exec| if
+// we're getting the exec name from the kernel. Matches the string manipulation
+// in UserCollectorBase::HandleCrash.
+std::string ExecNameToSuppliedName(base::StringPiece name) {
+  // When checking a kernel-supplied name, it should be truncated to 15 chars.
+  return "supplied_" + std::string(name.data(), 0, kKernelProcessNameLength);
+}
+
+#if !USE_FORCE_BREAKPAD
+// |status_file| is the path to a /proc/<pid>/status file. Returns true if the
+// process described by the status file is (a) the crashpad handled program and
+// (b) a child of |desired_parent|.
+bool IsACrashpadChildOf(const base::FilePath& status_file,
+                        pid_t desired_parent) {
+  std::string status_contents;
+  // Don't log error messages on failures reading or parsing the files;
+  // processes may go away in between the time we scan the directory and the
+  // time we try to read the status file. That's expected and we'll generate a
+  // lot of log-spam if we write a message on each failure.
+  if (!base::ReadFileToString(status_file, &status_contents)) {
+    VPLOG(3) << "Failed to read " << status_file.value();
+    return false;
+  }
+
+  bool has_correct_parent = false;
+  bool is_crashpad = false;
+  base::StringPairs pairs;
+  if (!base::SplitStringIntoKeyValuePairs(status_contents, ':', '\n', &pairs)) {
+    VLOG(3) << "Failed to convert " << status_file.value();
+    return false;
+  }
+  for (const auto& key_value : pairs) {
+    if (key_value.first == "PPid") {
+      std::string value;
+      int ppid;
+      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
+      if (base::StringToInt(value, &ppid) && ppid == desired_parent) {
+        has_correct_parent = true;
+      } else {
+        return false;  // No need to continue looking at this process's
+                       // status file; it's a child of a different process.
+      }
+    } else if (key_value.first == "Name") {
+      // Names in status are truncated to 15 characters. (TASK_COMM_LEN is 16
+      // and one byte is used for the terminating nul internally.)
+      constexpr base::StringPiece kCrashpadName(
+          base::StringPiece("chrome_crashpad_handler")
+              .substr(0, kKernelProcessNameLength));
+      std::string value;
+      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
+      if (value == kCrashpadName) {
+        is_crashpad = true;
+      } else {
+        return false;  // No need to continue looking at this process's
+                       // status file; it's not crashpad.
+      }
+    }
+
+    if (is_crashpad && has_correct_parent) {
+      return true;
+    }
+  }
+
+  VLOG(3) << status_file.value() << " didn't have Name and PPid";
+  return false;
+}
+#endif  // !USE_FORCE_BREAKPAD
 }  // namespace
 
 UserCollector::UserCollector()
@@ -84,13 +169,13 @@ UserCollector::UserCollector()
       core_pattern_file_(kCorePatternFile),
       core_pipe_limit_file_(kCorePipeLimitFile),
       filter_path_(kFilterPath),
+      handling_early_chrome_crash_(false),
       core2md_failure_(false) {}
 
-void UserCollector::Initialize(
-    const std::string& our_path,
-    bool core2md_failure,
-    bool directory_failure,
-    bool early) {
+void UserCollector::Initialize(const std::string& our_path,
+                               bool core2md_failure,
+                               bool directory_failure,
+                               bool early) {
   UserCollectorBase::Initialize(directory_failure, early);
   our_path_ = our_path;
   core2md_failure_ = core2md_failure;
@@ -304,28 +389,69 @@ UserCollector::ErrorType UserCollector::ValidateCoreFile(
   return kErrorNone;
 }
 
-// Copy off all stdin to a core file.
-bool UserCollector::CopyStdinToCoreFile(const FilePath& core_path) {
+bool UserCollector::CopyStdinToCoreFile(const base::FilePath& core_path) {
+  return CopyPipeToCoreFile(STDIN_FILENO, core_path);
+}
+
+bool UserCollector::CopyPipeToCoreFile(int input_fd,
+                                       const base::FilePath& core_path) {
   // We need to write to an actual file here for core2md.
   // If we're in memfd mode, fail out.
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     LOG(ERROR) << "Cannot call CopyFdToNewFile in kCrashLoopSendingMode";
     return false;
   }
-  // We don't directly create a ScopedFD with STDIN_FILENO because the
-  // destructor would close() that file descriptor, and we don't want to close
-  // stdin.
-  base::ScopedFD stdin_copy(dup(STDIN_FILENO));
-  if (!stdin_copy.is_valid()) {
+
+  if (handling_early_chrome_crash_) {
+    // See comments for kMaxChromeCoreSize in the header for why we do this.
+    std::optional<int> res =
+        CopyFirstNBytesOfFdToNewFile(input_fd, core_path, kMaxChromeCoreSize);
+    if (!res) {
+      LOG(ERROR) << "Could not write core file " << core_path.value();
+      if (!base::DeleteFile(core_path)) {
+        LOG(ERROR) << "And could not delete the core file either";
+      }
+      return false;
+    }
+
+    // Check that we wrote out the entire core file. Partial core files aren't
+    // going to usable.
+    if (res.value() < kMaxChromeCoreSize) {
+      return true;
+    }
+
+    // If res.value() == kMaxChromeCoreSize, then we can only tell if we wrote
+    // out all the input by trying to read one more byte and seeing if we were
+    // at EOF.
+    char n_plus_one_byte;
+    if (read(input_fd, &n_plus_one_byte, 1) == 0) {
+      // Core was exactly kMaxChromeCoreSize.
+      return true;
+    }
+
+    LOG(ERROR) << "Core file too big; write aborted";
+    if (!base::DeleteFile(core_path)) {
+      LOG(ERROR) << "And could not delete partial core file afterwards";
+    }
     return false;
   }
-  if (CopyFdToNewFile(std::move(stdin_copy), core_path)) {
+
+  // We don't directly create a ScopedFD with input_fd because the
+  // destructor would close() that file descriptor. In non-test-scenarios,
+  // input_fd is stdin and we don't want to close stdin.
+  base::ScopedFD input_fd_copy(dup(input_fd));
+  if (!input_fd_copy.is_valid()) {
+    return false;
+  }
+  if (CopyFdToNewFile(std::move(input_fd_copy), core_path)) {
     return true;
   }
 
-  PLOG(ERROR) << "Could not write core file";
+  PLOG(ERROR) << "Could not write core file " << core_path.value();
   // If the file system was full, make sure we remove any remnants.
-  base::DeleteFile(core_path);
+  if (!base::DeleteFile(core_path)) {
+    LOG(ERROR) << "And could not delete the core file either";
+  }
   return false;
 }
 
@@ -390,6 +516,130 @@ bool UserCollector::RunFilter(pid_t pid) {
   return filter.Run() == 0;
 }
 
+bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
+                                                  pid_t pid) {
+  // Rules:
+  //   1. Only the main browser process needs to be captured this way. Crashpad
+  //      can capture very early crashes in subprocesses.
+  //   2. Only capture if the process does not have a child process named
+  //      "chrome_crashpad_handler". Once this process exists, crashpad should
+  //      be capturing the crash.
+  //   3. Don't capture on boards with USE flag force_breakpad. We can't tell if
+  //      breakpad is initialized from the outside.
+  //   4. If the process has been up for more than 10 seconds, don't capture.
+  //      Long-running processes will have cores which are larger than
+  //      kMaxChromeCoreSize, and the lack of a chrome_crashpad_handler probably
+  //      indicates we're trying to shutdown, not start up.
+#if USE_FORCE_BREAKPAD
+  return false;  // Doesn't meet rule #3.
+#else
+  if (exec != kChromeExecName &&
+      exec != ExecNameToSuppliedName(kChromeExecName)) {
+    return false;  // Doesn't meet rule #1.
+  }
+
+  base::FilePath process_path = GetProcessPath(pid);
+  base::FilePath cmdline_path(process_path.Append("cmdline"));
+  std::string cmdline;
+  if (!base::ReadFileToString(cmdline_path, &cmdline)) {
+    LOG(WARNING) << "Could not read " << cmdline_path.value();
+    return false;  // Can't tell if it meets rule #1.
+  }
+
+  // https://man7.org/linux/man-pages/man5/proc.5.html says the command line
+  // arguments are separated by '\0's. But  When Chrome's processes spawn and
+  // override their cmdlines, they can end up with spaces between the args
+  // instead of the expected \0s. Check both ways.
+  for (char separator :
+       {kNormalCmdlineSeparator, kChromeSubprocessCmdlineSeparator}) {
+    std::vector<base::StringPiece> argv = base::SplitStringPiece(
+        cmdline, std::string(1, separator), base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
+
+    for (base::StringPiece arg : argv) {
+      if (base::StartsWith(arg, "--type=")) {
+        return false;  // Not the browser process. Doesn't meet rule #1.
+      }
+    }
+  }
+
+  // Check uptime before checking for a child crashpad process. The uptime
+  // check requires far fewer system calls and will usually return false.
+  base::TimeDelta current_uptime;
+  base::TimeDelta process_start_uptime;
+  constexpr base::TimeDelta kMaxProcessAge = base::Seconds(10);
+  if (!GetUptime(&current_uptime) ||
+      !GetUptimeAtProcessStart(pid, &process_start_uptime) ||
+      (current_uptime - process_start_uptime) > kMaxProcessAge) {
+    return false;  // Doesn't meet rule #4.
+  }
+
+  // Enumerate all /proc/<pid>/status files to look for one that's a child of
+  // the crashed process and which is a crashpad handler.
+  base::FileEnumerator status_files(
+      paths::Get("/proc"), true /*recursive*/, base::FileEnumerator::FILES,
+      "status", base::FileEnumerator::FolderSearchPolicy::ALL,
+      base::FileEnumerator::ErrorPolicy::IGNORE_ERRORS);
+  for (base::FilePath status_file = status_files.Next(); !status_file.empty();
+       status_file = status_files.Next()) {
+    if (IsACrashpadChildOf(status_file, pid)) {
+      return false;  // Doesn't meet rule #2.
+    }
+  }
+
+  return true;
+#endif  // !USE_FORCE_BREAKPAD
+}
+
+// static
+const char* UserCollector::GuessChromeProductName(
+    const base::FilePath& exec_directory) {
+  if (exec_directory.empty()) {
+    // Guess Chrome_ChromeOS for lack of a better choice.
+    LOG(WARNING) << "Exectuable directory not known; assuming ash";
+    return constants::kProductNameChromeAsh;
+  }
+
+  const base::FilePath kAshChromeDirectory(paths::Get("/opt/google/chrome"));
+  if (kAshChromeDirectory == exec_directory) {
+    return constants::kProductNameChromeAsh;
+  }
+
+  // Lacros can be in several different directories. Sometimes it runs from
+  // rootfs, sometimes from stateful. Just look for the "lacros" string.
+  if (exec_directory.value().find("lacros") != std::string::npos) {
+    return constants::kProductNameChromeLacros;
+  }
+
+  LOG(WARNING) << exec_directory.value()
+               << " does not match Ash or Lacros paths";
+  // Guess Chrome_ChromeOS for lack of a better choice.
+  return constants::kProductNameChromeAsh;
+}
+
+void UserCollector::BeginHandlingCrash(pid_t pid,
+                                       const std::string& exec,
+                                       const base::FilePath& exec_directory) {
+  // Check for early Chrome crashes; if this is an early Chrome crash, start
+  // the special handling. Don't use the special handling if
+  // ShouldHandleChromeCrashes() returns true, because that indicates we want to
+  // use the normal handling code path for Chrome crashes.
+  if (!ShouldHandleChromeCrashes() && IsChromeExecName(exec) &&
+      ShouldCaptureEarlyChromeCrash(exec, pid)) {
+    handling_early_chrome_crash_ = true;
+    // Change product name to Chrome_ChromeOS or Chrome_Lacros.
+    std::string product_key = GuessChromeProductName(exec_directory);
+    AddCrashMetaUploadData(constants::kUploadDataKeyProductKey, product_key);
+    AddCrashMetaUploadData("early_chrome_crash", "true");
+
+    // TODO(b/234500620): We should also check for crash-loop mode and activate
+    // it here if appropriate. Otherwise we risk losing crashes if there's an
+    // early crash loading a user's profile info.
+
+    LOG(INFO) << "Activating early Chrome crash mode for " << product_key;
+  }
+}
+
 bool UserCollector::ShouldDump(pid_t pid,
                                bool handle_chrome_crashes,
                                const std::string& exec,
@@ -399,7 +649,8 @@ bool UserCollector::ShouldDump(pid_t pid,
   // Treat Chrome crashes as if the user opted-out.  We stop counting Chrome
   // crashes towards user crashes, so user crashes really mean non-Chrome
   // user-space crashes.
-  if (!handle_chrome_crashes && IsChromeExecName(exec)) {
+  if (!handle_chrome_crashes && !handling_early_chrome_crash_ &&
+      IsChromeExecName(exec)) {
     // anomaly_detector's CrashReporterParser looks for this message; don't
     // change it without updating the regex.
     *reason =
@@ -463,7 +714,7 @@ namespace {
 
 bool IsChromeExecName(const std::string& exec) {
   static const char* const kChromeNames[] = {
-      "chrome",
+      kChromeExecName,
       // These are additional thread names seen in http://crash/
       "MediaPipeline",
       // These come from the use of base::PlatformThread::SetName() directly
@@ -524,11 +775,7 @@ bool IsChromeExecName(const std::string& exec) {
   if (chrome_names.empty()) {
     for (std::string check_name : kChromeNames) {
       chrome_names.insert(check_name);
-      // When checking a kernel-supplied name, it should be truncated to 15
-      // chars.  See PR_SET_NAME in
-      // http://www.kernel.org/doc/man-pages/online/pages/man2/prctl.2.html,
-      // although that page misleads by saying "16 bytes".
-      chrome_names.insert("supplied_" + std::string(check_name, 0, 15));
+      chrome_names.insert(ExecNameToSuppliedName(check_name));
     }
   }
 

@@ -539,6 +539,40 @@ bool CrashCollector::CopyFdToNewFile(base::ScopedFD source_fd,
   return base::CopyFileContents(source, target);
 }
 
+std::optional<int> CrashCollector::CopyFirstNBytesOfFdToNewFile(
+    int source_pipe_fd, const base::FilePath& target_path, int bytes_to_copy) {
+  int bytes_written = 0;
+  base::ScopedFD target_fd = GetNewFileHandle(target_path);
+  if (!target_fd.is_valid()) {
+    return std::nullopt;
+  }
+
+  while (bytes_to_copy > bytes_written) {
+    // splice() allows us to ask the kernel to transfer the data directly from
+    // the pipe (normally STDIN) to disk, without passing through our userspace.
+    // In the best case, this is a zero-copy operation where the kernel just
+    // transfers ownership of the memory pages from the input pipe to the
+    // output. This is considerably more efficient than having us read the pipe
+    // to a buffer and then write the buffer.
+    ssize_t res = splice(source_pipe_fd, /*off_in=*/nullptr, target_fd.get(),
+                         /*off_out=*/nullptr,
+                         /*length=*/bytes_to_copy - bytes_written, /*flags=*/0);
+    if (res == 0) {
+      // man page: "A return value of 0 means end of input."
+      return bytes_written;
+    }
+
+    if (res < 0) {
+      PLOG(ERROR) << "splice failed: ";
+      return std::nullopt;
+    }
+
+    bytes_written += res;
+  }
+
+  return bytes_written;
+}
+
 base::ScopedFD CrashCollector::OpenNewCompressedFileForWriting(
     const base::FilePath& filename, gzFile* compressed_output) {
   DCHECK_EQ(filename.FinalExtension(), ".gz")
@@ -1125,11 +1159,18 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
 
 // static
 FilePath CrashCollector::GetProcessPath(pid_t pid) {
-  return FilePath(StringPrintf("/proc/%d", pid));
+  return paths::Get(StringPrintf("/proc/%d", pid));
 }
 
-// static
+void CrashCollector::set_current_uptime_for_test(base::TimeDelta uptime) {
+  override_uptime_for_testing_ = std::make_unique<base::TimeDelta>(uptime);
+}
+
 bool CrashCollector::GetUptime(base::TimeDelta* uptime) {
+  if (override_uptime_for_testing_) {
+    *uptime = *override_uptime_for_testing_;
+    return true;
+  }
   timespec boot_time;
   if (clock_gettime(CLOCK_BOOTTIME, &boot_time) != 0) {
     PLOG(ERROR) << "Failed to get boot time.";
@@ -1161,8 +1202,8 @@ bool CrashCollector::GetUptimeAtProcessStart(pid_t pid,
   return true;
 }
 
-bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
-                                                  std::string* base_name) {
+bool CrashCollector::GetExecutableBaseNameAndDirectoryFromPid(
+    pid_t pid, std::string* base_name, base::FilePath* exec_directory) {
   FilePath target;
   FilePath process_path = GetProcessPath(pid);
   FilePath exe_path = process_path.Append("exe");
@@ -1183,6 +1224,7 @@ bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
     return false;
   }
   *base_name = target.BaseName().value();
+  *exec_directory = target.DirName();
   return true;
 }
 

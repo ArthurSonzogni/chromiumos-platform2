@@ -18,11 +18,19 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/thread_pool.h>
+#include <base/test/bind.h>
 #include <base/test/simple_test_clock.h>
+#include <base/test/task_environment.h>
+#include <base/threading/platform_thread.h>
+#include <base/threading/simple_thread.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/object_path.h>
 #include <dbus/message.h>
@@ -40,8 +48,10 @@ using base::FilePath;
 using base::StringPrintf;
 using brillo::FindLog;
 using ::testing::_;
+using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::Optional;
 using ::testing::Return;
 
 // The QEMU emulator we use to run unit tests on simulated ARM boards does not
@@ -461,6 +471,252 @@ TEST_F(CrashCollectorTest,
   EXPECT_EQ(collector.get_bytes_written(), bytes_written_after_first);
 
   ASSERT_EQ(collector.get_in_memory_files_for_test().size(), 1);
+}
+
+struct CopyFirstNBytesTestParams {
+  std::string test_name;
+  std::string input;
+  int bytes_to_copy;
+  std::string expected_output;
+  int expected_bytes_written;
+  base::TimeDelta write_delay;
+  base::TimeDelta read_delay;
+  int write_chunks;
+};
+
+std::vector<CopyFirstNBytesTestParams> GetCopyFirstNBytesTestParams() {
+  const std::string kShortString = "Hello World And Everything Else";
+  constexpr int kLongStringLen = 40 * 1024 * 1024;
+  std::string long_string;
+  long_string.reserve(kLongStringLen);
+
+  // Generate a string without a repeating pattern.
+  while (long_string.size() < kLongStringLen) {
+    base::StrAppend(&long_string, {base::NumberToString(long_string.size())});
+  }
+  long_string = long_string.substr(0, kLongStringLen);
+
+  std::vector<CopyFirstNBytesTestParams> results;
+  enum StrLength { kShort, kLong };
+  for (StrLength len : {kShort, kLong}) {
+    std::string prefix = (len == kShort ? "Short" : "Long");
+    std::string input = (len == kShort ? kShortString : long_string);
+    int input_length = static_cast<int>(input.size());
+    std::string first_half_of_input = input.substr(0, input_length / 2);
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "FastComplete"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length * 2,
+        /*expected_output=*/input,
+        /*expected_bytes_written=*/input_length,
+        /*write_delay=*/base::TimeDelta(),
+        /*read_delay=*/base::TimeDelta(),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "FastExactBytes"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length,
+        /*expected_output=*/input,
+        /*expected_bytes_written=*/input_length,
+        /*write_delay=*/base::TimeDelta(),
+        /*read_delay=*/base::TimeDelta(),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "FastTruncated"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length / 2,
+        /*expected_output=*/first_half_of_input,
+        /*expected_bytes_written=*/input_length / 2,
+        /*write_delay=*/base::TimeDelta(),
+        /*read_delay=*/base::TimeDelta(),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "WriteFirst"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length * 2,
+        /*expected_output=*/input,
+        /*expected_bytes_written=*/input_length,
+        /*write_delay=*/base::TimeDelta(),
+        /*read_delay=*/base::Milliseconds(200),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "ReadFirst"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length * 2,
+        /*expected_output=*/input,
+        /*expected_bytes_written=*/input_length,
+        /*write_delay=*/base::Milliseconds(200),
+        /*read_delay=*/base::TimeDelta(),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "WriteFirstTruncated"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length / 2,
+        /*expected_output=*/first_half_of_input,
+        /*expected_bytes_written=*/input_length / 2,
+        /*write_delay=*/base::TimeDelta(),
+        /*read_delay=*/base::Milliseconds(200),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "ReadFirstTruncated"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length / 2,
+        /*expected_output=*/first_half_of_input,
+        /*expected_bytes_written=*/input_length / 2,
+        /*write_delay=*/base::Milliseconds(200),
+        /*read_delay=*/base::TimeDelta(),
+        /*write_chunks=*/1});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "ChunkedComplete"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length * 2,
+        /*expected_output=*/input,
+        /*expected_bytes_written=*/input_length,
+        /*write_delay=*/base::Milliseconds(200),
+        /*read_delay=*/base::TimeDelta(),
+        /*write_chunks=*/3});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "ChunkedTruncated3"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length / 2,
+        /*expected_output=*/first_half_of_input,
+        /*expected_bytes_written=*/input_length / 2,
+        /*write_delay=*/base::Milliseconds(200),
+        /*read_delay=*/base::TimeDelta(),
+        // write_chunks is 3 so that we pick up half of one chunk.
+        /*write_chunks=*/3});
+    results.push_back(CopyFirstNBytesTestParams{
+        /*test_name=*/base::StrCat({prefix, "ChunkedTruncated4"}),
+        /*input=*/input,
+        /*bytes_to_copy=*/input_length / 2,
+        /*expected_output=*/first_half_of_input,
+        /*expected_bytes_written=*/input_length / 2,
+        /*write_delay=*/base::Milliseconds(200),
+        /*read_delay=*/base::TimeDelta(),
+        // write_chunks is 4 so that we get a complete chunk and then nothing
+        // from the next chunk.
+        /*write_chunks=*/4});
+  }
+
+  results.push_back(CopyFirstNBytesTestParams{
+      /*test_name=*/"EmptyInput",
+      /*input=*/"Won't be written because of write_chunks = 0",
+      /*bytes_to_copy=*/20,
+      /*expected_output=*/"",
+      /*expected_bytes_written=*/0,
+      /*write_delay=*/base::TimeDelta(),
+      /*read_delay=*/base::TimeDelta(),
+      // write_chunks of 0 will close the write side of the pipe without writing
+      // anything to the file.
+      /*write_chunks=*/0});
+  return results;
+}
+
+class CopyFirstNBytesParameterizedTest
+    : public CrashCollectorTest,
+      public testing::WithParamInterface<CopyFirstNBytesTestParams> {
+ protected:
+  // Writes |params.input| to the given file descriptor. Run on a different
+  // thread so that we don't deadlock trying to both read and write a pipe on
+  // one thread.
+  static void WriteToFileDescriptor(CopyFirstNBytesTestParams params,
+                                    base::ScopedFD write_fd) {
+    for (int chunk_index = 0; chunk_index < params.write_chunks;
+         chunk_index++) {
+      int start = (params.input.length() * chunk_index) / params.write_chunks;
+      // end in the classic STL sense -- one past the last character in the
+      // chunk.
+      int end =
+          (params.input.length() * (chunk_index + 1)) / params.write_chunks;
+      std::string chunk = params.input.substr(start, end - start);
+      LOG(INFO) << "Writing chunk " << chunk_index << " [" << start << "-"
+                << end << ") on thread " << base::PlatformThread::CurrentId();
+      // Don't CHECK on the result. For the Truncated tests, the writes will
+      // often fail when the read side closes the file descriptor.
+      if (!base::WriteFileDescriptor(write_fd.get(), chunk.c_str())) {
+        PLOG(WARNING) << "base::WriteFileDescriptor failed for chunk "
+                      << chunk_index;
+        break;
+      }
+
+      if (chunk_index < params.write_chunks - 1) {
+        base::PlatformThread::Sleep(base::Milliseconds(200));
+      }
+    }
+  }
+
+ private:
+  // Needed for base::ThreadPool::PostDelayedTask to work. Must be in
+  // MULTIPLE_THREADS mode. Important that this is destructed after the
+  // local variable |read_fd|, so that the read side of the pipe closes and
+  // base::WriteFileDescriptor gives up before we try to join the threads.
+  base::test::TaskEnvironment task_env_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    CopyFirstNBytesSuite,
+    CopyFirstNBytesParameterizedTest,
+    testing::ValuesIn(GetCopyFirstNBytesTestParams()),
+    [](const ::testing::TestParamInfo<CopyFirstNBytesTestParams>& info) {
+      return info.param.test_name;
+    });
+
+TEST_P(CopyFirstNBytesParameterizedTest, CopyFirstNBytes) {
+  const FilePath kOutputPath = test_dir_.Append("output.txt");
+  CopyFirstNBytesTestParams params = GetParam();
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0) << strerror(errno);
+  base::ScopedFD read_fd(pipefd[0]);
+  base::ScopedFD write_fd(pipefd[1]);
+
+  // Spin off another thread to do the writing, to avoid deadlocks on writing
+  // to the pipe.
+  LOG(INFO) << "Preparing to launch write thread from thread "
+            << base::PlatformThread::CurrentId();
+  base::ThreadPool::PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&CopyFirstNBytesParameterizedTest::WriteToFileDescriptor,
+                     params, std::move(write_fd)),
+      params.write_delay);
+
+  if (params.read_delay.is_positive()) {
+    base::PlatformThread::Sleep(params.read_delay);
+  }
+
+  LOG(INFO) << "Starting read on thread " << base::PlatformThread::CurrentId();
+
+  EXPECT_THAT(collector_.CopyFirstNBytesOfFdToNewFile(
+                  read_fd.get(), kOutputPath, params.bytes_to_copy),
+              Optional(params.expected_bytes_written));
+  std::string file_contents;
+  EXPECT_TRUE(base::ReadFileToString(kOutputPath, &file_contents));
+  EXPECT_EQ(file_contents, params.expected_output);
+}
+
+TEST_F(CrashCollectorTest, CopyFirstNBytesFailsOnExistingFile) {
+  base::test::TaskEnvironment task_env;
+  const FilePath kOutputPath = test_dir_.Append("output.txt");
+  const std::string kOriginalFileContents = "Haha, already a file here!";
+  ASSERT_TRUE(base::WriteFile(kOutputPath, kOriginalFileContents));
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0) << strerror(errno);
+  base::ScopedFD read_fd(pipefd[0]);
+  base::ScopedFD write_fd(pipefd[1]);
+  const std::string kOverwriteString = "Overwrite the file!";
+  base::ThreadPool::PostTask(
+      FROM_HERE, base::BindLambdaForTesting([kOverwriteString,
+                                             write_fd = std::move(write_fd)]() {
+        base::WriteFileDescriptor(write_fd.get(), kOverwriteString);
+      }));
+
+  EXPECT_THAT(collector_.CopyFirstNBytesOfFdToNewFile(
+                  read_fd.get(), kOutputPath, kOverwriteString.size() * 2),
+              Eq(std::nullopt));
+
+  std::string file_contents;
+  EXPECT_TRUE(base::ReadFileToString(kOutputPath, &file_contents));
+  EXPECT_EQ(file_contents, kOriginalFileContents);
 }
 
 TEST_F(CrashCollectorTest, RemoveNewFileRemovesNormalFiles) {
@@ -1082,13 +1338,29 @@ TEST_F(CrashCollectorTest, ParseProcessTicksFromStat) {
 }
 
 TEST_F(CrashCollectorTest, GetUptime) {
+  // We want to use the real proc filesystem.
+  paths::SetPrefixForTesting(base::FilePath());
+
   base::TimeDelta uptime_at_process_start;
   EXPECT_TRUE(CrashCollector::GetUptimeAtProcessStart(
       getpid(), &uptime_at_process_start));
 
   base::TimeDelta uptime;
-  EXPECT_TRUE(CrashCollector::GetUptime(&uptime));
+  EXPECT_TRUE(collector_.GetUptime(&uptime));
 
+#if defined(ARCH_CPU_ARM_FAMILY)
+  // On QEMU simulator (used for ARM testing), stat always says the uptime at
+  // process start is zero. (This was fixed in Jan 2022, but we don't have the
+  // patch yet.) Just test we didn't get a negative value. (Once we get the
+  // patch, the test will still pass, to avoid blocking uprev.)
+  EXPECT_FALSE(uptime_at_process_start.is_negative())
+      << uptime_at_process_start;
+#else
+  // On non-QEMU, the machine should have been up for a little while before
+  // the process started.
+  EXPECT_TRUE(uptime_at_process_start.is_positive()) << uptime_at_process_start;
+#endif
+  EXPECT_TRUE(uptime.is_positive()) << uptime;
   EXPECT_GT(uptime, uptime_at_process_start);
 }
 
@@ -1634,14 +1906,23 @@ TEST_F(CrashCollectorTest, GetMultipleLogContents) {
   EXPECT_EQ("foobaz\nbazbar\n", contents);
 }
 
+TEST_F(CrashCollectorTest, GetProcessPath) {
+  // We want to use the real proc filesystem.
+  paths::SetPrefixForTesting(base::FilePath());
+  FilePath path = collector_.GetProcessPath(100);
+  ASSERT_EQ("/proc/100", path.value());
+}
+
 TEST_F(CrashCollectorTest, GetProcessTree) {
+  // We want to use the real proc filesystem.
+  paths::SetPrefixForTesting(base::FilePath());
   const FilePath output_file = test_dir_.Append("log");
   std::string contents;
 
   ASSERT_TRUE(collector_.GetProcessTree(getpid(), output_file));
   ASSERT_TRUE(base::PathExists(output_file));
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
-  EXPECT_LT(300, contents.size());
+  EXPECT_LT(300, contents.size()) << contents;
   EXPECT_EQ(collector_.get_bytes_written(), contents.size());
   base::DeleteFile(FilePath(output_file));
 
@@ -1649,7 +1930,7 @@ TEST_F(CrashCollectorTest, GetProcessTree) {
   ASSERT_TRUE(base::PathExists(output_file));
   std::string contents_pid_0;
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents_pid_0));
-  EXPECT_GT(100, contents_pid_0.size());
+  EXPECT_GT(100, contents_pid_0.size()) << contents_pid_0;
   EXPECT_EQ(collector_.get_bytes_written(),
             contents.size() + contents_pid_0.size());
 }

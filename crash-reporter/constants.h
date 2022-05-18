@@ -29,6 +29,18 @@ constexpr char kUploadFilePrefix[] = "upload_file_";
 // in crash loop mode.
 constexpr char kCrashLoopModeKey[] = "crash_loop_mode";
 
+// An upload var for the metafile, giving the product name (for example,
+// "Chrome_ChromeOS" or "ChromeOS" or "Chrome_Lacros")
+constexpr char kUploadDataKeyProductKey[] = "prod";
+
+// The product name for Chrome ash crashes. Must match the string in
+// ChromeCrashReporterClient::GetProductNameAndVersion() in the chromium repo.
+constexpr char kProductNameChromeAsh[] = "Chrome_ChromeOS";
+
+// The product name for Chrome Lacros crashes. Must match the string in
+// ChromeCrashReporterClient::GetProductNameAndVersion() in the chromium repo.
+constexpr char kProductNameChromeLacros[] = "Chrome_Lacros";
+
 constexpr char kJavaScriptStackExtension[] = "js_stack";
 constexpr char kJavaScriptStackExtensionWithDot[] = ".js_stack";
 // This *must match* the crash::FileStorage::kJsStacktraceFileName constant

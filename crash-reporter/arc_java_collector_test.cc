@@ -80,6 +80,8 @@ class ArcJavaCollectorTest : public ::testing::Test {
     collector_->set_lsb_release_for_test(lsb_release);
   }
 
+  void TearDown() override { paths::SetPrefixForTesting(base::FilePath()); }
+
  protected:
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath test_crash_directory_;

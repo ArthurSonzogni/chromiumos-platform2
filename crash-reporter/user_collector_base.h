@@ -102,6 +102,16 @@ class UserCollectorBase : public CrashCollector {
   // during unit tests.
   virtual void AnnounceUserCrash();
 
+  // Called early in HandleCrash, specifically before ShouldDump. This can be
+  // overridden by child classes to set up state based on the executable name
+  // and directory that is needed in multiple places later in the crash handling
+  // process (such as in both ShouldDump and ConvertCoreToMinidump).
+  //
+  // Default is a no-op.
+  virtual void BeginHandlingCrash(pid_t pid,
+                                  const std::string& exec,
+                                  const base::FilePath& exec_directory);
+
   virtual bool ShouldDump(pid_t pid,
                           uid_t uid,
                           const std::string& exec,
