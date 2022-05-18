@@ -1487,6 +1487,16 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			clients must set one if they desire.  To remove an
 			existing priority use the ClearProperty method.
 
+		int32 EphemeralPriority [readwrite]
+
+			An optional value used to calculate the priority order
+			of this service, before the Priority property. This
+			value will not be persisted into the profile.
+
+			Intended for testing only to work around Shill behavior
+			that changes which Ethernet profile entry is loaded for
+			a Service when the sort order changes.
+
 		string ProbeUrl [readonly]
 
 			The probe URL that was used to find a redirect URL through

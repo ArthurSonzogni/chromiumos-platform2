@@ -1009,6 +1009,7 @@ class Service : public base::RefCounted<Service> {
   bool explicitly_disconnected_;
   bool is_in_user_connect_;
   int32_t priority_;
+  int32_t ephemeral_priority_ = 0;
   uint8_t crypto_algorithm_;
   bool key_rotation_;
   bool endpoint_auth_;

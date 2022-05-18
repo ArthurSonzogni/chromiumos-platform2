@@ -63,6 +63,11 @@ const char kServiceSortSerialNumber[] = "SerialNumber";
 const char kServiceSortTechnology[] = "Technology";
 const char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 
+// This is property is only supposed to be used in tast tests to order Ethernet
+// services. Can be removed once we support multiple Ethernet profiles properly
+// (b/159725895).
+constexpr char kEphemeralPriorityProperty[] = "EphemeralPriority";
+
 std::valarray<uint64_t> CounterToValArray(
     const patchpanel::TrafficCounter& counter) {
   return std::valarray<uint64_t>{counter.rx_bytes(), counter.tx_bytes(),
@@ -255,6 +260,7 @@ Service::Service(Manager* manager, Technology technology)
                             &previous_error_serial_number_);
   HelpRegisterDerivedInt32(kPriorityProperty, &Service::GetPriority,
                            &Service::SetPriority);
+  store_.RegisterInt32(kEphemeralPriorityProperty, &ephemeral_priority_);
   HelpRegisterDerivedString(kProfileProperty, &Service::GetProfileRpcId,
                             &Service::SetProfileRpcId);
   HelpRegisterDerivedString(kProxyConfigProperty, &Service::GetProxyConfig,
@@ -1497,6 +1503,10 @@ std::pair<bool, const char*> Service::Compare(
     }
   }
 
+  if (DecideBetween(a->ephemeral_priority_, b->ephemeral_priority_, &ret)) {
+    return std::make_pair(ret, kServiceSortPriority);
+  }
+
   if (DecideBetween(a->priority(), b->priority(), &ret)) {
     return std::make_pair(ret, kServiceSortPriority);
   }
@@ -1592,6 +1602,7 @@ void Service::OnPropertyChanged(const std::string& property) {
   if (property == kCheckPortalProperty || property == kProxyConfigProperty) {
     manager_->RecheckPortalOnService(this);
   } else if (property == kPriorityProperty ||
+             property == kEphemeralPriorityProperty ||
              property == kManagedCredentialsProperty) {
     // These properties affect the sorting order of Services. Note that this is
     // only necessary if there are multiple connected Services that would be
