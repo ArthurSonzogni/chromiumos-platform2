@@ -347,7 +347,8 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  SetUEFISecureBootResponse("\x00");
+  // Use string constructor to prevent string truncation from null bytes.
+  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
@@ -360,7 +361,8 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
-  SetUEFISecureBootResponse("\x01");
+  // Use string constructor to prevent string truncation from null bytes.
+  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x01", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }

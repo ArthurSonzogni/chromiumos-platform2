@@ -238,7 +238,7 @@ void NewMountNamespace() {
   }
 
   minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, "");
-  BindMountIfPathExists(j.get(), base::FilePath("/sys/firmware/efi/vars"));
+  BindMountIfPathExists(j.get(), base::FilePath("/sys/firmware/efi/efivars"));
 
   minijail_enter(j.get());
 }

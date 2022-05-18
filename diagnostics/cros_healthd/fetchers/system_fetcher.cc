@@ -140,11 +140,13 @@ bool FetchOsVersion(mojom::OsVersionPtr* out_os_version,
 }
 
 bool IsUEFISecureBoot(const std::string& s) {
-  if (s.size() != 1) {
-    LOG(ERROR) << "Expected 1 byte from UEFISecureBoot variable, but got "
+  if (s.size() != 5) {
+    LOG(ERROR) << "Expected 5 bytes from UEFISecureBoot variable, but got "
                << s.size() << " bytes.";
     return false;
   }
+  // The first four bytes are the "attributes" of the variable.
+  // The last byte indicates the secure boot state.
   switch (s.back()) {
     case '\x00':
       return false;

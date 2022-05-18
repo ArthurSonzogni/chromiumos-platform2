@@ -73,8 +73,7 @@ constexpr uint32_t kMsrAccessAllowList[] = {
 // See also:
 // https://uefi.org/sites/default/files/resources/UEFI_Spec_2_9_2021_03_18.pdf
 constexpr char kUEFISecureBootVarPath[] =
-    "/sys/firmware/efi/vars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c/"
-    "data";
+    "/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c";
 
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
