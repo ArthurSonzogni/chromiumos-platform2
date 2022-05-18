@@ -41,6 +41,7 @@ Enroll =>
 StartAuthSession
 EndAuthSession
 DoMatchEvent result
+Ignoring fp match
 Capturing
 Matching
 Match =>
