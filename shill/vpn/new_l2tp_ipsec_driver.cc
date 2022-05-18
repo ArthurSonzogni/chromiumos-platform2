@@ -20,6 +20,7 @@
 #include "shill/error.h"
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/l2tp_connection.h"
 #include "shill/vpn/vpn_service.h"

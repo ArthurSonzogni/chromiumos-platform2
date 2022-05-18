@@ -17,6 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/metrics.h"
 #include "shill/mock_log.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_netlink_manager.h"

@@ -16,6 +16,10 @@
 
 namespace shill {
 
+class ControlInterface;
+class EventDispatcher;
+class Metrics;
+
 class MockDHCPProvider : public DHCPProvider {
  public:
   MockDHCPProvider();

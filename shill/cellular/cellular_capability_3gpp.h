@@ -36,6 +36,8 @@
 
 namespace shill {
 
+class Metrics;
+
 // CellularCapability3gpp handles modems using the
 // org.freedesktop.ModemManager1 DBUS interface.  This class is used for
 // all types of modems, i.e. CDMA, GSM, and LTE modems.

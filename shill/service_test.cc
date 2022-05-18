@@ -27,6 +27,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device.h"
 #include "shill/mock_event_dispatcher.h"

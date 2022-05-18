@@ -53,6 +53,7 @@
 #include "shill/hook_table.h"
 #include "shill/http_url.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/resolver.h"
 #include "shill/result_aggregator.h"

@@ -18,6 +18,8 @@
 
 namespace shill {
 
+class Metrics;
+
 class CellularCapabilityCdma : public CellularCapability3gpp {
  public:
   CellularCapabilityCdma(Cellular* cellular,
