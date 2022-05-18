@@ -173,6 +173,7 @@ class Platform2(object):
                  host=False,
                  libdir=None,
                  incremental=True,
+                 target_os=None,
                  verbose=False,
                  enable_tests=False,
                  cache_dir=None,
@@ -182,6 +183,7 @@ class Platform2(object):
         self.host = host
         self.incremental = incremental
         self.jobs = jobs
+        self.target_os = target_os
         self.verbose = verbose
         self.platform_subdir = platform_subdir
 
@@ -417,7 +419,7 @@ class Platform2(object):
             'target_cpu':
             target_cpu,
             'target_os':
-            'linux',
+            'linux' if self.target_os is None else self.target_os,
         }
 
         gn_args['clang_cc'] = 'clang' in gn_args['cc']
@@ -667,6 +669,7 @@ def GetParser():
                         help="specify that we're building for the host")
     parser.add_argument('--libdir',
                         help='the libdir for the specific board, eg /usr/lib64')
+    parser.add_argument('--target_os', help='specify the target OS')
     parser.add_argument('--use_flags',
                         action='split_extend',
                         help='USE flags to enable')
@@ -710,6 +713,7 @@ def main(argv):
                    options.host,
                    options.libdir,
                    options.incremental,
+                   options.target_os,
                    options.verbose,
                    options.enable_tests,
                    options.cache_dir,
