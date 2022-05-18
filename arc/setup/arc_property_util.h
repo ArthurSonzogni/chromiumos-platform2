@@ -67,7 +67,6 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
-                         bool add_native_bridge_64bit_support,
                          bool hw_oemcrypto_support,
                          bool debuggable,
                          scoped_refptr<::dbus::Bus> bus);

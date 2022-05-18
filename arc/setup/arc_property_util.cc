@@ -41,9 +41,6 @@ enum class ExtraProps {
   // Add CDM properties for HW DRM.
   kCdm,
 
-  // Unconditionally add |kDalvikVmIsaArm64| property.
-  kDalvikIsa,
-
   // ro.soc.manufacturer and .model, parsed from /proc/cpuinfo.
   kSoc,
 };
@@ -62,18 +59,6 @@ constexpr char kOEMKey1PropertyPrefix[] = "ro.oem.key1=";
 // separated list of regions to include in the OEM key property.
 constexpr char kPAIRegionsPropertyName[] = "pai-regions";
 
-// Properties related to dynamically adding native bridge 64 bit support.
-// Note that "%s" is lated replaced with a partition name which is either an
-// empty string or a string that ends with '.' e.g. "system_ext.".
-constexpr char kAbilistPropertyPrefixTemplate[] = "ro.%sproduct.cpu.abilist=";
-constexpr char kAbilistPropertyExpected[] = "x86_64,x86,armeabi-v7a,armeabi";
-constexpr char kAbilistPropertyReplacement[] =
-    "x86_64,x86,arm64-v8a,armeabi-v7a,armeabi";
-constexpr char kAbilist64PropertyPrefixTemplate[] =
-    "ro.%sproduct.cpu.abilist64=";
-constexpr char kAbilist64PropertyExpected[] = "x86_64";
-constexpr char kAbilist64PropertyReplacement[] = "x86_64,arm64-v8a";
-constexpr char kDalvikVmIsaArm64[] = "ro.dalvik.vm.isa.arm64=x86_64";
 constexpr char kPrimaryDisplayOrientationPropertyTemplate[] =
     "ro.surface_flinger.primary_display_orientation=ORIENTATION_%d";
 
@@ -193,7 +178,6 @@ bool ExpandPropertyContents(const std::string& content,
                             scoped_refptr<::dbus::Bus> bus,
                             std::string* expanded_content,
                             bool filter_non_ro_props,
-                            bool add_native_bridge_64bit_support,
                             ExtraProps extra_props,
                             bool debuggable,
                             const std::string& partition_name) {
@@ -257,36 +241,6 @@ bool ExpandPropertyContents(const std::string& content,
       line = expanded;
     } while (inserted);
 
-    if (add_native_bridge_64bit_support) {
-      // Special-case ro.<partition>product.cpu.abilist and
-      // ro.<partition>product.cpu.abilist64 to add ARM64.
-      // Note that <partition> is either an empty string or a string that ends
-      // with '.' e.g. "system_ext.".
-      std::string prefix = base::StringPrintf(kAbilistPropertyPrefixTemplate,
-                                              partition_name.c_str());
-      std::string value;
-      if (FindProperty(prefix, &value, line)) {
-        if (value == kAbilistPropertyExpected) {
-          line = prefix + std::string(kAbilistPropertyReplacement);
-        } else {
-          LOG(ERROR) << "Found unexpected value for " << prefix << ", value "
-                     << value;
-          return false;
-        }
-      }
-      prefix = base::StringPrintf(kAbilist64PropertyPrefixTemplate,
-                                  partition_name.c_str());
-      if (FindProperty(prefix, &value, line)) {
-        if (value == kAbilist64PropertyExpected) {
-          line = prefix + std::string(kAbilist64PropertyReplacement);
-        } else {
-          LOG(ERROR) << "Found unexpected value for " << prefix << ", value "
-                     << value;
-          return false;
-        }
-      }
-    }
-
     {
       // Replace ro.debuggable value with |debuggable| flag.
       const std::string prefix(kDebuggablePropertyPrefix);
@@ -334,11 +288,6 @@ bool ExpandPropertyContents(const std::string& content,
 
   switch (extra_props) {
     case ExtraProps::kNone:
-      break;
-
-    case ExtraProps::kDalvikIsa:
-      // Special-case to add ro.dalvik.vm.isa.arm64.
-      new_properties += std::string(kDalvikVmIsaArm64) + "\n";
       break;
 
     case ExtraProps::kCdm: {
@@ -400,7 +349,6 @@ bool ExpandPropertyFile(const base::FilePath& input,
                         brillo::CrosConfigInterface* config,
                         scoped_refptr<::dbus::Bus> bus,
                         bool append,
-                        bool add_native_bridge_64bit_support,
                         ExtraProps extra_props,
                         bool debuggable,
                         const std::string& partition_name) {
@@ -411,8 +359,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
     return false;
   }
   if (!ExpandPropertyContents(content, config, bus, &expanded,
-                              /*filter_non_ro_props=*/append,
-                              add_native_bridge_64bit_support, extra_props,
+                              /*filter_non_ro_props=*/append, extra_props,
                               debuggable, partition_name)) {
     return false;
   }
@@ -616,7 +563,6 @@ bool ExpandPropertyContentsForTesting(const std::string& content,
                                       std::string* expanded_content) {
   return ExpandPropertyContents(content, config, nullptr, expanded_content,
                                 /*filter_non_ro_props=*/true,
-                                /*add_native_bridge_64bit_support=*/false,
                                 ExtraProps::kNone, debuggable, std::string());
 }
 
@@ -629,7 +575,6 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   const base::FilePath& output,
                                   brillo::CrosConfigInterface* config) {
   return ExpandPropertyFile(input, output, config, nullptr, /*append=*/false,
-                            /*add_native_bridge_64bit_support=*/false,
                             ExtraProps::kNone,
                             /*debuggable=*/false, std::string());
 }
@@ -637,7 +582,6 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
-                         bool add_native_bridge_64bit_support,
                          bool hw_oemcrypto_support,
                          bool debuggable,
                          scoped_refptr<::dbus::Bus> bus) {
@@ -653,9 +597,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
        // PropertyLoadBootDefaults() tries to open it.
        {std::tuple<const char*, bool, const char*, ExtraProps>{
             "default.prop", true, "", ExtraProps::kNone},
-        {"build.prop", false, "",
-         add_native_bridge_64bit_support ? ExtraProps::kDalvikIsa
-                                         : ExtraProps::kNone},
+        {"build.prop", false, "", ExtraProps::kNone},
         {"system_ext_build.prop", true, "system_ext.", ExtraProps::kNone},
         {"vendor_build.prop", false, "vendor.", ExtraProps::kSoc},
         {"odm_build.prop", true, "odm.", ExtraProps::kNone},
@@ -674,8 +616,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
     if (!ExpandPropertyFile(
             source_file, single_file ? dest_path : dest_path.Append(file),
             &config, bus,
-            /*append=*/single_file, add_native_bridge_64bit_support,
-            extra_props, debuggable, partition_name)) {
+            /*append=*/single_file, extra_props, debuggable, partition_name)) {
       LOG(ERROR) << "Failed to expand " << source_file;
       return false;
     }

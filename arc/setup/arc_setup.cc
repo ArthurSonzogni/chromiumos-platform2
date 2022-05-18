@@ -2522,8 +2522,6 @@ void ArcSetup::OnRemoveStaleData() {
 }
 
 void ArcSetup::OnPrepareHostGeneratedDir() {
-  const bool add_native_bridge_64bit_support =
-      config_.GetBoolOrDie("ADD_NATIVE_BRIDGE_64BIT_SUPPORT");
   const bool is_arcvm = config_.GetBoolOrDie("IS_ARCVM");
 #if USE_ARC_HW_OEMCRYPTO
   const bool hw_oemcrypto_support = true;
@@ -2549,8 +2547,7 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 
   EXIT_IF(!ExpandPropertyFiles(
       property_files_source_dir, property_files_dest_path,
-      /*single_file=*/is_arcvm, add_native_bridge_64bit_support,
-      hw_oemcrypto_support, debuggable, bus));
+      /*single_file=*/is_arcvm, hw_oemcrypto_support, debuggable, bus));
 
   if (!is_arcvm)
     return;
