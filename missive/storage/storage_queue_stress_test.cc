@@ -8,7 +8,6 @@
 #include <initializer_list>
 #include <optional>
 #include <utility>
-#include <vector>
 
 #include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
@@ -138,10 +137,10 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   void TearDown() override {
     ResetTestStorageQueue();
     // Make sure all memory is deallocated.
-    ASSERT_THAT(GetMemoryResource()->GetUsed(), Eq(0u));
+    ASSERT_THAT(options_.memory_resource()->GetUsed(), Eq(0u));
     // Make sure all disk is not reserved (files remain, but Storage is not
     // responsible for them anymore).
-    ASSERT_THAT(GetDiskResource()->GetUsed(), Eq(0u));
+    ASSERT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
   }
 
   void CreateTestStorageQueueOrDie(const QueueOptions& options) {
@@ -179,8 +178,10 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   }
 
   QueueOptions BuildStorageQueueOptionsImmediate() const {
-    return QueueOptions(options_).set_subdirectory("D1").set_file_prefix(
-        "F0001");
+    return QueueOptions(options_)
+        .set_subdirectory("D1")
+        .set_file_prefix("F0001")
+        .set_max_single_file_size(GetParam());
   }
 
   QueueOptions BuildStorageQueueOptionsPeriodic(
@@ -231,7 +232,7 @@ TEST_P(StorageQueueStressTest,
     test::TestCallbackWaiter write_waiter;
     base::RepeatingCallback<void(Status)> cb = base::BindRepeating(
         [](test::TestCallbackWaiter* waiter, Status status) {
-          EXPECT_OK(status);
+          EXPECT_OK(status) << status;
           waiter->Signal();
         },
         &write_waiter);

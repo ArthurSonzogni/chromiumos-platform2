@@ -147,7 +147,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     // or new file (of zero size). In case of any error (e.g. insufficient disk
     // space) returns status.
     static StatusOr<scoped_refptr<SingleFile>> Create(
-        const base::FilePath& filename, int64_t size);
+        const base::FilePath& filename,
+        int64_t size,
+        scoped_refptr<ResourceInterface> memory_resource,
+        scoped_refptr<ResourceInterface> disk_space_resource);
+
     // Returns the file sequence ID (the first sequence ID in the file) if the
     // sequence ID can be extracted from the extension. Otherwise, returns an
     // error status.
@@ -191,7 +195,10 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     friend class base::RefCountedThreadSafe<SingleFile>;
 
     // Private constructor, called by factory method only.
-    SingleFile(const base::FilePath& filename, int64_t size);
+    SingleFile(const base::FilePath& filename,
+               int64_t size,
+               scoped_refptr<ResourceInterface> memory_resource,
+               scoped_refptr<ResourceInterface> disk_space_resource);
 
     // Flag (valid for opened file only): true if file was opened for reading
     // only, false otherwise.
@@ -201,6 +208,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     uint64_t size_ = 0;  // tracked internally rather than by filesystem
 
     std::unique_ptr<base::File> handle_;  // Set only when opened/created.
+
+    scoped_refptr<ResourceInterface> memory_resource_;
+    scoped_refptr<ResourceInterface> disk_space_resource_;
 
     // When reading the file, this is the buffer and data positions.
     // If the data is read sequentially, buffered portions are reused

@@ -7,11 +7,14 @@
 #include <utility>
 
 #include <cstdint>
+#include <optional>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 
 namespace reporting {
 
-ScopedReservation::ScopedReservation(uint64_t size,
-                                     ResourceInterface* resource_interface)
+ScopedReservation::ScopedReservation(
+    uint64_t size, scoped_refptr<ResourceInterface> resource_interface)
     : resource_interface_(resource_interface) {
   if (!resource_interface->Reserve(size)) {
     return;
@@ -21,7 +24,7 @@ ScopedReservation::ScopedReservation(uint64_t size,
 
 ScopedReservation::ScopedReservation(ScopedReservation&& other)
     : resource_interface_(other.resource_interface_),
-      size_(std::move(other.size_)) {}
+      size_(std::exchange(other.size_, std::nullopt)) {}
 
 bool ScopedReservation::reserved() const {
   return size_.has_value();

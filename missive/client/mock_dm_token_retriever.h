@@ -5,10 +5,10 @@
 #ifndef MISSIVE_CLIENT_MOCK_DM_TOKEN_RETRIEVER_H_
 #define MISSIVE_CLIENT_MOCK_DM_TOKEN_RETRIEVER_H_
 
+#include <cstddef>
 #include <string>
 
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "missive/client/dm_token_retriever.h"
 #include "missive/util/statusor.h"

@@ -32,6 +32,7 @@ static_library("file") {
     "file.h",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":status" ]
 }
 
 static_library("status") {

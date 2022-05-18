@@ -16,10 +16,6 @@
 #include <missive/proto/record_constants.pb.h>
 #include <missive/util/status.h>
 
-namespace dbus {
-class Bus;
-}
-
 namespace reporting {
 
 // D-Bus client for Missive service.

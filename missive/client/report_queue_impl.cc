@@ -25,7 +25,6 @@
 #include <base/values.h>
 
 #include "missive/client/report_queue_configuration.h"
-#include "missive/encryption/encryption_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"

@@ -7,16 +7,16 @@
 
 #include <cstdint>
 #include <optional>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 
 namespace reporting {
 
 // Interface to resources management by Storage module.
 // Must be implemented by the caller base on the platform limitations.
 // All APIs are non-blocking.
-class ResourceInterface {
+class ResourceInterface : public base::RefCountedThreadSafe<ResourceInterface> {
  public:
-  virtual ~ResourceInterface() = default;
-
   // Needs to be called before attempting to allocate specified size.
   // Returns true if requested amount can be allocated.
   // After that the caller can actually allocate it or must call
@@ -37,14 +37,17 @@ class ResourceInterface {
   virtual void Test_SetTotal(uint64_t test_total) = 0;
 
  protected:
+  friend class base::RefCountedThreadSafe<ResourceInterface>;
+
   ResourceInterface() = default;
+  virtual ~ResourceInterface() = default;
 };
 
 // Moveable RAII class used for scoped Reserve-Discard.
 //
 // Usage:
 //  {
-//    ScopedReservation reservation(1024u, GetMemoryResource());
+//    ScopedReservation reservation(1024u, options.memory_resource());
 //    if (!reservation.reserved()) {
 //      // Allocation failed.
 //      return;
@@ -56,7 +59,8 @@ class ResourceInterface {
 // Can be handed over to another owner.
 class ScopedReservation {
  public:
-  ScopedReservation(uint64_t size, ResourceInterface* resource_interface);
+  ScopedReservation(uint64_t size,
+                    scoped_refptr<ResourceInterface> resource_interface);
   ScopedReservation(ScopedReservation&& other);
   ScopedReservation(const ScopedReservation& other) = delete;
   ScopedReservation& operator=(const ScopedReservation& other) = delete;
@@ -66,12 +70,9 @@ class ScopedReservation {
   bool Reduce(uint64_t new_size);
 
  private:
-  ResourceInterface* const resource_interface_;
+  const scoped_refptr<ResourceInterface> resource_interface_;
   std::optional<uint64_t> size_;
 };
-
-ResourceInterface* GetMemoryResource();
-ResourceInterface* GetDiskResource();
 
 }  // namespace reporting
 

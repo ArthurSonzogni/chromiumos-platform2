@@ -223,11 +223,6 @@ class StorageTest
 
   void TearDown() override {
     ResetTestStorage();
-    // Make sure all memory is deallocated.
-    ASSERT_THAT(GetMemoryResource()->GetUsed(), Eq(0u));
-    // Make sure all disk is not reserved (files remain, but Storage is not
-    // responsible for them anymore).
-    ASSERT_THAT(GetDiskResource()->GetUsed(), Eq(0u));
     // Log next uploader id for possible verification.
     LOG(ERROR) << "Next uploader id=" << next_uploader_id.load();
   }
@@ -466,34 +461,6 @@ class StorageTest
       test::TestCallbackWaiter* const waiter_;
     };
 
-    // Helper class for setting up mock uploader expectations on empty queue.
-    class SetEmpty {
-     public:
-      explicit SetEmpty(StorageTest* self)
-          : uploader_(std::make_unique<TestUploader>(self)) {}
-      SetEmpty(const SetEmpty& other) = delete;
-      SetEmpty& operator=(const SetEmpty& other) = delete;
-      ~SetEmpty() { CHECK(!uploader_) << "Missed 'Complete' call"; }
-
-      std::unique_ptr<TestUploader> Complete() {
-        CHECK(uploader_) << "'Complete' already called";
-        EXPECT_CALL(*uploader_->mock_upload_,
-                    UploadRecord(Eq(uploader_->uploader_id_), _, _, _))
-            .Times(0);
-        EXPECT_CALL(*uploader_->mock_upload_,
-                    UploadRecordFailure(Eq(uploader_->uploader_id_), _, _, _))
-            .Times(0);
-        EXPECT_CALL(
-            *uploader_->mock_upload_,
-            UploadComplete(Eq(uploader_->uploader_id_), Eq(Status::StatusOK())))
-            .Times(1);
-        return std::move(uploader_);
-      }
-
-     private:
-      std::unique_ptr<TestUploader> uploader_;
-    };
-
     // Helper class for setting up mock uploader expectations for key delivery.
     class SetKeyDelivery {
      public:
@@ -560,7 +527,7 @@ class StorageTest
                   base::OnceCallback<void(bool)> processed_cb,
                   scoped_refptr<base::SequencedTaskRunner> task_runner,
                   TestUploader* uploader, StatusOr<base::StringPiece> result) {
-                 ASSERT_OK(result.status());
+                 ASSERT_OK(result.status()) << result.status();
                  WrappedRecord wrapped_record;
                  ASSERT_TRUE(wrapped_record.ParseFromArray(
                      result.ValueOrDie().data(), result.ValueOrDie().size()));
@@ -761,10 +728,20 @@ class StorageTest
   void ResetTestStorage() {
     // Let asynchronous activity finish.
     task_environment_.RunUntilIdle();
-    storage_.reset();
-    // StorageQueue is destructed on a thread,
-    // so we need to wait for all queues to destruct.
-    task_environment_.RunUntilIdle();
+    if (storage_) {
+      const auto memory_resource = storage_->options().memory_resource();
+      const auto disk_space_resource =
+          storage_->options().disk_space_resource();
+      storage_.reset();
+      // StorageQueue is destructed on a thread,
+      // so we need to wait for all queues to destruct.
+      task_environment_.RunUntilIdle();
+      // Make sure all memory is deallocated.
+      ASSERT_THAT(memory_resource->GetUsed(), Eq(0u));
+      // Make sure all disk is not reserved (files remain, but Storage is not
+      // responsible for them anymore).
+      ASSERT_THAT(disk_space_resource->GetUsed(), Eq(0u));
+    }
     expect_to_need_key_ = false;
   }
 
@@ -787,8 +764,8 @@ class StorageTest
   }
 
   StorageOptions BuildTestStorageOptions() const {
-    auto options =
-        StorageOptions().set_directory(base::FilePath(location_.GetPath()));
+    StorageOptions options;
+    options.set_directory(location_.GetPath());
     if (is_encryption_enabled()) {
       // Encryption enabled.
       options.set_signature_verification_public_key(std::string(

@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/callback_list.h>
+#include <base/containers/adapters.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
@@ -33,6 +34,9 @@
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
+#include "missive/resources/disk_resource_impl.h"
+#include "missive/resources/memory_resource_impl.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
@@ -122,7 +126,6 @@ std::vector<std::pair<Priority, QueueOptions>> ExpectedQueues(
                          .set_max_single_file_size(kQueueSize)),
   };
 }
-
 }  // namespace
 
 // Uploader interface adaptor for individual queue.
@@ -475,9 +478,8 @@ class Storage::KeyInStorage {
   LocateValidKeyAndParse(
       const base::flat_map<uint64_t, base::FilePath>& found_key_files) {
     // Try to unserialize the key from each found file (latest first).
-    for (auto key_file_it = found_key_files.rbegin();
-         key_file_it != found_key_files.rend(); ++key_file_it) {
-      base::File key_file(key_file_it->second,
+    for (const auto& [index, file_path] : base::Reversed(found_key_files)) {
+      base::File key_file(file_path,
                           base::File::FLAG_OPEN | base::File::FLAG_READ);
       if (!key_file.IsValid()) {
         continue;  // Could not open.
@@ -492,7 +494,7 @@ class Storage::KeyInStorage {
         if (read_result < 0) {
           LOG(WARNING) << "File read error="
                        << key_file.ErrorToString(key_file.GetLastFileError())
-                       << " " << key_file_it->second.MaybeAsASCII();
+                       << " " << file_path.MaybeAsASCII();
           continue;  // File read error.
         }
         if (read_result == 0 || read_result >= kEncryptionKeyMaxFileSize) {
@@ -502,7 +504,7 @@ class Storage::KeyInStorage {
             key_file_buffer.get(), read_result);
         if (!signed_encryption_key.ParseFromZeroCopyStream(&key_stream)) {
           LOG(WARNING) << "Failed to parse key file, full_name='"
-                       << key_file_it->second.MaybeAsASCII() << "'";
+                       << file_path.MaybeAsASCII() << "'";
           continue;
         }
       }
@@ -513,12 +515,12 @@ class Storage::KeyInStorage {
       if (!signature_verification_status.ok()) {
         LOG(WARNING) << "Loaded key failed verification, status="
                      << signature_verification_status << ", full_name='"
-                     << key_file_it->second.MaybeAsASCII() << "'";
+                     << file_path.MaybeAsASCII() << "'";
         continue;
       }
 
       // Validated successfully. Return file name and signed key proto.
-      return std::make_pair(key_file_it->second, signed_encryption_key);
+      return std::make_pair(file_path, signed_encryption_key);
     }
 
     // Not found, return error.

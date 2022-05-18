@@ -9,9 +9,11 @@
 #include <utility>
 
 #include <base/callback.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/util/statusor.h"
 
 using ::testing::Invoke;
@@ -28,6 +30,7 @@ TestCompressionModuleStrict::TestCompressionModuleStrict()
   ON_CALL(*this, CompressRecord)
       .WillByDefault(Invoke(
           [](std::string record,
+             scoped_refptr<ResourceInterface> resource_interface,
              base::OnceCallback<void(
                  std::string, std::optional<CompressionInformation>)> cb) {
             // compression_info is not set.

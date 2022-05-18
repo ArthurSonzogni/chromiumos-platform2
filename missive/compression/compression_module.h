@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
+#define MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
+
 #include <optional>
 #include <string>
 
@@ -10,9 +13,7 @@
 #include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
-
-#ifndef MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
-#define MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
+#include "missive/resources/resource_interface.h"
 
 namespace reporting {
 
@@ -39,6 +40,7 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
   // std::move(record).
   void CompressRecord(
       std::string record,
+      scoped_refptr<ResourceInterface> memory_resource,
       base::OnceCallback<void(std::string,
                               std::optional<CompressionInformation>)> cb) const;
 

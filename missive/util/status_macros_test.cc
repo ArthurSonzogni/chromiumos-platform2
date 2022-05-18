@@ -4,8 +4,8 @@
 
 #include "missive/util/status_macros.h"
 
-#include <memory>
 #include <stdio.h>
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>

@@ -15,7 +15,6 @@
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/feature_list.h>
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
@@ -29,6 +28,7 @@
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"

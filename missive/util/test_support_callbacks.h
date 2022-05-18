@@ -29,6 +29,9 @@ namespace test {
 //   ... = e.result();  // Will wait for e.cb() to be called and return the
 //   collected result.
 //
+//   This class follows base::BarrierCallback in using mutex Lock.
+//   It can only be done in tests, never in production code.
+//
 template <typename ResType>
 class TestEvent {
  public:

@@ -23,6 +23,7 @@ static_library("compression_module") {
   deps = [
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/resources:resource_interface",
     "//missive/util:status",
   ]
 }

@@ -6,7 +6,6 @@
 #define MISSIVE_STORAGE_TEST_STORAGE_MODULE_H_
 
 #include <optional>
-#include <utility>
 
 #include <base/callback.h>
 #include <gmock/gmock.h>

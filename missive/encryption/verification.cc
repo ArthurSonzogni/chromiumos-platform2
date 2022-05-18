@@ -4,9 +4,6 @@
 
 #include "missive/encryption/verification.h"
 
-#include <memory>
-#include <type_traits>
-
 #include "missive/encryption/primitives.h"
 #include "missive/util/status.h"
 

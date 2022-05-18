@@ -4,20 +4,18 @@
 
 #include "missive/compression/compression_module.h"
 
-#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/containers/flat_map.h>
 #include <base/hash/hash.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
-#include <base/feature_list.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>
@@ -28,6 +26,8 @@
 #include <snappy.h>
 
 #include "missive/proto/record.pb.h"
+#include "missive/resources/memory_resource_impl.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::Eq;
@@ -40,8 +40,12 @@ constexpr char kTestString[] = "AAAAA11111";
 
 class CompressionModuleTest : public ::testing::Test {
  protected:
-  CompressionModuleTest() = default;
+  CompressionModuleTest()
+      : memory_resource_(base::MakeRefCounted<MemoryResourceImpl>(
+            4u * 1024LLu * 1024LLu))  // 4 MiB
+  {}
 
+  void TearDown() override { ASSERT_THAT(memory_resource_->GetUsed(), Eq(0u)); }
   std::string BenchmarkCompressRecordSnappy(std::string record_string) {
     std::string output;
     snappy::Compress(record_string.data(), record_string.size(), &output);
@@ -53,13 +57,13 @@ class CompressionModuleTest : public ::testing::Test {
     scoped_feature_list_.InitFromCommandLine(
         {CompressionModule::kCompressReportingFeature}, {});
   }
-
   void DisableCompression() {
     // Disable compression.
     scoped_feature_list_.InitFromCommandLine(
         {}, {CompressionModule::kCompressReportingFeature});
   }
 
+  scoped_refptr<ResourceInterface> memory_resource_;
   scoped_refptr<CompressionModule> compression_module_;
   base::test::TaskEnvironment task_environment_{};
 
@@ -79,7 +83,7 @@ TEST_F(CompressionModuleTest, CompressRecordSnappy) {
   test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(kTestString,
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
                                           compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
@@ -110,7 +114,7 @@ TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
   test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(kTestString,
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
                                           compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
@@ -143,7 +147,7 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionDisabled) {
       compressed_record_event;
 
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(kTestString,
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
                                           compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
@@ -171,7 +175,7 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionNone) {
       compressed_record_event;
 
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(kTestString,
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
                                           compressed_record_event.cb());
   const std::tuple<std::string, std::optional<CompressionInformation>>
       compressed_record_tuple = compressed_record_event.result();

@@ -10,7 +10,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/feature_list.h>
-#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_piece.h>
 #include <base/task/thread_pool.h>
@@ -39,6 +38,7 @@ scoped_refptr<CompressionModule> CompressionModule::Create(
 
 void CompressionModule::CompressRecord(
     std::string record,
+    scoped_refptr<ResourceInterface> memory_resource,
     base::OnceCallback<void(std::string, std::optional<CompressionInformation>)>
         cb) const {
   if (!is_enabled()) {
@@ -70,7 +70,7 @@ void CompressionModule::CompressRecord(
       }
       // Before doing compression, we must make sure there is enough memory - we
       // are going to temporarily double the record.
-      ScopedReservation scoped_reservation(record.size(), GetMemoryResource());
+      ScopedReservation scoped_reservation(record.size(), memory_resource);
       if (!scoped_reservation.reserved()) {
         CompressionInformation compression_information;
         compression_information.set_compression_algorithm(
