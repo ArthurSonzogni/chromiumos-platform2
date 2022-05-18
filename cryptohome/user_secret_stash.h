@@ -103,9 +103,8 @@ class UserSecretStash {
   // This sets the reset secret for an auth factor with the associated |label|.
   // This does not overwrite an existing reset secret. It returns if the
   // insertion succeeded.
-  bool SetResetSecretForLabel(const std::string& label,
-                              const brillo::SecureBlob& secret)
-      WARN_UNUSED_RESULT;
+  [[nodiscard]] bool SetResetSecretForLabel(const std::string& label,
+                                            const brillo::SecureBlob& secret);
 
   // The OS version on which this particular user secret stash was originally
   // created. The format is the one of the CHROMEOS_RELEASE_VERSION field in
