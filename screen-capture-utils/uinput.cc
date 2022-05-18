@@ -272,6 +272,8 @@ void UinputImpl::OnKbdAddEvent(rfbBool down,
     return;
   }
 
+  VLOG(1) << "keysym 0x" << std::hex << keySym
+          << " down:" << (down ? "true" : "false");
   keyboard_.Emit(EV_KEY, scancode, down);
   keyboard_.Emit(EV_SYN, SYN_REPORT, 0);
 }
