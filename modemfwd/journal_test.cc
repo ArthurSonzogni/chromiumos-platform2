@@ -39,6 +39,15 @@ constexpr char kOemFirmwareVersion[] = "1.0";
 constexpr char kCarrierFirmwarePath[] = "carrier_firmware.fls";
 constexpr char kCarrierFirmwareVersion[] = "1.0";
 
+// Associated payloads
+constexpr char kApFirmwareTag[] = "ap";
+constexpr char kApFirmwarePath[] = "ap_firmware";
+constexpr char kApFirmwareVersion[] = "abc.a40";
+
+constexpr char kDevFirmwareTag[] = "dev";
+constexpr char kDevFirmwarePath[] = "dev_firmware";
+constexpr char kDevFirmwareVersion[] = "000.012";
+
 }  // namespace
 
 class JournalTest : public ::testing::Test {
@@ -68,6 +77,15 @@ class JournalTest : public ::testing::Test {
                            const std::string& version) {
     FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddMainFirmware(kDeviceId, firmware_info);
+  }
+
+  void AddAssocFirmwareFile(const std::string& main_fw_path,
+                            const std::string& firmware_id,
+                            const base::FilePath& rel_firmware_path,
+                            const std::string& version) {
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
+    firmware_directory_->AddAssocFirmware(main_fw_path, firmware_id,
+                                          firmware_info);
   }
 
   void AddOemFirmwareFile(const base::FilePath& rel_firmware_path,
@@ -219,6 +237,34 @@ TEST_F(JournalTest, MultipleEntries) {
   journal->MarkStartOfFlashingFirmware({kFwCarrier}, kDeviceId, kCarrierId);
   journal->MarkEndOfFlashingFirmware(kDeviceId, kCarrierId);
 
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
+  journal = GetJournal();
+}
+
+TEST_F(JournalTest, PriorRunWasInterrupted_AssociatedFirmware) {
+  // Main + 2 associated payloads
+  const base::FilePath main_fw_path(kMainFirmwarePath);
+  AddMainFirmwareFile(main_fw_path, kMainFirmwareVersion);
+  const base::FilePath ap_fw_path(kApFirmwarePath);
+  AddAssocFirmwareFile(kMainFirmwarePath, kApFirmwareTag, ap_fw_path,
+                       kApFirmwareVersion);
+  const base::FilePath dev_fw_path(kDevFirmwarePath);
+  AddAssocFirmwareFile(kMainFirmwarePath, kDevFirmwareTag, dev_fw_path,
+                       kDevFirmwareVersion);
+
+  auto journal = GetJournal();
+  journal->MarkStartOfFlashingFirmware(
+      {kFwMain, kApFirmwareTag, kDevFirmwareTag}, kDeviceId, kCarrierId);
+
+  const std::vector<FirmwareConfig> all_cfg = {
+      {kFwMain, main_fw_path, kMainFirmwareVersion},
+      {kApFirmwareTag, ap_fw_path, kApFirmwareVersion},
+      {kDevFirmwareTag, dev_fw_path, kDevFirmwareVersion}};
+  EXPECT_CALL(modem_helper_, FlashFirmwares(all_cfg)).WillOnce(Return(true));
+  journal = GetJournal();
+
+  // Test that the journal is cleared afterwards, so we don't try to
+  // flash a second time if we crash again.
   EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   journal = GetJournal();
 }

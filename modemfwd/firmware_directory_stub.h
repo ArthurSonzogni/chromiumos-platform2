@@ -23,6 +23,9 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
   void AddMainFirmwareForCarrier(const std::string& device_id,
                                  const std::string& carrier_id,
                                  FirmwareFileInfo info);
+  void AddAssocFirmware(const std::string& main_fw_path,
+                        const std::string& firmware_tag,
+                        FirmwareFileInfo info);
   void AddOemFirmware(const std::string& device_id, FirmwareFileInfo info);
   void AddOemFirmwareForCarrier(const std::string& device_id,
                                 const std::string& carrier_id,
@@ -48,12 +51,17 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
   using CarrierFirmwareMap =
       std::map<std::pair<std::string, std::string>, FirmwareFileInfo>;
 
+  // Map (main_fw_path, associated_tag) -> FirmwareFileInfo
+  using AssocFirmwareMap =
+      std::map<std::pair<std::string, std::string>, FirmwareFileInfo>;
+
   bool FindCarrierFirmware(const std::string& device_id,
                            std::string* carrier_id,
                            FirmwareFileInfo* out_info);
 
   std::map<std::string, FirmwareFileInfo> main_fw_info_;
   std::map<std::string, FirmwareFileInfo> oem_fw_info_;
+  AssocFirmwareMap assoc_fw_info_;
   CarrierFirmwareMap main_fw_info_for_carrier_;
   CarrierFirmwareMap oem_fw_info_for_carrier_;
   CarrierFirmwareMap carrier_fw_info_;
