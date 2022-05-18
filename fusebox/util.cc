@@ -8,6 +8,7 @@
 #include <fuse_lowlevel.h>
 
 #include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
@@ -17,24 +18,16 @@ int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
   DCHECK(reader);
 
   if (!response) {
-    LOG(ERROR) << "error: no server response";
-    return ENODEV;
+    LOG(ERROR) << base::safe_strerror(EHOSTUNREACH);
+    return EHOSTUNREACH;
   }
 
   int32_t response_error;
   CHECK(reader->PopInt32(&response_error));
 
-  if (response_error < 0) {  // base::File::Errors are negative
-    int file_errno = FileErrorToErrno(response_error);
-    auto file_error = static_cast<base::File::Error>(response_error);
-    LOG(ERROR) << base::safe_strerror(file_errno) << " "
-               << base::File::ErrorToString(file_error);
-    return file_errno;
-  }
-
-  if (response_error > 0) {  // POSIX errno errors are positive
-    LOG(ERROR) << base::safe_strerror(response_error);
-    return response_error;
+  if (int error = ResponseErrorToErrno(response_error)) {
+    LOG(ERROR) << base::safe_strerror(error);
+    return error;
   }
 
   return 0;
@@ -48,9 +41,9 @@ int ResponseErrorToErrno(int error) {
 }
 
 int FileErrorToErrno(int error) {
-  const auto file_error = static_cast<base::File::Error>(error);
+  DCHECK_LE(error, 0);
 
-  switch (file_error) {
+  switch (static_cast<base::File::Error>(error)) {
     case base::File::Error::FILE_OK:
       return 0;
     case base::File::Error::FILE_ERROR_FAILED:
@@ -146,7 +139,7 @@ std::string FlagsToString(const FlagDef (&defs)[N], int flags) {
 std::string OpenFlagsToString(int flags) {
   std::string open_flags_string;
 
-  switch (flags & O_ACCMODE) {
+  switch (flags & O_ACCMODE) {  // Only three things, ...
     case O_RDONLY:
       open_flags_string = "O_RDONLY";
       break;
@@ -157,7 +150,7 @@ std::string OpenFlagsToString(int flags) {
       open_flags_string = "O_RDWR";
       break;
     default:
-      open_flags_string = "INVALID_OPEN_MODE";
+      open_flags_string = "INVALID_O_ACCMODE_FLAG";
       break;
   }
 
