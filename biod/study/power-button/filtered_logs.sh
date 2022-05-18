@@ -6,12 +6,8 @@
 
 # Generate ChromeOS system logs and filter events for FPS UX Study
 #
-# Usage:
-# - Copy the script in the Downloads folder
-# - Press Ctrl + Alt + T to open ChromeOS Developer Shell with
-# - Run `shell` to open the command line shell
-# - Open the Downloads folder: `cd /home/user/*/Downloads`
-# - Run the script: `bash filtered_logs.sh`
+# Print filtered log on the terminal:
+#   bash filtered_logs.sh
 #
 # Save output on a file:
 #   bash filtered_logs.sh > filtered.log
