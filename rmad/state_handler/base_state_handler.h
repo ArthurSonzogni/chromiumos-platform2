@@ -116,6 +116,17 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // Store the additional activity to |json_store_|.
   bool StoreAdditionalActivity(AdditionalActivity activity);
 
+  // Cutoff related functions.
+  bool RequestCutoff(const base::FilePath& working_dir_path) const;
+
+  // Powerwash related functions.
+  bool RequestPowerwash(const base::FilePath& working_dir_path) const;
+  virtual bool CanDisablePowerwash() const { return false; }
+  bool IsPowerwashDisabled(const base::FilePath& working_dir_path) const;
+  bool StorePowerwashCount(const base::FilePath& unencrypted_preserve_path);
+  bool IsPowerwashComplete(
+      const base::FilePath& unencrypted_preserve_path) const;
+
  protected:
   friend class base::RefCounted<BaseStateHandler>;
   virtual ~BaseStateHandler() = default;

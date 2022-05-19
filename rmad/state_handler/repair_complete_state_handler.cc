@@ -9,12 +9,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/notreached.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
-#include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/fake_metrics_utils.h"
@@ -24,22 +19,6 @@
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/fake_sys_utils.h"
 #include "rmad/utils/sys_utils_impl.h"
-
-namespace {
-
-constexpr char kPowerwashCountPath[] = "powerwash_count";
-
-bool ReadFileToInt(const base::FilePath& path, int* value) {
-  std::string str;
-  if (!base::ReadFileToString(path, &str)) {
-    LOG(ERROR) << "Failed to read from path " << path;
-    return false;
-  }
-  base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str);
-  return base::StringToInt(str, value);
-}
-
-}  // namespace
 
 namespace rmad {
 
@@ -97,14 +76,8 @@ RmadErrorCode RepairCompleteStateHandler::InitializeState() {
     }
     repair_complete->set_powerwash_required(wipe_device);
     state_.set_allocated_repair_complete(repair_complete.release());
-    // Record the current powerwash count during initialization. If the file
-    // doesn't exist, set the value to 0. This file counter is incremented by
-    // one after every powerwash. See platform2/init/clobber_state.cc for more
-    // detail.
-    int powerwash_count = 0;
-    ReadFileToInt(unencrypted_preserve_path_.AppendASCII(kPowerwashCountPath),
-                  &powerwash_count);
-    json_store_->SetValue(kPowerwashCount, powerwash_count);
+    // Record the current powerwash count during initialization.
+    StorePowerwashCount(unencrypted_preserve_path_);
   }
 
   return RMAD_ERROR_OK;
@@ -141,18 +114,12 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
-  if (state_.repair_complete().powerwash_required() && !IsPowerwashComplete() &&
-      !base::PathExists(
-          working_dir_path_.AppendASCII(kDisablePowerwashFilePath)) &&
-      !base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
+  if (state_.repair_complete().powerwash_required() &&
+      !IsPowerwashComplete(unencrypted_preserve_path_) &&
+      !IsPowerwashDisabled(working_dir_path_)) {
     // Request a powerwash if we want to wipe the device, and powerwash is not
-    // done yet. The pre-stop script picks up the |kPowerwashRequestFilePath|
-    // file before reboot and requests a rma-mode powerwash.
-    // |kDisablePowerwashFilePath| is a file for testing convenience. Manually
-    // touch this file if we want to avoid powerwash during testing. Powerwash
-    // is also disabled when the test mode directory exists.
-    if (!brillo::TouchFile(
-            working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+    // done yet.
+    if (!RequestPowerwash(working_dir_path_)) {
       LOG(ERROR) << "Failed to request powerwash";
       return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
     }
@@ -216,10 +183,7 @@ void RepairCompleteStateHandler::Shutdown() {
 
 void RepairCompleteStateHandler::Cutoff() {
   LOG(INFO) << "RMA flow complete. Doing battery cutoff.";
-  // The pre-stop script picks up the file before shutdown/reboot, and requests
-  // a battery cutoff by crossystem.
-  if (!brillo::TouchFile(
-          working_dir_path_.AppendASCII(kCutoffRequestFilePath))) {
+  if (!RequestCutoff(working_dir_path_)) {
     LOG(ERROR) << "Failed to request battery cutoff";
     return;
   }
@@ -231,20 +195,6 @@ void RepairCompleteStateHandler::Cutoff() {
 
 void RepairCompleteStateHandler::SendPowerCableStateSignal() {
   power_cable_signal_sender_.Run(sys_utils_->IsPowerSourcePresent());
-}
-
-bool RepairCompleteStateHandler::IsPowerwashComplete() const {
-  int stored_powerwash_count, current_powerwash_count;
-  if (!json_store_->GetValue(kPowerwashCount, &stored_powerwash_count)) {
-    LOG(ERROR) << "Key " << kPowerwashCount << " should exist in |json_store|";
-    return false;
-  }
-  if (!ReadFileToInt(
-          unencrypted_preserve_path_.AppendASCII(kPowerwashCountPath),
-          &current_powerwash_count)) {
-    return false;
-  }
-  return current_powerwash_count > stored_powerwash_count;
 }
 
 }  // namespace rmad

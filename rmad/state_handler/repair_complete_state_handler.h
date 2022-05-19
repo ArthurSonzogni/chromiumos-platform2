@@ -56,6 +56,9 @@ class RepairCompleteStateHandler : public BaseStateHandler {
     return GetNextStateCase(state_);
   }
 
+  // Override powerwash functions.
+  bool CanDisablePowerwash() const override { return true; }
+
  protected:
   ~RepairCompleteStateHandler() override = default;
 
@@ -64,7 +67,6 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   void Shutdown();
   void Cutoff();
   void SendPowerCableStateSignal();
-  bool IsPowerwashComplete() const;
 
   base::FilePath working_dir_path_;
   base::FilePath unencrypted_preserve_path_;
