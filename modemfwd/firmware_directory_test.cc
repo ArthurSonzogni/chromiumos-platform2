@@ -45,6 +45,15 @@ constexpr char kCarrierC[] = "CarrierC";
 constexpr char kGenericCarrierFirmwareFile[] = "Generic_V1.59.3.fls";
 constexpr char kGenericCarrierFirmwareVersion[] = "V1.59.3";
 
+// Associated payloads
+constexpr char kApFirmwareTag[] = "ap";
+constexpr char kApFirmwarePath[] = "ap_firmware";
+constexpr char kApFirmwareVersion[] = "abc.a40";
+
+constexpr char kDevFirmwareTag[] = "dev";
+constexpr char kDevFirmwarePath[] = "dev_firmware";
+constexpr char kDevFirmwareVersion[] = "000.012";
+
 }  // namespace
 
 namespace modemfwd {
@@ -448,6 +457,33 @@ TEST_F(FirmwareDirectoryTest, AbsolutePathInFilenameV2) {
   const base::FilePath kManifest(
       "test_protos/absolute_path_in_filename_v2.prototxt");
   SetUpDirectory(kManifest, false);
+}
+
+TEST_F(FirmwareDirectoryTest, AssocEntryParsingV2) {
+  const base::FilePath kManifest(
+      "test_protos/single_assoc_firmware_v2.prototxt");
+  SetUpDirectory(kManifest);
+
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, nullptr);
+
+  EXPECT_TRUE(res.main_firmware.has_value());
+  const FirmwareFileInfo& main_info = res.main_firmware.value();
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info.firmware_path).BaseName().value());
+  EXPECT_EQ(kMainFirmwareVersion1, main_info.version);
+
+  // Check ap payload is present and has correct path and version
+  auto ap_it = res.assoc_firmware.find(kApFirmwareTag);
+  EXPECT_FALSE(ap_it == res.assoc_firmware.end());
+  EXPECT_EQ(ap_it->second.firmware_path, kApFirmwarePath);
+  EXPECT_EQ(ap_it->second.version, kApFirmwareVersion);
+
+  // Check dev payload is present and has correct path and version
+  auto dev_it = res.assoc_firmware.find(kDevFirmwareTag);
+  EXPECT_FALSE(dev_it == res.assoc_firmware.end());
+  EXPECT_EQ(dev_it->second.firmware_path, kDevFirmwarePath);
+  EXPECT_EQ(dev_it->second.version, kDevFirmwareVersion);
 }
 
 }  // namespace modemfwd
