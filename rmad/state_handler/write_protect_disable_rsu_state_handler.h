@@ -16,8 +16,6 @@
 #include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/fake_cr50_utils.h"
-#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace rmad {
 
@@ -50,6 +48,13 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   // Try to auto-transition at boot.
   GetNextStateCaseReply TryGetNextStateCaseAtBoot() override {
     return GetNextStateCase(state_);
+  }
+
+  // Override powerwash function. Allow disabling powerwash if running in a
+  // debug build.
+  bool CanDisablePowerwash() const override {
+    int cros_debug;
+    return crossystem_utils_->GetCrosDebug(&cros_debug) && cros_debug == 1;
   }
 
  protected:

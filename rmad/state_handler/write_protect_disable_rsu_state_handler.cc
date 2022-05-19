@@ -10,7 +10,6 @@
 #include <utility>
 
 #include <base/strings/string_util.h>
-#include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
 #include "rmad/system/fake_power_manager_client.h"
@@ -135,9 +134,9 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
-  // Inject rma-mode powerwash.
-  if (!brillo::TouchFile(
-          working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+  // Inject rma-mode powerwash if it is not disabled.
+  if (!IsPowerwashDisabled(working_dir_path_) &&
+      !RequestPowerwash(working_dir_path_)) {
     LOG(ERROR) << "Failed to request powerwash";
     return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
   }

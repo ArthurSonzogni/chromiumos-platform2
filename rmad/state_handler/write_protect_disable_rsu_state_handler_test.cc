@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -46,7 +47,9 @@ constexpr char kTestUrl[] =
 class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableRsuStateHandler> CreateStateHandler(
-      bool factory_mode_enabled, bool* reboot_called = nullptr) {
+      bool factory_mode_enabled,
+      bool is_cros_debug,
+      bool* reboot_called = nullptr) {
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
@@ -68,6 +71,10 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
             GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(factory_mode_enabled ? 0 : 1),
                              Return(true)));
+    ON_CALL(*mock_crossystem_utils,
+            GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
 
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
@@ -90,7 +97,7 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        InitializeState_FactoryModeEnabled) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().rsu_done(), true);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
@@ -101,7 +108,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        InitializeState_FactoryModeDisabled) {
-  auto handler = CreateStateHandler(false);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().rsu_done(), false);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
@@ -112,7 +119,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_Success_Continue) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -127,7 +134,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {
   bool reboot_called = false;
-  auto handler = CreateStateHandler(false, &reboot_called);
+  auto handler = CreateStateHandler(false, true, &reboot_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -155,8 +162,54 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {
       GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
+TEST_F(WriteProtectDisableRsuStateHandlerTest,
+       GetNextStateCase_PowerwashDisabled_CrosDebug) {
+  bool reboot_called = false;
+  auto handler = CreateStateHandler(false, true, &reboot_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
+
+  RmadState state;
+  state.mutable_wp_disable_rsu()->set_unlock_code(kTestUnlockCode);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+  EXPECT_FALSE(reboot_called);
+
+  task_environment_.FastForwardBy(
+      WriteProtectDisableRsuStateHandler::kRebootDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+}
+
+TEST_F(WriteProtectDisableRsuStateHandlerTest,
+       GetNextStateCase_PowerwashDisabled_NonCrosDebug) {
+  bool reboot_called = false;
+  auto handler = CreateStateHandler(false, false, &reboot_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
+
+  RmadState state;
+  state.mutable_wp_disable_rsu()->set_unlock_code(kTestUnlockCode);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+  EXPECT_FALSE(reboot_called);
+
+  task_environment_.FastForwardBy(
+      WriteProtectDisableRsuStateHandler::kRebootDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+}
+
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(false);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableRsuState.
@@ -171,7 +224,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_WrongUnlockCode) {
-  auto handler = CreateStateHandler(false);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

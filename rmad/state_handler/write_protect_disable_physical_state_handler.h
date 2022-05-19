@@ -55,6 +55,13 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
     return GetNextStateCase(state_);
   }
 
+  // Override powerwash function. Allow disabling powerwash if running in a
+  // debug build.
+  bool CanDisablePowerwash() const override {
+    int cros_debug;
+    return crossystem_utils_->GetCrosDebug(&cros_debug) && cros_debug == 1;
+  }
+
  protected:
   ~WriteProtectDisablePhysicalStateHandler() override = default;
 

@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
@@ -155,9 +154,9 @@ void WriteProtectDisablePhysicalStateHandler::EnableFactoryMode() {
   if (!cr50_utils_->EnableFactoryMode()) {
     LOG(ERROR) << "Failed to enable factory mode.";
   }
-  // Inject rma-mode powerwash.
-  if (!brillo::TouchFile(
-          working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+  // Inject rma-mode powerwash if it is not disabled.
+  if (!IsPowerwashDisabled(working_dir_path_) &&
+      !RequestPowerwash(working_dir_path_)) {
     LOG(ERROR) << "Failed to request powerwash";
   }
   // Reboot.

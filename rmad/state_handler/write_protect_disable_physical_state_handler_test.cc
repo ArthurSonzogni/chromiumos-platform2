@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -45,6 +46,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
       const std::vector<int> wp_status_list,
       bool factory_mode_enabled,
       bool enable_factory_mode_success,
+      bool expect_powerwash,
+      bool is_cros_debug,
       bool* factory_mode_toggled = nullptr,
       bool* reboot_toggled = nullptr) {
     // Mock |Cr50Utils|, |CrosSystemUtils|, |CryptohomeClient| and
@@ -57,6 +60,12 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
         EXPECT_CALL(*mock_crossystem_utils,
                     GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
             .WillOnce(DoAll(SetArgPointee<1>(wp_status_list[i]), Return(true)));
+      }
+      if (expect_powerwash) {
+        EXPECT_CALL(*mock_crossystem_utils,
+                    GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
+            .WillOnce(
+                DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
       }
     }
 
@@ -99,7 +108,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({0}, true, true);
+  auto handler = CreateStateHandler({0}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_TRUE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -115,7 +124,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Failed) {
   // No kWipeDevice set in |json_store_|.
-  auto handler = CreateStateHandler({}, true, true);
+  auto handler = CreateStateHandler({}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -123,7 +132,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Failed) {
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_CleanUpBeforeSignal) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({0}, true, true);
+  auto handler = CreateStateHandler({0}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
@@ -143,7 +152,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_FactoryModeEnabled) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  auto handler = CreateStateHandler({0, 0}, true, true);
+  auto handler = CreateStateHandler({0, 0}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
@@ -173,7 +182,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_KeepDeviceOpen) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({0, 0}, false, true);
+  auto handler = CreateStateHandler({0, 0}, false, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
@@ -201,10 +210,10 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_FactoryModeDisabled_EnableSuccess) {
+       GetNextStateCase_FactoryModeSuccess) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   bool factory_mode_toggled = false, reboot_toggled = false;
-  auto handler = CreateStateHandler({1, 1, 0}, false, true,
+  auto handler = CreateStateHandler({1, 1, 0}, false, true, true, true,
                                     &factory_mode_toggled, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -244,10 +253,80 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_FactoryModeDisabled_EnableFailed) {
+       GetNextStateCase_FactoryModeSuccess_PowerwashDisabled_CrosDebug) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   bool factory_mode_toggled = false, reboot_toggled = false;
-  auto handler = CreateStateHandler({1, 1, 0}, false, false,
+  auto handler = CreateStateHandler({0}, false, true, true, true,
+                                    &factory_mode_toggled, &reboot_toggled);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
+
+  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
+
+  RmadState state;
+  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Call to |mock_crossystem_utils_| during polling, get 0.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Try to enable factory mode, powerwash disabled, and reboot after a delay.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_TRUE(factory_mode_toggled);
+  EXPECT_TRUE(reboot_toggled);
+  EXPECT_FALSE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+}
+
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
+       GetNextStateCase_FactoryModeSuccess_PowerwashDisabled_NonCrosDebug) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  bool factory_mode_toggled = false, reboot_toggled = false;
+  auto handler = CreateStateHandler({0}, false, true, true, false,
+                                    &factory_mode_toggled, &reboot_toggled);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
+
+  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
+
+  RmadState state;
+  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Call to |mock_crossystem_utils_| during polling, get 0.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Try to enable factory mode, request a powerwash, and reboot after a delay.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_TRUE(factory_mode_toggled);
+  EXPECT_TRUE(reboot_toggled);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+}
+
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
+       GetNextStateCase_FactoryModeFailed) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  bool factory_mode_toggled = false, reboot_toggled = false;
+  auto handler = CreateStateHandler({1, 1, 0}, false, false, true, true,
                                     &factory_mode_toggled, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -289,7 +368,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_MissingState) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({}, false, true);
+  auto handler = CreateStateHandler({}, false, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisablePhysicalState.
