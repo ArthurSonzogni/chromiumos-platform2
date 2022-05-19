@@ -21,7 +21,34 @@
 
 PATTERNS_FILENAME=log_patterns.txt
 
-cat <<\EOF >"${PATTERNS_FILENAME}"
+{
+# Custom logs from UX study
+cat <<\EOF
+FpsUxStudy
+EOF
+
+# Events from FPMCU related to FPS
+cat <<\EOF
+Capturing
+Enrolling
+Enroll =>
+Matching
+Match =>
+EOF
+
+# Events from biod related to FPS
+cat <<\EOF
+StartEnrollSession
+EndEnrollSession
+DoEnrollImageEvent
+StartAuthSession
+EndAuthSession
+DoMatchEvent result
+Ignoring fp match
+EOF
+
+# Events from powerd related to power button and screen
+cat <<\EOF
 Power button down
 Power button up
 Shutting down
@@ -29,20 +56,8 @@ all displays off
 all displays on
 Turning screen
 imming screen
-StartEnrollSession
-EndEnrollSession
-DoEnrollImageEvent
-Enrolling
-Enroll =>
-StartAuthSession
-EndAuthSession
-DoMatchEvent result
-Ignoring fp match
-Capturing
-Matching
-Match =>
-FpsUxStudy
 EOF
+} >"${PATTERNS_FILENAME}"
 
 LOG_FILENAME=cros_$(date --iso-8601=seconds).log
 generate_logs --compress=false --output="${LOG_FILENAME}"
