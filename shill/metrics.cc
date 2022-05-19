@@ -574,18 +574,6 @@ std::string Metrics::GetFullMetricName(const char* metric_suffix,
                             metric_suffix);
 }
 
-void Metrics::NotifyServiceDisconnect(const Service& service) {
-  SendToUMA(kMetricDisconnect, service.technology(),
-            service.explicitly_disconnected());
-}
-
-void Metrics::NotifySignalAtDisconnect(const Service& service,
-                                       int16_t signal_strength) {
-  // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
-  // seem to handle negative values well.  Now everything's positive.
-  SendToUMA(kMetricSignalAtDisconnect, service.technology(), -signal_strength);
-}
-
 void Metrics::NotifySuspendDone() {
   time_resume_to_ready_timer_->Start();
 }
@@ -736,19 +724,6 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
   SendEnumToUMA(metric_disconnect_type, type);
 }
 #endif  // DISABLE_WIFI
-
-void Metrics::NotifyWiFiSupplicantAbort() {
-  // abort == max
-  SendToUMA(kMetricWifiSupplicantAttempts, kMetricWifiSupplicantAttempts.max);
-}
-
-void Metrics::NotifyWiFiSupplicantSuccess(int attempts) {
-  // Cap "success" at 1 lower than max. Max means we aborted.
-  if (attempts >= kMetricWifiSupplicantAttempts.max)
-    attempts = kMetricWifiSupplicantAttempts.max - 1;
-
-  SendToUMA(kMetricWifiSupplicantAttempts, attempts);
-}
 
 void Metrics::RegisterDevice(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
@@ -923,16 +898,6 @@ void Metrics::ResetConnectTimer(int interface_index) {
   device_metrics->scan_connect_timer->Reset();
 }
 
-void Metrics::Notify3GPPRegistrationDelayedDropPosted() {
-  SendEnumToUMA(kMetricCellular3GPPRegistrationDelayedDrop,
-                kCellular3GPPRegistrationDelayedDropPosted);
-}
-
-void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
-  SendEnumToUMA(kMetricCellular3GPPRegistrationDelayedDrop,
-                kCellular3GPPRegistrationDelayedDropCanceled);
-}
-
 void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
                                        uint16_t signal_strength) {
   SLOG(this, 2) << __func__ << ": " << network_technology << ", "
@@ -1090,22 +1055,6 @@ void Metrics::NotifyDetailedCellularConnectionResult(
       .Record();
 }
 
-void Metrics::NotifyCorruptedProfile() {
-  SendEnumToUMA(kMetricCorruptedProfile, kCorruptedProfile);
-}
-
-void Metrics::NotifyWifiAutoConnectableServices(int num_services) {
-  SendToUMA(kMetricWifiAutoConnectableServices, num_services);
-}
-
-void Metrics::NotifyWifiAvailableBSSes(int num_bss) {
-  SendToUMA(kMetricWifiAvailableBSSes, num_bss);
-}
-
-void Metrics::NotifyWifiTxBitrate(int bitrate) {
-  SendToUMA(kMetricWifiTxBitrate, bitrate);
-}
-
 void Metrics::NotifyUserInitiatedConnectionFailureReason(
     const Service::ConnectFailure failure) {
   UserInitiatedConnectionFailureReason reason;
@@ -1157,34 +1106,6 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
       break;
   }
   SendEnumToUMA(kMetricWifiUserInitiatedConnectionResult, reason);
-}
-
-void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
-  SendEnumToUMA(kMetricDeviceConnectionStatus, status);
-}
-
-void Metrics::NotifyNetworkConnectionIPType(Technology technology_id,
-                                            NetworkConnectionIPType type) {
-  SendEnumToUMA(kMetricNetworkConnectionIPType, technology_id, type);
-}
-
-void Metrics::NotifyIPv6ConnectivityStatus(Technology technology_id,
-                                           bool status) {
-  auto ipv6_status =
-      status ? kIPv6ConnectivityStatusYes : kIPv6ConnectivityStatusNo;
-  SendEnumToUMA(kMetricIPv6ConnectivityStatus, technology_id, ipv6_status);
-}
-
-void Metrics::NotifyDevicePresenceStatus(Technology technology_id,
-                                         bool status) {
-  auto presence = status ? kDevicePresenceStatusYes : kDevicePresenceStatusNo;
-  SendEnumToUMA(kMetricDevicePresenceStatus, technology_id, presence);
-}
-
-void Metrics::NotifyUnreliableLinkSignalStrength(Technology technology_id,
-                                                 int signal_strength) {
-  SendToUMA(kMetricUnreliableLinkSignalStrength, technology_id,
-            signal_strength);
 }
 
 bool Metrics::SendEnumToUMA(const std::string& name, int sample, int max) {

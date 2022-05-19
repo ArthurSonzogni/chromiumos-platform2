@@ -572,11 +572,12 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
-  EXPECT_CALL(*metrics(), NotifyNetworkConnectionIPType(
-                              device_->technology(),
-                              Metrics::kNetworkConnectionIPTypeIPv4));
-  EXPECT_CALL(*metrics(),
-              NotifyIPv6ConnectivityStatus(device_->technology(), false));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType,
+                                        device_->technology(),
+                                        Metrics::kNetworkConnectionIPTypeIPv4));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricIPv6ConnectivityStatus,
+                                        device_->technology(),
+                                        Metrics::kIPv6ConnectivityStatusNo));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, HasStaticNameServers()).WillRepeatedly(Return(false));
@@ -605,11 +606,12 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   auto ipconfig = std::make_unique<NiceMock<MockIPConfig>>(control_interface(),
                                                            kDeviceName);
   EXPECT_CALL(*service, SetState(Service::kStateConnected)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyNetworkConnectionIPType(
-                              device_->technology(),
-                              Metrics::kNetworkConnectionIPTypeIPv4));
-  EXPECT_CALL(*metrics(),
-              NotifyIPv6ConnectivityStatus(device_->technology(), false));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType,
+                                        device_->technology(),
+                                        Metrics::kNetworkConnectionIPTypeIPv4));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricIPv6ConnectivityStatus,
+                                        device_->technology(),
+                                        Metrics::kIPv6ConnectivityStatusNo));
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
@@ -1129,11 +1131,12 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
   EXPECT_CALL(*connection,
               UpdateFromIPConfig(Ref(device_->ip6config_->properties())));
-  EXPECT_CALL(*metrics(), NotifyNetworkConnectionIPType(
-                              device_->technology(),
-                              Metrics::kNetworkConnectionIPTypeIPv6));
-  EXPECT_CALL(*metrics(),
-              NotifyIPv6ConnectivityStatus(device_->technology(), true));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType,
+                                        device_->technology(),
+                                        Metrics::kNetworkConnectionIPTypeIPv6));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricIPv6ConnectivityStatus,
+                                        device_->technology(),
+                                        Metrics::kIPv6ConnectivityStatusYes));
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));

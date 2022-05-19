@@ -2068,10 +2068,11 @@ void Manager::ConnectionStatusCheck() {
     status = Metrics::kConnectionStatusConnected;
     // Check if device is online as well.
     if (IsOnline()) {
-      metrics_->NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline);
+      metrics_->SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
+                              Metrics::kConnectionStatusOnline);
     }
   }
-  metrics_->NotifyDeviceConnectionStatus(status);
+  metrics_->SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus, status);
 }
 
 void Manager::DevicePresenceStatusCheck() {
@@ -2079,10 +2080,13 @@ void Manager::DevicePresenceStatusCheck() {
   std::vector<std::string> available_technologies =
       AvailableTechnologies(&error);
 
+  // FIXME !! just iterate over available_technologies !!!
   for (const auto& technology : kProbeTechnologies) {
-    bool presence = base::Contains(available_technologies, technology);
-    metrics_->NotifyDevicePresenceStatus(Technology::CreateFromName(technology),
-                                         presence);
+    auto presence = base::Contains(available_technologies, technology)
+                        ? Metrics::kDevicePresenceStatusYes
+                        : Metrics::kDevicePresenceStatusNo;
+    metrics_->SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
+                            Technology::CreateFromName(technology), presence);
   }
 }
 

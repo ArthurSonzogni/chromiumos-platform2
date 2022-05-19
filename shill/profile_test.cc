@@ -399,13 +399,16 @@ TEST_F(ProfileTest, InitStorage) {
   EXPECT_EQ(data.size(), base::WriteFile(final_path, data.data(), data.size()));
 
   // Then test that we fail to open this file.
-  EXPECT_CALL(*metrics(), NotifyCorruptedProfile());
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricCorruptedProfile,
+                                        Metrics::kCorruptedProfile));
   EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
                                   Error::kInternalError));
   Mock::VerifyAndClearExpectations(metrics());
 
   // But then on a second try the file no longer exists.
-  EXPECT_CALL(*metrics(), NotifyCorruptedProfile()).Times(0);
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricCorruptedProfile,
+                                        Metrics::kCorruptedProfile))
+      .Times(0);
   ASSERT_FALSE(
       ProfileInitStorage(id, Profile::kOpenExisting, false, Error::kNotFound));
 }

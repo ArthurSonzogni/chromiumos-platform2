@@ -604,7 +604,8 @@ void WiFiProvider::ReportAutoConnectableServices() {
   int num_services = NumAutoConnectableServices();
   // Only report stats when there are wifi services available.
   if (num_services) {
-    metrics()->NotifyWifiAutoConnectableServices(num_services);
+    metrics()->SendToUMA(Metrics::kMetricWifiAutoConnectableServices,
+                         num_services);
   }
 }
 

@@ -1953,7 +1953,9 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
     } else {
       // This is not a repeated post. So, count this instance of delayed drop
       // posted.
-      metrics()->Notify3GPPRegistrationDelayedDropPosted();
+      metrics()->SendEnumToUMA(
+          Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+          Metrics::kCellular3GPPRegistrationDelayedDropPosted);
     }
     SLOG(this, 2) << "Posted deferred registration state update";
     registration_dropped_update_callback_.Reset(base::Bind(
@@ -1968,7 +1970,9 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
       registration_dropped_update_callback_.Cancel();
       // If we cancelled the callback here, it means we had flaky network for a
       // small duration.
-      metrics()->Notify3GPPRegistrationDelayedDropCanceled();
+      metrics()->SendEnumToUMA(
+          Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+          Metrics::kCellular3GPPRegistrationDelayedDropCanceled);
     }
     Handle3gppRegistrationChange(state, operator_code, operator_name);
   }

@@ -831,20 +831,23 @@ class Metrics : public DefaultServiceObserver {
   // Max=2 and NumBuckets=3 gives us the following three buckets:
   // [0-1), [1-2), [2-INT_MAX).  We end up with an extra bucket [2-INT_MAX)
   // that we can safely ignore.
-  static constexpr HistogramMetric<NameByTechnology> kMetricDisconnect = {
-      .n = NameByTechnology{"Disconnect"},
+  static constexpr HistogramMetric<FixedName> kMetricWiFiDisconnect = {
+      // "Wifi" is used instead of "WiFi" because the name of this metric used
+      // to be derived from the display name of Technology::kWiFi.
+      .n = FixedName{"Network.Shill.Wifi.Disconnect"},
       .min = 1,
       .max = 2,
       .num_buckets = 3,
   };
 
-  static constexpr HistogramMetric<NameByTechnology> kMetricSignalAtDisconnect =
-      {
-          .n = NameByTechnology{"SignalAtDisconnect"},
-          .min = 1,
-          .max = 200,
-          .num_buckets = 40,
-      };
+  static constexpr HistogramMetric<FixedName> kMetricWiFiSignalAtDisconnect = {
+      // "Wifi" is used instead of "WiFi" because the name of this metric used
+      // to be derived from the display name of Technology::kWiFi.
+      .n = FixedName{"Network.Shill.Wifi.SignalAtDisconnect"},
+      .min = 1,
+      .max = 200,
+      .num_buckets = 40,
+  };
 
   static constexpr char kMetricNetworkChannelSuffix[] = "Channel";
   static constexpr int kMetricNetworkChannelMax = kWiFiChannelMax;
@@ -949,10 +952,12 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricPowerManagerKey[] = "metrics";
 
   // Signal strength when link becomes unreliable (multiple link monitor
-  // failures in short period of time).
-  static constexpr HistogramMetric<NameByTechnology>
+  // failures in short period of time). This name of this metric uses "Wifi"
+  // instead of "WiFi" because its name used to be constructed from a
+  // Technology value.
+  static constexpr HistogramMetric<FixedName>
       kMetricUnreliableLinkSignalStrength = {
-          .n = NameByTechnology{"UnreliableLinkSignalStrength"},
+          .n = FixedName{"Network.Shill.Wifi.UnreliableLinkSignalStrength"},
           .min = 1,
           .max = 100,
           .num_buckets = 40,
@@ -1291,13 +1296,6 @@ class Metrics : public DefaultServiceObserver {
   virtual void NotifyServiceStateChanged(const Service& service,
                                          Service::ConnectState new_state);
 
-  // Notifies this object that |service| has been disconnected.
-  void NotifyServiceDisconnect(const Service& service);
-
-  // Notifies this object of power at disconnect.
-  void NotifySignalAtDisconnect(const Service& service,
-                                int16_t signal_strength);
-
   // Notifies this object of the end of a suspend attempt.
   void NotifySuspendDone();
 
@@ -1340,13 +1338,6 @@ class Metrics : public DefaultServiceObserver {
   virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                      IEEE_80211::WiFiReasonCode reason);
 #endif  // DISABLE_WIFI
-
-  // Notifies that WiFi tried to set up supplicant too many times.
-  void NotifyWiFiSupplicantAbort();
-
-  // Notifies that WiFi successfully set up supplicant after some number of
-  // |attempts|.
-  virtual void NotifyWiFiSupplicantSuccess(int attempts);
 
   // Notifies this object that an AP has switched channels.
   void NotifyApChannelSwitch(uint16_t frequency, uint16_t new_frequency);
@@ -1426,47 +1417,10 @@ class Metrics : public DefaultServiceObserver {
       uint32_t modem_state,
       int interface_index);
 
-  // Notifies this object about 3GPP registration drop events.
-  virtual void Notify3GPPRegistrationDelayedDropPosted();
-  virtual void Notify3GPPRegistrationDelayedDropCanceled();
-
-  // Notifies this object about number of wifi services available for auto
-  // connect when auto-connect is initiated.
-  virtual void NotifyWifiAutoConnectableServices(int num_services);
-
-  // Notifies this object about number of BSSes available for a wifi service
-  // when attempt to connect to that service.
-  virtual void NotifyWifiAvailableBSSes(int num_services);
-
-  // Notifies this object about WIFI TX bitrate in Mbps.
-  virtual void NotifyWifiTxBitrate(int bitrate);
-
   // Notifies this object about the reason of failed user-initiated connection
   // attempt.
   virtual void NotifyUserInitiatedConnectionFailureReason(
       const Service::ConnectFailure failure);
-
-  // Notifies this object about a corrupted profile.
-  virtual void NotifyCorruptedProfile();
-
-  // Notifies this object about current connection status (online vs offline).
-  virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);
-
-  // Notifies this object about the IP type of the current network connection.
-  virtual void NotifyNetworkConnectionIPType(Technology technology_id,
-                                             NetworkConnectionIPType type);
-
-  // Notifies this object about the IPv6 connectivity status.
-  virtual void NotifyIPv6ConnectivityStatus(Technology technology_id,
-                                            bool status);
-
-  // Notifies this object about the presence of given technology type device.
-  virtual void NotifyDevicePresenceStatus(Technology technology_id,
-                                          bool status);
-
-  // Notifies this object about the signal strength when link is unreliable.
-  virtual void NotifyUnreliableLinkSignalStrength(Technology technology_id,
-                                                  int signal_strength);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max);

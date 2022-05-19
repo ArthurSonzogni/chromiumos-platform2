@@ -811,7 +811,7 @@ void WiFiService::OnConnect(Error* error) {
   }
 
   // Report number of BSSes available for this service.
-  metrics()->NotifyWifiAvailableBSSes(endpoints_.size());
+  metrics()->SendToUMA(Metrics::kMetricWifiAvailableBSSes, endpoints_.size());
 
   if (Is8021x()) {
     // If EAP key management is not set, set to a default.

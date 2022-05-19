@@ -1256,10 +1256,13 @@ void WiFi::HandleDisconnect() {
     }
   }
 
-  metrics()->NotifySignalAtDisconnect(*affected_service,
-                                      disconnect_signal_dbm_);
+  // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
+  // seem to handle negative values well.  Now everything's positive.
+  metrics()->SendToUMA(Metrics::kMetricWiFiSignalAtDisconnect,
+                       -disconnect_signal_dbm_);
   affected_service->NotifyCurrentEndpoint(nullptr);
-  metrics()->NotifyServiceDisconnect(*affected_service);
+  metrics()->SendToUMA(Metrics::kMetricWiFiDisconnect,
+                       affected_service->explicitly_disconnected());
 
   if (affected_service == pending_service_.get()) {
     // The attempt to connect to |pending_service_| failed. Clear
@@ -2496,8 +2499,8 @@ void WiFi::OnUnreliableLink() {
   SLOG(this, 2) << "Device " << link_name() << ": Link is unreliable.";
   selected_service()->set_unreliable(true);
   reliable_link_callback_.Cancel();
-  metrics()->NotifyUnreliableLinkSignalStrength(Technology::kWiFi,
-                                                selected_service()->strength());
+  metrics()->SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength,
+                       selected_service()->strength());
 }
 
 void WiFi::OnReliableLink() {
@@ -2551,7 +2554,8 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
     if (seconds < Metrics::kMetricTimeFromRekeyToFailureSeconds.max) {
       LOG(INFO) << "Connection became unreliable shortly after rekey, "
                 << "seconds between rekey and connection failure: " << seconds;
-      metrics()->NotifyWiFiServiceFailureAfterRekey(seconds);
+      metrics()->SendToUMA(Metrics::kMetricTimeFromRekeyToFailureSeconds,
+                           seconds);
     }
     return;
   }
@@ -3162,7 +3166,9 @@ void WiFi::ConnectToSupplicant() {
         LOG(ERROR) << "Failed to create interface with supplicant after "
                    << supplicant_connect_attempts_ << " attempts. Giving up.";
         SetEnabled(false);
-        metrics()->NotifyWiFiSupplicantAbort();
+        // kMetricWifiSupplicantAttempts.max means we aborted.
+        metrics()->SendToUMA(Metrics::kMetricWifiSupplicantAttempts,
+                             Metrics::kMetricWifiSupplicantAttempts.max);
       } else {
         dispatcher()->PostDelayedTask(
             FROM_HERE,
@@ -3176,7 +3182,8 @@ void WiFi::ConnectToSupplicant() {
 
   LOG(INFO) << "connected to supplicant on attempt "
             << supplicant_connect_attempts_;
-  metrics()->NotifyWiFiSupplicantSuccess(supplicant_connect_attempts_);
+  metrics()->SendToUMA(Metrics::kMetricWifiSupplicantAttempts,
+                       supplicant_connect_attempts_);
 
   // Only (re)create the interface proxy if its D-Bus path changed, or if we
   // haven't created one yet. This lets us watch interface properties
@@ -3769,7 +3776,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
     int rate;
     if (ParseStationBitrate(transmit_info, &str, &rate)) {
       link_statistics_.Set<std::string>(kTransmitBitrateProperty, str);
-      metrics()->NotifyWifiTxBitrate(rate);
+      metrics()->SendToUMA(Metrics::kMetricWifiTxBitrate, rate);
     }
   }
 

@@ -779,12 +779,16 @@ void Device::SetupConnection(IPConfig* ipconfig) {
   Metrics::NetworkConnectionIPType ip_type =
       connection_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
                             : Metrics::kNetworkConnectionIPTypeIPv4;
-  metrics()->NotifyNetworkConnectionIPType(technology_, ip_type);
+  metrics()->SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType, technology_,
+                           ip_type);
 
   // Report if device have IPv6 connectivity
-  bool ipv6_connectivity =
-      ip6config_ && ip6config_->properties().HasIPAddressAndDNS();
-  metrics()->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
+  auto ipv6_status =
+      (ip6config_ && ip6config_->properties().HasIPAddressAndDNS())
+          ? Metrics::kIPv6ConnectivityStatusYes
+          : Metrics::kIPv6ConnectivityStatusNo;
+  metrics()->SendEnumToUMA(Metrics::kMetricIPv6ConnectivityStatus, technology_,
+                           ipv6_status);
 
   if (selected_service_) {
     selected_service_->SetIPConfig(

@@ -84,44 +84,37 @@ class MockMetrics : public Metrics {
               (bool, const WiFiAdapterInfo&),
               (override));
 #endif  // DISABLE_WIFI
-  MOCK_METHOD(void, NotifyWiFiSupplicantSuccess, (int), (override));
-  MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropPosted, (), (override));
-  MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropCanceled, (), (override));
-  MOCK_METHOD(void, NotifyCorruptedProfile, (), (override));
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
   MOCK_METHOD(void,
               SendEnumToUMA,
               (const Metrics::EnumMetric<Metrics::FixedName>& metric, int),
               (override));
+  MOCK_METHOD(void,
+              SendEnumToUMA,
+              (const Metrics::EnumMetric<Metrics::NameByTechnology>& metric,
+               Technology,
+               int),
+              (override));
+  MOCK_METHOD(void,
+              SendToUMA,
+              (const Metrics::HistogramMetric<Metrics::FixedName>& metric, int),
+              (override));
+  MOCK_METHOD(
+      void,
+      SendToUMA,
+      (const Metrics::HistogramMetric<Metrics::NameByTechnology>& metric,
+       Technology,
+       int),
+      (override));
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool,
               SendToUMA,
               (const std::string&, int, int, int, int),
               (override));
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
-  MOCK_METHOD(void, NotifyWifiAutoConnectableServices, (int), (override));
-  MOCK_METHOD(void, NotifyWifiAvailableBSSes, (int), (override));
-  MOCK_METHOD(void, NotifyWifiTxBitrate, (int), (override));
   MOCK_METHOD(void,
               NotifyUserInitiatedConnectionFailureReason,
               (const Service::ConnectFailure),
-              (override));
-  MOCK_METHOD(void,
-              NotifyDeviceConnectionStatus,
-              (Metrics::ConnectionStatus),
-              (override));
-  MOCK_METHOD(void,
-              NotifyNetworkConnectionIPType,
-              (Technology, Metrics::NetworkConnectionIPType),
-              (override));
-  MOCK_METHOD(void,
-              NotifyIPv6ConnectivityStatus,
-              (Technology, bool),
-              (override));
-  MOCK_METHOD(void, NotifyDevicePresenceStatus, (Technology, bool), (override));
-  MOCK_METHOD(void,
-              NotifyUnreliableLinkSignalStrength,
-              (Technology, int),
               (override));
   MOCK_METHOD(void,
               NotifyConnectionDiagnosticsIssue,

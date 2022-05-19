@@ -426,7 +426,7 @@ TEST_F(WiFiServiceTest, ConnectReportBSSes) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   wifi_service->AddEndpoint(endpoint1);
   wifi_service->AddEndpoint(endpoint2);
-  EXPECT_CALL(*metrics(), NotifyWifiAvailableBSSes(2));
+  EXPECT_CALL(*metrics(), SendToUMA(Metrics::kMetricWifiAvailableBSSes, 2));
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
 }
@@ -2377,8 +2377,6 @@ TEST_F(WiFiServiceTest, DisconnectionEmitsStructuredMetricWithTagOnFailure) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptValidTagUMA) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  // Catch-all call to avoid failing on unrelated UMA calls.
-  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
 
   // The session tag should be in the "expected" state.
   EXPECT_CALL(
@@ -2393,8 +2391,6 @@ TEST_F(WiFiServiceTest, ConnectionAttemptValidTagUMA) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInvalidTagUMA) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  // Catch-all call to avoid failing on unrelated UMA calls.
-  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
 
   // If we try to emit 2 "connection attempt" events in a row, the second one
   // should report that the session tag was unexpected.
@@ -2412,8 +2408,6 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInvalidTagUMA) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptResultValidTagUMA) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  // Catch-all call to avoid failing on unrelated UMA calls.
-  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
 
   service->EmitConnectionAttemptEvent();
   EXPECT_CALL(
@@ -2430,8 +2424,6 @@ TEST_F(WiFiServiceTest, ConnectionAttemptResultValidTagUMA) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptResultInvalidTagUMA) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  // Catch-all call to avoid failing on unrelated UMA calls.
-  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
 
   EXPECT_CALL(
       *metrics(),
@@ -2447,8 +2439,6 @@ TEST_F(WiFiServiceTest, ConnectionAttemptResultInvalidTagUMA) {
 
 TEST_F(WiFiServiceTest, DisconnectionValidTagUMA) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  // Catch-all call to avoid failing on unrelated UMA calls.
-  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
 
   service->EmitConnectionAttemptEvent();
   service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
@@ -2469,8 +2459,6 @@ TEST_F(WiFiServiceTest, DisconnectionValidTagUMA) {
 
 TEST_F(WiFiServiceTest, DisconnectionInvalidTagUMA) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  // Catch-all call to avoid failing on unrelated UMA calls.
-  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
 
   EXPECT_CALL(
       *metrics(),

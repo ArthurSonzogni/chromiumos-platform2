@@ -1122,8 +1122,14 @@ TEST_F(CellularCapability3gppTest, UpdateRegistrationState) {
             capability_->registration_state_);
 
   // Home --> Searching --> Home should never see Searching.
-  EXPECT_CALL(metrics_, Notify3GPPRegistrationDelayedDropPosted());
-  EXPECT_CALL(metrics_, Notify3GPPRegistrationDelayedDropCanceled());
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                    Metrics::kCellular3GPPRegistrationDelayedDropPosted));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                    Metrics::kCellular3GPPRegistrationDelayedDropCanceled));
 
   capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
                                          home_provider, ota_name);
@@ -1143,7 +1149,10 @@ TEST_F(CellularCapability3gppTest, UpdateRegistrationState) {
   Mock::VerifyAndClearExpectations(&metrics_);
 
   // Home --> Searching --> wait till dispatch should see Searching
-  EXPECT_CALL(metrics_, Notify3GPPRegistrationDelayedDropPosted());
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                    Metrics::kCellular3GPPRegistrationDelayedDropPosted));
   capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
                                          home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
@@ -1160,7 +1169,10 @@ TEST_F(CellularCapability3gppTest, UpdateRegistrationState) {
   // Home --> Searching --> Searching --> wait till dispatch should see
   // Searching *and* the first callback should be cancelled.
   EXPECT_CALL(*this, FakeCallback()).Times(0);
-  EXPECT_CALL(metrics_, Notify3GPPRegistrationDelayedDropPosted());
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                    Metrics::kCellular3GPPRegistrationDelayedDropPosted));
 
   capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
                                          home_provider, ota_name);

@@ -2142,27 +2142,27 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
 
   // Device not connected.
   EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(false));
-  EXPECT_CALL(*metrics(),
-              NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOffline));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
+                                        Metrics::kConnectionStatusOffline));
   manager()->ConnectionStatusCheck();
 
   // Device connected, but not online.
   EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(false));
-  EXPECT_CALL(*metrics(),
-              NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline))
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
+                                        Metrics::kConnectionStatusOnline))
       .Times(0);
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectionStatus(
-                              Metrics::kConnectionStatusConnected));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
+                                        Metrics::kConnectionStatusConnected));
   manager()->ConnectionStatusCheck();
 
   // Device connected and online.
   EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(true));
-  EXPECT_CALL(*metrics(),
-              NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline));
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectionStatus(
-                              Metrics::kConnectionStatusConnected));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
+                                        Metrics::kConnectionStatusOnline));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
+                                        Metrics::kConnectionStatusConnected));
   manager()->ConnectionStatusCheck();
 }
 
@@ -2178,12 +2178,15 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kEthernet));
 
-  EXPECT_CALL(*metrics(), NotifyDevicePresenceStatus(
-                              Technology(Technology::kEthernet), true));
-  EXPECT_CALL(*metrics(),
-              NotifyDevicePresenceStatus(Technology(Technology::kWiFi), true));
-  EXPECT_CALL(*metrics(), NotifyDevicePresenceStatus(
-                              Technology(Technology::kCellular), false));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
+                                        Technology(Technology::kEthernet),
+                                        Metrics::kDevicePresenceStatusYes));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
+                                        Technology(Technology::kWiFi),
+                                        Metrics::kDevicePresenceStatusYes));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
+                                        Technology(Technology::kCellular),
+                                        Metrics::kDevicePresenceStatusNo));
   manager()->DevicePresenceStatusCheck();
 }
 

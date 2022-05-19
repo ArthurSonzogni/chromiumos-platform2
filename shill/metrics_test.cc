@@ -357,24 +357,6 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   metrics_.OnDefaultLogicalServiceChanged(nullptr);
 }
 
-TEST_F(MetricsTest, Disconnect) {
-  EXPECT_CALL(*service_, technology())
-      .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(false));
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", false,
-                                  Metrics::kMetricDisconnect.min,
-                                  Metrics::kMetricDisconnect.max,
-                                  Metrics::kMetricDisconnect.num_buckets));
-  metrics_.NotifyServiceDisconnect(*service_);
-
-  EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(true));
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", true,
-                                  Metrics::kMetricDisconnect.min,
-                                  Metrics::kMetricDisconnect.max,
-                                  Metrics::kMetricDisconnect.num_buckets));
-  metrics_.NotifyServiceDisconnect(*service_);
-}
-
 TEST_F(MetricsTest, PortalDetectionResultToEnum) {
   PortalDetector::Result result;
 
@@ -596,23 +578,6 @@ TEST_F(MetricsTest, ReportDeviceScanResultToUma) {
   metrics_.ReportDeviceScanResultToUma(result);
 }
 
-TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop.n.name,
-                    Metrics::kCellular3GPPRegistrationDelayedDropPosted,
-                    Metrics::kCellular3GPPRegistrationDelayedDropMax));
-  metrics_.Notify3GPPRegistrationDelayedDropPosted();
-  Mock::VerifyAndClearExpectations(&library_);
-
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop.n.name,
-                    Metrics::kCellular3GPPRegistrationDelayedDropCanceled,
-                    Metrics::kCellular3GPPRegistrationDelayedDropMax));
-  metrics_.Notify3GPPRegistrationDelayedDropCanceled();
-}
-
 TEST_F(MetricsTest, CellularDrop) {
   static const char* const kUMATechnologyStrings[] = {
       kNetworkTechnology1Xrtt,    kNetworkTechnologyEdge,
@@ -669,13 +634,6 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Unknown) {
   metrics_.NotifyCellularConnectionResult(invalid_error);
 }
 
-TEST_F(MetricsTest, CorruptedProfile) {
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCorruptedProfile.n.name,
-                                      Metrics::kCorruptedProfile,
-                                      Metrics::kCorruptedProfileMax));
-  metrics_.NotifyCorruptedProfile();
-}
-
 TEST_F(MetricsTest, Logging) {
   NiceScopedMockLog log;
   const int kVerboseLevel5 = -5;
@@ -704,14 +662,6 @@ TEST_F(MetricsTest, Logging) {
 
   ScopeLogger::GetInstance()->EnableScopesByName("-metrics");
   ScopeLogger::GetInstance()->set_verbose_level(0);
-}
-
-TEST_F(MetricsTest, NotifyWifiTxBitrate) {
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricWifiTxBitrate.n.name, 1,
-                                  Metrics::kMetricWifiTxBitrate.min,
-                                  Metrics::kMetricWifiTxBitrate.max,
-                                  Metrics::kMetricWifiTxBitrate.num_buckets));
-  metrics_.NotifyWifiTxBitrate(1);
 }
 
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
@@ -992,17 +942,6 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
       IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY_AND_DNS_SERVER);
-}
-
-TEST_F(MetricsTest, NotifyWiFiServiceFailureAfterRekey) {
-  int seconds = 182;
-  EXPECT_CALL(
-      library_,
-      SendToUMA("Network.Shill.WiFi.TimeFromRekeyToFailureSeconds", seconds,
-                Metrics::kMetricTimeFromRekeyToFailureSeconds.min,
-                Metrics::kMetricTimeFromRekeyToFailureSeconds.max,
-                Metrics::kMetricTimeFromRekeyToFailureSeconds.num_buckets));
-  metrics_.NotifyWiFiServiceFailureAfterRekey(seconds);
 }
 
 #ifndef NDEBUG

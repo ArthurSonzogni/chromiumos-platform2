@@ -1468,11 +1468,14 @@ TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {
   EXPECT_CALL(*service1, IsAutoConnectable(_)).WillRepeatedly(Return(false));
 
   // With 1 auto connectable service.
-  EXPECT_CALL(metrics_, NotifyWifiAutoConnectableServices(1));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricWifiAutoConnectableServices, 1));
   provider_.ReportAutoConnectableServices();
 
   // With no auto connectable service.
-  EXPECT_CALL(metrics_, NotifyWifiAutoConnectableServices(_)).Times(0);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricWifiAutoConnectableServices, _))
+      .Times(0);
   provider_.ReportAutoConnectableServices();
 }
 

@@ -1647,7 +1647,7 @@ TEST_F(WiFiMainTest, Restart) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_, _));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
-  EXPECT_CALL(*metrics(), NotifyWiFiSupplicantSuccess(1));
+  EXPECT_CALL(*metrics(), SendToUMA(Metrics::kMetricWifiSupplicantAttempts, 1));
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
 }
@@ -3554,13 +3554,17 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
       });
 
   // Initial link monitor failure.
-  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
+      .Times(0);
   OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
   EXPECT_FALSE(service->unreliable());
 
   // Another link monitor failure after 3 minutes, report signal strength.
   current_time += 180;
-  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
+      .Times(1);
   OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
   EXPECT_TRUE(service->unreliable());
 
@@ -3569,7 +3573,9 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   // still unreliable, reliable link callback should be cancelled.
   current_time += 180;
   SetReliableLinkCallback();
-  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
+      .Times(1);
   OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
   EXPECT_TRUE(service->unreliable());
   EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
@@ -3578,7 +3584,9 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   // strength not reported.
   current_time += 3600;
   service->set_unreliable(false);
-  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
+      .Times(0);
   OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
   EXPECT_FALSE(service->unreliable());
 }
@@ -3981,7 +3989,8 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
 
   EXPECT_NE(kSignalValue, endpoint->signal_strength());
   EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
-  EXPECT_CALL(*metrics(), NotifyWifiTxBitrate(kBitrate / 10));
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricWifiTxBitrate, kBitrate / 10));
   AttributeListConstRefPtr station_info_prime;
   ReportReceivedStationInfo(new_station);
   EXPECT_EQ(kSignalValue, endpoint->signal_strength());
@@ -4073,7 +4082,8 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   new_vht_station.attributes()->SetNestedAttributeHasAValue(
       NL80211_ATTR_STA_INFO);
 
-  EXPECT_CALL(*metrics(), NotifyWifiTxBitrate(kVhtBitrate / 10));
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricWifiTxBitrate, kVhtBitrate / 10));
 
   ReportReceivedStationInfo(new_vht_station);
 
