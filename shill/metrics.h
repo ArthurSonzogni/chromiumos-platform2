@@ -805,6 +805,23 @@ class Metrics : public DefaultServiceObserver {
       .max = kAllowlistMax,
   };
 
+  static constexpr int kTimerHistogramNumBuckets = 50;
+
+  static constexpr HistogramMetric<NameByTechnology> kMetricTimeOnlineSeconds =
+      {
+          .n = NameByTechnology{"TimeOnline"},
+          .min = 1,
+          .max = 8 * 60 * 60,  // 8 hours
+          .num_buckets = kTimerHistogramNumBuckets,
+      };
+
+  static constexpr HistogramMetric<FixedName> kMetricTimeToDropSeconds = {
+      .n = FixedName{"Network.Shill.TimeToDrop"},
+      .min = 1,
+      .max = 8 * 60 * 60,  // 8 hours
+      .num_buckets = kTimerHistogramNumBuckets,
+  };
+
   // Our disconnect enumeration values are 0 (System Disconnect) and
   // 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
   // enum value of 1 and the minimum number of buckets needs to be 3 (see
@@ -814,15 +831,21 @@ class Metrics : public DefaultServiceObserver {
   // Max=2 and NumBuckets=3 gives us the following three buckets:
   // [0-1), [1-2), [2-INT_MAX).  We end up with an extra bucket [2-INT_MAX)
   // that we can safely ignore.
-  static constexpr char kMetricDisconnectSuffix[] = "Disconnect";
-  static constexpr int kMetricDisconnectMax = 2;
-  static constexpr int kMetricDisconnectMin = 1;
-  static constexpr int kMetricDisconnectNumBuckets = 3;
-  static constexpr char kMetricSignalAtDisconnectSuffix[] =
-      "SignalAtDisconnect";
-  static constexpr int kMetricSignalAtDisconnectMin = 1;
-  static constexpr int kMetricSignalAtDisconnectMax = 200;
-  static constexpr int kMetricSignalAtDisconnectNumBuckets = 40;
+  static constexpr HistogramMetric<NameByTechnology> kMetricDisconnect = {
+      .n = NameByTechnology{"Disconnect"},
+      .min = 1,
+      .max = 2,
+      .num_buckets = 3,
+  };
+
+  static constexpr HistogramMetric<NameByTechnology> kMetricSignalAtDisconnect =
+      {
+          .n = NameByTechnology{"SignalAtDisconnect"},
+          .min = 1,
+          .max = 200,
+          .num_buckets = 40,
+      };
+
   static constexpr char kMetricNetworkChannelSuffix[] = "Channel";
   static constexpr int kMetricNetworkChannelMax = kWiFiChannelMax;
   static constexpr char kMetricNetworkEapInnerProtocolSuffix[] =
@@ -860,9 +883,6 @@ class Metrics : public DefaultServiceObserver {
       "Network.Shill.WiFi.HiddenSSIDEverConnected";
   static constexpr char kMetricWiFiCQMNotification[] =
       "Network.Shill.WiFi.CQMNotification";
-  static constexpr char kMetricTimeOnlineSecondsSuffix[] = "TimeOnline";
-  static constexpr int kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours
-  static constexpr int kMetricTimeOnlineSecondsMin = 1;
 
   static constexpr char kMetricTimeToConnectMillisecondsSuffix[] =
       "TimeToConnect";
@@ -872,7 +892,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricTimeToConnectMillisecondsNumBuckets = 60;
   static constexpr char kMetricTimeToScanAndConnectMillisecondsSuffix[] =
       "TimeToScanAndConnect";
-  static constexpr char kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";
   static constexpr int kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
   static constexpr int kMetricTimeToDropSecondsMin = 1;
   static constexpr char kMetricTimeToDisableMillisecondsSuffix[] =
@@ -911,7 +930,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricTimeToScanMillisecondsNumBuckets = 90;
   static constexpr int kTimerHistogramMillisecondsMax = 45 * 1000;
   static constexpr int kTimerHistogramMillisecondsMin = 1;
-  static constexpr int kTimerHistogramNumBuckets = 50;
 
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
@@ -932,11 +950,13 @@ class Metrics : public DefaultServiceObserver {
 
   // Signal strength when link becomes unreliable (multiple link monitor
   // failures in short period of time).
-  static constexpr char kMetricUnreliableLinkSignalStrengthSuffix[] =
-      "UnreliableLinkSignalStrength";
-  static constexpr int kMetricServiceSignalStrengthMin = 1;
-  static constexpr int kMetricServiceSignalStrengthMax = 100;
-  static constexpr int kMetricServiceSignalStrengthNumBuckets = 40;
+  static constexpr HistogramMetric<NameByTechnology>
+      kMetricUnreliableLinkSignalStrength = {
+          .n = NameByTechnology{"UnreliableLinkSignalStrength"},
+          .min = 1,
+          .max = 100,
+          .num_buckets = 40,
+      };
 
   // AP 802.11r/k/v support statistics.
   static constexpr char kMetricAp80211kSupport[] =
@@ -987,18 +1007,22 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricWifiEAPSuffix[] = "EAP";
   static constexpr char kMetricWifiFTEAPSuffix[] = "FTEAP";
 
-  // Shill suspend action statistics.
-  static constexpr char kMetricSuspendActionTimeTaken[] =
-      "Network.Shill.SuspendActionTimeTaken";
-  static constexpr int kMetricSuspendActionTimeTakenMillisecondsMax = 20000;
-  static constexpr int kMetricSuspendActionTimeTakenMillisecondsMin = 1;
+  // Shill suspend action statistics, in milliseconds.
+  static constexpr HistogramMetric<FixedName> kMetricSuspendActionTimeTaken = {
+      .n = FixedName{"Network.Shill.SuspendActionTimeTaken"},
+      .min = 1,
+      .max = 20000,
+      .num_buckets = kTimerHistogramNumBuckets,
+  };
 
   // Cellular specific statistics.
-  static constexpr char kMetricCellularSignalStrengthBeforeDrop[] =
-      "Network.Shill.Cellular.SignalStrengthBeforeDrop";
-  static constexpr int kMetricCellularSignalStrengthBeforeDropMax = 100;
-  static constexpr int kMetricCellularSignalStrengthBeforeDropMin = 1;
-  static constexpr int kMetricCellularSignalStrengthBeforeDropNumBuckets = 10;
+  static constexpr HistogramMetric<FixedName>
+      kMetricCellularSignalStrengthBeforeDrop = {
+          .n = FixedName{"Network.Shill.Cellular.SignalStrengthBeforeDrop"},
+          .min = 1,
+          .max = 100,
+          .num_buckets = 10,
+      };
 
   // VPN connection statistics.
   static constexpr char kMetricVpnDriver[] = "Network.Shill.Vpn.Driver";
@@ -1113,26 +1137,30 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricExpiredLeaseLengthSecondsNumBuckets = 100;
 
   // Number of wifi services available when auto-connect is initiated.
-  static constexpr char kMetricWifiAutoConnectableServices[] =
-      "Network.Shill.WiFi.AutoConnectableServices";
-  static constexpr int kMetricWifiAutoConnectableServicesMax = 50;
-  static constexpr int kMetricWifiAutoConnectableServicesMin = 1;
-  static constexpr int kMetricWifiAutoConnectableServicesNumBuckets = 10;
+  static constexpr HistogramMetric<FixedName>
+      kMetricWifiAutoConnectableServices = {
+          .n = FixedName{"Network.Shill.WiFi.AutoConnectableServices"},
+          .min = 1,
+          .max = 50,
+          .num_buckets = 10,
+      };
 
   // Number of BSSes available for a wifi service when we attempt to connect
   // to that service.
-  static constexpr char kMetricWifiAvailableBSSes[] =
-      "Network.Shill.WiFi.AvailableBSSesAtConnect";
-  static constexpr int kMetricWifiAvailableBSSesMax = 50;
-  static constexpr int kMetricWifiAvailableBSSesMin = 1;
-  static constexpr int kMetricWifiAvailableBSSesNumBuckets = 10;
+  static constexpr HistogramMetric<FixedName> kMetricWifiAvailableBSSes = {
+      .n = FixedName{"Network.Shill.WiFi.AvailableBSSesAtConnect"},
+      .min = 1,
+      .max = 50,
+      .num_buckets = 10,
+  };
 
   // Wifi TX bitrate in Mbps.
-  static constexpr char kMetricWifiTxBitrate[] =
-      "Network.Shill.WiFi.TransmitBitrateMbps";
-  static constexpr int kMetricWifiTxBitrateMax = 7000;
-  static constexpr int kMetricWifiTxBitrateMin = 1;
-  static constexpr int kMetricWifiTxBitrateNumBuckets = 100;
+  static constexpr HistogramMetric<FixedName> kMetricWifiTxBitrate = {
+      .n = FixedName{"Network.Shill.WiFi.TransmitBitrateMbps"},
+      .min = 1,
+      .max = 7000,
+      .num_buckets = 100,
+  };
 
   // The reason of failed user-initiated wifi connection attempt.
   static constexpr char kMetricWifiUserInitiatedConnectionFailureReason[] =
@@ -1140,11 +1168,12 @@ class Metrics : public DefaultServiceObserver {
 
   // Number of attempts made to connect to supplicant before success (max ==
   // failure).
-  static constexpr char kMetricWifiSupplicantAttempts[] =
-      "Network.Shill.WiFi.SupplicantAttempts";
-  static constexpr int kMetricWifiSupplicantAttemptsMax = 10;
-  static constexpr int kMetricWifiSupplicantAttemptsMin = 1;
-  static constexpr int kMetricWifiSupplicantAttemptsNumBuckets = 11;
+  static constexpr HistogramMetric<FixedName> kMetricWifiSupplicantAttempts = {
+      .n = FixedName{"Network.Shill.WiFi.SupplicantAttempts"},
+      .min = 1,
+      .max = 10,
+      .num_buckets = 11,
+  };
 
   // Assigned MTU values from PPP.
   static constexpr char kMetricPPPMTUValue[] = "Network.Shill.PPPMTUValue";
@@ -1156,12 +1185,14 @@ class Metrics : public DefaultServiceObserver {
   // MBO support metric.
   static constexpr char kMetricMBOSupport[] = "Network.Shill.WiFi.MBOSupport";
 
-  // Seconds between latest WiFi rekey attempt and service failure.
-  static constexpr char kMetricTimeFromRekeyToFailureSeconds[] =
-      "Network.Shill.WiFi.TimeFromRekeyToFailureSeconds";
-  static constexpr int kMetricTimeFromRekeyToFailureSecondsMin = 0;
-  static constexpr int kMetricTimeFromRekeyToFailureSecondsMax = 180;
-  static constexpr int kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
+  // Seconds between latest WiFi rekey attempt and service failure, in seconds.
+  static constexpr HistogramMetric<FixedName>
+      kMetricTimeFromRekeyToFailureSeconds = {
+          .n = FixedName{"Network.Shill.WiFi.TimeFromRekeyToFailureSeconds"},
+          .min = 0,
+          .max = 180,
+          .num_buckets = 30,
+      };
 
   // Version number of the format of WiFi structured metrics. Changed when the
   // formatting of the metrics changes, so that the server-side code knows

@@ -509,12 +509,8 @@ void Metrics::OnDefaultLogicalServiceChanged(
                                           : Technology(Technology::kUnknown);
   if (technology != last_default_technology_) {
     if (last_default_technology_ != Technology::kUnknown) {
-      const auto histogram = GetFullMetricName(kMetricTimeOnlineSecondsSuffix,
-                                               last_default_technology_);
-      time_online_timer_->GetElapsedTime(&elapsed_seconds);
-      SendToUMA(histogram, elapsed_seconds.InSeconds(),
-                kMetricTimeOnlineSecondsMin, kMetricTimeOnlineSecondsMax,
-                kTimerHistogramNumBuckets);
+      SendToUMA(kMetricTimeOnlineSeconds, last_default_technology_,
+                elapsed_seconds.InSeconds());
     }
     last_default_technology_ = technology;
     time_online_timer_->Start();
@@ -530,9 +526,7 @@ void Metrics::OnDefaultLogicalServiceChanged(
 
   if (logical_service == nullptr) {
     time_to_drop_timer_->GetElapsedTime(&elapsed_seconds);
-    SendToUMA(kMetricTimeToDropSeconds, elapsed_seconds.InSeconds(),
-              kMetricTimeToDropSecondsMin, kMetricTimeToDropSecondsMax,
-              kTimerHistogramNumBuckets);
+    SendToUMA(kMetricTimeToDropSeconds, elapsed_seconds.InSeconds());
   } else {
     time_to_drop_timer_->Start();
   }
@@ -581,21 +575,15 @@ std::string Metrics::GetFullMetricName(const char* metric_suffix,
 }
 
 void Metrics::NotifyServiceDisconnect(const Service& service) {
-  Technology technology = service.technology();
-  const auto histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
-  SendToUMA(histogram, service.explicitly_disconnected(), kMetricDisconnectMin,
-            kMetricDisconnectMax, kMetricDisconnectNumBuckets);
+  SendToUMA(kMetricDisconnect, service.technology(),
+            service.explicitly_disconnected());
 }
 
 void Metrics::NotifySignalAtDisconnect(const Service& service,
                                        int16_t signal_strength) {
   // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
   // seem to handle negative values well.  Now everything's positive.
-  Technology technology = service.technology();
-  const auto histogram =
-      GetFullMetricName(kMetricSignalAtDisconnectSuffix, technology);
-  SendToUMA(histogram, -signal_strength, kMetricSignalAtDisconnectMin,
-            kMetricSignalAtDisconnectMax, kMetricSignalAtDisconnectNumBuckets);
+  SendToUMA(kMetricSignalAtDisconnect, service.technology(), -signal_strength);
 }
 
 void Metrics::NotifySuspendDone() {
@@ -615,10 +603,7 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   base::TimeDelta elapsed_time;
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
   time_suspend_actions_timer->Reset();
-  SendToUMA(kMetricSuspendActionTimeTaken, elapsed_time.InMilliseconds(),
-            kMetricSuspendActionTimeTakenMillisecondsMin,
-            kMetricSuspendActionTimeTakenMillisecondsMax,
-            kTimerHistogramNumBuckets);
+  SendToUMA(kMetricSuspendActionTimeTaken, elapsed_time.InMilliseconds());
 
   SuspendActionResult result =
       success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
@@ -753,20 +738,16 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
 #endif  // DISABLE_WIFI
 
 void Metrics::NotifyWiFiSupplicantAbort() {
-  SendToUMA(kMetricWifiSupplicantAttempts,
-            kMetricWifiSupplicantAttemptsMax,  // abort == max
-            kMetricWifiSupplicantAttemptsMin, kMetricWifiSupplicantAttemptsMax,
-            kMetricWifiSupplicantAttemptsNumBuckets);
+  // abort == max
+  SendToUMA(kMetricWifiSupplicantAttempts, kMetricWifiSupplicantAttempts.max);
 }
 
 void Metrics::NotifyWiFiSupplicantSuccess(int attempts) {
   // Cap "success" at 1 lower than max. Max means we aborted.
-  if (attempts >= kMetricWifiSupplicantAttemptsMax)
-    attempts = kMetricWifiSupplicantAttemptsMax - 1;
+  if (attempts >= kMetricWifiSupplicantAttempts.max)
+    attempts = kMetricWifiSupplicantAttempts.max - 1;
 
-  SendToUMA(kMetricWifiSupplicantAttempts, attempts,
-            kMetricWifiSupplicantAttemptsMin, kMetricWifiSupplicantAttemptsMax,
-            kMetricWifiSupplicantAttemptsNumBuckets);
+  SendToUMA(kMetricWifiSupplicantAttempts, attempts);
 }
 
 void Metrics::RegisterDevice(int interface_index, Technology technology) {
@@ -979,10 +960,7 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
     drop_technology = kCellularDropTechnology5gNr;
   }
   SendEnumToUMA(kMetricCellularDrop, drop_technology);
-  SendToUMA(kMetricCellularSignalStrengthBeforeDrop, signal_strength,
-            kMetricCellularSignalStrengthBeforeDropMin,
-            kMetricCellularSignalStrengthBeforeDropMax,
-            kMetricCellularSignalStrengthBeforeDropNumBuckets);
+  SendToUMA(kMetricCellularSignalStrengthBeforeDrop, signal_strength);
 }
 
 void Metrics::NotifyCellularConnectionResult(Error::Type error) {
@@ -1117,20 +1095,15 @@ void Metrics::NotifyCorruptedProfile() {
 }
 
 void Metrics::NotifyWifiAutoConnectableServices(int num_services) {
-  SendToUMA(kMetricWifiAutoConnectableServices, num_services,
-            kMetricWifiAutoConnectableServicesMin,
-            kMetricWifiAutoConnectableServicesMax,
-            kMetricWifiAutoConnectableServicesNumBuckets);
+  SendToUMA(kMetricWifiAutoConnectableServices, num_services);
 }
 
 void Metrics::NotifyWifiAvailableBSSes(int num_bss) {
-  SendToUMA(kMetricWifiAvailableBSSes, num_bss, kMetricWifiAvailableBSSesMin,
-            kMetricWifiAvailableBSSesMax, kMetricWifiAvailableBSSesNumBuckets);
+  SendToUMA(kMetricWifiAvailableBSSes, num_bss);
 }
 
 void Metrics::NotifyWifiTxBitrate(int bitrate) {
-  SendToUMA(kMetricWifiTxBitrate, bitrate, kMetricWifiTxBitrateMin,
-            kMetricWifiTxBitrateMax, kMetricWifiTxBitrateNumBuckets);
+  SendToUMA(kMetricWifiTxBitrate, bitrate);
 }
 
 void Metrics::NotifyUserInitiatedConnectionFailureReason(
@@ -1210,11 +1183,8 @@ void Metrics::NotifyDevicePresenceStatus(Technology technology_id,
 
 void Metrics::NotifyUnreliableLinkSignalStrength(Technology technology_id,
                                                  int signal_strength) {
-  const auto histogram = GetFullMetricName(
-      kMetricUnreliableLinkSignalStrengthSuffix, technology_id);
-  SendToUMA(histogram, signal_strength, kMetricServiceSignalStrengthMin,
-            kMetricServiceSignalStrengthMax,
-            kMetricServiceSignalStrengthNumBuckets);
+  SendToUMA(kMetricUnreliableLinkSignalStrength, technology_id,
+            signal_strength);
 }
 
 bool Metrics::SendEnumToUMA(const std::string& name, int sample, int max) {
@@ -1344,10 +1314,7 @@ void Metrics::NotifyMBOSupport(bool mbo_support) {
 }
 
 void Metrics::NotifyWiFiServiceFailureAfterRekey(int seconds) {
-  SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds,
-            kMetricTimeFromRekeyToFailureSecondsMin,
-            kMetricTimeFromRekeyToFailureSecondsMax,
-            kMetricTimeFromRekeyToFailureSecondsNumBuckets);
+  SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds);
 }
 
 #if !defined(DISABLE_WIFI)

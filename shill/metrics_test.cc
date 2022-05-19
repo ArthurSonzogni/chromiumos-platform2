@@ -326,14 +326,16 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   scoped_refptr<MockService> wifi_service = new MockService(&manager_);
   EXPECT_CALL(*service_, technology()).WillOnce(Return(Technology::kEthernet));
   EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWiFi));
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline", Ge(0),
-                                  Metrics::kMetricTimeOnlineSecondsMin,
-                                  Metrics::kMetricTimeOnlineSecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds, Ge(0),
-                                  Metrics::kMetricTimeToDropSecondsMin,
-                                  Metrics::kMetricTimeToDropSecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets))
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.Ethernet.TimeOnline", Ge(0),
+                        Metrics::kMetricTimeOnlineSeconds.min,
+                        Metrics::kMetricTimeOnlineSeconds.max,
+                        Metrics::kMetricTimeOnlineSeconds.num_buckets));
+  EXPECT_CALL(library_,
+              SendToUMA(Metrics::kMetricTimeToDropSeconds.n.name, Ge(0),
+                        Metrics::kMetricTimeToDropSeconds.min,
+                        Metrics::kMetricTimeToDropSeconds.max,
+                        Metrics::kMetricTimeToDropSeconds.num_buckets))
       .Times(0);
   EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
   EXPECT_CALL(*mock_time_to_drop_timer, Start());
@@ -342,14 +344,16 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
 
   EXPECT_CALL(*mock_time_online_timer, Start());
   EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeOnline", Ge(0),
-                                  Metrics::kMetricTimeOnlineSecondsMin,
-                                  Metrics::kMetricTimeOnlineSecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds, Ge(0),
-                                  Metrics::kMetricTimeToDropSecondsMin,
-                                  Metrics::kMetricTimeToDropSecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.Wifi.TimeOnline", Ge(0),
+                        Metrics::kMetricTimeOnlineSeconds.min,
+                        Metrics::kMetricTimeOnlineSeconds.max,
+                        Metrics::kMetricTimeOnlineSeconds.num_buckets));
+  EXPECT_CALL(library_,
+              SendToUMA(Metrics::kMetricTimeToDropSeconds.n.name, Ge(0),
+                        Metrics::kMetricTimeToDropSeconds.min,
+                        Metrics::kMetricTimeToDropSeconds.max,
+                        Metrics::kMetricTimeToDropSeconds.num_buckets));
   metrics_.OnDefaultLogicalServiceChanged(nullptr);
 }
 
@@ -358,16 +362,16 @@ TEST_F(MetricsTest, Disconnect) {
       .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(false));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", false,
-                                  Metrics::kMetricDisconnectMin,
-                                  Metrics::kMetricDisconnectMax,
-                                  Metrics::kMetricDisconnectNumBuckets));
+                                  Metrics::kMetricDisconnect.min,
+                                  Metrics::kMetricDisconnect.max,
+                                  Metrics::kMetricDisconnect.num_buckets));
   metrics_.NotifyServiceDisconnect(*service_);
 
   EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(true));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", true,
-                                  Metrics::kMetricDisconnectMin,
-                                  Metrics::kMetricDisconnectMax,
-                                  Metrics::kMetricDisconnectNumBuckets));
+                                  Metrics::kMetricDisconnect.min,
+                                  Metrics::kMetricDisconnect.max,
+                                  Metrics::kMetricDisconnect.num_buckets));
   metrics_.NotifyServiceDisconnect(*service_);
 }
 
@@ -627,11 +631,12 @@ TEST_F(MetricsTest, CellularDrop) {
                               Metrics::kCellularDropTechnologyMax));
     EXPECT_CALL(
         library_,
-        SendToUMA(Metrics::kMetricCellularSignalStrengthBeforeDrop,
-                  signal_strength,
-                  Metrics::kMetricCellularSignalStrengthBeforeDropMin,
-                  Metrics::kMetricCellularSignalStrengthBeforeDropMax,
-                  Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets));
+        SendToUMA(
+            Metrics::kMetricCellularSignalStrengthBeforeDrop.n.name,
+            signal_strength,
+            Metrics::kMetricCellularSignalStrengthBeforeDrop.min,
+            Metrics::kMetricCellularSignalStrengthBeforeDrop.max,
+            Metrics::kMetricCellularSignalStrengthBeforeDrop.num_buckets));
     metrics_.NotifyCellularDeviceDrop(kUMATechnologyStrings[index],
                                       signal_strength);
     Mock::VerifyAndClearExpectations(&library_);
@@ -702,10 +707,10 @@ TEST_F(MetricsTest, Logging) {
 }
 
 TEST_F(MetricsTest, NotifyWifiTxBitrate) {
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricWifiTxBitrate, 1,
-                                  Metrics::kMetricWifiTxBitrateMin,
-                                  Metrics::kMetricWifiTxBitrateMax,
-                                  Metrics::kMetricWifiTxBitrateNumBuckets));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricWifiTxBitrate.n.name, 1,
+                                  Metrics::kMetricWifiTxBitrate.min,
+                                  Metrics::kMetricWifiTxBitrate.max,
+                                  Metrics::kMetricWifiTxBitrate.num_buckets));
   metrics_.NotifyWifiTxBitrate(1);
 }
 
@@ -718,12 +723,11 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
-  EXPECT_CALL(library_,
-              SendToUMA(Metrics::kMetricSuspendActionTimeTaken,
-                        non_zero_time_delta.InMilliseconds(),
-                        Metrics::kMetricSuspendActionTimeTakenMillisecondsMin,
-                        Metrics::kMetricSuspendActionTimeTakenMillisecondsMax,
-                        Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricSuspendActionTimeTaken.n.name,
+                                  non_zero_time_delta.InMilliseconds(),
+                                  Metrics::kMetricSuspendActionTimeTaken.min,
+                                  Metrics::kMetricSuspendActionTimeTaken.max,
+                                  Metrics::kTimerHistogramNumBuckets));
   EXPECT_CALL(library_,
               SendEnumToUMA(Metrics::kMetricSuspendActionResult.n.name,
                             Metrics::kSuspendActionResultSuccess,
@@ -740,12 +744,11 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
-  EXPECT_CALL(library_,
-              SendToUMA(Metrics::kMetricSuspendActionTimeTaken,
-                        non_zero_time_delta.InMilliseconds(),
-                        Metrics::kMetricSuspendActionTimeTakenMillisecondsMin,
-                        Metrics::kMetricSuspendActionTimeTakenMillisecondsMax,
-                        Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricSuspendActionTimeTaken.n.name,
+                                  non_zero_time_delta.InMilliseconds(),
+                                  Metrics::kMetricSuspendActionTimeTaken.min,
+                                  Metrics::kMetricSuspendActionTimeTaken.max,
+                                  Metrics::kTimerHistogramNumBuckets));
   EXPECT_CALL(library_,
               SendEnumToUMA(Metrics::kMetricSuspendActionResult.n.name,
                             Metrics::kSuspendActionResultFailure,
@@ -996,9 +999,9 @@ TEST_F(MetricsTest, NotifyWiFiServiceFailureAfterRekey) {
   EXPECT_CALL(
       library_,
       SendToUMA("Network.Shill.WiFi.TimeFromRekeyToFailureSeconds", seconds,
-                Metrics::kMetricTimeFromRekeyToFailureSecondsMin,
-                Metrics::kMetricTimeFromRekeyToFailureSecondsMax,
-                Metrics::kMetricTimeFromRekeyToFailureSecondsNumBuckets));
+                Metrics::kMetricTimeFromRekeyToFailureSeconds.min,
+                Metrics::kMetricTimeFromRekeyToFailureSeconds.max,
+                Metrics::kMetricTimeFromRekeyToFailureSeconds.num_buckets));
   metrics_.NotifyWiFiServiceFailureAfterRekey(seconds);
 }
 

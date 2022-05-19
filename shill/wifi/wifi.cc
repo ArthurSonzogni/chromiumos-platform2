@@ -2548,7 +2548,7 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
     // unreliable soon after a rekey.
     int seconds =
         (base::Time::Now() - current_service_->last_rekey_time()).InSeconds();
-    if (seconds < Metrics::kMetricTimeFromRekeyToFailureSecondsMax) {
+    if (seconds < Metrics::kMetricTimeFromRekeyToFailureSeconds.max) {
       LOG(INFO) << "Connection became unreliable shortly after rekey, "
                 << "seconds between rekey and connection failure: " << seconds;
       metrics()->NotifyWiFiServiceFailureAfterRekey(seconds);
