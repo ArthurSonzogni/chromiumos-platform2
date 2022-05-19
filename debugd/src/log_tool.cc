@@ -539,11 +539,11 @@ const std::array kFeedbackLogs {
     "croslog --show-cursor=false --identifier=kernel"
     "  --grep='(authentication|association).*timed out' | wc -l"},
   Log{kCommand, "wifi_driver_errors",
-    "croslog --show-cursor=false --identifier=kernel --priority=err"
-    "  --grep='(iwlwifi|mwifiex|ath10k)' --quiet | tail -n 3"},
+    "croslog --since=-7200 --show-cursor=false --identifier=kernel"
+    " --priority=err --grep='(iwlwifi|mwifiex|ath10k)' --quiet"},
   Log{kCommand, "wifi_driver_errors_count",
-    "croslog --show-cursor=false --identifier=kernel --priority=err"
-    "  --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
+    "croslog --since=-7200 --show-cursor=false --identifier=kernel"
+    " --priority=err --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
   Log{kCommand, "wifi_status",
       "/usr/bin/network_diag --wifi-internal --no-log --anonymize"},
 };
