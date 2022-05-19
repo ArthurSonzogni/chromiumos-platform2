@@ -4,6 +4,7 @@
 
 #include "vtpm/commands/forward_command.h"
 
+#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
