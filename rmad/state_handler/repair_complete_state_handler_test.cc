@@ -18,13 +18,16 @@
 #include "rmad/state_handler/repair_complete_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_sys_utils.h"
 
 using testing::_;
 using testing::Assign;
 using testing::DoAll;
+using testing::Eq;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 
 namespace {
 
@@ -46,7 +49,9 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       bool* reboot_called = nullptr,
       bool* shutdown_called = nullptr,
       bool* metrics_called = nullptr,
+      bool is_cros_debug = true,
       bool record_metrics_success = true) {
+    // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
     if (reboot_called) {
@@ -63,17 +68,27 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       ON_CALL(*mock_power_manager_client, Shutdown())
           .WillByDefault(Return(true));
     }
+    // Mock |CrosSystemUtils|.
+    auto mock_crossystem_utils =
+        std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    ON_CALL(*mock_crossystem_utils,
+            GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
+    // Mock |SysUtils|.
     auto mock_sys_utils = std::make_unique<NiceMock<MockSysUtils>>();
     ON_CALL(*mock_sys_utils, IsPowerSourcePresent())
         .WillByDefault(Return(true));
+    // Mock |MetricsUtils|.
     auto mock_metrics_utils = std::make_unique<NiceMock<MockMetricsUtils>>();
     ON_CALL(*mock_metrics_utils, Record(_, _))
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
+
     auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, GetTempDirPath(), GetTempDirPath(),
-        std::move(mock_power_manager_client), std::move(mock_sys_utils),
-        std::move(mock_metrics_utils));
+        std::move(mock_power_manager_client), std::move(mock_crossystem_utils),
+        std::move(mock_sys_utils), std::move(mock_metrics_utils));
     auto callback =
         base::BindRepeating(&SignalSender::SendPowerCableStateSignal,
                             base::Unretained(&signal_sender_));
@@ -183,7 +198,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_PowerwashRequired) {
     EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
   }
 
-  // A second call to |GetNextStateCase before rebooting is fine.
+  // A second call to |GetNextStateCase| before rebooting is fine.
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
     EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
@@ -519,6 +534,37 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 }
 
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_PowerwashDisabledManually_NonDebugBuild) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false;
+  auto handler = CreateStateHandler(&reboot_called, nullptr, nullptr, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // Powerwash is not done yet, but disabled manually.
+  // This is ignored in a non-debug build, so we still do a powerwash.
+  brillo::TouchFile(GetDisablePowerwashFilePath());
+
+  handler->RunState();
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+  state.mutable_repair_complete()->set_powerwash_required(true);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // Reboot is called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+}
+
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
@@ -588,7 +634,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called,
-                                    &metrics_called, false);
+                                    &metrics_called, true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.

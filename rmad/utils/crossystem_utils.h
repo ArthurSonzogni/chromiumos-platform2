@@ -36,10 +36,12 @@ class CrosSystemUtils {
 
   // Some common crossystem values.
   static constexpr char kHwwpStatusProperty[] = "wpsw_cur";
+  static constexpr char kCrosDebugProperty[] = "cros_debug";
   static constexpr char kHwidProperty[] = "hwid";
   static constexpr char kMainFwTypeProperty[] = "mainfw_type";
 
   bool GetHwwpStatus(int* value) { return GetInt(kHwwpStatusProperty, value); }
+  bool GetCrosDebug(int* value) { return GetInt(kCrosDebugProperty, value); }
   bool GetHwid(std::string* value) { return GetString(kHwidProperty, value); }
   bool GetMainFwType(std::string* value) {
     return GetString(kMainFwTypeProperty, value);

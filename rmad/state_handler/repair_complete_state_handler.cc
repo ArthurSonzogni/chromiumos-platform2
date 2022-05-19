@@ -16,7 +16,9 @@
 #include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 #include "rmad/utils/fake_sys_utils.h"
 #include "rmad/utils/sys_utils_impl.h"
 
@@ -31,6 +33,7 @@ FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
           working_dir_path,
           working_dir_path,
           std::make_unique<FakePowerManagerClient>(working_dir_path),
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<FakeSysUtils>(working_dir_path),
           std::make_unique<FakeMetricsUtils>(working_dir_path)) {}
 
@@ -45,6 +48,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       locked_error_(RMAD_ERROR_NOT_SET) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   sys_utils_ = std::make_unique<SysUtilsImpl>();
   metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
 }
@@ -54,6 +58,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     const base::FilePath& working_dir_path,
     const base::FilePath& unencrypted_preserve_path,
     std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<SysUtils> sys_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
     : BaseStateHandler(json_store),
@@ -61,6 +66,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       unencrypted_preserve_path_(unencrypted_preserve_path),
       power_cable_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
+      crossystem_utils_(std::move(crossystem_utils)),
       sys_utils_(std::move(sys_utils)),
       metrics_utils_(std::move(metrics_utils)),
       locked_error_(RMAD_ERROR_NOT_SET) {}
