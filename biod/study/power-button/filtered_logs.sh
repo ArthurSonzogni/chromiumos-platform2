@@ -47,6 +47,16 @@ DoMatchEvent result
 Ignoring fp match
 EOF
 
+# Events from EC firmware related to power button
+cat <<\EOF
+PB pressed
+PB released
+PB task
+PB PCH
+power button released
+power button pressed
+EOF
+
 # Events from powerd related to power button and screen
 cat <<\EOF
 Power button down
