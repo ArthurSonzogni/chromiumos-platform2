@@ -355,13 +355,6 @@ class Metrics : public DefaultServiceObserver {
     kCellularRoamingStateMax
   };
 
-  enum CellularOutOfCreditsReason {
-    kCellularOutOfCreditsReasonConnectDisconnectLoop = 0,
-    kCellularOutOfCreditsReasonTxCongested = 1,
-    kCellularOutOfCreditsReasonElongatedTimeWait = 2,
-    kCellularOutOfCreditsReasonMax
-  };
-
   enum CorruptedProfile { kCorruptedProfile = 1, kCorruptedProfileMax };
 
   enum ConnectionDiagnosticsIssue {
@@ -865,8 +858,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricCellularDrop[] = "Network.Shill.Cellular.Drop";
   static constexpr char kMetricCellularConnectResult[] =
       "Network.Shill.Cellular.ConnectResult";
-  static constexpr char kMetricCellularOutOfCreditsReason[] =
-      "Network.Shill.Cellular.OutOfCreditsReason";
   static constexpr char kMetricCellularSignalStrengthBeforeDrop[] =
       "Network.Shill.Cellular.SignalStrengthBeforeDrop";
   static constexpr int kMetricCellularSignalStrengthBeforeDropMax = 100;
@@ -1297,10 +1288,6 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();
   virtual void Notify3GPPRegistrationDelayedDropCanceled();
-
-  // Notifies this object that a cellular service has been marked as
-  // out-of-credits.
-  void NotifyCellularOutOfCredits(Metrics::CellularOutOfCreditsReason reason);
 
   // Notifies this object about number of wifi services available for auto
   // connect when auto-connect is initiated.

@@ -1094,12 +1094,6 @@ void Metrics::NotifyDetailedCellularConnectionResult(
       .Record();
 }
 
-void Metrics::NotifyCellularOutOfCredits(
-    Metrics::CellularOutOfCreditsReason reason) {
-  SendEnumToUMA(kMetricCellularOutOfCreditsReason, reason,
-                kCellularOutOfCreditsReasonMax);
-}
-
 void Metrics::NotifyCorruptedProfile() {
   SendEnumToUMA(kMetricCorruptedProfile, kCorruptedProfile,
                 kCorruptedProfileMax);
