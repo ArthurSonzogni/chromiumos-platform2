@@ -5,8 +5,9 @@
 //! Coordinates suspend-to-disk activities
 
 use getopts::{self, Options};
+use hiberman::metrics::{log_hibernate_failure, log_resume_failure};
 use hiberman::{self, HibernateOptions, ResumeOptions};
-use log::error;
+use log::{error, warn};
 
 fn print_usage(message: &str, error: bool) {
     if error {
@@ -201,6 +202,9 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     };
 
     if let Err(e) = hiberman::hibernate(options) {
+        if let Err(e) = log_hibernate_failure() {
+            warn!("Failed to log hibernate failure: {}", e);
+        }
         error!("Failed to hibernate: {:?}", e);
         return Err(());
     }
@@ -252,6 +256,9 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     };
 
     if let Err(e) = hiberman::resume(options) {
+        if let Err(e) = log_resume_failure() {
+            warn!("Failed to log resume: {}", e);
+        }
         error!("Failed to resume: {:#?}", e);
         return Err(());
     }

@@ -18,6 +18,7 @@ use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
     open_header_file, open_hiberfile, open_kernel_key_file, open_log_file, open_metafile,
+    open_metrics_file,
 };
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
@@ -31,6 +32,7 @@ use crate::hiberutil::{
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
+use crate::metrics::{read_and_send_metrics, MetricsFile, MetricsLogger};
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
 use crate::preloader::ImagePreloader;
@@ -39,12 +41,16 @@ use crate::snapdev::{
 };
 use crate::splitter::ImageJoiner;
 
+// The maximum value expected for the GotSeed duration metric.
+pub const SEED_WAIT_METRIC_CEILING: isize = 120;
+
 /// The ResumeConductor orchestrates the various individual instruments that
 /// work in concert to resume the system from hibernation.
 pub struct ResumeConductor {
     metadata: HibernateMetadata,
     key_manager: HibernateKeyManager,
     options: ResumeOptions,
+    metrics_logger: MetricsLogger,
 }
 
 impl ResumeConductor {
@@ -54,6 +60,7 @@ impl ResumeConductor {
             metadata: HibernateMetadata::new()?,
             key_manager: HibernateKeyManager::new(),
             options: Default::default(),
+            metrics_logger: MetricsLogger::new()?,
         })
     }
 
@@ -65,6 +72,8 @@ impl ResumeConductor {
         // Ensure the persistent version of the stateful block device is available.
         let _rw_volume_group = activate_physical_vg()?;
         self.options = options;
+        let metrics_file = open_metrics_file(MetricsFile::Resume)?;
+        self.metrics_logger.file = Some(metrics_file);
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
@@ -76,6 +85,8 @@ impl ResumeConductor {
         replay_logs(true, !self.options.dry_run);
         // Then move pending and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
+        // Read the metrics files to send out samples.
+        read_and_send_metrics();
         // Unless the test keys are being used, wait for the key material from
         // cryptohome and save the public portion for a later hibernate.
         if !self.options.test_keys {
@@ -195,10 +206,13 @@ impl ResumeConductor {
         // public key is still needed so it can be saved.
         self.key_manager.clear_private_key()?;
         // Let other daemons know it's the end of the world.
-        let _powerd_resume =
-            PowerdPendingResume::new().context("Failed to call powerd for imminent resume")?;
+        let _powerd_resume = PowerdPendingResume::new(&mut self.metrics_logger)
+            .context("Failed to call powerd for imminent resume")?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
+        if let Err(e) = self.metrics_logger.flush() {
+            warn!("Failed to flush resume metrics {:?}", e);
+        }
         if self.options.dry_run {
             info!("Not launching resume image: in a dry run.");
             // Flush the resume file logs.
@@ -263,6 +277,11 @@ impl ResumeConductor {
             let preloaded = preloader.load_into_available_memory()?;
             preload_duration = start.elapsed();
             log_io_duration("Preloaded image", preloaded as i64, preload_duration);
+            self.metrics_logger.metrics_send_io_sample(
+                "PreloadImage",
+                preloaded as i64,
+                preload_duration,
+            );
             mover_source = &mut preloader;
         }
 
@@ -279,6 +298,11 @@ impl ResumeConductor {
             pending_resume_call = Some(self.populate_seed(dbus_connection, true)?);
             let wait_duration = wait_start.elapsed();
             log_duration("Got seed", wait_duration);
+            self.metrics_logger.metrics_send_duration_sample(
+                "GotSeed",
+                wait_duration,
+                SEED_WAIT_METRIC_CEILING,
+            );
         }
 
         // With the seed material in hand, decrypt the private data, and fire up
@@ -340,8 +364,12 @@ impl ResumeConductor {
             .context("Failed to move in hibernate image")?;
         let main_move_duration = main_move_start.elapsed();
         log_io_duration("Read main image", image_size, main_move_duration);
+        self.metrics_logger
+            .metrics_send_io_sample("ReadMainImage", image_size, main_move_duration);
         let total_io_duration = preload_duration + main_move_duration;
         log_io_duration("Read all data", total_size, total_io_duration);
+        self.metrics_logger
+            .metrics_send_io_sample("ReadAllData", total_size, total_io_duration);
 
         // Validate the image data tag.
         decryptor

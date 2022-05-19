@@ -17,6 +17,7 @@ use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
 use thiserror::Error as ThisError;
 
+use crate::metrics::{MetricsLogger, MetricsSample};
 use crate::mmapbuf::MmapBuffer;
 
 /// Define the number of pages in a larger chunk used to read and write the
@@ -61,6 +62,9 @@ pub enum HibernateError {
     /// Metadata error
     #[error("Metadata error: {0}")]
     MetadataError(String),
+    /// Failed to send metrics
+    #[error("Failed to send metrics: {0}")]
+    MetricsSendFailure(String),
     /// Failed to lock process memory.
     #[error("Failed to mlockall: {0}")]
     MlockallError(sys_util::Error),
@@ -178,9 +182,10 @@ fn get_available_swap_mb() -> Result<u32> {
 // when allocating the memory needed for the hibernate snapshot. By
 // preallocating this memory, we force memory to be swapped into zram and
 // ensure that we have the free memory needed for the snapshot.
-pub fn prealloc_mem() -> Result<()> {
+pub fn prealloc_mem(metrics_logger: &mut MetricsLogger) -> Result<()> {
     let available_mb = get_available_memory_mb();
     let available_swap = get_available_swap_mb()?;
+    let total_avail = available_mb + available_swap;
     debug!(
         "System has {} MB of free memory, {} MB of swap free",
         available_mb, available_swap
@@ -190,7 +195,42 @@ pub fn prealloc_mem() -> Result<()> {
     let page_size = get_page_size();
     let hiber_size = page_size * hiber_pages;
     let hiber_mb = hiber_size / (1024 * 1024);
-    if hiber_mb > (available_mb + available_swap).try_into().unwrap() {
+    let mut extra_mb = (available_mb + available_swap) as isize - hiber_mb as isize;
+    let mut shortfall_mb = 0;
+    if extra_mb < 0 {
+        shortfall_mb = -extra_mb;
+        extra_mb = 0;
+    }
+    metrics_logger.log_metric(MetricsSample {
+        name: "Platform.Hibernate.MemoryAvailable",
+        value: available_mb as isize,
+        min: 0,
+        max: 16384,
+        buckets: 50,
+    });
+    metrics_logger.log_metric(MetricsSample {
+        name: "Platform.Hibernate.MemoryAndSwapAvailable",
+        value: total_avail as isize,
+        min: 0,
+        max: 32768,
+        buckets: 50,
+    });
+    metrics_logger.log_metric(MetricsSample {
+        name: "Platform.Hibernate.AdditionalMemoryNeeded",
+        value: shortfall_mb,
+        min: 0,
+        max: 16384,
+        buckets: 50,
+    });
+    metrics_logger.log_metric(MetricsSample {
+        name: "Platform.Hibernate.ExcessMemoryAvailable",
+        value: extra_mb,
+        min: 0,
+        max: 16384,
+        buckets: 50,
+    });
+
+    if hiber_mb > (total_avail).try_into().unwrap() {
         return Err(HibernateError::InsufficientMemoryAvailableError())
             .context("Not enough free memory and swap space for hibernate");
     }

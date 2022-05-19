@@ -14,6 +14,7 @@ use sync::Mutex;
 use system_api::client::OrgChromiumPowerManager;
 
 use crate::hiberutil::log_duration;
+use crate::metrics::MetricsLogger;
 
 /// Define the default maximum duration the powerd proxy will wait for method
 /// call responses.
@@ -43,9 +44,9 @@ enum PowerdSuspendFlavor {
 pub struct PowerdPendingResume {}
 
 impl PowerdPendingResume {
-    pub fn new() -> Result<Self> {
+    pub fn new(metrics_logger: &mut MetricsLogger) -> Result<Self> {
         powerd_request_suspend(PowerdSuspendFlavor::FromDiskPrepare)?;
-        wait_for_hibernate_resume_ready()?;
+        wait_for_hibernate_resume_ready(metrics_logger)?;
         Ok(PowerdPendingResume {})
     }
 }
@@ -73,7 +74,7 @@ impl dbus::message::SignalArgs for HibernateResumeReady {
 }
 
 /// Helper function to wait for a HibernateResumeReady signal to come in from powerd.
-fn wait_for_hibernate_resume_ready() -> Result<()> {
+fn wait_for_hibernate_resume_ready(metrics_logger: &mut MetricsLogger) -> Result<()> {
     // First open up a connection to the session bus.
     let conn = Connection::new_system().context("Failed to start system dbus connection")?;
 
@@ -105,7 +106,9 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
             // Wait for signals.
             conn.process(POWERD_PROCESS_PERIOD).unwrap();
             if signals.lock().len() != 0 {
-                log_duration("Got powerd HibernateResumeReady signal", start.elapsed());
+                let duration = start.elapsed();
+                log_duration("Got powerd HibernateResumeReady signal", duration);
+                metrics_logger.metrics_send_duration_sample("HibernateResumeReady", duration, 10);
                 return Ok(());
             }
         }

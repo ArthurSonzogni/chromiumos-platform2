@@ -7,7 +7,7 @@
 use std::convert::TryInto;
 use std::fs;
 use std::fs::{create_dir, File, OpenOptions};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
@@ -17,6 +17,7 @@ use log::debug;
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::hiberlog::HiberlogFile;
 use crate::hiberutil::{get_page_size, get_total_memory_pages, HibernateError};
+use crate::metrics::MetricsFile;
 use crate::mmapbuf::MmapBuffer;
 use crate::splitter::HIBER_HEADER_MAX_SIZE;
 
@@ -40,6 +41,18 @@ const HIBER_LOG_SIZE: i64 = 1024 * 1024 * 4;
 const HIBER_KERNEL_KEY_FILE_NAME: &str = "kernel_keyblob";
 /// Define the maximum size of the kernel key blob file.
 const HIBER_KERNEL_KEY_SIZE: i64 = 8192;
+/// Define the attempts count file name.
+const HIBER_ATTEMPTS_FILE_NAME: &str = "attempts_count";
+/// Define the hibernate failures count file name.
+const HIBER_FAILURES_FILE_NAME: &str = "hibernate_failures";
+/// Define the resume failures count file name.
+const RESUME_FAILURES_FILE_NAME: &str = "resume_failures";
+/// Define the resume metrics file name.
+const RESUME_METRICS_FILE_NAME: &str = "resume_metrics";
+/// Define the suspend metrics file name.
+const SUSPEND_METRICS_FILE_NAME: &str = "suspend_metrics";
+/// Define the size of the preallocated metrics file.
+const HIBER_METRICS_SIZE: i64 = 1024 * 1024 * 4;
 
 /// Create the hibernate directory if it does not exist.
 pub fn create_hibernate_dir() -> Result<()> {
@@ -72,6 +85,20 @@ pub fn preallocate_log_file(log_file: HiberlogFile, zero_out: bool) -> Result<Bo
 pub fn preallocate_header_file(zero_out: bool) -> Result<DiskFile> {
     let path = Path::new(HIBERNATE_DIR).join(HIBER_HEADER_NAME);
     preallocate_disk_file(path, HIBER_HEADER_MAX_SIZE, zero_out)
+}
+
+/// Preallocate the metrics file.
+pub fn preallocate_metrics_file(
+    metrics_file: MetricsFile,
+    zero_out: bool,
+) -> Result<BouncedDiskFile> {
+    let name = match metrics_file {
+        MetricsFile::Suspend => SUSPEND_METRICS_FILE_NAME,
+        MetricsFile::Resume => RESUME_METRICS_FILE_NAME,
+    };
+
+    let metrics_file_path = Path::new(HIBERNATE_DIR).join(name);
+    preallocate_bounced_disk_file(metrics_file_path, HIBER_METRICS_SIZE, zero_out)
 }
 
 /// Preallocate the hibernate image file.
@@ -141,6 +168,28 @@ pub fn open_metafile() -> Result<BouncedDiskFile> {
     open_bounced_disk_file(&hiberfile_path)
 }
 
+/// Check if a metrics file exists.
+pub fn metrics_file_exists(metrics_file: &MetricsFile) -> bool {
+    let name = match metrics_file {
+        MetricsFile::Suspend => SUSPEND_METRICS_FILE_NAME,
+        MetricsFile::Resume => RESUME_METRICS_FILE_NAME,
+    };
+
+    let hiberfile_path = Path::new(HIBERNATE_DIR).join(name);
+    hiberfile_path.exists()
+}
+
+/// Open a pre-existing metrics file with read and write permissions.
+pub fn open_metrics_file(metrics_file: MetricsFile) -> Result<BouncedDiskFile> {
+    let name = match metrics_file {
+        MetricsFile::Suspend => SUSPEND_METRICS_FILE_NAME,
+        MetricsFile::Resume => RESUME_METRICS_FILE_NAME,
+    };
+
+    let hiberfile_path = Path::new(HIBERNATE_DIR).join(name);
+    open_bounced_disk_file(&hiberfile_path)
+}
+
 /// Open one of the log files, either the suspend or resume log.
 pub fn open_log_file(log_file: HiberlogFile) -> Result<BouncedDiskFile> {
     let name = match log_file {
@@ -150,6 +199,56 @@ pub fn open_log_file(log_file: HiberlogFile) -> Result<BouncedDiskFile> {
 
     let path = Path::new(HIBERNATE_DIR).join(name);
     open_bounced_disk_file(&path)
+}
+
+/// Open a metrics file.
+fn open_cumulative_metrics_file(path: &Path) -> Result<File> {
+    let file = File::options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(&path)
+        .context("Cannot open metrics file")?;
+    Ok(file)
+}
+
+/// Open the attempts_count file, to keep track of the number of hibernate
+/// attempts for metric tracking purposes.
+pub fn open_attempts_file() -> Result<File> {
+    let path = Path::new(HIBERNATE_DIR).join(HIBER_ATTEMPTS_FILE_NAME);
+    open_cumulative_metrics_file(&path)
+}
+
+/// Open the hibernate_failures file, to keep track of the number of hibernate
+/// failures for metric tracking purposes.
+pub fn open_hiber_fails_file() -> Result<File> {
+    let path = Path::new(HIBERNATE_DIR).join(HIBER_FAILURES_FILE_NAME);
+    open_cumulative_metrics_file(&path)
+}
+
+/// Open the resume_failures file, to keep track of the number of resume
+/// failures for metric tracking purposes.
+pub fn open_resume_failures_file() -> Result<File> {
+    let path = Path::new(HIBERNATE_DIR).join(RESUME_FAILURES_FILE_NAME);
+    open_cumulative_metrics_file(&path)
+}
+
+/// Read the given metrics file
+pub fn read_metric_file(file: &mut File) -> Result<String> {
+    let mut value_str = String::new();
+    file.read_to_string(&mut value_str)
+        .context("Failed to parse metric value")?;
+    Ok(value_str)
+}
+
+/// Increment the value in the counter file
+pub fn increment_file_counter(file: &mut File) -> Result<()> {
+    let value_str = read_metric_file(file)?;
+    let mut value: u32 = value_str.parse().unwrap_or(0);
+    value += 1;
+    file.rewind()?;
+    file.write_all(value.to_string().as_bytes())
+        .context("Failed to increment counter")
 }
 
 /// Helper function to get the total amount of physical memory on this system,

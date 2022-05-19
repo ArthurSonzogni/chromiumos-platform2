@@ -7,6 +7,7 @@
 pub mod cat;
 pub mod cookie;
 pub mod hiberlog;
+pub mod metrics;
 
 mod crypto;
 mod dbus;

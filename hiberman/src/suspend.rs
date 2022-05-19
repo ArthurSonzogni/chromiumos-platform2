@@ -11,15 +11,16 @@ use std::time::Instant;
 
 use anyhow::{Context, Result};
 use libc::{loff_t, reboot, RB_POWER_OFF};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use sys_util::syscall;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::crypto::{CryptoMode, CryptoWriter};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
-    create_hibernate_dir, does_hiberfile_exist, preallocate_header_file, preallocate_hiberfile,
-    preallocate_kernel_key_file, preallocate_log_file, preallocate_metadata_file, HIBERNATE_DIR,
+    create_hibernate_dir, does_hiberfile_exist, open_metrics_file, preallocate_header_file,
+    preallocate_hiberfile, preallocate_kernel_key_file, preallocate_log_file,
+    preallocate_metadata_file, preallocate_metrics_file, HIBERNATE_DIR,
 };
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
@@ -33,6 +34,7 @@ use crate::hiberutil::{
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
+use crate::metrics::{log_hibernate_attempt, read_and_send_metrics, MetricsFile, MetricsLogger};
 use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspUserKey};
 use crate::splitter::ImageSplitter;
 use crate::sysfs::Swappiness;
@@ -48,6 +50,7 @@ const LOW_DISK_FREE_THRESHOLD_PERCENT: u64 = 10;
 pub struct SuspendConductor {
     options: HibernateOptions,
     metadata: HibernateMetadata,
+    metrics: MetricsLogger,
 }
 
 impl SuspendConductor {
@@ -56,6 +59,7 @@ impl SuspendConductor {
         Ok(SuspendConductor {
             options: Default::default(),
             metadata: HibernateMetadata::new()?,
+            metrics: MetricsLogger::new()?,
         })
     }
 
@@ -64,6 +68,9 @@ impl SuspendConductor {
     /// hibernation.
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
         info!("Beginning hibernate");
+        if let Err(e) = log_hibernate_attempt() {
+            warn!("Failed to log hibernate attempt: \n {}", e);
+        }
         let start = Instant::now();
         create_hibernate_dir()?;
         let is_lvm = is_lvm_system()?;
@@ -77,13 +84,20 @@ impl SuspendConductor {
         // The resume log file needs to be preallocated now before the
         // snapshot is taken, though it's not used here.
         preallocate_log_file(HiberlogFile::Resume, should_zero)?;
+        preallocate_metrics_file(MetricsFile::Resume, should_zero)?;
+        preallocate_metrics_file(MetricsFile::Suspend, should_zero)?;
+        let metrics_file = open_metrics_file(MetricsFile::Suspend)?;
+        self.metrics.file = Some(metrics_file);
         let mut log_file = preallocate_log_file(HiberlogFile::Suspend, should_zero)?;
         let action_string = format!(
             "Set up {}hibernate files on {}LVM system",
             if files_exist { "" } else { "new " },
             if is_lvm { "" } else { "non-" }
         );
-        log_duration(&action_string, start.elapsed());
+        let duration = start.elapsed();
+        log_duration(&action_string, duration);
+        self.metrics
+            .metrics_send_duration_sample("SetupLVMFiles", duration, 30);
 
         self.options = options;
         // Don't allow the logfile to log as it creates a deadlock.
@@ -113,7 +127,7 @@ impl SuspendConductor {
             libc::sync();
         }
 
-        prealloc_mem().context("Failed to preallocate memory for hibernate")?;
+        prealloc_mem(&mut self.metrics).context("Failed to preallocate memory for hibernate")?;
 
         let result = self.suspend_system(header_file, hiber_file, meta_file, kernel_key_file);
         // Now send any remaining logs and future logs to syslog.
@@ -123,6 +137,8 @@ impl SuspendConductor {
             result.is_ok() && !self.options.dry_run,
             !self.options.dry_run,
         );
+        // Read the metrics files and send out the samples.
+        read_and_send_metrics();
         self.delete_data_if_disk_full(fs_stats);
         result
     }
@@ -238,6 +254,9 @@ impl SuspendConductor {
 
             // Flush out the hibernate log, and instead keep logs in memory.
             // Any logs beyond here are lost upon powerdown.
+            if let Err(e) = self.metrics.flush() {
+                warn!("Failed to flush suspend metrics {:?}", e);
+            }
             flush_log();
             redirect_log(HiberlogOut::BufferInMemory);
             // Power the thing down.
@@ -303,7 +322,10 @@ impl SuspendConductor {
             compute_header_hash,
         );
         Self::move_image(snap_dev, &mut splitter, image_size)?;
-        log_io_duration("Wrote hibernate image", image_size, start.elapsed());
+        let image_duration = start.elapsed();
+        log_io_duration("Wrote hibernate image", image_size, image_duration);
+        self.metrics
+            .metrics_send_io_sample("WriteHibernateImage", image_size, image_duration);
         self.metadata.data_tag = encryptor.get_tag()?;
 
         assert!(self.metadata.data_tag != [0u8; META_TAG_SIZE]);
