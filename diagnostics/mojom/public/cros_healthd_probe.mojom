@@ -374,7 +374,7 @@ struct VirtualizationInfo {
   bool is_smt_active@1;
   // The state of SMT control.
   SMTControl smt_control@2;
- };
+};
 
 // Information related to CPU Vulnerabilities.
 //
@@ -448,7 +448,7 @@ struct CpuVirtualizationInfo {
   // This is usually set by the BIOS to prevent the OS changing the setting
   // after booting into the OS.
   bool is_locked@2;
- };
+};
 
 // Information related to a particular logical CPU.
 //
@@ -920,7 +920,6 @@ union NetworkInterfaceInfo {
   // Wireless interfaces.
   WirelessInterfaceInfo wireless_interface_info@0;
 };
-
 
 // NextMinVersion: 1, NextIndex: 3
 struct WirelessInterfaceInfo {
