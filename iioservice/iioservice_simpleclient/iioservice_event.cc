@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
                 "Specify space separated event indices to be enabled");
   DEFINE_uint64(events, kNumSuccessReads, "Number of events to wait for");
 
-  brillo::FlagHelper::Init(argc, argv, "Chromium OS iioservice_simpleclient");
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS iioservice_event");
   logging::LoggingSettings settings;
   LOG_ASSERT(logging::InitLogging(settings));
   logging::SetMinLogLevel(FLAGS_log_level);
@@ -73,13 +73,12 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_device_id == -1 && FLAGS_device_type == 0) {
-    LOGF(ERROR)
-        << "iioservice_simpleclient must be called with a sensor specified.";
+    LOGF(ERROR) << "iioservice_event must be called with a sensor specified.";
     exit(1);
   }
   if (event_indices.empty()) {
-    LOGF(ERROR) << "iioservice_simpleclient must be called with at least one "
-                   "event enabled.";
+    LOGF(ERROR)
+        << "iioservice_event must be called with at least one event enabled.";
     exit(1);
   }
 
