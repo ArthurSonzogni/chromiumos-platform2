@@ -19,6 +19,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "missive/analytics/resource_collector_cpu.h"
+#include "missive/analytics/resource_collector_memory.h"
 #include "missive/analytics/resource_collector_storage.h"
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
@@ -72,17 +73,23 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
                             /*failure_is_fatal=*/true));
 
   base::FilePath reporting_path(kReportingDirectory);
+  StorageOptions storage_options;
+  storage_options.set_directory(reporting_path)
+      .set_signature_verification_public_key(
+          SignatureVerifier::VerificationKey());
+  auto memory_resource = storage_options.memory_resource();
   StorageModule::Create(
-      StorageOptions()
-          .set_directory(reporting_path)
-          .set_signature_verification_public_key(
-              SignatureVerifier::VerificationKey()),
+      std::move(storage_options),
       base::BindRepeating(&MissiveDaemon::AsyncStartUpload,
                           base::Unretained(this)),
       EncryptionModule::Create(),
       CompressionModule::Create(kCompressionThreshold, kCompressionType),
       base::BindOnce(&MissiveDaemon::OnStorageModuleConfigured,
                      base::Unretained(this)));
+
+  analytics_registry_.Add("Memory",
+                          std::make_unique<analytics::ResourceCollectorMemory>(
+                              base::Minutes(10), std::move(memory_resource)));
 }
 
 void MissiveDaemon::OnStorageModuleConfigured(

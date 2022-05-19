@@ -17,8 +17,8 @@ namespace reporting::analytics {
 
 class ResourceCollectorStorage : public ResourceCollector {
  public:
-  explicit ResourceCollectorStorage(base::TimeDelta interval,
-                                    const base::FilePath& storage_directory);
+  ResourceCollectorStorage(base::TimeDelta interval,
+                           const base::FilePath& storage_directory);
   virtual ~ResourceCollectorStorage();
 
  private:
@@ -39,7 +39,10 @@ class ResourceCollectorStorage : public ResourceCollector {
   // Convert bytes into MiBs.
   static int ConvertBytesToMibs(int bytes);
 
-  // Collect storage usage.
+  // Collect storage usage. This is not obtained from the memory resource
+  // management in Missive. Rather, the storage directory is scanned once for
+  // each fixed time interval as this method is called (see comments for
+  // |ResourceCollector::Collect|).
   void Collect() override;
   // Send directory size data to UMA.
   bool SendDirectorySizeToUma(int directory_size);

@@ -19,6 +19,8 @@ static_library("libanalytics") {
     "resource_collector.h",
     "resource_collector_cpu.cc",
     "resource_collector_cpu.h",
+    "resource_collector_memory.cc",
+    "resource_collector_memory.h",
     "resource_collector_storage.cc",
     "resource_collector_storage.h",
   ]
@@ -29,6 +31,7 @@ source_set("unit_tests") {
   sources = [
     "registry_test.cc",
     "resource_collector_cpu_test.cc",
+    "resource_collector_memory_test.cc",
     "resource_collector_mock.cc",
     "resource_collector_mock.h",
     "resource_collector_storage_test.cc",
