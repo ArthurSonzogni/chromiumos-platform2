@@ -12877,6 +12877,7 @@ mno {
       name : "Sprint"
     }
     mccmnc : "310120"
+    mccmnc : "311490"
     mobile_apn {
       apn : "r.ispsn"
     }
