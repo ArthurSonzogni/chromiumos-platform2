@@ -48,6 +48,8 @@ void SensorClient::SetUpChannel(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK(!sensor_service_remote_.is_bound());
 
+  sensor_service_setup_ = true;
+
   sensor_service_remote_.Bind(std::move(pending_remote));
   sensor_service_remote_.set_disconnect_handler(base::BindOnce(
       &SensorClient::OnServiceDisconnect, weak_factory_.GetWeakPtr()));
@@ -70,7 +72,7 @@ SensorClient::SensorClient(
 void SensorClient::SetUpChannelTimeout() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (sensor_service_remote_.is_bound())
+  if (sensor_service_setup_)
     return;
 
   // Don't Change: Used as a check sentence in the tast test.

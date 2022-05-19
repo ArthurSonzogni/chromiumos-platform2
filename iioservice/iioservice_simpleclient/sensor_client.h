@@ -51,6 +51,8 @@ class SensorClient : public cros::mojom::SensorHalClient {
   mojo::Receiver<cros::mojom::SensorHalClient> client_{this};
   mojo::Remote<cros::mojom::SensorService> sensor_service_remote_;
 
+  bool sensor_service_setup_ = false;
+
   base::WeakPtrFactory<SensorClient> weak_factory_{this};
 };
 
