@@ -15,8 +15,6 @@ namespace iioservice {
 
 namespace {
 
-constexpr int kSetUpChannelTimeoutInMilliseconds = 3000;
-
 // Set the base latency tolerance to half of 100 ms, according to
 // https://source.android.com/compatibility/android-cdd#7_3_sensors, as the
 // samples may go through a VM and Android sensormanager.
@@ -32,13 +30,7 @@ Observer::Observer(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     : SensorClient(std::move(ipc_task_runner), std::move(quit_callback)),
       device_id_(device_id),
       device_type_(device_type),
-      num_(num) {
-  ipc_task_runner_->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&Observer::SetUpChannelTimeout,
-                     weak_factory_.GetWeakPtr()),
-      base::Milliseconds(kSetUpChannelTimeoutInMilliseconds));
-}
+      num_(num) {}
 
 void Observer::Start() {
   if (device_id_ < 0)

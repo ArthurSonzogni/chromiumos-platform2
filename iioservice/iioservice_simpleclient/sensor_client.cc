@@ -12,6 +12,12 @@
 
 namespace iioservice {
 
+namespace {
+
+constexpr int kSetUpChannelTimeoutInMilliseconds = 3000;
+
+}  // namespace
+
 // static
 void SensorClient::SensorClientDeleter(SensorClient* sensor_client) {
   if (sensor_client == nullptr)
@@ -53,7 +59,13 @@ SensorClient::SensorClient(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     QuitCallback quit_callback)
     : ipc_task_runner_(std::move(ipc_task_runner)),
-      quit_callback_(std::move(quit_callback)) {}
+      quit_callback_(std::move(quit_callback)) {
+  ipc_task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&SensorClient::SetUpChannelTimeout,
+                     weak_factory_.GetWeakPtr()),
+      base::Milliseconds(kSetUpChannelTimeoutInMilliseconds));
+}
 
 void SensorClient::SetUpChannelTimeout() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
