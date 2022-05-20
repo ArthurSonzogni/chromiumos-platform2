@@ -504,7 +504,9 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
 fn test_power_source_provider_empty_root() -> Result<()> {
     let root = tempdir()?;
 
-    let provider = power::DirectoryPowerSourceProvider { root: root.path() };
+    let provider = power::DirectoryPowerSourceProvider {
+        root: root.path().to_path_buf(),
+    };
 
     let power_source = provider.get_power_source()?;
 
@@ -522,7 +524,9 @@ fn test_power_source_provider_empty_path() -> Result<()> {
     let path = root.path().join(POWER_SUPPLY_PATH);
     fs::create_dir_all(&path)?;
 
-    let provider = power::DirectoryPowerSourceProvider { root: root.path() };
+    let provider = power::DirectoryPowerSourceProvider {
+        root: root.path().to_path_buf(),
+    };
 
     let power_source = provider.get_power_source()?;
 
@@ -540,7 +544,9 @@ fn test_power_source_provider_disconnected_then_connected() -> Result<()> {
     let path = root.path().join(POWER_SUPPLY_PATH);
     fs::create_dir_all(&path)?;
 
-    let provider = power::DirectoryPowerSourceProvider { root: root.path() };
+    let provider = power::DirectoryPowerSourceProvider {
+        root: root.path().to_path_buf(),
+    };
 
     let charger = path.join("charger-1");
     fs::create_dir_all(&charger)?;

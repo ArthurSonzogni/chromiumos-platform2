@@ -31,7 +31,9 @@ fn main() -> Result<()> {
         config_provider: config::DirectoryConfigProvider {
             root: root.to_path_buf(),
         },
-        power_source_provider: power::DirectoryPowerSourceProvider { root },
+        power_source_provider: power::DirectoryPowerSourceProvider {
+            root: root.to_path_buf(),
+        },
     };
 
     dbus::service_main(power_preferences_manager)

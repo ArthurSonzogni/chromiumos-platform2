@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -21,11 +20,11 @@ pub trait PowerSourceProvider {
 }
 
 #[derive(Debug)]
-pub struct DirectoryPowerSourceProvider<'a> {
-    pub root: &'a Path,
+pub struct DirectoryPowerSourceProvider {
+    pub root: PathBuf,
 }
 
-impl<'a> PowerSourceProvider for DirectoryPowerSourceProvider<'a> {
+impl PowerSourceProvider for DirectoryPowerSourceProvider {
     /// Iterates through all the power supplies in sysfs and looks for the `online` property.
     /// If online == 1, then the system is connected to external power (AC), otherwise the
     /// system is powered via battery (DC).
