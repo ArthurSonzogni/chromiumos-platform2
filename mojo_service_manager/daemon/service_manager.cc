@@ -76,7 +76,7 @@ void ServiceManager::Register(
   if (service_state.service_provider.is_bound()) {
     ResetRemoteWithReason(
         std::move(service_provider),
-        mojom::ErrorCode::kServiceHasBeenRegistered,
+        mojom::ErrorCode::kServiceAlreadyRegistered,
         "The service: " + service_name + " has already been registered.");
     return;
   }
@@ -161,10 +161,15 @@ void ServiceManager::Query(const std::string& service_name,
                 " is not allowed to request the service: " + service_name)));
     return;
   }
+  mojom::ServiceStatePtr state =
+      service_state.owner.is_null()
+          ? mojom::ServiceState::NewUnregisteredState(
+                mojom::UnregisteredServiceState::New())
+          : mojom::ServiceState::NewRegisteredState(
+                mojom::RegisteredServiceState::New(
+                    /*owner=*/service_state.owner.Clone()));
   std::move(callback).Run(
-      mojom::ErrorOrServiceState::NewState(mojom::ServiceState::New(
-          /*is_registered=*/!service_state.owner.is_null(),
-          /*owner=*/service_state.owner.Clone())));
+      mojom::ErrorOrServiceState::NewState(std::move(state)));
 }
 
 void ServiceManager::AddServiceObserver(
