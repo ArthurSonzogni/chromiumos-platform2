@@ -53,33 +53,10 @@ class ArchiveMounter : public FUSEMounter {
   }
 
  private:
-  const std::string archive_type_;
   const std::string extension_;
   Metrics* const metrics_;
   const std::unique_ptr<SandboxedProcessFactory> sandbox_factory_;
   const std::vector<std::string> extra_command_line_options_;
-
-  // Archivemount can read "foo.bz2" and "bar.qux.gz" files that are compressed
-  // but aren't archives (multiple source files rolled into one). It calls
-  // these formats "raw" and treats them as a single-element archive.
-  //
-  // Note that while "bar.qux.gz" is raw, "bar.tar.gz" is not (it is a
-  // compressed archive). However, the archive_type argument passed to the
-  // constructor is just "gz", since we cannot practically enumerate all
-  // two-part extensions ("a.gz", "b.gz", ..., "qux.gz", ..., "tar.gz", ...),
-  //
-  // This format_raw_ field being true, based only on the archive_type
-  // constructor argument and not the archive's actual path name.
-  //
-  // "archivemount" in this comment means a specific program
-  // (https://github.com/cybernoid/archivemount). This C++ class is also called
-  // "ArchiveMounter", but that name uses the "archive mounter" words in their
-  // general technical sense.
-  //
-  // Historically, we executed the archivemount program, not the fuse-archive
-  // program. More recently, we use fuse-archive which is a drop-in
-  // replacement, featurewise, but is faster.
-  const bool format_raw_;
 
   friend class ArchiveMounterTest;
 };

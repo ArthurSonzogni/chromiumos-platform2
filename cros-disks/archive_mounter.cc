@@ -15,37 +15,6 @@
 
 namespace cros_disks {
 
-namespace {
-constexpr char kOptionPassword[] = "password";
-
-bool IsFormatRaw(const std::string& archive_type) {
-  return (archive_type == "bz2") || (archive_type == "gz") ||
-         (archive_type == "xz");
-}
-
-void RecordArchiveTypeMetrics(Metrics* const metrics,
-                              const std::string& archive_type,
-                              bool format_raw,
-                              const std::string& source) {
-  if (format_raw) {
-    // Discriminate between kArchiveOtherGzip and kArchiveTarGzip, and ditto
-    // for the Bzip2 and Xz flavors.
-    std::string ext = base::FilePath(source).Extension();
-    if (base::LowerCaseEqualsASCII(ext, ".tar.bz2")) {
-      metrics->RecordArchiveType("tar.bz2");
-      return;
-    } else if (base::LowerCaseEqualsASCII(ext, ".tar.gz")) {
-      metrics->RecordArchiveType("tar.gz");
-      return;
-    } else if (base::LowerCaseEqualsASCII(ext, ".tar.xz")) {
-      metrics->RecordArchiveType("tar.xz");
-      return;
-    }
-  }
-  metrics->RecordArchiveType(archive_type);
-}
-}  // namespace
-
 ArchiveMounter::ArchiveMounter(
     const Platform* platform,
     brillo::ProcessReaper* process_reaper,
@@ -63,12 +32,10 @@ ArchiveMounter::ArchiveMounter(
            .metrics_name = std::move(metrics_name),
            .password_needed_exit_codes = std::move(password_needed_exit_codes),
            .read_only = true}),
-      archive_type_(archive_type),
       extension_("." + archive_type),
       metrics_(metrics),
       sandbox_factory_(std::move(sandbox_factory)),
-      extra_command_line_options_(std::move(extra_command_line_options)),
-      format_raw_(IsFormatRaw(archive_type)) {}
+      extra_command_line_options_(std::move(extra_command_line_options)) {}
 
 ArchiveMounter::~ArchiveMounter() = default;
 
@@ -89,14 +56,16 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     const base::FilePath& /*target_path*/,
     std::vector<std::string> params,
     MountErrorType* error) const {
-  RecordArchiveTypeMetrics(metrics_, archive_type_, format_raw_, source);
-
   base::FilePath path(source);
+
   if (!path.IsAbsolute() || path.ReferencesParent()) {
     LOG(ERROR) << "Invalid archive path " << redact(path);
     *error = MOUNT_ERROR_INVALID_ARGUMENT;
     return nullptr;
   }
+
+  if (metrics_)
+    metrics_->RecordArchiveType(path);
 
   auto sandbox = sandbox_factory_->CreateSandboxedProcess();
 
@@ -135,8 +104,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
 
   // Is the process "password-aware"?
   if (AcceptsPassword()) {
-    if (std::string password;
-        GetParamValue(params, kOptionPassword, &password)) {
+    if (std::string password; GetParamValue(params, "password", &password)) {
       sandbox->SetStdIn(password);
     }
   }

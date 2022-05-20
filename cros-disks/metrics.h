@@ -6,8 +6,9 @@
 #define CROS_DISKS_METRICS_H_
 
 #include <string>
-#include <unordered_map>
 
+#include <base/files/file_path.h>
+#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
@@ -24,7 +25,7 @@ class Metrics {
   ~Metrics() = default;
 
   // Records the type of archive that cros-disks is trying to mount.
-  void RecordArchiveType(const std::string& archive_type);
+  void RecordArchiveType(const base::FilePath& path);
 
   // Records the type of filesystem that cros-disks is trying to mount.
   void RecordFilesystemType(const std::string& filesystem_type);
@@ -38,6 +39,7 @@ class Metrics {
 
  private:
   // Don't renumber these values. They are recorded in UMA metrics.
+  // See enum CrosDisksArchiveType in enums.xml.
   enum ArchiveType {
     kArchiveUnknown = 0,
     kArchiveZip = 1,
@@ -45,17 +47,24 @@ class Metrics {
     kArchiveTar = 3,
     kArchiveTarBzip2 = 4,
     kArchiveTarGzip = 5,
-    kArchiveOtherBzip2 = 6,
-    kArchiveOtherGzip = 7,
+    kArchiveBzip2 = 6,
+    kArchiveGzip = 7,
     kArchive7z = 8,
     kArchiveCrx = 9,
     kArchiveIso = 10,
     kArchiveTarXz = 11,
-    kArchiveOtherXz = 12,
-    kArchiveMaxValue = 13,
+    kArchiveXz = 12,
+    kArchiveTarLzma = 13,
+    kArchiveLzma = 14,
+    kArchiveTarZ = 15,
+    kArchiveZ = 16,
+    kArchiveTarZst = 17,
+    kArchiveZst = 18,
+    kArchiveMaxValue = 19,
   };
 
   // Don't renumber these values. They are recorded in UMA metrics.
+  // See enum CrosDisksFilesystemType in enums.xml.
   enum FilesystemType {
     kFilesystemUnknown = 0,
     kFilesystemOther = 1,
@@ -71,50 +80,14 @@ class Metrics {
     kFilesystemMaxValue = 11,
   };
 
-  // Returns the MetricsArchiveType enum value for the specified archive type
-  // string.
-  ArchiveType GetArchiveType(const std::string& archive_type) const;
+  // Returns the ArchiveType for the specified path.
+  static ArchiveType GetArchiveType(base::StringPiece path);
 
   // Returns the MetricsFilesystemType enum value for the specified filesystem
   // type string.
-  FilesystemType GetFilesystemType(const std::string& filesystem_type) const;
+  static FilesystemType GetFilesystemType(base::StringPiece fs_type);
 
   MetricsLibrary metrics_library_;
-
-  // Mapping from an archive type to its corresponding metric value.
-  const std::unordered_map<std::string, ArchiveType> archive_type_map_{
-      // The empty // comments make clang-format place one entry per line.
-      {"7z", kArchive7z},             //
-      {"bz2", kArchiveOtherBzip2},    //
-      {"crx", kArchiveCrx},           //
-      {"gz", kArchiveOtherGzip},      //
-      {"iso", kArchiveIso},           //
-      {"rar", kArchiveRar},           //
-      {"tar", kArchiveTar},           //
-      {"tar.bz2", kArchiveTarBzip2},  //
-      {"tar.gz", kArchiveTarGzip},    //
-      {"tar.xz", kArchiveTarXz},      //
-      {"tbz", kArchiveTarBzip2},      //
-      {"tbz2", kArchiveTarBzip2},     //
-      {"tgz", kArchiveTarGzip},       //
-      {"xz", kArchiveOtherXz},        //
-      {"zip", kArchiveZip},           //
-  };
-
-  // Mapping from a filesystem type to its corresponding metric value.
-  const std::unordered_map<std::string, FilesystemType> filesystem_type_map_{
-      // The empty // comments make clang-format place one entry per line.
-      {"", kFilesystemUnknown},         //
-      {"exfat", kFilesystemExFAT},      //
-      {"ext2", kFilesystemExt2},        //
-      {"ext3", kFilesystemExt3},        //
-      {"ext4", kFilesystemExt4},        //
-      {"hfsplus", kFilesystemHFSPlus},  //
-      {"iso9660", kFilesystemISO9660},  //
-      {"ntfs", kFilesystemNTFS},        //
-      {"udf", kFilesystemUDF},          //
-      {"vfat", kFilesystemVFAT},        //
-  };
 
   FRIEND_TEST(MetricsTest, GetArchiveType);
   FRIEND_TEST(MetricsTest, GetFilesystemType);
