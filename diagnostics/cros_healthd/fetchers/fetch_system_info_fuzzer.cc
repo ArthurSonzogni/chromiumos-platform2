@@ -10,9 +10,12 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/test/scoped_chromeos_version_info.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -68,7 +71,16 @@ class Environment {
  public:
   Environment() {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);  // Disable logging.
+    // Needed for TestTimeouts::Initialize().
+    base::CommandLine::Init(0, nullptr);
+    // Needed for SingleThreadTaskEnvironment.
+    // TestTimeouts::Initialize() should be called exactly once.
+    TestTimeouts::Initialize();
   }
+
+  // base::RunLoop requires a task environment.
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
