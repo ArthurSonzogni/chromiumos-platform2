@@ -11,11 +11,11 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
+#include <brillo/usb/usb_device_event_notifier.h>
 
 #include "mist/config_loader.h"
 #include "mist/context.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
-#include "mist/usb_device_event_notifier.h"
 
 namespace mist {
 

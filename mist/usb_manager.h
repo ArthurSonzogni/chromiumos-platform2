@@ -11,15 +11,21 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-
-#include "mist/usb_error.h"
+#include <brillo/usb/usb_error.h>
 
 struct libusb_context;
+
+namespace brillo {
+
+class UsbDevice;
+
+}
 
 namespace mist {
 
 class EventDispatcher;
-class UsbDevice;
+using brillo::UsbDevice;
+using brillo::UsbError;
 
 // A USB manager for managing a USB session created by libusb 1.0.
 class UsbManager {

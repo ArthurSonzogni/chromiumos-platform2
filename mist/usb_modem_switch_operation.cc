@@ -15,19 +15,19 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/usb/usb_bulk_transfer.h>
+#include <brillo/usb/usb_config_descriptor.h>
+#include <brillo/usb/usb_constants.h>
+#include <brillo/usb/usb_device.h>
+#include <brillo/usb/usb_device_descriptor.h>
+#include <brillo/usb/usb_device_event_notifier.h>
+#include <brillo/usb/usb_endpoint_descriptor.h>
+#include <brillo/usb/usb_interface.h>
+#include <brillo/usb/usb_interface_descriptor.h>
 
 #include "mist/context.h"
 #include "mist/event_dispatcher.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
-#include "mist/usb_bulk_transfer.h"
-#include "mist/usb_config_descriptor.h"
-#include "mist/usb_constants.h"
-#include "mist/usb_device.h"
-#include "mist/usb_device_descriptor.h"
-#include "mist/usb_device_event_notifier.h"
-#include "mist/usb_endpoint_descriptor.h"
-#include "mist/usb_interface.h"
-#include "mist/usb_interface_descriptor.h"
 #include "mist/usb_manager.h"
 #include "mist/usb_modem_switch_context.h"
 
@@ -79,7 +79,8 @@ UsbModemSwitchOperation::~UsbModemSwitchOperation() {
   // by |bulk_transfer_| and hope that either the callback is invoked (with an
   // invalidated weak pointer to this object) before mist terminates or is
   // discarded after mist terminates.
-  if (bulk_transfer_ && bulk_transfer_->state() == UsbTransfer::kCancelling)
+  if (bulk_transfer_ &&
+      bulk_transfer_->state() == brillo::UsbTransfer::kCancelling)
     std::ignore = bulk_transfer_.release();
 }
 
@@ -144,7 +145,7 @@ void UsbModemSwitchOperation::Complete(bool success) {
 }
 
 void UsbModemSwitchOperation::DetachAllKernelDrivers() {
-  std::unique_ptr<UsbConfigDescriptor> config_descriptor =
+  std::unique_ptr<brillo::UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
   if (!config_descriptor)
     return;
@@ -155,7 +156,7 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
     if (!device_->DetachKernelDriver(interface_number) &&
         // UsbDevice::DetachKernelDriver returns UsbError::kErrorNotFound when
         // there is no driver attached to the device.
-        device_->error().type() != UsbError::kErrorNotFound) {
+        device_->error().type() != brillo::UsbError::kErrorNotFound) {
       LOG(ERROR) << base::StringPrintf(
           "Could not detach kernel driver from interface %u: %s",
           interface_number, device_->error().ToString());
@@ -167,11 +168,11 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
 int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   CHECK(device_);
 
-  std::unique_ptr<UsbDeviceDescriptor> device_descriptor =
+  std::unique_ptr<brillo::UsbDeviceDescriptor> device_descriptor =
       device_->GetDeviceDescriptor();
   if (!device_descriptor) {
     LOG(ERROR) << "Could not get device descriptor: " << device_->error();
-    return kUsbConfigurationValueInvalid;
+    return brillo::kUsbConfigurationValueInvalid;
   }
 
   VLOG(2) << *device_descriptor;
@@ -179,7 +180,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   for (uint8_t config_index = 0;
        config_index < device_descriptor->GetNumConfigurations();
        ++config_index) {
-    std::unique_ptr<UsbConfigDescriptor> config_descriptor =
+    std::unique_ptr<brillo::UsbConfigDescriptor> config_descriptor =
         device_->GetConfigDescriptor(config_index);
     if (!config_descriptor)
       continue;
@@ -189,12 +190,12 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
     for (uint8_t interface_number = 0;
          interface_number < config_descriptor->GetNumInterfaces();
          ++interface_number) {
-      std::unique_ptr<UsbInterface> interface =
+      std::unique_ptr<brillo::UsbInterface> interface =
           config_descriptor->GetInterface(interface_number);
       if (!interface)
         continue;
 
-      std::unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
+      std::unique_ptr<brillo::UsbInterfaceDescriptor> interface_descriptor =
           interface->GetAlternateSetting(
               kDefaultUsbInterfaceAlternateSettingIndex);
       if (!interface_descriptor)
@@ -202,8 +203,10 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
 
       VLOG(2) << *interface_descriptor;
 
-      if (interface_descriptor->GetInterfaceClass() != kUsbClassCommunication ||
-          interface_descriptor->GetInterfaceSubclass() != kUsbSubClassMBIM)
+      if (interface_descriptor->GetInterfaceClass() !=
+              brillo::kUsbClassCommunication ||
+          interface_descriptor->GetInterfaceSubclass() !=
+              brillo::kUsbSubClassMBIM)
         continue;
 
       int configuration_value = config_descriptor->GetConfigurationValue();
@@ -213,11 +216,11 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
       return configuration_value;
     }
   }
-  return kUsbConfigurationValueInvalid;
+  return brillo::kUsbConfigurationValueInvalid;
 }
 
 bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
-  std::unique_ptr<UsbConfigDescriptor> config_descriptor =
+  std::unique_ptr<brillo::UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
@@ -255,7 +258,7 @@ void UsbModemSwitchOperation::CloseDevice() {
         // UsbDevice::ReleaseInterface may return UsbError::kErrorNoDevice
         // as the original device may no longer exist after switching to the
         // modem mode. Do not report such an error.
-        device_->error().type() != UsbError::kErrorNoDevice) {
+        device_->error().type() != brillo::UsbError::kErrorNoDevice) {
       LOG(ERROR) << base::StringPrintf("Could not release interface %u: %s",
                                        interface_number_,
                                        device_->error().ToString());
@@ -289,7 +292,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  std::unique_ptr<UsbConfigDescriptor> config_descriptor =
+  std::unique_ptr<brillo::UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
@@ -300,7 +303,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   VLOG(2) << *config_descriptor;
 
   int mbim_configuration_value = GetMBIMConfigurationValue();
-  if (mbim_configuration_value != kUsbConfigurationValueInvalid) {
+  if (mbim_configuration_value != brillo::kUsbConfigurationValueInvalid) {
     LOG(INFO) << base::StringPrintf(
         "Switching device '%s' to MBIM configuration %d.",
         switch_context_->sys_path().c_str(), mbim_configuration_value);
@@ -308,7 +311,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  std::unique_ptr<UsbInterface> interface =
+  std::unique_ptr<brillo::UsbInterface> interface =
       config_descriptor->GetInterface(kDefaultUsbInterfaceIndex);
   if (!interface) {
     LOG(ERROR) << "Could not get interface 0.";
@@ -316,7 +319,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  std::unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
+  std::unique_ptr<brillo::UsbInterfaceDescriptor> interface_descriptor =
       interface->GetAlternateSetting(kDefaultUsbInterfaceAlternateSettingIndex);
   if (!interface_descriptor) {
     LOG(ERROR) << "Could not get interface alternate setting 0.";
@@ -325,15 +328,16 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   }
   VLOG(2) << *interface_descriptor;
 
-  if (interface_descriptor->GetInterfaceClass() != kUsbClassMassStorage) {
+  if (interface_descriptor->GetInterfaceClass() !=
+      brillo::kUsbClassMassStorage) {
     LOG(ERROR) << "Device is not currently in mass storage mode.";
     Complete(false);
     return;
   }
 
-  std::unique_ptr<UsbEndpointDescriptor> out_endpoint_descriptor =
+  std::unique_ptr<brillo::UsbEndpointDescriptor> out_endpoint_descriptor =
       interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
-          kUsbTransferTypeBulk, kUsbDirectionOut);
+          brillo::kUsbTransferTypeBulk, brillo::kUsbDirectionOut);
   if (!out_endpoint_descriptor) {
     LOG(ERROR) << "Could not find an output bulk endpoint.";
     Complete(false);
@@ -345,9 +349,9 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
 
   if (switch_context_->modem_info()->expect_response()) {
-    std::unique_ptr<UsbEndpointDescriptor> in_endpoint_descriptor =
+    std::unique_ptr<brillo::UsbEndpointDescriptor> in_endpoint_descriptor =
         interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
-            kUsbTransferTypeBulk, kUsbDirectionIn);
+            brillo::kUsbTransferTypeBulk, brillo::kUsbDirectionIn);
     if (!in_endpoint_descriptor) {
       LOG(ERROR) << "Could not find an input bulk endpoint.";
       Complete(false);
@@ -360,7 +364,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   if (!device_->DetachKernelDriver(interface_number_) &&
       // UsbDevice::DetachKernelDriver returns UsbError::kErrorNotFound when
       // there is no driver attached to the device.
-      device_->error().type() != UsbError::kErrorNotFound) {
+      device_->error().type() != brillo::UsbError::kErrorNotFound) {
     LOG(ERROR) << base::StringPrintf(
         "Could not detach kernel driver from interface %u: %s",
         interface_number_, device_->error().ToString());
@@ -448,7 +452,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
     UsbTransferCompletionHandler completion_handler) {
   CHECK_GT(length, 0);
 
-  auto bulk_transfer = std::make_unique<UsbBulkTransfer>();
+  auto bulk_transfer = std::make_unique<brillo::UsbBulkTransfer>();
   if (!bulk_transfer->Initialize(*device_, endpoint_address, length,
                                  kUsbMessageTransferTimeoutMilliseconds)) {
     LOG(ERROR) << "Could not create USB bulk transfer: "
@@ -457,7 +461,8 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
     return;
   }
 
-  if (GetUsbDirectionOfEndpointAddress(endpoint_address) == kUsbDirectionOut) {
+  if (brillo::GetUsbDirectionOfEndpointAddress(endpoint_address) ==
+      brillo::kUsbDirectionOut) {
     CHECK(data);
     memcpy(bulk_transfer->buffer(), data, length);
   }
@@ -477,17 +482,18 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
   bulk_transfer_ = std::move(bulk_transfer);
 }
 
-void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
+void UsbModemSwitchOperation::OnSendMessageCompleted(
+    brillo::UsbTransfer* transfer) {
   VLOG(1) << "USB bulk output transfer completed: " << *transfer;
 
   CHECK_EQ(bulk_transfer_.get(), transfer);
   CHECK_EQ(out_endpoint_address_, transfer->GetEndpointAddress());
 
   // Keep the bulk transfer valid until this method goes out of scope.
-  std::unique_ptr<UsbBulkTransfer> scoped_bulk_transfer =
+  std::unique_ptr<brillo::UsbBulkTransfer> scoped_bulk_transfer =
       std::move(bulk_transfer_);
 
-  if (transfer->GetStatus() == kUsbTransferStatusStall) {
+  if (transfer->GetStatus() == brillo::kUsbTransferStatusStall) {
     if (!ClearHalt(transfer->GetEndpointAddress())) {
       Complete(false);
       return;
@@ -517,17 +523,18 @@ void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
   ScheduleNextMessageToMassStorageEndpoint();
 }
 
-void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
+void UsbModemSwitchOperation::OnReceiveMessageCompleted(
+    brillo::UsbTransfer* transfer) {
   VLOG(1) << "USB bulk input transfer completed: " << *transfer;
 
   CHECK_EQ(bulk_transfer_.get(), transfer);
   CHECK_EQ(in_endpoint_address_, transfer->GetEndpointAddress());
 
   // Keep the bulk transfer valid until this method goes out of scope.
-  std::unique_ptr<UsbBulkTransfer> scoped_bulk_transfer =
+  std::unique_ptr<brillo::UsbBulkTransfer> scoped_bulk_transfer =
       std::move(bulk_transfer_);
 
-  if (transfer->GetStatus() == kUsbTransferStatusStall) {
+  if (transfer->GetStatus() == brillo::kUsbTransferStatusStall) {
     if (!ClearHalt(transfer->GetEndpointAddress())) {
       Complete(false);
       return;

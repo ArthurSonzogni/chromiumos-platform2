@@ -8,11 +8,11 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <brillo/usb/usb_device_event_notifier.h>
 
 #include "mist/config_loader.h"
 #include "mist/context.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
-#include "mist/usb_device_event_notifier.h"
 #include "mist/usb_modem_switch_context.h"
 #include "mist/usb_modem_switch_operation.h"
 

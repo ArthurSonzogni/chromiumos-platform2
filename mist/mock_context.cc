@@ -8,10 +8,10 @@
 
 #include <base/check.h>
 #include <brillo/udev/mock_udev.h>
+#include <brillo/usb/usb_device_event_notifier.h>
 
 #include "mist/event_dispatcher.h"
 #include "mist/mock_config_loader.h"
-#include "mist/usb_device_event_notifier.h"
 
 namespace mist {
 
@@ -26,7 +26,7 @@ bool MockContext::Initialize() {
   CHECK(udev_);
 
   usb_device_event_notifier_ =
-      std::make_unique<UsbDeviceEventNotifier>(udev_.get());
+      std::make_unique<brillo::UsbDeviceEventNotifier>(udev_.get());
 
   // TODO(benchan): Initialize |usb_manager_| with a MockUsbManager object.
   return true;

@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include "mist/usb_device_event_observer.h"
+#include <brillo/usb/usb_device_event_observer.h>
 
 namespace mist {
 
@@ -19,7 +19,7 @@ class UsbModemSwitchOperation;
 // A USB modem switcher, which initiates a modem switch operation for each
 // supported USB device that currently exists on the system, or when a supported
 // USB device is added to the system.
-class UsbModemSwitcher : public UsbDeviceEventObserver {
+class UsbModemSwitcher : public brillo::UsbDeviceEventObserver {
  public:
   // Constructs a UsbModemSwitcher object by taking a raw pointer to a Context
   // object as |context|. The ownership of |context| is not transferred, and

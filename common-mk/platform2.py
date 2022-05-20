@@ -137,6 +137,7 @@ _IUSE = [
     'tpm2_simulator',
     'ubsan',
     'udev',
+    'usb',
     'user_session_isolation',
     'v4l2_codec',
     'vaapi',

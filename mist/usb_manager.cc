@@ -15,14 +15,17 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/usb/usb_device.h>
+#include <brillo/usb/usb_device_descriptor.h>
 
 #include "mist/event_dispatcher.h"
-#include "mist/usb_device.h"
-#include "mist/usb_device_descriptor.h"
 
 namespace mist {
 
 namespace {
+
+using brillo::UsbDeviceDescriptor;
+using brillo::UsbError;
 
 EventDispatcher::Mode ConvertEventFlagsToWatchMode(short events) {  // NOLINT
   if ((events & POLLIN) && (events & POLLOUT))

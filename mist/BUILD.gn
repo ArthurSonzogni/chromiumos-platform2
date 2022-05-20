@@ -41,22 +41,11 @@ static_library("libmist") {
     "event_dispatcher.cc",
     "metrics.cc",
     "mist.cc",
-    "usb_bulk_transfer.cc",
-    "usb_config_descriptor.cc",
-    "usb_constants.cc",
-    "usb_device.cc",
-    "usb_device_descriptor.cc",
-    "usb_device_event_notifier.cc",
-    "usb_endpoint_descriptor.cc",
-    "usb_error.cc",
-    "usb_interface.cc",
-    "usb_interface_descriptor.cc",
     "usb_manager.cc",
     "usb_modem_one_shot_switcher.cc",
     "usb_modem_switch_context.cc",
     "usb_modem_switch_operation.cc",
     "usb_modem_switcher.cc",
-    "usb_transfer.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":mist-protos" ]
@@ -84,15 +73,7 @@ if (use.test) {
       "event_dispatcher_test.cc",
       "mist.cc",
       "mock_context.cc",
-      "usb_config_descriptor_test.cc",
-      "usb_constants_test.cc",
-      "usb_device_descriptor_test.cc",
-      "usb_device_event_notifier_test.cc",
-      "usb_endpoint_descriptor_test.cc",
-      "usb_error_test.cc",
-      "usb_interface_descriptor_test.cc",
       "usb_modem_switch_context_test.cc",
-      "usb_transfer_test.cc",
     ]
     configs += [
       "//common-mk:test",

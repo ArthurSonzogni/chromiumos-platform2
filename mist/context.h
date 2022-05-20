@@ -10,6 +10,7 @@
 namespace brillo {
 
 class Udev;
+class UsbDeviceEventNotifier;
 
 }  // namespace brillo
 
@@ -18,7 +19,6 @@ namespace mist {
 class ConfigLoader;
 class EventDispatcher;
 class Metrics;
-class UsbDeviceEventNotifier;
 class UsbManager;
 
 // A context class for holding the key helper objects used in mist, which
@@ -40,7 +40,7 @@ class Context {
   ConfigLoader* config_loader() const { return config_loader_.get(); }
   EventDispatcher* event_dispatcher() const { return event_dispatcher_.get(); }
   brillo::Udev* udev() const { return udev_.get(); }
-  UsbDeviceEventNotifier* usb_device_event_notifier() const {
+  brillo::UsbDeviceEventNotifier* usb_device_event_notifier() const {
     return usb_device_event_notifier_.get();
   }
   UsbManager* usb_manager() const { return usb_manager_.get(); }
@@ -52,7 +52,7 @@ class Context {
   std::unique_ptr<ConfigLoader> config_loader_;
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   std::unique_ptr<brillo::Udev> udev_;
-  std::unique_ptr<UsbDeviceEventNotifier> usb_device_event_notifier_;
+  std::unique_ptr<brillo::UsbDeviceEventNotifier> usb_device_event_notifier_;
   std::unique_ptr<UsbManager> usb_manager_;
 };
 

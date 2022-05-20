@@ -7,11 +7,11 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/udev/udev.h>
+#include <brillo/usb/usb_device_event_notifier.h>
 
 #include "mist/config_loader.h"
 #include "mist/event_dispatcher.h"
 #include "mist/metrics.h"
-#include "mist/usb_device_event_notifier.h"
 #include "mist/usb_manager.h"
 
 namespace mist {
@@ -41,7 +41,7 @@ bool Context::Initialize() {
   }
 
   usb_device_event_notifier_ =
-      std::make_unique<UsbDeviceEventNotifier>(udev_.get());
+      std::make_unique<brillo::UsbDeviceEventNotifier>(udev_.get());
   if (!usb_device_event_notifier_->Initialize()) {
     LOG(ERROR) << "Could not initialize USB device event notification.";
     return false;
