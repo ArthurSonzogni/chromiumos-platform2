@@ -1,3 +1,1 @@
-include /metrics/OWNERS
-
-# COMPONENT: OS>Systems>Feedback
+include /feedback/OWNERS

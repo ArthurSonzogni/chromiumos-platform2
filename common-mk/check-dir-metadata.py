@@ -142,7 +142,6 @@ LEGACYLIST = {
     'typecd',
     'ureadahead-diff',
     'usb_bouncer',
-    'userfeedback',
     'verity',
     'virtual_file_provider',
     'vm_tools',

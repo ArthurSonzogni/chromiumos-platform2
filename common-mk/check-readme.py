@@ -120,7 +120,6 @@ def CheckSubdirs():
         'timberslide',
         'tpm_manager',
         'trim',
-        'userfeedback',
         'userspace_touchpad',
         'vpn-manager',
     )
