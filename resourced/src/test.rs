@@ -3,17 +3,20 @@
 // found in the LICENSE file.
 
 use std::fs;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
+use crate::common;
 use crate::common::{parse_file_to_u64, set_epp};
 use crate::config;
 use crate::config::ConfigProvider;
 use crate::power;
+use crate::power::PowerPreferencesManager;
 use crate::power::PowerSourceProvider;
 
 use crate::memory::{
@@ -544,6 +547,398 @@ fn test_power_source_provider_disconnected_then_connected() -> Result<()> {
     fs::write(&online, b"1")?;
     let power_source = provider.get_power_source()?;
     assert_eq!(power_source, config::PowerSourceType::AC);
+
+    Ok(())
+}
+
+struct FakeConfigProvider {
+    default_power_preferences:
+        fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+    web_rtc_power_preferences:
+        fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+    fullscreen_power_preferences:
+        fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+    gaming_power_preferences:
+        fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+}
+
+impl Default for FakeConfigProvider {
+    fn default() -> FakeConfigProvider {
+        FakeConfigProvider {
+            // We bail on default to ensure the tests correctly setup a default power preference.
+            default_power_preferences: |_| bail!("Default not Implemented"),
+            web_rtc_power_preferences: |_| bail!("WebRTC not Implemented"),
+            fullscreen_power_preferences: |_| bail!("Fullscreen not Implemented"),
+            gaming_power_preferences: |_| bail!("Gaming not Implemented"),
+        }
+    }
+}
+
+impl config::ConfigProvider for FakeConfigProvider {
+    fn read_power_preferences(
+        &self,
+        power_source_type: config::PowerSourceType,
+        power_preference_type: config::PowerPreferencesType,
+    ) -> Result<Option<config::PowerPreferences>> {
+        match power_preference_type {
+            config::PowerPreferencesType::Default => {
+                (self.default_power_preferences)(power_source_type)
+            }
+            config::PowerPreferencesType::WebRTC => {
+                (self.web_rtc_power_preferences)(power_source_type)
+            }
+            config::PowerPreferencesType::Fullscreen => {
+                (self.fullscreen_power_preferences)(power_source_type)
+            }
+            config::PowerPreferencesType::Gaming => {
+                (self.gaming_power_preferences)(power_source_type)
+            }
+        }
+    }
+}
+
+struct FakePowerSourceProvider {
+    power_source: config::PowerSourceType,
+}
+
+impl power::PowerSourceProvider for FakePowerSourceProvider {
+    fn get_power_source(&self) -> Result<config::PowerSourceType> {
+        Ok(self.power_source)
+    }
+}
+
+fn write_powersave_bias(root: &Path, value: u32) -> Result<()> {
+    let ondemand_path = root.join("sys/devices/system/cpu/cpufreq/ondemand");
+    fs::create_dir_all(&ondemand_path)?;
+
+    std::fs::write(ondemand_path.join("powersave_bias"), value.to_string())?;
+
+    Ok(())
+}
+
+fn read_powersave_bias(root: &Path) -> Result<String> {
+    let powersave_bias_path = root
+        .join("sys/devices/system/cpu/cpufreq/ondemand")
+        .join("powersave_bias");
+
+    let powersave_bias = std::fs::read_to_string(powersave_bias_path)?;
+
+    Ok(powersave_bias)
+}
+
+#[test]
+fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
+    let root = tempdir()?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        default_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Off,
+    )?;
+
+    // We shouldn't have written anything.
+    let powersave_bias = read_powersave_bias(root.path());
+    assert!(powersave_bias.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_none() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        default_power_preferences: |_| Ok(None),
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Off,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "0");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_default_ac() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        default_power_preferences: |power_source| {
+            assert_eq!(power_source, config::PowerSourceType::AC);
+
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Off,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "200");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_default_dc() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::DC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        default_power_preferences: |power_source| {
+            assert_eq!(power_source, config::PowerSourceType::DC);
+
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Off,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "200");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        default_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        web_rtc_power_preferences: |_| Ok(None),
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Active,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Off,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "200");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_rtc_active() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        web_rtc_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Active,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Off,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "200");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        fullscreen_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Active,
+        common::GameMode::Off,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "200");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_gaming_active() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        gaming_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Borealis,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+
+    assert_eq!(powersave_bias, "200");
 
     Ok(())
 }
