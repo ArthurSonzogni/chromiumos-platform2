@@ -107,6 +107,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     root_stat = MakeStat(root->ino, root_stat);
     GetInodeTable().SetStat(root->ino, root_stat);
 
+    CHECK_EQ(0, AttachStorage(kMonikerAttachStorageArg));
+
     if (!fuse_->name.empty())
       CHECK_EQ(0, AttachStorage(fuse_->name));
 

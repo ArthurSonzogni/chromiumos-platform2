@@ -11,7 +11,6 @@
 namespace fusebox {
 
 static constexpr char kMTPType[] = "mtp";  // Media Transport Protocol
-static constexpr char kACPType[] = "acp";  // Android Content Provider
 static constexpr char kADPType[] = "adp";  // Android Documents Provider
 static constexpr char kFSPType[] = "fsp";  // File System Provider
 
