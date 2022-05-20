@@ -471,6 +471,19 @@ TEST_F(AdaptiveChargingControllerTest, TestFullCharge) {
   EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
 }
 
+// Test that no Adaptive Charging alarm is running on a suspend attempt when the
+// charger is disconnected.
+TEST_F(AdaptiveChargingControllerTest, TestNoAlarmOnBattery) {
+  Init();
+  DisconnectCharger();
+  adaptive_charging_controller_.PrepareForSuspendAttempt();
+
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
 // Test that sub-directories are created, permissions are modified, and initial
 // files are created when the base Charge History directory doesn't even exist.
 TEST_F(AdaptiveChargingControllerTest, TestEmptyChargeHistory) {

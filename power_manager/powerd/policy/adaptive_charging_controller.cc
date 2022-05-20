@@ -630,10 +630,22 @@ void AdaptiveChargingController::HandlePolicyChange(
 }
 
 void AdaptiveChargingController::PrepareForSuspendAttempt() {
+  // Make sure we're using the most up-to-date power status. If the system woke
+  // from AC disconnect, this will make sure that IsRunning returns false, since
+  // `recheck_alarm_` will be stopped. If a system doesn't support wake on AC
+  // disconnect, the `recheck_alarm_` will wake the system, and will be
+  // similarly stopped here.
+  power_supply_->RefreshImmediately();
+  charge_history_.OnEnterLowPowerState();
+
+  // Don't run UpdateAdaptiveCharging, which will schedule an RTC wake from
+  // sleep, if `recheck_alarm_` isn't already running.
+  if (!IsRunning())
+    return;
+
   // Set the charge policy synchronously to make sure this completes before
   // suspend.
   UpdateAdaptiveCharging(UserChargingEvent::Event::SUSPEND, false /* async */);
-  charge_history_.OnEnterLowPowerState();
 }
 
 void AdaptiveChargingController::HandleFullResume() {
