@@ -75,6 +75,8 @@ setresgid: 1
 setresuid: 1
 socket: arg0 == AF_NETLINK || arg0 == AF_UNIX
 sysinfo: 1
+# tgkill is used by abort() and CHECK()/LOG(FATAL).
+tgkill: 1
 umask: 1
 uname: 1
 wait4: 1
