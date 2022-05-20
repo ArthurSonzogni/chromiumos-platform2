@@ -478,8 +478,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
 
   bool is_le_credential =
       (crypt_flags & SerializedVaultKeyset::LE_CREDENTIAL) != 0;
-  if (is_le_credential &&
-      !crypto_->NeedsPcrBinding(vault_keyset->GetLELabel())) {
+  if (is_le_credential) {
     return false;
   }
 

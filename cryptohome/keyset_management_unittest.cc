@@ -1401,16 +1401,6 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   fake_backend_.set_needs_pcr_binding(false);
   EXPECT_FALSE(
       keyset_management_->ShouldReSaveKeyset(vk0_status.value().get()));
-
-  fake_backend_.set_needs_pcr_binding(true);
-  EXPECT_TRUE(keyset_management_->ShouldReSaveKeyset(vk0_status.value().get()));
-  // LE Credentials cannot be re-encrypted if the keyset does not have a
-  // reset_seed. This should fail because the keyset_management tries to
-  // re-encrypt the keyset here.
-  EXPECT_FALSE(
-      keyset_management_
-          ->ReSaveKeyset(users_[0].credentials, vk0_status.value().get())
-          .ok());
 }
 
 TEST_F(KeysetManagementTest, RemoveLECredentials) {

@@ -204,15 +204,10 @@ CryptoStatus CreateKeyBlobs(const AuthBlockUtility& auth_block_utility,
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
-  std::optional<brillo::SecureBlob> reset_secret;
-  if (auth_block_type == AuthBlockType::kPinWeaver) {
-    std::unique_ptr<VaultKeyset> vk = keyset_management.GetVaultKeyset(
-        credentials.GetObfuscatedUsername(), credentials.key_data().label());
-    reset_secret = vk->GetOrGenerateResetSecret();
-  }
 
   CryptoStatus err = auth_block_utility.CreateKeyBlobsWithAuthBlock(
-      auth_block_type, credentials, reset_secret, out_state, out_key_blobs);
+      auth_block_type, credentials, base::nullopt /*reset_secret*/, out_state,
+      out_key_blobs);
   if (!err.ok()) {
     LOG(ERROR) << "Error in creating AuthBlock.";
     return err;
