@@ -12,7 +12,7 @@ use std::time::Duration;
 use anyhow::{bail, Result};
 
 use crate::common;
-use crate::common::{parse_file_to_u64, set_epp};
+use crate::common::{parse_file_to_u64, FullscreenVideo, RTCAudioActive};
 use crate::config;
 use crate::config::ConfigProvider;
 use crate::power;
@@ -245,7 +245,7 @@ fn test_set_epp() {
     std::fs::write(&tpb1, "balance_performance").unwrap();
 
     // Set the EPP
-    set_epp(dir.path().to_str().unwrap(), "179").unwrap();
+    power::set_epp(dir.path().to_str().unwrap(), "179").unwrap();
 
     // Verify that files were written
     assert_eq!(std::fs::read_to_string(&tpb0).unwrap(), "179".to_string());
@@ -638,6 +638,25 @@ fn read_powersave_bias(root: &Path) -> Result<String> {
     Ok(powersave_bias)
 }
 
+fn write_epp(root: &Path, value: &str) -> Result<()> {
+    let policy_path = root.join("sys/devices/system/cpu/cpufreq/policy0");
+    fs::create_dir_all(&policy_path)?;
+
+    std::fs::write(policy_path.join("energy_performance_preference"), value)?;
+
+    Ok(())
+}
+
+fn read_epp(root: &Path) -> Result<String> {
+    let epp_path = root
+        .join("sys/devices/system/cpu/cpufreq/policy0/")
+        .join("energy_performance_preference");
+
+    let epp = std::fs::read_to_string(epp_path)?;
+
+    Ok(epp)
+}
+
 #[test]
 fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
     let root = tempdir()?;
@@ -871,6 +890,53 @@ fn test_power_update_power_preferences_rtc_active() -> Result<()> {
     let powersave_bias = read_powersave_bias(root.path())?;
 
     assert_eq!(powersave_bias, "200");
+
+    Ok(())
+}
+
+#[test]
+/// Tests the various EPP permutations
+fn test_power_update_power_preferences_epp() -> Result<()> {
+    let root = tempdir()?;
+
+    write_epp(root.path(), "balance_performance")?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    // Let's assume we have no config
+    let config_provider = FakeConfigProvider {
+        default_power_preferences: |_| Ok(None),
+        web_rtc_power_preferences: |_| Ok(None),
+        fullscreen_power_preferences: |_| Ok(None),
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    let tests = [
+        (RTCAudioActive::Active, FullscreenVideo::Inactive, "179"),
+        (RTCAudioActive::Inactive, FullscreenVideo::Active, "179"),
+        (RTCAudioActive::Active, FullscreenVideo::Active, "179"),
+        (
+            RTCAudioActive::Inactive,
+            FullscreenVideo::Inactive,
+            "balance_performance",
+        ),
+    ];
+
+    for test in tests {
+        manager.update_power_preferences(test.0, test.1, common::GameMode::Off)?;
+
+        let epp = read_epp(root.path())?;
+
+        assert_eq!(epp, test.2);
+    }
 
     Ok(())
 }

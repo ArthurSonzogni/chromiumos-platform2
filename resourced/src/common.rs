@@ -9,7 +9,6 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
-use glob::glob;
 use once_cell::sync::Lazy;
 use sys_util::error;
 
@@ -126,42 +125,6 @@ impl TryFrom<u8> for FullscreenVideo {
     }
 }
 
-// Set EPP value in sysfs for Intel devices with X86_FEATURE_HWP_EPP support.
-// On !X86_FEATURE_HWP_EPP Intel devices, an integer write to the sysfs node
-// will fail with -EINVAL.
-pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
-    let pattern = root_path.to_owned()
-        + "/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
-
-    for entry in glob(&pattern)? {
-        std::fs::write(&entry?, value).context("Failed to set EPP sysfs value!")?;
-    }
-
-    Ok(())
-}
-
-/* TODO(b/233359053): This method should be migrated to use chromeos-config */
-pub fn update_epp_if_needed() -> Result<()> {
-    match RTC_AUDIO_ACTIVE.lock() {
-        Ok(rtc_data) => {
-            match FULLSCREEN_VIDEO.lock() {
-                Ok(fsv_data) => {
-                    if *rtc_data == RTCAudioActive::Active || *fsv_data == FullscreenVideo::Active {
-                        set_epp("/", "179")?; // Set EPP to 70%
-                    } else if *rtc_data != RTCAudioActive::Active
-                        && *fsv_data != FullscreenVideo::Active
-                    {
-                        set_epp("/", "balance_performance")?; // Default EPP
-                    }
-                }
-                Err(_) => bail!("Failed to update EPP!"),
-            }
-        }
-        Err(_) => bail!("Failed to update EPP!"),
-    }
-    Ok(())
-}
-
 pub fn update_power_preferences(
     power_preference_manager: &dyn power::PowerPreferencesManager,
 ) -> Result<()> {
@@ -195,7 +158,7 @@ pub fn set_rtc_audio_active(
         }
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
-    update_epp_if_needed()?;
+
     update_power_preferences(power_preference_manager)?;
     Ok(())
 }
@@ -217,7 +180,7 @@ pub fn set_fullscreen_video(
         }
         Err(_) => bail!("Failed to set full screen video activity"),
     }
-    update_epp_if_needed()?;
+
     update_power_preferences(power_preference_manager)?;
     Ok(())
 }

@@ -5,9 +5,11 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use glob::glob;
 use sys_util::info;
 
 use crate::common;
+use crate::common::{FullscreenVideo, GameMode, RTCAudioActive};
 use crate::config;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
@@ -142,14 +144,28 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
     }
 }
 
+// Set EPP value in sysfs for Intel devices with X86_FEATURE_HWP_EPP support.
+// On !X86_FEATURE_HWP_EPP Intel devices, an integer write to the sysfs node
+// will fail with -EINVAL.
+pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
+    let pattern = root_path.to_owned()
+        + "/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
+
+    for entry in glob(&pattern)? {
+        std::fs::write(&entry?, value).context("Failed to set EPP sysfs value!")?;
+    }
+
+    Ok(())
+}
+
 impl<'a, C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
     for DirectoryPowerPreferencesManager<C, P>
 {
     fn update_power_preferences(
         &self,
-        rtc: common::RTCAudioActive,
-        fullscreen: common::FullscreenVideo,
-        game: common::GameMode,
+        rtc: RTCAudioActive,
+        fullscreen: FullscreenVideo,
+        game: GameMode,
     ) -> Result<()> {
         let mut preferences: Option<config::PowerPreferences> = None;
 
@@ -157,19 +173,19 @@ impl<'a, C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesMana
 
         info!("Power source {:?}", power_source);
 
-        if game != common::GameMode::Off {
+        if game != GameMode::Off {
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, config::PowerPreferencesType::Gaming)?;
         }
 
-        if preferences.is_none() && rtc == common::RTCAudioActive::Active {
+        if preferences.is_none() && rtc == RTCAudioActive::Active {
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, config::PowerPreferencesType::WebRTC)?;
         }
 
-        if preferences.is_none() && fullscreen == common::FullscreenVideo::Active {
+        if preferences.is_none() && fullscreen == FullscreenVideo::Active {
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, config::PowerPreferencesType::Fullscreen)?;
@@ -181,9 +197,21 @@ impl<'a, C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesMana
                 .read_power_preferences(power_source, config::PowerPreferencesType::Default)?;
         }
 
-        match preferences {
-            Some(preferences) => self.apply_power_preferences(preferences),
-            None => Ok(()),
+        if let Some(preferences) = preferences {
+            self.apply_power_preferences(preferences)?
         }
+
+        if let Some(root) = self.root.to_str() {
+            /* TODO(b/233359053): These values should be migrated to chromeos-config */
+            if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
+                set_epp(root, "179")?; // Set EPP to 70%
+            } else if rtc != RTCAudioActive::Active && fullscreen != FullscreenVideo::Active {
+                set_epp(root, "balance_performance")?; // Default EPP
+            }
+        } else {
+            info!("Converting root path failed: {}", self.root.display());
+        }
+
+        Ok(())
     }
 }
