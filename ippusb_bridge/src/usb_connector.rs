@@ -430,9 +430,9 @@ impl InterfaceManager {
 }
 
 pub struct UnplugDetector {
-    registration: Registration,
     event_thread_run: Arc<AtomicBool>,
-    // This is always Some until the destructor runs.
+    // These are always Some until the destructor runs.
+    registration: Option<Registration<GlobalContext>>,
     event_thread: Option<std::thread::JoinHandle<()>>,
 }
 
@@ -467,8 +467,8 @@ impl UnplugDetector {
         });
 
         Ok(Self {
-            registration,
             event_thread_run: run,
+            registration: Some(registration),
             event_thread: Some(event_thread),
         })
     }
@@ -477,10 +477,12 @@ impl UnplugDetector {
 impl Drop for UnplugDetector {
     fn drop(&mut self) {
         self.event_thread_run.store(false, Ordering::Relaxed);
-        let context = GlobalContext::default();
-        context.unregister_callback(self.registration);
 
-        // Calling unregister_callback wakes the event thread, so this should complete quickly.
+        // The callback is unregistered when the registration is dropped.
+        // Unwrap is safe because self.registration is always Some until we drop it here.
+        drop(self.registration.take().unwrap());
+
+        // Dropping the callback above wakes the event thread, so this should complete quickly.
         // Unwrap is safe because event_thread only becomes None at drop.
         let _ = self.event_thread.take().unwrap().join();
     }
