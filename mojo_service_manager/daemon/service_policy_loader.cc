@@ -27,7 +27,8 @@ constexpr char kKeyRequest[] = "request";
 constexpr std::array<const char*, 3> kExpectedKeys = {kKeyIdentity, kKeyOwn,
                                                       kKeyRequest};
 // The json option for parsing policy files.
-constexpr int kJSONOption = base::JSON_ALLOW_TRAILING_COMMAS;
+constexpr int kJSONOption =
+    base::JSON_ALLOW_TRAILING_COMMAS | base::JSON_ALLOW_COMMENTS;
 
 bool ValidateDictKeys(const base::Value& value) {
   if (!value.is_dict()) {
