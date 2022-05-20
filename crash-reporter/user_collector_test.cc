@@ -48,7 +48,7 @@ class UserCollectorMock : public UserCollector {
               GetCommandLine,
               (pid_t),
               (const, override));
-  MOCK_METHOD(void, AccounceUserCrash, (), (override));
+  MOCK_METHOD(void, AnnounceUserCrash, (), (override));
   MOCK_METHOD(ErrorType,
               ConvertCoreToMinidump,
               (pid_t pid,
@@ -278,7 +278,7 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   if (VmSupport::Get()) {
     expected_mock_calls = 0;
   }
-  EXPECT_CALL(collector_, AccounceUserCrash()).Times(expected_mock_calls);
+  EXPECT_CALL(collector_, AnnounceUserCrash()).Times(expected_mock_calls);
   // NOTE: The '5' which appears in several strings below is the pid of the
   // simulated crashing process.
   EXPECT_CALL(collector_,
@@ -313,7 +313,7 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
   if (VmSupport::Get()) {
     expected_mock_calls = 0;
   }
-  EXPECT_CALL(collector_, AccounceUserCrash()).Times(expected_mock_calls);
+  EXPECT_CALL(collector_, AnnounceUserCrash()).Times(expected_mock_calls);
   // NOTE: The '5' which appears in several strings below is the pid of the
   // simulated crashing process.
   EXPECT_CALL(collector_,
@@ -345,7 +345,7 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
 // crash handling library (Breakpad or Crashpad) to call us directly -- see
 // chrome_collector.h.
 TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
-  EXPECT_CALL(collector_, AccounceUserCrash()).Times(0);
+  EXPECT_CALL(collector_, AnnounceUserCrash()).Times(0);
   EXPECT_CALL(collector_, ConvertCoreToMinidump(_, _, _, _)).Times(0);
 
   UserCollectorBase::CrashAttributes attrs;
@@ -366,7 +366,7 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
 // fact that we are using the kernel's supplied name instead of the |force_exec|
 // name. This is actually much closer to the real usage.
 TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
-  EXPECT_CALL(collector_, AccounceUserCrash()).Times(0);
+  EXPECT_CALL(collector_, AnnounceUserCrash()).Times(0);
   EXPECT_CALL(collector_, ConvertCoreToMinidump(_, _, _, _)).Times(0);
 
   UserCollectorBase::CrashAttributes attrs;

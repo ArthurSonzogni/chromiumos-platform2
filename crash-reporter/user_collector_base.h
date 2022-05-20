@@ -100,7 +100,7 @@ class UserCollectorBase : public CrashCollector {
  private:
   // Send DBus message announcing the crash. Virtual so that we can mock out
   // during unit tests.
-  virtual void AccounceUserCrash();
+  virtual void AnnounceUserCrash();
 
   virtual bool ShouldDump(pid_t pid,
                           uid_t uid,

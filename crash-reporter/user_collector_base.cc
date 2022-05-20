@@ -50,7 +50,7 @@ void UserCollectorBase::Initialize(bool directory_failure, bool early) {
   directory_failure_ = directory_failure;
 }
 
-void UserCollectorBase::AccounceUserCrash() {
+void UserCollectorBase::AnnounceUserCrash() {
   brillo::ProcessImpl dbus;
   dbus.AddArg("/usr/bin/dbus-send");
   dbus.AddArg("--type=signal");
@@ -104,7 +104,7 @@ bool UserCollectorBase::HandleCrash(
   LogCrash(message, reason);
 
   if (dump) {
-    AccounceUserCrash();
+    AnnounceUserCrash();
 
     AddExtraMetadata(exec, attrs.pid);
 
