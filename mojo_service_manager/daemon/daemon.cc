@@ -6,6 +6,7 @@
 
 #include <linux/limits.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sysexits.h>
 
@@ -28,6 +29,12 @@ namespace chromeos {
 namespace mojo_service_manager {
 namespace {
 
+// Allow others to write so others can connect to the socket. The ACLs are
+// controlled by the policy files so we don't need to do it again by the system
+// user / group.
+constexpr mode_t kSocketMode =
+    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+
 base::ScopedFD CreateUnixDomainSocket(const base::FilePath& socket_path) {
   base::ScopedFD socket_fd{
       socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0)};
@@ -47,6 +54,11 @@ base::ScopedFD CreateUnixDomainSocket(const base::FilePath& socket_path) {
   if (bind(socket_fd.get(), reinterpret_cast<const sockaddr*>(&unix_addr),
            sizeof(unix_addr)) < 0) {
     PLOG(ERROR) << "Failed to bind: " << socket_path.value();
+    return base::ScopedFD{};
+  }
+
+  if (!base::SetPosixFilePermissions(socket_path, kSocketMode)) {
+    PLOG(ERROR) << "Failed to chmod the socket: " << socket_path.value();
     return base::ScopedFD{};
   }
 
