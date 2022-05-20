@@ -130,11 +130,9 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   Color GetColorForBackgroundType() const;
   Color GetCurrentCapsLockColor() const;
   Color GetCapsLockHighlightColor() const;
-  bool IsKeyboardSupported() const;
 
-  // |keyboard_| must be initialized before |capabilities_|
-  RgbKeyboard* keyboard_;
   std::optional<RgbKeyboardCapabilities> capabilities_;
+  RgbKeyboard* keyboard_;
   Color background_color_;
   bool caps_lock_enabled_ = false;
   // Helps determine which color to highlight the caps locks keys when
