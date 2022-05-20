@@ -373,7 +373,7 @@ bool LoopdevSetup(const base::FilePath& source, Loopdev* loopdev_out) {
 
     // Cleanup in case the setup fails. This frees |num| altogether.
     base::ScopedClosureRunner loop_device_cleanup(
-        base::Bind(&RemoveLoopDevice, control_fd.get(), num));
+        base::BindOnce(&RemoveLoopDevice, control_fd.get(), num));
 
     base::FilePath loopdev_path(base::StringPrintf("/dev/loop%i", num));
     base::ScopedFD loop_fd(
@@ -505,8 +505,8 @@ bool DeviceMapperDetach(const std::string& dm_name) {
     return false;
   }
 
-  base::ScopedClosureRunner teardown(
-      base::Bind(base::IgnoreResult(&dm_task_destroy), base::Unretained(dmt)));
+  base::ScopedClosureRunner teardown(base::BindOnce(
+      base::IgnoreResult(&dm_task_destroy), base::Unretained(dmt)));
 
   if (dm_task_set_name(dmt, dm_name.c_str()) != 0) {
     PLOG(ERROR) << "Failed to dm_task_set_name() for " << dm_name;

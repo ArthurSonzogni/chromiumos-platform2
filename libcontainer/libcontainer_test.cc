@@ -39,7 +39,7 @@ namespace libcontainer {
 
 namespace {
 
-using MinijailHookCallback = base::Callback<int()>;
+using MinijailHookCallback = base::RepeatingCallback<int()>;
 
 constexpr int kTestCpuShares = 200;
 constexpr int kTestCpuQuota = 20000;
@@ -650,7 +650,8 @@ int minijail_add_hook(struct minijail* j,
                       minijail_hook_event_t event) {
   auto it = libcontainer::g_mock_minijail_state->hooks.insert(
       std::make_pair(event, std::vector<libcontainer::MinijailHookCallback>()));
-  it.first->second.emplace_back(base::Bind(hook, base::Unretained(payload)));
+  it.first->second.emplace_back(
+      base::BindRepeating(hook, base::Unretained(payload)));
   return 0;
 }
 

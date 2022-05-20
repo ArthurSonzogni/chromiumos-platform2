@@ -586,7 +586,7 @@ bool DoContainerMounts(struct container* c,
   UnmountExternalMounts(c);
 
   // This will run in all the error cases.
-  base::ScopedClosureRunner teardown(base::Bind(
+  base::ScopedClosureRunner teardown(base::BindOnce(
       base::IgnoreResult(&UnmountExternalMounts), base::Unretained(c)));
 
   for (const auto& mount : config->mounts) {
@@ -1314,7 +1314,7 @@ int container_start(struct container* c,
 
   // This will run in all the error cases.
   base::ScopedClosureRunner teardown(
-      base::Bind(&CancelContainerStart, base::Unretained(c)));
+      base::BindOnce(&CancelContainerStart, base::Unretained(c)));
 
   if (!config->config_root.empty())
     c->config_root = config->config_root;

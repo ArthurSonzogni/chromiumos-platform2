@@ -121,7 +121,7 @@ bool CreateCgroupAsOwner(const base::FilePath& cgroup_path,
     // Ensure that we reset the euid and egid no matter what.
     // TODO(ejcaruso, hidehiko): change to OnceClosure when libchrome is
     // upreved again.
-    runner.ReplaceClosure(base::Bind(
+    runner.ReplaceClosure(base::BindOnce(
         [](uid_t euid, gid_t egid) {
           if (seteuid(euid) != 0)
             PLOG(ERROR) << "Failed to reset euid";
