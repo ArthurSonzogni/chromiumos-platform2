@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -26,11 +25,11 @@ import sys
 
 
 def main(argv):
-  subprocess.check_call(argv[2:])
-  subprocess.check_call(argv[2:] + ['--generate_non_variant_code'])
-  subprocess.check_call(argv[2:] + ['--generate_non_variant_code',
-                                    '--generate_message_ids'])
+    subprocess.check_call(argv[2:])
+    subprocess.check_call(argv[2:] + ['--generate_non_variant_code'])
+    subprocess.check_call(argv[2:] + ['--generate_non_variant_code',
+                                      '--generate_message_ids'])
 
 
 if __name__ == '__main__':
-  main(sys.argv)
+    sys.exit(main(sys.argv))
