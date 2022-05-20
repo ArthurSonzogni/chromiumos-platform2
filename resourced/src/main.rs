@@ -28,7 +28,9 @@ fn main() -> Result<()> {
 
     let power_preferences_manager = power::DirectoryPowerPreferencesManager {
         root: root.to_path_buf(),
-        config_provider: config::DirectoryConfigProvider { root },
+        config_provider: config::DirectoryConfigProvider {
+            root: root.to_path_buf(),
+        },
         power_source_provider: power::DirectoryPowerSourceProvider { root },
     };
 

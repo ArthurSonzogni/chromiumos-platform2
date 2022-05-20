@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::{bail, Context, Result};
 
@@ -110,11 +111,11 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
  *     * default-power-preferences/governor/..
  */
 #[derive(Debug)]
-pub struct DirectoryConfigProvider<'a> {
-    pub root: &'a Path,
+pub struct DirectoryConfigProvider {
+    pub root: PathBuf,
 }
 
-impl ConfigProvider for DirectoryConfigProvider<'_> {
+impl ConfigProvider for DirectoryConfigProvider {
     fn read_power_preferences(
         &self,
         power_source_type: PowerSourceType,

@@ -392,7 +392,9 @@ fn test_gpu_thread_on_off() {
 #[test]
 fn test_config_provider_empty_root() -> Result<()> {
     let root = tempdir()?;
-    let provider = config::DirectoryConfigProvider { root: root.path() };
+    let provider = config::DirectoryConfigProvider {
+        root: root.path().to_path_buf(),
+    };
 
     let preference = provider.read_power_preferences(
         config::PowerSourceType::AC,
@@ -417,7 +419,9 @@ fn test_config_provider_empty_dir() -> Result<()> {
     let path = root.path().join(config::RESOURCED_CONFIG_PATH);
     fs::create_dir_all(path).unwrap();
 
-    let provider = config::DirectoryConfigProvider { root: root.path() };
+    let provider = config::DirectoryConfigProvider {
+        root: root.path().to_path_buf(),
+    };
 
     let preference = provider.read_power_preferences(
         config::PowerSourceType::AC,
@@ -477,7 +481,9 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
             let powersave_bias_path = ondemand_path.join("powersave-bias");
             fs::write(&powersave_bias_path, b"340")?;
 
-            let provider = config::DirectoryConfigProvider { root: root.path() };
+            let provider = config::DirectoryConfigProvider {
+                root: root.path().to_path_buf(),
+            };
 
             let actual = provider.read_power_preferences(power_source, preference)?;
 
