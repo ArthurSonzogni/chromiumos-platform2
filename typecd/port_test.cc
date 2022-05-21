@@ -532,4 +532,17 @@ TEST_F(PortTest, TestBillboardOnlyDisplayNotLimitedByCable) {
   EXPECT_FALSE(port->CableLimitingUSBSpeed());
 }
 
+// Check that CableLimitingUSBSpeed() returns false for cases using a TBT3
+// active cable for USB4.
+// Case: Thunderbolt 4 OWC dock with Apple Thunderbolt 3 Pro Cable.
+TEST_F(PortTest, TestCableLimitingSpeedOWCDockAppleTBT3ProCable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddOWCTBT4Dock(*port);
+  AddAppleTBT3ProCable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+}
+
 }  // namespace typecd

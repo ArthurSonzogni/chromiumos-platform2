@@ -166,6 +166,7 @@ class Port {
   FRIEND_TEST(PortTest, TestUSB4LimitedByTBT3PassiveCableFalse);
   FRIEND_TEST(PortTest, TestUSB4LimitedByTBT4PassiveLRDCableFalse);
   FRIEND_TEST(PortTest, TestBillboardOnlyDisplayNotLimitedByCable);
+  FRIEND_TEST(PortTest, TestCableLimitingSpeedTBT4DockAppleTBT3ProCable);
 
   // Helper functions from test_util for defining devices used in unit tests.
   friend void AddUnbrandedUSB2Cable(Port& port);
