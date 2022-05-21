@@ -117,11 +117,15 @@ class MockMetrics : public Metrics {
               (override));
   MOCK_METHOD(void,
               NotifyWiFiConnectionAttempt,
-              (const Metrics::WiFiConnectionAttemptInfo&),
+              (const Metrics::WiFiConnectionAttemptInfo&, uint64_t),
               (override));
   MOCK_METHOD(void,
               NotifyWiFiConnectionAttemptResult,
-              (NetworkServiceError),
+              (NetworkServiceError, uint64_t),
+              (override));
+  MOCK_METHOD(void,
+              NotifyWiFiDisconnection,
+              (WiFiDisconnectionType, IEEE_80211::WiFiReasonCode, uint64_t),
               (override));
   MOCK_METHOD(void,
               NotifyWiFiAdapterStateChanged,
