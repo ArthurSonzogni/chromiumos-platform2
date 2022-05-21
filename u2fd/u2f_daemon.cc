@@ -86,34 +86,6 @@ const char* U2fModeToString(U2fMode mode) {
   return "unknown";
 }
 
-U2fMode GetU2fMode(bool force_u2f, bool force_g2f) {
-  U2fMode policy_mode = ReadU2fPolicy();
-
-  LOG(INFO) << "Requested Mode: Policy[" << U2fModeToString(policy_mode)
-            << "], force_u2f[" << force_u2f << "], force_g2f[" << force_g2f
-            << "]";
-
-  // Always honor the administrator request to disable even if given
-  // contradictory override flags.
-  if (policy_mode == U2fMode::kDisabled) {
-    LOG(INFO) << "Mode: Disabled (explicitly by policy)";
-    return U2fMode::kDisabled;
-  }
-
-  if (force_g2f || policy_mode == U2fMode::kU2fExtended) {
-    LOG(INFO) << "Mode: U2F+extensions";
-    return U2fMode::kU2fExtended;
-  }
-
-  if (force_u2f || policy_mode == U2fMode::kU2f) {
-    LOG(INFO) << "Mode:U2F";
-    return U2fMode::kU2f;
-  }
-
-  LOG(INFO) << "Mode: Disabled";
-  return U2fMode::kDisabled;
-}
-
 void OnPolicySignalConnected(const std::string& interface,
                              const std::string& signal,
                              bool success) {
@@ -372,6 +344,41 @@ void U2fDaemon::IgnorePowerButtonPress() {
   // Mask the next power button press for the UI
   pm_proxy_->IgnoreNextPowerButtonPress(kPresenceTimeout.ToInternalValue(),
                                         &err, -1);
+}
+
+U2fMode U2fDaemon::GetU2fMode(bool force_u2f, bool force_g2f) {
+  U2fMode policy_mode = ReadU2fPolicy();
+
+  LOG(INFO) << "Requested Mode: Policy[" << U2fModeToString(policy_mode)
+            << "], force_u2f[" << force_u2f << "], force_g2f[" << force_g2f
+            << "]";
+
+  // Always honor the administrator request to disable even if given
+  // contradictory override flags.
+  if (policy_mode == U2fMode::kDisabled) {
+    LOG(INFO) << "Mode: Disabled (explicitly by policy)";
+    return U2fMode::kDisabled;
+  }
+
+  // On devices without GSC, power button can't be used as security key so U2F
+  // and G2F modes are not supported.
+  if (!u2fhid_service_) {
+    LOG(INFO) << "Mode: Disabled (not supported)";
+    return U2fMode::kDisabled;
+  }
+
+  if (force_g2f || policy_mode == U2fMode::kU2fExtended) {
+    LOG(INFO) << "Mode: U2F+extensions";
+    return U2fMode::kU2fExtended;
+  }
+
+  if (force_u2f || policy_mode == U2fMode::kU2f) {
+    LOG(INFO) << "Mode: U2F";
+    return U2fMode::kU2f;
+  }
+
+  LOG(INFO) << "Mode: Disabled";
+  return U2fMode::kDisabled;
 }
 
 }  // namespace u2f

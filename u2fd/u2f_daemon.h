@@ -76,6 +76,9 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   // short time.
   void IgnorePowerButtonPress();
 
+  // Determines U2F mode depending on the force flags and the policy.
+  U2fMode GetU2fMode(bool force_u2f, bool force_g2f);
+
   // U2F Behavior Flags
   const bool force_u2f_;
   const bool force_g2f_;
