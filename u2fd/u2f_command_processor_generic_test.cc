@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/u2f_command_processor_generic.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -19,7 +21,7 @@
 #include "u2fd/mock_user_state.h"
 #include "u2fd/sign_manager/mock_sign_manager.h"
 #include "u2fd/sign_manager/sign_manager.h"
-#include "u2fd/u2f_command_processor_generic.h"
+#include "u2fd/u2f_command_processor.h"
 #include "u2fd/util.h"
 
 namespace u2f {
@@ -150,7 +152,7 @@ class U2fCommandProcessorGenericTest : public ::testing::Test {
 
   MakeCredentialResponse::MakeCredentialStatus U2fGenerate(
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_pubkey,
+      CredentialPublicKey* credential_pubkey,
       std::vector<uint8_t>* credential_key_blob) {
     return processor_->U2fGenerate(
         GetRpIdHash(), GetCredentialSecret(), PresenceRequirement::kNone,
@@ -188,14 +190,16 @@ class U2fCommandProcessorGenericTest : public ::testing::Test {
 namespace {
 
 TEST_F(U2fCommandProcessorGenericTest, U2fGenerateNoWebAuthnSecret) {
-  std::vector<uint8_t> cred_id, cred_pubkey, cred_key_blob;
+  std::vector<uint8_t> cred_id, cred_key_blob;
+  CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecretFail();
   EXPECT_EQ(U2fGenerate(&cred_id, &cred_pubkey, &cred_key_blob),
             MakeCredentialResponse::INTERNAL_ERROR);
 }
 
 TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignManagerNotReady) {
-  std::vector<uint8_t> cred_id, cred_pubkey, cred_key_blob;
+  std::vector<uint8_t> cred_id, cred_key_blob;
+  CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
   EXPECT_CALL(*mock_sign_manager_, IsReady()).WillOnce(Return(false));
   EXPECT_EQ(U2fGenerate(&cred_id, &cred_pubkey, &cred_key_blob),
@@ -203,7 +207,8 @@ TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignManagerNotReady) {
 }
 
 TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignManagerCreateKeyFailed) {
-  std::vector<uint8_t> cred_id, cred_pubkey, cred_key_blob;
+  std::vector<uint8_t> cred_id, cred_key_blob;
+  CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
   ExpectSignManagerReady();
   EXPECT_CALL(*mock_sign_manager_, IsReady()).WillOnce(Return(true));
@@ -241,7 +246,8 @@ TEST_F(U2fCommandProcessorGenericTest, U2fSignInvalidHmac) {
 }
 
 TEST_F(U2fCommandProcessorGenericTest, U2fSignWrongRpIdHash) {
-  std::vector<uint8_t> cred_id, cred_pubkey, cred_key_blob;
+  std::vector<uint8_t> cred_id, cred_key_blob;
+  CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
   ExpectSignManagerReady();
   EXPECT_CALL(*mock_sign_manager_,
@@ -252,7 +258,7 @@ TEST_F(U2fCommandProcessorGenericTest, U2fSignWrongRpIdHash) {
             MakeCredentialResponse::SUCCESS);
 
   std::string expected_cred_pubkey_regex = std::string("(31){128}");
-  EXPECT_THAT(base::HexEncode(cred_pubkey),
+  EXPECT_THAT(base::HexEncode(cred_pubkey.cbor),
               MatchesRegex(expected_cred_pubkey_regex));
 
   // U2fSign with wrong rp id hash should fail.
@@ -279,7 +285,8 @@ TEST_F(U2fCommandProcessorGenericTest, U2fSignCheckOnlyInvalidHash) {
 }
 
 TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignSuccess) {
-  std::vector<uint8_t> cred_id, cred_pubkey, cred_key_blob;
+  std::vector<uint8_t> cred_id, cred_key_blob;
+  CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
   ExpectSignManagerReady();
   EXPECT_CALL(*mock_sign_manager_,
@@ -290,7 +297,7 @@ TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignSuccess) {
             MakeCredentialResponse::SUCCESS);
 
   std::string expected_cred_pubkey_regex = std::string("(31){128}");
-  EXPECT_THAT(base::HexEncode(cred_pubkey),
+  EXPECT_THAT(base::HexEncode(cred_pubkey.cbor),
               MatchesRegex(expected_cred_pubkey_regex));
 
   // U2fSignCheckOnly should succeed.

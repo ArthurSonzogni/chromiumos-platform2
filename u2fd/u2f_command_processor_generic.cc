@@ -21,6 +21,7 @@
 
 #include "u2fd/sign_manager/sign_manager.h"
 #include "u2fd/sign_manager/sign_manager_tpm_v1.h"
+#include "u2fd/u2f_command_processor.h"
 #include "u2fd/user_state.h"
 #include "u2fd/util.h"
 #include "u2fd/webauthn_handler.h"
@@ -83,7 +84,7 @@ U2fCommandProcessorGeneric::U2fGenerate(
     bool uv_compatible,
     const brillo::Blob* auth_time_secret_hash,
     std::vector<uint8_t>* credential_id,
-    std::vector<uint8_t>* credential_public_key,
+    CredentialPublicKey* credential_public_key,
     std::vector<uint8_t>* credential_key_blob) {
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
 
@@ -144,8 +145,8 @@ U2fCommandProcessorGeneric::U2fGenerate(
   credential_id->clear();
   util::AppendToVector(cred, credential_id);
 
-  credential_public_key->clear();
-  util::AppendToVector(public_key, credential_public_key);
+  credential_public_key->cbor.clear();
+  util::AppendToVector(public_key, &credential_public_key->cbor);
 
   if (credential_key_blob) {
     credential_key_blob->clear();

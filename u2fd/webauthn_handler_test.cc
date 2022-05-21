@@ -108,8 +108,11 @@ std::string GetVersionedCredIdString() {
   return std::string(cred_id.begin(), cred_id.end());
 }
 
-std::vector<uint8_t> GetCredPubKey() {
-  return std::vector<uint8_t>(65, 0xAB);
+CredentialPublicKey GetCredPubKey() {
+  return CredentialPublicKey{
+      .cbor = std::vector<uint8_t>(65, 0xAB),
+      .raw = std::vector<uint8_t>(65, 0xAB),
+  };
 }
 
 std::vector<uint8_t> GetSignature() {

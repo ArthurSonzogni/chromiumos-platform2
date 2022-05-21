@@ -29,7 +29,7 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
                bool uv_compatible,
                const brillo::Blob* auth_time_secret_hash,
                std::vector<uint8_t>* credential_id,
-               std::vector<uint8_t>* credential_public_key,
+               CredentialPublicKey* credential_public_key,
                std::vector<uint8_t>* credential_key_blob),
               (override));
 

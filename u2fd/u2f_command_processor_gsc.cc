@@ -19,6 +19,7 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/client/tpm_vendor_cmd.h"
+#include "u2fd/u2f_command_processor.h"
 #include "u2fd/user_state.h"
 #include "u2fd/util.h"
 #include "u2fd/webauthn_handler.h"
@@ -60,7 +61,7 @@ U2fCommandProcessorGsc::U2fGenerate(
     bool uv_compatible,
     const brillo::Blob* auth_time_secret_hash,
     std::vector<uint8_t>* credential_id,
-    std::vector<uint8_t>* credential_public_key,
+    CredentialPublicKey* credential_public_key,
     std::vector<uint8_t>* /*unused*/) {
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
 
@@ -91,11 +92,10 @@ U2fCommandProcessorGsc::U2fGenerate(
       if (generate_status != 0)
         return MakeCredentialResponse::INTERNAL_ERROR;
 
-      std::vector<uint8_t> public_key;
-      util::AppendToVector(generate_resp.pubKey, &public_key);
-
-      util::AppendToVector(EncodeCredentialPublicKeyInCBOR(public_key),
-                           credential_public_key);
+      util::AppendToVector(generate_resp.pubKey, &credential_public_key->raw);
+      util::AppendToVector(
+          EncodeCredentialPublicKeyInCBOR(credential_public_key->raw),
+          &credential_public_key->cbor);
       util::AppendToVector(generate_resp.keyHandle, credential_id);
       status = MakeCredentialResponse::SUCCESS;
     } else {
@@ -358,7 +358,7 @@ U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
     struct u2f_generate_req* generate_req,
     Response* generate_resp,
     std::vector<uint8_t>* credential_id,
-    std::vector<uint8_t>* credential_public_key) {
+    CredentialPublicKey* credential_public_key) {
   uint32_t generate_status = -1;
 
   CallAndWaitForPresence(
@@ -369,11 +369,10 @@ U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
   brillo::SecureClearContainer(generate_req->userSecret);
 
   if (generate_status == 0) {
-    std::vector<uint8_t> public_key;
-    util::AppendToVector(generate_resp->pubKey, &public_key);
-
-    util::AppendToVector(EncodeCredentialPublicKeyInCBOR(public_key),
-                         credential_public_key);
+    util::AppendToVector(generate_resp->pubKey, &credential_public_key->raw);
+    util::AppendToVector(
+        EncodeCredentialPublicKeyInCBOR(credential_public_key->raw),
+        &credential_public_key->cbor);
     util::AppendToVector(generate_resp->keyHandle, credential_id);
     return MakeCredentialResponse::SUCCESS;
   }

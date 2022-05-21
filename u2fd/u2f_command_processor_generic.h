@@ -33,6 +33,9 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
 
   ~U2fCommandProcessorGeneric() override {}
 
+  // The generic U2F processor uses RSA algorithm and doesn't support the
+  // fido-u2f attestation format, therefore the |credential_public_key_raw|
+  // field is not used.
   MakeCredentialResponse::MakeCredentialStatus U2fGenerate(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_secret,
@@ -40,7 +43,7 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_public_key,
+      CredentialPublicKey* credential_public_key,
       std::vector<uint8_t>* credential_key_blob) override;
 
   GetAssertionResponse::GetAssertionStatus U2fSign(

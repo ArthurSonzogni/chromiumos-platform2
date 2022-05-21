@@ -14,6 +14,18 @@
 
 namespace u2f {
 
+// The public key structure. cbor is the public key encoded in cbor format,
+// which is what the WebAuthn protocol expects from the authenticator. However,
+// WebAuthn is backward compatible with the U2F protocol, and for U2F
+// attestation another public key format is expected, see:
+// https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-registry-v2.0-id-20180227.html#public-key-representation-formats.
+// Thus, it has another field |raw| that is the raw representation of U2F public
+// keys. It will be empty if the public key isn't from a U2F authenticator.
+struct CredentialPublicKey {
+  std::vector<uint8_t> cbor;
+  std::vector<uint8_t> raw;
+};
+
 // Provides an interface to process U2F commands, including the 3 main commands
 // U2fGenerate, U2fSign, and U2fSignCheckOnly we used in WebAuthn. Devices with
 // different TPMs have different implementations of these commands.
@@ -22,8 +34,15 @@ class U2fCommandProcessor {
   virtual ~U2fCommandProcessor() = default;
 
   // Create a new pair of signing key, store key-related data in |credential_id|
-  // and the public key in |credential_public_key|. |rp_id_hash| must be exactly
-  // 32 bytes.
+  // and the public key in |credential_public_key_*|. |rp_id_hash| must be
+  // exactly 32 bytes.
+  // |credential_public_key_cbor| is the public key encoded in cbor format. This
+  // is what the WebAuthn protocol expects from the authenticator. However,
+  // WebAuthn is backward compatible with the U2F protocol, and for U2F
+  // attestation another public key format is expected, see:
+  // https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-registry-v2.0-id-20180227.html#public-key-representation-formats.
+  // Thus, we have another output field |credential_public_key_raw| for U2F
+  // authenticators to fill public key represented in raw format.
   virtual MakeCredentialResponse::MakeCredentialStatus U2fGenerate(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_secret,
@@ -31,7 +50,7 @@ class U2fCommandProcessor {
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_public_key,
+      CredentialPublicKey* credential_public_key,
       std::vector<uint8_t>* credential_key_blob) = 0;
 
   // Check that credential_id is valid, and if so,

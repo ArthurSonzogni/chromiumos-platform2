@@ -435,7 +435,7 @@ void WebAuthnHandler::DoMakeCredential(
   MakeCredentialResponse response;
   const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
   std::vector<uint8_t> credential_id;
-  std::vector<uint8_t> credential_public_key;
+  CredentialPublicKey credential_public_key;
   std::vector<uint8_t> credential_key_blob;
 
   // If we are in u2f or g2f mode, and the request says it wants presence only,
@@ -483,7 +483,7 @@ void WebAuthnHandler::DoMakeCredential(
     return;
   }
 
-  if (credential_id.empty() || credential_public_key.empty()) {
+  if (credential_id.empty() || credential_public_key.cbor.empty()) {
     LOG(ERROR) << "MakeCredential: Returned credential is empty.";
     response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
     session.response->Return(response);
@@ -506,7 +506,7 @@ void WebAuthnHandler::DoMakeCredential(
 
   const std::optional<std::vector<uint8_t>> authenticator_data =
       MakeAuthenticatorData(
-          rp_id_hash, credential_id, credential_public_key,
+          rp_id_hash, credential_id, credential_public_key.cbor,
           /* user_verified = */ session.request.verification_type() ==
               VerificationType::VERIFICATION_USER_VERIFICATION,
           /* include_attested_credential_data = */ true,
@@ -524,10 +524,17 @@ void WebAuthnHandler::DoMakeCredential(
   if (uv_compatible) {
     AppendNoneAttestation(&response);
   } else {
+    if (credential_public_key.raw.empty()) {
+      LOG(ERROR) << "MakeCredential: Authenticator doesn't support FIDO U2F "
+                    "attestation statement format.";
+      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+      session.response->Return(response);
+      return;
+    }
     const std::vector<uint8_t> data_to_sign =
         util::BuildU2fRegisterResponseSignedData(
             rp_id_hash, util::ToVector(session.request.client_data_hash()),
-            credential_public_key, credential_id);
+            credential_public_key.raw, credential_id);
     std::optional<std::vector<uint8_t>> attestation_statement =
         MakeFidoU2fAttestationStatement(
             data_to_sign, session.request.attestation_conveyance_preference());

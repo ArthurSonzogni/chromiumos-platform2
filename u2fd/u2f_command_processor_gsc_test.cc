@@ -218,9 +218,13 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
   }
 
  protected:
-  static std::vector<uint8_t> GetCredPubKey() {
+  static std::vector<uint8_t> GetCredPubKeyRaw() {
+    return std::vector<uint8_t>(65, 0xAB);
+  }
+
+  static std::vector<uint8_t> GetCredPubKeyCbor() {
     return U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
-        std::vector<uint8_t>(65, 0xAB));
+        GetCredPubKeyRaw());
   }
 
   void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status) {
@@ -234,7 +238,17 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_pubkey) {
+      CredentialPublicKey* credential_pubkey) {
+    // U2fGenerate expects some output fields to be non-null, but we
+    // want to support nullptr output fields in this helper method.
+    std::vector<uint8_t> cred_id;
+    CredentialPublicKey pubkey;
+    if (!credential_id) {
+      credential_id = &cred_id;
+    }
+    if (!credential_pubkey) {
+      credential_pubkey = &pubkey;
+    }
     return processor_->U2fGenerate(
         GetRpIdHash(), HexArrayToBlob(kCredentialSecret), presence_requirement,
         uv_compatible, auth_time_secret_hash, credential_id, credential_pubkey,
@@ -315,11 +329,9 @@ TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceTimeout) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoAuthTimeSecretHash) {
-  std::vector<uint8_t> cred_id, cred_pubkey;
-  EXPECT_EQ(
-      U2fGenerate(PresenceRequirement::kPowerButton,
-                  /* uv_compatible = */ true, nullptr, &cred_id, &cred_pubkey),
-      MakeCredentialResponse::INTERNAL_ERROR);
+  EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
+                        /* uv_compatible = */ true, nullptr, nullptr, nullptr),
+            MakeCredentialResponse::INTERNAL_ERROR);
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
@@ -331,14 +343,16 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
       .WillOnce(Return(kCr50StatusNotAllowed))
       .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateVersionedResponse),
                       Return(kCr50StatusSuccess)));
-  std::vector<uint8_t> cred_id, cred_pubkey;
+  std::vector<uint8_t> cred_id;
+  CredentialPublicKey cred_pubkey;
   auto auth_time_secret_hash = GetAuthTimeSecretHash();
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ true, &auth_time_secret_hash,
                         &cred_id, &cred_pubkey),
             MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetVersionedCredId());
-  EXPECT_EQ(cred_pubkey, U2fCommandProcessorGscTest::GetCredPubKey());
+  EXPECT_EQ(cred_pubkey.cbor, U2fCommandProcessorGscTest::GetCredPubKeyCbor());
+  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorGscTest::GetCredPubKeyRaw());
   presence_requested_expected_ = 1;
 }
 
@@ -349,11 +363,10 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoUserPresence) {
           StructMatchesRegex(ExpectedUserPresenceU2fGenerateRequestRegex(true)),
           Matcher<u2f_generate_versioned_resp*>(_)))
       .WillRepeatedly(Return(kCr50StatusNotAllowed));
-  std::vector<uint8_t> cred_id, cred_pubkey;
   auto auth_time_secret_hash = GetAuthTimeSecretHash();
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ true, &auth_time_secret_hash,
-                        &cred_id, &cred_pubkey),
+                        nullptr, nullptr),
             MakeCredentialResponse::VERIFICATION_FAILED);
   presence_requested_expected_ = kMaxRetries;
 }
@@ -367,13 +380,15 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
       .WillOnce(Return(kCr50StatusNotAllowed))
       .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateResponse),
                       Return(kCr50StatusSuccess)));
-  std::vector<uint8_t> cred_id, cred_pubkey;
+  std::vector<uint8_t> cred_id;
+  CredentialPublicKey cred_pubkey;
   EXPECT_EQ(
       U2fGenerate(PresenceRequirement::kPowerButton,
                   /* uv_compatible = */ false, nullptr, &cred_id, &cred_pubkey),
       MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetCredId());
-  EXPECT_EQ(cred_pubkey, U2fCommandProcessorGscTest::GetCredPubKey());
+  EXPECT_EQ(cred_pubkey.cbor, U2fCommandProcessorGscTest::GetCredPubKeyCbor());
+  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorGscTest::GetCredPubKeyRaw());
   presence_requested_expected_ = 1;
 }
 
@@ -384,11 +399,9 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateNoUserPresence) {
                           ExpectedUserPresenceU2fGenerateRequestRegex(false)),
                       Matcher<u2f_generate_resp*>(_)))
       .WillRepeatedly(Return(kCr50StatusNotAllowed));
-  std::vector<uint8_t> cred_id, cred_pubkey;
-  EXPECT_EQ(
-      U2fGenerate(PresenceRequirement::kPowerButton,
-                  /* uv_compatible = */ false, nullptr, &cred_id, &cred_pubkey),
-      MakeCredentialResponse::VERIFICATION_FAILED);
+  EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
+                        /* uv_compatible = */ false, nullptr, nullptr, nullptr),
+            MakeCredentialResponse::VERIFICATION_FAILED);
   presence_requested_expected_ = kMaxRetries;
 }
 
@@ -402,14 +415,16 @@ TEST_F(U2fCommandProcessorGscTest,
       // Should succeed at the first time since no presence is required.
       .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateVersionedResponse),
                       Return(kCr50StatusSuccess)));
-  std::vector<uint8_t> cred_id, cred_pubkey;
+  std::vector<uint8_t> cred_id;
+  CredentialPublicKey cred_pubkey;
   auto auth_time_secret_hash = GetAuthTimeSecretHash();
   // UI has verified the user so do not require presence.
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kNone, /* uv_compatible = */ true,
                         &auth_time_secret_hash, &cred_id, &cred_pubkey),
             MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetVersionedCredId());
-  EXPECT_EQ(cred_pubkey, U2fCommandProcessorGscTest::GetCredPubKey());
+  EXPECT_EQ(cred_pubkey.cbor, U2fCommandProcessorGscTest::GetCredPubKeyCbor());
+  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorGscTest::GetCredPubKeyRaw());
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceNoPresence) {

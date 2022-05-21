@@ -45,7 +45,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_public_key,
+      CredentialPublicKey* credential_public_key,
       std::vector<uint8_t>* credential_key_blob) override;
 
   // Runs a U2F_SIGN command to check that credential_id is valid, and if so,
@@ -100,7 +100,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       struct u2f_generate_req* generate_req,
       Response* generate_resp,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_public_key);
+      CredentialPublicKey* credential_public_key);
 
   // Repeatedly sends u2f_sign request to the TPM if there's no presence.
   template <typename Request>
