@@ -67,6 +67,22 @@ class MockMetrics : public Metrics {
               Notify80211Disconnect,
               (WiFiDisconnectByWhom, IEEE_80211::WiFiReasonCode),
               (override));
+  MOCK_METHOD(void,
+              NotifyWiFiConnectionAttempt,
+              (const Metrics::WiFiConnectionAttemptInfo&, uint64_t),
+              (override));
+  MOCK_METHOD(void,
+              NotifyWiFiConnectionAttemptResult,
+              (NetworkServiceError, uint64_t),
+              (override));
+  MOCK_METHOD(void,
+              NotifyWiFiDisconnection,
+              (WiFiDisconnectionType, IEEE_80211::WiFiReasonCode, uint64_t),
+              (override));
+  MOCK_METHOD(void,
+              NotifyWiFiAdapterStateChanged,
+              (bool, const WiFiAdapterInfo&),
+              (override));
 #endif  // DISABLE_WIFI
   MOCK_METHOD(void, NotifyWiFiSupplicantSuccess, (int), (override));
   MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropPosted, (), (override));
@@ -114,18 +130,6 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void,
               NotifyPortalDetectionMultiProbeResult,
               (const PortalDetector::Result&),
-              (override));
-  MOCK_METHOD(void,
-              NotifyWiFiConnectionAttempt,
-              (const Metrics::WiFiConnectionAttemptInfo&),
-              (override));
-  MOCK_METHOD(void,
-              NotifyWiFiConnectionAttemptResult,
-              (NetworkServiceError),
-              (override));
-  MOCK_METHOD(void,
-              NotifyWiFiAdapterStateChanged,
-              (bool, const WiFiAdapterInfo&),
               (override));
 };
 

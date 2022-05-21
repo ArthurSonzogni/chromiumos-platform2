@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/containers/contains.h>
 #include <base/notreached.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -141,7 +142,8 @@ WiFiService::WiFiService(Manager* manager,
       roam_state_(kRoamStateIdle),
       is_rekey_in_progress_(false),
       last_rekey_time_(base::Time()),
-      match_priority_(kDefaultMatchPriority) {
+      match_priority_(kDefaultMatchPriority),
+      session_tag_(kSessionTagInvalid) {
   std::string ssid_string(reinterpret_cast<const char*>(ssid_.data()),
                           ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
@@ -860,8 +862,45 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   return info;
 }
 
-void WiFiService::EmitConnectionAttemptEvent() const {
-  metrics()->NotifyWiFiConnectionAttempt(ConnectionAttemptInfo());
+void WiFiService::EmitConnectionAttemptEvent() {
+  if (session_tag_ != kSessionTagInvalid) {
+    SLOG(this, kSessionTagMinimumLogVerbosity) << __func__ << ": Found an"
+                                               << " existing session tag.";
+  }
+  // When we attempt to connect to an AP, we generate a session tag that will be
+  // used to mark the structured metrics events that belong to the same session.
+  // We use a random number as a tag to guarantee uniqueness of the tag so that
+  // the server-side pipeline can differentiate events that belong to different
+  // sessions.
+  session_tag_ = base::RandUint64();
+  metrics()->NotifyWiFiConnectionAttempt(ConnectionAttemptInfo(), session_tag_);
+}
+
+void WiFiService::EmitConnectionAttemptResultEvent(
+    Service::ConnectFailure failure) {
+  if (session_tag_ == kSessionTagInvalid) {
+    SLOG(this, kSessionTagMinimumLogVerbosity) << __func__ << ": Found an"
+                                               << " invalid session tag.";
+  }
+  metrics()->NotifyWiFiConnectionAttemptResult(
+      Metrics::ConnectFailureToServiceErrorEnum(failure), session_tag_);
+  if (failure != Service::kFailureNone) {
+    // If the connection attempt was not successful there won't be a
+    // corresponding disconnection event. Reset the session tag.
+    session_tag_ = kSessionTagInvalid;
+  }
+}
+
+void WiFiService::EmitDisconnectionEvent(
+    Metrics::WiFiDisconnectionType type,
+    IEEE_80211::WiFiReasonCode disconnect_reason) {
+  if (session_tag_ == kSessionTagInvalid) {
+    SLOG(this, kSessionTagMinimumLogVerbosity) << __func__ << ": Found an"
+                                               << " invalid session tag.";
+  }
+  metrics()->NotifyWiFiDisconnection(type, disconnect_reason, session_tag_);
+  // No more events in the session now that we've disconnected, reset the tag.
+  session_tag_ = kSessionTagInvalid;
 }
 
 WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {

@@ -48,6 +48,20 @@ class WiFiService : public Service {
   // Default signal level value without any endpoint.
   static const int16_t SignalLevelMin = std::numeric_limits<int16_t>::min();
 
+  // Do NOT modify the verbosity without a privacy review.
+  // Session Tags are not PII. However since they are somewhat unique, if they
+  // ended up being logged to a file that is then included in a feedback report,
+  // they could potentially be used to fingerprint a user in the structured
+  // metrics dataset.
+  // To avoid that, debug logs that might include Session Tags must be logged
+  // with a verbosity level significantly higher than what the system uses in
+  // verified boot. That way we ensure that Session Tags can only be logged in
+  // live debugging situations by a developer on their own test machine.
+  // See "Privacy considerations" section of the design doc
+  // http://go/cros-wifi-metrics-session-tag-dd
+  static constexpr int kSessionTagMinimumLogVerbosity = 4;
+  static constexpr uint64_t kSessionTagInvalid = 0LL;
+
   // Enumeration of supported randomization policies.
   enum class RandomizationPolicy : uint16_t {
     Hardware = 0,      // Use hardware MAC address.
@@ -227,7 +241,29 @@ class WiFiService : public Service {
   // to be updated in WPA Supplicant.
   UpdateMACAddressRet UpdateMACAddress();
 
-  void EmitConnectionAttemptEvent() const;
+  // Emits the |WiFiConnectionAttempt| structured event that notifies that the
+  // device is attempting to connect to an AP. It describes the parameters of
+  // the connection (channel/band, security mode, etc.).
+  // Calling this method triggers the creation of a "session tag" that will be
+  // used to tag events such as |WiFiConnectionAttemptResult| and
+  // |WiFiConnectionEnd| that belong to the same "connection attempt"->
+  // "connection attempt result"->"disconnection" session, so it should only be
+  // called once per connection attempt.
+  void EmitConnectionAttemptEvent();
+
+  // Emits the |WiFiConnectionAttemptResult| structured event that describes
+  // the result of the corresponding |WiFiConnectionAttempt| event.
+  // In case the connection attempt failed, this method will also reset the
+  // session tag since a connection attempt failure implies the end of the
+  // session.
+  void EmitConnectionAttemptResultEvent(Service::ConnectFailure failure);
+
+  // Emits the |WiFiConnectionEnd| structured events that signals the end of the
+  // session. It also resets the session tag.
+  void EmitDisconnectionEvent(Metrics::WiFiDisconnectionType type,
+                              IEEE_80211::WiFiReasonCode disconnect_reason);
+
+  uint64_t session_tag() const { return session_tag_; }
 
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
@@ -487,6 +523,10 @@ class WiFiService : public Service {
   PasspointCredentialsRefPtr parent_credentials_;
   // Passpoint network match score.
   uint64_t match_priority_;
+  // Session "tag" used to mark the structured metrics events
+  // "connection attempt", "connection attempt result" and "disconnection" that
+  // belong to the same session.
+  uint64_t session_tag_;
 };
 
 }  // namespace shill

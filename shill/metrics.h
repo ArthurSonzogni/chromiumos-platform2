@@ -1368,6 +1368,7 @@ class Metrics : public DefaultServiceObserver {
   // connected to.
   void NotifyMBOSupport(bool mbo_support);
 
+#if !defined(DISABLE_WIFI)
   // Emits the |WiFiAdapterStateChanged| structured event that notifies that
   // the WiFi adapter has been enabled or disabled. Includes the IDs describing
   // the type of the adapter (e.g. PCI IDs).
@@ -1425,12 +1426,29 @@ class Metrics : public DefaultServiceObserver {
   // device is attempting to connect to an AP. It describes the parameters of
   // the connection (channel/band, security mode, etc.).
   virtual void NotifyWiFiConnectionAttempt(
-      const WiFiConnectionAttemptInfo& info);
+      const WiFiConnectionAttemptInfo& info, uint64_t session_tag);
 
   // Emits the |WiFiConnectionAttemptResult| structured event that describes
   // the result of the corresponding |WiFiConnectionAttempt| event.
   virtual void NotifyWiFiConnectionAttemptResult(
-      NetworkServiceError result_code);
+      NetworkServiceError result_code, uint64_t session_tag);
+
+  // TODO(b/225737253): Right now we report |kWiFiDisconnectionTypeUnknown| in
+  // all cases, we still to have separate the various types of disconnection
+  // (expected, unexpected, ...)
+  enum WiFiDisconnectionType {
+    kWiFiDisconnectionTypeUnknown = 0,
+    kWiFiDisconnectionTypeExpectedUserAction = 1,
+    kWiFiDisconnectionTypeExpectedRoaming = 2,
+    kWiFiDisconnectionTypeUnexpectedAPDisconnect = 3,
+    kWiFiDisconnectionTypeUnexpectedSTADisconnect = 4
+  };
+
+  // Emits the |WiFiConnectionEnd| structured event.
+  virtual void NotifyWiFiDisconnection(WiFiDisconnectionType type,
+                                       IEEE_80211::WiFiReasonCode reason,
+                                       uint64_t session_tag);
+#endif  // DISABLE_WIFI
 
   // Returns a persistent hash to be used to uniquely identify an APN.
   static int64_t HashApn(const std::string& uuid,
