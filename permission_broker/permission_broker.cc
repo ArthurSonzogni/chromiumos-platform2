@@ -127,6 +127,19 @@ bool PermissionBroker::ClaimDevicePath(
                       /*to_detach*/ true, out_fd, &client_id);
 }
 
+bool PermissionBroker::OpenPathAndRegisterClient(
+    brillo::ErrorPtr* error,
+    const std::string& in_path,
+    uint32_t drop_privileges_mask,
+    const base::ScopedFD& in_lifeline_fd,
+    brillo::dbus_utils::FileDescriptor* out_fd,
+    std::string* out_client_id) {
+  VLOG(1) << "Received OpenPathAndRegisterClient request on path " << in_path;
+  return OpenPathImpl(error, in_path, drop_privileges_mask,
+                      in_lifeline_fd.get(),
+                      /*to_detach*/ false, out_fd, out_client_id);
+}
+
 bool PermissionBroker::RequestLoopbackTcpPortLockdown(
     uint16_t in_port, const base::ScopedFD& in_lifeline_fd) {
   return port_tracker_.LockDownLoopbackTcpPort(in_port, in_lifeline_fd.get());
@@ -280,6 +293,20 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
 
   *out_fd = std::move(fd);
   return true;
+}
+
+bool PermissionBroker::DetachInterface(const std::string& client_id,
+                                       uint8_t iface_num) {
+  VLOG(1) << "Received DetachInterface request, client " << client_id
+          << ", iface_num " << static_cast<int>(iface_num);
+  return usb_driver_tracker_.DetachInterface(client_id, iface_num);
+}
+
+bool PermissionBroker::ReattachInterface(const std::string& client_id,
+                                         uint8_t iface_num) {
+  VLOG(1) << "Received ReattachInterface request, client " << client_id
+          << ", iface_num " << static_cast<int>(iface_num);
+  return usb_driver_tracker_.ReattachInterface(client_id, iface_num);
 }
 
 }  // namespace permission_broker

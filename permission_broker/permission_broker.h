@@ -52,6 +52,16 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                        uint32_t drop_privileges_mask,
                        const base::ScopedFD& in_lifeline_fd,
                        brillo::dbus_utils::FileDescriptor* out_fd) override;
+  bool OpenPathAndRegisterClient(brillo::ErrorPtr* error,
+                                 const std::string& in_path,
+                                 uint32_t drop_privileges_mask,
+                                 const base::ScopedFD& in_lifeline_fd,
+                                 brillo::dbus_utils::FileDescriptor* out_fd,
+                                 std::string* out_client_id) override;
+  bool DetachInterface(const std::string& client_id,
+                       uint8_t iface_num) override;
+  bool ReattachInterface(const std::string& client_id,
+                         uint8_t iface_num) override;
   bool RequestTcpPortAccess(uint16_t in_port,
                             const std::string& in_interface,
                             const base::ScopedFD& dbus_fd) override;
