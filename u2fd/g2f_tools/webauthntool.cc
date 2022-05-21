@@ -144,13 +144,13 @@ std::string ExtractCredentialId(const std::string& authenticator_data) {
 void MakeCredential(dbus::ObjectProxy* proxy,
                     int verification_type,
                     const std::string& rp_id,
-                    int request_id,
+                    const std::string& request_id,
                     const std::vector<std::string>& excluded_credential_ids) {
   u2f::MakeCredentialRequest req;
   req.set_verification_type(
       static_cast<u2f::VerificationType>(verification_type));
   req.set_rp_id(rp_id);
-  req.set_request_id(request_id);
+  req.set_request_id_str(request_id);
 
   for (const std::string& excluded_credential_id : excluded_credential_ids) {
     if (!excluded_credential_id.empty()) {
@@ -187,14 +187,14 @@ void MakeCredential(dbus::ObjectProxy* proxy,
 void GetAssertion(dbus::ObjectProxy* proxy,
                   int verification_type,
                   const std::string& rp_id,
-                  int request_id,
+                  const std::string& request_id,
                   const std::string& client_data_hash,
                   const std::vector<std::string>& allowed_credential_ids) {
   u2f::GetAssertionRequest req;
   req.set_verification_type(
       static_cast<u2f::VerificationType>(verification_type));
   req.set_rp_id(rp_id);
-  req.set_request_id(request_id);
+  req.set_request_id_str(request_id);
   req.set_client_data_hash(client_data_hash);
 
   for (const std::string& allowed_credential_id : allowed_credential_ids) {
@@ -245,9 +245,9 @@ void HasCredentials(dbus::ObjectProxy* proxy,
   }
 }
 
-void Cancel(dbus::ObjectProxy* proxy, int request_id) {
+void Cancel(dbus::ObjectProxy* proxy, const std::string& request_id) {
   u2f::CancelWebAuthnFlowRequest req;
-  req.set_request_id(request_id);
+  req.set_request_id_str(request_id);
 
   u2f::CancelWebAuthnFlowResponse resp =
       SendRequest<u2f::CancelWebAuthnFlowRequest,
@@ -288,8 +288,8 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(verification_type, 1,
                "type of verification to request: presence=1, verification=2");
   DEFINE_string(rp_id, "", "relaying party ID (domain name)");
-  DEFINE_int32(request_id, 1,
-               "identifier of a request, can be used for cancellation");
+  DEFINE_string(request_id, "1",
+                "identifier of a request, can be used for cancellation");
   DEFINE_string(client_data_hash, "", "client data hash, as a hex string");
   DEFINE_string(credential_id, "",
                 "comma-separated list of credential IDs, as hex strings");
