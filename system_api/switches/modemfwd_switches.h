@@ -25,6 +25,8 @@ const char kFwVersion[] = "fw_version";
 const char kFwMain[] = "main";
 const char kFwCarrier[] = "carrier";
 const char kFwOem[] = "oem";
+const char kFwAp[] = "ap";
+const char kFwDev[] = "dev";
 const char kFwCarrierUuid[] = "carrier_uuid";
 
 }  // namespace modemfwd

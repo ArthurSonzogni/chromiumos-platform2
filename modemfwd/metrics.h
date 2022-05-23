@@ -12,6 +12,7 @@
 
 #include <brillo/errors/error.h>
 #include <metrics/metrics_library.h>
+#include <metrics/structured/structured_events.h>
 
 namespace modemfwd {
 
@@ -90,6 +91,16 @@ enum class CheckForWedgedModemResult {
   kNumConstants
 };
 
+enum class ModemFirmwareType {
+  kModemFirmwareTypeNotAvailable = 0,
+  kModemFirmwareTypeUnknown = 1,
+  kModemFirmwareTypeMain = 2,
+  kModemFirmwareTypeOem = 4,
+  kModemFirmwareTypeCarrier = 8,
+  kModemFirmwareTypeAp = 16,
+  kModemFirmwareTypeDev = 32,
+};
+
 }  // namespace metrics
 
 // Performs UMA metrics logging for the modemfw daemon.
@@ -128,6 +139,13 @@ class Metrics {
   virtual void SendCheckForWedgedModemResult(
       metrics::CheckForWedgedModemResult result);
 
+  // Methods to report structured metric for details of firmware
+  // install operation.
+  virtual void SendDetailedFwInstallFailureResult(uint32_t firmware_types,
+                                                  const brillo::Error* err);
+
+  virtual void SendDetailedFwInstallSuccessResult(uint32_t firmware_types);
+
  protected:
   // For testing.
   Metrics() = default;
@@ -155,6 +173,9 @@ class Metrics {
 
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
+
+  virtual void SendDetailedFwInstallResult(uint32_t firmware_types,
+                                           metrics::FwInstallResult res);
 };
 
 }  // namespace modemfwd

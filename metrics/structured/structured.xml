@@ -559,6 +559,34 @@
       </summary>
     </metric>
   </event>
+  <event name="ModemFwdFwInstallResult">
+    <summary>
+      Records information about the firmware installation
+      operation performed by modemfwd. This includes details
+      of firmware types which were installed by the modemfwd
+      and information about the result of the firmware install operation.
+      In case fimmware install operation fails and modem helpers are
+      able to provide detailed error codes about reason of failure, they
+      will also be included as part of this event.
+    </summary>
+    <metric name="firmware_types" type="int">
+      <summary>
+        Indicates the set of firmware types modemfwd was trying to
+        install. Modemfwd could install multiple types of firmware
+        together based on the current status of the modem. This field
+        will represent the bitmask of combination of firmware types
+        being installed.Check ModemFirmwareType in modemfwd/metrics.h
+        for possible firmware types.
+      </summary>
+    </metric>
+    <metric name="fw_install_result" type="int">
+      <summary>
+        Indicates the result of firmware install operation.
+        Check FwInstallResult in modemfwd/metrics.h for list
+        of possible values.
+      </summary>
+    </metric>
+  </event>
 </project>
 
 <project name="rmad">

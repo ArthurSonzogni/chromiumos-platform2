@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <brillo/errors/error.h>
@@ -73,6 +74,9 @@ class ModemFlasher {
 
     // Used to determine if any FW was installed before reporting metrics.
     bool fw_flashed_ = false;
+    // Used to preserve the combination of firmware types flashed before
+    // reporting metrics.
+    uint32_t fw_types_flashed_ = 0;
 
    private:
     // Unlike carrier firmware, we should usually successfully flash the main
@@ -107,6 +111,8 @@ class ModemFlasher {
                                           FlashState* flash_state,
                                           const std::string& firmware_path,
                                           brillo::ErrorPtr* err);
+
+  uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg);
 
   std::unique_ptr<Journal> journal_;
 

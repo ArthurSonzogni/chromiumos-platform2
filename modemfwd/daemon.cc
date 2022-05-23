@@ -322,7 +322,7 @@ void Daemon::OnModemCarrierIdReady(
 
   if (IsAutoUpdateDisabledByPref()) {
     LOG(INFO) << "Update disabled by pref";
-    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false);
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
     return;
   }
   brillo::ErrorPtr err;

@@ -19,6 +19,7 @@
 #include "modemfwd/error.h"
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
+#include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/notification_manager.h"
 
@@ -60,6 +61,7 @@ void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
                                   firmware_path.c_str()));
   notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
   flash_state->fw_flashed_ = false;
+  flash_state->fw_types_flashed_ = 0;
 }
 
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
@@ -67,6 +69,38 @@ base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
                                                    brillo::ErrorPtr* err) {
   firmware_directory_->OverrideVariantForTesting(variant);
   return TryFlash(modem, err);
+}
+
+uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
+    std::vector<FirmwareConfig> flash_cfg) {
+  uint32_t fw_types = 0;
+  if (flash_cfg.empty())
+    return 0;
+  for (const auto& info : flash_cfg) {
+    std::string fw_type = info.fw_type;
+    if (fw_type == kFwMain)
+      fw_types |=
+          static_cast<int>(metrics::ModemFirmwareType::kModemFirmwareTypeMain);
+    else if (fw_type == kFwOem)
+      fw_types |=
+          static_cast<int>(metrics::ModemFirmwareType::kModemFirmwareTypeOem);
+    else if (fw_type == kFwCarrier)
+      fw_types |= static_cast<int>(
+          metrics::ModemFirmwareType::kModemFirmwareTypeCarrier);
+    else if (fw_type == kFwAp)
+      fw_types |=
+          static_cast<int>(metrics::ModemFirmwareType::kModemFirmwareTypeAp);
+    else if (fw_type == kFwDev)
+      fw_types |=
+          static_cast<int>(metrics::ModemFirmwareType::kModemFirmwareTypeDev);
+    else
+      fw_types |= static_cast<int>(
+          metrics::ModemFirmwareType::kModemFirmwareTypeUnknown);
+  }
+
+  ELOG(INFO) << "metrics_fw_types " << fw_types;
+
+  return fw_types;
 }
 
 base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
@@ -80,6 +114,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
                            equipment_id.c_str()));
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
     flash_state->fw_flashed_ = false;
+    flash_state->fw_types_flashed_ = 0;
     return base::OnceClosure();
   }
 
@@ -222,8 +257,9 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
     // This message is used by tests to track the end of flashing.
     LOG(INFO) << "The modem already has the correct firmware installed";
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(
-        flash_state->fw_flashed_);
+        flash_state->fw_flashed_, flash_state->fw_types_flashed_);
     flash_state->fw_flashed_ = false;
+    flash_state->fw_types_flashed_ = 0;
     return base::OnceClosure();
   }
   std::vector<std::string> fw_types;
@@ -238,11 +274,14 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
     Error::AddTo(err, FROM_HERE, kErrorResultFailureReturnedByHelper,
                  "Helper failed to flash firmware files");
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
+    notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
+        err->get(), GetFirmwareTypesForMetrics(flash_cfg));
     flash_state->fw_flashed_ = false;
+    flash_state->fw_types_flashed_ = 0;
     return base::OnceClosure();
   }
   flash_state->fw_flashed_ = true;
+  flash_state->fw_types_flashed_ = GetFirmwareTypesForMetrics(flash_cfg);
 
   for (const auto& info : flash_cfg) {
     std::string fw_type = info.fw_type;

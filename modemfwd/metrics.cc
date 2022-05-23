@@ -179,4 +179,23 @@ void Metrics::SendCheckForWedgedModemResult(CheckForWedgedModemResult result) {
       metrics::kMetricCheckForWedgedModemResult, static_cast<int>(result),
       static_cast<int>(CheckForWedgedModemResult::kNumConstants));
 }
+
+void Metrics::SendDetailedFwInstallResult(uint32_t firmware_types,
+                                          metrics::FwInstallResult res) {
+  ::metrics::structured::events::cellular::ModemFwdFwInstallResult()
+      .Setfirmware_types(firmware_types)
+      .Setfw_install_result(static_cast<int64_t>(res))
+      .Record();
+}
+
+void Metrics::SendDetailedFwInstallFailureResult(uint32_t firmware_types,
+                                                 const brillo::Error* err) {
+  FwInstallResult res = GetMetricFromInnerErrorCode(err, fw_install_result_);
+  SendDetailedFwInstallResult(firmware_types, res);
+}
+
+void Metrics::SendDetailedFwInstallSuccessResult(uint32_t firmware_types) {
+  SendDetailedFwInstallResult(firmware_types, FwInstallResult::kSuccess);
+}
+
 }  // namespace modemfwd

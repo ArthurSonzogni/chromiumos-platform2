@@ -78,6 +78,7 @@ static_library("libmodemfw") {
   configs += [ ":target_defaults" ]
   deps = [
     ":modemmanager_proxies",
+    "//metrics/structured:libstructuredmetrics",
     "//modemfwd//proto:modemfw-protos",
   ]
 }

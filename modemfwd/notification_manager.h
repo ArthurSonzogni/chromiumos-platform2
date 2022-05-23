@@ -20,8 +20,11 @@ class NotificationManager {
                                Metrics* metrics);
   virtual ~NotificationManager() = default;
 
-  virtual void NotifyUpdateFirmwareCompletedSuccess(bool fw_installed);
+  virtual void NotifyUpdateFirmwareCompletedSuccess(bool fw_installed,
+                                                    uint32_t firmware_types);
   virtual void NotifyUpdateFirmwareCompletedFailure(const brillo::Error*);
+  virtual void NotifyUpdateFirmwareCompletedFlashFailure(
+      const brillo::Error* error, uint32_t firmware_types);
 
  protected:
   NotificationManager() = default;

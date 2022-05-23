@@ -19,10 +19,17 @@ class MockNotificationManager : public NotificationManager {
   MockNotificationManager() {}
   ~MockNotificationManager() override = default;
 
-  MOCK_METHOD(void, NotifyUpdateFirmwareCompletedSuccess, (bool), (override));
+  MOCK_METHOD(void,
+              NotifyUpdateFirmwareCompletedSuccess,
+              (bool, uint32_t),
+              (override));
   MOCK_METHOD(void,
               NotifyUpdateFirmwareCompletedFailure,
               (const brillo::Error*),
+              (override));
+  MOCK_METHOD(void,
+              NotifyUpdateFirmwareCompletedFlashFailure,
+              (const brillo::Error*, uint32_t),
               (override));
 };
 
