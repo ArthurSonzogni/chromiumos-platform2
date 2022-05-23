@@ -9,6 +9,7 @@ option optimize_for = LITE_RUNTIME;
 
 package reporting;
 
+import "health.proto";
 import "record_constants.proto";
 
 // Record represents the data sent from the Reporting Client.
@@ -115,6 +116,8 @@ message EncryptedRecord {
   optional CompressionInformation compression_information = 4;
 
   optional SequenceInformation sequencing_information = 5 [deprecated = true];
+
+  optional ERPHealthData erp_health_data = 6;
 }
 
 // Tracking information for what compression is used.

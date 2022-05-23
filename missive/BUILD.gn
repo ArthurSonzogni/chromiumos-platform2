@@ -65,6 +65,7 @@ generate_pkg_config("libmissiveclient_pc") {
   defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
   libs = [
     "-lmissiveclientlib",
+    "-lmissiveprotohealth",
     "-lmissiveprotosecurityevents",
     "-lmissiveprotostatus",
     "-lmissiveprotorecordconstants",
@@ -118,6 +119,7 @@ static_library("missiveclientlib") {
   configs += [ "//common-mk:nouse_thin_archive" ]
 
   public_deps = [
+    "//missive/proto:libmissiveprotohealth",
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",

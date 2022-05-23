@@ -30,7 +30,10 @@ proto_library("libmissiveprotorecord") {
   proto_out_dir = "include/missive/proto"
   standalone = true
 
-  deps = [ ":libmissiveprotorecordconstants" ]
+  deps = [
+    ":libmissiveprotohealth",
+    ":libmissiveprotorecordconstants",
+  ]
 }
 
 proto_library("test_proto") {
@@ -39,6 +42,19 @@ proto_library("test_proto") {
   proto_in_dir = "//missive/proto"
   proto_out_dir = "include/missive/proto"
   standalone = true
+}
+
+proto_library("libmissiveprotohealth") {
+  sources = [ "synced/health.proto" ]
+
+  proto_in_dir = "//missive/proto/synced"
+  proto_out_dir = "include/missive/proto"
+  standalone = true
+
+  deps = [
+    ":libmissiveprotorecordconstants",
+    ":libmissiveprotostatus",
+  ]
 }
 
 proto_library("libmissiveprotointerface") {
