@@ -4,6 +4,8 @@
 
 #include "minios/process_manager.h"
 
+#include <unistd.h>
+
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
