@@ -4,7 +4,6 @@
 
 #include <memory>
 #include <optional>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -67,6 +66,26 @@ mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
                         &info->resolution_vertical);
   FillDisplayRefreshRate(libdrm_util, connector_id, &info->refresh_rate);
 
+  EdidInfo edid_info;
+  if (libdrm_util->FillEdidInfo(connector_id, &edid_info)) {
+    info->manufacturer = edid_info.manufacturer;
+    info->model_id = mojo_ipc::NullableUint16::New(edid_info.model_id);
+    if (edid_info.serial_number.has_value())
+      info->serial_number =
+          mojo_ipc::NullableUint32::New(edid_info.serial_number.value());
+    if (edid_info.manufacture_week.has_value())
+      info->manufacture_week =
+          mojo_ipc::NullableUint8::New(edid_info.manufacture_week.value());
+    if (edid_info.manufacture_year.has_value())
+      info->manufacture_year =
+          mojo_ipc::NullableUint16::New(edid_info.manufacture_year.value());
+    info->edid_version = edid_info.edid_version;
+    if (edid_info.is_degital_input)
+      info->input_type = mojo_ipc::DisplayInputType::kDigital;
+    else
+      info->input_type = mojo_ipc::DisplayInputType::kAnalog;
+    info->display_name = edid_info.display_name;
+  }
   return info;
 }
 
@@ -87,6 +106,26 @@ FetchExternalDisplayInfo(const std::unique_ptr<LibdrmUtil>& libdrm_util) {
                           &info->resolution_vertical);
     FillDisplayRefreshRate(libdrm_util, connector_id, &info->refresh_rate);
 
+    EdidInfo edid_info;
+    if (libdrm_util->FillEdidInfo(connector_id, &edid_info)) {
+      info->manufacturer = edid_info.manufacturer;
+      info->model_id = mojo_ipc::NullableUint16::New(edid_info.model_id);
+      if (edid_info.serial_number.has_value())
+        info->serial_number =
+            mojo_ipc::NullableUint32::New(edid_info.serial_number.value());
+      if (edid_info.manufacture_week.has_value())
+        info->manufacture_week =
+            mojo_ipc::NullableUint8::New(edid_info.manufacture_week.value());
+      if (edid_info.manufacture_year.has_value())
+        info->manufacture_year =
+            mojo_ipc::NullableUint16::New(edid_info.manufacture_year.value());
+      info->edid_version = edid_info.edid_version;
+      if (edid_info.is_degital_input)
+        info->input_type = mojo_ipc::DisplayInputType::kDigital;
+      else
+        info->input_type = mojo_ipc::DisplayInputType::kAnalog;
+      info->display_name = edid_info.display_name;
+    }
     infos.push_back(std::move(info));
   }
 

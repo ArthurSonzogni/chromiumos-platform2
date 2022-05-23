@@ -93,6 +93,7 @@ getuid32: 1
 #   0xc05064a7 == DRM_IOCTL_MODE_GETCONNECTOR
 #   0xc01464a6 == DRM_IOCTL_MODE_GETENCODER
 #   0xc06864a1 == DRM_IOCTL_MODE_GETCRTC
+#   0xc01064ac == DRM_IOCTL_MODE_GETPROPBLOB
 #   0xc0018036 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x36, 0x1)
 #   0xc0186440 == _IOC(_IOC_READ|_IOC_WRITE, 0x64, 0x40, 0x18)
 ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
@@ -107,7 +108,7 @@ ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
        arg1 == 0xc00c6448 || arg1 == 0xc010640c || arg1 == 0xc0246400 || \
        arg1 == 0xc0206440 || arg1 == 0xc04064a0 || arg1 == 0xc04064aa || \
        arg1 == 0xc05064a7 || arg1 == 0xc01464a6 || arg1 == 0xc06864a1 || \
-       arg1 == 0xc0018036 || arg1 == 0xc0186440
+       arg1 == 0xc0018036 || arg1 == 0xc0186440 || arg1 == 0xc01064ac
 kill: 1
 lstat64: 1
 madvise: 1

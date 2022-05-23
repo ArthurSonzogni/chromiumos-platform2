@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
 #include <utility>
 
-#include <base/check.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -71,6 +67,14 @@ TEST_F(DisplayFetcherTest, EmbeddedDisplayInfo) {
   EXPECT_EQ(edp_info->resolution_horizontal->value, 1920);
   EXPECT_EQ(edp_info->resolution_vertical->value, 1080);
   EXPECT_NEAR(edp_info->refresh_rate->value, 60.00, 1e-6);
+  EXPECT_EQ(edp_info->manufacturer, "AUO");
+  EXPECT_EQ(edp_info->model_id->value, 0x323D);
+  EXPECT_FALSE(edp_info->serial_number);
+  EXPECT_EQ(edp_info->manufacture_year->value, 2018);
+  EXPECT_EQ(edp_info->manufacture_week->value, 20);
+  EXPECT_EQ(edp_info->edid_version, "1.4");
+  EXPECT_EQ(edp_info->input_type, mojo_ipc::DisplayInputType::kDigital);
+  EXPECT_FALSE(edp_info->display_name.has_value());
 
   const auto& dp_infos = display_info->dp_infos;
   EXPECT_EQ(dp_infos->size(), 2);
@@ -80,6 +84,14 @@ TEST_F(DisplayFetcherTest, EmbeddedDisplayInfo) {
     EXPECT_EQ(dp_info->resolution_horizontal->value, 2560);
     EXPECT_EQ(dp_info->resolution_vertical->value, 1440);
     EXPECT_NEAR(dp_info->refresh_rate->value, 120.00, 1e-6);
+    EXPECT_EQ(dp_info->manufacturer, "DEL");
+    EXPECT_EQ(dp_info->model_id->value, 0x4231);
+    EXPECT_EQ(dp_info->serial_number->value, 1162368076);
+    EXPECT_EQ(dp_info->manufacture_year->value, 2022);
+    EXPECT_EQ(dp_info->manufacture_week->value, 3);
+    EXPECT_EQ(dp_info->edid_version, "1.3");
+    EXPECT_EQ(dp_info->input_type, mojo_ipc::DisplayInputType::kAnalog);
+    EXPECT_EQ(dp_info->display_name, "DELL U2722DE");
   }
 }
 

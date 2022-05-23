@@ -104,6 +104,7 @@ getuid: 1
 #   0xc05064a7 == DRM_IOCTL_MODE_GETCONNECTOR
 #   0xc01464a6 == DRM_IOCTL_MODE_GETENCODER
 #   0xc06864a1 == DRM_IOCTL_MODE_GETCRTC
+#   0xc01064ac == DRM_IOCTL_MODE_GETPROPBLOB
 #   0xc0106441 == DRM_IOCTL_VIRTGPU_MAP
 #   0xc0106443 == DRM_IOCTL_VIRTGPU_GETPARAM
 #   0xc0186449 == DRM_IOCTL_VIRTGPU_GET_CAPS
@@ -129,7 +130,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc06864a1 || arg1 == 0xc008646a || arg1 == 0xc0206466 || \
        arg1 == 0xc0106441 || arg1 == 0xc0106443 || arg1 == 0xc0186449 || \
        arg1 == 0xc0206442 || arg1 == 0xc0386444 || arg1 == 0xc010640c || \
-       arg1 == 0xc010646d
+       arg1 == 0xc010646d || arg1 == 0xc01064ac
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
 lstat: 1
