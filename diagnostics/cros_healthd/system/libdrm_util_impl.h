@@ -31,6 +31,12 @@ struct DrmModePropertyDeleter {
   void operator()(drmModePropertyRes* prop) { drmModeFreeProperty(prop); }
 };
 
+struct DrmModePropertyBlobDeleter {
+  void operator()(drmModePropertyBlobRes* prop) {
+    drmModeFreePropertyBlob(prop);
+  }
+};
+
 struct DrmModeEncoderDeleter {
   void operator()(drmModeEncoder* encoder) { drmModeFreeEncoder(encoder); }
 };
@@ -38,6 +44,17 @@ struct DrmModeEncoderDeleter {
 struct DrmModeCrtcDeleter {
   void operator()(drmModeCrtc* crtc) { drmModeFreeCrtc(crtc); }
 };
+
+using ScopedDrmModeResPtr = std::unique_ptr<drmModeRes, DrmModeResDeleter>;
+using ScopedDrmModeConnectorPtr =
+    std::unique_ptr<drmModeConnector, DrmModeConnectorDeleter>;
+using ScopedDrmPropertyPtr =
+    std::unique_ptr<drmModePropertyRes, DrmModePropertyDeleter>;
+using ScopedDrmPropertyBlobPtr =
+    std::unique_ptr<drmModePropertyBlobRes, DrmModePropertyBlobDeleter>;
+using ScopedDrmModeEncoderPtr =
+    std::unique_ptr<drmModeEncoder, DrmModeEncoderDeleter>;
+using ScopedDrmModeCrtcPtr = std::unique_ptr<drmModeCrtc, DrmModeCrtcDeleter>;
 
 class LibdrmUtilImpl : public LibdrmUtil {
  public:
@@ -60,16 +77,7 @@ class LibdrmUtilImpl : public LibdrmUtil {
                              uint32_t* vertical) override;
   bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate) override;
-
- private:
-  using ScopedDrmModeResPtr = std::unique_ptr<drmModeRes, DrmModeResDeleter>;
-  using ScopedDrmModeConnectorPtr =
-      std::unique_ptr<drmModeConnector, DrmModeConnectorDeleter>;
-  using ScopedDrmPropertyPtr =
-      std::unique_ptr<drmModePropertyRes, DrmModePropertyDeleter>;
-  using ScopedDrmModeEncoderPtr =
-      std::unique_ptr<drmModeEncoder, DrmModeEncoderDeleter>;
-  using ScopedDrmModeCrtcPtr = std::unique_ptr<drmModeCrtc, DrmModeCrtcDeleter>;
+  bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) override;
 
  private:
   // This function iterates all the properties in |connector| and find the
@@ -79,7 +87,9 @@ class LibdrmUtilImpl : public LibdrmUtil {
                      const std::string& name,
                      ScopedDrmPropertyPtr* prop);
   std::string GetEnumName(const ScopedDrmPropertyPtr& prop, uint32_t value);
-  void GetDrmCrtc(const uint32_t connector_id, ScopedDrmModeCrtcPtr* crtc);
+  ScopedDrmModeCrtcPtr GetDrmCrtc(const uint32_t connector_id);
+  ScopedDrmPropertyBlobPtr GetDrmPropertyBlob(const uint32_t connector_id,
+                                              const std::string& name);
 
   base::File device_file;
   uint32_t edp_connector_id;

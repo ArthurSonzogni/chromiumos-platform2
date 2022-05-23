@@ -8,8 +8,10 @@
 #include <cstdint>
 #include <vector>
 
-namespace diagnostics {
+#include "diagnostics/cros_healthd/utils/edid.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
+namespace diagnostics {
 // Interface for accessing the libdrm library.
 class LibdrmUtil {
  public:
@@ -29,6 +31,7 @@ class LibdrmUtil {
                                      uint32_t* vertical) = 0;
   virtual bool FillDisplayRefreshRate(const uint32_t connector_id,
                                       double* refresh_rate) = 0;
+  virtual bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) = 0;
 };
 
 }  // namespace diagnostics

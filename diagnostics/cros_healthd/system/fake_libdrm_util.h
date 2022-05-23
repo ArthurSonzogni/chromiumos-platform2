@@ -32,6 +32,7 @@ class FakeLibdrmUtil : public LibdrmUtil {
                              uint32_t* vertical) override;
   bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate) override;
+  bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) override;
 };
 
 }  // namespace diagnostics

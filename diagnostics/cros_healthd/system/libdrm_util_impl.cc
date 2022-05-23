@@ -147,22 +147,22 @@ int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
   return -1;
 }
 
-void LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id,
-                                ScopedDrmModeCrtcPtr* crtc) {
+ScopedDrmModeCrtcPtr LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
   // Sometimes there is no crtc info, for example, when the device hibernate,
   // the screen is black, there is no need to render, so the encoder id is
   // invalid as 0.
   if (!connector || connector->encoder_id == INVALID_ENCODER_ID)
-    return;
+    return nullptr;
 
   ScopedDrmModeEncoderPtr encoder(
       drmModeGetEncoder(device_file.GetPlatformFile(), connector->encoder_id));
   if (!encoder)
-    return;
+    return nullptr;
 
-  crtc->reset(drmModeGetCrtc(device_file.GetPlatformFile(), encoder->crtc_id));
+  return ScopedDrmModeCrtcPtr(
+      drmModeGetCrtc(device_file.GetPlatformFile(), encoder->crtc_id));
 }
 
 bool LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
@@ -181,8 +181,7 @@ bool LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
 bool LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
                                            uint32_t* horizontal,
                                            uint32_t* vertical) {
-  ScopedDrmModeCrtcPtr crtc;
-  GetDrmCrtc(connector_id, &crtc);
+  auto crtc = GetDrmCrtc(connector_id);
   if (crtc) {
     *horizontal = crtc->mode.hdisplay;
     *vertical = crtc->mode.vdisplay;
@@ -207,8 +206,7 @@ bool LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
 
 bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
                                             double* refresh_rate) {
-  ScopedDrmModeCrtcPtr crtc;
-  GetDrmCrtc(connector_id, &crtc);
+  auto crtc = GetDrmCrtc(connector_id);
   if (crtc && crtc->mode.htotal && crtc->mode.vtotal) {
     // |crtc->mode.vrefresh| indicates the refresh rate, however, it stores in
     // |uint32_t| type which loses the accuracy.
@@ -233,6 +231,39 @@ bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
         return true;
       }
     }
+  }
+
+  return false;
+}
+
+ScopedDrmPropertyBlobPtr LibdrmUtilImpl::GetDrmPropertyBlob(
+    const uint32_t connector_id, const std::string& name) {
+  ScopedDrmModeConnectorPtr connector(
+      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+  if (!connector)
+    return nullptr;
+
+  ScopedDrmPropertyPtr prop;
+  int idx = GetDrmProperty(connector, name, &prop);
+  if (idx >= 0 && prop->flags & DRM_MODE_PROP_BLOB) {
+    return ScopedDrmPropertyBlobPtr(drmModeGetPropertyBlob(
+        device_file.GetPlatformFile(), connector->prop_values[idx]));
+  }
+  return nullptr;
+}
+
+bool LibdrmUtilImpl::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
+  auto blob = GetDrmPropertyBlob(connector_id, "EDID");
+  if (!blob || !blob->length)
+    return false;
+
+  std::vector<uint8_t> blob_data(
+      reinterpret_cast<uint8_t*>(blob->data),
+      reinterpret_cast<uint8_t*>(blob->data) + blob->length);
+  auto edid_info = Edid::From(blob_data);
+  if (edid_info.has_value()) {
+    *info = std::move(edid_info.value());
+    return true;
   }
 
   return false;

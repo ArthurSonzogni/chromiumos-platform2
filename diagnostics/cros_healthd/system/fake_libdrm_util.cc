@@ -66,4 +66,26 @@ bool FakeLibdrmUtil::FillDisplayRefreshRate(const uint32_t connector_id,
   return true;
 }
 
+bool FakeLibdrmUtil::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
+  if (connector_id == 0) {
+    info->manufacturer = "AUO";
+    info->model_id = 0x323D;
+    info->manufacture_week = 20;
+    info->manufacture_year = 2018;
+    info->edid_version = "1.4";
+    info->is_degital_input = true;
+  } else {
+    info->manufacturer = "DEL";
+    info->model_id = 0x4231;
+    info->serial_number = 1162368076;
+    info->manufacture_week = 3;
+    info->manufacture_year = 2022;
+    info->edid_version = "1.3";
+    info->is_degital_input = false;
+    info->display_name = "DELL U2722DE";
+  }
+
+  return true;
+}
+
 }  // namespace diagnostics
