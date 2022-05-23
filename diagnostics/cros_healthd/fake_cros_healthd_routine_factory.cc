@@ -248,8 +248,9 @@ FakeCrosHealthdRoutineFactory::MakeFloatingPointAccuracyRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
-    DebugdAdapter* debugd_adapter, uint32_t wear_level_threshold) {
-  DCHECK(debugd_adapter);
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    uint32_t wear_level_threshold) {
+  DCHECK(debugd_proxy);
   return std::move(next_routine_);
 }
 

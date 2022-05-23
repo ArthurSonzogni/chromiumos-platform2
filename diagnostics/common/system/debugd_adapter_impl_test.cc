@@ -26,9 +26,6 @@ namespace diagnostics {
 namespace {
 
 constexpr char kNvmeIdentity[] = "identify_controller";
-constexpr int kNvmeGetLogPageId = 6;
-constexpr int kNvmeGetLogDataLength = 16;
-constexpr bool kNvmeGetLogRawBinary = true;
 
 class MockCallback {
  public:
@@ -80,42 +77,6 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySyncError) {
   auto result = debugd_adapter_->GetNvmeIdentitySync();
   EXPECT_TRUE(result.error);
   EXPECT_EQ(result.error->GetLocation(), kError->GetLocation());
-}
-
-// Tests that GetNvmeLog calls callback with output on success.
-TEST_F(DebugdAdapterImplTest, GetNvmeLog) {
-  constexpr char kResult[] = "AAAAABEAAACHEAAAAAAAAA==";
-  EXPECT_CALL(*debugd_proxy_mock_,
-              NvmeLogAsync(kNvmeGetLogPageId, kNvmeGetLogDataLength,
-                           kNvmeGetLogRawBinary, _, _, _))
-      .WillOnce(WithArg<3>(Invoke(
-          [kResult](base::OnceCallback<void(const std::string& /* result */)>
-                        success_callback) {
-            std::move(success_callback).Run(kResult);
-          })));
-  EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->GetNvmeLog(
-      kNvmeGetLogPageId, kNvmeGetLogDataLength, kNvmeGetLogRawBinary,
-      base::BindOnce(&MockCallback::OnStringResultCallback,
-                     base::Unretained(&callback_)));
-}
-
-// Tests that GetNvmeLog calls callback with error on failure.
-TEST_F(DebugdAdapterImplTest, GetNvmeLogError) {
-  const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(*debugd_proxy_mock_,
-              NvmeLogAsync(kNvmeGetLogPageId, kNvmeGetLogDataLength,
-                           kNvmeGetLogRawBinary, _, _, _))
-      .WillOnce(WithArg<4>(
-          Invoke([error = kError.get()](
-                     base::OnceCallback<void(brillo::Error*)> error_callback) {
-            std::move(error_callback).Run(error);
-          })));
-  EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->GetNvmeLog(
-      kNvmeGetLogPageId, kNvmeGetLogDataLength, kNvmeGetLogRawBinary,
-      base::BindOnce(&MockCallback::OnStringResultCallback,
-                     base::Unretained(&callback_)));
 }
 
 }  // namespace

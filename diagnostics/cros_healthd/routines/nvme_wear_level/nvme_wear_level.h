@@ -12,9 +12,14 @@
 #include <base/values.h>
 #include <brillo/errors/error.h>
 
-#include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+
+namespace org {
+namespace chromium {
+class debugdProxyInterface;
+}  // namespace chromium
+}  // namespace org
 
 namespace diagnostics {
 
@@ -30,7 +35,7 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
   static const uint32_t kNvmeLogDataLength;
   static const bool kNvmeLogRawBinary;
 
-  NvmeWearLevelRoutine(DebugdAdapter* debugd_adapter,
+  NvmeWearLevelRoutine(org::chromium::debugdProxyInterface* debugd_proxy,
                        uint32_t wear_level_threshold);
   NvmeWearLevelRoutine(const NvmeWearLevelRoutine&) = delete;
   NvmeWearLevelRoutine& operator=(const NvmeWearLevelRoutine&) = delete;
@@ -47,7 +52,8 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
       override;
 
  private:
-  void OnDebugdResultCallback(const std::string& result, brillo::Error* error);
+  void OnDebugdResultCallback(const std::string& result);
+  void OnDebugdErrorCallback(brillo::Error* error);
   // Updates status_, percent_, status_message_ at the same moment to ensure
   // each of them corresponds with the others.
   void UpdateStatus(
@@ -55,7 +61,7 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
       uint32_t percent,
       std::string msg);
 
-  DebugdAdapter* const debugd_adapter_ = nullptr;
+  org::chromium::debugdProxyInterface* const debugd_proxy_ = nullptr;
   const uint32_t wear_level_threshold_ = 0;
 
   chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =

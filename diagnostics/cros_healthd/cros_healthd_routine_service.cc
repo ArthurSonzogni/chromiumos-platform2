@@ -14,7 +14,6 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
-#include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
@@ -276,7 +275,7 @@ void CrosHealthdRoutineService::RunNvmeSelfTestRoutine(
 void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
-                 context_->debugd_adapter(), wear_level_threshold),
+                 context_->debugd_proxy(), wear_level_threshold),
              mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel,
              std::move(callback));
 }

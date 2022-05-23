@@ -21,22 +21,6 @@ namespace {
 
 constexpr char kNvmeIdentityOption[] = "identify_controller";
 
-using OnceStringResultCallback = DebugdAdapter::OnceStringResultCallback;
-auto SplitStringResultCallback(OnceStringResultCallback callback) {
-  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
-  auto on_success = base::BindOnce(
-      [](OnceStringResultCallback callback, const std::string& result) {
-        std::move(callback).Run(result, nullptr);
-      },
-      std::move(cb1));
-  auto on_error = base::BindOnce(
-      [](OnceStringResultCallback callback, brillo::Error* error) {
-        std::move(callback).Run(std::string(), error);
-      },
-      std::move(cb2));
-  return std::make_pair(std::move(on_success), std::move(on_error));
-}
-
 }  // namespace
 
 DebugdAdapterImpl::DebugdAdapterImpl(
@@ -51,15 +35,6 @@ DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
   StringResult result;
   debugd_proxy_->Nvme(kNvmeIdentityOption, &result.value, &result.error);
   return result;
-}
-
-void DebugdAdapterImpl::GetNvmeLog(uint32_t page_id,
-                                   uint32_t length,
-                                   bool raw_binary,
-                                   OnceStringResultCallback callback) {
-  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
-  debugd_proxy_->NvmeLogAsync(page_id, length, raw_binary,
-                              std::move(on_success), std::move(on_error));
 }
 
 }  // namespace diagnostics

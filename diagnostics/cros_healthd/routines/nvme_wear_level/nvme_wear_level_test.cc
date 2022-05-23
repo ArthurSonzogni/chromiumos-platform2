@@ -8,12 +8,12 @@
 
 #include <base/base64.h>
 #include <base/check.h>
+#include <debugd/dbus-proxy-mocks.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/mojo_utils.h"
-#include "diagnostics/common/system/mock_debugd_adapter.h"
 #include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -27,7 +27,8 @@ namespace diagnostics {
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-using OnceStringResultCallback = DebugdAdapter::OnceStringResultCallback;
+using OnceStringCallback = base::OnceCallback<void(const std::string& result)>;
+using OnceErrorCallback = base::OnceCallback<void(brillo::Error* error)>;
 
 constexpr uint32_t kThreshold50 = 50;
 
@@ -51,7 +52,7 @@ class NvmeWearLevelRoutineTest : public testing::Test {
   DiagnosticRoutine* routine() { return routine_.get(); }
 
   void CreateWearLevelRoutine(uint32_t wear_level_threshold) {
-    routine_ = std::make_unique<NvmeWearLevelRoutine>(&debugd_adapter_,
+    routine_ = std::make_unique<NvmeWearLevelRoutine>(&debugd_proxy_,
                                                       wear_level_threshold);
   }
 
@@ -67,7 +68,7 @@ class NvmeWearLevelRoutineTest : public testing::Test {
         std::move(update.routine_update_union));
   }
 
-  StrictMock<MockDebugdAdapter> debugd_adapter_;
+  StrictMock<org::chromium::debugdProxyMock> debugd_proxy_;
 
  private:
   std::unique_ptr<NvmeWearLevelRoutine> routine_;
@@ -82,12 +83,12 @@ TEST_F(NvmeWearLevelRoutineTest, Pass) {
   base::Base64Encode(kNvmeRawOutput, &nvme_encoded_output);
 
   CreateWearLevelRoutine(kThreshold50);
-  EXPECT_CALL(debugd_adapter_,
-              GetNvmeLog(NvmeWearLevelRoutine::kNvmeLogPageId,
-                         NvmeWearLevelRoutine::kNvmeLogDataLength,
-                         NvmeWearLevelRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
-        std::move(callback).Run(nvme_encoded_output, nullptr);
+  EXPECT_CALL(debugd_proxy_,
+              NvmeLogAsync(NvmeWearLevelRoutine::kNvmeLogPageId,
+                           NvmeWearLevelRoutine::kNvmeLogDataLength,
+                           NvmeWearLevelRoutine::kNvmeLogRawBinary, _, _, _))
+      .WillOnce(WithArg<3>([&](OnceStringCallback callback) {
+        std::move(callback).Run(nvme_encoded_output);
       }));
 
   EXPECT_EQ(routine()->GetStatus(),
@@ -108,12 +109,12 @@ TEST_F(NvmeWearLevelRoutineTest, HighWearLevel) {
   base::Base64Encode(kNvmeRawOutput, &nvme_encoded_output);
 
   CreateWearLevelRoutine(kThreshold50);
-  EXPECT_CALL(debugd_adapter_,
-              GetNvmeLog(NvmeWearLevelRoutine::kNvmeLogPageId,
-                         NvmeWearLevelRoutine::kNvmeLogDataLength,
-                         NvmeWearLevelRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
-        std::move(callback).Run(nvme_encoded_output, nullptr);
+  EXPECT_CALL(debugd_proxy_,
+              NvmeLogAsync(NvmeWearLevelRoutine::kNvmeLogPageId,
+                           NvmeWearLevelRoutine::kNvmeLogDataLength,
+                           NvmeWearLevelRoutine::kNvmeLogRawBinary, _, _, _))
+      .WillOnce(WithArg<3>([&](OnceStringCallback callback) {
+        std::move(callback).Run(nvme_encoded_output);
       }));
   VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
@@ -133,12 +134,12 @@ TEST_F(NvmeWearLevelRoutineTest, InvalidThreshold) {
 // Tests that the NvmeWearLevel routine fails if wear level is invalid.
 TEST_F(NvmeWearLevelRoutineTest, InvalidWearLevel) {
   CreateWearLevelRoutine(kThreshold50);
-  EXPECT_CALL(debugd_adapter_,
-              GetNvmeLog(NvmeWearLevelRoutine::kNvmeLogPageId,
-                         NvmeWearLevelRoutine::kNvmeLogDataLength,
-                         NvmeWearLevelRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
-        std::move(callback).Run(kInvaildWearLevel, nullptr);
+  EXPECT_CALL(debugd_proxy_,
+              NvmeLogAsync(NvmeWearLevelRoutine::kNvmeLogPageId,
+                           NvmeWearLevelRoutine::kNvmeLogDataLength,
+                           NvmeWearLevelRoutine::kNvmeLogRawBinary, _, _, _))
+      .WillOnce(WithArg<3>([&](OnceStringCallback callback) {
+        std::move(callback).Run(kInvaildWearLevel);
       }));
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
@@ -155,12 +156,12 @@ TEST_F(NvmeWearLevelRoutineTest, InvalidLength) {
   base::Base64Encode(kNvmeRawOutput, &nvme_encoded_output);
 
   CreateWearLevelRoutine(kThreshold50);
-  EXPECT_CALL(debugd_adapter_,
-              GetNvmeLog(NvmeWearLevelRoutine::kNvmeLogPageId,
-                         NvmeWearLevelRoutine::kNvmeLogDataLength,
-                         NvmeWearLevelRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
-        std::move(callback).Run(nvme_encoded_output, nullptr);
+  EXPECT_CALL(debugd_proxy_,
+              NvmeLogAsync(NvmeWearLevelRoutine::kNvmeLogPageId,
+                           NvmeWearLevelRoutine::kNvmeLogDataLength,
+                           NvmeWearLevelRoutine::kNvmeLogRawBinary, _, _, _))
+      .WillOnce(WithArg<3>([&](OnceStringCallback callback) {
+        std::move(callback).Run(nvme_encoded_output);
       }));
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
@@ -174,12 +175,12 @@ TEST_F(NvmeWearLevelRoutineTest, DebugdError) {
   const brillo::ErrorPtr kError =
       brillo::Error::Create(FROM_HERE, "", "", kDebugdErrorMessage);
   CreateWearLevelRoutine(kThreshold50);
-  EXPECT_CALL(debugd_adapter_,
-              GetNvmeLog(NvmeWearLevelRoutine::kNvmeLogPageId,
-                         NvmeWearLevelRoutine::kNvmeLogDataLength,
-                         NvmeWearLevelRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
-        std::move(callback).Run("", kError.get());
+  EXPECT_CALL(debugd_proxy_,
+              NvmeLogAsync(NvmeWearLevelRoutine::kNvmeLogPageId,
+                           NvmeWearLevelRoutine::kNvmeLogDataLength,
+                           NvmeWearLevelRoutine::kNvmeLogRawBinary, _, _, _))
+      .WillOnce(WithArg<4>([&](OnceErrorCallback callback) {
+        std::move(callback).Run(kError.get());
       }));
   VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kError,

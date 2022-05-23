@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
+#include <debugd/dbus-proxies.h>
 
 #include "diagnostics/common/mojo_utils.h"
 
@@ -34,11 +35,11 @@ constexpr uint32_t NvmeWearLevelRoutine::kNvmeLogPageId = 202;
 constexpr uint32_t NvmeWearLevelRoutine::kNvmeLogDataLength = 16;
 constexpr bool NvmeWearLevelRoutine::kNvmeLogRawBinary = true;
 
-NvmeWearLevelRoutine::NvmeWearLevelRoutine(DebugdAdapter* debugd_adapter,
-                                           uint32_t wear_level_threshold)
-    : debugd_adapter_(debugd_adapter),
-      wear_level_threshold_(wear_level_threshold) {
-  DCHECK(debugd_adapter_);
+NvmeWearLevelRoutine::NvmeWearLevelRoutine(
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    uint32_t wear_level_threshold)
+    : debugd_proxy_(debugd_proxy), wear_level_threshold_(wear_level_threshold) {
+  DCHECK(debugd_proxy_);
 }
 
 NvmeWearLevelRoutine::~NvmeWearLevelRoutine() = default;
@@ -57,10 +58,14 @@ void NvmeWearLevelRoutine::Start() {
   auto result_callback =
       base::BindOnce(&NvmeWearLevelRoutine::OnDebugdResultCallback,
                      weak_ptr_routine_.GetWeakPtr());
-  debugd_adapter_->GetNvmeLog(/*page_id=*/kNvmeLogPageId,
+  auto error_callback =
+      base::BindOnce(&NvmeWearLevelRoutine::OnDebugdErrorCallback,
+                     weak_ptr_routine_.GetWeakPtr());
+  debugd_proxy_->NvmeLogAsync(/*page_id=*/kNvmeLogPageId,
                               /*length=*/kNvmeLogDataLength,
                               /*raw_binary=*/kNvmeLogRawBinary,
-                              std::move(result_callback));
+                              std::move(result_callback),
+                              std::move(error_callback));
 }
 
 // The wear-level check can only be started.
@@ -103,15 +108,7 @@ mojo_ipc::DiagnosticRoutineStatusEnum NvmeWearLevelRoutine::GetStatus() {
   return status_;
 }
 
-void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result,
-                                                  brillo::Error* error) {
-  if (error) {
-    LOG(ERROR) << "Debugd error: " << error->GetMessage();
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, error->GetMessage());
-    return;
-  }
-
+void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result) {
   base::Value result_dict(base::Value::Type::DICTIONARY);
   result_dict.SetStringKey("rawData", result);
   output_dict_.SetKey("resultDetails", std::move(result_dict));
@@ -144,6 +141,14 @@ void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result,
 
   UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
                /*percent=*/100, kNvmeWearLevelRoutineSuccess);
+}
+
+void NvmeWearLevelRoutine::OnDebugdErrorCallback(brillo::Error* error) {
+  if (error) {
+    LOG(ERROR) << "Debugd error: " << error->GetMessage();
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 /*percent=*/100, error->GetMessage());
+  }
 }
 
 }  // namespace diagnostics

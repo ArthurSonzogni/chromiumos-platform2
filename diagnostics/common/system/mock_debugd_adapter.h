@@ -19,10 +19,6 @@ class MockDebugdAdapter : public DebugdAdapter {
   ~MockDebugdAdapter() override;
 
   MOCK_METHOD(StringResult, GetNvmeIdentitySync, (), (override));
-  MOCK_METHOD(void,
-              GetNvmeLog,
-              (uint32_t, uint32_t, bool, OnceStringResultCallback),
-              (override));
 };
 
 }  // namespace diagnostics

@@ -27,10 +27,6 @@ class DebugdAdapterImpl final : public DebugdAdapter {
 
   // DebugdAdapter overrides:
   StringResult GetNvmeIdentitySync() override;
-  void GetNvmeLog(uint32_t page_id,
-                  uint32_t length,
-                  bool raw_binary,
-                  OnceStringResultCallback callback) override;
 
  private:
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
