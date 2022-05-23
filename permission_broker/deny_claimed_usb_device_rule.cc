@@ -184,6 +184,8 @@ bool IsDeviceAllowedSerial(udev_device* device) {
   const DevicePolicy::UsbDeviceId kAllowedIds[] = {
       {0x03eb, 0x2145},  // Arduino Uno WiFi Rev2 (ATmega4809)
 
+      {0x0525, 0xa4a7},  // Linux-USB Serial Gadget (CDC ACM mode)
+
       {0x093c, 0x1101},  // Intrepid Control Systems ValueCAN 4
 
       {0x0d28, 0x0204},  // BBC micro:bit
