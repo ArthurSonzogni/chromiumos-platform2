@@ -33,7 +33,7 @@ void InitLog() {
 class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
  public:
   OobeConfigRestoreDaemon()
-      : DBusServiceDaemon(kOobeConfigRestoreServicePath) {}
+      : DBusServiceDaemon(kOobeConfigRestoreServiceName) {}
   OobeConfigRestoreDaemon(const OobeConfigRestoreDaemon&) = delete;
   OobeConfigRestoreDaemon& operator=(const OobeConfigRestoreDaemon&) = delete;
 
