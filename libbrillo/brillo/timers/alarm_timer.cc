@@ -79,6 +79,12 @@ void SimpleAlarmTimer::Stop() {
   is_running_ = false;
   alarm_fd_watcher_.reset();
   pending_task_.reset();
+
+  // This disarms the CLOCK_REALTIME alarm that will wake the system by
+  // writing an itimerspec with values of 0.
+  itimerspec alarm_time = {};
+  if (timerfd_settime(alarm_fd_.get(), 0, &alarm_time, NULL) < 0)
+    PLOG(ERROR) << "Error while disarming RTC alarm. Hardware timer may fire";
 }
 
 void SimpleAlarmTimer::Reset() {
