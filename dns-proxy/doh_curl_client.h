@@ -45,8 +45,13 @@ class DoHCurlClientInterface {
   // query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the CURL query.
-  using QueryCallback = base::RepeatingCallback<void(
-      void* ctx, const CurlResult& res, unsigned char* msg, size_t len)>;
+  // |num_remaining| is number of queries for a given request that are
+  // still being processed.
+  using QueryCallback = base::RepeatingCallback<void(void* ctx,
+                                                     const CurlResult& res,
+                                                     unsigned char* msg,
+                                                     size_t len,
+                                                     int num_remaining)>;
 
   virtual ~DoHCurlClientInterface() = default;
 
@@ -110,7 +115,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
     ~State();
 
     // Fetch the necessary response and run |callback|.
-    void RunCallback(CURLMsg* curl_msg, int64_t http_code);
+    void RunCallback(CURLMsg* curl_msg, int64_t http_code, int num_remaining);
 
     // Set DNS response |msg| of length |len| to |response|.
     void SetResponse(char* msg, size_t len);

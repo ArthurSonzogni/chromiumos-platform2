@@ -76,6 +76,9 @@ class Resolver {
     // a certain threshold.
     int num_retries;
 
+    // Boolean to track if the request to this SocketFd is handled.
+    bool request_handled;
+
     // Records timings for metrics.
     Metrics::QueryTimer timer;
   };
@@ -103,21 +106,33 @@ class Resolver {
   virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh = false);
 
-  // Handle DNS result queried through ares.
-  // This function will check the response and proxies it to the client upon
-  // successful. On failure, it will disregard the response.
+  // Handle DNS results queried through ares.
+  // If multiple name servers are used, it is expected for the ares client to
+  // call this method multiple times. This method will then call
+  // |HandleCombinedAresResult| to process the first successful result or the
+  // last result.
   //
   // |ctx| is a pointer given through `Resolve(...)` and is owned by this
   // class. |ctx| should be cleared here if no retry will be tried.
   // |status| is the ares response status. |msg| is the wire-format response
   // of the DNS query given through `Resolve(...)` with the len |len|.
   // |msg| and its lifecycle is owned by ares.
-  void HandleAresResult(void* ctx, int status, unsigned char* msg, size_t len);
+  void HandleAresResult(
+      void* ctx, int status, unsigned char* msg, size_t len, int num_remaining);
 
-  // Handle DoH result queried through curl.
+  // Handle DNS result from |HandleAresResult|.
   // This function will check the response and proxies it to the client upon
   // successful. On failure, it will disregard the response.
-  // TODO(jasongustaman): Handle failures.
+  void HandleCombinedAresResult(void* ctx,
+                                int status,
+                                unsigned char* msg,
+                                size_t len);
+
+  // Handle DoH results queried through curl.
+  // If multiple DoH providers are used, it is expected for the curl client to
+  // call this method multiple times. This method will then call
+  // |HandleCombinedCurlResult| to process the first successful result or the
+  // last result.
   //
   // |ctx| is a pointer given through `Resolve(...)` and is owned by this
   // class. |ctx| should be cleared here if no retry will be tried.
@@ -127,7 +142,16 @@ class Resolver {
   void HandleCurlResult(void* ctx,
                         const DoHCurlClient::CurlResult& res,
                         unsigned char* msg,
-                        size_t len);
+                        size_t len,
+                        int num_remaining);
+
+  // Handle DoH result from |HandleCurlResult|.
+  // This function will check the response and proxies it to the client upon
+  // successful. On failure, it will disregard the response.
+  void HandleCombinedCurlResult(void* ctx,
+                                const DoHCurlClient::CurlResult& res,
+                                unsigned char* msg,
+                                size_t len);
 
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   // If |fallback| is true, force to use standard plain-text DNS.

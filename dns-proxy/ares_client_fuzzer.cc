@@ -48,7 +48,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         std::numeric_limits<unsigned int>::max());
     ares_client.Resolve(
         msg.data(), msg.size(),
-        base::BindRepeating([](void*, int, uint8_t*, size_t) {}), nullptr);
+        base::BindRepeating([](void*, int, uint8_t*, size_t, int) {}), nullptr);
     base::RunLoop().RunUntilIdle();
   }
 

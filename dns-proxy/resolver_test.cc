@@ -131,7 +131,7 @@ TEST_F(ResolverTest, CurlResult_CURLFail) {
   Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_COULDNT_CONNECT, 0 /* http_code */,
                                 0 /* timeout */);
-  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0);
+  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -144,7 +144,7 @@ TEST_F(ResolverTest, CurlResult_HTTPError) {
 
   Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_OK, 403 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0);
+  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -157,7 +157,7 @@ TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
 
   Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0);
+  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -171,14 +171,14 @@ TEST_F(ResolverTest, CurlResult_FailNoRetry) {
   Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res1(CURLE_OUT_OF_MEMORY, 200 /* http_code */,
                                  0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res1, nullptr, 0);
+  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res1, nullptr, 0, 0);
   task_environment_.RunUntilIdle();
 
   // |sock_fd| should be freed by now.
   sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res2(CURLE_OK, 403 /* http_code */,
                                  0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res2, nullptr, 0);
+  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res2, nullptr, 0, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -192,7 +192,7 @@ TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
   Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
   sock_fd->num_retries = INT_MAX;
   DoHCurlClient::CurlResult res(CURLE_OK, 429 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0);
+  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -204,7 +204,7 @@ TEST_F(ResolverTest, HandleAresResult_Success) {
 
   Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0);
   resolver_->HandleAresResult(static_cast<void*>(sock_fd), ARES_SUCCESS,
-                              nullptr, 0);
+                              nullptr, 0, 0);
 }
 
 TEST_F(ResolverTest, HandleAresResult_Fail) {
@@ -215,7 +215,7 @@ TEST_F(ResolverTest, HandleAresResult_Fail) {
 
   Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0);
   resolver_->HandleAresResult(static_cast<void*>(sock_fd), ARES_SUCCESS,
-                              nullptr, 0);
+                              nullptr, 0, 0);
 }
 
 TEST_F(ResolverTest, ConstructServFailResponse_ValidQuery) {

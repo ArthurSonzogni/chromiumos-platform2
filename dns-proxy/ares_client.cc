@@ -41,7 +41,7 @@ AresClient::~AresClient() {
   // equal to ARES_EDESTRUCTION. This callback ensures that the states of the
   // queries are cleared properly.
   for (const auto& channel : channels_inflight_) {
-    ares_destroy(channel);
+    ares_destroy(channel.first);
   }
   ares_library_cleanup();
 }
@@ -127,31 +127,29 @@ void AresClient::HandleResult(State* state,
   // `HandleResult(...)` may be called even after ares channel is destroyed
   // This happens if a query is completed while queries are being cancelled.
   // On such case, do nothing, the state will be deleted through unique pointer.
-  if (!base::Contains(channels_inflight_, state->channel)) {
+  const auto& channel_inflight = channels_inflight_.find(state->channel);
+  if (channel_inflight == channels_inflight_.end()) {
     return;
   }
 
-  // Ares will return 0 if no queries are active on the channel.
-  // |read_fds| and |write_fds| are unused.
-  fd_set read_fds, write_fds;
-  int nfds = ares_fds(state->channel, &read_fds, &write_fds);
-
-  // Run the callback if the current request is the first successful request
-  // or the current request is the last request.
-  if (status != ARES_SUCCESS && nfds > 0) {
+  if (--channel_inflight->second < 0) {
+    LOG(ERROR) << "Got unexpected number of ares queries remaining "
+               << channel_inflight->second;
     return;
   }
-  state->callback.Run(state->ctx, status, msg.get(), len);
+
+  // Run the callback.
+  state->callback.Run(state->ctx, status, msg.get(), len,
+                      channel_inflight->second);
   msg.reset();
 
-  // Cancel other queries and destroy the channel. Whenever ares_destroy is
-  // called, AresCallback will be called with status equal to ARES_EDESTRUCTION.
-  // This callback ensures that the states of the in-flight queries ares cleared
-  // properly.
-  channels_inflight_.erase(state->channel);
-  read_watchers_.erase(state->channel);
-  write_watchers_.erase(state->channel);
-  ares_destroy(state->channel);
+  // Cleanup the states.
+  if (channel_inflight->second == 0) {
+    channels_inflight_.erase(state->channel);
+    read_watchers_.erase(state->channel);
+    write_watchers_.erase(state->channel);
+    ares_destroy(state->channel);
+  }
 }
 
 void AresClient::ResetTimeout(ares_channel channel) {
@@ -221,9 +219,6 @@ ares_channel AresClient::InitChannel(int type) {
     return nullptr;
   }
 
-  // Start timeout handler.
-  channels_inflight_.emplace(channel);
-  ResetTimeout(channel);
   return channel;
 }
 
@@ -252,11 +247,15 @@ bool AresClient::Resolve(const unsigned char* msg,
   // Query multiple name servers concurrently. Selection of name servers is
   // done implicitly through round robin selection. This is enabled by ares
   // option ARES_OPT_ROTATE.
-  for (int i = 0; i < std::min(num_name_servers_, max_concurrent_queries_);
-       i++) {
+  const int num_queries = std::min(num_name_servers_, max_concurrent_queries_);
+  for (int i = 0; i < num_queries; i++) {
     State* state = new State(this, channel, callback, ctx);
     ares_send(channel, msg, len, &AresClient::AresCallback, state);
   }
+
+  // Start timeout handler.
+  channels_inflight_.emplace(channel, num_queries);
+  ResetTimeout(channel);
 
   // Set up file descriptor watchers.
   read_watchers_.emplace(

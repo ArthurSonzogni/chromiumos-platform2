@@ -44,10 +44,12 @@ DoHCurlClient::State::~State() {
   curl_slist_free_all(header_list);
 }
 
-void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg, int64_t http_code) {
+void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg,
+                                       int64_t http_code,
+                                       int num_remaining) {
   // TODO(jasongustaman): Use HTTP 429, Retry-After header value.
   CurlResult res(curl_msg->data.result, http_code, 0 /* retry_delay_ms */);
-  callback.Run(ctx, res, response.data(), response.size());
+  callback.Run(ctx, res, response.data(), response.size(), num_remaining);
 }
 
 void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
@@ -107,15 +109,22 @@ void DoHCurlClient::HandleResult(CURLMsg* curl_msg) {
   int64_t http_code = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
-  // Run the callback if the current request is the first successful request
-  // or the current request is the last request (noted by the number of request
-  // with the same |request_id| is 1).
-  if (http_code == kHTTPOk || requests_[state->request_id].size() == 1) {
-    state->RunCallback(curl_msg, http_code);
-    CancelRequest(state->request_id);
+  // Run the callback.
+  int num_remaining = requests_[state->request_id].size() - 1;
+  if (num_remaining < 0) {
+    LOG(ERROR) << "Got unexpected number of curl queries remaining "
+               << num_remaining;
     return;
   }
-  // TODO(jasongustaman): Get and save curl metrics.
+  state->RunCallback(curl_msg, http_code, num_remaining);
+
+  // Clean states.
+  curl_multi_remove_handle(curlm_, state->curl);
+  states_.erase(state->curl);
+  requests_[state->request_id].erase(state);
+  if (num_remaining == 0) {
+    requests_.erase(state->request_id);
+  }
 }
 
 void DoHCurlClient::CheckMultiInfo() {
@@ -263,16 +272,6 @@ void DoHCurlClient::CancelRequest(const std::set<State*>& states) {
     curl_multi_remove_handle(curlm_, state->curl);
     states_.erase(state->curl);
   }
-}
-
-void DoHCurlClient::CancelRequest(int request_id) {
-  auto requests = requests_.find(request_id);
-  if (requests == requests_.end()) {
-    return;
-  }
-  // Cancel in-flight queries and delete the state.
-  CancelRequest(requests->second);
-  requests_.erase(request_id);
 }
 
 std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(

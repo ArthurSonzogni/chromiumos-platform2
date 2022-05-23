@@ -100,7 +100,7 @@ Metrics::QueryError CurlCodeMetric(int code) {
 }  // namespace
 
 Resolver::SocketFd::SocketFd(int type, int fd)
-    : type(type), fd(fd), num_retries(0) {
+    : type(type), fd(fd), num_retries(0), request_handled(false) {
   if (type == SOCK_STREAM) {
     socklen = 0;
     return;
@@ -204,27 +204,59 @@ void Resolver::OnTCPConnection() {
                                             weak_factory_.GetWeakPtr())));
 }
 
-void Resolver::HandleAresResult(void* ctx,
-                                int status,
-                                unsigned char* msg,
-                                size_t len) {
-  std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
+void Resolver::HandleAresResult(
+    void* ctx, int status, unsigned char* msg, size_t len, int num_remaining) {
+  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
+  if (!sock_fd->request_handled &&
+      (status == ARES_SUCCESS || num_remaining == 0)) {
+    HandleCombinedAresResult(ctx, status, msg, len);
+  }
+
+  // Delete |sock_fd| if all queries are processed and retry is not scheduled.
+  if (sock_fd->request_handled && num_remaining == 0) {
+    delete sock_fd;
+  }
+}
+
+void Resolver::HandleCombinedAresResult(void* ctx,
+                                        int status,
+                                        unsigned char* msg,
+                                        size_t len) {
+  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
   if (metrics_)
     metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
                                 AresStatusMetric(status));
 
+  sock_fd->request_handled = true;
   if (status != ARES_SUCCESS) {
     LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
     return;
   }
-  ReplyDNS(sock_fd.get(), msg, len);
+  ReplyDNS(sock_fd, msg, len);
 }
 
 void Resolver::HandleCurlResult(void* ctx,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
-                                size_t len) {
+                                size_t len,
+                                int num_remaining) {
+  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
+  if (!sock_fd->request_handled &&
+      (res.http_code == kHTTPOk || num_remaining == 0)) {
+    HandleCombinedCurlResult(ctx, res, msg, len);
+  }
+
+  // Delete |sock_fd| if all queries are processed and retry is not scheduled.
+  if (sock_fd->request_handled && num_remaining == 0) {
+    delete sock_fd;
+  }
+}
+
+void Resolver::HandleCombinedCurlResult(void* ctx,
+                                        const DoHCurlClient::CurlResult& res,
+                                        unsigned char* msg,
+                                        size_t len) {
   SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
   if (metrics_)
@@ -236,7 +268,7 @@ void Resolver::HandleCurlResult(void* ctx,
                << curl_easy_strerror(res.curl_code);
     if (always_on_doh_) {
       // TODO(jasongustaman): Send failure reply with RCODE.
-      delete sock_fd;
+      sock_fd->request_handled = true;
       return;
     }
     base::ThreadTaskRunnerHandle::Get()->PostTask(
@@ -249,14 +281,14 @@ void Resolver::HandleCurlResult(void* ctx,
   switch (res.http_code) {
     case kHTTPOk: {
       ReplyDNS(sock_fd, msg, len);
-      delete sock_fd;
+      sock_fd->request_handled = true;
       return;
     }
     case kHTTPTooManyRequests: {
       if (sock_fd->num_retries >= max_num_retries_) {
         LOG(ERROR) << "Failed to resolve hostname, retried " << max_num_retries_
                    << " tries";
-        delete sock_fd;
+        sock_fd->request_handled = true;
         return;
       }
 
@@ -279,7 +311,7 @@ void Resolver::HandleCurlResult(void* ctx,
                  << res.http_code;
       if (always_on_doh_) {
         // TODO(jasongustaman): Send failure reply with RCODE.
-        delete sock_fd;
+        sock_fd->request_handled = true;
       } else {
         base::ThreadTaskRunnerHandle::Get()->PostTask(
             FROM_HERE,

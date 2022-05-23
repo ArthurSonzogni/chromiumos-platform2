@@ -36,9 +36,13 @@ class AresClient {
   // |status| stores the ares result of the ares query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the ares query.
-  // This function follows ares's ares_callback signature.
-  using QueryCallback = base::RepeatingCallback<void(
-      void* ctx, int status, unsigned char* msg, size_t len)>;
+  // |num_remaining| is number of queries for a given request that are still
+  // being processed.
+  using QueryCallback = base::RepeatingCallback<void(void* ctx,
+                                                     int status,
+                                                     unsigned char* msg,
+                                                     size_t len,
+                                                     int num_remaining)>;
 
   AresClient(base::TimeDelta timeout,
              int max_num_retries,
@@ -153,12 +157,12 @@ class AresClient {
   // Maximum number of concurrent queries for a request.
   int max_concurrent_queries_;
 
-  // |channels_inflight_| stores all active channels. Each channel consists of
-  // a number of queries as ares runs multiple queries concurrently.
+  // |channels_inflight_| stores all active channels alongside the number of
+  // running queries for the channel.
   // A channel will be added to the set when it is created and will be removed
   // from the set when it is destroyed.
   // This will be used for callbacks to know whether a request is completed.
-  std::set<ares_channel> channels_inflight_;
+  std::map<ares_channel, int> channels_inflight_;
 
   // |name_servers_| endpoint to resolve addresses.
   std::string name_servers_;

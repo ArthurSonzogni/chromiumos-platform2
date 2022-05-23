@@ -53,7 +53,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     curl_client.Resolve(
         msg.data(), msg.size(),
         base::BindRepeating([](void*, const DoHCurlClientInterface::CurlResult&,
-                               uint8_t*, size_t) {}),
+                               uint8_t*, size_t, int) {}),
         nullptr);
     base::RunLoop().RunUntilIdle();
   }
