@@ -22,11 +22,9 @@ AresClient::State::State(AresClient* client,
     : client(client), channel(channel), callback(callback), ctx(ctx) {}
 
 AresClient::AresClient(base::TimeDelta timeout,
-                       int max_num_retries,
                        int max_concurrent_queries,
                        Metrics* metrics)
     : timeout_(timeout),
-      max_num_retries_(max_num_retries),
       max_concurrent_queries_(max_concurrent_queries),
       metrics_(metrics) {
   if (ares_library_init(ARES_LIB_INIT_ALL) != ARES_SUCCESS) {
@@ -186,7 +184,7 @@ ares_channel AresClient::InitChannel(int type) {
 
   // Set maximum number of retries.
   optmask |= ARES_OPT_TRIES;
-  options.tries = max_num_retries_;
+  options.tries = 1;
 
   // Perform round-robin selection of name servers. This enables Resolve(...)
   // to resolve using multiple servers concurrently.

@@ -25,7 +25,6 @@ const std::vector<std::string> kTestNameServers{"8.8.8.8"};
 const std::vector<std::string> kTestDoHProviders{
     "https://dns.google/dns-query"};
 constexpr base::TimeDelta kTimeout = base::Seconds(3);
-constexpr int32_t kMaxNumRetries = 1;
 
 class MockDoHCurlClient : public DoHCurlClient {
  public:
@@ -44,8 +43,7 @@ class MockDoHCurlClient : public DoHCurlClient {
 
 class MockAresClient : public AresClient {
  public:
-  MockAresClient()
-      : AresClient(kTimeout, kMaxNumRetries, kDefaultMaxConcurrentQueries) {}
+  MockAresClient() : AresClient(kTimeout, kDefaultMaxConcurrentQueries) {}
   ~MockAresClient() = default;
 
   MOCK_METHOD5(Resolve,

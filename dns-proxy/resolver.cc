@@ -126,8 +126,8 @@ Resolver::Resolver(base::TimeDelta timeout,
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
       metrics_(new Metrics) {
-  ares_client_ = std::make_unique<AresClient>(
-      timeout, max_num_retries, max_concurrent_queries, metrics_.get());
+  ares_client_ = std::make_unique<AresClient>(timeout, max_concurrent_queries,
+                                              metrics_.get());
   curl_client_ = std::make_unique<DoHCurlClient>(
       timeout, max_concurrent_queries, metrics_.get());
 }
@@ -228,12 +228,24 @@ void Resolver::HandleCombinedAresResult(void* ctx,
     metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
                                 AresStatusMetric(status));
 
-  sock_fd->request_handled = true;
-  if (status != ARES_SUCCESS) {
-    LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
+  if (status == ARES_SUCCESS) {
+    sock_fd->request_handled = true;
+    ReplyDNS(sock_fd, msg, len);
     return;
   }
-  ReplyDNS(sock_fd, msg, len);
+
+  // Retry query upon failure.
+  if (sock_fd->num_retries++ >= max_num_retries_) {
+    LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
+    sock_fd->request_handled = true;
+    return;
+  }
+
+  // Retry resolving the domain.
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
+                                sock_fd, false /* fallback */));
+  return;
 }
 
 void Resolver::HandleCurlResult(void* ctx,

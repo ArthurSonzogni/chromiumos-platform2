@@ -45,7 +45,6 @@ class AresClient {
                                                      int num_remaining)>;
 
   AresClient(base::TimeDelta timeout,
-             int max_num_retries,
              int max_concurrent_queries,
              Metrics* metrics = nullptr);
   virtual ~AresClient();
@@ -150,9 +149,6 @@ class AresClient {
 
   // Timeout for an ares query.
   base::TimeDelta timeout_;
-
-  // Maximum number of retries for an ares query.
-  int max_num_retries_;
 
   // Maximum number of concurrent queries for a request.
   int max_concurrent_queries_;
