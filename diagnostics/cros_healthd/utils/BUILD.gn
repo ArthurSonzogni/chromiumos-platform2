@@ -20,6 +20,7 @@ source_set("libcros_healthd_utils") {
   deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
   sources = [
     "callback_barrier.cc",
+    "edid.cc",
     "file_utils.cc",
     "fwupd_utils.cc",
     "helper_tool_utils.cc",
@@ -41,6 +42,7 @@ if (use.test) {
   source_set("libcros_healthd_utils_test") {
     sources = [
       "callback_barrier_test.cc",
+      "edid_test.cc",
       "file_utils_test.cc",
       "fwupd_utils_test.cc",
       "helper_tool_utils_test.cc",
