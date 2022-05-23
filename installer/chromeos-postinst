@@ -22,6 +22,14 @@ MOUNTS="/proc /dev /sys /tmp /run /var /mnt/stateful_partition"
 # Include chromeos-config, which is a submount of /run
 MOUNTS="${MOUNTS} /run/chromeos-config/v1"
 
+# Include efivarfs, which is a submount of /sys, if it's present.
+# This will only exist on efi systems with the appropriate kernel module. On
+# those systems this is needed for efi boot entry management.
+EFIVARS="/sys/firmware/efi/efivars"
+if [ -d "${EFIVARS}" ]; then
+  MOUNTS="${MOUNTS} ${EFIVARS}"
+fi
+
 cleanup() {
   local d
   for d in ${MOUNTS}; do
