@@ -32,29 +32,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   DoHCurlClient curl_client(base::Seconds(1), 1);
 
   while (provider.remaining_bytes() > 0) {
-    size_t n = provider.ConsumeIntegralInRange<size_t>(0, 99);
-    std::vector<std::string> s;
-    s.reserve(n);
-    for (size_t i = 0; i < n; ++i) {
-      s.emplace_back(provider.ConsumeRandomLengthString(
-          std::numeric_limits<unsigned int>::max()));
-    }
-    curl_client.SetNameServers(s);
-    curl_client.SetDoHProviders(s);
-
-    s.clear();
-    s.emplace_back("8.8.8.8");
-    curl_client.SetNameServers(s);
-    s.clear();
-    s.emplace_back("https://dns.google/dns-query");
-    curl_client.SetDoHProviders(s);
     auto msg =
         provider.ConsumeBytes<char>(std::numeric_limits<unsigned int>::max());
     curl_client.Resolve(
         msg.data(), msg.size(),
         base::BindRepeating([](void*, const DoHCurlClientInterface::CurlResult&,
                                uint8_t*, size_t, int) {}),
-        nullptr);
+        {"8.8.8.8"}, {"https://dns.google/dns-query"}, nullptr);
     base::RunLoop().RunUntilIdle();
   }
   return 0;

@@ -257,16 +257,6 @@ size_t DoHCurlClient::HeaderCallback(char* data,
   return len;
 }
 
-void DoHCurlClient::SetNameServers(
-    const std::vector<std::string>& name_servers) {
-  name_servers_ = base::JoinString(name_servers, ",");
-}
-
-void DoHCurlClient::SetDoHProviders(
-    const std::vector<std::string>& doh_providers) {
-  doh_providers_ = doh_providers;
-}
-
 void DoHCurlClient::CancelRequest(const std::set<State*>& states) {
   for (const auto& state : states) {
     curl_multi_remove_handle(curlm_, state->curl);
@@ -279,6 +269,7 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
     const char* msg,
     int len,
     const QueryCallback& callback,
+    const std::vector<std::string>& name_servers,
     void* ctx) {
   CURL* curl;
   curl = curl_easy_init();
@@ -296,7 +287,8 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
 
   // Set the DNS name servers to resolve the URL(s) / DoH provider(s).
   // This uses ares and will be done asynchronously.
-  curl_easy_setopt(curl, CURLOPT_DNS_SERVERS, name_servers_.c_str());
+  curl_easy_setopt(curl, CURLOPT_DNS_SERVERS,
+                   base::JoinString(name_servers, ",").c_str());
 
   // Set the HTTP header to the needed DoH header. The stored value needs to
   // be released when query is finished.
@@ -335,8 +327,10 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
 bool DoHCurlClient::Resolve(const char* msg,
                             int len,
                             const QueryCallback& callback,
+                            const std::vector<std::string>& name_servers,
+                            const std::vector<std::string>& doh_providers,
                             void* ctx) {
-  if (name_servers_.empty()) {
+  if (name_servers.empty()) {
     LOG(ERROR) << "Name server list must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
@@ -345,7 +339,7 @@ bool DoHCurlClient::Resolve(const char* msg,
     return false;
   }
 
-  if (doh_providers_.empty()) {
+  if (doh_providers.empty()) {
     LOG(ERROR) << "DoH provider list must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
@@ -356,9 +350,9 @@ bool DoHCurlClient::Resolve(const char* msg,
 
   std::set<State*> requests;
   int num_concurrent_queries = 0;
-  for (const auto& doh_provider : doh_providers_) {
+  for (const auto& doh_provider : doh_providers) {
     std::unique_ptr<State> state =
-        InitCurl(doh_provider, msg, len, callback, ctx);
+        InitCurl(doh_provider, msg, len, callback, name_servers, ctx);
     if (!state.get()) {
       continue;
     }

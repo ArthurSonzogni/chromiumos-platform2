@@ -370,15 +370,14 @@ void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
 }
 
 void Resolver::SetNameServers(const std::vector<std::string>& name_servers) {
-  ares_client_->SetNameServers(name_servers);
-  curl_client_->SetNameServers(name_servers);
+  name_servers_ = name_servers;
 }
 
 void Resolver::SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh) {
   always_on_doh_ = always_on_doh;
   doh_enabled_ = !doh_providers.empty();
-  curl_client_->SetDoHProviders(doh_providers);
+  doh_providers_ = doh_providers;
 }
 
 void Resolver::OnDNSQuery(int fd, int type) {
@@ -442,6 +441,7 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
     if (curl_client_->Resolve(sock_fd->msg, sock_fd->len,
                               base::BindRepeating(&Resolver::HandleCurlResult,
                                                   weak_factory_.GetWeakPtr()),
+                              name_servers_, doh_providers_,
                               reinterpret_cast<void*>(sock_fd))) {
       return;
     }
@@ -453,7 +453,7 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
             reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
             base::BindRepeating(&Resolver::HandleAresResult,
                                 weak_factory_.GetWeakPtr()),
-            reinterpret_cast<void*>(sock_fd), sock_fd->type)) {
+            name_servers_, reinterpret_cast<void*>(sock_fd), sock_fd->type)) {
       return;
     }
     sock_fd->timer.StopResolve(false);

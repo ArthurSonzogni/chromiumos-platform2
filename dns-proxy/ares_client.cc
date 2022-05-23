@@ -91,11 +91,6 @@ void AresClient::UpdateWatchers(ares_channel channel) {
   }
 }
 
-void AresClient::SetNameServers(const std::vector<std::string>& name_servers) {
-  name_servers_ = base::JoinString(name_servers, ",");
-  num_name_servers_ = name_servers.size();
-}
-
 void AresClient::AresCallback(
     void* ctx, int status, int timeouts, unsigned char* msg, int len) {
   State* state = static_cast<State*>(ctx);
@@ -173,7 +168,8 @@ void AresClient::ResetTimeout(ares_channel channel) {
       base::Milliseconds(timeout_ms));
 }
 
-ares_channel AresClient::InitChannel(int type) {
+ares_channel AresClient::InitChannel(
+    const std::vector<std::string>& name_servers, int type) {
   struct ares_options options;
   memset(&options, 0, sizeof(options));
   int optmask = 0;
@@ -211,7 +207,9 @@ ares_channel AresClient::InitChannel(int type) {
     return nullptr;
   }
 
-  if (ares_set_servers_csv(channel, name_servers_.c_str()) != ARES_SUCCESS) {
+  if (ares_set_servers_csv(channel,
+                           base::JoinString(name_servers, ",").c_str()) !=
+      ARES_SUCCESS) {
     LOG(ERROR) << "Failed to set ares name servers";
     ares_destroy(channel);
     return nullptr;
@@ -223,9 +221,10 @@ ares_channel AresClient::InitChannel(int type) {
 bool AresClient::Resolve(const unsigned char* msg,
                          size_t len,
                          const QueryCallback& callback,
+                         const std::vector<std::string>& name_servers,
                          void* ctx,
                          int type) {
-  if (name_servers_.empty()) {
+  if (name_servers.empty()) {
     LOG(ERROR) << "Name servers must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
@@ -233,7 +232,7 @@ bool AresClient::Resolve(const unsigned char* msg,
     }
     return false;
   }
-  ares_channel channel = InitChannel(type);
+  ares_channel channel = InitChannel(name_servers, type);
   if (!channel) {
     if (metrics_) {
       metrics_->RecordQueryResult(
@@ -245,7 +244,8 @@ bool AresClient::Resolve(const unsigned char* msg,
   // Query multiple name servers concurrently. Selection of name servers is
   // done implicitly through round robin selection. This is enabled by ares
   // option ARES_OPT_ROTATE.
-  const int num_queries = std::min(num_name_servers_, max_concurrent_queries_);
+  const int num_queries =
+      std::min(static_cast<int>(name_servers.size()), max_concurrent_queries_);
   for (int i = 0; i < num_queries; i++) {
     State* state = new State(this, channel, callback, ctx);
     ares_send(channel, msg, len, &AresClient::AresCallback, state);

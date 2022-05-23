@@ -197,6 +197,10 @@ class Resolver {
   std::unique_ptr<patchpanel::Socket> udp_src_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> udp_src_watcher_;
 
+  // Name servers and DoH providers used to resolve domain names.
+  std::vector<std::string> name_servers_;
+  std::vector<std::string> doh_providers_;
+
   // Delay before retrying a failing query.
   base::TimeDelta retry_delay_;
 

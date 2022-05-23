@@ -56,20 +56,17 @@ class DoHCurlClientInterface {
   virtual ~DoHCurlClientInterface() = default;
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
-  // |len|. |callback| will be called with |ctx| as its parameter upon query
-  // completion. `SetNameServers(...)` and SetDoHProviders(...)` must be called
-  // before calling this function.
+  // |len| using |name_servers| and |doh_providers|.
+  // |callback| will be called with |ctx| as its parameter upon query
+  // completion.
   // |msg| and |ctx| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
   virtual bool Resolve(const char* msg,
                        int len,
                        const QueryCallback& callback,
+                       const std::vector<std::string>& name_servers,
+                       const std::vector<std::string>& doh_providers,
                        void* ctx) = 0;
-
-  // Set standard DNS and DoH servers for running `Resolve(...)`.
-  virtual void SetNameServers(const std::vector<std::string>& name_servers) = 0;
-  virtual void SetDoHProviders(
-      const std::vector<std::string>& doh_providers) = 0;
 };
 
 // DoHCurlClient receives a wire-format DNS query and re-send it using secure
@@ -88,19 +85,22 @@ class DoHCurlClient : public DoHCurlClientInterface {
   virtual ~DoHCurlClient();
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
-  // |len|. |callback| will be called with |ctx| as its parameter upon query
-  // completion. `SetNameServers(...)` and SetDoHProviders(...)` must be called
+  // |len| using |name_servers| and |doh_providers|.
+  // |callback| will be called with |ctx| as its parameter upon query
+  // completion.
   // before calling this function.
   // |msg| and |ctx| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
+  // |name_servers| must contain one or more valid IPv4 or IPv6 addresses string
+  // such as "8.8.8.8" or "2001:4860:4860::8888".
+  // |doh_providers| must contain one or more valid DoH providers string (HTTPS
+  // endpoint) such as "https://dns.google/dns-query".
   bool Resolve(const char* msg,
                int len,
                const DoHCurlClientInterface::QueryCallback& callback,
+               const std::vector<std::string>& name_servers,
+               const std::vector<std::string>& doh_providers,
                void* ctx) override;
-
-  // Set standard DNS and DoH servers for running `Resolve(...)`.
-  void SetNameServers(const std::vector<std::string>& name_servers) override;
-  void SetDoHProviders(const std::vector<std::string>& doh_providers) override;
 
   // Returns a weak pointer to ensure that callbacks don't run after this class
   // is destroyed.
@@ -156,6 +156,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
                                   const char* msg,
                                   int len,
                                   const QueryCallback& callback,
+                                  const std::vector<std::string>& name_servers,
                                   void* ctx);
 
   // Callback informed about what to wait for. When called, register or remove
@@ -244,12 +245,6 @@ class DoHCurlClient : public DoHCurlClientInterface {
   std::map<curl_socket_t,
            std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       write_watchers_;
-
-  // |name_servers_| to resolve |doh_providers_| address.
-  std::string name_servers_;
-
-  // |doh_providers_| to resolve domain name using DoH.
-  std::vector<std::string> doh_providers_;
 
   // Maximum number of DoH providers to be queried concurrently.
   int max_concurrent_queries_;

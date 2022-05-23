@@ -30,6 +30,7 @@ class FakeAresClient : public AresClient {
   bool Resolve(const unsigned char* msg,
                size_t len,
                const AresClient::QueryCallback& callback,
+               const std::vector<std::string>& name_servers,
                void* ctx,
                int type) override {
     return provider_->ConsumeBool();
@@ -47,11 +48,11 @@ class FakeCurlClient : public DoHCurlClientInterface {
   bool Resolve(const char*,
                int,
                const DoHCurlClient::QueryCallback&,
+               const std::vector<std::string>&,
+               const std::vector<std::string>&,
                void*) override {
     return provider_->ConsumeBool();
   }
-  void SetNameServers(const std::vector<std::string>&) override {}
-  void SetDoHProviders(const std::vector<std::string>&) override {}
 
  private:
   FuzzedDataProvider* provider_;

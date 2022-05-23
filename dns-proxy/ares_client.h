@@ -49,23 +49,22 @@ class AresClient {
              Metrics* metrics = nullptr);
   virtual ~AresClient();
 
-  // Resolve DNS address using wire-format data |data| of size |len|.
+  // Resolve DNS address using wire-format data |data| of size |len| with
+  // |name_servers|.
   // |callback| will be called with |ctx| upon query completion.
   // |msg| and |ctx| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
+  // |name_servers| must contain one or more valid IPv4 or IPv6 addresses string
+  // such as "8.8.8.8" or "2001:4860:4860::8888".
   // The callback will return the wire-format response.
   // See: |QueryCallback|
-  //
-  // `SetNameServers(...)` must be called before calling this function.
   virtual bool Resolve(const unsigned char* msg,
                        size_t len,
                        const QueryCallback& callback,
+                       const std::vector<std::string>& name_servers,
                        void* ctx,
                        int type = SOCK_DGRAM);
-
-  // Set the target name servers to resolve DNS to.
-  virtual void SetNameServers(const std::vector<std::string>& name_servers);
 
  private:
   // State of an individual request.
@@ -123,7 +122,8 @@ class AresClient {
   // Initialize an ares channel. This will used for holding multiple concurrent
   // queries.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
-  ares_channel InitChannel(int type);
+  ares_channel InitChannel(const std::vector<std::string>& name_servers,
+                           int type);
 
   // Update file descriptors to be watched.
   // |read_watchers_| and |write_watchers_| stores the watchers.
@@ -159,12 +159,6 @@ class AresClient {
   // from the set when it is destroyed.
   // This will be used for callbacks to know whether a request is completed.
   std::map<ares_channel, int> channels_inflight_;
-
-  // |name_servers_| endpoint to resolve addresses.
-  std::string name_servers_;
-
-  // Number of stored name servers.
-  int num_name_servers_;
 
   Metrics* metrics_;
 

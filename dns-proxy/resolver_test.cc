@@ -16,6 +16,7 @@
 #include "dns-proxy/doh_curl_client.h"
 
 using testing::_;
+using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Return;
 
@@ -31,14 +32,13 @@ class MockDoHCurlClient : public DoHCurlClient {
   MockDoHCurlClient() : DoHCurlClient(kTimeout, kDefaultMaxConcurrentQueries) {}
   ~MockDoHCurlClient() = default;
 
-  MOCK_METHOD4(
-      Resolve,
-      bool(const char* msg, int len, const QueryCallback& callback, void* ctx));
-
-  MOCK_METHOD1(SetNameServers,
-               void(const std::vector<std::string>& name_servers));
-  MOCK_METHOD1(SetDoHProviders,
-               void(const std::vector<std::string>& doh_providers));
+  MOCK_METHOD6(Resolve,
+               bool(const char* msg,
+                    int len,
+                    const QueryCallback& callback,
+                    const std::vector<std::string>&,
+                    const std::vector<std::string>&,
+                    void* ctx));
 };
 
 class MockAresClient : public AresClient {
@@ -46,15 +46,13 @@ class MockAresClient : public AresClient {
   MockAresClient() : AresClient(kTimeout, kDefaultMaxConcurrentQueries) {}
   ~MockAresClient() = default;
 
-  MOCK_METHOD5(Resolve,
+  MOCK_METHOD6(Resolve,
                bool(const unsigned char* msg,
                     size_t len,
                     const QueryCallback& callback,
+                    const std::vector<std::string>&,
                     void* ctx,
                     int type));
-
-  MOCK_METHOD1(SetNameServers,
-               void(const std::vector<std::string>& name_servers));
 };
 
 }  // namespace
@@ -79,17 +77,30 @@ class ResolverTest : public testing::Test {
 };
 
 TEST_F(ResolverTest, SetNameServers) {
-  EXPECT_CALL(*ares_client_, SetNameServers(kTestNameServers)).Times(1);
-  EXPECT_CALL(*curl_client_, SetNameServers(kTestNameServers)).Times(1);
-  EXPECT_CALL(*curl_client_, SetDoHProviders(kTestDoHProviders)).Times(1);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, kTestNameServers, _, _))
+      .WillOnce(Return(true));
+
+  resolver_->SetNameServers(kTestNameServers);
+
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  resolver_->Resolve(&sock_fd);
+}
+
+TEST_F(ResolverTest, SetDoHProviders) {
+  EXPECT_CALL(*curl_client_,
+              Resolve(_, _, _, kTestNameServers, kTestDoHProviders, _))
+      .WillOnce(Return(true));
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
+
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  resolver_->Resolve(&sock_fd);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServers) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).WillOnce(Return(true));
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -99,8 +110,8 @@ TEST_F(ResolverTest, Resolve_DNSDoHServers) {
 }
 
 TEST_F(ResolverTest, Resolve_DNSServers) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
 
@@ -109,8 +120,8 @@ TEST_F(ResolverTest, Resolve_DNSServers) {
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -120,8 +131,8 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
 }
 
 TEST_F(ResolverTest, CurlResult_CURLFail) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -134,8 +145,8 @@ TEST_F(ResolverTest, CurlResult_CURLFail) {
 }
 
 TEST_F(ResolverTest, CurlResult_HTTPError) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -147,8 +158,8 @@ TEST_F(ResolverTest, CurlResult_HTTPError) {
 }
 
 TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -160,8 +171,8 @@ TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
 }
 
 TEST_F(ResolverTest, CurlResult_FailNoRetry) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders, true /* always_on */);
@@ -181,8 +192,8 @@ TEST_F(ResolverTest, CurlResult_FailNoRetry) {
 }
 
 TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -195,8 +206,8 @@ TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
 }
 
 TEST_F(ResolverTest, HandleAresResult_Success) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
 
@@ -206,8 +217,8 @@ TEST_F(ResolverTest, HandleAresResult_Success) {
 }
 
 TEST_F(ResolverTest, HandleAresResult_Fail) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
 
