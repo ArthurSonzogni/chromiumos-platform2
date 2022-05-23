@@ -85,6 +85,14 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
       base::BindRepeating(&BiometricsManagerWrapper::StartAuthSession,
                           base::Unretained(this)));
   dbus_object_.RegisterAsync(completion_callback);
+
+  // Add this BiometricsManagerWrapper instance to observe session state
+  // changes.
+  session_state_manager_->AddObserver(this);
+}
+
+BiometricsManagerWrapper::~BiometricsManagerWrapper() {
+  session_state_manager_->RemoveObserver(this);
 }
 
 BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
@@ -442,6 +450,29 @@ void BiometricsManagerWrapper::RefreshRecordObjects() {
   }
 }
 
+void BiometricsManagerWrapper::OnUserLoggedIn(
+    const std::string& sanitized_username, bool is_new_login) {
+  if (!biometrics_manager_->ResetSensor()) {
+    LOG(ERROR) << "Failed to reset biometric sensor type: "
+               << biometrics_manager_->GetType();
+  }
+
+  biometrics_manager_->SetDiskAccesses(true);
+  biometrics_manager_->ReadRecordsForSingleUser(sanitized_username);
+  RefreshRecordObjects();
+
+  if (is_new_login) {
+    biometrics_manager_->SendStatsOnLogin();
+  }
+}
+
+void BiometricsManagerWrapper::OnUserLoggedOut() {
+  // Assuming that log out will always log out all users at the same time.
+  biometrics_manager_->SetDiskAccesses(false);
+  biometrics_manager_->RemoveRecordsFromMemory();
+  RefreshRecordObjects();
+}
+
 BiometricsDaemon::BiometricsDaemon() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -484,36 +515,12 @@ BiometricsDaemon::BiometricsDaemon() {
     LOG(INFO) << "No CrosFpBiometricsManager detected.";
   }
 
-  session_state_manager_->AddObserver(this);
+  // Refresh primary user. If primary user is available then session state
+  // manager will call OnUserLoggedIn method from BiometricsManagerWrapper.
   session_state_manager_->RefreshPrimaryUser();
 
   CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
-void BiometricsDaemon::OnUserLoggedIn(const std::string& sanitized_username,
-                                      bool is_new_login) {
-  for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-    if (!biometrics_manager_wrapper->get().ResetSensor()) {
-      LOG(ERROR) << "Failed to reset biometric sensor type: "
-                 << biometrics_manager_wrapper->get().GetType();
-    }
-    biometrics_manager_wrapper->get().SetDiskAccesses(true);
-    biometrics_manager_wrapper->get().ReadRecordsForSingleUser(
-        sanitized_username);
-    biometrics_manager_wrapper->RefreshRecordObjects();
-    if (is_new_login) {
-      biometrics_manager_wrapper->get().SendStatsOnLogin();
-    }
-  }
-}
-
-void BiometricsDaemon::OnUserLoggedOut() {
-  // Assuming that log out will always log out all users at the same time.
-  for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-    biometrics_manager_wrapper->get().SetDiskAccesses(false);
-    biometrics_manager_wrapper->get().RemoveRecordsFromMemory();
-    biometrics_manager_wrapper->RefreshRecordObjects();
-  }
-}
 }  // namespace biod

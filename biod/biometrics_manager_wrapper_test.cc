@@ -79,6 +79,8 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
             bus_, dbus::ObjectPath(kBiodServicePath));
     session_manager_ = std::make_unique<MockSessionStateManager>();
 
+    EXPECT_CALL(*session_manager_, AddObserver).Times(1);
+
     mock_bio_path_ = dbus::ObjectPath(
         base::StringPrintf("%s/%s", kBiodServicePath, "MockBiometricsManager"));
 
@@ -996,6 +998,52 @@ TEST_F(BiometricsManagerWrapperTest, TestDestroyAllRecords) {
 
   auto response = CallMethod(&destroy_all_records);
   EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_METHOD_RETURN);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedInResetSensor) {
+  EXPECT_CALL(*bio_manager_, ResetSensor).WillOnce(Return(true));
+  wrapper_->OnUserLoggedIn(kUserID, false);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedInResetSensorFailed) {
+  EXPECT_CALL(*bio_manager_, ResetSensor).WillOnce(Return(false));
+  wrapper_->OnUserLoggedIn(kUserID, false);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedInSendStatsTrue) {
+  EXPECT_CALL(*bio_manager_, SendStatsOnLogin).Times(1);
+  wrapper_->OnUserLoggedIn(kUserID, true);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedInSendStatsFalse) {
+  EXPECT_CALL(*bio_manager_, SendStatsOnLogin).Times(0);
+  wrapper_->OnUserLoggedIn(kUserID, false);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedIn) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
+  // User is logged in, so expect to allow disk access.
+  EXPECT_CALL(*bio_manager_, SetDiskAccesses(true)).Times(1);
+  // When access to records is allowed, then we expect to read records for user.
+  EXPECT_CALL(*bio_manager_, ReadRecordsForSingleUser(kUserID)).Times(1);
+  // Expect to get list of records that are loaded.
+  EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(1);
+
+  wrapper_->OnUserLoggedIn(kUserID, false);
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedOut) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .WillRepeatedly(Return(kUserID));
+  // User is logged in, so expect to forbid disk access.
+  EXPECT_CALL(*bio_manager_, SetDiskAccesses(false)).Times(1);
+  // Remove all records from biometrics daemon memory and FPMCU.
+  EXPECT_CALL(*bio_manager_, RemoveRecordsFromMemory).Times(1);
+  // Expect that records are refreshed (part RefreshRecordObject()).
+  EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(1);
+
+  wrapper_->OnUserLoggedOut();
 }
 
 }  // namespace

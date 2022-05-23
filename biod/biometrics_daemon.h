@@ -23,7 +23,7 @@
 
 namespace biod {
 
-class BiometricsManagerWrapper {
+class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
  public:
   BiometricsManagerWrapper(
       std::unique_ptr<BiometricsManager> biometrics_manager,
@@ -34,14 +34,15 @@ class BiometricsManagerWrapper {
           completion_callback);
   BiometricsManagerWrapper(const BiometricsManagerWrapper&) = delete;
   BiometricsManagerWrapper& operator=(const BiometricsManagerWrapper&) = delete;
-
-  BiometricsManager& get() {
-    DCHECK(biometrics_manager_);
-    return *biometrics_manager_.get();
-  }
+  ~BiometricsManagerWrapper() override;
 
   // Updates the list of records reflected as dbus objects.
   void RefreshRecordObjects();
+
+  // SessionStateManagerInterface::Observer
+  void OnUserLoggedIn(const std::string& sanitized_username,
+                      bool is_new_login) override;
+  void OnUserLoggedOut() override;
 
  private:
   class RecordWrapper {
@@ -115,16 +116,11 @@ class BiometricsManagerWrapper {
   std::unique_ptr<brillo::dbus_utils::DBusObject> auth_session_dbus_object_;
 };
 
-class BiometricsDaemon : public SessionStateManagerInterface::Observer {
+class BiometricsDaemon {
  public:
   BiometricsDaemon();
   BiometricsDaemon(const BiometricsDaemon&) = delete;
   BiometricsDaemon& operator=(const BiometricsDaemon&) = delete;
-
-  // SessionStateManagerInterface::Observer
-  void OnUserLoggedIn(const std::string& sanitized_username,
-                      bool is_new_login) override;
-  void OnUserLoggedOut() override;
 
  private:
   scoped_refptr<dbus::Bus> bus_;
