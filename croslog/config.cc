@@ -11,6 +11,8 @@
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 
+#include "croslog/relative_time_util.h"
+
 namespace croslog {
 
 bool Config::ParseCommandLineArgs(int argc, const char* const argv[]) {
@@ -25,12 +27,18 @@ bool Config::ParseCommandLineArgs(int argc, const char* const argv[]) {
   DEFINE_string(cursor, "", "Show logs starting from the specified cursor.");
   DEFINE_bool(quiet, false, "Suppress informational messages.");
   DEFINE_bool(follow, false, "Show continiously new logs as they are written.");
-  DEFINE_string(since, "",
-                "Show entries not older than the specified date in YYYY-MM-DD "
-                "or YYYYMMDD in UTC (eg. '2021-01-02').");
-  DEFINE_string(until, "",
-                "Show entries not newer than the specified date in YYYY-MM-DD "
-                "or YYYYMMDD in UTC (eg. '2021-01-02').");
+  DEFINE_string(
+      since, "",
+      "Show entries not older than the specified date in YYYY-MM-DD "
+      "or YYYYMMDD in UTC (eg. '2021-01-02'). Relative times (in seconds) may "
+      "be specified, prefixed with \"-\" or \"+\", referring to times before "
+      "or after the current time, respectively.");
+  DEFINE_string(
+      until, "",
+      "Show entries not newer than the specified date in YYYY-MM-DD "
+      "or YYYYMMDD in UTC (eg. '2021-01-02'). Relative times (in seconds) may "
+      "be specified, prefixed with \"-\" or \"+\", referring to times before "
+      "or after the current time, respectively.");
 
   // "after-cursor" flag manual definition (the macro doesn't support a name
   // with hyphen)
@@ -103,7 +111,8 @@ bool Config::ParseCommandLineArgs(int argc, const char* const argv[]) {
 
   since = base::Time();
   if (!FLAGS_since.empty()) {
-    if (!base::Time::FromUTCString(FLAGS_since.c_str(), &since)) {
+    if (!base::Time::FromUTCString(FLAGS_since.c_str(), &since) &&
+        !ParseRelativeTime(FLAGS_since, &since)) {
       LOG(ERROR) << "Failed to parse '--since' date.";
       result = false;
     }
@@ -111,7 +120,8 @@ bool Config::ParseCommandLineArgs(int argc, const char* const argv[]) {
 
   until = base::Time();
   if (!FLAGS_until.empty()) {
-    if (!base::Time::FromUTCString(FLAGS_until.c_str(), &until)) {
+    if (!base::Time::FromUTCString(FLAGS_until.c_str(), &until) &&
+        !ParseRelativeTime(FLAGS_until, &until)) {
       LOG(ERROR) << "Failed to parse '--until' date.";
       result = false;
     }
