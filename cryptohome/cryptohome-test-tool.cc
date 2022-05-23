@@ -337,6 +337,23 @@ bool DoRecoveryCryptoDecryptAction(
                             mediated_recovery_key);
 }
 
+bool DoRecoveryCryptoGetFakeEpochAction(
+    const FilePath& epoch_response_out_file_path) {
+  CryptoRecoveryEpochResponse epoch_response;
+  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
+  return WriteHexFileLogged(
+      epoch_response_out_file_path,
+      brillo::SecureBlob(epoch_response.SerializeAsString()));
+}
+
+bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
+    const FilePath& mediator_pub_key_out_file_path) {
+  SecureBlob mediator_pub_key;
+  CHECK(
+      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
+  return WriteHexFileLogged(mediator_pub_key_out_file_path, mediator_pub_key);
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -423,6 +440,12 @@ int main(int argc, char* argv[]) {
       gaia_rapt_in_file, "",
       "Path to the file containing the hex-encoded Gaia RAPT to be added to "
       "RequestMetaData.");
+  DEFINE_string(
+      epoch_response_out_file, "",
+      "Path to the file containing the hex-encoded fake epoch response.");
+  DEFINE_string(
+      mediator_pub_key_out_file, "",
+      "Path to the file containing the hex-encoded fake mediator pub key.");
   brillo::FlagHelper::Init(argc, argv,
                            "cryptohome-test-tool - Test tool for cryptohome.");
 
@@ -500,6 +523,18 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_ephemeral_pub_key_in_file),
           FilePath(FLAGS_destination_share_in_file),
           FilePath(FLAGS_recovery_secret_out_file));
+    }
+  } else if (FLAGS_action == "recovery_crypto_get_fake_epoch") {
+    if (CheckMandatoryFlag("epoch_response_out_file",
+                           FLAGS_epoch_response_out_file)) {
+      success = DoRecoveryCryptoGetFakeEpochAction(
+          FilePath(FLAGS_epoch_response_out_file));
+    }
+  } else if (FLAGS_action == "recovery_crypto_get_fake_mediator_pub_key") {
+    if (CheckMandatoryFlag("mediator_pub_key_out_file",
+                           FLAGS_mediator_pub_key_out_file)) {
+      success = DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
+          FilePath(FLAGS_mediator_pub_key_out_file));
     }
   } else {
     LOG(ERROR) << "Unknown --action.";

@@ -204,6 +204,7 @@ static const char* kActions[] = {"mount_ex",
                                  "update_auth_factor",
                                  "remove_auth_factor",
                                  "get_auth_session_status",
+                                 "get_recovery_request",
                                  NULL};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -299,7 +300,8 @@ enum ActionEnum {
   ACTION_AUTHENTICATE_AUTH_FACTOR,
   ACTION_UPDATE_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
-  ACTION_GET_AUTH_SESSION_STATUS
+  ACTION_GET_AUTH_SESSION_STATUS,
+  ACTION_GET_RECOVERY_REQUEST
 };
 static const char kUserSwitch[] = "user";
 static const char kPasswordSwitch[] = "password";
@@ -340,6 +342,9 @@ static const char kKeyDelegatePath[] = "key_delegate_path";
 static const char kExtensionDuration[] = "extension_duration";
 static const char kUnlockWebAuthnSecret[] = "unlock_webauthn_secret";
 static const char kPinSwitch[] = "pin";
+static const char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
+static const char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
+static const char kRecoveryResponseSwitch[] = "recovery_response";
 }  // namespace switches
 
 brillo::SecureBlob GetSystemSalt(
@@ -641,6 +646,11 @@ bool BuildAuthFactor(base::CommandLine* cl,
     // Pin metadata has no fields currently.
     auth_factor->mutable_pin_metadata();
     return true;
+  } else if (cl->HasSwitch(switches::kRecoveryMediatorPubKeySwitch)) {
+    auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+    // Recovery metadata has no fields currently.
+    auth_factor->mutable_cryptohome_recovery_metadata();
+    return true;
   }
   printf("No auth factor specified\n");
   return false;
@@ -664,6 +674,46 @@ bool BuildAuthInput(base::CommandLine* cl,
       auth_input->mutable_pin_input()->set_secret(pin);
       return true;
     }
+  } else if (cl->HasSwitch(switches::kRecoveryMediatorPubKeySwitch)) {
+    std::string mediator_pub_key_hex =
+        cl->GetSwitchValueASCII(switches::kRecoveryMediatorPubKeySwitch);
+    std::string mediator_pub_key;
+    if (!base::HexStringToString(mediator_pub_key_hex.c_str(),
+                                 &mediator_pub_key)) {
+      printf("Couldn't convert mediator_pub_key_hex to string\n");
+      return false;
+    }
+    auth_input->mutable_cryptohome_recovery_input()->set_mediator_pub_key(
+        mediator_pub_key);
+    return true;
+  } else if (cl->HasSwitch(switches::kRecoveryResponseSwitch)) {
+    std::string recovery_response_hex =
+        cl->GetSwitchValueASCII(switches::kRecoveryResponseSwitch);
+    std::string recovery_response;
+    if (!base::HexStringToString(recovery_response_hex.c_str(),
+                                 &recovery_response)) {
+      printf("Couldn't convert recovery_response_hex to string\n");
+      return false;
+    }
+    auth_input->mutable_cryptohome_recovery_input()->set_recovery_response(
+        recovery_response);
+
+    if (!cl->HasSwitch(switches::kRecoveryEpochResponseSwitch)) {
+      printf("No %s switch specified\n",
+             switches::kRecoveryEpochResponseSwitch);
+      return false;
+    }
+    std::string epoch_response_hex =
+        cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch);
+    std::string epoch_response;
+    if (!base::HexStringToString(epoch_response_hex.c_str(), &epoch_response)) {
+      printf("Couldn't convert epoch_response_hex to string\n");
+      return false;
+    }
+    auth_input->mutable_cryptohome_recovery_input()->set_epoch_response(
+        epoch_response);
+
+    return true;
   }
   printf("No auth input specified\n");
   return false;
@@ -3264,6 +3314,49 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to get auth session status.\n");
+      return static_cast<int>(reply.error());
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_GET_RECOVERY_REQUEST],
+                     action.c_str())) {
+    user_data_auth::GetRecoveryRequestRequest req;
+    user_data_auth::GetRecoveryRequestReply reply;
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(cl, &auth_session_id_hex)) {
+      return 1;
+    }
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+    if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
+      printf("No auth factor label specified.\n");
+      return 1;
+    }
+    req.set_auth_factor_label(
+        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+    if (cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch)
+            .empty()) {
+      printf("No epoch response specified.\n");
+      return 1;
+    }
+    std::string epoch_response_hex, epoch_response;
+    epoch_response_hex =
+        cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch);
+    base::HexStringToString(epoch_response_hex.c_str(), &epoch_response);
+    req.set_epoch_response(epoch_response);
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to GetRecoveryRequest";
+    if (!userdataauth_proxy.GetRecoveryRequest(req, &reply, &error,
+                                               timeout_ms) ||
+        error) {
+      printf("GetRecoveryRequest call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    puts(GetProtoDebugString(reply).c_str());
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to get recovery request.\n");
       return static_cast<int>(reply.error());
     }
   } else {
