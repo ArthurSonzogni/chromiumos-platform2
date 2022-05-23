@@ -200,7 +200,7 @@ bool UsbManager::StartWatchingFileDescriptor(
   if (brillo::stream_utils::IsReadAccessMode(mode)) {
     watcher.read_watcher =
         base::FileDescriptorWatcher::WatchReadable(file_descriptor, callback);
-    success = success && watcher.read_watcher.get();
+    success = watcher.read_watcher.get();
   }
   if (brillo::stream_utils::IsWriteAccessMode(mode)) {
     watcher.write_watcher =
