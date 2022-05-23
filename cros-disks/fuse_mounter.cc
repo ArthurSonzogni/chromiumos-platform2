@@ -125,7 +125,7 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
                                     .Append("cgroup.procs");
 
   if (!platform_->PathExists(cgroup.value())) {
-    LOG(ERROR) << "Freezer cgroup " << quote(cgroup) << " is missing";
+    PLOG(ERROR) << "Freezer cgroup " << quote(cgroup) << " is missing";
     return false;
   }
 
@@ -152,15 +152,16 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
     sandbox->NewNetworkNamespace();
   } else {
     // Network DNS configs are in /run/shill.
-    if (!sandbox->BindMount("/run/shill", "/run/shill", false, false)) {
-      LOG(ERROR) << "Cannot bind /run/shill";
+    if (const std::string p = "/run/shill";
+        !sandbox->BindMount(p, p, false, false)) {
+      PLOG(ERROR) << "Cannot bind-mount " << quote(p);
       return false;
     }
 
     // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
-    if (platform_->PathExists("/etc/hosts.d") &&
-        !sandbox->BindMount("/etc/hosts.d", "/etc/hosts.d", false, false)) {
-      LOG(ERROR) << "Cannot bind /etc/hosts.d";
+    if (const std::string p = "/etc/hosts.d";
+        platform_->PathExists(p) && !sandbox->BindMount(p, p, false, false)) {
+      PLOG(ERROR) << "Cannot bind-mount " << quote(p);
       return false;
     }
   }

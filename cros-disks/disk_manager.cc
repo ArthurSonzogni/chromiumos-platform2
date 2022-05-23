@@ -88,13 +88,13 @@ class DiskFUSEMounter : public FUSEMounter {
     if (!device.IsAbsolute() || device.ReferencesParent() ||
         !base::StartsWith(device.value(), "/dev/",
                           base::CompareCase::SENSITIVE)) {
-      LOG(ERROR) << "Source path " << quote(device) << " is invalid";
+      LOG(ERROR) << "Device path " << quote(device) << " is invalid";
       *error = MOUNT_ERROR_INVALID_ARGUMENT;
       return nullptr;
     }
 
     if (!platform()->PathExists(device.value())) {
-      LOG(ERROR) << "Source path " << quote(device) << " does not exist";
+      PLOG(ERROR) << "Cannot access device " << quote(device);
       *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
       return nullptr;
     }
@@ -104,7 +104,7 @@ class DiskFUSEMounter : public FUSEMounter {
                                   sandbox_factory_.run_as().gid) ||
         !platform()->SetPermissions(source,
                                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)) {
-      LOG(ERROR) << "Can't set up permissions on " << quote(source);
+      PLOG(ERROR) << "Cannot set up permissions on device " << quote(source);
       *error = MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
       return nullptr;
     }
@@ -120,8 +120,8 @@ class DiskFUSEMounter : public FUSEMounter {
 
     // Bind-mount the device into the sandbox.
     if (!sandbox->BindMount(device.value(), device.value(), true, false)) {
-      LOG(ERROR) << "Can't bind the device " << quote(device)
-                 << " into the sandbox";
+      PLOG(ERROR) << "Cannot bind-mount device " << quote(device)
+                  << " into the sandbox";
       *error = MOUNT_ERROR_INTERNAL;
       return nullptr;
     }
@@ -314,8 +314,8 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   }
 
   if (!platform()->PathExists(disk.device_file)) {
-    LOG(ERROR) << quote(source_path) << " has device file "
-               << quote(disk.device_file) << " which is missing";
+    PLOG(ERROR) << quote(source_path) << " has device file "
+                << quote(disk.device_file) << " which is missing";
     *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
     return nullptr;
   }

@@ -145,8 +145,7 @@ bool ArchiveManager::ResolvePath(const std::string& path,
     mount_ns = brillo::ScopedMountNamespace::CreateFromPath(
         base::FilePath(ArchiveMounter::kChromeNamespace));
     if (!mount_ns) {
-      PLOG(ERROR) << "Cannot find archive " << redact(path)
-                  << " in mount namespace "
+      PLOG(ERROR) << "Cannot enter mount namespace "
                   << quote(ArchiveMounter::kChromeNamespace);
       return false;
     }
