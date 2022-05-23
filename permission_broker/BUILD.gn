@@ -102,7 +102,6 @@ if (use.test) {
       "rule_engine_test.cc",
       "rule_test.cc",
       "usb_control_test.cc",
-      "usb_driver_tracker_test.cc",
     ]
     configs += [
       "//common-mk:test",
