@@ -92,6 +92,12 @@ class DrawInterface {
   // Show progress bar at percentage given.
   virtual void ShowProgressPercentage(double progress) = 0;
 
+  // Show indeterminate progress bar.
+  virtual void ShowIndeterminateProgressBar() = 0;
+
+  // Hide/Stop indeterminate progress bar.
+  virtual void HideIndeterminateProgressBar() = 0;
+
   // Returns number of locales.
   virtual int GetSupportedLocalesSize() = 0;
 

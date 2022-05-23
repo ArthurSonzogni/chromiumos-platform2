@@ -64,6 +64,8 @@ class MockDrawInterface : public DrawInterface {
   MOCK_METHOD(void, LocaleChange, (int selected_locale));
   MOCK_METHOD(void, ShowProgressBar, ());
   MOCK_METHOD(void, ShowProgressPercentage, (double progress));
+  MOCK_METHOD(void, ShowIndeterminateProgressBar, ());
+  MOCK_METHOD(void, HideIndeterminateProgressBar, ());
   MOCK_METHOD(int, GetSupportedLocalesSize, ());
   MOCK_METHOD(int, GetDefaultButtonWidth, ());
   MOCK_METHOD(int, GetFreconCanvasSize, ());

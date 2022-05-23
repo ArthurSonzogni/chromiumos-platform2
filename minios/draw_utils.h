@@ -11,6 +11,8 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
 
 #include "minios/draw_interface.h"
@@ -48,6 +50,9 @@ extern const int kFreconNoOffset;
 // Screens.
 class DrawUtils : public DrawInterface {
  public:
+  // The period corresponding to 66.67 fps.
+  static constexpr base::TimeDelta kAnimationPeriod = base::Milliseconds(15);
+
   explicit DrawUtils(ProcessManagerInterface* process_manager)
       : process_manager_(process_manager),
         screens_path_(root_.Append(kScreens)) {
@@ -112,6 +117,10 @@ class DrawUtils : public DrawInterface {
 
   void ShowProgressPercentage(double progress) override;
 
+  void ShowIndeterminateProgressBar() override;
+
+  void HideIndeterminateProgressBar() override;
+
   int GetSupportedLocalesSize() override { return supported_locales_.size(); }
 
   int GetDefaultButtonWidth() override { return default_button_width_; }
@@ -149,8 +158,18 @@ class DrawUtils : public DrawInterface {
   FRIEND_TEST(DrawUtilsTestMocks, ShowFooter);
 
   // Shows a progress bar (box of a predetermined location) at the given offset
-  // with the given size. Color should be given as a hex string.
+  // with the given size. Color should be given as a hex string. Acts as a No-op
+  // if offset is outside the bounds of the canvas. Will also clamp progress bar
+  // to the bounds of the canvas.
   void ShowProgressBar(int offset_x, int size_x, const std::string& color);
+  // Initialize the segments and offsets for the head and tail of the
+  // indeterminate progress bar.
+  void InitIndeterminateProgressBar();
+  // Reset the offsets for the head and tail of the indeterminate progress bar
+  // to starting positions.
+  void ResetIndeterminateProgressBar();
+  // Draw the next segment of the indeterminate progress bar.
+  void DrawIndeterminateProgressBar();
 
   // Clears full screen except the footer.
   void ClearMainArea();
@@ -185,8 +204,15 @@ class DrawUtils : public DrawInterface {
 
   ProcessManagerInterface* process_manager_;
 
+  // Timer for animating the indeterminate progress bar.
+  base::RepeatingTimer timer_;
+
   int frecon_canvas_size_{1080};
   int frecon_scale_factor_{1};
+  // This is always half of `frecon_canvas_size` since offsets are always
+  // relative to the center of the screen and thus go from
+  // `-frecon_offset_limit` to `+frecon_offset_limit`.
+  int frecon_offset_limit_{540};
   // Default button width. Changes for each locale.
   int default_button_width_{80};
   // Default root directory.
@@ -209,6 +235,14 @@ class DrawUtils : public DrawInterface {
 
   // Hardware Id read from crossystem.
   std::string hwid_;
+
+  // X-offsets for the current head and tail of the indeterminate progress bar.
+  int indeterminate_progress_bar_head_;
+  int indeterminate_progress_bar_tail_;
+  // Per frame segment size for the head and tail of the indeterminate progress
+  // bar.
+  int segment_size_head_;
+  int segment_size_tail_;
 
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};

@@ -50,6 +50,17 @@ constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
 
 // The index for en-US in `supported_locales`.
 constexpr int kEnglishIndex = 9;
+
+// The resolution at which we draw segments of the indeterminate progress bar.
+// Tail is slightly slower than head in an attempt to approximate the material
+// design guidelines for indeterminate progress bars.
+constexpr float kProgressBarHeadSegments = 50.0f;
+constexpr float kProgressBarTailSegments = 57.0f;
+
+// Convert a floating point value to the nearest even integer.
+int nearbyeven(const float value) {
+  return static_cast<int>(std::nearbyint(value * 0.5f) * 2.0f);
+}
 }  // namespace
 
 bool DrawUtils::Init() {
@@ -60,6 +71,7 @@ bool DrawUtils::Init() {
     return false;
   }
   GetFreconConstants();
+  InitIndeterminateProgressBar();
   return true;
 }
 
@@ -201,7 +213,23 @@ int DrawUtils::FindLocaleIndex(int current_index) {
 void DrawUtils::ShowProgressBar(int offset_x,
                                 int size_x,
                                 const std::string& color) {
+  // No-op if offset is outside the bounds of the canvas.
+  if (offset_x > frecon_offset_limit_ || offset_x < -frecon_offset_limit_)
+    return;
+
   const int offset_y = -frecon_canvas_size_ / kProgressBarYScale;
+  // Clamp to the right boundary of the canvas.
+  const int max_x = offset_x + (size_x / 2);
+  if (max_x > frecon_offset_limit_) {
+    size_x = nearbyeven(frecon_offset_limit_ - (offset_x - (size_x / 2)));
+    offset_x = frecon_offset_limit_ - (size_x / 2);
+  }
+  // Clamp to the left boundary of the canvas.
+  const int min_x = offset_x - (size_x / 2);
+  if (min_x < -frecon_offset_limit_) {
+    size_x = nearbyeven((offset_x + (size_x / 2)) - (-frecon_offset_limit_));
+    offset_x = -frecon_offset_limit_ + (size_x / 2);
+  }
   ShowBox(offset_x, offset_y, size_x, kProgressBarHeight, color);
 }
 
@@ -220,6 +248,55 @@ void DrawUtils::ShowProgressPercentage(double progress) {
   int progress_length = kProgressIncrement * progress * 100;
   ShowProgressBar(kLeftIncrement + progress_length / 2, progress_length,
                   kMenuBlue);
+}
+
+void DrawUtils::ShowIndeterminateProgressBar() {
+  InitIndeterminateProgressBar();
+  // Show background for progress bar.
+  ShowProgressBar();
+  timer_.Start(FROM_HERE, kAnimationPeriod, this,
+               &DrawUtils::DrawIndeterminateProgressBar);
+}
+
+void DrawUtils::HideIndeterminateProgressBar() {
+  timer_.AbandonAndStop();
+  // Clear progress bar.
+  ShowProgressBar(kFreconNoOffset, frecon_canvas_size_, kMenuBlack);
+}
+
+void DrawUtils::InitIndeterminateProgressBar() {
+  // Calculate segment sizes as even numbers.
+  segment_size_head_ =
+      nearbyeven(frecon_canvas_size_ / kProgressBarHeadSegments);
+  segment_size_tail_ =
+      nearbyeven(frecon_canvas_size_ / kProgressBarTailSegments);
+  ResetIndeterminateProgressBar();
+}
+
+void DrawUtils::ResetIndeterminateProgressBar() {
+  constexpr int tail_delay = 20;
+  indeterminate_progress_bar_head_ = -frecon_offset_limit_;
+  indeterminate_progress_bar_tail_ =
+      -frecon_offset_limit_ - (tail_delay * segment_size_tail_);
+}
+
+void DrawUtils::DrawIndeterminateProgressBar() {
+  indeterminate_progress_bar_head_ += (segment_size_head_ / 2);
+  ShowProgressBar(indeterminate_progress_bar_head_, segment_size_head_,
+                  kMenuBlue);
+  indeterminate_progress_bar_tail_ += (segment_size_tail_ / 2);
+  ShowProgressBar(indeterminate_progress_bar_tail_, segment_size_tail_,
+                  kMenuGrey);
+
+  // Move offset to 5/6 of box just drawn so that there is 1/6 overlap instead
+  // of 1/2 overlap with the next box to be drawn.
+  indeterminate_progress_bar_head_ +=
+      std::nearbyint((segment_size_head_ / 6.0) * 2.0f);
+  indeterminate_progress_bar_tail_ +=
+      std::nearbyint((segment_size_tail_ / 6.0) * 2.0f);
+  if (indeterminate_progress_bar_tail_ > frecon_offset_limit_) {
+    ResetIndeterminateProgressBar();
+  }
 }
 
 void DrawUtils::ClearMainArea() {
@@ -580,6 +657,7 @@ void DrawUtils::GetFreconConstants() {
                    << " to int. Defaulting to canvas size " << kCanvasSize;
     }
   }
+  frecon_offset_limit_ = frecon_canvas_size_ / 2;
 }
 
 bool DrawUtils::ReadLangConstants() {

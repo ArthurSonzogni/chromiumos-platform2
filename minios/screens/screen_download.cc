@@ -45,10 +45,12 @@ void ScreenDownload::Finalizing() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_finalizing");
   draw_utils_->ShowStepper({"done", "done", "3-done"});
+  draw_utils_->ShowIndeterminateProgressBar();
   SetState(State::FINALIZING);
 }
 
 void ScreenDownload::Completed() {
+  draw_utils_->HideIndeterminateProgressBar();
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructions("title_MiniOS_complete");
   draw_utils_->ShowStepper({"done", "done", "done"});
@@ -112,6 +114,7 @@ void ScreenDownload::OnProgressChanged(
 
 void ScreenDownload::Reset() {
   index_ = 1;
+  draw_utils_->HideIndeterminateProgressBar();
 }
 
 ScreenType ScreenDownload::GetType() {
