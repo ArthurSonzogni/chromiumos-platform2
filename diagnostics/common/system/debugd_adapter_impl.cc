@@ -19,7 +19,6 @@ namespace diagnostics {
 
 namespace {
 
-constexpr char kSmartctlAttributesOption[] = "attributes";
 constexpr char kNvmeIdentityOption[] = "identify_controller";
 constexpr char kNvmeShortSelfTestOption[] = "short_self_test";
 constexpr char kNvmeLongSelfTestOption[] = "long_self_test";
@@ -50,18 +49,6 @@ DebugdAdapterImpl::DebugdAdapterImpl(
 }
 
 DebugdAdapterImpl::~DebugdAdapterImpl() = default;
-
-void DebugdAdapterImpl::GetSmartAttributes(OnceStringResultCallback callback) {
-  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
-  debugd_proxy_->SmartctlAsync(kSmartctlAttributesOption, std::move(on_success),
-                               std::move(on_error));
-}
-
-void DebugdAdapterImpl::GetNvmeIdentity(OnceStringResultCallback callback) {
-  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
-  debugd_proxy_->NvmeAsync(kNvmeIdentityOption, std::move(on_success),
-                           std::move(on_error));
-}
 
 DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
   StringResult result;

@@ -25,14 +25,6 @@ class DebugdAdapter {
 
   virtual ~DebugdAdapter() = default;
 
-  // Sends async request to debugd via D-Bus call. On success, debugd runs
-  // smartctl util to retrieve SMART attributes and returns output via callback.
-  virtual void GetSmartAttributes(OnceStringResultCallback callback) = 0;
-
-  // Sends async request to debugd via D-Bus call. On success, debugd runs
-  // nvme util to retrieve NVMe identity data and returns output via callback.
-  virtual void GetNvmeIdentity(OnceStringResultCallback callback) = 0;
-
   // Sends synchonous request to debugd via D-Bus call. On success, debugd runs
   // nvme util to retrieve NVMe identity data and returns output or an error.
   virtual StringResult GetNvmeIdentitySync() = 0;

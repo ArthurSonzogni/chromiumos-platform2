@@ -18,8 +18,6 @@ class MockDebugdAdapter : public DebugdAdapter {
   MockDebugdAdapter& operator=(const MockDebugdAdapter&) = delete;
   ~MockDebugdAdapter() override;
 
-  MOCK_METHOD(void, GetSmartAttributes, (OnceStringResultCallback), (override));
-  MOCK_METHOD(void, GetNvmeIdentity, (OnceStringResultCallback), (override));
   MOCK_METHOD(StringResult, GetNvmeIdentitySync, (), (override));
   MOCK_METHOD(void,
               RunNvmeShortSelfTest,

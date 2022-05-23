@@ -25,7 +25,6 @@ using ::testing::WithArg;
 namespace diagnostics {
 namespace {
 
-constexpr char kSmartAttributes[] = "attributes";
 constexpr char kNvmeIdentity[] = "identify_controller";
 constexpr char kNvmeShortSelfTestOption[] = "short_self_test";
 constexpr char kNvmeLongSelfTestOption[] = "long_self_test";
@@ -59,62 +58,6 @@ class DebugdAdapterImplTest : public ::testing::Test {
 
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
 };
-
-// Tests that GetSmartAttributes calls callback with output on success.
-TEST_F(DebugdAdapterImplTest, GetSmartAttributes) {
-  constexpr char kResult[] = "S.M.A.R.T. status";
-  EXPECT_CALL(*debugd_proxy_mock_, SmartctlAsync(kSmartAttributes, _, _, _))
-      .WillOnce(WithArg<1>(Invoke(
-          [kResult](base::OnceCallback<void(const std::string& /* result */)>
-                        success_callback) {
-            std::move(success_callback).Run(kResult);
-          })));
-  EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->GetSmartAttributes(base::BindOnce(
-      &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
-}
-
-// Tests that GetSmartAttributes calls callback with error on failure.
-TEST_F(DebugdAdapterImplTest, GetSmartAttributesError) {
-  const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(*debugd_proxy_mock_, SmartctlAsync(kSmartAttributes, _, _, _))
-      .WillOnce(WithArg<2>(
-          Invoke([error = kError.get()](
-                     base::OnceCallback<void(brillo::Error*)> error_callback) {
-            std::move(error_callback).Run(error);
-          })));
-  EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->GetSmartAttributes(base::BindOnce(
-      &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
-}
-
-// Tests that GetNvmeIdentity calls callback with output on success.
-TEST_F(DebugdAdapterImplTest, GetNvmeIdentity) {
-  constexpr char kResult[] = "NVMe identity data";
-  EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeIdentity, _, _, _))
-      .WillOnce(WithArg<1>(Invoke(
-          [kResult](base::OnceCallback<void(const std::string& /* result */)>
-                        success_callback) {
-            std::move(success_callback).Run(kResult);
-          })));
-  EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->GetNvmeIdentity(base::BindOnce(
-      &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
-}
-
-// Tests that GetNvmeIdentity calls callback with error on failure.
-TEST_F(DebugdAdapterImplTest, GetNvmeIdentityError) {
-  const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeIdentity, _, _, _))
-      .WillOnce(WithArg<2>(
-          Invoke([error = kError.get()](
-                     base::OnceCallback<void(brillo::Error*)> error_callback) {
-            std::move(error_callback).Run(error);
-          })));
-  EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->GetNvmeIdentity(base::BindOnce(
-      &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
-}
 
 // Tests that GetNvmeIdentitySync returns the output on success.
 TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySync) {
