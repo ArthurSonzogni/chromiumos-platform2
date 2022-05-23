@@ -98,6 +98,9 @@ pub enum HibernateError {
     /// Spawned process error
     #[error("Spawned process error: {0}")]
     SpawnedProcessError(i32),
+    /// Index out of range error
+    #[error("Index out of range")]
+    IndexOutOfRangeError(),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -417,4 +420,9 @@ pub fn checked_command_output(command: &mut std::process::Command) -> Result<std
             &code
         ))
     }
+}
+
+pub fn reboot_system() -> Result<()> {
+    error!("Rebooting system!");
+    checked_command(&mut Command::new("/sbin/reboot")).context("Failed to reboot system")
 }

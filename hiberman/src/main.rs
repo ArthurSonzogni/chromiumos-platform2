@@ -172,7 +172,7 @@ fn hiberman_cat(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     let is_log = matches.opt_present("l");
     for f in matches.free {
         if let Err(e) = hiberman::cat::cat_disk_file(&f, is_log) {
-            error!("Failed to cat {}: {}", &f, e);
+            error!("Failed to cat {}: {:?}", &f, e);
             result = Err(())
         }
     }

@@ -41,6 +41,7 @@ use crate::snapdev::{
     FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspKeyBlob, UswsuspUserKey,
 };
 use crate::splitter::ImageJoiner;
+use crate::volume::{PendingStatefulMerge, VolumeManager};
 
 // The maximum value expected for the GotSeed duration metric.
 pub const SEED_WAIT_METRIC_CEILING: isize = 120;
@@ -73,6 +74,10 @@ impl ResumeConductor {
         // Ensure the persistent version of the stateful block device is available.
         let _rw_stateful_lv = activate_physical_lv("unencrypted")?;
         self.options = options;
+        // Create a variable that will merge the stateful snapshots when this
+        // function returns one way or another.
+        let mut volume_manager = VolumeManager::new()?;
+        let _pending_merge = PendingStatefulMerge::new(&mut volume_manager);
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
