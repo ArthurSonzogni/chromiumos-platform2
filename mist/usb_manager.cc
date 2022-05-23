@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/streams/stream_utils.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/usb/usb_device.h>
@@ -41,6 +42,17 @@ brillo::Stream::AccessMode ConvertEventFlagsToWatchMode(
 }
 
 }  // namespace
+
+std::unique_ptr<UsbManager> UsbManager::Create() {
+  // Using new to access non-public constructor. See
+  // https://abseil.io/tips/134.
+  std::unique_ptr<UsbManager> usb_manager = base::WrapUnique(new UsbManager());
+  if (!usb_manager->Initialize()) {
+    return nullptr;
+  }
+
+  return usb_manager;
+}
 
 UsbManager::UsbManager() : context_(nullptr) {}
 

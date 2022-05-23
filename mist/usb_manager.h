@@ -36,14 +36,12 @@ class UsbManager {
   // FileDescriptorWatcher::WatchReadable/WatchWritable, so the caller must have
   // already created a FileDescriptorWatcher for the current thread. See the
   // comments on FileDescriptorWatcher::WatchReadable for details.
-  UsbManager();
+  static std::unique_ptr<UsbManager> Create();
+
   UsbManager(const UsbManager&) = delete;
   UsbManager& operator=(const UsbManager&) = delete;
 
   ~UsbManager();
-
-  // Initializes a USB session via libusb. Returns true on success.
-  bool Initialize();
 
   // Sets the debug level of libusb to |level|.
   void SetDebugLevel(int level);
@@ -67,6 +65,11 @@ class UsbManager {
   const UsbError& error() const { return error_; }
 
  protected:
+  UsbManager();
+
+  // Initializes a USB session via libusb. Returns true on success.
+  bool Initialize();
+
   // Starts watching |file_descriptor| for its readiness for I/O based on |mode|
   // |callback| is invoked when |file_descriptor| is ready for I/O. Returns true
   // on success.
