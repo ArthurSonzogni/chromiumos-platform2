@@ -130,7 +130,7 @@ void UsbManager::OnPollFileDescriptorAdded(int file_descriptor,
   VLOG(2) << base::StringPrintf(
       "Poll file descriptor %d on events 0x%016x added.", file_descriptor,
       events);
-  UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
+  auto* manager = reinterpret_cast<UsbManager*>(user_data);
   manager->StartWatchingFileDescriptor(
       file_descriptor, ConvertEventFlagsToWatchMode(events),
       base::BindRepeating(&UsbManager::HandleEventsNonBlocking,
@@ -143,7 +143,7 @@ void UsbManager::OnPollFileDescriptorRemoved(int file_descriptor,
 
   VLOG(2) << base::StringPrintf("Poll file descriptor %d removed.",
                                 file_descriptor);
-  UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
+  auto* manager = reinterpret_cast<UsbManager*>(user_data);
   manager->StopWatchingFileDescriptor(file_descriptor);
 }
 
