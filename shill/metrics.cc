@@ -78,12 +78,6 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
 }
 
 #if !defined(DISABLE_WIFI)
-bool ShouldEmitWiFiSessionTag() {
-  // TODO(b/226145383): Once the WiFi Session Tag mechanism has been stabilized,
-  // start reporting the Session Tag along with the "sessionized" WiFi metrics.
-  return false;
-}
-
 // List of WiFi adapters that have been added to AVL.
 // TODO(b/229020553): Instead of hardcoding the list here and in other places
 // (e.g. Tast), use a single source of truth.
@@ -1445,7 +1439,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetSessionTag(ShouldEmitWiFiSessionTag() ? session_tag : 0)
+      .SetSessionTag(session_tag)
       .SetAttemptType(info.type)
       .SetAPPhyMode(info.mode)
       .SetAPSecurityMode(info.security)
@@ -1489,7 +1483,7 @@ void Metrics::NotifyWiFiConnectionAttemptResult(NetworkServiceError result_code,
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetSessionTag(ShouldEmitWiFiSessionTag() ? session_tag : 0)
+      .SetSessionTag(session_tag)
       .SetResultCode(result_code)
       .Record();
 }
@@ -1510,7 +1504,7 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetSessionTag(ShouldEmitWiFiSessionTag() ? session_tag : 0)
+      .SetSessionTag(session_tag)
       .SetDisconnectionType(type)
       .SetDisconnectionReasonCode(reason)
       .Record();
