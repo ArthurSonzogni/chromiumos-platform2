@@ -19,8 +19,10 @@
 #include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
+#include <debugd/dbus-proxies.h>
 
 #include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/cros_healthd/system/debugd_constants.h"
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -86,10 +88,11 @@ constexpr uint32_t NvmeSelfTestRoutine::kNvmeLogPageId = 6;
 constexpr uint32_t NvmeSelfTestRoutine::kNvmeLogDataLength = 16;
 constexpr bool NvmeSelfTestRoutine::kNvmeLogRawBinary = true;
 
-NvmeSelfTestRoutine::NvmeSelfTestRoutine(DebugdAdapter* debugd_adapter,
-                                         SelfTestType self_test_type)
-    : debugd_adapter_(debugd_adapter), self_test_type_(self_test_type) {
-  DCHECK(debugd_adapter_);
+NvmeSelfTestRoutine::NvmeSelfTestRoutine(
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    SelfTestType self_test_type)
+    : debugd_proxy_(debugd_proxy), self_test_type_(self_test_type) {
+  DCHECK(debugd_proxy_);
 }
 
 NvmeSelfTestRoutine::~NvmeSelfTestRoutine() = default;
@@ -100,13 +103,20 @@ void NvmeSelfTestRoutine::Start() {
   auto result_callback =
       base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback,
                      weak_ptr_routine_.GetWeakPtr());
+  auto error_callback =
+      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdErrorCallback,
+                     weak_ptr_routine_.GetWeakPtr());
 
   switch (self_test_type_) {
     case kRunShortSelfTest:
-      debugd_adapter_->RunNvmeShortSelfTest(std::move(result_callback));
+      debugd_proxy_->NvmeAsync(kNvmeShortSelfTestOption,
+                               std::move(result_callback),
+                               std::move(error_callback));
       break;
     case kRunLongSelfTest:
-      debugd_adapter_->RunNvmeLongSelfTest(std::move(result_callback));
+      debugd_proxy_->NvmeAsync(kNvmeLongSelfTestOption,
+                               std::move(result_callback),
+                               std::move(error_callback));
       break;
   }
 }
@@ -120,7 +130,11 @@ void NvmeSelfTestRoutine::Cancel() {
   auto result_callback =
       base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback,
                      weak_ptr_routine_.GetWeakPtr());
-  debugd_adapter_->StopNvmeSelfTest(std::move(result_callback));
+  auto error_callback =
+      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdErrorCallback,
+                     weak_ptr_routine_.GetWeakPtr());
+  debugd_proxy_->NvmeAsync(kNvmeStopSelfTestOption, std::move(result_callback),
+                           std::move(error_callback));
 }
 
 void NvmeSelfTestRoutine::PopulateStatusUpdate(
@@ -129,10 +143,14 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(
     auto result_callback =
         base::BindOnce(&NvmeSelfTestRoutine::OnDebugdResultCallback,
                        weak_ptr_routine_.GetWeakPtr());
-    debugd_adapter_->GetNvmeLog(/*page_id=*/kNvmeLogPageId,
+    auto error_callback =
+        base::BindOnce(&NvmeSelfTestRoutine::OnDebugdErrorCallback,
+                       weak_ptr_routine_.GetWeakPtr());
+    debugd_proxy_->NvmeLogAsync(/*page_id=*/kNvmeLogPageId,
                                 /*length=*/kNvmeLogDataLength,
                                 /*raw_binary=*/kNvmeLogRawBinary,
-                                std::move(result_callback));
+                                std::move(result_callback),
+                                std::move(error_callback));
   }
 
   mojo_ipc::NonInteractiveRoutineUpdate update;
@@ -160,21 +178,16 @@ mojo_ipc::DiagnosticRoutineStatusEnum NvmeSelfTestRoutine::GetStatus() {
   return status_;
 }
 
-bool NvmeSelfTestRoutine::CheckDebugdError(brillo::Error* error) {
+void NvmeSelfTestRoutine::OnDebugdErrorCallback(brillo::Error* error) {
   if (error) {
     LOG(ERROR) << "Debugd error: " << error->GetMessage();
     UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
                  /*percent=*/100, error->GetMessage());
-    return true;
   }
-  return false;
 }
 
 void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback(
-    const std::string& result, brillo::Error* error) {
-  if (CheckDebugdError(error))
-    return;
-
+    const std::string& result) {
   ResetOutputDictToValue(result);
 
   // Checks whether self-test has already been launched.
@@ -192,10 +205,7 @@ void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback(
 }
 
 void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback(
-    const std::string& result, brillo::Error* error) {
-  if (CheckDebugdError(error))
-    return;
-
+    const std::string& result) {
   ResetOutputDictToValue(result);
 
   // Checks abortion if successful
@@ -223,11 +233,7 @@ bool NvmeSelfTestRoutine::CheckSelfTestCompleted(uint8_t progress,
   return (progress & 0xf) == 0 && (status >> 4) == self_test_type_;
 }
 
-void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result,
-                                                 brillo::Error* error) {
-  if (CheckDebugdError(error))
-    return;
-
+void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
   ResetOutputDictToValue(result);
   std::string decoded_output;
 

@@ -267,8 +267,8 @@ void CrosHealthdRoutineService::RunMemoryRoutine(
 void CrosHealthdRoutineService::RunNvmeSelfTestRoutine(
     mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type,
     RunNvmeSelfTestRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeNvmeSelfTestRoutine(
-                 context_->debugd_adapter(), nvme_self_test_type),
+  RunRoutine(routine_factory_->MakeNvmeSelfTestRoutine(context_->debugd_proxy(),
+                                                       nvme_self_test_type),
              mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest,
              std::move(callback));
 }

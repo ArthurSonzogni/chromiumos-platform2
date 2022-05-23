@@ -60,7 +60,7 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the NvmeSelfTest routine. See
   // diagnostics/routines/nvme_self_test for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
-      DebugdAdapter* debugd_adapter,
+      org::chromium::debugdProxyInterface* debugd_proxy,
       chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum
           nvme_self_test_type) = 0;
   // Constructs a new instance of the disk read routine. See

@@ -20,9 +20,6 @@ namespace diagnostics {
 namespace {
 
 constexpr char kNvmeIdentityOption[] = "identify_controller";
-constexpr char kNvmeShortSelfTestOption[] = "short_self_test";
-constexpr char kNvmeLongSelfTestOption[] = "long_self_test";
-constexpr char kNvmeStopSelfTestOption[] = "stop_self_test";
 
 using OnceStringResultCallback = DebugdAdapter::OnceStringResultCallback;
 auto SplitStringResultCallback(OnceStringResultCallback callback) {
@@ -54,25 +51,6 @@ DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
   StringResult result;
   debugd_proxy_->Nvme(kNvmeIdentityOption, &result.value, &result.error);
   return result;
-}
-
-void DebugdAdapterImpl::RunNvmeShortSelfTest(
-    OnceStringResultCallback callback) {
-  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
-  debugd_proxy_->NvmeAsync(kNvmeShortSelfTestOption, std::move(on_success),
-                           std::move(on_error));
-}
-
-void DebugdAdapterImpl::RunNvmeLongSelfTest(OnceStringResultCallback callback) {
-  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
-  debugd_proxy_->NvmeAsync(kNvmeLongSelfTestOption, std::move(on_success),
-                           std::move(on_error));
-}
-
-void DebugdAdapterImpl::StopNvmeSelfTest(OnceStringResultCallback callback) {
-  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
-  debugd_proxy_->NvmeAsync(kNvmeStopSelfTestOption, std::move(on_success),
-                           std::move(on_error));
 }
 
 void DebugdAdapterImpl::GetNvmeLog(uint32_t page_id,

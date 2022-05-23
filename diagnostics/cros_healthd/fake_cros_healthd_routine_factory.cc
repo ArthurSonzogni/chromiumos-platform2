@@ -255,9 +255,9 @@ FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeSelfTestRoutine(
-    DebugdAdapter* debugd_adapter,
+    org::chromium::debugdProxyInterface* debugd_proxy,
     chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
-  DCHECK(debugd_adapter);
+  DCHECK(debugd_proxy);
   return std::move(next_routine_);
 }
 

@@ -8,6 +8,7 @@ pkg_config("common_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libdebugd-client",
   ]
 }
 
@@ -105,6 +106,13 @@ source_set("libdiag_routine") {
 }
 
 if (use.test) {
+  pkg_config("libroutine_test_pkg_deps") {
+    pkg_deps = [
+      "libdebugd-client",
+      "libdebugd-client-test",
+    ]
+  }
+
   source_set("libroutine_test_utils") {
     configs += [ "//common-mk:test" ]
     deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
@@ -143,7 +151,10 @@ if (use.test) {
       "subproc_routine_test.cc",
       "video_conferencing/video_conferencing_test.cc",
     ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":libroutine_test_pkg_deps",
+    ]
     deps = [
       ":libdiag_routine",
       ":libroutine_test_utils",

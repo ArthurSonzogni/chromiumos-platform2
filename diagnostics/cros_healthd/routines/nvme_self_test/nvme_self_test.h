@@ -12,9 +12,14 @@
 #include <base/values.h>
 #include <brillo/errors/error.h>
 
-#include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+
+namespace org {
+namespace chromium {
+class debugdProxyInterface;
+}  // namespace chromium
+}  // namespace org
 
 namespace diagnostics {
 
@@ -51,7 +56,7 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
     kRunLongSelfTest = 2,  /* Launch long-time self-test */
   };
 
-  NvmeSelfTestRoutine(DebugdAdapter* debugd_adapter,
+  NvmeSelfTestRoutine(org::chromium::debugdProxyInterface* debugd_proxy,
                       SelfTestType self_test_type);
   NvmeSelfTestRoutine(const NvmeSelfTestRoutine&) = delete;
   NvmeSelfTestRoutine& operator=(const NvmeSelfTestRoutine&) = delete;
@@ -68,16 +73,12 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
       override;
 
  private:
-  // Check if an error comes during communication to debugd.
-  bool CheckDebugdError(brillo::Error* error);
-
   bool CheckSelfTestCompleted(uint8_t progress, uint8_t status) const;
 
-  void OnDebugdNvmeSelfTestCancelCallback(const std::string& result,
-                                          brillo::Error* error);
-  void OnDebugdNvmeSelfTestStartCallback(const std::string& result,
-                                         brillo::Error* error);
-  void OnDebugdResultCallback(const std::string& result, brillo::Error* error);
+  void OnDebugdNvmeSelfTestCancelCallback(const std::string& result);
+  void OnDebugdNvmeSelfTestStartCallback(const std::string& result);
+  void OnDebugdResultCallback(const std::string& result);
+  void OnDebugdErrorCallback(brillo::Error* error);
 
   // Resets |output_dict_| to clear any previous input, then adds a new
   // dictionary with the key "rawData" and value |value|.
@@ -90,8 +91,8 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
       uint32_t percent,
       std::string msg);
 
-  // debugd_adapter_ is an unowned pointer and it should outlive this instance.
-  DebugdAdapter* const debugd_adapter_ = nullptr;
+  // debugd_proxy_ is an unowned pointer and it should outlive this instance.
+  org::chromium::debugdProxyInterface* const debugd_proxy_ = nullptr;
   const SelfTestType self_test_type_;
 
   chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =

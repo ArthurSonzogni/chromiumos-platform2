@@ -121,9 +121,9 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeWearLevelRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
-    DebugdAdapter* debugd_adapter,
+    org::chromium::debugdProxyInterface* debugd_proxy,
     chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
-  DCHECK(debugd_adapter);
+  DCHECK(debugd_proxy);
 
   NvmeSelfTestRoutine::SelfTestType type =
       nvme_self_test_type == chromeos::cros_healthd::mojom::
@@ -131,7 +131,7 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
           ? NvmeSelfTestRoutine::kRunShortSelfTest
           : NvmeSelfTestRoutine::kRunLongSelfTest;
 
-  return std::make_unique<NvmeSelfTestRoutine>(debugd_adapter, type);
+  return std::make_unique<NvmeSelfTestRoutine>(debugd_proxy, type);
 }
 
 std::unique_ptr<DiagnosticRoutine>

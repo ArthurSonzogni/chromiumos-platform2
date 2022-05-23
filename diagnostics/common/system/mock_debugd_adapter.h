@@ -20,15 +20,6 @@ class MockDebugdAdapter : public DebugdAdapter {
 
   MOCK_METHOD(StringResult, GetNvmeIdentitySync, (), (override));
   MOCK_METHOD(void,
-              RunNvmeShortSelfTest,
-              (OnceStringResultCallback),
-              (override));
-  MOCK_METHOD(void,
-              RunNvmeLongSelfTest,
-              (OnceStringResultCallback),
-              (override));
-  MOCK_METHOD(void, StopNvmeSelfTest, (OnceStringResultCallback), (override));
-  MOCK_METHOD(void,
               GetNvmeLog,
               (uint32_t, uint32_t, bool, OnceStringResultCallback),
               (override));

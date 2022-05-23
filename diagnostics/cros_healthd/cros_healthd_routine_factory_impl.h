@@ -43,7 +43,7 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeNvmeWearLevelRoutine(
       DebugdAdapter* debugd_adapter, uint32_t wear_level_threshold) override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
-      DebugdAdapter* debugd_adapter,
+      org::chromium::debugdProxyInterface* debugd_proxy,
       chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type)
       override;
   std::unique_ptr<DiagnosticRoutine> MakeDiskReadRoutine(

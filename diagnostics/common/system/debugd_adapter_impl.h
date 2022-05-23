@@ -27,9 +27,6 @@ class DebugdAdapterImpl final : public DebugdAdapter {
 
   // DebugdAdapter overrides:
   StringResult GetNvmeIdentitySync() override;
-  void RunNvmeShortSelfTest(OnceStringResultCallback callback) override;
-  void RunNvmeLongSelfTest(OnceStringResultCallback callback) override;
-  void StopNvmeSelfTest(OnceStringResultCallback callback) override;
   void GetNvmeLog(uint32_t page_id,
                   uint32_t length,
                   bool raw_binary,

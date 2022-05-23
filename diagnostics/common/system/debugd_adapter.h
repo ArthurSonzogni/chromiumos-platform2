@@ -30,20 +30,6 @@ class DebugdAdapter {
   virtual StringResult GetNvmeIdentitySync() = 0;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
-  // nvme util to start NVMe short-time self-test and returns start result
-  // output via callback.
-  virtual void RunNvmeShortSelfTest(OnceStringResultCallback callback) = 0;
-
-  // Sends async request to debugd via D-Bus call. On success, debugd runs
-  // nvme util to start NVMe long-time self-test and returns start result
-  // via callback.
-  virtual void RunNvmeLongSelfTest(OnceStringResultCallback callback) = 0;
-
-  // Sends async request to debugd via D-Bus call. On success, debugd runs
-  // nvme util to abort NVMe self-test..
-  virtual void StopNvmeSelfTest(OnceStringResultCallback callback) = 0;
-
-  // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to retrieve NVMe info from log page and returns output via
   // callback. Parameter page_id indicates which log page is required; length
   // indicates the size of required byte data (this parameter also means precise
