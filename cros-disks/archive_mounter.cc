@@ -10,6 +10,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <brillo/scoped_mount_namespace.h>
+#include <dbus/cros-disks/dbus-constants.h>
 
 #include "cros-disks/quote.h"
 
@@ -76,13 +77,13 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
         base::FilePath(kChromeNamespace));
     if (!mount_ns) {
       PLOG(ERROR) << "Cannot enter mount namespace " << quote(kChromeNamespace);
-      *error = MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+      *error = MOUNT_ERROR_INVALID_PATH;
       return nullptr;
     }
 
     if (!platform()->PathExists(path.value())) {
       PLOG(ERROR) << "Cannot find archive " << redact(path);
-      *error = MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+      *error = MOUNT_ERROR_INVALID_PATH;
       return nullptr;
     }
   }
