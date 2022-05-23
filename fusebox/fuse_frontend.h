@@ -47,7 +47,8 @@ namespace fusebox {
  * Kernel FUSE may close the session: due to a umount(8) which unmounts
  * the mountpoint or by sending an error (negative read on |chan|). The
  * class owner is told with the stop callback, and should tear-down the
- * FUSE session.
+ * session. The class owner can also call StopFuseSession() to stop the
+ * session and invoke the stop callback.
  *
  * Session tear-down and clean-up: class owner deletes the FuseFrontend
  * which exits the session using fuse_session_exit(3).
@@ -115,6 +116,14 @@ class FuseFrontend {
         fuse_chan_fd(chan), std::move(fuse_chan_readable));
   }
 
+  void StopFuseSession(int error) {
+    read_watcher_.reset();
+    if (stop_callback_) {
+      errno = error;
+      std::move(stop_callback_).Run();
+    }
+  }
+
  private:
   void OnFuseChannelReadable() {
     fuse_buf buf = {0};
@@ -127,11 +136,7 @@ class FuseFrontend {
       return;
 
     const auto kernel_fuse_closed = [&](int error) {
-      read_watcher_.reset();
-      if (stop_callback_) {
-        errno = error;
-        std::move(stop_callback_).Run();
-      }
+      this->StopFuseSession(error);
     };
 
     if (read_size == 0) {
@@ -163,7 +168,7 @@ class FuseFrontend {
   // Fixed-size buffer to receive Kernel Fuse requests.
   std::vector<char> read_buffer_;
 
-  // Stop callback. Called if Kernel Fuse closes the session.
+  // Called if Kernel Fuse or the class owner stops the session.
   base::OnceClosure stop_callback_;
 };
 

@@ -65,8 +65,17 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps()))
       return EX_SOFTWARE;
 
+    dbus_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
+        &FuseBoxClient::ServiceOwnerChanged, base::Unretained(this)));
     fuse_frontend_->StartFuseSession(std::move(stop_callback));
     return EX_OK;
+  }
+
+  void ServiceOwnerChanged(const std::string&, const std::string& owner) {
+    if (owner.empty()) {
+      PLOG(ERROR) << "service owner changed";
+      fuse_frontend_->StopFuseSession(errno);
+    }
   }
 
   static FileSystem* CreateFakeFileSystem() {
