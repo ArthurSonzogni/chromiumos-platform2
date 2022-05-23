@@ -7,3 +7,7 @@ Currently, spaced supports the following interfaces:
   the device for a given path (including currently used space).
 * Method GetFreeDiskSpace: Gets the available free space for use on the device
   for a given path.
+
+Those D-Bus methods must be preferred over local library calls / syscalls such
+as `base::SysInfo::AmountOfFreeDiskSpace` because spaced's takes the underlying
+thinpool into account, for example.
