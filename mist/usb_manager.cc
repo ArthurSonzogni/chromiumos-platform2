@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <brillo/streams/stream_utils.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/usb/usb_device.h>
 #include <brillo/usb/usb_device_descriptor.h>
@@ -196,14 +197,12 @@ bool UsbManager::StartWatchingFileDescriptor(
   watcher.write_watcher = nullptr;
 
   bool success = true;
-  if (mode == brillo::Stream::AccessMode::READ ||
-      mode == brillo::Stream::AccessMode::READ_WRITE) {
+  if (brillo::stream_utils::IsReadAccessMode(mode)) {
     watcher.read_watcher =
         base::FileDescriptorWatcher::WatchReadable(file_descriptor, callback);
     success = success && watcher.read_watcher.get();
   }
-  if (mode == brillo::Stream::AccessMode::WRITE ||
-      mode == brillo::Stream::AccessMode::READ_WRITE) {
+  if (brillo::stream_utils::IsWriteAccessMode(mode)) {
     watcher.write_watcher =
         base::FileDescriptorWatcher::WatchWritable(file_descriptor, callback);
     success = success && watcher.write_watcher.get();
