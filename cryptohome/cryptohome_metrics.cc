@@ -27,11 +27,6 @@ constexpr char kWrappingKeyDerivationCreateHistogram[] =
 constexpr char kWrappingKeyDerivationMountHistogram[] =
     "Cryptohome.WrappingKeyDerivation.Mount";
 constexpr char kCryptohomeErrorHistogram[] = "Cryptohome.Errors";
-constexpr char kDictionaryAttackResetStatusHistogram[] =
-    "Platform.TPM.DictionaryAttackResetStatus";
-constexpr char kDictionaryAttackCounterHistogram[] =
-    "Platform.TPM.DictionaryAttackCounter";
-constexpr int kDictionaryAttackCounterNumBuckets = 100;
 constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCryptohomeTpmResultsHistogram[] = "Cryptohome.TpmResults";
 constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
@@ -300,22 +295,6 @@ void ReportTimerStop(TimerType timer_type) {
     LOG(WARNING) << "Timer " << kTimerHistogramParams[timer_type].metric_name
                  << " failed to report.";
   }
-}
-
-void ReportDictionaryAttackResetStatus(DictionaryAttackResetStatus status) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(kDictionaryAttackResetStatusHistogram, status,
-                           kDictionaryAttackResetStatusNumBuckets);
-}
-
-void ReportDictionaryAttackCounter(int counter) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(kDictionaryAttackCounterHistogram, counter,
-                           kDictionaryAttackCounterNumBuckets);
 }
 
 void ReportChecksum(ChecksumStatus status) {

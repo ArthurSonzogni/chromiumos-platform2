@@ -132,19 +132,6 @@ enum TimerType {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum DictionaryAttackResetStatus {
-  kResetNotNecessary = 0,
-  kResetAttemptSucceeded = 1,
-  kResetAttemptFailed = 2,
-  kDelegateNotAllowed = 3,
-  kDelegateNotAvailable = 4,
-  kCounterQueryFailed = 5,
-  kInvalidPcr0State = 6,
-  kDictionaryAttackResetStatusNumBuckets
-};
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
 enum ChecksumStatus {
   kChecksumOK = 0,
   kChecksumDoesNotExist = 1,
@@ -557,14 +544,6 @@ void ReportTimerStart(TimerType timer_type);
 // Stops a timer and reports in milliseconds. Timers are reported to the
 // "Cryptohome.TimeTo*" histograms.
 void ReportTimerStop(TimerType timer_type);
-
-// Reports a status value on the "Platform.TPM.DictionaryAttackResetStatus"
-// histogram.
-void ReportDictionaryAttackResetStatus(DictionaryAttackResetStatus status);
-
-// Reports a dictionary attack counter value to the
-// "Platform.TPM.DictionaryAttackCounter" histogram.
-void ReportDictionaryAttackCounter(int counter);
 
 void ReportChecksum(ChecksumStatus status);
 
