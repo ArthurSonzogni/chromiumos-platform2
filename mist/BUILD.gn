@@ -70,9 +70,9 @@ if (use.test) {
   executable("mist_testrunner") {
     sources = [
       "config_loader_test.cc",
-      "event_dispatcher_test.cc",
       "mist.cc",
       "mock_context.cc",
+      "usb_manager_test.cc",
       "usb_modem_switch_context_test.cc",
     ]
     configs += [

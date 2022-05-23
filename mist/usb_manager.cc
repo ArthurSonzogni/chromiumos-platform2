@@ -18,8 +18,6 @@
 #include <brillo/usb/usb_device.h>
 #include <brillo/usb/usb_device_descriptor.h>
 
-#include "mist/event_dispatcher.h"
-
 namespace mist {
 
 namespace {
@@ -27,23 +25,23 @@ namespace {
 using brillo::UsbDeviceDescriptor;
 using brillo::UsbError;
 
-EventDispatcher::Mode ConvertEventFlagsToWatchMode(short events) {  // NOLINT
+brillo::Stream::AccessMode ConvertEventFlagsToWatchMode(
+    short events) {  // NOLINT
   if ((events & POLLIN) && (events & POLLOUT))
-    return EventDispatcher::Mode::READ_WRITE;
+    return brillo::Stream::AccessMode::READ_WRITE;
 
   if (events & POLLIN)
-    return EventDispatcher::Mode::READ;
+    return brillo::Stream::AccessMode::READ;
 
   if (events & POLLOUT)
-    return EventDispatcher::Mode::WRITE;
+    return brillo::Stream::AccessMode::WRITE;
 
-  return EventDispatcher::Mode::READ_WRITE;
+  return brillo::Stream::AccessMode::READ_WRITE;
 }
 
 }  // namespace
 
-UsbManager::UsbManager(EventDispatcher* dispatcher)
-    : dispatcher_(dispatcher), context_(nullptr) {}
+UsbManager::UsbManager() : context_(nullptr) {}
 
 UsbManager::~UsbManager() {
   if (context_) {
@@ -132,7 +130,7 @@ void UsbManager::OnPollFileDescriptorAdded(int file_descriptor,
       "Poll file descriptor %d on events 0x%016x added.", file_descriptor,
       events);
   UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
-  manager->dispatcher_->StartWatchingFileDescriptor(
+  manager->StartWatchingFileDescriptor(
       file_descriptor, ConvertEventFlagsToWatchMode(events),
       base::BindRepeating(&UsbManager::HandleEventsNonBlocking,
                           manager->weak_factory_.GetWeakPtr()));
@@ -145,7 +143,7 @@ void UsbManager::OnPollFileDescriptorRemoved(int file_descriptor,
   VLOG(2) << base::StringPrintf("Poll file descriptor %d removed.",
                                 file_descriptor);
   UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
-  manager->dispatcher_->StopWatchingFileDescriptor(file_descriptor);
+  manager->StopWatchingFileDescriptor(file_descriptor);
 }
 
 bool UsbManager::StartWatchingPollFileDescriptors() {
@@ -166,7 +164,7 @@ bool UsbManager::StartWatchingPollFileDescriptors() {
     VLOG(2) << base::StringPrintf(
         "Poll file descriptor %d for events 0x%016x added.", pollfd.fd,
         pollfd.events);
-    if (!dispatcher_->StartWatchingFileDescriptor(
+    if (!StartWatchingFileDescriptor(
             pollfd.fd, ConvertEventFlagsToWatchMode(pollfd.events),
             base::BindRepeating(&UsbManager::HandleEventsNonBlocking,
                                 weak_factory_.GetWeakPtr()))) {
@@ -184,6 +182,60 @@ void UsbManager::HandleEventsNonBlocking() {
       libusb_handle_events_timeout_completed(context_, &zero_tv, nullptr);
   UsbError error(static_cast<libusb_error>(result));
   LOG_IF(ERROR, !error.IsSuccess()) << "Could not handle USB events: " << error;
+}
+
+bool UsbManager::StartWatchingFileDescriptor(
+    int file_descriptor,
+    brillo::Stream::AccessMode mode,
+    const base::RepeatingClosure& callback) {
+  CHECK_GE(file_descriptor, 0);
+
+  Watcher& watcher = file_descriptor_watchers_[file_descriptor];
+  // Reset once if it is already being watched.
+  watcher.read_watcher = nullptr;
+  watcher.write_watcher = nullptr;
+
+  bool success = true;
+  if (mode == brillo::Stream::AccessMode::READ ||
+      mode == brillo::Stream::AccessMode::READ_WRITE) {
+    watcher.read_watcher =
+        base::FileDescriptorWatcher::WatchReadable(file_descriptor, callback);
+    success = success && watcher.read_watcher.get();
+  }
+  if (mode == brillo::Stream::AccessMode::WRITE ||
+      mode == brillo::Stream::AccessMode::READ_WRITE) {
+    watcher.write_watcher =
+        base::FileDescriptorWatcher::WatchWritable(file_descriptor, callback);
+    success = success && watcher.write_watcher.get();
+  }
+
+  if (!success) {
+    LOG(ERROR) << "Could not watch file descriptor: " << file_descriptor;
+    file_descriptor_watchers_.erase(file_descriptor);
+    return false;
+  }
+
+  VLOG(2) << "Started watching file descriptor: " << file_descriptor;
+  return true;
+}
+
+bool UsbManager::StopWatchingFileDescriptor(int file_descriptor) {
+  CHECK_GE(file_descriptor, 0);
+
+  auto it = file_descriptor_watchers_.find(file_descriptor);
+  if (it == file_descriptor_watchers_.end()) {
+    LOG(ERROR) << "File descriptor " << file_descriptor
+               << " is not being watched.";
+    return false;
+  }
+
+  file_descriptor_watchers_.erase(it);
+  VLOG(2) << "Stopped watching file descriptor: " << file_descriptor;
+  return true;
+}
+
+void UsbManager::StopWatchingAllFileDescriptors() {
+  file_descriptor_watchers_.clear();
 }
 
 }  // namespace mist

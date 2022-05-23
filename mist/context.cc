@@ -47,7 +47,7 @@ bool Context::Initialize() {
     return false;
   }
 
-  usb_manager_.reset(new UsbManager(event_dispatcher_.get()));
+  usb_manager_.reset(new UsbManager());
   if (!usb_manager_->Initialize()) {
     LOG(ERROR) << "Could not initialize USB manager: " << usb_manager_->error();
     return false;
