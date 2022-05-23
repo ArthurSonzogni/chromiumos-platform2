@@ -26,7 +26,7 @@ bool CacheLockbox(cryptohome::Platform* platform,
     LOG(INFO) << "Failed to read NVRAM contents from " << nvram_path.value();
     return false;
   }
-  std::unique_ptr<LockboxContents> lockbox = LockboxContents::New(nvram.size());
+  std::unique_ptr<LockboxContents> lockbox = LockboxContents::New();
   if (!lockbox) {
     LOG(ERROR) << "Unsupported lockbox size!";
     return false;

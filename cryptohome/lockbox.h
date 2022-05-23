@@ -20,14 +20,6 @@ namespace cryptohome {
 
 class LockboxContents;
 
-// NVRAM structure versions. The enumerator values are chosen to reflect the
-// corresponding key material sizes for code convenience.
-enum class NvramVersion : size_t {
-  kVersion1 = 7,
-  kVersion2 = 32,
-  kDefault = kVersion2,
-};
-
 enum class LockboxError {
   kNvramSpaceAbsent,
   kNvramInvalid,
@@ -37,9 +29,6 @@ enum class LockboxError {
 
 // Enable LockboxError to be used in LOG output.
 std::ostream& operator<<(std::ostream& out, LockboxError error);
-
-// Translates an |NvramVersion| value to a numeric value.
-int GetNvramVersionNumber(NvramVersion version);
 
 // Lockbox stores a blob of data in a tamper-evident manner.
 //
@@ -105,12 +94,6 @@ class Lockbox {
 
   // Return NVRAM index.
   virtual uint32_t nvram_index() const { return nvram_index_; }
-  // Return NVRAM version.
-  virtual NvramVersion nvram_version() const { return nvram_version_; }
-  // Replaces the default NVRAM structure version.
-  virtual void set_nvram_version(NvramVersion version) {
-    nvram_version_ = version;
-  }
 
   virtual Tpm* tpm() { return tpm_; }
 
@@ -125,17 +108,12 @@ class Lockbox {
  private:
   Tpm* tpm_;
   uint32_t nvram_index_;
-  NvramVersion nvram_version_ = NvramVersion::kDefault;
 };
 
 // Represents decoded lockbox NVRAM space contents and provides operations to
 // encode/decode, as well as setting up and verifying integrity of a specific
 // data blob.
 class LockboxContents {
- private:
-  static constexpr size_t kFixedPartSize =
-      sizeof(uint32_t) + sizeof(uint8_t) + SHA256_DIGEST_LENGTH;
-
  public:
   enum class VerificationResult {
     kValid,
@@ -143,14 +121,16 @@ class LockboxContents {
     kHashMismatch,
   };
 
+  static inline constexpr size_t kFixedPartSize =
+      sizeof(uint32_t) + sizeof(uint8_t) + SHA256_DIGEST_LENGTH;
+  static inline constexpr size_t kKeyMaterialSize = 32;
+  static inline constexpr size_t kNvramSize = kKeyMaterialSize + kFixedPartSize;
+
   // Creates a LockboxContents instance that'll handle encoded lockbox contents
   // corresponding to an NVRAM space of size |nvram_size|. Returns nullptr in
   // case the passed |nvram_size| isn't supported.
-  static std::unique_ptr<LockboxContents> New(size_t nvram_size);
+  static std::unique_ptr<LockboxContents> New();
 
-  NvramVersion version() const {
-    return static_cast<NvramVersion>(key_material_.size());
-  }
   size_t key_material_size() const { return key_material_.size(); }
 
   // Serialize to |nvram_data|.
@@ -168,10 +148,6 @@ class LockboxContents {
 
   // Verify |blob| against the lockbox contents.
   VerificationResult Verify(const brillo::Blob& blob);
-
-  static size_t GetNvramSize(NvramVersion version) {
-    return static_cast<size_t>(version) + kFixedPartSize;
-  }
 
  private:
   LockboxContents() = default;

@@ -354,8 +354,7 @@ base::Value InstallAttributes::GetStatus() {
                 status_ == Status::kFirstInstall || status_ == Status::kValid);
   dv.SetIntKey("version", version());
   dv.SetIntKey("lockbox_index", lockbox()->nvram_index());
-  dv.SetIntKey("lockbox_nvram_version",
-               GetNvramVersionNumber(lockbox()->nvram_version()));
+  dv.SetIntKey("lockbox_nvram_version", 2);
   dv.SetBoolKey("secure", is_secure());
   dv.SetBoolKey("invalid", status_ == Status::kInvalid);
   dv.SetBoolKey("first_install", status_ == Status::kFirstInstall);

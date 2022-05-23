@@ -42,17 +42,6 @@ std::ostream& operator<<(std::ostream& out, LockboxError error) {
   return out << static_cast<int>(error);
 }
 
-int GetNvramVersionNumber(NvramVersion version) {
-  switch (version) {
-    case NvramVersion::kVersion1:
-      return 1;
-    case NvramVersion::kVersion2:
-      return 2;
-  }
-  NOTREACHED();
-  return 0;
-}
-
 Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
     : tpm_(tpm), nvram_index_(nvram_index) {}
 
@@ -80,7 +69,7 @@ bool Lockbox::Reset(LockboxError* error) {
     uint32_t nvram_perm =
         Tpm::kTpmNvramWriteDefine |
         (IsKeyMaterialInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
-    uint32_t nvram_bytes = LockboxContents::GetNvramSize(nvram_version_);
+    uint32_t nvram_bytes = LockboxContents::kNvramSize;
     if (!tpm_->DefineNvram(nvram_index_, nvram_bytes, nvram_perm)) {
       *error = LockboxError::kTpmError;
       LOG(ERROR) << "Failed to define NVRAM space.";
@@ -131,10 +120,10 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
     return false;
   }
 
-  // Check defined NVRAM size and construct a suitable LockboxContents instance.
+  // Check defined NVRAM size and construct a LockboxContents instance.
+  std::unique_ptr<LockboxContents> contents = LockboxContents::New();
   unsigned int nvram_size = tpm_->GetNvramSize(nvram_index_);
-  std::unique_ptr<LockboxContents> contents = LockboxContents::New(nvram_size);
-  if (!contents) {
+  if (nvram_size != LockboxContents::kNvramSize) {
     LOG(ERROR) << "Unsupported NVRAM space size " << nvram_size << ".";
     *error = LockboxError::kNvramInvalid;
     return false;
@@ -186,21 +175,15 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
 }
 
 // static
-std::unique_ptr<LockboxContents> LockboxContents::New(size_t nvram_size) {
-  // Make sure |nvram_size| corresponds to one of the encoding versions.
-  if (GetNvramSize(NvramVersion::kVersion1) != nvram_size &&
-      GetNvramSize(NvramVersion::kVersion2) != nvram_size) {
-    return nullptr;
-  }
-
+std::unique_ptr<LockboxContents> LockboxContents::New() {
   std::unique_ptr<LockboxContents> result(new LockboxContents());
-  result->key_material_.resize(nvram_size - kFixedPartSize);
+  result->key_material_.resize(kKeyMaterialSize);
   return result;
 }
 
 bool LockboxContents::Decode(const brillo::SecureBlob& nvram_data) {
   // Reject data of incorrect size.
-  if (nvram_data.size() != GetNvramSize(version())) {
+  if (nvram_data.size() != kNvramSize) {
     return false;
   }
 

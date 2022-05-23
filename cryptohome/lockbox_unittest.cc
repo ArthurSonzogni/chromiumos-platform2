@@ -131,10 +131,8 @@ TEST_P(LockboxTest, ResetCreateSpace) {
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef)).WillOnce(Return(false));
 
   // Create the new space.
-  EXPECT_CALL(tpm_,
-              DefineNvram(0xdeadbeef,
-                          LockboxContents::GetNvramSize(NvramVersion::kDefault),
-                          GetExpectedNvramSpaceFlags()))
+  EXPECT_CALL(tpm_, DefineNvram(0xdeadbeef, LockboxContents::kNvramSize,
+                                GetExpectedNvramSpaceFlags()))
       .WillOnce(Return(true));
 
   LockboxError error;
@@ -154,10 +152,8 @@ TEST_P(LockboxTest, ResetCreateSpacePreexisting) {
   EXPECT_CALL(tpm_, DestroyNvram(0xdeadbeef)).WillOnce(Return(true));
 
   // Create the new space.
-  EXPECT_CALL(tpm_,
-              DefineNvram(0xdeadbeef,
-                          LockboxContents::GetNvramSize(NvramVersion::kDefault),
-                          GetExpectedNvramSpaceFlags()))
+  EXPECT_CALL(tpm_, DefineNvram(0xdeadbeef, LockboxContents::kNvramSize,
+                                GetExpectedNvramSpaceFlags()))
       .WillOnce(Return(true));
 
   LockboxError error;
@@ -178,10 +174,10 @@ TEST_P(LockboxTest, StoreOk) {
   brillo::SecureBlob key_material;
   switch (GetParam()) {
     case Tpm::TpmVersion::TPM_1_2:
-      key_material.assign(static_cast<size_t>(NvramVersion::kDefault), 'A');
+      key_material.assign(LockboxContents::kKeyMaterialSize, 'A');
       break;
     case Tpm::TpmVersion::TPM_2_0:
-      key_material.assign(static_cast<size_t>(NvramVersion::kDefault), 0);
+      key_material.assign(LockboxContents::kKeyMaterialSize, 0);
       break;
     case Tpm::TpmVersion::TPM_UNKNOWN:
       NOTREACHED();
@@ -197,8 +193,7 @@ TEST_P(LockboxTest, StoreOk) {
     InSequence s;
     EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef)).WillOnce(Return(false));
     EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
-        .WillOnce(
-            Return(LockboxContents::GetNvramSize(NvramVersion::kDefault)));
+        .WillOnce(Return(LockboxContents::kNvramSize));
     EXPECT_CALL(tpm_, GetRandomDataSecureBlob(key_material.size(), _))
         .WillRepeatedly(
             DoAll(SetArgPointee<1>(key_material), ReturnError<TPMErrorBase>()));
@@ -266,9 +261,8 @@ class LockboxContentsTest : public testing::Test {
  public:
   LockboxContentsTest() = default;
 
-  void GenerateNvramData(NvramVersion version, brillo::SecureBlob* nvram_data) {
-    std::unique_ptr<LockboxContents> contents =
-        LockboxContents::New(LockboxContents::GetNvramSize(version));
+  void GenerateNvramData(brillo::SecureBlob* nvram_data) {
+    std::unique_ptr<LockboxContents> contents = LockboxContents::New();
     ASSERT_TRUE(contents);
     ASSERT_TRUE(contents->SetKeyMaterial(
         brillo::SecureBlob(contents->key_material_size(), 'A')));
@@ -279,39 +273,22 @@ class LockboxContentsTest : public testing::Test {
   void LoadAndVerify(const brillo::SecureBlob& nvram_data,
                      const brillo::Blob& data,
                      LockboxContents::VerificationResult expected_result) {
-    std::unique_ptr<LockboxContents> contents =
-        LockboxContents::New(nvram_data.size());
+    std::unique_ptr<LockboxContents> contents = LockboxContents::New();
     ASSERT_TRUE(contents);
     ASSERT_TRUE(contents->Decode(nvram_data));
     EXPECT_EQ(expected_result, contents->Verify(data));
   }
 };
 
-TEST_F(LockboxContentsTest, LoadAndVerifyOkTpmDefault) {
+TEST_F(LockboxContentsTest, LoadAndVerifyOk) {
   brillo::SecureBlob nvram_data;
-  ASSERT_NO_FATAL_FAILURE(
-      GenerateNvramData(NvramVersion::kDefault, &nvram_data));
-  LoadAndVerify(nvram_data, {42}, LockboxContents::VerificationResult::kValid);
-}
-
-TEST_F(LockboxContentsTest, LoadAndVerifyOkTpmV1) {
-  brillo::SecureBlob nvram_data;
-  ASSERT_NO_FATAL_FAILURE(
-      GenerateNvramData(NvramVersion::kVersion1, &nvram_data));
-  LoadAndVerify(nvram_data, {42}, LockboxContents::VerificationResult::kValid);
-}
-
-TEST_F(LockboxContentsTest, LoadAndVerifyOkTpmV2) {
-  brillo::SecureBlob nvram_data;
-  ASSERT_NO_FATAL_FAILURE(
-      GenerateNvramData(NvramVersion::kVersion2, &nvram_data));
+  ASSERT_NO_FATAL_FAILURE(GenerateNvramData(&nvram_data));
   LoadAndVerify(nvram_data, {42}, LockboxContents::VerificationResult::kValid);
 }
 
 TEST_F(LockboxContentsTest, LoadAndVerifyBadSize) {
   SecureBlob nvram_data;
-  ASSERT_NO_FATAL_FAILURE(
-      GenerateNvramData(NvramVersion::kVersion2, &nvram_data));
+  ASSERT_NO_FATAL_FAILURE(GenerateNvramData(&nvram_data));
 
   // Change the expected file size to 0.
   nvram_data[0] = 0;
@@ -325,8 +302,7 @@ TEST_F(LockboxContentsTest, LoadAndVerifyBadSize) {
 
 TEST_F(LockboxContentsTest, LoadAndVerifyBadHash) {
   SecureBlob nvram_data;
-  ASSERT_NO_FATAL_FAILURE(
-      GenerateNvramData(NvramVersion::kVersion2, &nvram_data));
+  ASSERT_NO_FATAL_FAILURE(GenerateNvramData(&nvram_data));
 
   // Invalidate the hash.
   nvram_data.back() ^= 0xff;
@@ -337,8 +313,7 @@ TEST_F(LockboxContentsTest, LoadAndVerifyBadHash) {
 
 TEST_F(LockboxContentsTest, LoadAndVerifyBadData) {
   SecureBlob nvram_data;
-  ASSERT_NO_FATAL_FAILURE(
-      GenerateNvramData(NvramVersion::kVersion2, &nvram_data));
+  ASSERT_NO_FATAL_FAILURE(GenerateNvramData(&nvram_data));
   LoadAndVerify(nvram_data, {17},
                 LockboxContents::VerificationResult::kHashMismatch);
 }
