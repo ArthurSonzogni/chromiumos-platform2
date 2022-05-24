@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/usb_manager.h"
+#include "brillo/usb/usb_manager.h"
 
 #include <libusb.h>
 #include <poll.h>
@@ -20,12 +20,9 @@
 #include <brillo/usb/usb_device.h>
 #include <brillo/usb/usb_device_descriptor.h>
 
-namespace mist {
+namespace brillo {
 
 namespace {
-
-using brillo::UsbDeviceDescriptor;
-using brillo::UsbError;
 
 brillo::Stream::AccessMode ConvertEventFlagsToWatchMode(
     short events) {  // NOLINT
@@ -249,4 +246,4 @@ void UsbManager::StopWatchingAllFileDescriptors() {
   file_descriptor_watchers_.clear();
 }
 
-}  // namespace mist
+}  // namespace brillo

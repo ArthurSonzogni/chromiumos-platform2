@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_USB_MANAGER_H_
-#define MIST_USB_MANAGER_H_
+#ifndef LIBBRILLO_BRILLO_USB_USB_MANAGER_H_
+#define LIBBRILLO_BRILLO_USB_USB_MANAGER_H_
 
 #include <stdint.h>
 
@@ -13,6 +13,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/brillo_export.h>
 #include <brillo/streams/stream.h>
 #include <brillo/usb/usb_error.h>
 
@@ -22,15 +23,8 @@ namespace brillo {
 
 class UsbDevice;
 
-}
-
-namespace mist {
-
-using brillo::UsbDevice;
-using brillo::UsbError;
-
 // A USB manager for managing a USB session created by libusb 1.0.
-class UsbManager {
+class BRILLO_EXPORT UsbManager {
  public:
   // UsbManager watches file descriptors using
   // FileDescriptorWatcher::WatchReadable/WatchWritable, so the caller must have
@@ -110,6 +104,6 @@ class UsbManager {
   base::WeakPtrFactory<UsbManager> weak_factory_{this};
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_USB_MANAGER_H_
+#endif  // LIBBRILLO_BRILLO_USB_USB_MANAGER_H_

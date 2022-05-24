@@ -252,6 +252,7 @@ if (use.usb && use.udev) {
         "brillo/usb/usb_error.cc",
         "brillo/usb/usb_interface.cc",
         "brillo/usb/usb_interface_descriptor.cc",
+        "brillo/usb/usb_manager.cc",
         "brillo/usb/usb_transfer.cc",
       ]
     },
@@ -527,6 +528,7 @@ if (use.test) {
         "brillo/usb/usb_endpoint_descriptor_test.cc",
         "brillo/usb/usb_error_test.cc",
         "brillo/usb/usb_interface_descriptor_test.cc",
+        "brillo/usb/usb_manager_test.cc",
         "brillo/usb/usb_transfer_test.cc",
       ]
     }

@@ -8,11 +8,11 @@
 #include <base/logging.h>
 #include <brillo/udev/udev.h>
 #include <brillo/usb/usb_device_event_notifier.h>
+#include <brillo/usb/usb_manager.h>
 
 #include "mist/config_loader.h"
 #include "mist/event_dispatcher.h"
 #include "mist/metrics.h"
-#include "mist/usb_manager.h"
 
 namespace mist {
 
@@ -47,7 +47,7 @@ bool Context::Initialize() {
     return false;
   }
 
-  usb_manager_ = UsbManager::Create();
+  usb_manager_ = brillo::UsbManager::Create();
   if (!usb_manager_) {
     LOG(ERROR) << "Could not create USB manager: " << usb_manager_->error();
     return false;

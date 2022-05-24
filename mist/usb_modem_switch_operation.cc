@@ -24,11 +24,11 @@
 #include <brillo/usb/usb_endpoint_descriptor.h>
 #include <brillo/usb/usb_interface.h>
 #include <brillo/usb/usb_interface_descriptor.h>
+#include <brillo/usb/usb_manager.h>
 
 #include "mist/context.h"
 #include "mist/event_dispatcher.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
-#include "mist/usb_manager.h"
 #include "mist/usb_modem_switch_context.h"
 
 namespace mist {

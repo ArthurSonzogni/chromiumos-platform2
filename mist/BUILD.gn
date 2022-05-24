@@ -41,7 +41,6 @@ static_library("libmist") {
     "event_dispatcher.cc",
     "metrics.cc",
     "mist.cc",
-    "usb_manager.cc",
     "usb_modem_one_shot_switcher.cc",
     "usb_modem_switch_context.cc",
     "usb_modem_switch_operation.cc",
@@ -72,7 +71,6 @@ if (use.test) {
       "config_loader_test.cc",
       "mist.cc",
       "mock_context.cc",
-      "usb_manager_test.cc",
       "usb_modem_switch_context_test.cc",
     ]
     configs += [

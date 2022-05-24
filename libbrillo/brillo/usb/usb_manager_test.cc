@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/usb_manager.h"
+#include "brillo/usb/usb_manager.h"
 
 #include <sys/epoll.h>
 
@@ -11,7 +11,7 @@
 #include <base/task/single_thread_task_executor.h>
 #include <gtest/gtest.h>
 
-namespace mist {
+namespace brillo {
 
 class UsbManagerTest : public testing::Test {
  protected:
@@ -80,4 +80,4 @@ TEST_F(UsbManagerTest, StopWatchingAllFileDescriptors) {
   EXPECT_FALSE(usb_manager_.StopWatchingFileDescriptor(file_descriptor2));
 }
 
-}  // namespace mist
+}  // namespace brillo
