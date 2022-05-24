@@ -67,8 +67,6 @@ ScopedMinijail ConfigureSandbox(const HelperInfo& helper_info) {
 
   // Apply seccomp filter, if it exists for this helper.
   if (base::PathExists(helper_seccomp_policy_file)) {
-    LOG(INFO) << "Running helper with policy: "
-              << helper_seccomp_policy_file.value();
     minijail_use_seccomp_filter(j.get());
     minijail_parse_seccomp_filters(j.get(),
                                    helper_seccomp_policy_file.value().c_str());
