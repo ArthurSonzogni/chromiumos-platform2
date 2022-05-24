@@ -30,6 +30,21 @@ bool StrToBiosType(string name, BiosType* bios_type) {
   return true;
 }
 
+bool StrToDeferUpdateAction(string name, DeferUpdateAction* defer_updates) {
+  *defer_updates = kAuto;
+  if (name.empty()) {
+    *defer_updates = DeferUpdateAction::kAuto;
+  } else if (name == "hold") {
+    *defer_updates = DeferUpdateAction::kHold;
+  } else if (name == "apply") {
+    *defer_updates = DeferUpdateAction::kApply;
+  } else {
+    LOG(WARNING) << "Defer updates " << name << " is not valid.";
+    return false;
+  }
+  return true;
+}
+
 // TODO(jaysri): Unduplicate these methods.
 //
 // This #define and this function are copied from cgpt.h and

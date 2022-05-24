@@ -43,6 +43,7 @@ bool GetKernelCommandLine(string* kernel_cmd_line) {
 bool ConfigureInstall(const string& install_dev,
                       const string& install_dir,
                       BiosType bios_type,
+                      DeferUpdateAction defer_update_action,
                       InstallConfig* install_config) {
   Partition root = Partition(install_dev, install_dir);
 
@@ -75,6 +76,7 @@ bool ConfigureInstall(const string& install_dev,
   install_config->kernel = Partition(kernel_dev);
   install_config->boot = Partition(boot_dev);
   install_config->bios_type = bios_type;
+  install_config->defer_update_action = defer_update_action;
 
   return true;
 }
@@ -142,8 +144,8 @@ int RunCr50Script(const string& install_dir,
 // kernels may lead to recovery screen (due to new key).
 // TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
 // Note that this returns an exit code, not bool success/failure.
-int FirmwareUpdate(const string& install_dir, bool is_update) {
-  int result;
+int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
+  string install_dir = install_config.root.mount();
   string command = install_dir + "/usr/sbin/chromeos-firmwareupdate";
   if (access(command.c_str(), X_OK) != 0) {
     LOG(INFO) << "No firmware updates available.";
@@ -153,14 +155,25 @@ int FirmwareUpdate(const string& install_dir, bool is_update) {
 
   string mode;
   if (is_update) {
-    // Background auto update by Update Engine.
-    mode = "autoupdate";
+    switch (install_config.defer_update_action) {
+      case DeferUpdateAction::kAuto:
+        // Background auto update by Update Engine.
+        mode = "autoupdate";
+        break;
+      case DeferUpdateAction::kHold:
+        mode = "deferupdate_hold";
+        break;
+      case DeferUpdateAction::kApply:
+        mode = "deferupdate_apply";
+        break;
+    }
   } else {
     // Recovery image, or from command "chromeos-install".
     mode = "recovery";
   }
 
-  result = RunCommand({command, "--mode=" + mode});
+  LOG(INFO) << "Fimrware update with mode=" << mode;
+  int result = RunCommand({command, "--mode=" + mode});
 
   // Next step after postinst may take a lot of time (eg, disk wiping)
   // and people may confuse that as 'firmware update takes a long wait',
@@ -214,14 +227,13 @@ void FixUnencryptedPermission() {
 
 // Do board specific post install stuff, if available.
 bool RunBoardPostInstall(const string& install_dir) {
-  int result;
   string script = install_dir + "/usr/sbin/board-postinst";
 
   if (access(script.c_str(), X_OK)) {
     return true;
   }
 
-  result = RunCommand({script, install_dir});
+  int result = RunCommand({script, install_dir});
 
   if (result)
     LOG(ERROR) << "Board post install failed, result: " << result;
@@ -231,58 +243,12 @@ bool RunBoardPostInstall(const string& install_dir) {
   return result == 0;
 }
 
-// Do post install stuff.
-//
-// Install kernel, set up the proper bootable partition in
-// GPT table, update firmware if necessary and possible.
-//
-// install_config defines the root, kernel and boot partitions.
-//
-bool ChromeosChrootPostinst(const InstallConfig& install_config,
-                            int* exit_code) {
-  // Extract External ENVs
-  bool is_factory_install = getenv("IS_FACTORY_INSTALL");
-  bool is_recovery_install = getenv("IS_RECOVERY_INSTALL");
-  bool is_install = getenv("IS_INSTALL");
-  bool is_update = !is_factory_install && !is_recovery_install && !is_install &&
-                   !IsRunningMiniOS();
-
-  // TODO(dgarrett): Remove when chromium:216338 is fixed.
-  // If this FS was mounted read-write, we can't do deltas from it. Mark the
-  // FS as such
-  Touch(install_config.root.mount() + "/.nodelta");  // Ignore Error on purpse
-
-  LOG(INFO) << "Set boot target to " << install_config.root.device()
-            << ": Partition " << install_config.root.number() << ", Slot "
-            << install_config.slot;
-
-  if (!SetImage(install_config)) {
-    LOG(ERROR) << "SetImage failed.";
-    return false;
-  }
-
-  // This cache file might be invalidated, and will be recreated on next boot.
-  // Error ignored, since we don't care if it didn't exist to start with.
-  string network_driver_cache = "/var/lib/preload-network-drivers";
-  LOG(INFO) << "Clearing network driver boot cache: " << network_driver_cache;
-  unlink(network_driver_cache.c_str());
-
-  LOG(INFO) << "Syncing filesystems before changing boot order...";
-  LoggingTimerStart();
-  sync();
-  LoggingTimerFinish();
-
+bool UpdatePartitionTable(CgptManager& cgpt_manager,
+                          const InstallConfig& install_config,
+                          bool is_update) {
   LOG(INFO) << "Updating Partition Table Attributes using CgptManager...";
 
-  CgptManager cgpt_manager;
-
-  int result = cgpt_manager.Initialize(install_config.root.base_device());
-  if (result != kCgptSuccess) {
-    LOG(ERROR) << "Unable to initialize CgptManager().";
-    return false;
-  }
-
-  result = cgpt_manager.SetHighestPriority(install_config.kernel.number());
+  int result = cgpt_manager.SetHighestPriority(install_config.kernel.number());
   if (result != kCgptSuccess) {
     LOG(ERROR) << "Unable to set highest priority for kernel: "
                << install_config.kernel.number();
@@ -312,42 +278,158 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   LOG(INFO) << "Updated kernel " << install_config.kernel.number()
             << " with Successful: " << new_kern_successful
             << " and NumTriesLeft: " << numTries;
+  return true;
+}
 
-  // At this point in the script, the new partition has been marked bootable
-  // and a reboot will boot into it. Thus, it's important that any future
-  // errors in this script do not cause this script to return failure unless
-  // in factory mode.
-  FixUnencryptedPermission();
-
-  // We have a new image, making the ureadahead pack files
-  // out-of-date.  Delete the files so that ureadahead will
-  // regenerate them on the next reboot.
-  // WARNING: This doesn't work with upgrade from USB, rather than full
-  // install/recovery. We don't have support for it as it'll increase the
-  // complexity here, and only developers do upgrade from USB.
-  if (!RemovePackFiles("/var/lib/ureadahead")) {
-    LOG(ERROR) << "RemovePackFiles Failed.";
+bool RollbackPartitionTable(CgptManager& cgpt_manager,
+                            const InstallConfig& install_config) {
+  // In all these checks below, we continue even if there's a failure
+  // so as to cleanup as much as possible.
+  bool new_kern_successful = false;
+  bool rollback_successful = true;
+  int result =
+      cgpt_manager.SetSuccessful(install_config.kernel.number(), false);
+  if (result != kCgptSuccess) {
+    rollback_successful = false;
+    LOG(ERROR) << "Unable to set successful to " << new_kern_successful
+               << " for kernel: " << install_config.kernel.number();
   }
 
-  // Create a file indicating that the install is completed. The file
-  // will be used in /sbin/chromeos_startup to run tasks on the next boot.
-  // See comments above about removing ureadahead files.
-  string install_completed = string(kStatefulMount) + "/.install_completed";
-  if (!Touch(install_completed)) {
-    PLOG(ERROR) << "Touch(" << install_completed.c_str() << ") failed.";
+  int numTries = 0;
+  result =
+      cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
+  if (result != kCgptSuccess) {
+    rollback_successful = false;
+    LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
+               << " for kernel: " << install_config.kernel.number();
   }
 
-  // If present, remove firmware checking completion file to force a disk
-  // firmware check at reboot.
-  string disk_fw_check_complete =
-      string(kStatefulMount) +
-      "/unencrypted/cache/.disk_firmware_upgrade_completed";
-  unlink(disk_fw_check_complete.c_str());
+  int priority = 0;
+  result = cgpt_manager.SetPriority(install_config.kernel.number(), priority);
+  if (result != kCgptSuccess) {
+    rollback_successful = false;
+    LOG(ERROR) << "Unable to set Priority to " << priority
+               << " for kernel: " << install_config.kernel.number();
+  }
 
-  if (!is_factory_install &&
-      !RunBoardPostInstall(install_config.root.mount())) {
-    LOG(ERROR) << "Failed to perform board specific post install script.";
+  if (rollback_successful)
+    LOG(INFO) << "Successfully updated GPT with all settings to rollback.";
+
+  return rollback_successful;
+}
+
+// Do post install stuff.
+//
+// Install kernel, set up the proper bootable partition in
+// GPT table, update firmware if necessary and possible.
+//
+// install_config defines the root, kernel and boot partitions.
+//
+bool ChromeosChrootPostinst(const InstallConfig& install_config,
+                            int* exit_code) {
+  // Extract External ENVs
+  bool is_factory_install = getenv("IS_FACTORY_INSTALL");
+  bool is_recovery_install = getenv("IS_RECOVERY_INSTALL");
+  bool is_install = getenv("IS_INSTALL");
+  bool is_update = !is_factory_install && !is_recovery_install && !is_install &&
+                   !IsRunningMiniOS();
+
+  switch (install_config.defer_update_action) {
+    case DeferUpdateAction::kAuto:
+    case DeferUpdateAction::kHold: {
+      // TODO(dgarrett): Remove when chromium:216338 is fixed.
+      // If this FS was mounted read-write, we can't do deltas from it. Mark the
+      // FS as such
+      Touch(install_config.root.mount() +
+            "/.nodelta");  // Ignore Error on purpose
+
+      LOG(INFO) << "Setting boot target to " << install_config.root.device()
+                << ": Partition " << install_config.root.number() << ", Slot "
+                << install_config.slot;
+
+      if (!SetImage(install_config)) {
+        LOG(ERROR) << "SetImage failed.";
+        return false;
+      }
+
+      // This cache file might be invalidated, and will be recreated on next
+      // boot. Error ignored, since we don't care if it didn't exist to start
+      // with.
+      string network_driver_cache = "/var/lib/preload-network-drivers";
+      LOG(INFO) << "Clearing network driver boot cache: "
+                << network_driver_cache;
+      unlink(network_driver_cache.c_str());
+
+      break;
+    }
+    case DeferUpdateAction::kApply:
+      break;
+  }
+
+  LOG(INFO) << "Syncing filesystems before changing boot order...";
+  LoggingTimerStart();
+  sync();
+  LoggingTimerFinish();
+
+  CgptManager cgpt_manager;
+
+  int result = cgpt_manager.Initialize(install_config.root.base_device());
+  if (result != kCgptSuccess) {
+    LOG(ERROR) << "Unable to initialize CgptManager().";
     return false;
+  }
+
+  switch (install_config.defer_update_action) {
+    case DeferUpdateAction::kApply:
+      LOG(INFO) << "Updating partition table for deferred update APPLY.";
+      [[fallthrough]];
+    case DeferUpdateAction::kAuto: {
+      if (!UpdatePartitionTable(cgpt_manager, install_config, is_update)) {
+        LOG(ERROR) << "UpdatePartitionTable failed.";
+        return false;
+      }
+      // At this point in the script, the new partition has been marked bootable
+      // and a reboot will boot into it. Thus, it's important that any future
+      // errors in this script do not cause this script to return failure unless
+      // in factory mode.
+      FixUnencryptedPermission();
+
+      // We have a new image, making the ureadahead pack files
+      // out-of-date.  Delete the files so that ureadahead will
+      // regenerate them on the next reboot.
+      // WARNING: This doesn't work with upgrade from USB, rather than full
+      // install/recovery. We don't have support for it as it'll increase the
+      // complexity here, and only developers do upgrade from USB.
+      if (!RemovePackFiles("/var/lib/ureadahead")) {
+        LOG(ERROR) << "RemovePackFiles Failed.";
+      }
+
+      // Create a file indicating that the install is completed. The file
+      // will be used in /sbin/chromeos_startup to run tasks on the next boot.
+      // See comments above about removing ureadahead files.
+      string install_completed = string(kStatefulMount) + "/.install_completed";
+      if (!Touch(install_completed)) {
+        PLOG(ERROR) << "Touch(" << install_completed.c_str() << ") failed.";
+      }
+
+      // If present, remove firmware checking completion file to force a disk
+      // firmware check at reboot.
+      string disk_fw_check_complete =
+          string(kStatefulMount) +
+          "/unencrypted/cache/.disk_firmware_upgrade_completed";
+      unlink(disk_fw_check_complete.c_str());
+
+      if (!is_factory_install &&
+          !RunBoardPostInstall(install_config.root.mount())) {
+        LOG(ERROR) << "Failed to perform board specific post install script.";
+        return false;
+      }
+
+      break;
+    }
+    case DeferUpdateAction::kHold:
+      LOG(INFO) << "Skipping partition table update for deferred update HOLD.";
+      break;
   }
 
   // In postinst in future, we may provide an option (ex, --update_firmware).
@@ -364,7 +446,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     if (CreateTemporaryFile(&fspm_main))
       SlowBootNotifyPreFwUpdate(fspm_main);
 
-    *exit_code = FirmwareUpdate(install_config.root.mount(), is_update);
+    *exit_code = FirmwareUpdate(install_config, is_update);
     if (*exit_code == 0) {
       base::FilePath fspm_next;
       if (CreateTemporaryFile(&fspm_next))
@@ -381,46 +463,17 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       base::DeleteFile(fspm_next);
     } else {
       base::DeleteFile(fspm_main);
+
+      LOG(INFO)
+          << "Rolling back update due to failure calling firmware updater";
       // Note: This will only rollback the ChromeOS verified boot target.
       // The assumption is that systems running firmware autoupdate
       // are not running legacy (non-ChromeOS) firmware. If the firmware
       // updater crashes or writes corrupt data rather than gracefully
       // failing, we'll probably need to recover with a recovery image.
-      LOG(INFO) << "Rolling back update due to failure installing required "
-                << "firmware.";
-
-      // In all these checks below, we continue even if there's a failure
-      // so as to cleanup as much as possible.
-      new_kern_successful = false;
-      bool rollback_successful = true;
-      result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
-                                          new_kern_successful);
-      if (result != kCgptSuccess) {
-        rollback_successful = false;
-        LOG(ERROR) << "Unable to set successful to " << new_kern_successful
-                   << " for kernel: " << install_config.kernel.number();
+      if (!RollbackPartitionTable(cgpt_manager, install_config)) {
+        LOG(ERROR) << "RollbackPartitionTable failed.";
       }
-
-      numTries = 0;
-      result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number(),
-                                            numTries);
-      if (result != kCgptSuccess) {
-        rollback_successful = false;
-        LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
-                   << " for kernel: " << install_config.kernel.number();
-      }
-
-      int priority = 0;
-      result =
-          cgpt_manager.SetPriority(install_config.kernel.number(), priority);
-      if (result != kCgptSuccess) {
-        rollback_successful = false;
-        LOG(ERROR) << "Unable to set Priority to " << priority
-                   << " for kernel: " << install_config.kernel.number();
-      }
-
-      if (rollback_successful)
-        LOG(INFO) << "Successfully updated GPT with all settings to rollback.";
 
       return false;
     }
@@ -428,6 +481,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   // Don't modify Cr50 in factory.
   if (!is_factory_install) {
+    int result = 0;
+
     // Check the device state to determine if the board id should be set.
     if (RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
                       "check_device")) {
@@ -463,10 +518,12 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 bool RunPostInstall(const string& install_dev,
                     const string& install_dir,
                     BiosType bios_type,
+                    DeferUpdateAction defer_update_action,
                     int* exit_code) {
   InstallConfig install_config;
 
-  if (!ConfigureInstall(install_dev, install_dir, bios_type, &install_config)) {
+  if (!ConfigureInstall(install_dev, install_dir, bios_type,
+                        defer_update_action, &install_config)) {
     LOG(ERROR) << "Configure failed.";
     return false;
   }
@@ -498,9 +555,19 @@ bool RunPostInstall(const string& install_dev,
   LOG(INFO) << "Syncing filesystem at end of postinst...";
   sync();
 
-  // Sync doesn't appear to sync out cgpt changes, so
-  // let them flush themselves. (chromium-os:35992)
-  sleep(10);
+  switch (install_config.defer_update_action) {
+    case DeferUpdateAction::kAuto:
+      // Sync doesn't appear to sync out cgpt changes, so
+      // let them flush themselves. (chromium-os:35992)
+      sleep(10);
+      break;
+    case DeferUpdateAction::kApply:
+      // Need to reduce the amount of time as much as possible for defer update
+      // APPLY action as it will be noticeable to users.
+      break;
+    case DeferUpdateAction::kHold:
+      return true;
+  }
 
   // If we are installing to a ChromeOS Bios, we are done.
   if (install_config.bios_type == kBiosTypeSecure)

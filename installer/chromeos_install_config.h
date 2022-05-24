@@ -19,6 +19,14 @@ enum BiosType {
 
 bool StrToBiosType(std::string name, BiosType* bios_type);
 
+enum DeferUpdateAction {
+  kAuto,
+  kHold,
+  kApply,
+};
+
+bool StrToDeferUpdateAction(std::string name, DeferUpdateAction* defer_updates);
+
 // We commonly need to have the same data about devices in multiple formats
 // during the install process. This class allows us to have a partition
 // device in whichever format is currently most useful.
@@ -67,6 +75,7 @@ struct InstallConfig {
   Partition boot;
 
   BiosType bios_type;
+  DeferUpdateAction defer_update_action;
 };
 
 #endif  // INSTALLER_CHROMEOS_INSTALL_CONFIG_H_

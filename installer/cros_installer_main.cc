@@ -15,6 +15,9 @@ int main(int argc, char* argv[]) {
   DEFINE_string(bios, "", "Bios type, one of: secure, legacy, efi, and uboot.");
   DEFINE_string(install_dev, "", "Install device. e.g. /");
   DEFINE_string(install_dir, "", "Install directory. e.g. /tmp/blah");
+  DEFINE_string(defer_update_action, "",
+                "Defers(holds)/applies final FW + OS updates, "
+                "one of: '' (Default: empty), 'hold', and 'apply'.");
 
   brillo::FlagHelper::Init(argc, argv, "cros_installer");
 
@@ -33,10 +36,17 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "--install_dir is empty.";
       return 1;
     }
+    DeferUpdateAction defer_update_action;
+    if (!StrToDeferUpdateAction(FLAGS_defer_update_action,
+                                &defer_update_action)) {
+      LOG(ERROR) << "Invalid --defer_update_action: "
+                 << FLAGS_defer_update_action;
+      return 1;
+    }
 
     int exit_code = 0;
     if (!RunPostInstall(FLAGS_install_dev, FLAGS_install_dir, bios_type,
-                        &exit_code)) {
+                        defer_update_action, &exit_code)) {
       return exit_code ? exit_code : 1;
     }
   } else {

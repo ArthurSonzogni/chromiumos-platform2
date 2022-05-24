@@ -25,9 +25,10 @@ void TestConfigureInstall(const string& install_dev,
   InstallConfig install_config;
 
   BiosType expected_bios = kBiosTypeSecure;
+  DeferUpdateAction defer_update_action = DeferUpdateAction::kAuto;
 
   EXPECT_EQ(ConfigureInstall(install_dev, install_dir, expected_bios,
-                             &install_config),
+                             defer_update_action, &install_config),
             expected_success);
 
   if (!expected_success)
@@ -38,6 +39,7 @@ void TestConfigureInstall(const string& install_dev,
   EXPECT_EQ(install_config.kernel.device(), expected_kernel);
   EXPECT_EQ(install_config.boot.device(), expected_boot);
   EXPECT_EQ(install_config.bios_type, expected_bios);
+  EXPECT_EQ(install_config.defer_update_action, DeferUpdateAction::kAuto);
 }
 
 void TestStrToBiosType(string name,
