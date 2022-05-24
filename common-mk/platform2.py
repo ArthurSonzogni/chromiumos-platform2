@@ -88,6 +88,7 @@ _IUSE = [
     'internal',
     'ipu6',
     'ipu6ep',
+    'ipu6epmtl',
     'ipu6se',
     'iwlwifi_dump',
     'jetstream_routing',
