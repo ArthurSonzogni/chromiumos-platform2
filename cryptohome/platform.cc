@@ -857,8 +857,8 @@ bool Platform::UdevAdmSettle(const base::FilePath& device_path,
 bool Platform::IsStatefulLogicalVolumeSupported() {
   base::FilePath stateful_device = GetStatefulDevice();
 
-  base::ScopedFD fd(HANDLE_EINTR(open(stateful_device.value().c_str(),
-                                      O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
+  base::ScopedFD fd(HANDLE_EINTR(
+      open(stateful_device.value().c_str(), O_RDONLY | O_CLOEXEC)));
 
   if (!fd.is_valid())
     return false;
