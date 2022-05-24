@@ -12,7 +12,7 @@ const char kFuseBoxServiceInterface[] = "org.chromium.FuseBoxService";
 const char kFuseBoxServiceName[] = "org.chromium.FuseBoxService";
 const char kFuseBoxServicePath[] = "/org/chromium/FuseBoxService";
 
-// FuseBoxService entry stat method.
+// FuseBoxService entry methods.
 const char kStatMethod[] = "Stat";
 
 // FuseBoxService directory entry methods.
@@ -40,6 +40,19 @@ const char kFuseBoxReverseServicePath[] = "/org/chromium/FuseBoxReverseService";
 const char kAttachStorageMethod[] = "AttachStorage";
 const char kDetachStorageMethod[] = "DetachStorage";
 const char kReplyToReadDirMethod[] = "ReplyToReadDir";
+
+// Monikers: shared names between Fusebox client and server. Monikers are names
+// automatically attached to the client daemon FUSE root node. A moniker's name
+// has a subdir and FileSystemURL. They are attached by AttachStorage(name).
+//
+// See chrome/browser/ash/file_manager/fusebox_moniker.h for more about Fusebox
+// monikers. TODO(crbug.com/1327541): consider changing dummy:// => fusebox://,
+// and removing the trailing slash on filename prefix.
+const char kMonikerAttachStorageArg[] = "moniker dummy://moniker";
+const char kMonikerFileSystemURL[] = "dummy://moniker";
+const char kMonikerSubdir[] = "moniker";
+const char kMonikerFilenamePrefixWithTrailingSlash[] =
+    "/media/fuse/fusebox/moniker/";
 
 }  // namespace fusebox
 
