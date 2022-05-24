@@ -177,7 +177,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetMockFile(kFilePathProcCmdline, proc_cmd);
   }
 
-  void SetUEFISceureBootResponse(const std::string& content) {
+  void SetUEFISecureBootResponse(const std::string& content) {
     // Set the mock executor response.
     EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
         .WillOnce(WithArg<0>(Invoke(
@@ -347,7 +347,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  SetUEFISceureBootResponse("\x00");
+  SetUEFISecureBootResponse("\x00");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
@@ -360,14 +360,14 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
-  SetUEFISceureBootResponse("\x01");
+  SetUEFISecureBootResponse("\x01");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }
 
 // Test that the executor fails to read UEFISecureBoot file content and returns
 // kCrosEfi as default value
-TEST_F(SystemUtilsTest, TestUEFISceureBootFailure) {
+TEST_F(SystemUtilsTest, TestUEFISecureBootFailure) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
       .WillOnce(WithArg<0>(Invoke(
