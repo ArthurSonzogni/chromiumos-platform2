@@ -2316,11 +2316,16 @@ void WiFi::StateChanged(const std::string& new_state) {
   }
 
   if (new_state == WPASupplicant::kInterfaceStateCompleted) {
-    if (!IsStateTransitionConnectionMaintenance(*affected_service)) {
+    if (old_state != WPASupplicant::kInterfaceStateCompleted &&
+        !IsStateTransitionConnectionMaintenance(*affected_service)) {
       // Do not report connection attempts when the transition to
       // |kInterfaceStateCompleted| was caused by a "maintenance" event
       // (e.g. rekeying) from a fully connected state rather than a genuine
       // attempt to connect from a "disconnected" state.
+      // When rekeying happens shill does not always get notified for every
+      // state transition, it sometimes only gets 1 state transition that
+      // appears to be between |kInterfaceStateCompleted| and
+      // |kInterfaceStateCompleted|. We handle that case as a rekeying event.
       affected_service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
     }
     if (affected_service->IsConnected()) {
