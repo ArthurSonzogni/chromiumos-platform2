@@ -1099,6 +1099,20 @@ class Metrics : public DefaultServiceObserver {
     int subsystem_id;
   };
 
+  enum WiFiSessionTagState {
+    kWiFiSessionTagStateUnknown = 0,
+    kWiFiSessionTagStateUnexpected = 1,
+    kWiFiSessionTagStateExpected = 2,
+    kWiFiSessionTagStateMax
+  };
+  static constexpr char kWiFiSessionTagStateMetricPrefix[] =
+      "Network.Shill.WiFi.SessionTagState";
+  static constexpr char kWiFiSessionTagConnectionAttemptSuffix[] =
+      "ConnectionAttempt";
+  static constexpr char kWiFiSessionTagConnectionAttemptResultSuffix[] =
+      "ConnectionAttemptResult";
+  static constexpr char kWiFiSessionTagDisconnectionSuffix[] = "Disconnection";
+
   Metrics();
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
