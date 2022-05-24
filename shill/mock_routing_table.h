@@ -28,7 +28,7 @@ class MockRoutingTable : public RoutingTable {
               (override));
   MOCK_METHOD(bool,
               SetDefaultRoute,
-              (int, const IPAddress&, uint32_t, uint32_t),
+              (int, const IPAddress&, uint32_t),
               (override));
   MOCK_METHOD(bool,
               CreateBlackholeRoute,
@@ -42,7 +42,6 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD(void, FlushRoutesWithTag, (int), (override));
   MOCK_METHOD(bool, FlushCache, (), (override));
   MOCK_METHOD(void, ResetTable, (int), (override));
-  MOCK_METHOD(void, SetDefaultMetric, (int, uint32_t), (override));
   MOCK_METHOD(bool,
               RequestRouteToHost,
               (const IPAddress&, int, int, const QueryCallback&, uint32_t),

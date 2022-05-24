@@ -58,11 +58,6 @@ class Connection {
   // This will replace all previous state for this address family.
   virtual void UpdateFromIPConfig(const IPConfig::Properties& properties);
 
-  // Update the metric on the default route in |properties|, if any.  This
-  // should be called after the kernel notifies shill that a new IPv6
-  // address+gateway have been configured.
-  void UpdateGatewayMetric(const IPConfig::Properties& properties);
-
   // Routing policy rules have priorities, which establishes the order in which
   // policy rules will be matched against the current traffic. The higher the
   // priority value, the lower the priority of the rule. 0 is the highest rule

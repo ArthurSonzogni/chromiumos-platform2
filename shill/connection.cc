@@ -140,7 +140,8 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
             RoutingTableEntry::Create(destination_address, source_address,
                                       gateway_address)
                 .SetMetric(priority_)
-                .SetTable(table_id_))) {
+                .SetTable(table_id_)
+                .SetTag(interface_index_))) {
       ret = false;
     }
   }
@@ -157,7 +158,8 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
   auto entry = RoutingTableEntry::Create(empty_ip, empty_ip, empty_ip)
                    .SetScope(RT_SCOPE_LINK)
                    .SetTable(table_id_)
-                   .SetType(RTN_THROW);
+                   .SetType(RTN_THROW)
+                   .SetTag(interface_index_);
   for (const auto& excluded_ip : properties.exclusion_list) {
     if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
         !entry.dst.IsValid() ||
@@ -224,7 +226,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
       // The address has changed for this interface.  We need to flush
       // everything and start over.
       LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
-      routing_table_->FlushRoutes(interface_index_);
+      routing_table_->FlushRoutesWithTag(interface_index_);
       device_info_->FlushAddresses(interface_index_);
     }
 
@@ -240,9 +242,10 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     SetMTU(properties.mtu);
   }
 
-  if (gateway.IsValid() && properties.default_route) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway, priority_,
-                                    table_id_);
+  if (gateway.IsValid() && properties.default_route &&
+      gateway.family() == IPAddress::kFamilyIPv4) {
+    // For IPv6 we rely on default route added by kernel
+    routing_table_->SetDefaultRoute(interface_index_, gateway, table_id_);
   }
 
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
@@ -289,20 +292,6 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
   local_ = local;
   gateway_ = gateway;
-}
-
-void Connection::UpdateGatewayMetric(const IPConfig::Properties& properties) {
-  IPAddress gateway(properties.address_family);
-
-  if (!properties.gateway.empty() &&
-      !gateway.SetAddressFromString(properties.gateway)) {
-    return;
-  }
-  if (gateway.IsValid() && properties.default_route) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway, priority_,
-                                    table_id_);
-    routing_table_->FlushCache();
-  }
 }
 
 void Connection::UpdateRoutingPolicy() {
@@ -455,7 +444,6 @@ void Connection::SetPriority(uint32_t priority, bool is_primary_physical) {
 
   priority_ = priority;
   is_primary_physical_ = is_primary_physical;
-  routing_table_->SetDefaultMetric(interface_index_, priority);
   UpdateRoutingPolicy();
 
   PushDNSConfig();
@@ -546,7 +534,8 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
                                          default_address, default_address)
                    .SetScope(RT_SCOPE_LINK)
                    .SetTable(table_id_)
-                   .SetType(RTN_UNICAST);
+                   .SetType(RTN_UNICAST)
+                   .SetTag(interface_index_);
 
   if (!routing_table_->AddRoute(interface_index_, entry)) {
     LOG(ERROR) << "Unable to add link-scoped route to gateway.";

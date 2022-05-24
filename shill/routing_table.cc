@@ -62,8 +62,6 @@ static_assert(
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
 
-constexpr int kKernelSlaacRouteMetric = 1024;
-
 bool ParseRoutingTableMessage(const RTNLMessage& message,
                               int* interface_index,
                               RoutingTableEntry* entry) {
@@ -345,24 +343,15 @@ bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const IPAddress& gateway_address,
-                                   uint32_t metric,
                                    uint32_t table_id) {
-  SLOG(this, 2) << __func__ << " index " << interface_index << " metric "
-                << metric;
+  SLOG(this, 2) << __func__ << " index " << interface_index;
 
   RoutingTableEntry* old_entry;
-
-  // metric 0 isn't allowed on IPv6; it will create a metric 1024 route
-  // and cause |tables_| to get out of sync with the kernel.
-  DCHECK_NE(metric, 0U);
 
   if (GetDefaultRouteInternal(interface_index, gateway_address.family(),
                               &old_entry)) {
     if (old_entry->gateway.Equals(gateway_address) &&
         old_entry->table == table_id) {
-      if (old_entry->metric != metric) {
-        ReplaceMetric(interface_index, old_entry, metric);
-      }
       return true;
     } else {
       if (!RemoveRoute(interface_index, *old_entry)) {
@@ -378,8 +367,9 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
   return AddRoute(interface_index,
                   RoutingTableEntry::Create(default_address, default_address,
                                             gateway_address)
-                      .SetMetric(metric)
-                      .SetTable(table_id));
+                      .SetMetric(kShillDefaultRouteMetric)
+                      .SetTable(table_id)
+                      .SetTag(interface_index));
 }
 
 void RoutingTable::FlushRoutes(int interface_index) {
@@ -413,24 +403,6 @@ void RoutingTable::FlushRoutesWithTag(int tag) {
 
 void RoutingTable::ResetTable(int interface_index) {
   tables_.erase(interface_index);
-}
-
-void RoutingTable::SetDefaultMetric(int interface_index, uint32_t metric) {
-  SLOG(this, 2) << __func__ << " index " << interface_index << " metric "
-                << metric;
-
-  RoutingTableEntry* entry;
-  if (GetDefaultRouteInternal(interface_index, IPAddress::kFamilyIPv4,
-                              &entry) &&
-      entry->metric != metric) {
-    ReplaceMetric(interface_index, entry, metric);
-  }
-
-  if (GetDefaultRouteInternal(interface_index, IPAddress::kFamilyIPv6,
-                              &entry) &&
-      entry->metric != metric) {
-    ReplaceMetric(interface_index, entry, metric);
-  }
 }
 
 bool RoutingTable::AddRouteToKernelTable(int interface_index,
@@ -632,28 +604,6 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   return rtnl_handler_->SendMessage(std::move(message), nullptr);
 }
 
-// Somewhat surprisingly, the kernel allows you to create multiple routes
-// to the same destination through the same interface with different metrics.
-// Therefore, to change the metric on a route, we can't just use the
-// NLM_F_REPLACE flag by itself.  We have to explicitly remove the old route.
-// We do so after creating the route at a new metric so there is no traffic
-// disruption to existing network streams.
-void RoutingTable::ReplaceMetric(uint32_t interface_index,
-                                 RoutingTableEntry* entry,
-                                 uint32_t metric) {
-  SLOG(this, 2) << __func__ << " index " << interface_index << " metric "
-                << metric;
-  RoutingTableEntry new_entry = *entry;
-  new_entry.metric = metric;
-  // First create the route at the new metric.
-  ApplyRoute(interface_index, new_entry, RTNLMessage::kModeAdd,
-             NLM_F_CREATE | NLM_F_REPLACE);
-  // Then delete the route at the old metric.
-  RemoveRouteFromKernelTable(interface_index, *entry);
-  // Now, update our routing table (via |*entry|) from |new_entry|.
-  *entry = new_entry;
-}
-
 bool RoutingTable::FlushCache() {
   static const char* const kPaths[] = {kIpv4RouteFlushPath,
                                        kIpv6RouteFlushPath};
@@ -717,7 +667,7 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
                    .SetMetric(metric)
                    .SetTable(table_id)
                    .SetType(RTN_BLACKHOLE)
-                   .SetTag(0);
+                   .SetTag(interface_index);
   return AddRoute(interface_index, entry);
 }
 

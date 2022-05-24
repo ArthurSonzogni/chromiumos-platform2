@@ -42,6 +42,17 @@ class RoutingTable {
   // Priority of the rule sending all traffic to the main routing table.
   static const uint32_t kRulePriorityMain;
 
+  // Used to detect default route added by kernel when receiving RA.
+  // Note that since 5.18 kernel this value will become configurable through
+  // net.ipv6.conf.all.ra_defrtr_metric and we need to be sure this value
+  // remains identical with kernel configuration.
+  static constexpr int kKernelSlaacRouteMetric = 1024;
+
+  // The metric shill will install its IPv4 default route. Does not have real
+  // impact to the routing decision since there will only be one default route
+  // in each routing table.
+  static constexpr int kShillDefaultRouteMetric = 65536;
+
   virtual ~RoutingTable();
 
   static RoutingTable* GetInstance();
@@ -88,7 +99,6 @@ class RoutingTable {
   // |metric|.
   virtual bool SetDefaultRoute(int interface_index,
                                const IPAddress& gateway_address,
-                               uint32_t metric,
                                uint32_t table_id);
 
   // Create a blackhole route for a given IP family.  Returns true
@@ -122,9 +132,6 @@ class RoutingTable {
 
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
-
-  // Set the metric (priority) on existing default routes for an interface.
-  virtual void SetDefaultMetric(int interface_index, uint32_t metric);
 
   // Get the default route to |destination| through |interface_index| and create
   // a host route to that destination.  When creating the route, tag our local
@@ -199,10 +206,6 @@ class RoutingTable {
   virtual bool GetDefaultRouteInternal(int interface_index,
                                        IPAddress::Family family,
                                        RoutingTableEntry** entry);
-
-  void ReplaceMetric(uint32_t interface_index,
-                     RoutingTableEntry* entry,
-                     uint32_t metric);
 
   bool ApplyRule(uint32_t interface_index,
                  const RoutingPolicyEntry& entry,

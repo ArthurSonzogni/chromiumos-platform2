@@ -737,10 +737,6 @@ void Device::OnIPv6ConfigUpdated() {
     return;
   }
 
-  if (connection_) {
-    connection_->UpdateGatewayMetric(ip6config_->properties());
-  }
-
   // Setup connection using IPv6 configuration only if the IPv6 configuration
   // is ready for connection (contained both IP address and DNS servers), and
   // there is no existing IPv4 connection. We always prefer IPv4

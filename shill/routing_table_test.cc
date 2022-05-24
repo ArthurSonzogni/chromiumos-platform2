@@ -359,31 +359,15 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(gateway_address.SetAddressFromString(kTestNetAddress0));
 
-  EXPECT_CALL(
-      rtnl_handler_,
-      DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd, kTestDeviceIndex1,
-                                    entry1, NLM_F_CREATE | NLM_F_EXCL),
-                    _));
-  EXPECT_TRUE(routing_table_->SetDefaultRoute(
-      kTestDeviceIndex1, gateway_address, metric,
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex1)));
-
-  // Setting the same route on the interface with a different metric should
-  // push the route with different flags to indicate we are replacing it,
-  // then it should delete the old entry.
   RoutingTableEntry entry4(entry1);
-  entry4.metric += 10;
+  entry4.SetMetric(RoutingTable::kShillDefaultRouteMetric);
   EXPECT_CALL(
       rtnl_handler_,
       DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd, kTestDeviceIndex1,
-                                    entry4, NLM_F_CREATE | NLM_F_REPLACE),
+                                    entry4, NLM_F_CREATE | NLM_F_EXCL),
                     _));
-  EXPECT_CALL(rtnl_handler_,
-              DoSendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
-                                            kTestDeviceIndex1, entry1, 0),
-                            _));
   EXPECT_TRUE(routing_table_->SetDefaultRoute(
-      kTestDeviceIndex1, gateway_address, entry4.metric,
+      kTestDeviceIndex1, gateway_address,
       RoutingTable::GetInterfaceTableId(kTestDeviceIndex1)));
 
   // Test that removing the table causes the route to disappear.
@@ -393,38 +377,16 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       kTestDeviceIndex1, IPAddress::kFamilyIPv4, &test_entry));
   EXPECT_EQ(1, GetRoutingTables()->size());
 
-  // When we set the metric on an existing route, a new add and delete
-  // operation should occur.
-  RoutingTableEntry entry5(entry4);
-  entry5.SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0))
-      .SetMetric(entry5.metric + 10);
-  EXPECT_CALL(
-      rtnl_handler_,
-      DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd, kTestDeviceIndex0,
-                                    entry5, NLM_F_CREATE | NLM_F_REPLACE),
-                    _));
-  EXPECT_CALL(rtnl_handler_,
-              DoSendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
-                                            kTestDeviceIndex0, entry0, 0),
-                            _));
-  routing_table_->SetDefaultMetric(kTestDeviceIndex0, entry5.metric);
-  // Furthermore, the routing table should reflect the change in the metric
-  // for the default route for the interface.
-  RoutingTableEntry default_route;
-  EXPECT_TRUE(routing_table_->GetDefaultRoute(
-      kTestDeviceIndex0, IPAddress::kFamilyIPv4, &default_route));
-  EXPECT_EQ(entry5.metric, default_route.metric);
-
   // Ask to flush table0.  We should see a delete message sent.
   EXPECT_CALL(rtnl_handler_,
               DoSendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
-                                            kTestDeviceIndex0, entry5, 0),
+                                            kTestDeviceIndex0, entry0, 0),
                             _));
   routing_table_->FlushRoutes(kTestDeviceIndex0);
   EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 
   // Test that the routing table size returns to zero.
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry5);
+  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry1);
   EXPECT_EQ(1, GetRoutingTables()->size());
   routing_table_->ResetTable(kTestDeviceIndex0);
   EXPECT_EQ(0, GetRoutingTables()->size());

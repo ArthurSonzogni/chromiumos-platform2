@@ -38,6 +38,9 @@ struct RoutingTableEntry {
   uint32_t table;
   unsigned char type;
   unsigned char protocol;
+
+  // Connections use their interface index as the tag when adding routes, so
+  // that as they are destroyed, they can remove all their dependent routes.
   int tag;
 };
 

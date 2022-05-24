@@ -110,10 +110,10 @@ std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
   }
 
   os << base::StringPrintf(
-      "%s%s%s metric %d %s table %d%s", dest_prefix, dest_address.c_str(),
-      gateway.c_str(), entry.metric,
+      "%s%s%s metric %d %s table %d tag %d%s", dest_prefix,
+      dest_address.c_str(), gateway.c_str(), entry.metric,
       IPAddress::GetAddressFamilyName(entry.dst.family()).c_str(),
-      static_cast<int>(entry.table), src.c_str());
+      static_cast<int>(entry.table), entry.tag, src.c_str());
   return os;
 }
 
