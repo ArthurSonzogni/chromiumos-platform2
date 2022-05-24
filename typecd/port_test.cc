@@ -41,7 +41,7 @@ class PortTest : public ::testing::Test {
 };
 
 // Check that basic Port creation, partner addition/deletion works.
-TEST_F(PortTest, TestBasicAdd) {
+TEST_F(PortTest, BasicAdd) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
   EXPECT_NE(nullptr, port);
 
@@ -52,7 +52,7 @@ TEST_F(PortTest, TestBasicAdd) {
 }
 
 // Check GetDataRole() for various sysfs values.
-TEST_F(PortTest, TestGetDataRole) {
+TEST_F(PortTest, GetDataRole) {
   // Set up fake sysfs directory for the port..
   auto port_path = temp_dir_.Append("port0");
   ASSERT_TRUE(base::CreateDirectory(port_path));
@@ -93,7 +93,7 @@ TEST_F(PortTest, TestGetDataRole) {
 }
 
 // Check GetPowerRole() for various sysfs values.
-TEST_F(PortTest, TestGetPowerRole) {
+TEST_F(PortTest, GetPowerRole) {
   // Set up fake sysfs directory for the port..
   auto port_path = temp_dir_.Append("port0");
   ASSERT_TRUE(base::CreateDirectory(port_path));
@@ -122,7 +122,7 @@ TEST_F(PortTest, TestGetPowerRole) {
 }
 
 // Check that DP Alt Mode Entry checks work as expected for a true case:
-TEST_F(PortTest, TestDPAltModeEntryCheckTrue) {
+TEST_F(PortTest, DPAltModeEntryCheckTrue) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -149,7 +149,7 @@ TEST_F(PortTest, TestDPAltModeEntryCheckTrue) {
 // Check that DP Alt Mode Entry checks work as expected for a specific false
 // case: The Startech dock DP VDO doesn't advertise DFP_D, so we *shouldn't*
 // enter DP alternate mode, despite it supporting the DP SID.
-TEST_F(PortTest, TestDPAltModeEntryCheckFalseWithDPSID) {
+TEST_F(PortTest, DPAltModeEntryCheckFalseWithDPSID) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddStartechDock(*port);
@@ -160,7 +160,7 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalseWithDPSID) {
 }
 
 // Check that DP Alt Mode Entry checks work as expected for false cases.
-TEST_F(PortTest, TestDPAltModeEntryCheckFalse) {
+TEST_F(PortTest, DPAltModeEntryCheckFalse) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
@@ -186,7 +186,7 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalse) {
 // Case: The WIMAXIT Type-C display supports DP alternate mode and the CalDigit
 // TBT4 cable supports up to USB4 so it should enter DP alternate mode and the
 // cable will not be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryCalDigitTBT4ToDisplay) {
+TEST_F(PortTest, DPAltModeEntryCalDigitTBT4ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -201,7 +201,7 @@ TEST_F(PortTest, TestDPAltModeEntryCalDigitTBT4ToDisplay) {
 // Case: The WIMAXIT Type-C display supports DP alternate mode and the Anker
 // USB3.2 Gen2 cable supports USB3 so it should enter DP alternate mode and
 // the cable will not be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryAnkerUsb3Gen2ToDisplay) {
+TEST_F(PortTest, DPAltModeEntryAnkerUsb3Gen2ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -216,7 +216,7 @@ TEST_F(PortTest, TestDPAltModeEntryAnkerUsb3Gen2ToDisplay) {
 // Case: The WIMAXIT Type-C display supports DP alternate mode and the HP
 // USB3.2 Gen1 cable supports up to USB3.2 Gen1 so it should enter DP
 // alternate mode and the cable will not be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryHPUsb3Gen1ToDisplay) {
+TEST_F(PortTest, DPAltModeEntryHPUsb3Gen1ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -231,7 +231,7 @@ TEST_F(PortTest, TestDPAltModeEntryHPUsb3Gen1ToDisplay) {
 // Case: The WIMAXIT Type-C display supports DP alternate mode and the Apple
 // TBT3 Pro cable supports up to USB4 so it should enter DP alternate mode
 // and the cable will not be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryAppleTBT3ToDisplay) {
+TEST_F(PortTest, DPAltModeEntryAppleTBT3ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -246,7 +246,7 @@ TEST_F(PortTest, TestDPAltModeEntryAppleTBT3ToDisplay) {
 // Case: The WIMAXIT Type-C display supports DP alternate mode but, an unbranded
 // USB2 cable is not considered as a cable object in typecd. It should still try
 // to enter alternate mode but the cable will be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDisplay) {
+TEST_F(PortTest, DPAltModeEntryUnbrandedUSB2ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -261,7 +261,7 @@ TEST_F(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDisplay) {
 // Case: The WIMAXIT Type-C display supports DP alternate mode but, a tested
 // Nekteck cable only supports up to USB2. The typec daemon should still try
 // to enter alternate mode but the cable will be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryNekteckUSB2ToDisplay) {
+TEST_F(PortTest, DPAltModeEntryNekteckUSB2ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -276,7 +276,7 @@ TEST_F(PortTest, TestDPAltModeEntryNekteckUSB2ToDisplay) {
 // Case: The Thinkpad Dock supports DP alternate mode and a tested unbranded
 // TBT3 cable supports up to USB3.2 Gen2 so it should enter DP alternate mode
 // and the cable will not be flagged as invalid
-TEST_F(PortTest, TestDPAltModeEntryTBT3ToDock) {
+TEST_F(PortTest, DPAltModeEntryTBT3ToDock) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddThinkpadTBT3Dock(*port);
@@ -291,7 +291,7 @@ TEST_F(PortTest, TestDPAltModeEntryTBT3ToDock) {
 // Case: The Thinkpad Dock supports DP alternate mode but a tested unbranded
 // USB2 cable is not recognized by the typec daemon. It should try to enter
 // DP alternate mode but the cable will be flagged as invalid.
-TEST_F(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDock) {
+TEST_F(PortTest, DPAltModeEntryUnbrandedUSB2ToDock) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddThinkpadTBT3Dock(*port);
@@ -306,7 +306,7 @@ TEST_F(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDock) {
 // Case: The Thinkpad Dock supports DP alternate mode but a tested Nekteck
 // type-c cable only supports up to USB2. The typec daemon should try to
 // enter DP alternate mode but the cable will be flagged as invalid.
-TEST_F(PortTest, TestDPAltModeEntryNekteckUSB2ToDock) {
+TEST_F(PortTest, DPAltModeEntryNekteckUSB2ToDock) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddThinkpadTBT3Dock(*port);
@@ -322,7 +322,7 @@ TEST_F(PortTest, TestDPAltModeEntryNekteckUSB2ToDock) {
 // will not recognize a cable for this dock, but because the partner notes it
 // uses a captive cable typecd should enter DP Alt Mode without flagging the
 // cable as invalid
-TEST_F(PortTest, TestDPAltModeEntryCableMattersDock) {
+TEST_F(PortTest, DPAltModeEntryCableMattersDock) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddCableMattersDock(*port);
@@ -336,7 +336,7 @@ TEST_F(PortTest, TestDPAltModeEntryCableMattersDock) {
 // working case:
 // - Startech.com TB3DK2DPW Alpine Ridge Dock.
 // - StarTech Passive Cable 40 Gbps PD 2.0
-TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech) {
+TEST_F(PortTest, TBTCompatibilityModeEntryCheckTrueStartech) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddStartechTB3DK2DPWDock(*port);
@@ -349,7 +349,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech) {
 // non-working case:
 // - Startech.com TB3DK2DPW Alpine Ridge Dock.
 // - Nekteck USB 2.0 cable (5A).
-TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech) {
+TEST_F(PortTest, TBTCompatibilityModeEntryCheckFalseStartech) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddStartechTB3DK2DPWDock(*port);
@@ -361,7 +361,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech) {
 // Check that TBT Compat Mode Entry checks work as expected for the following
 // working case:
 // - Dell WD19TB dock.
-TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB) {
+TEST_F(PortTest, TBTCompatibilityModeEntryCheckTrueWD19TB) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddDellWD19TBDock(*port);
@@ -373,7 +373,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB) {
 // working case:
 // - Intel Gatkex Creek USB4 dock.
 // - Belkin TBT3 Passive Cable 40Gbps.
-TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
+TEST_F(PortTest, USB4EntryTrueGatkexPassiveTBT3Cable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddIntelUSB4GatkexCreekDock(*port);
@@ -386,7 +386,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
 // working case:
 // - Intel Gatkex Creek USB4 dock.
 // - Hongju Full USB 3.1 Gen 1 5A passive cable..
-TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveNonTBT3Cable) {
+TEST_F(PortTest, USB4EntryTrueGatkexPassiveNonTBT3Cable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddIntelUSB4GatkexCreekDock(*port);
@@ -399,7 +399,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveNonTBT3Cable) {
 // non-working case:
 // - Intel Gatkex Creek USB4 dock.
 // - Nekteck USB 2.0 5A Passive Cable.
-TEST_F(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable) {
+TEST_F(PortTest, USB4EntryFalseGatkexPassiveNonTBT3Cable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddIntelUSB4GatkexCreekDock(*port);
@@ -415,7 +415,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable) {
 //
 // NOTE: This case is interesting because the TBT3 cable fails as it doesn't
 // support Rounded Data rates.
-TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
+TEST_F(PortTest, USB4EntryFalseGatkexActiveTBT3Cable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddIntelUSB4GatkexCreekDock(*port);
@@ -428,7 +428,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
 // working case:
 // - Intel Gatkex Creek USB4 dock.
 // - Apple Thunderbolt 3 Pro Cable.
-TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
+TEST_F(PortTest, USB4EntryTrueGatkexAppleTBT3ProCable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddIntelUSB4GatkexCreekDock(*port);
@@ -440,7 +440,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
 // Check that USB4 device will enter TBT3 mode if the  cable does not support
 // USB4.
 // Case: Thunderbolt 4 OWC dock connected with Belkin active TBT3 cable.
-TEST_F(PortTest, TestUSB4ToTBT) {
+TEST_F(PortTest, USB4ToTBT) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);
@@ -453,7 +453,7 @@ TEST_F(PortTest, TestUSB4ToTBT) {
 // Check that USB4 device will enter DPAltMode if the cable does not support
 // USB4 or TBT.
 // Case: Thunderbolt 4 OWC dock connected with unbranded USB2 cable.
-TEST_F(PortTest, TestUSB4ToDPAltMode) {
+TEST_F(PortTest, USB4ToDPAltMode) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);
@@ -470,7 +470,7 @@ TEST_F(PortTest, TestUSB4ToDPAltMode) {
 
 // Check that CableLimitingUSBSpeed works for "false" case.
 // Case: Thunderbolt 4 OWC dock connected with CalDigit Thunderbolt 4 cable.
-TEST_F(PortTest, TestUSB4LimitedByCableFalse) {
+TEST_F(PortTest, USB4LimitedByCableFalse) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);
@@ -482,7 +482,7 @@ TEST_F(PortTest, TestUSB4LimitedByCableFalse) {
 
 // Check that CableLimitingUSBSpeed works for "true" case.
 // Case: Thunderbolt 4 OWC dock connected with Cable Matters USB4 20Gbps cable.
-TEST_F(PortTest, TestUSB4LimitedByCableTrue) {
+TEST_F(PortTest, USB4LimitedByCableTrue) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);
@@ -495,7 +495,7 @@ TEST_F(PortTest, TestUSB4LimitedByCableTrue) {
 // Check that CableLimitingUSBSpeed works for "false" case with passive TBT3
 // (USB 3.2 Gen2) Cable.
 // Case: Thunderbolt 4 OWC dock connected with unbranded TBT3 cable.
-TEST_F(PortTest, TestUSB4LimitedByTBT3PassiveCableFalse) {
+TEST_F(PortTest, USB4LimitedByTBT3PassiveCableFalse) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);
@@ -508,7 +508,7 @@ TEST_F(PortTest, TestUSB4LimitedByTBT3PassiveCableFalse) {
 // Check that CableLimitingUSBSpeed works for "false" case with passive TBT4
 // (USB 3.2 Gen2) LRD Cable.
 // Case: Thunderbolt 4 OWC dock connected with Cable Matters TBT4 LRD cable.
-TEST_F(PortTest, TestUSB4LimitedByTBT4PassiveLRDCableFalse) {
+TEST_F(PortTest, USB4LimitedByTBT4PassiveLRDCableFalse) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);
@@ -520,7 +520,7 @@ TEST_F(PortTest, TestUSB4LimitedByTBT4PassiveLRDCableFalse) {
 
 // Check that CableLimitingUSBSpeed works for a case with AMA VDO.
 // Case: WIMAXIT display connected with Anker USB 3.2 Gen2 cable.
-TEST_F(PortTest, TestBillboardOnlyDisplayNotLimitedByCable) {
+TEST_F(PortTest, BillboardOnlyDisplayNotLimitedByCable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddWimaxitDisplay(*port);
@@ -535,7 +535,7 @@ TEST_F(PortTest, TestBillboardOnlyDisplayNotLimitedByCable) {
 // Check that CableLimitingUSBSpeed() returns false for cases using a TBT3
 // active cable for USB4.
 // Case: Thunderbolt 4 OWC dock with Apple Thunderbolt 3 Pro Cable.
-TEST_F(PortTest, TestCableLimitingSpeedOWCDockAppleTBT3ProCable) {
+TEST_F(PortTest, CableLimitingSpeedOWCDockAppleTBT3ProCable) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
   AddOWCTBT4Dock(*port);

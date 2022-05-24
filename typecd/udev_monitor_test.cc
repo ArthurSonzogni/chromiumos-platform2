@@ -156,7 +156,7 @@ class UdevMonitorTest : public ::testing::Test {
   std::unique_ptr<UdevMonitor> monitor_;
 };
 
-TEST_F(UdevMonitorTest, TestBasic) {
+TEST_F(UdevMonitorTest, Basic) {
   // Create the Mock Udev objects and function invocation expectations.
   auto list_entry2 = std::make_unique<brillo::MockUdevListEntry>();
   EXPECT_CALL(*list_entry2, GetName())
@@ -193,7 +193,7 @@ TEST_F(UdevMonitorTest, TestBasic) {
 
 // Check that a port and partner can be detected after init. Also check whether
 // a subsequent partner removal is detected correctly.
-TEST_F(UdevMonitorTest, TestHotplug) {
+TEST_F(UdevMonitorTest, Hotplug) {
   // Create a socket-pair; to help poke the udev monitoring logic.
   auto fds = std::make_unique<brillo::ScopedSocketPair>();
 
@@ -264,7 +264,7 @@ TEST_F(UdevMonitorTest, TestHotplug) {
 }
 
 // Test that the udev handler correctly handles invalid port sysfs paths.
-TEST_F(UdevMonitorTest, TestInvalidPortSyspath) {
+TEST_F(UdevMonitorTest, InvalidPortSyspath) {
   // Create a socket-pair; to help poke the udev monitoring logic.
   auto fds = std::make_unique<brillo::ScopedSocketPair>();
 
@@ -303,7 +303,7 @@ TEST_F(UdevMonitorTest, TestInvalidPortSyspath) {
 
 // Test that the monitor can detect cable creation and SOP' alternate mode
 // addition. Also checks that an SOP'' alternate mode addition is ignored.
-TEST_F(UdevMonitorTest, TestCableAndAltModeAddition) {
+TEST_F(UdevMonitorTest, CableAndAltModeAddition) {
   // Create the Mock Udev objects and function invocation expectations.
 
   // Unsupported SOP'' alternate mode.
@@ -348,7 +348,7 @@ TEST_F(UdevMonitorTest, TestCableAndAltModeAddition) {
 }
 
 // Check that a basic partner change event gets detected correctly.
-TEST_F(UdevMonitorTest, TestPartnerChanged) {
+TEST_F(UdevMonitorTest, PartnerChanged) {
   // Create a socket-pair; to help poke the udev monitoring logic.
   auto fds = std::make_unique<brillo::ScopedSocketPair>();
 
@@ -393,7 +393,7 @@ TEST_F(UdevMonitorTest, TestPartnerChanged) {
 }
 
 // Check that a basic port change event gets detected correctly.
-TEST_F(UdevMonitorTest, TestPortChanged) {
+TEST_F(UdevMonitorTest, PortChanged) {
   // Create a socket-pair; to help poke the udev monitoring logic.
   auto fds = std::make_unique<brillo::ScopedSocketPair>();
 
@@ -440,7 +440,7 @@ TEST_F(UdevMonitorTest, TestPortChanged) {
 }
 
 // Check that a USB device can be detected after init.
-TEST_F(UdevMonitorTest, TestUsbDeviceScan) {
+TEST_F(UdevMonitorTest, UsbDeviceScan) {
   // Create the Mock Udev objects and function invocation expectations.
   auto list_entry = std::make_unique<brillo::MockUdevListEntry>();
   EXPECT_CALL(*list_entry, GetName()).WillOnce(Return(kFakeUsbSysPath));
@@ -467,7 +467,7 @@ TEST_F(UdevMonitorTest, TestUsbDeviceScan) {
 }
 
 // Check that a USB device add/remove can be detected through monitoring.
-TEST_F(UdevMonitorTest, TestUsbDeviceAddRemove) {
+TEST_F(UdevMonitorTest, UsbDeviceAddRemove) {
   // Create a socket-pair; to help poke the udev monitoring logic.
   auto fds = std::make_unique<brillo::ScopedSocketPair>();
 
@@ -518,7 +518,7 @@ TEST_F(UdevMonitorTest, TestUsbDeviceAddRemove) {
 }
 
 // Test that invalid syspath does not make callback.
-TEST_F(UdevMonitorTest, TestInvalidUsbDeviceSyspath) {
+TEST_F(UdevMonitorTest, InvalidUsbDeviceSyspath) {
   // Create a socket-pair; to help poke the udev monitoring logic.
   auto fds = std::make_unique<brillo::ScopedSocketPair>();
 

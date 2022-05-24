@@ -40,7 +40,7 @@ class UsbMonitorTest : public ::testing::Test {
 };
 
 // Test UsbDevice with correct information is created and removed in UsbMonitor.
-TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
+TEST_F(UsbMonitorTest, DeviceAddAndRemove) {
   // Set up fake sysfs directory.
   auto usb_sysfs_path = temp_dir_.Append("1-1");
   ASSERT_TRUE(base::CreateDirectory(usb_sysfs_path));
@@ -88,7 +88,7 @@ TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
 }
 
 // Test UsbDevice created with no Type C port when given invalid uevent path.
-TEST_F(UsbMonitorTest, TestInvalidUeventPath) {
+TEST_F(UsbMonitorTest, InvalidUeventPath) {
   // Set up fake sysfs directory.
   auto usb_sysfs_path = temp_dir_.Append("1-1");
   ASSERT_TRUE(base::CreateDirectory(usb_sysfs_path));
@@ -120,7 +120,7 @@ TEST_F(UsbMonitorTest, TestInvalidUeventPath) {
 }
 
 // Test UsbDevice created with no Type C port.
-TEST_F(UsbMonitorTest, TestNoTypecPort) {
+TEST_F(UsbMonitorTest, NoTypecPort) {
   // Set up fake sysfs directory.
   auto usb_sysfs_path = temp_dir_.Append("1-1");
   ASSERT_TRUE(base::CreateDirectory(usb_sysfs_path));
@@ -144,7 +144,7 @@ TEST_F(UsbMonitorTest, TestNoTypecPort) {
 }
 
 // Test a tree of UsbDevice with Type C port only available to the parent.
-TEST_F(UsbMonitorTest, TestDeviceTree) {
+TEST_F(UsbMonitorTest, DeviceTree) {
   // Set up fake parent sysfs directory.
   auto parent_usb_sysfs_path = temp_dir_.Append("3-1");
   ASSERT_TRUE(base::CreateDirectory(parent_usb_sysfs_path));
@@ -196,7 +196,7 @@ TEST_F(UsbMonitorTest, TestDeviceTree) {
 }
 
 // Test USB device with invalid version is created in UsbMonitor.
-TEST_F(UsbMonitorTest, TestInvalidVersion) {
+TEST_F(UsbMonitorTest, InvalidVersion) {
   // Set up fake sysfs directory.
   auto usb_sysfs_path = temp_dir_.Append("2-1");
   ASSERT_TRUE(base::CreateDirectory(usb_sysfs_path));

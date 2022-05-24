@@ -28,11 +28,11 @@ class UsbMonitor : public UdevMonitor::UsbObserver {
  private:
   friend class UsbMonitorFuzzer;
   friend class UsbMonitorTest;
-  FRIEND_TEST(UsbMonitorTest, TestDeviceAddAndRemove);
-  FRIEND_TEST(UsbMonitorTest, TestInvalidUeventPath);
-  FRIEND_TEST(UsbMonitorTest, TestNoTypecPort);
-  FRIEND_TEST(UsbMonitorTest, TestDeviceTree);
-  FRIEND_TEST(UsbMonitorTest, TestInvalidVersion);
+  FRIEND_TEST(UsbMonitorTest, DeviceAddAndRemove);
+  FRIEND_TEST(UsbMonitorTest, InvalidUeventPath);
+  FRIEND_TEST(UsbMonitorTest, NoTypecPort);
+  FRIEND_TEST(UsbMonitorTest, DeviceTree);
+  FRIEND_TEST(UsbMonitorTest, InvalidVersion);
 
   // UdevMonitor::UsbObserver overrides
   void OnDeviceAddedOrRemoved(const base::FilePath& path, bool added) override;

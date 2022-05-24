@@ -81,8 +81,8 @@ class Peripheral {
 
  private:
   friend class PartnerTest;
-  FRIEND_TEST(PartnerTest, TestAltModeManualAddition);
-  FRIEND_TEST(PartnerTest, TestPDIdentityScan);
+  FRIEND_TEST(PartnerTest, AltModeManualAddition);
+  FRIEND_TEST(PartnerTest, PDIdentityScan);
   FRIEND_TEST(PeripheralTest, CheckPDRevision);
 
   // PD Identity Data objects; expected to be read from the peripheral sysfs.

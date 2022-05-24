@@ -42,7 +42,7 @@ class PartnerTest : public ::testing::Test {
 // correctly. Also check that trying to add the same alt mode twice fails. While
 // we are here, also check that calls to DiscoveryComplete return the right
 // responses at various times of the discovery process.
-TEST_F(PartnerTest, TestAltModeManualAddition) {
+TEST_F(PartnerTest, AltModeManualAddition) {
   auto partner_path = temp_dir_.Append(std::string("port0-partner"));
   ASSERT_TRUE(base::CreateDirectory(partner_path));
 
@@ -97,7 +97,7 @@ TEST_F(PartnerTest, TestAltModeManualAddition) {
 // Finally, for the case where the "number_of_alternate_modes" attribute gets
 // updated after the initial partner registration, ensure that the attribute
 // gets parsed and stored correctly.
-TEST_F(PartnerTest, TestPDIdentityScan) {
+TEST_F(PartnerTest, PDIdentityScan) {
   // Set up fake sysfs paths.
   auto partner_path = temp_dir_.Append(std::string("port0-partner"));
   ASSERT_TRUE(base::CreateDirectory(partner_path));
@@ -171,7 +171,7 @@ TEST_F(PartnerTest, TestPDIdentityScan) {
 
 // Test that a partner's "supports_usb_power_delivery" sysfs attribute gets
 // parsed correctly.
-TEST_F(PartnerTest, TestSupportsPD) {
+TEST_F(PartnerTest, SupportsPD) {
   // Set up fake sysfs paths.
   auto partner_path = temp_dir_.Append(std::string("port0-partner"));
   ASSERT_TRUE(base::CreateDirectory(partner_path));

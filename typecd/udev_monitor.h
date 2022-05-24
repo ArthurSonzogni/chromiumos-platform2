@@ -133,15 +133,15 @@ class UdevMonitor {
  private:
   friend class UdevMonitorTest;
   friend class UdevMonitorFuzzer;
-  FRIEND_TEST(UdevMonitorTest, TestBasic);
-  FRIEND_TEST(UdevMonitorTest, TestHotplug);
-  FRIEND_TEST(UdevMonitorTest, TestInvalidPortSyspath);
-  FRIEND_TEST(UdevMonitorTest, TestCableAndAltModeAddition);
-  FRIEND_TEST(UdevMonitorTest, TestPartnerChanged);
-  FRIEND_TEST(UdevMonitorTest, TestPortChanged);
-  FRIEND_TEST(UdevMonitorTest, TestUsbDeviceScan);
-  FRIEND_TEST(UdevMonitorTest, TestUsbDeviceAddRemove);
-  FRIEND_TEST(UdevMonitorTest, TestInvalidUsbDeviceSyspath);
+  FRIEND_TEST(UdevMonitorTest, Basic);
+  FRIEND_TEST(UdevMonitorTest, Hotplug);
+  FRIEND_TEST(UdevMonitorTest, InvalidPortSyspath);
+  FRIEND_TEST(UdevMonitorTest, CableAndAltModeAddition);
+  FRIEND_TEST(UdevMonitorTest, PartnerChanged);
+  FRIEND_TEST(UdevMonitorTest, PortChanged);
+  FRIEND_TEST(UdevMonitorTest, UsbDeviceScan);
+  FRIEND_TEST(UdevMonitorTest, UsbDeviceAddRemove);
+  FRIEND_TEST(UdevMonitorTest, InvalidUsbDeviceSyspath);
 
   // Set the |udev_| pointer to a MockUdev device. *Only* used by unit tests.
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {

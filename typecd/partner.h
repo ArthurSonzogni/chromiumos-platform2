@@ -83,7 +83,7 @@ class Partner : public Peripheral {
   FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTPeripheral);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeDPAltHub);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeOther);
-  FRIEND_TEST(PartnerTest, TestSupportsPD);
+  FRIEND_TEST(PartnerTest, SupportsPD);
 
   // Convenience function used by ReportMetrics to get the right enum for
   // PartnerTypeMetric.

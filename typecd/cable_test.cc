@@ -20,7 +20,7 @@ class CableTest : public ::testing::Test {};
 // Check the PD Identity cable speed logic for TBT3 compatibility mode entry
 // for various cable PDO values.
 // Since we don't have sysfs, we can just manually set the PD identity VDOs.
-TEST_F(CableTest, TestTBT3PDIdentityCheck) {
+TEST_F(CableTest, TBT3PDIdentityCheck) {
   // Set up a temp dir.
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
@@ -144,7 +144,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
 
 // Check that calls of AddAltMode() done explicitly function correctly. Also
 // check that trying to add the same alt mode twice fails.
-TEST_F(CableTest, TestAltModeManualAddition) {
+TEST_F(CableTest, AltModeManualAddition) {
   // Set up a temp dir.
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
