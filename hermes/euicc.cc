@@ -58,6 +58,14 @@ Euicc::Euicc(uint8_t physical_slot, EuiccSlotInfo slot_info)
       weak_factory_(this) {
   dbus_adaptor_->SetPendingProfiles({});
   dbus_adaptor_->SetPhysicalSlot(physical_slot_);
+  if (EuiccCache::CacheExists(physical_slot)) {
+    CachedEuicc cached_euicc;
+    EuiccCache::Read(physical_slot, &cached_euicc);
+    dbus_adaptor_->SetProfilesRefreshedAtLeastOnce(
+        cached_euicc.profiles_refreshed_at_least_once());
+  } else {
+    dbus_adaptor_->SetProfilesRefreshedAtLeastOnce(false);
+  }
   UpdateSlotInfo(slot_info_);
 }
 
@@ -202,6 +210,15 @@ void Euicc::UpdateInstalledProfilesProperty() {
     profile_paths.push_back(profile->object_path());
   }
   dbus_adaptor_->SetInstalledProfiles(profile_paths);
+  if (EuiccCache::CacheExists(physical_slot_)) {
+    CachedEuicc cached_euicc;
+    EuiccCache::Read(physical_slot_, &cached_euicc);
+    cached_euicc.set_profiles_refreshed_at_least_once(true);
+    if (!EuiccCache::Write(physical_slot_, std::move(cached_euicc))) {
+      LOG(ERROR) << "Couldn't write EID to cache.";
+    }
+  }
+  dbus_adaptor_->SetProfilesRefreshedAtLeastOnce(true);
 }
 
 void Euicc::UpdatePendingProfilesProperty() {

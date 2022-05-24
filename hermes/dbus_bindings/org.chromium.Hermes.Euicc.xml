@@ -128,5 +128,6 @@
     <property name="IsActive" type="b" access="read" />
     <property name="PendingProfiles" type="ao" access="read" />
     <property name="PhysicalSlot" type="i" access="read" />
+    <property name="ProfilesRefreshedAtLeastOnce" type="b" access="read" />
   </interface>
 </node>

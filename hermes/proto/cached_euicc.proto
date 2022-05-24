@@ -8,4 +8,5 @@ package hermes;
 
 message CachedEuicc {
   string eid = 1;
+  bool profiles_refreshed_at_least_once = 2;
 };

@@ -38,17 +38,17 @@ void Manager::OnEuiccUpdated(uint8_t physical_slot, EuiccSlotInfo slot_info) {
             << " logical_slot: " << LogicalSlotToStr(slot_info.logical_slot());
 
   CachedEuicc cached_euicc;
+  if (EuiccCache::CacheExists(physical_slot) &&
+      !EuiccCache::Read(physical_slot, &cached_euicc)) {
+    LOG(ERROR) << "Couldn't load EID from cache";
+  }
   if (slot_info.eid_.empty()) {
-    if (EuiccCache::CacheExists(physical_slot) &&
-        !EuiccCache::Read(physical_slot, &cached_euicc)) {
-      LOG(ERROR) << "Couldn't load EID from cache.";
-    }
     slot_info.eid_ = cached_euicc.eid();
     VLOG(2) << "Loaded EID from cache: " << cached_euicc.eid();
   } else {
     cached_euicc.set_eid(slot_info.eid_);
     if (!EuiccCache::Write(physical_slot, std::move(cached_euicc))) {
-      LOG(ERROR) << "Couldn't write EID to cache.";
+      LOG(ERROR) << "Couldn't write EID to cache";
     }
   }
 
