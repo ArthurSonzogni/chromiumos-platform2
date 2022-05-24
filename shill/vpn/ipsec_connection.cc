@@ -677,6 +677,8 @@ void IPsecConnection::WriteSwanctlConfig() {
     default:
       NOTREACHED();
   }
+  child_section->AddKeyValue("set_mark_out",
+                             "0x500");  // TrafficSource::HOST_VPN
 
   // Writes to file.
   const std::string contents = base::StrCat(

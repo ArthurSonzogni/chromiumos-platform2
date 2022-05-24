@@ -150,6 +150,7 @@ constexpr char kExpectedSwanctlConfL2TPIPsecPSK[] = R"(connections {
         local_ts = "dynamic[17/1701]"
         mode = "transport"
         remote_ts = "dynamic[17/1701]"
+        set_mark_out = "0x500"
       }
     }
   }
@@ -185,6 +186,7 @@ constexpr char kExpectedSwanctlConfIKEv2EAP[] = R"(connections {
         local_ts = "dynamic"
         mode = "tunnel"
         remote_ts = "0.0.0.0/0"
+        set_mark_out = "0x500"
       }
     }
   }
