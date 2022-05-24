@@ -259,10 +259,56 @@ pub fn restore_pstore(pstore_path: &str) -> Result<()> {
         .context("Unable to sync pstore file")
 }
 
+// Append data to the given ramoops region.
+//
+// region_offset and region_size must correspond to either the console of the
+// pmsg ramoops regions. If the data is too large, it will be truncated to fit.
+// Returns the number of bytes copied.
+fn append_to_ramoops_region(
+    ramoops: &MemoryMapping,
+    region_offset: usize,
+    region_size: usize,
+    data: &[u8],
+) -> Result<usize> {
+    let mut header: RamoopsRegionHeader = ramoops.read_obj(region_offset)?;
+    let data_offset = region_offset + RAMOOPS_REGION_HEADER_SIZE;
+    let max_data_size = region_size - RAMOOPS_REGION_HEADER_SIZE;
+    let mut copied: usize;
+    if data.len() >= max_data_size {
+        copied = ramoops.write_slice(&data[..max_data_size], data_offset)?;
+        if copied != max_data_size {
+            bail!("internal error");
+        }
+        header.start = 0;
+        header.size = copied as u32;
+    } else {
+        let before_wrap = cmp::min(data.len(), max_data_size - (header.start as usize));
+        copied =
+            ramoops.write_slice(&data[..before_wrap], data_offset + (header.start as usize))?;
+        if copied != before_wrap {
+            bail!("internal error");
+        };
+        if before_wrap == data.len() {
+            header.start += copied as u32;
+        } else {
+            // wraparound at the end of the buffer
+            let remaining = ramoops.write_slice(&data[before_wrap..], data_offset)?;
+            header.start = remaining as u32;
+            copied += remaining;
+            if copied != data.len() {
+                bail!("internal error");
+            };
+        }
+        header.size = cmp::min(max_data_size, (header.size as usize) + data.len()) as u32;
+    }
+    ramoops.write_obj(header, region_offset)?;
+    Ok(copied)
+}
+
 /// Copy the tail of dmesg into the ramoops console buffer.
 ///
 /// This causes hypervisor logs to be included in kernel crash reports.
-pub fn append_hypervisor_dmesg(ramoops: &MemoryMapping) -> Result<()> {
+fn append_hypervisor_dmesg(ramoops: &MemoryMapping) -> Result<()> {
     let dmesg = kmsg::kmsg_tail(HYPERVISOR_DMESG_TAIL_BYTES)?;
     // Make the string longer to account for newlines and escaped chars.
     let mut output = String::with_capacity(HYPERVISOR_DMESG_TAIL_BYTES + 512);
@@ -272,26 +318,11 @@ pub fn append_hypervisor_dmesg(ramoops: &MemoryMapping) -> Result<()> {
         output.push('\n');
     }
 
-    let offsets = RamoopsOffsets::new(ramoops.size());
-    let mut header: RamoopsRegionHeader = ramoops.read_obj(offsets.console_offset)?;
-
     let data = output.as_bytes();
-    let console_start_offset = offsets.console_offset + RAMOOPS_REGION_HEADER_SIZE;
-    let copied = ramoops.write_slice(data, console_start_offset + (header.start as usize))?;
-    if copied < data.len() {
-        // wraparound at the end of the buffer
-        let remaining = ramoops.write_slice(&data[copied..], console_start_offset)?;
-        header.start = remaining as u32;
-    } else {
-        header.start += copied as u32;
-    }
-    header.size = cmp::min(
-        offsets.console_size - RAMOOPS_REGION_HEADER_SIZE,
-        (header.size as usize) + data.len(),
-    ) as u32;
-    ramoops.write_obj(header, offsets.console_offset)?;
-
-    info!("Appended {} bytes to ramoops console log", data.len());
+    let offsets = RamoopsOffsets::new(ramoops.size());
+    let copied =
+        append_to_ramoops_region(ramoops, offsets.console_offset, offsets.console_size, data)?;
+    info!("Appended {} bytes to ramoops console log", copied);
     Ok(())
 }
 
@@ -338,5 +369,72 @@ mod test {
             std::mem::size_of::<RamoopsRegionHeader>(),
             RAMOOPS_REGION_HEADER_SIZE
         )
+    }
+
+    fn create_ramoops(sz: usize, data: &[u8]) -> MemoryMapping {
+        let m = MemoryMapping::new(sz).unwrap();
+        let h = RamoopsRegionHeader {
+            sig: *b"DBGC",
+            start: data.len() as u32,
+            size: data.len() as u32,
+        };
+        m.write_obj(h, 0).unwrap();
+        m.write_slice(data, RAMOOPS_REGION_HEADER_SIZE).unwrap();
+        m
+    }
+
+    // The ramoops_append_* tests create a mmap mapping of 40 bytes, and then
+    // call append_to_ramoops_region() with half that size to simulate the fact
+    // that the ramoops memory mapping contains multiple regions.
+
+    #[test]
+    fn ramoops_append_nowrap() {
+        let d1: [u8; 4] = [1, 2, 3, 4];
+        let m = create_ramoops(40, &d1);
+
+        let d2: [u8; 3] = [5, 6, 7];
+        append_to_ramoops_region(&m, 0, 20, &d2).unwrap();
+
+        let mut d3: [u8; 7] = [0; 7];
+        m.read_slice(&mut d3, RAMOOPS_REGION_HEADER_SIZE).unwrap();
+        assert_eq!(&d3, &[1, 2, 3, 4, 5, 6, 7]);
+        let hh: RamoopsRegionHeader = m.read_obj(0).unwrap();
+        assert_eq!(&hh.sig, b"DBGC");
+        assert_eq!(hh.start, 7);
+        assert_eq!(hh.size, 7);
+    }
+
+    #[test]
+    fn ramoops_append_wrap() {
+        let d1: [u8; 4] = [1, 2, 3, 4];
+        let m = create_ramoops(40, &d1);
+
+        let d2: [u8; 5] = [5, 6, 7, 8, 9];
+        append_to_ramoops_region(&m, 0, 20, &d2).unwrap();
+
+        let mut d3: [u8; 8] = [0; 8];
+        m.read_slice(&mut d3, RAMOOPS_REGION_HEADER_SIZE).unwrap();
+        assert_eq!(&d3, &[9, 2, 3, 4, 5, 6, 7, 8]);
+        let hh: RamoopsRegionHeader = m.read_obj(0).unwrap();
+        assert_eq!(&hh.sig, b"DBGC");
+        assert_eq!(hh.start, 1);
+        assert_eq!(hh.size, 8);
+    }
+
+    #[test]
+    fn ramoops_append_trunc() {
+        let d1: [u8; 4] = [1, 2, 3, 4];
+        let m = create_ramoops(40, &d1);
+
+        let d2: [u8; 10] = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+        append_to_ramoops_region(&m, 0, 20, &d2).unwrap();
+
+        let mut d3: [u8; 8] = [0; 8];
+        m.read_slice(&mut d3, RAMOOPS_REGION_HEADER_SIZE).unwrap();
+        assert_eq!(&d3, &[10, 11, 12, 13, 14, 15, 16, 17]);
+        let hh: RamoopsRegionHeader = m.read_obj(0).unwrap();
+        assert_eq!(&hh.sig, b"DBGC");
+        assert_eq!(hh.start, 0);
+        assert_eq!(hh.size, 8);
     }
 }
