@@ -42,7 +42,7 @@ static constexpr Color kCapsLockHighlightAlternate =
 
 // Default background color.
 static constexpr Color kWhiteBackgroundColor =
-    Color(/*r=*/255, /*g=*/255, /*b=*/255);
+    Color(/*r=*/255, /*g=*/255, /*b=*/210);
 
 static constexpr uint32_t kLeftShiftKey = 44;
 static constexpr uint32_t kRightShiftKey = 57;
