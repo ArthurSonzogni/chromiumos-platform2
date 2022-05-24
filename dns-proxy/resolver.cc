@@ -204,12 +204,14 @@ void Resolver::OnTCPConnection() {
                                             weak_factory_.GetWeakPtr())));
 }
 
-void Resolver::HandleAresResult(
-    void* ctx, int status, unsigned char* msg, size_t len, int num_remaining) {
-  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
+void Resolver::HandleAresResult(SocketFd* sock_fd,
+                                int status,
+                                unsigned char* msg,
+                                size_t len,
+                                int num_remaining) {
   if (!sock_fd->request_handled &&
       (status == ARES_SUCCESS || num_remaining == 0)) {
-    HandleCombinedAresResult(ctx, status, msg, len);
+    HandleCombinedAresResult(sock_fd, status, msg, len);
   }
 
   // Delete |sock_fd| if all queries are processed and retry is not scheduled.
@@ -218,11 +220,10 @@ void Resolver::HandleAresResult(
   }
 }
 
-void Resolver::HandleCombinedAresResult(void* ctx,
+void Resolver::HandleCombinedAresResult(SocketFd* sock_fd,
                                         int status,
                                         unsigned char* msg,
                                         size_t len) {
-  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
   if (metrics_)
     metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
@@ -248,15 +249,14 @@ void Resolver::HandleCombinedAresResult(void* ctx,
   return;
 }
 
-void Resolver::HandleCurlResult(void* ctx,
+void Resolver::HandleCurlResult(SocketFd* sock_fd,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
                                 size_t len,
                                 int num_remaining) {
-  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   if (!sock_fd->request_handled &&
       (res.http_code == kHTTPOk || num_remaining == 0)) {
-    HandleCombinedCurlResult(ctx, res, msg, len);
+    HandleCombinedCurlResult(sock_fd, res, msg, len);
   }
 
   // Delete |sock_fd| if all queries are processed and retry is not scheduled.
@@ -265,11 +265,10 @@ void Resolver::HandleCurlResult(void* ctx,
   }
 }
 
-void Resolver::HandleCombinedCurlResult(void* ctx,
+void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
                                         const DoHCurlClient::CurlResult& res,
                                         unsigned char* msg,
                                         size_t len) {
-  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
   if (metrics_)
     metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
@@ -438,11 +437,11 @@ void Resolver::OnDNSQuery(int fd, int type) {
 void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
   if (doh_enabled_ && !fallback) {
     sock_fd->timer.StartResolve(true);
-    if (curl_client_->Resolve(sock_fd->msg, sock_fd->len,
-                              base::BindRepeating(&Resolver::HandleCurlResult,
-                                                  weak_factory_.GetWeakPtr()),
-                              name_servers_, doh_providers_,
-                              reinterpret_cast<void*>(sock_fd))) {
+    if (curl_client_->Resolve(
+            sock_fd->msg, sock_fd->len,
+            base::BindRepeating(&Resolver::HandleCurlResult,
+                                weak_factory_.GetWeakPtr(), sock_fd),
+            name_servers_, doh_providers_)) {
       return;
     }
     sock_fd->timer.StopResolve(false);
@@ -452,8 +451,8 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
     if (ares_client_->Resolve(
             reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
             base::BindRepeating(&Resolver::HandleAresResult,
-                                weak_factory_.GetWeakPtr()),
-            name_servers_, reinterpret_cast<void*>(sock_fd), sock_fd->type)) {
+                                weak_factory_.GetWeakPtr(), sock_fd),
+            name_servers_, sock_fd->type)) {
       return;
     }
     sock_fd->timer.StopResolve(false);

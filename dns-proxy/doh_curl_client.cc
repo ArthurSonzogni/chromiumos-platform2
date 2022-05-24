@@ -31,11 +31,9 @@ DoHCurlClient::CurlResult::CurlResult(CURLcode curl_code,
 
 DoHCurlClient::State::State(CURL* curl,
                             const QueryCallback& callback,
-                            void* ctx,
                             int request_id)
     : curl(curl),
       callback(callback),
-      ctx(ctx),
       header_list(nullptr),
       request_id(request_id) {}
 
@@ -49,7 +47,7 @@ void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg,
                                        int num_remaining) {
   // TODO(jasongustaman): Use HTTP 429, Retry-After header value.
   CurlResult res(curl_msg->data.result, http_code, 0 /* retry_delay_ms */);
-  callback.Run(ctx, res, response.data(), response.size(), num_remaining);
+  callback.Run(res, response.data(), response.size(), num_remaining);
 }
 
 void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
@@ -269,8 +267,7 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
     const char* msg,
     int len,
     const QueryCallback& callback,
-    const std::vector<std::string>& name_servers,
-    void* ctx) {
+    const std::vector<std::string>& name_servers) {
   CURL* curl;
   curl = curl_easy_init();
   if (!curl) {
@@ -280,7 +277,7 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
 
   // Allocate a state for the request.
   std::unique_ptr<State> state =
-      std::make_unique<State>(curl, callback, ctx, next_request_id_);
+      std::make_unique<State>(curl, callback, next_request_id_);
 
   // Set the target URL which is the DoH provider to query to.
   curl_easy_setopt(curl, CURLOPT_URL, doh_provider.c_str());
@@ -328,8 +325,7 @@ bool DoHCurlClient::Resolve(const char* msg,
                             int len,
                             const QueryCallback& callback,
                             const std::vector<std::string>& name_servers,
-                            const std::vector<std::string>& doh_providers,
-                            void* ctx) {
+                            const std::vector<std::string>& doh_providers) {
   if (name_servers.empty()) {
     LOG(ERROR) << "Name server list must not be empty";
     if (metrics_) {
@@ -352,7 +348,7 @@ bool DoHCurlClient::Resolve(const char* msg,
   int num_concurrent_queries = 0;
   for (const auto& doh_provider : doh_providers) {
     std::unique_ptr<State> state =
-        InitCurl(doh_provider, msg, len, callback, name_servers, ctx);
+        InitCurl(doh_provider, msg, len, callback, name_servers);
     if (!state.get()) {
       continue;
     }

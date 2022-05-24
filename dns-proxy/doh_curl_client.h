@@ -36,19 +36,13 @@ class DoHCurlClientInterface {
   };
 
   // Callback to be invoked back to the client upon request completion.
-  // |ctx| is an argument passed by the caller of `Resolve(...)` and passed
-  // back to the caller as-is through this callback. |ctx| is owned by the
-  // caller of `Resolve(...)` and the caller is responsible of its lifecycle.
-  // DoHCurlClient does not own |ctx| and must not interact with |ctx|.
-  // back to the caller as-is through this callback.
   // |res| stores the CURL result code, HTTP code, retry delay of the CURL
   // query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the CURL query.
   // |num_remaining| is number of queries for a given request that are
   // still being processed.
-  using QueryCallback = base::RepeatingCallback<void(void* ctx,
-                                                     const CurlResult& res,
+  using QueryCallback = base::RepeatingCallback<void(const CurlResult& res,
                                                      unsigned char* msg,
                                                      size_t len,
                                                      int num_remaining)>;
@@ -57,16 +51,14 @@ class DoHCurlClientInterface {
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
   // |len| using |name_servers| and |doh_providers|.
-  // |callback| will be called with |ctx| as its parameter upon query
-  // completion.
-  // |msg| and |ctx| is owned by the caller of this function. The caller is
-  // responsible for their lifecycle.
+  // |callback| will be called upon query completion.
+  // |msg| is owned by the caller of this function. The caller is responsible
+  // for their lifecycle.
   virtual bool Resolve(const char* msg,
                        int len,
                        const QueryCallback& callback,
                        const std::vector<std::string>& name_servers,
-                       const std::vector<std::string>& doh_providers,
-                       void* ctx) = 0;
+                       const std::vector<std::string>& doh_providers) = 0;
 };
 
 // DoHCurlClient receives a wire-format DNS query and re-send it using secure
@@ -86,11 +78,9 @@ class DoHCurlClient : public DoHCurlClientInterface {
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
   // |len| using |name_servers| and |doh_providers|.
-  // |callback| will be called with |ctx| as its parameter upon query
-  // completion.
-  // before calling this function.
-  // |msg| and |ctx| is owned by the caller of this function. The caller is
-  // responsible for their lifecycle.
+  // |callback| will be called upon query completion.
+  // |msg| is owned by the caller of this function. The caller is responsible
+  // for their lifecycle.
   // |name_servers| must contain one or more valid IPv4 or IPv6 addresses string
   // such as "8.8.8.8" or "2001:4860:4860::8888".
   // |doh_providers| must contain one or more valid DoH providers string (HTTPS
@@ -99,8 +89,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
                int len,
                const DoHCurlClientInterface::QueryCallback& callback,
                const std::vector<std::string>& name_servers,
-               const std::vector<std::string>& doh_providers,
-               void* ctx) override;
+               const std::vector<std::string>& doh_providers) override;
 
   // Returns a weak pointer to ensure that callbacks don't run after this class
   // is destroyed.
@@ -111,7 +100,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
  private:
   // State of an individual query.
   struct State {
-    State(CURL* curl, const QueryCallback& callback, void* ctx, int request_id);
+    State(CURL* curl, const QueryCallback& callback, int request_id);
     ~State();
 
     // Fetch the necessary response and run |callback|.
@@ -129,13 +118,8 @@ class DoHCurlClient : public DoHCurlClientInterface {
     // Stores the header response.
     std::vector<std::string> header;
 
-    // |callback| given from the client will be called with |ctx| as its
-    // parameter. |ctx| is owned by the caller of `Resolve(...)` and will
-    // be returned to the caller as-is through the parameter of |callback|.
-    // |ctx| is owned by the caller of `Resolve(...)` and must not be changed
-    // here.
+    // |callback| to be invoked back to the client upon request completion.
     QueryCallback callback;
-    void* ctx;
 
     // |header_list| is owned by this struct. It is stored here in order to
     // free it when the request is done.
@@ -156,8 +140,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
                                   const char* msg,
                                   int len,
                                   const QueryCallback& callback,
-                                  const std::vector<std::string>& name_servers,
-                                  void* ctx);
+                                  const std::vector<std::string>& name_servers);
 
   // Callback informed about what to wait for. When called, register or remove
   // the socket given from watchers.

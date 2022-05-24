@@ -31,7 +31,6 @@ class FakeAresClient : public AresClient {
                size_t len,
                const AresClient::QueryCallback& callback,
                const std::vector<std::string>& name_servers,
-               void* ctx,
                int type) override {
     return provider_->ConsumeBool();
   }
@@ -49,8 +48,7 @@ class FakeCurlClient : public DoHCurlClientInterface {
                int,
                const DoHCurlClient::QueryCallback&,
                const std::vector<std::string>&,
-               const std::vector<std::string>&,
-               void*) override {
+               const std::vector<std::string>&) override {
     return provider_->ConsumeBool();
   }
 

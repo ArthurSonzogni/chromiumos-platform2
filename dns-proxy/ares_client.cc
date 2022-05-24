@@ -17,9 +17,8 @@ namespace dns_proxy {
 
 AresClient::State::State(AresClient* client,
                          ares_channel channel,
-                         const QueryCallback& callback,
-                         void* ctx)
-    : client(client), channel(channel), callback(callback), ctx(ctx) {}
+                         const QueryCallback& callback)
+    : client(client), channel(channel), callback(callback) {}
 
 AresClient::AresClient(base::TimeDelta timeout,
                        int max_concurrent_queries,
@@ -132,8 +131,7 @@ void AresClient::HandleResult(State* state,
   }
 
   // Run the callback.
-  state->callback.Run(state->ctx, status, msg.get(), len,
-                      channel_inflight->second);
+  state->callback.Run(status, msg.get(), len, channel_inflight->second);
   msg.reset();
 
   // Cleanup the states.
@@ -222,7 +220,6 @@ bool AresClient::Resolve(const unsigned char* msg,
                          size_t len,
                          const QueryCallback& callback,
                          const std::vector<std::string>& name_servers,
-                         void* ctx,
                          int type) {
   if (name_servers.empty()) {
     LOG(ERROR) << "Name servers must not be empty";
@@ -247,7 +244,7 @@ bool AresClient::Resolve(const unsigned char* msg,
   const int num_queries =
       std::min(static_cast<int>(name_servers.size()), max_concurrent_queries_);
   for (int i = 0; i < num_queries; i++) {
-    State* state = new State(this, channel, callback, ctx);
+    State* state = new State(this, channel, callback);
     ares_send(channel, msg, len, &AresClient::AresCallback, state);
   }
 

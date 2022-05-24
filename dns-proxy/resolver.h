@@ -107,39 +107,42 @@ class Resolver {
                                bool always_on_doh = false);
 
   // Handle DNS results queried through ares.
+  // |sock_fd| stores the client's socket data and its request state. This is
+  // used to reply back to the client.
   // If multiple name servers are used, it is expected for the ares client to
   // call this method multiple times. This method will then call
   // |HandleCombinedAresResult| to process the first successful result or the
   // last result.
   //
-  // |ctx| is a pointer given through `Resolve(...)` and is owned by this
-  // class. |ctx| should be cleared here if no retry will be tried.
   // |status| is the ares response status. |msg| is the wire-format response
   // of the DNS query given through `Resolve(...)` with the len |len|.
   // |msg| and its lifecycle is owned by ares.
-  void HandleAresResult(
-      void* ctx, int status, unsigned char* msg, size_t len, int num_remaining);
+  void HandleAresResult(SocketFd* sock_fd,
+                        int status,
+                        unsigned char* msg,
+                        size_t len,
+                        int num_remaining);
 
   // Handle DNS result from |HandleAresResult|.
   // This function will check the response and proxies it to the client upon
   // successful. On failure, it will disregard the response.
-  void HandleCombinedAresResult(void* ctx,
+  void HandleCombinedAresResult(SocketFd* sock_fd,
                                 int status,
                                 unsigned char* msg,
                                 size_t len);
 
   // Handle DoH results queried through curl.
+  // |sock_fd| stores the client's socket data and its request state. This is
+  // used to reply back to the client.
   // If multiple DoH providers are used, it is expected for the curl client to
   // call this method multiple times. This method will then call
   // |HandleCombinedCurlResult| to process the first successful result or the
   // last result.
   //
-  // |ctx| is a pointer given through `Resolve(...)` and is owned by this
-  // class. |ctx| should be cleared here if no retry will be tried.
   // |http_code| is the HTTP status code of the response. |msg| is the
   // wire-format response of the DNS query given through `Resolve(...)` with
   // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
-  void HandleCurlResult(void* ctx,
+  void HandleCurlResult(SocketFd* sock_fd,
                         const DoHCurlClient::CurlResult& res,
                         unsigned char* msg,
                         size_t len,
@@ -148,7 +151,7 @@ class Resolver {
   // Handle DoH result from |HandleCurlResult|.
   // This function will check the response and proxies it to the client upon
   // successful. On failure, it will disregard the response.
-  void HandleCombinedCurlResult(void* ctx,
+  void HandleCombinedCurlResult(SocketFd* sock_fd,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
                                 size_t len);

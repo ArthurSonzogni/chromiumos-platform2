@@ -29,20 +29,13 @@ namespace dns_proxy {
 class AresClient {
  public:
   // Callback to be invoked back to the client upon request completion.
-  // |ctx| is an argument passed by the caller of `Resolve(...)` and passed
-  // back upon completion. |ctx| is owned by the caller of `Resolve(...)` and
-  // the caller is responsible of its lifecycle. DoHCurlClient does not own
-  // |ctx| and must not interact with |ctx|.
   // |status| stores the ares result of the ares query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the ares query.
   // |num_remaining| is number of queries for a given request that are still
   // being processed.
-  using QueryCallback = base::RepeatingCallback<void(void* ctx,
-                                                     int status,
-                                                     unsigned char* msg,
-                                                     size_t len,
-                                                     int num_remaining)>;
+  using QueryCallback = base::RepeatingCallback<void(
+      int status, unsigned char* msg, size_t len, int num_remaining)>;
 
   AresClient(base::TimeDelta timeout,
              int max_concurrent_queries,
@@ -51,8 +44,7 @@ class AresClient {
 
   // Resolve DNS address using wire-format data |data| of size |len| with
   // |name_servers|.
-  // |callback| will be called with |ctx| upon query completion.
-  // |msg| and |ctx| is owned by the caller of this function. The caller is
+  // |msg| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
   // |name_servers| must contain one or more valid IPv4 or IPv6 addresses string
@@ -63,7 +55,6 @@ class AresClient {
                        size_t len,
                        const QueryCallback& callback,
                        const std::vector<std::string>& name_servers,
-                       void* ctx,
                        int type = SOCK_DGRAM);
 
  private:
@@ -71,8 +62,7 @@ class AresClient {
   struct State {
     State(AresClient* client,
           ares_channel channel,
-          const QueryCallback& callback,
-          void* ctx);
+          const QueryCallback& callback);
 
     // |client| holds the current class holding this state.
     AresClient* client;
@@ -82,20 +72,12 @@ class AresClient {
     // queries.
     ares_channel channel;
 
-    // |callback| given from the client will be called with |ctx| as its
-    // parameter. |ctx| is owned by the caller of `Resolve(...)` and will
-    // be returned to the caller as-is through the parameter of |callback|.
-    // |ctx| is owned by the caller of `Resolve(...)` and must not be changed
-    // here.
+    // |callback| to be invoked back to the client upon request completion.
     QueryCallback callback;
-    void* ctx;
   };
 
   // Callback informed about what to wait for. When called, register or remove
   // the socket given from watchers.
-  // |ctx| is owned by the caller of `Resolve(...)` and will
-  // be returned to the caller as-is through the parameter of |callback|.
-  // |ctx| must not be changed here.
   // |msg| is owned by ares, AresClient and the caller of `Resolve(...)` do not
   // need to handle the lifecycle of |msg|.
   static void AresCallback(
