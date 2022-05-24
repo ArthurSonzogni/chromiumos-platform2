@@ -45,6 +45,7 @@ using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 using ::testing::_;
@@ -87,6 +88,11 @@ class AuthSessionTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
 };
+
+const CryptohomeError::ErrorLocationPair kErrorLocationForTestingAuthSession =
+    CryptohomeError::ErrorLocationPair(
+        static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+        std::string("MockErrorLocationAuthSession"));
 
 TEST_F(AuthSessionTest, Username) {
   AuthSession auth_session(
@@ -419,6 +425,79 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   auth_session.timer_.FireNow();
   EXPECT_THAT(AuthStatus::kAuthStatusTimedOut, auth_session.GetStatus());
   EXPECT_TRUE(called);
+}
+
+// AuthSession fails authentication, test for failure reply code
+// and ensure |credential_verifier_| is not set.
+TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
+  // Setup.
+  auto on_timeout = base::DoNothing();
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_,
+              GetVaultKeysetLabelsAndData(obfuscated_username, _));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &crypto_, &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+
+  // Test.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+
+  cryptohome::AuthorizationRequest authorization_request;
+  authorization_request.mutable_key()->set_secret(kFakePass);
+  authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+
+  // Failure is achieved by having the callback return an empty key_blobs
+  // and a CryptohomeCryptoError.
+  auto key_blobs = nullptr;
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(MakeStatus<CryptohomeCryptoError>(
+                     kErrorLocationForTestingAuthSession,
+                     error::ErrorActionSet(
+                         {error::ErrorAction::kDevCheckUnexpectedState}),
+                     CryptoError::CE_TPM_FATAL),
+                 std::move(key_blobs));
+        return true;
+      });
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.Authenticate(
+      authorization_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthSessionReply& reply) {
+            called = true;
+            error = reply.error();
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
+                      reply.error());
+          },
+          std::ref(called), std::ref(error)));
+
+  // Verify, should not be authenticated and CredentialVerifier should not be
+  // set.
+  EXPECT_TRUE(called);
+  ASSERT_FALSE(auth_session.timer_.IsRunning());
+
+  EXPECT_EQ(AuthStatus::kAuthStatusFurtherFactorRequired,
+            auth_session.GetStatus());
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // Test if AuthSession::Addcredentials skips adding/saving credential to disk

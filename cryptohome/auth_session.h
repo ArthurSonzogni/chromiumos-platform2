@@ -428,6 +428,7 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
+  FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave);
   FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
