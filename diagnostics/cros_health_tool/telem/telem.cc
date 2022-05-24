@@ -369,6 +369,17 @@ std::string EnumToString(mojom::InputDevice::ConnectionType type) {
   }
 }
 
+std::optional<std::string> EnumToString(mojom::DisplayInputType type) {
+  switch (type) {
+    case mojom::DisplayInputType::kDigital:
+      return "Digital";
+    case mojom::DisplayInputType::kAnalog:
+      return "Analog";
+    default:
+      return std::nullopt;
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -579,6 +590,14 @@ void DisplayDisplayInfo(const mojom::DisplayResultPtr& display_result) {
   SET_DICT(resolution_horizontal, edp_info, edp);
   SET_DICT(resolution_vertical, edp_info, edp);
   SET_DICT(refresh_rate, edp_info, edp);
+  SET_DICT(manufacturer, edp_info, edp);
+  SET_DICT(model_id, edp_info, edp);
+  SET_DICT(serial_number, edp_info, edp);
+  SET_DICT(manufacture_week, edp_info, edp);
+  SET_DICT(manufacture_year, edp_info, edp);
+  SET_DICT(edid_version, edp_info, edp);
+  SET_DICT(input_type, edp_info, edp);
+  SET_DICT(display_name, edp_info, edp);
 
   if (display->dp_infos) {
     const auto& dp_infos = display->dp_infos;
@@ -589,7 +608,15 @@ void DisplayDisplayInfo(const mojom::DisplayResultPtr& display_result) {
       SET_DICT(display_height, dp_info, &data);
       SET_DICT(resolution_horizontal, dp_info, &data);
       SET_DICT(resolution_vertical, dp_info, &data);
-      SET_DICT(refresh_rate, edp_info, &data);
+      SET_DICT(refresh_rate, dp_info, &data);
+      SET_DICT(manufacturer, dp_info, &data);
+      SET_DICT(model_id, dp_info, &data);
+      SET_DICT(serial_number, dp_info, &data);
+      SET_DICT(manufacture_week, dp_info, &data);
+      SET_DICT(manufacture_year, dp_info, &data);
+      SET_DICT(edid_version, dp_info, &data);
+      SET_DICT(input_type, dp_info, &data);
+      SET_DICT(display_name, dp_info, &data);
       dp->Append(std::move(data));
     }
   }
