@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
 #include <iostream>
 #include <optional>
 
@@ -31,12 +30,6 @@ enum ExitStatus {
   kFailedToLoadProbeConfig = 11,
   kFailToParseProbeArgFromConfig = 12,
 };
-
-void SetVerbosityLevel(uint32_t verbosity_level) {
-  verbosity_level = std::min(verbosity_level, 3u);
-  // VLOG uses negative log level.
-  logging::SetMinLogLevel(-(static_cast<int32_t>(verbosity_level)));
-}
 
 int RunAsHelper() {
   // This can help to verify the logging is working while generating seccomp
@@ -159,11 +152,12 @@ int main(int argc, char* argv[]) {
 
   DEFINE_bool(helper, false, "Run in the mode to execute probe function");
   DEFINE_bool(to_stdout, false, "Output probe result to stdout");
-  DEFINE_uint32(verbosity_level, 0,
-                "Set verbosity level. Allowed value: 0 to 3");
+  DEFINE_int32(log_level, 0,
+               "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
+               "-1: VLOG(1), -2: VLOG(2), ...");
   brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
 
-  SetVerbosityLevel(FLAGS_verbosity_level);
+  logging::SetMinLogLevel(FLAGS_log_level);
   if (FLAGS_helper) {
     // Don't log to syslog in helper. Notes that log to syslog request
     // additional syscall.

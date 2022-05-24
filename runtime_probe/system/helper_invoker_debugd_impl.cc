@@ -26,7 +26,8 @@ bool HelperInvokerDebugdImpl::Invoke(const ProbeFunction* probe_function,
   base::ScopedFD error_fd{};
   brillo::ErrorPtr error;
   if (!Context::Get()->debugd_proxy()->EvaluateProbeFunction(
-          probe_statement_str, &result_fd, &error_fd, &error)) {
+          probe_statement_str, logging::GetMinLogLevel(), &result_fd, &error_fd,
+          &error)) {
     LOG(ERROR) << "Debugd::EvaluateProbeFunction failed: "
                << error->GetMessage();
     return false;

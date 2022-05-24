@@ -39,8 +39,7 @@ namespace {
 constexpr char kErrorPath[] = "org.chromium.debugd.RunProbeFunctionError";
 constexpr char kSandboxInfoDir[] = "/etc/runtime_probe/sandbox";
 constexpr char kSandboxArgs[] = "/etc/runtime_probe/sandbox/args.json";
-constexpr std::array<const char*, 3> kBinaryAndArgs{"/usr/bin/runtime_probe",
-                                                    "--helper", "--"};
+constexpr char kRuntimeProbeBinary[] = "/usr/bin/runtime_probe";
 constexpr char kRunAs[] = "runtime_probe";
 constexpr char kMinijailBindFlag[] = "-b";
 
@@ -95,6 +94,7 @@ ProbeTool::ProbeTool() {
 bool ProbeTool::EvaluateProbeFunction(
     brillo::ErrorPtr* error,
     const std::string& probe_statement,
+    int log_level,
     brillo::dbus_utils::FileDescriptor* outfd,
     brillo::dbus_utils::FileDescriptor* errfd) {
   // Details of sandboxing for probing should be centralized in a single
@@ -111,9 +111,10 @@ bool ProbeTool::EvaluateProbeFunction(
     return false;
   }
 
-  for (auto arg : kBinaryAndArgs) {
-    process->AddArg(arg);
-  }
+  process->AddArg(kRuntimeProbeBinary);
+  process->AddArg("--helper");
+  process->AddArg(base::StringPrintf("--log_level=%d", log_level));
+  process->AddArg("--");
   process->AddArg(probe_statement);
   process->BindFd(out_w_fd.get(), STDOUT_FILENO);
   process->BindFd(err_w_fd.get(), STDERR_FILENO);

@@ -10,6 +10,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 
 #include "runtime_probe/utils/pipe_utils.h"
@@ -27,6 +28,8 @@ bool HelperInvokerDirectImpl::Invoke(const ProbeFunction* probe_function,
   helper_proc.AddArg(
       base::CommandLine::ForCurrentProcess()->GetProgram().value());
   helper_proc.AddArg("--helper");
+  helper_proc.AddArg(
+      base::StringPrintf("--log_level=%d", logging::GetMinLogLevel()));
   helper_proc.AddArg(probe_statement_str);
   helper_proc.RedirectInput("/dev/null");
   helper_proc.RedirectUsingPipe(STDOUT_FILENO, false);
