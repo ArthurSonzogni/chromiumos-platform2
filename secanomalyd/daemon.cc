@@ -33,7 +33,7 @@ namespace secanomalyd {
 
 namespace {
 
-constexpr int kSampleFrequency = 100;
+constexpr int kSampleFrequency = 10;
 
 constexpr base::TimeDelta kCheckInterval = base::Seconds(30);
 // Per Platform.DailyUseTime histogram this interval should ensure that enough
