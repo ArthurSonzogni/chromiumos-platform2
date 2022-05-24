@@ -19,6 +19,7 @@ using testing::_;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Return;
+using testing::UnorderedElementsAreArray;
 
 namespace dns_proxy {
 namespace {
@@ -88,9 +89,24 @@ TEST_F(ResolverTest, SetNameServers) {
 
 TEST_F(ResolverTest, SetDoHProviders) {
   for (const auto& doh_provider : kTestDoHProviders) {
-    EXPECT_CALL(*curl_client_, Resolve(_, _, _, kTestNameServers, doh_provider))
+    EXPECT_CALL(*curl_client_,
+                Resolve(_, _, _, UnorderedElementsAreArray(kTestNameServers),
+                        doh_provider))
         .WillOnce(Return(true));
   }
+
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(kTestDoHProviders, /*always_on_doh=*/true);
+
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0, 1);
+  resolver_->Resolve(&sock_fd);
+}
+
+TEST_F(ResolverTest, Resolve_DNSDoHServersNotValidated) {
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+      .Times(kTestNameServers.size())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -99,14 +115,48 @@ TEST_F(ResolverTest, SetDoHProviders) {
   resolver_->Resolve(&sock_fd);
 }
 
-TEST_F(ResolverTest, Resolve_DNSDoHServers) {
+TEST_F(ResolverTest, Resolve_DNSDoHServersPartiallyValidated) {
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(kTestDoHProviders);
+
+  const auto& validated_doh_provider = kTestDoHProviders.front();
+  DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */, 0 /* timeout */);
+  auto probe_state = std::make_unique<Resolver::ProbeState>();
+  resolver_->HandleDoHProbeResult(validated_doh_provider,
+                                  probe_state->weak_factory.GetWeakPtr(), res,
+                                  nullptr, 0);
+
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, validated_doh_provider))
+      .WillOnce(Return(true));
+
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0, 1);
+  resolver_->Resolve(&sock_fd);
+}
+
+TEST_F(ResolverTest, Resolve_DNSDoHServersValidated) {
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(kTestDoHProviders);
+
+  // Validate DoH providers and name servers.
+  for (const auto& doh_provider : kTestDoHProviders) {
+    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
+                                  0 /* timeout */);
+    auto probe_state = std::make_unique<Resolver::ProbeState>();
+    resolver_->HandleDoHProbeResult(
+        doh_provider, probe_state->weak_factory.GetWeakPtr(), res, nullptr, 0);
+  }
+  for (const auto& name_server : kTestNameServers) {
+    auto probe_state = std::make_unique<Resolver::ProbeState>();
+    resolver_->HandleDo53ProbeResult(name_server,
+                                     probe_state->weak_factory.GetWeakPtr(),
+                                     ARES_SUCCESS, nullptr, 0);
+  }
+
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .Times(kTestDoHProviders.size())
       .WillRepeatedly(Return(true));
-
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
 
   Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
   resolver_->Resolve(&sock_fd);
@@ -124,7 +174,7 @@ TEST_F(ResolverTest, Resolve_DNSServers) {
   resolver_->Resolve(&sock_fd);
 }
 
-TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
+TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackNotValidated) {
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
@@ -134,6 +184,52 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
   resolver_->SetDoHProviders(kTestDoHProviders);
 
   Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  resolver_->Resolve(&sock_fd, true);
+}
+
+TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackPartiallyValidated) {
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(kTestDoHProviders);
+
+  const auto& validated_name_server = kTestNameServers.front();
+  auto probe_state = std::make_unique<Resolver::ProbeState>();
+  resolver_->HandleDo53ProbeResult(validated_name_server,
+                                   probe_state->weak_factory.GetWeakPtr(),
+                                   ARES_SUCCESS, nullptr, 0);
+
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, validated_name_server, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0, 1);
+  resolver_->Resolve(&sock_fd, true);
+}
+
+TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackValidated) {
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(kTestDoHProviders);
+
+  // Validate DoH providers and name servers.
+  for (const auto& doh_provider : kTestDoHProviders) {
+    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
+                                  0 /* timeout */);
+    auto probe_state = std::make_unique<Resolver::ProbeState>();
+    resolver_->HandleDoHProbeResult(
+        doh_provider, probe_state->weak_factory.GetWeakPtr(), res, nullptr, 0);
+  }
+  for (const auto& name_server : kTestNameServers) {
+    auto probe_state = std::make_unique<Resolver::ProbeState>();
+    resolver_->HandleDo53ProbeResult(name_server,
+                                     probe_state->weak_factory.GetWeakPtr(),
+                                     ARES_SUCCESS, nullptr, 0);
+  }
+
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+      .Times(kTestNameServers.size())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0, 1);
   resolver_->Resolve(&sock_fd, true);
 }
 
@@ -284,5 +380,21 @@ TEST_F(ResolverTest, ConstructServFailResponse_BadQuery) {
       response.io_buffer()->data(),
       response.io_buffer()->data() + response.io_buffer_size());
   EXPECT_THAT(response_data, ElementsAreArray(kServFailResponse));
+}
+
+TEST_F(ResolverTest, Probe_Started) {
+  resolver_->SetProbingEnabled(true);
+
+  for (const auto& name_server : kTestNameServers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+        .WillOnce(Return(true));
+  }
+  for (const auto& doh_provider : kTestDoHProviders) {
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider))
+        .WillOnce(Return(true));
+  }
+
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(kTestDoHProviders);
 }
 }  // namespace dns_proxy

@@ -4,6 +4,9 @@
 
 #include "dns-proxy/resolver.h"
 
+#include <algorithm>
+#include <cmath>
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -28,9 +31,30 @@ constexpr uint32_t kMaxClientTcpConn = 16;
 // concurrently. |kMaxConcurrentQueries| sets the maximum number of servers to
 // query concurrently.
 constexpr int kMaxConcurrentQueries = 3;
-// Retries are delayed by +/- |kRetryDelayJitterMultiplier| times to avoid
-// coordinated spikes.
-constexpr float kRetryDelayJitterMultiplier = 0.15;
+// Retry delays are reduced by at most |kRetryDelayJitterMultiplier| times to
+// avoid coordinated spikes. Having the value >= 1 might introduce an undefined
+// behavior.
+constexpr float kRetryJitterMultiplier = 0.2;
+
+constexpr base::TimeDelta kProbeInitialDelay = base::Seconds(1);
+constexpr base::TimeDelta kProbeMaximumDelay = base::Hours(1);
+constexpr float kProbeRetryMultiplier = 1.5;
+
+// DNS query for resolving "www.gstatic.com" in wire-format data used for
+// probing. Transaction ID for the query is empty. This is safe because we
+// don't care about the resolving result of the query.
+constexpr char kDNSQueryGstatic[] =
+    "\x00\x00\x01\x20\x00\x01\x00\x00\x00\x00\x00\x01\x03\x77\x77\x77"
+    "\x07\x67\x73\x74\x61\x74\x69\x63\x03\x63\x6f\x6d\x00\x00\x01\x00"
+    "\x01\x00\x00\x29\x10\x00\x00\x00\x00\x00\x00\x00";
+
+// Get the time to wait until the next probe.
+static base::TimeDelta GetTimeUntilProbe(int num_attempts) {
+  base::TimeDelta delay = kProbeInitialDelay;
+  delay *= pow(kProbeRetryMultiplier, num_attempts);
+  delay -= base::RandDouble() * kRetryJitterMultiplier * delay;
+  return std::min(delay, kProbeMaximumDelay);
+}
 
 Metrics::QueryError AresStatusMetric(int status) {
   switch (status) {
@@ -125,6 +149,8 @@ Resolver::TCPConnection::TCPConnection(
       base::BindRepeating(callback, TCPConnection::sock->fd(), SOCK_STREAM));
 }
 
+Resolver::ProbeState::ProbeState() : num_attempts(0) {}
+
 Resolver::Resolver(base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
                    int max_num_retries)
@@ -139,9 +165,11 @@ Resolver::Resolver(base::TimeDelta timeout,
 
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<DoHCurlClientInterface> curl_client,
+                   bool disable_probe,
                    std::unique_ptr<Metrics> metrics)
     : always_on_doh_(false),
       doh_enabled_(false),
+      disable_probe_(disable_probe),
       metrics_(std::move(metrics)),
       ares_client_(std::move(ares_client)),
       curl_client_(std::move(curl_client)) {}
@@ -213,6 +241,7 @@ void Resolver::HandleAresResult(SocketFd* sock_fd,
                                 int status,
                                 unsigned char* msg,
                                 size_t len) {
+  // TODO(jasongustaman): Handle query errors for probing.
   sock_fd->num_active_queries--;
   if (!sock_fd->request_handled &&
       (status == ARES_SUCCESS || sock_fd->num_active_queries == 0)) {
@@ -258,6 +287,7 @@ void Resolver::HandleCurlResult(SocketFd* sock_fd,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
                                 size_t len) {
+  // TODO(jasongustaman): Handle query errors for probing.
   sock_fd->num_active_queries--;
   if (!sock_fd->request_handled &&
       (res.http_code == kHTTPOk || sock_fd->num_active_queries == 0)) {
@@ -309,9 +339,8 @@ void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
       }
 
       // Add jitter to avoid coordinated spikes of retries.
-      double rand_multiplier = 1 - base::RandDouble() * 2;
       base::TimeDelta retry_delay_jitter =
-          (1 + rand_multiplier * kRetryDelayJitterMultiplier) * retry_delay_;
+          (1 - (base::RandDouble() * kRetryJitterMultiplier)) * retry_delay_;
 
       // Retry resolving the domain.
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
@@ -337,6 +366,52 @@ void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
       return;
     }
   }
+}
+
+void Resolver::HandleDoHProbeResult(const std::string& doh_provider,
+                                    base::WeakPtr<ProbeState> probe_state,
+                                    const DoHCurlClient::CurlResult& res,
+                                    unsigned char* msg,
+                                    size_t len) {
+  if (!probe_state)
+    return;
+
+  if (res.curl_code != CURLE_OK) {
+    LOG(ERROR) << "DoH probe failed: " << curl_easy_strerror(res.curl_code);
+    return;
+  }
+  if (res.http_code != kHTTPOk) {
+    LOG(ERROR) << "DoH probe failed, HTTP status code " << res.http_code;
+    return;
+  }
+
+  // Clear the old probe state to stop running probes.
+  doh_providers_[doh_provider] = std::make_unique<ProbeState>();
+  validated_doh_providers_.push_back(doh_provider);
+  LOG(INFO) << "DoH probe successful. " << validated_doh_providers_.size()
+            << "/" << doh_providers_.size() << " validated DoH providers";
+}
+
+void Resolver::HandleDo53ProbeResult(const std::string& name_server,
+                                     base::WeakPtr<ProbeState> probe_state,
+                                     int status,
+                                     unsigned char* msg,
+                                     size_t len) {
+  if (!probe_state)
+    return;
+
+  if (status != ARES_SUCCESS) {
+    LOG(ERROR) << "Do53 probe failed for " << name_server
+               << " with ares status " << ares_strerror(status);
+    return;
+  }
+
+  // Clear the old probe state to stop running probes.
+  name_servers_[name_server] = std::make_unique<ProbeState>();
+  validated_name_servers_.push_back(name_server);
+  LOG(INFO) << "Do53 probe successful for " << name_server << ". "
+            << validated_name_servers_.size() << "/" << name_servers_.size()
+            << " validated name servers";
 }
 
 void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
@@ -374,14 +449,34 @@ void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
 }
 
 void Resolver::SetNameServers(const std::vector<std::string>& name_servers) {
-  name_servers_ = name_servers;
+  // TODO(jasongustaman): Only update the newly added / removed name servers.
+  name_servers_.clear();
+  validated_name_servers_.clear();
+
+  for (const auto& name_server : name_servers) {
+    const auto& probe_state =
+        name_servers_.emplace(name_server, std::make_unique<ProbeState>())
+            .first;
+    Probe(name_server, probe_state->second->weak_factory.GetWeakPtr(),
+          /*doh=*/false);
+  }
 }
 
 void Resolver::SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh) {
+  // TODO(jasongustaman): Only update the newly added / removed DoH providers.
   always_on_doh_ = always_on_doh;
   doh_enabled_ = !doh_providers.empty();
-  doh_providers_ = doh_providers;
+  doh_providers_.clear();
+  validated_doh_providers_.clear();
+
+  for (const auto& doh_provider : doh_providers) {
+    const auto& probe_state =
+        doh_providers_.emplace(doh_provider, std::make_unique<ProbeState>())
+            .first;
+    Probe(doh_provider, probe_state->second->weak_factory.GetWeakPtr(),
+          /*doh=*/true);
+  }
 }
 
 void Resolver::OnDNSQuery(int fd, int type) {
@@ -442,7 +537,8 @@ void Resolver::OnDNSQuery(int fd, int type) {
 bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
   const auto query_type =
       doh ? Metrics::QueryType::kDnsOverHttps : Metrics::QueryType::kPlainText;
-  if (name_servers_.empty()) {
+  const auto& name_servers = GetActiveNameServers();
+  if (name_servers.empty()) {
     LOG(ERROR) << "Name server list must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(query_type,
@@ -451,7 +547,12 @@ bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
     return false;
   }
 
-  if (doh && doh_providers_.empty()) {
+  const auto& doh_providers = GetActiveDoHProviders();
+  if (doh && doh_providers.empty()) {
+    // All DoH providers are not validated, fallback to Do53.
+    if (!doh_providers_.empty()) {
+      return false;
+    }
     LOG(ERROR) << "DoH provider list must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
@@ -461,14 +562,14 @@ bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
   }
 
   // Start multiple concurrent queries.
-  const auto& targets = doh ? doh_providers_ : name_servers_;
+  const auto& targets = doh ? doh_providers : name_servers;
   for (const auto& target : targets) {
     if (doh) {
       if (!curl_client_->Resolve(
               sock_fd->msg, sock_fd->len,
               base::BindRepeating(&Resolver::HandleCurlResult,
                                   weak_factory_.GetWeakPtr(), sock_fd),
-              name_servers_, target)) {
+              name_servers, target)) {
         continue;
       }
     } else {
@@ -495,6 +596,62 @@ bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
         query_type, Metrics::QueryError::kClientInitializationError);
   }
   return false;
+}
+
+std::vector<std::string> Resolver::GetActiveDoHProviders() {
+  if (!always_on_doh_ || !validated_doh_providers_.empty())
+    return validated_doh_providers_;
+
+  std::vector<std::string> doh_providers;
+  for (const auto& doh_provider : doh_providers_) {
+    doh_providers.push_back(doh_provider.first);
+  }
+  return doh_providers;
+}
+
+std::vector<std::string> Resolver::GetActiveNameServers() {
+  if (!validated_name_servers_.empty())
+    return validated_name_servers_;
+
+  std::vector<std::string> name_servers;
+  for (const auto& name_server : name_servers_) {
+    name_servers.push_back(name_server.first);
+  }
+  return name_servers;
+}
+
+void Resolver::Probe(const std::string& target,
+                     base::WeakPtr<ProbeState> probe_state,
+                     bool doh) {
+  if (disable_probe_)
+    return;
+
+  if (!probe_state)
+    return;
+
+  // Schedule the next probe now as the probe may run for a long time.
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Resolver::Probe, weak_factory_.GetWeakPtr(), target,
+                     probe_state, doh),
+      GetTimeUntilProbe(probe_state->num_attempts));
+
+  // Run the probe.
+  if (doh) {
+    curl_client_->Resolve(
+        kDNSQueryGstatic, sizeof(kDNSQueryGstatic),
+        base::BindRepeating(&Resolver::HandleDoHProbeResult,
+                            weak_factory_.GetWeakPtr(), target, probe_state),
+        GetActiveNameServers(), target);
+  } else {
+    ares_client_->Resolve(
+        reinterpret_cast<const unsigned char*>(kDNSQueryGstatic),
+        sizeof(kDNSQueryGstatic),
+        base::BindRepeating(&Resolver::HandleDo53ProbeResult,
+                            weak_factory_.GetWeakPtr(), target, probe_state),
+        target);
+  }
+  probe_state->num_attempts++;
 }
 
 void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
@@ -554,5 +711,9 @@ patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
                                    {} /* additional_records */, query,
                                    patchpanel::dns_protocol::kRcodeSERVFAIL);
   return response;
+}
+
+void Resolver::SetProbingEnabled(bool enable_probe) {
+  disable_probe_ = !enable_probe;
 }
 }  // namespace dns_proxy

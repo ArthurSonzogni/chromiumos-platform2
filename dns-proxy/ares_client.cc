@@ -205,6 +205,10 @@ ares_channel AresClient::InitChannel(const std::string& name_server, int type) {
     options.flags |= ARES_FLAG_USEVC;
   }
 
+  // Return the result as-is without checking the response. This is done in
+  // order for the caller of ares client to get the failing query result.
+  options.flags |= ARES_FLAG_NOCHECKRESP;
+
   ares_channel channel;
   if (ares_init_options(&channel, &options, optmask) != ARES_SUCCESS) {
     LOG(ERROR) << "Failed to initialize ares_channel";

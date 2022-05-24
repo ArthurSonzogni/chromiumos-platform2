@@ -83,12 +83,26 @@ class Resolver {
     Metrics::QueryTimer timer;
   };
 
+  // |ProbeState| is used to store the probe state of a DoH provider or name
+  // server. For example, when a probe succeeds for a specific name server,
+  // subsequent probing that refers to the same state will be disabled.
+  // The same applies for invalidating a name server. If a query resulted in
+  // a failure, but the query is done prior to the name server being validated,
+  // the name server will not be invalidated.
+  struct ProbeState {
+    ProbeState();
+
+    int num_attempts;
+    base::WeakPtrFactory<ProbeState> weak_factory{this};
+  };
+
   Resolver(base::TimeDelta timeout,
            base::TimeDelta retry_delay,
            int max_num_retries);
   // Provided for testing only.
   Resolver(std::unique_ptr<AresClient> ares_client,
            std::unique_ptr<DoHCurlClientInterface> curl_client,
+           bool disable_probe = true,
            std::unique_ptr<Metrics> metrics = nullptr);
   virtual ~Resolver() = default;
 
@@ -157,8 +171,26 @@ class Resolver {
   // If |fallback| is true, force to use standard plain-text DNS.
   void Resolve(SocketFd* sock_fd, bool fallback = false);
 
+  // Handle DoH and Do53 probe result of |doh_provider| or |name_server|.
+  // |probe_state| defines the current probing state, including if it is
+  // already successful. If the probe is successful, the provider or name
+  // server will be validated.
+  void HandleDoHProbeResult(const std::string& doh_provider,
+                            base::WeakPtr<ProbeState> probe_state,
+                            const DoHCurlClient::CurlResult& res,
+                            unsigned char* msg,
+                            size_t len);
+  void HandleDo53ProbeResult(const std::string& name_server,
+                             base::WeakPtr<ProbeState> probe_state,
+                             int status,
+                             unsigned char* msg,
+                             size_t len);
+
   // Create a SERVFAIL response from a DNS query |msg| of length |len|.
   patchpanel::DnsResponse ConstructServFailResponse(const char* msg, int len);
+
+  // Provided for testing only. Enable or disable probing.
+  void SetProbingEnabled(bool enable_probe);
 
  private:
   // |TCPConnection| is used to track and terminate TCP connections.
@@ -183,6 +215,23 @@ class Resolver {
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   bool ResolveDNS(SocketFd* sock_fd, bool doh);
 
+  // Get the active DoH providers / name servers. It will try to return the
+  // validated DoH providers / name servers unless there are none.
+  // The behavior is then slightly different for each modes:
+  // - DoH off: return all name servers.
+  // - DoH automatic: return empty DoH providers (should behave like DoH off).
+  // - DoH always on: return all DoH providers.
+  std::vector<std::string> GetActiveDoHProviders();
+  std::vector<std::string> GetActiveNameServers();
+
+  // Start a probe to validate a DoH provider or name server |target|.
+  // |probe_state| is used to keep the current probing state. Weak pointer is
+  // used here to cancel remaining probes if it is no longer interesting.
+  // |doh| defines if the probe is using DoH or Do53.
+  void Probe(const std::string& target,
+             base::WeakPtr<ProbeState> probe_state,
+             bool doh);
+
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;
 
@@ -200,9 +249,17 @@ class Resolver {
   std::unique_ptr<patchpanel::Socket> udp_src_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> udp_src_watcher_;
 
-  // Name servers and DoH providers used to resolve domain names.
-  std::vector<std::string> name_servers_;
-  std::vector<std::string> doh_providers_;
+  // Name servers and DoH providers validated through probes.
+  std::vector<std::string> validated_name_servers_;
+  std::vector<std::string> validated_doh_providers_;
+
+  // Name servers and DoH providers of the underlying network alongside its
+  // probe state.
+  std::map<std::string, std::unique_ptr<ProbeState>> name_servers_;
+  std::map<std::string, std::unique_ptr<ProbeState>> doh_providers_;
+
+  // Provided for testing only. Boolean to disable probe.
+  bool disable_probe_ = false;
 
   // Delay before retrying a failing query.
   base::TimeDelta retry_delay_;
