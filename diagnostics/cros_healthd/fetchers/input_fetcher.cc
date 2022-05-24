@@ -19,8 +19,8 @@ namespace internal_mojom = chromeos::cros_healthd::internal::mojom;
 mojom::InputDevice::ConnectionType Convert(
     internal_mojom::InputDevice::ConnectionType enum_value) {
   switch (enum_value) {
-    case internal_mojom::InputDevice::ConnectionType::kUnmappedEnumValue:
-      return mojom::InputDevice::ConnectionType::kUnmappedEnumValue;
+    case internal_mojom::InputDevice::ConnectionType::kUnmappedEnumField:
+      return mojom::InputDevice::ConnectionType::kUnmappedEnumField;
     case internal_mojom::InputDevice::ConnectionType::kInternal:
       return mojom::InputDevice::ConnectionType::kInternal;
     case internal_mojom::InputDevice::ConnectionType::kUSB:

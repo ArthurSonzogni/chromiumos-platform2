@@ -53,7 +53,7 @@ TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
   fake_device->input_device->physical_location = "physical_location";
   fake_device->input_device->is_enabled = true;
   fake_device->input_device->sysfs_path = "sysfs_path";
-  fake_device->touch_points = true;
+  fake_device->touch_points = 42;
   fake_device->has_stylus = true;
   fake_device->has_stylus_garage_switch = true;
   fake_collector_.touchscreen_devices().push_back(fake_device.Clone());
@@ -65,7 +65,7 @@ TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
       mojom::InputDevice::ConnectionType::kBluetooth;
   expected_device->input_device->physical_location = "physical_location";
   expected_device->input_device->is_enabled = true;
-  expected_device->touch_points = true;
+  expected_device->touch_points = 42;
   expected_device->has_stylus = true;
   expected_device->has_stylus_garage_switch = true;
 
