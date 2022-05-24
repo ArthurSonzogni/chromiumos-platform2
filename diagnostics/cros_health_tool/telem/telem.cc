@@ -66,6 +66,7 @@ constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
         {"tpm", mojom::ProbeCategoryEnum::kTpm},
         {"graphics", mojom::ProbeCategoryEnum::kGraphics},
         {"display", mojom::ProbeCategoryEnum::kDisplay},
+        {"input", mojom::ProbeCategoryEnum::kInput},
 };
 
 std::string EnumToString(mojom::ProcessState state) {
@@ -350,6 +351,21 @@ std::string EnumToString(mojom::VirtualizationInfo::SMTControl control) {
       return "notsupported";
     case mojom::VirtualizationInfo::SMTControl::kNotImplemented:
       return "notimplemented";
+  }
+}
+
+std::string EnumToString(mojom::InputDevice::ConnectionType type) {
+  switch (type) {
+    case mojom::InputDevice::ConnectionType::kUnmappedEnumField:
+      return "UnmappedEnumField";
+    case mojom::InputDevice::ConnectionType::kInternal:
+      return "Internal";
+    case mojom::InputDevice::ConnectionType::kUSB:
+      return "USB";
+    case mojom::InputDevice::ConnectionType::kBluetooth:
+      return "Bluetooth";
+    case mojom::InputDevice::ConnectionType::kUnknown:
+      return "Unknown";
   }
 }
 
@@ -1272,6 +1288,42 @@ void DisplayGraphicsInfo(const mojom::GraphicsResultPtr& graphics_result) {
   OutputJson(output);
 }
 
+void DisplayInputInfo(const mojom::InputResultPtr& input_result) {
+  if (input_result->is_error()) {
+    DisplayError(input_result->get_error());
+    return;
+  }
+
+  const auto& info = input_result->get_input_info();
+  CHECK(!info.is_null());
+
+  base::Value output{base::Value::Type::DICTIONARY};
+  SET_DICT(touchpad_library_name, info, &output);
+
+  auto* out_touchscreen_devices = output.SetKey(
+      "touchscreen_devices", base::Value{base::Value::Type::LIST});
+  for (const auto& touchscreen_device : info->touchscreen_devices) {
+    base::Value out_touchscreen_device{base::Value::Type::DICTIONARY};
+    SET_DICT(touch_points, touchscreen_device, &out_touchscreen_device);
+    SET_DICT(has_stylus, touchscreen_device, &out_touchscreen_device);
+    SET_DICT(has_stylus_garage_switch, touchscreen_device,
+             &out_touchscreen_device);
+
+    auto* out_input_device = out_touchscreen_device.SetKey(
+        "input_device", base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(name, touchscreen_device->input_device, out_input_device);
+    SET_DICT(connection_type, touchscreen_device->input_device,
+             out_input_device);
+    SET_DICT(physical_location, touchscreen_device->input_device,
+             out_input_device);
+    SET_DICT(is_enabled, touchscreen_device->input_device, out_input_device);
+
+    out_touchscreen_devices->Append(std::move(out_touchscreen_device));
+  }
+
+  OutputJson(output);
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
@@ -1349,6 +1401,10 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& display_result = info->display_result;
   if (display_result)
     DisplayDisplayInfo(display_result);
+
+  const auto& input_result = info->input_result;
+  if (input_result)
+    DisplayInputInfo(input_result);
 }
 
 // Create a stringified list of the category names for use in help.
