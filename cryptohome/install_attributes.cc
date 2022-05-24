@@ -164,16 +164,6 @@ bool InstallAttributes::Init(Tpm* tpm) {
   LockboxError error_id;
   if (!lockbox()->Reset(&error_id)) {
     switch (error_id) {
-      case LockboxError::kNvramSpaceAbsent:
-        // Legacy install that didn't create space at OOBE.
-        status_ = Status::kValid;
-        if (tpm->RemoveOwnerDependency(
-                Tpm::TpmOwnerDependency::kInstallAttributes)) {
-          LOG(WARNING) << "Failed to RemoveOwnerDependency().";
-        }
-        LOG(INFO) << "Found legacy install that didn't create install "
-                     "attributes NVRAM space at OOBE.";
-        return true;
       case LockboxError::kNvramInvalid:
         LOG(ERROR) << "Inconsistent install attributes state.";
         status_ = Status::kInvalid;

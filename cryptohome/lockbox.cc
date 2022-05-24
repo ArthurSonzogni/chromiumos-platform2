@@ -84,7 +84,7 @@ bool Lockbox::Reset(LockboxError* error) {
   // Check if the space is already set up correctly.
   if (!tpm_->IsNvramDefined(nvram_index_)) {
     LOG(ERROR) << "NVRAM space absent when resetting LockBox.";
-    *error = LockboxError::kNvramSpaceAbsent;
+    *error = LockboxError::kNvramInvalid;
     return false;
   }
 

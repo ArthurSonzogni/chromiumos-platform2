@@ -95,7 +95,7 @@ TEST_P(LockboxTest, ResetNoNvramSpace) {
 
   LockboxError error;
   EXPECT_FALSE(lockbox_.Reset(&error));
-  EXPECT_EQ(error, LockboxError::kNvramSpaceAbsent);
+  EXPECT_EQ(error, LockboxError::kNvramInvalid);
 }
 
 TEST_P(LockboxTest, ResetExistingSpaceUnlocked) {
@@ -167,7 +167,7 @@ TEST_P(LockboxTest, ResetNoOwnerAuth) {
 
   LockboxError error;
   EXPECT_FALSE(lockbox_.Reset(&error));
-  EXPECT_EQ(error, LockboxError::kNvramSpaceAbsent);
+  EXPECT_EQ(error, LockboxError::kNvramInvalid);
 }
 
 TEST_P(LockboxTest, StoreOk) {

@@ -21,7 +21,6 @@ namespace cryptohome {
 class LockboxContents;
 
 enum class LockboxError {
-  kNvramSpaceAbsent,
   kNvramInvalid,
   kTpmUnavailable,
   kTpmError,  // Transient or unknown TPM error.

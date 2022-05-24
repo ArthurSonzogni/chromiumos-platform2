@@ -295,24 +295,6 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
-TEST_F(InstallAttributesTest, LegacyBoot) {
-  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
-
-  EXPECT_CALL(platform_,
-              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(lockbox_, Reset(_))
-      .WillOnce(DoAll(SetArgPointee<0>(LockboxError::kNvramSpaceAbsent),
-                      Return(false)));
-  ExpectRemovingOwnerDependency();
-
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
-
-  EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
-  EXPECT_EQ(0, install_attrs_.Count());
-}
-
 // If the Lockbox Reset fails for reasons other than bad password, it should
 // still be treated as if locked without any attributes set.
 TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
