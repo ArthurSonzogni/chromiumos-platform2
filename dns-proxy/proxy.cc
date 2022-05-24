@@ -900,8 +900,9 @@ void Proxy::DoHConfig::set_metrics(Metrics* metrics) {
 }
 
 void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
-  // Listen only for global IPv6 address changes.
-  if (msg.address_status().scope != RT_SCOPE_UNIVERSE) {
+  // Listen only for global or site-local IPv6 address changes.
+  if (msg.address_status().scope != RT_SCOPE_UNIVERSE &&
+      msg.address_status().scope != RT_SCOPE_SITE) {
     return;
   }
 
