@@ -201,6 +201,20 @@ class MockPatchpanelClient : public patchpanel::Client {
               (NeighborReachabilityEventHandler),
               (override));
   MOCK_METHOD(bool, SetVpnLockdown, (bool), (override));
+  MOCK_METHOD(bool,
+              CreateTetheredNetwork,
+              (const std::string&,
+               const std::string&,
+               patchpanel::TetheredNetworkRequest::UpstreamTechnology,
+               patchpanel::Client::CreateTetheredNetworkCallback));
+  MOCK_METHOD(bool,
+              CreateLocalOnlyNetwork,
+              (const std::string&,
+               patchpanel::Client::CreateLocalOnlyNetworkCallback));
+  MOCK_METHOD(bool,
+              GetDownstreamNetworkInfo,
+              (const std::string&,
+               patchpanel::Client::DownstreamNetworkInfoCallback));
 };
 
 class MockResolver : public Resolver {

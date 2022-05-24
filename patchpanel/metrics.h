@@ -45,6 +45,12 @@ enum class DbusUmaEvent {
   kSetVpnLockdownSuccess = 28,
   kSetDnsRedirectionRule = 29,
   kSetDnsRedirectionRuleSuccess = 30,
+  kCreateLocalOnlyNetwork = 31,
+  kCreateLocalOnlyNetworkSuccess = 32,
+  kCreateTetheredNetwork = 33,
+  kCreateTetheredNetworkSuccess = 34,
+  kDownstreamNetworkInfo = 35,
+  kDownstreamNetworkInfoSuccess = 36,
 
   kMaxValue,
 };

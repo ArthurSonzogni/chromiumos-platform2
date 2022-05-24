@@ -61,7 +61,9 @@ void HandleSynchronousDBusMethodCall(
 
 void FillSubnetProto(const Subnet& virtual_subnet,
                      patchpanel::IPv4Subnet* output) {
-  output->set_base_addr(virtual_subnet.BaseAddress());
+  uint32_t base_addr = virtual_subnet.BaseAddress();
+  output->set_addr(&base_addr, sizeof(base_addr));
+  output->set_base_addr(base_addr);
   output->set_prefix_len(static_cast<uint32_t>(virtual_subnet.PrefixLength()));
 }
 
@@ -226,22 +228,28 @@ void Manager::InitialSetup() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Manager::*)(dbus::MethodCall*);
   const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {patchpanel::kArcStartupMethod, &Manager::OnArcStartup},
       {patchpanel::kArcShutdownMethod, &Manager::OnArcShutdown},
-      {patchpanel::kArcVmStartupMethod, &Manager::OnArcVmStartup},
+      {patchpanel::kArcStartupMethod, &Manager::OnArcStartup},
       {patchpanel::kArcVmShutdownMethod, &Manager::OnArcVmShutdown},
-      {patchpanel::kTerminaVmStartupMethod, &Manager::OnTerminaVmStartup},
-      {patchpanel::kTerminaVmShutdownMethod, &Manager::OnTerminaVmShutdown},
-      {patchpanel::kPluginVmStartupMethod, &Manager::OnPluginVmStartup},
-      {patchpanel::kPluginVmShutdownMethod, &Manager::OnPluginVmShutdown},
-      {patchpanel::kSetVpnIntentMethod, &Manager::OnSetVpnIntent},
+      {patchpanel::kArcVmStartupMethod, &Manager::OnArcVmStartup},
       {patchpanel::kConnectNamespaceMethod, &Manager::OnConnectNamespace},
+      {patchpanel::kCreateLocalOnlyNetworkMethod,
+       &Manager::OnCreateLocalOnlyNetwork},
+      {patchpanel::kCreateTetheredNetworkMethod,
+       &Manager::OnCreateTetheredNetwork},
+      {patchpanel::kDownstreamNetworkInfoMethod,
+       &Manager::OnDownstreamNetworkInfo},
+      {patchpanel::kGetDevicesMethod, &Manager::OnGetDevices},
       {patchpanel::kGetTrafficCountersMethod, &Manager::OnGetTrafficCounters},
       {patchpanel::kModifyPortRuleMethod, &Manager::OnModifyPortRule},
-      {patchpanel::kGetDevicesMethod, &Manager::OnGetDevices},
-      {patchpanel::kSetVpnLockdown, &Manager::OnSetVpnLockdown},
+      {patchpanel::kPluginVmShutdownMethod, &Manager::OnPluginVmShutdown},
+      {patchpanel::kPluginVmStartupMethod, &Manager::OnPluginVmStartup},
       {patchpanel::kSetDnsRedirectionRuleMethod,
        &Manager::OnSetDnsRedirectionRule},
+      {patchpanel::kSetVpnIntentMethod, &Manager::OnSetVpnIntent},
+      {patchpanel::kSetVpnLockdown, &Manager::OnSetVpnLockdown},
+      {patchpanel::kTerminaVmShutdownMethod, &Manager::OnTerminaVmShutdown},
+      {patchpanel::kTerminaVmStartupMethod, &Manager::OnTerminaVmStartup},
   };
 
   for (const auto& kv : kServiceMethods) {
@@ -1228,6 +1236,141 @@ std::unique_ptr<dbus::Response> Manager::OnSetDnsRedirectionRule(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
+    dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetwork);
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::TetheredNetworkRequest request;
+  patchpanel::TetheredNetworkResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod
+               << ": Unable to parse TetheredNetworkRequest";
+    // TODO(b/239559602) Define error codes.
+    response.set_response_code(
+        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD client_fd;
+  reader.PopFileDescriptor(&client_fd);
+  if (!client_fd.is_valid()) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod << ": Invalid file descriptor";
+    response.set_response_code(
+        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
+  if (!local_client_fd.is_valid()) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod
+               << ": Failed to create lifeline fd";
+    response.set_response_code(patchpanel::DownstreamNetworkResult::ERROR);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  int fdkey = local_client_fd.release();
+  downstream_networks_[fdkey] = request.ifname();
+
+  // TODO(b/239559602) Implement CreateTetheredNetwork.
+
+  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetworkSuccess);
+  response.set_response_code(patchpanel::DownstreamNetworkResult::SUCCESS);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnCreateLocalOnlyNetwork(
+    dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetwork);
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::LocalOnlyNetworkRequest request;
+  patchpanel::LocalOnlyNetworkResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
+               << ": Unable to parse LocalOnlyNetworkRequest";
+    // TODO(b/239559602) Define error codes.
+    response.set_response_code(
+        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD client_fd;
+  reader.PopFileDescriptor(&client_fd);
+  if (!client_fd.is_valid()) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod << ": Invalid file descriptor";
+    response.set_response_code(
+        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
+  if (!local_client_fd.is_valid()) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
+               << ": Failed to create lifeline fd";
+    response.set_response_code(patchpanel::DownstreamNetworkResult::ERROR);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  int fdkey = local_client_fd.release();
+  downstream_networks_[fdkey] = request.ifname();
+
+  // TODO(b/239559602) Implement CreateLocalOnlyNetwork.
+
+  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
+  response.set_response_code(patchpanel::DownstreamNetworkResult::SUCCESS);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnDownstreamNetworkInfo(
+    dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kDownstreamNetworkInfo);
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::DownstreamNetworkInfoRequest request;
+  patchpanel::DownstreamNetworkInfoResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << kDownstreamNetworkInfoMethod
+               << ": Unable to parse DownstreamNetworkInfoRequest";
+    response.set_success(false);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // TODO(b/239559602) Implement DownstreamNetworkInfo.
+
+  RecordDbusEvent(metrics_, DbusUmaEvent::kDownstreamNetworkInfoSuccess);
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 void Manager::OnNeighborReachabilityEvent(
     int ifindex,
     const shill::IPAddress& ip_addr,
@@ -1274,9 +1417,6 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
     return response;
   }
 
-  // Dup the client fd into our own: this guarantees that the fd number will
-  // be stable and tied to the actual kernel resources used by the client.
-  // The duped fd will be watched for read events.
   base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
@@ -1351,6 +1491,9 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
 }
 
 int Manager::AddLifelineFd(int dbus_fd) {
+  // Dup the client fd into our own: this guarantees that the fd number will
+  // be stable and tied to the actual kernel resources used by the client.
+  // The duped fd will be watched for read events.
   int fd = dup(dbus_fd);
   if (fd < 0) {
     PLOG(ERROR) << "dup failed";
@@ -1361,7 +1504,6 @@ int Manager::AddLifelineFd(int dbus_fd) {
       fd, base::BindRepeating(&Manager::OnLifelineFdClosed,
                               // The callback will not outlive the object.
                               base::Unretained(this), fd));
-
   return fd;
 }
 
@@ -1388,6 +1530,16 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   // The process that requested this port has died/exited.
   DeleteLifelineFd(client_fd);
 
+  auto downstream_network_it = downstream_networks_.find(client_fd);
+  if (downstream_network_it != downstream_networks_.end()) {
+    // TODO(b/239559602) tear down iptables setup, clear interface address
+    // assignments, stop any forwarding service, stop dhcp server.
+    LOG(INFO) << "Disconnected Network on interface "
+              << downstream_network_it->second;
+    downstream_networks_.erase(downstream_network_it);
+    return;
+  }
+
   // Remove the rules tied to the lifeline fd.
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
@@ -1401,6 +1553,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     connected_namespaces_.erase(connected_namespace_it);
     return;
   }
+
   auto dns_redirection_it = dns_redirection_rules_.find(client_fd);
   if (dns_redirection_it == dns_redirection_rules_.end()) {
     LOG(ERROR) << "No client_fd found for " << client_fd;
@@ -1410,7 +1563,6 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   datapath_->StopDnsRedirection(rule);
   LOG(INFO) << "Stopped DNS redirection " << rule;
   dns_redirection_rules_.erase(dns_redirection_it);
-
   // Propagate DNS proxy addresses change.
   if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
     switch (GetIpFamily(rule.proxy_address)) {
@@ -1431,9 +1583,6 @@ void Manager::OnLifelineFdClosed(int client_fd) {
 bool Manager::RedirectDns(
     base::ScopedFD client_fd,
     const patchpanel::SetDnsRedirectionRuleRequest& request) {
-  // Dup the client fd into our own: this guarantees that the fd number will
-  // be stable and tied to the actual kernel resources used by the client.
-  // The duped fd will be watched for read events.
   base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";

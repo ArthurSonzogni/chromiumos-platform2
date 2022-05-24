@@ -122,6 +122,94 @@ void OnSignalConnectedCallback(const std::string& interface_name,
     LOG(ERROR) << "Failed to connect to " << signal_name;
 }
 
+// Helper static function to process answers to CreateTetheredNetwork calls.
+void OnTetheredNetworkResponse(Client::CreateTetheredNetworkCallback callback,
+                               base::ScopedFD fd_local,
+                               dbus::Response* dbus_response) {
+  if (!dbus_response) {
+    LOG(ERROR)
+        << kCreateTetheredNetworkMethod
+        << ": Failed to send TetheredNetworkRequest message to patchpanel";
+    std::move(callback).Run({});
+    return;
+  }
+
+  TetheredNetworkResponse response;
+  dbus::MessageReader reader(dbus_response);
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod
+               << ": Failed to parse TetheredNetworkRequest proto";
+    std::move(callback).Run({});
+    return;
+  }
+
+  if (response.response_code() != DownstreamNetworkResult::SUCCESS) {
+    std::move(callback).Run({});
+    return;
+  }
+
+  // TODO(b/239559602) Also pass back to the client the IPv4 configuration of
+  // the newly created network.
+  std::move(callback).Run(std::move(fd_local));
+}
+
+// Helper static function to process answers to CreateLocalOnlyNetwork calls.
+void OnLocalOnlyNetworkResponse(Client::CreateLocalOnlyNetworkCallback callback,
+                                base::ScopedFD fd_local,
+                                dbus::Response* dbus_response) {
+  if (!dbus_response) {
+    LOG(ERROR)
+        << kCreateLocalOnlyNetworkMethod
+        << ": Failed to send LocalOnlyNetworkRequest message to patchpanel";
+    std::move(callback).Run({});
+    return;
+  }
+
+  LocalOnlyNetworkResponse response;
+  dbus::MessageReader reader(dbus_response);
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
+               << ": Failed to parse LocalOnlyNetworkRequest proto";
+    std::move(callback).Run({});
+    return;
+  }
+
+  if (response.response_code() != DownstreamNetworkResult::SUCCESS) {
+    std::move(callback).Run({});
+    return;
+  }
+
+  // TODO(b/239559602) Also pass back to the client the IPv4 configuration of
+  // the newly created network.
+  std::move(callback).Run(std::move(fd_local));
+}
+
+// Helper static function to process answers to DownstreamNetworkInfo calls.
+void OnDownstreamNetworkInfoResponse(
+    Client::DownstreamNetworkInfoCallback callback,
+    dbus::Response* dbus_response) {
+  if (!dbus_response) {
+    LOG(ERROR) << kDownstreamNetworkInfoMethod
+               << ": Failed to send DownstreamNetworkInfoRequest message to "
+                  "patchpanel";
+    std::move(callback).Run(false, {}, {});
+    return;
+  }
+
+  DownstreamNetworkInfoResponse response;
+  dbus::MessageReader reader(dbus_response);
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << kDownstreamNetworkInfoMethod
+               << ": Failed to parse DownstreamNetworkInfoResponse proto";
+    std::move(callback).Run(false, {}, {});
+    return;
+  }
+
+  std::move(callback).Run(
+      true, response.downstream_network(),
+      {response.clients_info().begin(), response.clients_info().end()});
+}
+
 class ClientImpl : public Client {
  public:
   ClientImpl(const scoped_refptr<dbus::Bus>& bus,
@@ -196,6 +284,19 @@ class ClientImpl : public Client {
 
   void RegisterNeighborReachabilityEventHandler(
       NeighborReachabilityEventHandler handler) override;
+
+  bool CreateTetheredNetwork(
+      const std::string& downstream_ifname,
+      const std::string& upstream_ifname,
+      TetheredNetworkRequest::UpstreamTechnology upstream_technology,
+      CreateTetheredNetworkCallback callback) override;
+
+  bool CreateLocalOnlyNetwork(const std::string& ifname,
+                              CreateLocalOnlyNetworkCallback callback) override;
+
+  bool GetDownstreamNetworkInfo(
+      const std::string& ifname,
+      DownstreamNetworkInfoCallback callback) override;
 
  private:
   scoped_refptr<dbus::Bus> bus_;
@@ -591,7 +692,7 @@ ClientImpl::ConnectNamespace(pid_t pid,
     return {};
   }
   base::ScopedFD fd_local(pipe_fds[0]);
-  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopeFD to
+  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
   // make sure the original fd is closed eventually.
   base::ScopedFD fd_remote(pipe_fds[1]);
   writer.AppendFileDescriptor(pipe_fds[1]);
@@ -768,7 +869,7 @@ base::ScopedFD ClientImpl::RedirectDns(
     return {};
   }
   base::ScopedFD fd_local(pipe_fds[0]);
-  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopeFD to
+  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
   // make sure the original fd is closed eventually.
   base::ScopedFD fd_remote(pipe_fds[1]);
   writer.AppendFileDescriptor(pipe_fds[1]);
@@ -843,6 +944,107 @@ void ClientImpl::RegisterNeighborReachabilityEventHandler(
       kPatchPanelInterface, kNeighborReachabilityEventSignal,
       base::BindRepeating(OnNeighborReachabilityEventSignal, handler),
       base::BindOnce(OnSignalConnectedCallback));
+}
+
+bool ClientImpl::CreateTetheredNetwork(
+    const std::string& downstream_ifname,
+    const std::string& upstream_ifname,
+    TetheredNetworkRequest::UpstreamTechnology upstream_technology,
+    CreateTetheredNetworkCallback callback) {
+  dbus::MethodCall method_call(kPatchPanelInterface,
+                               kCreateTetheredNetworkMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  TetheredNetworkRequest request;
+  request.set_ifname(downstream_ifname);
+  request.set_upstream_ifname(upstream_ifname);
+  request.set_upstream_technology(upstream_technology);
+  // TODO(b/239559602) Fill out DHCP options:
+  //  - If the upstream network has a DHCP lease, copy relevant options.
+  //  - Option 43 with ANDROID_METERED if the upstream network is metered.
+  //  - If the upstream network has a static DNS or static domain search list
+  //    configuration, copy appropriate options.
+  //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
+  //    network.
+  auto* ipv4_config = request.mutable_ipv4_config();
+  ipv4_config->set_use_dhcp(true);
+  // TODO(b/239559602) Enable IPv6 requests.
+  request.set_disable_ipv6(true);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod
+               << ": Failed to encode TetheredNetworkRequest proto";
+    return false;
+  }
+
+  // Prepare an fd pair and append one fd directly after the serialized request.
+  int pipe_fds[2] = {-1, -1};
+  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
+    PLOG(ERROR) << kCreateTetheredNetworkMethod << ": pipe2() failed";
+    return false;
+  }
+  base::ScopedFD fd_local(pipe_fds[0]);
+  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
+  // make sure the original fd is closed eventually.
+  base::ScopedFD fd_remote(pipe_fds[1]);
+  writer.AppendFileDescriptor(pipe_fds[1]);
+
+  proxy_->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                     base::BindOnce(&OnTetheredNetworkResponse,
+                                    std::move(callback), std::move(fd_local)));
+  return true;
+}
+
+bool ClientImpl::CreateLocalOnlyNetwork(
+    const std::string& ifname, CreateLocalOnlyNetworkCallback callback) {
+  dbus::MethodCall method_call(kPatchPanelInterface,
+                               kCreateLocalOnlyNetworkMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  LocalOnlyNetworkRequest request;
+  request.set_ifname(ifname);
+  auto* ipv4_config = request.mutable_ipv4_config();
+  ipv4_config->set_use_dhcp(true);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
+               << ": Failed to encode LocalOnlyNetworkRequest proto";
+    return false;
+  }
+
+  // Prepare an fd pair and append one fd directly after the serialized request.
+  int pipe_fds[2] = {-1, -1};
+  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
+    PLOG(ERROR) << kCreateLocalOnlyNetworkMethod << ": pipe2() failed";
+    return false;
+  }
+  base::ScopedFD fd_local(pipe_fds[0]);
+  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
+  // make sure the original fd is closed eventually.
+  base::ScopedFD fd_remote(pipe_fds[1]);
+  writer.AppendFileDescriptor(pipe_fds[1]);
+
+  proxy_->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                     base::BindOnce(&OnLocalOnlyNetworkResponse,
+                                    std::move(callback), std::move(fd_local)));
+  return true;
+}
+
+bool ClientImpl::GetDownstreamNetworkInfo(
+    const std::string& ifname, DownstreamNetworkInfoCallback callback) {
+  dbus::MethodCall method_call(kPatchPanelInterface,
+                               kDownstreamNetworkInfoMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  DownstreamNetworkInfoRequest request;
+  request.set_downstream_ifname(ifname);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode DownstreamNetworkInfoRequest proto";
+    return false;
+  }
+
+  proxy_->CallMethod(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::BindOnce(&OnDownstreamNetworkInfoResponse, std::move(callback)));
+  return true;
 }
 
 dbus::ObjectProxy* GetProxy(const scoped_refptr<dbus::Bus>& bus) {

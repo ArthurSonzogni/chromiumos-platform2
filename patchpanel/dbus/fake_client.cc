@@ -125,6 +125,30 @@ void FakeClient::RegisterNeighborReachabilityEventHandler(
   neighbor_handlers_.push_back(handler);
 }
 
+bool FakeClient::CreateTetheredNetwork(
+    const std::string& downstream_ifname,
+    const std::string& upstream_ifname,
+    TetheredNetworkRequest::UpstreamTechnology upstream_technology,
+    CreateTetheredNetworkCallback callback) {
+  // TODO(b/239559602) Run synchronously or schedule |callback| to run if
+  // necessary for unit tests.
+  return true;
+}
+
+bool FakeClient::CreateLocalOnlyNetwork(
+    const std::string& ifname, CreateLocalOnlyNetworkCallback callback) {
+  // TODO(b/239559602) Run synchronously or schedule |callback| to run if
+  // necessary for unit tests.
+  return true;
+}
+
+bool FakeClient::GetDownstreamNetworkInfo(
+    const std::string& ifname, DownstreamNetworkInfoCallback callback) {
+  // TODO(b/239559602) Run synchronously or schedule |callback| to run if
+  // necessary for unit tests.
+  return true;
+}
+
 void FakeClient::TriggerNeighborReachabilityEvent(
     const NeighborReachabilityEventSignal& signal) {
   for (const auto& handler : neighbor_handlers_)

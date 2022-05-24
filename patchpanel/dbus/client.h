@@ -37,6 +37,14 @@ class BRILLO_EXPORT Client {
       base::RepeatingCallback<void(const NeighborReachabilityEventSignal&)>;
   using NetworkDeviceChangedSignalHandler =
       base::RepeatingCallback<void(const NetworkDeviceChangedSignal&)>;
+  using CreateTetheredNetworkCallback =
+      base::OnceCallback<void(base::ScopedFD)>;
+  using CreateLocalOnlyNetworkCallback =
+      base::OnceCallback<void(base::ScopedFD)>;
+  using DownstreamNetworkInfoCallback =
+      base::OnceCallback<void(bool success,
+                              const DownstreamNetwork& downstream_network,
+                              const std::vector<NetworkClientInfo> clients)>;
 
   // This variation creates a dbus object internally
   static std::unique_ptr<Client> New();
@@ -148,6 +156,36 @@ class BRILLO_EXPORT Client {
   // instance is alive.
   virtual void RegisterNeighborReachabilityEventHandler(
       NeighborReachabilityEventHandler handler) = 0;
+
+  // Sends request for creating an L3 network on |downstream_ifname|, sharing
+  // the Internet connection of |upstream_ifname| with the created network.
+  // Returns true if the request was successfully sent, false otherwise. After
+  // the request completes successfully, |callback| is ran with a file
+  // descriptor controlling the lifetime of the tethering setup. The tethering
+  // setup is torn down when the file descriptor is closed by the client. If the
+  // request failed, |callback| is ran with an invalid ScopedFD value.
+  virtual bool CreateTetheredNetwork(
+      const std::string& downstream_ifname,
+      const std::string& upstream_ifname,
+      TetheredNetworkRequest::UpstreamTechnology upstream_technology,
+      CreateTetheredNetworkCallback callback) = 0;
+
+  // Sends request for creating a local-only L3 network on |ifname|.
+  // Returns true if the request was successfully sent, false otherwise. After
+  // the request completes successfully, |callback| is ran with a file
+  // descriptor controlling the lifetime of the local only network setup. The
+  // local only network setup is torn down when the file descriptor is closed by
+  // the client. If the request failed, |callback| is ran with an invalid
+  // ScopedFD value.
+  virtual bool CreateLocalOnlyNetwork(
+      const std::string& ifname, CreateLocalOnlyNetworkCallback callback) = 0;
+
+  // Gets L3 information about a downstream network created with
+  // CreateTetheredNetwork or CreateLocalOnlyNetwork on |ifname|
+  // and all its connected clients. Returns true if the request was successfully
+  // sent, false otherwise. |callback| is ran after the request has completed.
+  virtual bool GetDownstreamNetworkInfo(
+      const std::string& ifname, DownstreamNetworkInfoCallback callback) = 0;
 
  protected:
   Client() = default;

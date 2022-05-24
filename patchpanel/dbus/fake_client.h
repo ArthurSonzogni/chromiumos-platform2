@@ -86,6 +86,19 @@ class BRILLO_EXPORT FakeClient : public Client {
   void RegisterNeighborReachabilityEventHandler(
       NeighborReachabilityEventHandler handler) override;
 
+  bool CreateTetheredNetwork(
+      const std::string& downstream_ifname,
+      const std::string& upstream_ifname,
+      TetheredNetworkRequest::UpstreamTechnology upstream_technology,
+      CreateTetheredNetworkCallback callback) override;
+
+  bool CreateLocalOnlyNetwork(const std::string& ifname,
+                              CreateLocalOnlyNetworkCallback callback) override;
+
+  bool GetDownstreamNetworkInfo(
+      const std::string& ifname,
+      DownstreamNetworkInfoCallback callback) override;
+
   // Triggers registered handlers for NeighborReachabilityEventSignal.
   void TriggerNeighborReachabilityEvent(
       const NeighborReachabilityEventSignal& signal);

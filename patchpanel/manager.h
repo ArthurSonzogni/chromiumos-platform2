@@ -171,6 +171,22 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnSetDnsRedirectionRule(
       dbus::MethodCall* method_call);
 
+  // Handles DBus requests for creating an L3 network on a network interface
+  // and tethered to an upstream network.
+  std::unique_ptr<dbus::Response> OnCreateTetheredNetwork(
+      dbus::MethodCall* method_call);
+
+  // Handles DBus requests for creating a local-only L3 network on a
+  // network interface.
+  std::unique_ptr<dbus::Response> OnCreateLocalOnlyNetwork(
+      dbus::MethodCall* method_call);
+
+  // Handles DBus requests for providing L3 and DHCP client information about
+  // clients connected to a network created with OnCreateTetheredNetwork or
+  // OnCreateLocalOnlyNetwork.
+  std::unique_ptr<dbus::Response> OnDownstreamNetworkInfo(
+      dbus::MethodCall* method_call);
+
   // Sends out DBus signal for notifying neighbor reachability event.
   void OnNeighborReachabilityEvent(
       int ifindex,
@@ -182,7 +198,8 @@ class Manager final : public brillo::DBusDaemon {
       base::ScopedFD client_fd,
       const patchpanel::ConnectNamespaceRequest& request);
 
-  // Helper functions for process lifetime tracking.
+  // Helper functions for tracking DBus request lifetime with file descriptors
+  // provided by DBus clients.
   int AddLifelineFd(int dbus_fd);
   bool DeleteLifelineFd(int dbus_fd);
 
@@ -251,6 +268,12 @@ class Manager final : public brillo::DBusDaemon {
   // DNS proxy's IPv4 and IPv6 addresses keyed by its guest interface.
   std::map<std::string, std::string> dns_proxy_ipv4_addrs_;
   std::map<std::string, std::string> dns_proxy_ipv6_addrs_;
+
+  // All external network interfaces currently managed by patchpanel through
+  // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by the
+  // file descriptors committed by the DBus clients.
+  // TODO(b/239559602) Also store the clients' original requests.
+  std::map<int, std::string> downstream_networks_;
 
   // All rules currently created through patchpanel RedirectDns
   // API, keyed by file descriptors committed by clients when calling the
