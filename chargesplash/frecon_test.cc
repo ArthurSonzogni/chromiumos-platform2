@@ -24,7 +24,7 @@ constexpr char kFakeFreconProgram[] =
     "nohup sleep infinity >/dev/null 2>&1 &\n"
     "echo $! > \"${sysroot}/run/frecon/pid\"\n";
 
-class FakeSysrootFixture : public ::testing::Test {
+class FreconTest : public ::testing::Test {
  public:
   void SetUp() override {
     ASSERT_TRUE(fake_sysroot_.CreateUniqueTempDir());
@@ -47,13 +47,13 @@ class FakeSysrootFixture : public ::testing::Test {
 };
 
 // Test frecon process can be initialized and destroyed.
-TEST_F(FakeSysrootFixture, TestInitFrecon) {
+TEST_F(FreconTest, TestInitFrecon) {
   auto frecon = chargesplash::Frecon();
   EXPECT_TRUE(frecon.InitFrecon());
 }
 
 // Test writing to frecon and to an output file.
-TEST_F(FakeSysrootFixture, TestWriteToMultipleOutputs) {
+TEST_F(FreconTest, TestWriteToMultipleOutputs) {
   auto frecon = chargesplash::Frecon();
   EXPECT_TRUE(frecon.InitFrecon());
 
@@ -70,7 +70,7 @@ TEST_F(FakeSysrootFixture, TestWriteToMultipleOutputs) {
 
 // Test that, when initializing frecon, if there is already a frecon
 // running, we terminate it first.
-TEST_F(FakeSysrootFixture, TestTerminateRunningFrecon) {
+TEST_F(FreconTest, TestTerminateRunningFrecon) {
   std::vector<std::string> argv = {chargesplash::GetPath("/sbin/frecon")};
   std::string output;
   EXPECT_TRUE(base::GetAppOutputAndError(argv, &output));
