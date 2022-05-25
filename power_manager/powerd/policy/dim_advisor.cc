@@ -26,9 +26,6 @@ static constexpr base::TimeDelta kGetResultHpsSenseTimeout = base::Seconds(3);
 // Timeout for disabling hps if screen is undim by the user.
 static constexpr base::TimeDelta kDisableHpsTimeoutOnUserUndim =
     base::Minutes(30);
-// Timeout for disabling hps if screen is undim by hps itself.
-static constexpr base::TimeDelta kDisableHpsTimeoutOnHpsUndim =
-    base::Minutes(10);
 
 }  // namespace
 
@@ -91,11 +88,13 @@ bool DimAdvisor::IsHpsSenseEnabled() const {
 }
 
 void DimAdvisor::UnDimFeedback(bool undimmed_by_user) {
+  // For now, we only disable if undimmed by the user.
+  if (!undimmed_by_user)
+    return;
+
   hps_temporarily_disabled_ = true;
   LOG(INFO) << "DimAdvisor::UnDimFeedback hps is temporarily disabled";
-  const auto time_to_disable = undimmed_by_user ? kDisableHpsTimeoutOnUserUndim
-                                                : kDisableHpsTimeoutOnHpsUndim;
-  hps_reenable_timer_.Start(FROM_HERE, time_to_disable, this,
+  hps_reenable_timer_.Start(FROM_HERE, kDisableHpsTimeoutOnUserUndim, this,
                             &DimAdvisor::ReenableHps);
 }
 
