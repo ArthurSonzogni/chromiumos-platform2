@@ -117,6 +117,7 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.disable_media_store_maintenance=1",
       "androidboot.arc.tts.caching=1",
       "androidboot.arc_enable_gmscore_lmk_protection=1",
+      "androidboot.arc.broadcast_anr_prenotify=1",
       "rw",
   };
 
