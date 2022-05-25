@@ -8,6 +8,7 @@ access: 1
 brk: 1
 chdir: 1
 clock_getres: 1
+clock_getres_time64: 1
 clock_gettime64: 1
 clock_gettime: 1
 clone: 1
