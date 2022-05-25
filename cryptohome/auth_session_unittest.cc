@@ -809,7 +809,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave) {
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _, _))
       .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(keyset_management_, ReSaveKeysetWithKeyBlobs(_, _, _));
 
@@ -941,7 +941,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   // GetauthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlockAsync() are
   // called for each of the key addition operations below.
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
       .WillRepeatedly([&](AuthBlockType auth_block_type,
@@ -1083,12 +1083,15 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              CreateKeyBlobsWithAuthFactorType(AuthFactorType::kPassword,
-                                               /*auth_input=*/_,
-                                               /*out_auth_block_state=*/_,
-                                               /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
+                                       AuthFactorType::kPassword,
+                                       AuthFactorStorageType::kUserSecretStash,
+                                       /*auth_input=*/_,
+                                       /*out_auth_block_state=*/_,
+                                       /*out_key_blobs=*/_))
+      .WillOnce([](AuthFactorType auth_factor_type,
+                   const AuthFactorStorageType auth_factor_storage_type,
+                   const AuthInput& auth_input,
                    AuthBlockState& out_auth_block_state,
                    KeyBlobs& out_key_blobs) {
         // An arbitrary auth block state type can be used in this test.
@@ -1182,12 +1185,15 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
             std::nullopt);
   // Add a password first.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              CreateKeyBlobsWithAuthFactorType(AuthFactorType::kPassword,
-                                               /*auth_input=*/_,
-                                               /*out_auth_block_state=*/_,
-                                               /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
+                                       AuthFactorType::kPassword,
+                                       AuthFactorStorageType::kUserSecretStash,
+                                       /*auth_input=*/_,
+                                       /*out_auth_block_state=*/_,
+                                       /*out_key_blobs=*/_))
+      .WillOnce([](AuthFactorType auth_factor_type,
+                   const AuthFactorStorageType auth_factor_storage_type,
+                   const AuthInput& auth_input,
                    AuthBlockState& out_auth_block_state,
                    KeyBlobs& out_key_blobs) {
         // An arbitrary auth block state type can be used in this test.
@@ -1222,11 +1228,14 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
 
   // Setting the expectation that the auth block utility will create key blobs.
   EXPECT_CALL(auth_block_utility_,
-              CreateKeyBlobsWithAuthFactorType(AuthFactorType::kPin,
-                                               /*auth_input=*/_,
-                                               /*out_auth_block_state=*/_,
-                                               /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+              CreateKeyBlobsWithAuthFactorType(
+                  AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
+                  /*auth_input=*/_,
+                  /*out_auth_block_state=*/_,
+                  /*out_key_blobs=*/_))
+      .WillOnce([](AuthFactorType auth_factor_type,
+                   const AuthFactorStorageType auth_factor_storage_type,
+                   const AuthInput& auth_input,
                    AuthBlockState& out_auth_block_state,
                    KeyBlobs& out_key_blobs) {
         // An arbitrary auth block state type can be used in this test.
@@ -1447,10 +1456,13 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   // Setting the expectation that the auth block utility will create key blobs.
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
                                        AuthFactorType::kCryptohomeRecovery,
+                                       AuthFactorStorageType::kUserSecretStash,
                                        /*auth_input=*/_,
                                        /*out_auth_block_state=*/_,
                                        /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+      .WillOnce([](AuthFactorType auth_factor_type,
+                   const AuthFactorStorageType auth_factor_storage_type,
+                   const AuthInput& auth_input,
                    AuthBlockState& out_auth_block_state,
                    KeyBlobs& out_key_blobs) {
         // An arbitrary auth block state type can be used in this test.

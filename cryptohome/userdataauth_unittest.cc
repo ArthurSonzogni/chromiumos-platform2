@@ -3058,7 +3058,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _, _))
       .WillOnce(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeCryptoError>());

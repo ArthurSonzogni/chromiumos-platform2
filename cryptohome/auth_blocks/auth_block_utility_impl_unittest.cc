@@ -1359,7 +1359,16 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                                       : AuthBlockType::kMaxValue,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kVaultKeyset));
+
+  // Test for kScrypt
+  EXPECT_EQ(USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kScrypt
+                                      : AuthBlockType::kMaxValue,
+            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                /*is_le_credential =*/false, /*is_recovery=*/false,
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kUserSecretStash));
 
   // Test for kPinWeaver
   KeyData key_data;
@@ -1368,7 +1377,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kPinWeaver,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/true, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kVaultKeyset));
 
   // Test for kChallengeResponse
   KeyData key_data2;
@@ -1377,7 +1387,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kChallengeCredential,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/true));
+                /*is_challenge_credential =*/true,
+                AuthFactorStorageType::kVaultKeyset));
 
   // Test for Tpm backed AuthBlock types.
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
@@ -1389,14 +1400,16 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kTpmEcc,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kVaultKeyset));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
   EXPECT_CALL(tpm_, GetVersion()).WillOnce(Return(Tpm::TPM_1_2));
   EXPECT_EQ(AuthBlockType::kTpmNotBoundToPcr,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kVaultKeyset));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
   EXPECT_CALL(tpm_, GetVersion()).WillOnce(Return(Tpm::TPM_2_0));
@@ -1405,13 +1418,15 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kTpmBoundToPcr,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kVaultKeyset));
 
   // Test for kCryptohomeRecovery
   EXPECT_EQ(AuthBlockType::kCryptohomeRecovery,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/true,
-                /*is_challenge_credential =*/false));
+                /*is_challenge_credential =*/false,
+                AuthFactorStorageType::kVaultKeyset));
 }
 
 TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {

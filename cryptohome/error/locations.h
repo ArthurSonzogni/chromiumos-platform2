@@ -909,6 +909,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAddViaUSSFailedInAddAuthFactor = 541,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor = 542,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockScryptFailedInCreate = 543,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockInvalidBlockStateInDerive = 544,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockNoSaltInDerive = 545,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockNofactorsInDerive = 546,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockScryptFailedInDeriveFromSalt = 547,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

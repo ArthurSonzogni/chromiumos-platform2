@@ -128,6 +128,18 @@ table TpmEccAuthBlockState (secure) {
   wrapped_reset_seed:[ubyte] (id: 6, optional);
 }
 
+// This would be used for the ScryptAuthBlock that would generate vkk directly.
+table ScryptAuthBlockState (secure) {
+  // The random salt used when deriving the scrypt key.
+  salt:[ubyte] (id: 0, optional);
+  // The work factor passed to scrypt.
+  work_factor:int = null (id: 1, optional);
+  // The block size passed to scrypt.
+  block_size:uint = null (id: 2, optional);
+  // The parallel factor passed to scrypt.
+  parallel_factor:uint = null (id: 3, optional);
+}
+
 union AuthBlockStateUnion (secure) {
   TpmBoundToPcrAuthBlockState,
   TpmNotBoundToPcrAuthBlockState,
@@ -136,7 +148,8 @@ union AuthBlockStateUnion (secure) {
   ChallengeCredentialAuthBlockState,
   DoubleWrappedCompatAuthBlockState,
   CryptohomeRecoveryAuthBlockState,
-  TpmEccAuthBlockState
+  TpmEccAuthBlockState,
+  ScryptAuthBlockState,
 }
 
 table RevocationState (secure) {

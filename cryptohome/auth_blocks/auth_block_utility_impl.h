@@ -78,7 +78,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockType GetAuthBlockTypeForCreation(
       const bool is_le_credential,
       const bool is_recovery,
-      const bool is_challenge_credential) const override;
+      const bool is_challenge_credential,
+      const AuthFactorStorageType auth_factor_storage_type) const override;
 
   // This function returns the AuthBlock type for
   // AuthBlock::Derive() based on AutBlockState.
@@ -99,6 +100,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   CryptoStatus CreateKeyBlobsWithAuthFactorType(
       AuthFactorType auth_factor_type,
+      const AuthFactorStorageType auth_factor_storage_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
       KeyBlobs& out_key_blobs) const override;

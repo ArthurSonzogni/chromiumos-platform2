@@ -24,6 +24,11 @@
 
 namespace cryptohome {
 
+enum class AuthFactorStorageType {
+  kVaultKeyset,
+  kUserSecretStash,
+};
+
 // This is a utility class to create KeyBlobs with AuthBlocks using user
 // credentials and derive KeyBlobs with AuthBlocks using credentials and stored
 // AuthBlock state.
@@ -83,7 +88,8 @@ class AuthBlockUtility {
   virtual AuthBlockType GetAuthBlockTypeForCreation(
       const bool is_le_credential,
       const bool is_recovery,
-      const bool is_challenge_credential) const = 0;
+      const bool is_challenge_credential,
+      const AuthFactorStorageType auth_factor_storage_type) const = 0;
 
   // This function returns the AuthBlock type for
   // AuthBlock::Derive() based on AutBlockState.
@@ -111,6 +117,7 @@ class AuthBlockUtility {
   // returns the error code.
   [[nodiscard]] virtual CryptoStatus CreateKeyBlobsWithAuthFactorType(
       AuthFactorType auth_factor_type,
+      const AuthFactorStorageType auth_factor_storage_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
       KeyBlobs& out_key_blobs) const = 0;

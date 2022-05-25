@@ -68,6 +68,7 @@ bool GetAuthBlockState(const VaultKeyset& vk, AuthBlockState& out_state) {
           << "CryptohomeRecovery is not a supported AuthBlockType for now.";
       return false;
 
+    case AuthBlockType::kScrypt:
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
       return false;

@@ -59,7 +59,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (override));
   MOCK_METHOD(AuthBlockType,
               GetAuthBlockTypeForCreation,
-              (const bool, const bool, const bool),
+              (const bool, const bool, const bool, const AuthFactorStorageType),
               (const, override));
   MOCK_METHOD(AuthBlockType,
               GetAuthBlockTypeForDerive,
@@ -82,6 +82,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthFactorType,
               (AuthFactorType auth_factor_type,
+               const AuthFactorStorageType auth_factor_storage_type,
                const AuthInput& auth_input,
                AuthBlockState& out_auth_block_state,
                KeyBlobs& out_key_blobs),

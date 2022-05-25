@@ -356,7 +356,8 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
 
   // Generate KeyBlobs and AuthBlockState used for VaultKeyset encryption.
   auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential,
+      AuthFactorStorageType::kVaultKeyset);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -554,7 +555,8 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
 
   AuthBlockType auth_block_type;
   auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential,
+      AuthFactorStorageType::kVaultKeyset);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -1035,7 +1037,8 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
   AuthBlockType auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
           vault_keyset_->IsLECredential(), /*is_recovery=*/false,
-          /*is_challenge_credential*/ false);
+          /*is_challenge_credential*/ false,
+          AuthFactorStorageType::kVaultKeyset);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset.";
@@ -1286,8 +1289,9 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   // 1. Create a new auth factor in-memory, by executing auth block's Create().
   KeyBlobs key_blobs;
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_or_status =
-      AuthFactor::CreateNew(auth_factor_type, auth_factor_label,
-                            auth_factor_metadata, auth_input,
+      AuthFactor::CreateNew(auth_factor_type,
+                            AuthFactorStorageType::kUserSecretStash,
+                            auth_factor_label, auth_factor_metadata, auth_input,
                             auth_block_utility_, key_blobs);
   if (!auth_factor_or_status.ok()) {
     LOG(ERROR) << "Failed to create new auth factor";

@@ -37,6 +37,7 @@ class AuthFactor {
   // depend on it.
   static CryptohomeStatusOr<std::unique_ptr<AuthFactor>> CreateNew(
       AuthFactorType type,
+      const AuthFactorStorageType auth_factor_storage_type,
       const std::string& label,
       const AuthFactorMetadata& metadata,
       const AuthInput& auth_input,

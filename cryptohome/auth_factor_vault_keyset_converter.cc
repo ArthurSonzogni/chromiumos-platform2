@@ -53,7 +53,8 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags) {
       auth_block_type == AuthBlockType::kTpmBoundToPcr ||
       auth_block_type == AuthBlockType::kTpmNotBoundToPcr ||
       auth_block_type == AuthBlockType::kLibScryptCompat ||
-      auth_block_type == AuthBlockType::kTpmEcc) {
+      auth_block_type == AuthBlockType::kTpmEcc ||
+      auth_block_type == AuthBlockType::kScrypt) {
     return AuthFactorType::kPassword;
   }
 

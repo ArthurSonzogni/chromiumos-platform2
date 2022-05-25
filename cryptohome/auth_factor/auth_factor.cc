@@ -31,6 +31,7 @@ namespace cryptohome {
 // static
 CryptohomeStatusOr<std::unique_ptr<AuthFactor>> AuthFactor::CreateNew(
     AuthFactorType type,
+    const AuthFactorStorageType auth_factor_storage_type,
     const std::string& label,
     const AuthFactorMetadata& metadata,
     const AuthInput& auth_input,
@@ -38,7 +39,8 @@ CryptohomeStatusOr<std::unique_ptr<AuthFactor>> AuthFactor::CreateNew(
     KeyBlobs& out_key_blobs) {
   AuthBlockState auth_block_state;
   CryptoStatus error = auth_block_utility->CreateKeyBlobsWithAuthFactorType(
-      type, auth_input, auth_block_state, out_key_blobs);
+      type, auth_factor_storage_type, auth_input, auth_block_state,
+      out_key_blobs);
   if (!error.ok()) {
     LOG(ERROR) << "Auth block creation failed for new auth factor";
     return MakeStatus<CryptohomeError>(
