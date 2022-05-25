@@ -69,6 +69,14 @@
     "-b",
     "/sys/devices/pci0000:00/"
   ],
+  "gpu": [
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/bus/pci/devices/",
+    "-b",
+    "/sys/devices/pci0000:00/"
+  ],
   "input_device": [
     "-k",
     "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",

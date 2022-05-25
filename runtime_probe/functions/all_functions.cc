@@ -16,6 +16,7 @@
 #include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/functions/generic_network.h"
 #include "runtime_probe/functions/generic_storage.h"
+#include "runtime_probe/functions/gpu.h"
 #include "runtime_probe/functions/input_device.h"
 #include "runtime_probe/functions/memory.h"
 #include "runtime_probe/functions/mmc_storage.h"
@@ -60,6 +61,7 @@ auto ProbeFunction::registered_functions_ =
                                      GenericBattery,
                                      GenericNetworkFunction,
                                      GenericStorageFunction,
+                                     GpuFunction,
                                      InputDeviceFunction,
                                      MemoryFunction,
                                      MmcStorageFunction,
