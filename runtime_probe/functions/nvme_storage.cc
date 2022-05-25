@@ -77,7 +77,7 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
     return std::nullopt;
 
   const auto nvme_path = node_path.Append(kNvmeDevicePath);
-  auto nvme_res = MapFilesToDict(nvme_path, kNvmeFields, {});
+  auto nvme_res = MapFilesToDict(nvme_path, kNvmeFields);
   if (!nvme_res)
     return std::nullopt;
   PrependToDVKey(&*nvme_res, kNvmePrefix);

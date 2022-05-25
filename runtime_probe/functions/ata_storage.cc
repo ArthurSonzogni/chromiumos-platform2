@@ -63,7 +63,7 @@ std::optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
     return std::nullopt;
   }
 
-  auto ata_res = MapFilesToDict(ata_path, kAtaFields, {});
+  auto ata_res = MapFilesToDict(ata_path, kAtaFields);
 
   if (!ata_res) {
     VLOG(1) << "ATA-specific fields do not exist on storage \""

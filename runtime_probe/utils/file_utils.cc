@@ -30,26 +30,8 @@ namespace {
 constexpr int kReadFileMaxSize = 1024;
 constexpr int kGlobIterateCountLimit = 32768;
 
-// Get string to be used as key name in |MapFilesToDict|.
-const string& GetKeyName(const string& key) {
-  return key;
-}
-
-const string& GetKeyName(const pair<string, string>& key) {
-  return key.first;
-}
-
-// Get string to be used as file name in |MapFilesToDict|.
-const string& GetFileName(const string& key) {
-  return key;
-}
-
-const string& GetFileName(const pair<string, string>& key) {
-  return key.second;
-}
-
 bool ReadFile(const base::FilePath& dir_path,
-              const string& file_name,
+              base::StringPiece file_name,
               string* out) {
   if (base::FilePath{file_name}.IsAbsolute()) {
     LOG(ERROR) << "file_name " << file_name << " is absolute";
@@ -63,19 +45,6 @@ bool ReadFile(const base::FilePath& dir_path,
     return false;
   }
   TrimWhitespaceASCII(*out, TRIM_ALL, out);
-  return true;
-}
-
-template <typename KeyType>
-bool ReadFileToDict(const FilePath& dir_path,
-                    const KeyType& key,
-                    Value* result) {
-  const string& file_name = GetFileName(key);
-  string content;
-  if (!ReadFile(dir_path, file_name, &content))
-    return false;
-  const string& key_name = GetKeyName(key);
-  result->SetStringKey(key_name, content);
   return true;
 }
 
@@ -123,36 +92,31 @@ std::vector<base::FilePath> GlobInternal(
 }  // namespace
 
 namespace runtime_probe {
+namespace internal {
 
-template <typename KeyType>
-std::optional<Value> MapFilesToDict(const FilePath& dir_path,
-                                    const vector<KeyType>& keys,
-                                    const vector<KeyType>& optional_keys) {
-  Value result(Value::Type::DICTIONARY);
-
-  for (const auto& key : keys) {
-    if (!ReadFileToDict(dir_path, key, &result)) {
-      LOG(ERROR) << "file: \"" << GetFileName(key) << "\" is required.";
-      return std::nullopt;
-    }
-  }
-  for (const auto& key : optional_keys) {
-    ReadFileToDict(dir_path, key, &result);
-  }
-  return result;
+bool ReadFileToDict(const FilePath& dir_path,
+                    base::StringPiece key,
+                    bool log_error,
+                    Value& result) {
+  return ReadFileToDict(dir_path, {key, key}, log_error, result);
 }
 
-// Explicit template instantiation
-template std::optional<Value> MapFilesToDict<string>(
-    const FilePath& dir_path,
-    const vector<string>& keys,
-    const vector<string>& optional_keys);
+bool ReadFileToDict(const FilePath& dir_path,
+                    const pair<base::StringPiece, base::StringPiece>& key,
+                    bool log_error,
+                    Value& result) {
+  base::StringPiece file_name = key.second;
+  string content;
+  if (!ReadFile(dir_path, file_name, &content)) {
+    LOG_IF(ERROR, log_error) << "file \"" << file_name << "\" is required.";
+    return false;
+  }
+  base::StringPiece key_name = key.first;
+  result.SetStringKey(key_name, content);
+  return true;
+}
 
-// Explicit template instantiation
-template std::optional<Value> MapFilesToDict<pair<string, string>>(
-    const FilePath& dir_path,
-    const vector<pair<string, string>>& keys,
-    const vector<pair<string, string>>& optional_keys);
+}  // namespace internal
 
 std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
   std::vector<std::string> components = pattern.GetComponents();

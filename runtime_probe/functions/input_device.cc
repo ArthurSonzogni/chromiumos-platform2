@@ -76,7 +76,7 @@ void FixTouchscreenI2cDevice(base::Value* device) {
     return;
 
   // Refer to http://crrev.com/c/1825942.
-  auto dict_value = MapFilesToDict(node_path, kTouchscreenI2cFields, {});
+  auto dict_value = MapFilesToDict(node_path, kTouchscreenI2cFields);
   if (!dict_value) {
     DVLOG(1) << "touchscreen_i2c-specific fields do not exist on node \""
              << node_path << "\"";
