@@ -531,9 +531,6 @@ bool UserDataAuth::Initialize() {
   // point.
   DCHECK(tpm_ && cryptohome_keys_manager_);
 
-  // Seed /dev/urandom
-  SeedUrandom();
-
   low_disk_space_handler_->SetUpdateUserActivityTimestampCallback(
       base::BindRepeating(
           base::IgnoreResult(&UserDataAuth::UpdateCurrentUserActivityTimestamp),
@@ -3746,19 +3743,6 @@ void UserDataAuth::ResetDictionaryAttackMitigation() {
   brillo::Blob unused_blob;
   if (!tpm_->ResetDictionaryAttackMitigation(unused_blob, unused_blob)) {
     LOG(WARNING) << "Failed to reset DA";
-  }
-}
-
-void UserDataAuth::SeedUrandom() {
-  AssertOnOriginThread();
-
-  brillo::Blob random;
-  if (hwsec::Status err =
-          tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
-    LOG(ERROR) << "Could not get random data from the TPM " << err;
-  }
-  if (!platform_->WriteFile(FilePath(kDefaultEntropySourcePath), random)) {
-    LOG(ERROR) << "Error writing data to " << kDefaultEntropySourcePath;
   }
 }
 

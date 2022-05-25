@@ -1426,18 +1426,6 @@ TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectInheritanceFlag) {
       kEnable, kFd, &error));
 }
 
-TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  // Should Get Random from TPM
-  EXPECT_CALL(tpm_, GetRandomDataBlob(kDefaultRandomSeedLength, _))
-      .WillOnce(ReturnError<TPMErrorBase>());
-
-  EXPECT_CALL(platform_, WriteFile(FilePath(kDefaultEntropySourcePath), _))
-      .WillOnce(Return(true));
-
-  EXPECT_TRUE(userdataauth_->Initialize());
-}
-
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity20) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
