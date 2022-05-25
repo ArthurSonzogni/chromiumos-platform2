@@ -64,6 +64,17 @@ class BackendTpm2 : public Backend {
                                               const brillo::SecureBlob& blob);
   };
 
+  class EncryptionTpm2 : public Encryption, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<brillo::Blob> Encrypt(Key key,
+                                   const brillo::SecureBlob& plaintext,
+                                   EncryptionOptions options) override;
+    StatusOr<brillo::SecureBlob> Decrypt(Key key,
+                                         const brillo::Blob& ciphertext,
+                                         EncryptionOptions options) override;
+  };
+
   class KeyManagermentTpm2 : public KeyManagerment,
                              public SubClassHelper<BackendTpm2> {
    public:
@@ -178,7 +189,7 @@ class BackendTpm2 : public Backend {
   Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override { return nullptr; }
   Deriving* GetDeriving() override { return &deriving_; }
-  Encryption* GetEncryption() override { return nullptr; }
+  Encryption* GetEncryption() override { return &encryption_; }
   Signing* GetSigning() override { return nullptr; }
   KeyManagerment* GetKeyManagerment() override { return &key_managerment_; }
   SessionManagerment* GetSessionManagerment() override { return nullptr; }
@@ -194,6 +205,7 @@ class BackendTpm2 : public Backend {
   StateTpm2 state_{*this};
   SealingTpm2 sealing_{*this};
   DerivingTpm2 deriving_{*this};
+  EncryptionTpm2 encryption_{*this};
   KeyManagermentTpm2 key_managerment_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};

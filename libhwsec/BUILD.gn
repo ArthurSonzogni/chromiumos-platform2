@@ -151,6 +151,7 @@ source_set("hardware_abstraction_library") {
       "backend/tpm2/backend.cc",
       "backend/tpm2/config.cc",
       "backend/tpm2/deriving.cc",
+      "backend/tpm2/encryption.cc",
       "backend/tpm2/key_managerment.cc",
       "backend/tpm2/pinweaver.cc",
       "backend/tpm2/random.cc",
@@ -243,6 +244,7 @@ if (use.test) {
       sources += [
         "backend/tpm2/config_test.cc",
         "backend/tpm2/deriving_test.cc",
+        "backend/tpm2/encryption_test.cc",
         "backend/tpm2/key_managerment_test.cc",
         "backend/tpm2/pinweaver_test.cc",
         "backend/tpm2/random_test.cc",
