@@ -73,9 +73,6 @@ Only includes audit events of type=SYSCALL and type=AVC (SELinux denials).
 
 ## bios_log
 
-Log entries stored in console section of coreboot memory region. Contains logs
-from things such as coreboot and depthcarge before Linux kernel starts.
-
 ## bios_stacked_times
 
 Same as bios_times, but in flame graph compatible stacked format and with enum
