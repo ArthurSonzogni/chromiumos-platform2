@@ -183,8 +183,11 @@ int main(int argc, char** argv) {
         DCHECK_EQ(siginfo.ssi_signo, SIGCHLD);
 
         // Reap any child exit statuses.
-        while (waitpid(-1, nullptr, WNOHANG) > 0)
+        int waitpid_exit;
+        while ((waitpid_exit = waitpid(-1, nullptr, WNOHANG)) > 0)
           continue;
+        if (waitpid_exit < 0)
+          PLOG(ERROR) << "Failed to clean up child process";
       } else if (i == 1) {
         // sock_fd.
         struct sockaddr_vm peer_addr;
@@ -222,6 +225,8 @@ int main(int argc, char** argv) {
 
           message_loop.Run();
           return EXIT_SUCCESS;
+        } else if (pid < 0) {
+          PLOG(ERROR) << "Failed to fork child";
         }
       }
     }
