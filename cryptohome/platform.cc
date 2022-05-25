@@ -868,8 +868,9 @@ bool Platform::IsStatefulLogicalVolumeSupported() {
   if (HANDLE_EINTR(pread(fd.get(), &lvm_signature, kLvmSignatureSize,
                          kLvmSignatureOffset)) != kLvmSignatureSize)
     return false;
+  lvm_signature[kLvmSignatureSize] = '\0';
 
-  return std::string(lvm_signature) == kLvmSignature;
+  return std::string(lvm_signature) == std::string(kLvmSignature);
 }
 
 base::FilePath Platform::GetStatefulDevice() {
