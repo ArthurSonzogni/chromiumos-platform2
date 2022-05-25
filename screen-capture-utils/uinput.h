@@ -11,6 +11,9 @@
 
 namespace screenshot {
 
+// Convert keysym to scancode.
+int KeySymToScancode(rfbKeySym key);
+
 // Manager of uinput devices. Implementation hidden in UinputImpl to avoid
 // dependencies in header.
 class Uinput {

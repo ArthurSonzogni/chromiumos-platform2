@@ -70,7 +70,11 @@ if (use.test) {
     pkg_deps = [ "gtest_main" ]
   }
   executable("run_kmsvnc_test") {
-    sources = [ "kmsvnc_utils_test.cc" ]
+    sources = [
+      "kmsvnc_utils_test.cc",
+      "uinput.cc",
+      "uinput_test.cc",
+    ]
     run_test = true
     configs += [
       "//common-mk:test",
