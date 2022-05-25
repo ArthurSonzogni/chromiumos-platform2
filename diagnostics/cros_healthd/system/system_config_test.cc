@@ -7,16 +7,19 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
+#include <debugd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
-#include "diagnostics/common/system/mock_debugd_adapter.h"
+#include "diagnostics/cros_healthd/system/debugd_constants.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
 
-using ::testing::ByMove;
+using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 
 namespace diagnostics {
 namespace {
@@ -33,7 +36,7 @@ class SystemConfigTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     system_config_ = std::make_unique<SystemConfig>(
-        &fake_cros_config_, &mock_debugd_adapter_, temp_dir_.GetPath());
+        &fake_cros_config_, &debugd_proxy_, temp_dir_.GetPath());
   }
 
   brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
@@ -42,7 +45,7 @@ class SystemConfigTest : public ::testing::Test {
 
   const base::FilePath& GetTempPath() const { return temp_dir_.GetPath(); }
 
-  testing::StrictMock<MockDebugdAdapter> mock_debugd_adapter_;
+  testing::StrictMock<org::chromium::debugdProxyMock> debugd_proxy_;
 
  private:
   brillo::FakeCrosConfig fake_cros_config_;
@@ -140,15 +143,17 @@ TEST_F(SystemConfigTest, NvmeSupportedFalse) {
 
 TEST_F(SystemConfigTest, NvmeSelfTestSupportedTrue) {
   constexpr char kResult[] = "test      : 0x100\noacs      : 0x17 ";
-  EXPECT_CALL(mock_debugd_adapter_, GetNvmeIdentitySync())
-      .WillOnce(Return(ByMove(DebugdAdapter::StringResult{kResult, nullptr})));
+  EXPECT_CALL(debugd_proxy_, Nvme(kNvmeIdentityOption, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kResult), SetArgPointee<2>(nullptr),
+                      Return(true)));
   EXPECT_TRUE(system_config()->NvmeSelfTestSupported());
 }
 
 TEST_F(SystemConfigTest, NvmeSelfTestSupportedFalse) {
   constexpr char kResult[] = "test      : 0x100\noacs      : 0x27 ";
-  EXPECT_CALL(mock_debugd_adapter_, GetNvmeIdentitySync())
-      .WillOnce(Return(ByMove(DebugdAdapter::StringResult{kResult, nullptr})));
+  EXPECT_CALL(debugd_proxy_, Nvme(kNvmeIdentityOption, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kResult), SetArgPointee<2>(nullptr),
+                      Return(true)));
   EXPECT_FALSE(system_config()->NvmeSelfTestSupported());
 }
 

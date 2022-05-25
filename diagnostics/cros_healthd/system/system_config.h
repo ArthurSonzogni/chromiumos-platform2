@@ -11,18 +11,23 @@
 #include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
 #include <base/files/file_path.h>
 
-#include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
+
+namespace org {
+namespace chromium {
+class debugdProxyInterface;
+}  // namespace chromium
+}  // namespace org
 
 namespace diagnostics {
 
 class SystemConfig final : public SystemConfigInterface {
  public:
   SystemConfig(brillo::CrosConfigInterface* cros_config,
-               DebugdAdapter* debugd_adapter);
+               org::chromium::debugdProxyInterface* debugd_proxy);
   // Constructor that overrides root_dir is only meant to be used for testing.
   SystemConfig(brillo::CrosConfigInterface* cros_config,
-               DebugdAdapter* debugd_adapter,
+               org::chromium::debugdProxyInterface* debugd_proxy,
                const base::FilePath& root_dir);
   SystemConfig(const SystemConfig&) = delete;
   SystemConfig& operator=(const SystemConfig&) = delete;
@@ -45,8 +50,8 @@ class SystemConfig final : public SystemConfigInterface {
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.
   brillo::CrosConfigInterface* cros_config_;
-  // Unowned pointer. The DebugdAdapter should outlive this instance.
-  DebugdAdapter* debugd_adapter_;
+  // Unowned pointer. The debugdProxyInterface should outlive this instance.
+  org::chromium::debugdProxyInterface* debugd_proxy_;
   base::FilePath root_dir_;
 };
 

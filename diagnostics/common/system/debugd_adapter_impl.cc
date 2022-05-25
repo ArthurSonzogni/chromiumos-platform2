@@ -17,12 +17,6 @@
 
 namespace diagnostics {
 
-namespace {
-
-constexpr char kNvmeIdentityOption[] = "identify_controller";
-
-}  // namespace
-
 DebugdAdapterImpl::DebugdAdapterImpl(
     std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy)
     : debugd_proxy_(std::move(debugd_proxy)) {
@@ -30,11 +24,5 @@ DebugdAdapterImpl::DebugdAdapterImpl(
 }
 
 DebugdAdapterImpl::~DebugdAdapterImpl() = default;
-
-DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
-  StringResult result;
-  debugd_proxy_->Nvme(kNvmeIdentityOption, &result.value, &result.error);
-  return result;
-}
 
 }  // namespace diagnostics

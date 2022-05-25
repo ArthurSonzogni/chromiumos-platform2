@@ -18,16 +18,7 @@ class DebugdAdapter {
   using OnceStringResultCallback =
       base::OnceCallback<void(const std::string& result, brillo::Error* error)>;
 
-  struct StringResult {
-    std::string value;
-    brillo::ErrorPtr error;
-  };
-
   virtual ~DebugdAdapter() = default;
-
-  // Sends synchonous request to debugd via D-Bus call. On success, debugd runs
-  // nvme util to retrieve NVMe identity data and returns output or an error.
-  virtual StringResult GetNvmeIdentitySync() = 0;
 };
 
 }  // namespace diagnostics

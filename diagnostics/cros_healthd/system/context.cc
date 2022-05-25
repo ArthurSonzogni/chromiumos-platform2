@@ -108,7 +108,7 @@ std::unique_ptr<Context> Context::Create(
   context->cros_config_ = std::move(cros_config);
 
   context->system_config_ = std::make_unique<SystemConfig>(
-      context->cros_config_.get(), context->debugd_adapter_.get());
+      context->cros_config_.get(), context->debugd_proxy_.get());
   context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
   context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
   context->udev_ = brillo::Udev::Create();

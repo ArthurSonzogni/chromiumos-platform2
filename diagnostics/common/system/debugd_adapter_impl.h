@@ -25,9 +25,6 @@ class DebugdAdapterImpl final : public DebugdAdapter {
   DebugdAdapterImpl& operator=(const DebugdAdapterImpl&) = delete;
   ~DebugdAdapterImpl() override;
 
-  // DebugdAdapter overrides:
-  StringResult GetNvmeIdentitySync() override;
-
  private:
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
 };

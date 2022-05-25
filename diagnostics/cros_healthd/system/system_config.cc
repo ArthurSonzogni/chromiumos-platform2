@@ -16,7 +16,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
+#include <brillo/errors/error.h>
+#include <debugd/dbus-proxies.h>
 
+#include "diagnostics/cros_healthd/system/debugd_constants.h"
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
 
 namespace diagnostics {
@@ -34,17 +37,17 @@ constexpr uint8_t kNvmeSelfTestBitmask = 16;
 }  // namespace
 
 SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
-                           DebugdAdapter* debugd_adapter)
-    : SystemConfig(cros_config, debugd_adapter, base::FilePath("/")) {}
+                           org::chromium::debugdProxyInterface* debugd_proxy)
+    : SystemConfig(cros_config, debugd_proxy, base::FilePath("/")) {}
 
 SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
-                           DebugdAdapter* debugd_adapter,
+                           org::chromium::debugdProxyInterface* debugd_proxy,
                            const base::FilePath& root_dir)
     : cros_config_(cros_config),
-      debugd_adapter_(debugd_adapter),
+      debugd_proxy_(debugd_proxy),
       root_dir_(root_dir) {
   DCHECK(cros_config_);
-  DCHECK(debugd_adapter_);
+  DCHECK(debugd_proxy_);
 }
 
 SystemConfig::~SystemConfig() = default;
@@ -105,8 +108,10 @@ bool SystemConfig::NvmeSupported() {
 }
 
 bool SystemConfig::NvmeSelfTestSupported() {
-  auto result = debugd_adapter_->GetNvmeIdentitySync();
-  if (result.error.get())
+  std::string nvmeIdentity;
+  brillo::ErrorPtr error;
+  debugd_proxy_->Nvme(kNvmeIdentityOption, &nvmeIdentity, &error);
+  if (error.get())
     return false;
 
   // Example output:
@@ -115,7 +120,7 @@ bool SystemConfig::NvmeSelfTestSupported() {
   // aerl      : 7
   // frmw      : 0x16
   base::StringPairs pairs;
-  base::SplitStringIntoKeyValuePairs(result.value, ':', '\n', &pairs);
+  base::SplitStringIntoKeyValuePairs(nvmeIdentity, ':', '\n', &pairs);
   for (auto& p : pairs) {
     if (base::TrimWhitespaceASCII(p.first,
                                   base::TrimPositions::TRIM_TRAILING) !=

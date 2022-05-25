@@ -17,8 +17,6 @@ class MockDebugdAdapter : public DebugdAdapter {
   MockDebugdAdapter(const MockDebugdAdapter&) = delete;
   MockDebugdAdapter& operator=(const MockDebugdAdapter&) = delete;
   ~MockDebugdAdapter() override;
-
-  MOCK_METHOD(StringResult, GetNvmeIdentitySync, (), (override));
 };
 
 }  // namespace diagnostics

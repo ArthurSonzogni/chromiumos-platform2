@@ -25,8 +25,6 @@ using ::testing::WithArg;
 namespace diagnostics {
 namespace {
 
-constexpr char kNvmeIdentity[] = "identify_controller";
-
 class MockCallback {
  public:
   MOCK_METHOD(void,
@@ -52,32 +50,6 @@ class DebugdAdapterImplTest : public ::testing::Test {
 
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
 };
-
-// Tests that GetNvmeIdentitySync returns the output on success.
-TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySync) {
-  constexpr char kResult[] = "NVMe identity data";
-  EXPECT_CALL(*debugd_proxy_mock_, Nvme(kNvmeIdentity, _, _, _))
-      .WillOnce(WithArg<1>(Invoke([kResult](std::string* out_string) {
-        *out_string = kResult;
-        return true;
-      })));
-  auto result = debugd_adapter_->GetNvmeIdentitySync();
-  EXPECT_EQ(result.value, kResult);
-  EXPECT_FALSE(result.error);
-}
-
-// Tests that GetNvmeIdentitySync returns an error on failure.
-TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySyncError) {
-  brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(*debugd_proxy_mock_, Nvme(kNvmeIdentity, _, _, _))
-      .WillOnce(WithArg<2>(Invoke([&kError](brillo::ErrorPtr* error) {
-        *error = kError->Clone();
-        return false;
-      })));
-  auto result = debugd_adapter_->GetNvmeIdentitySync();
-  EXPECT_TRUE(result.error);
-  EXPECT_EQ(result.error->GetLocation(), kError->GetLocation());
-}
 
 }  // namespace
 }  // namespace diagnostics
