@@ -17,7 +17,7 @@
 
 namespace minios {
 
-extern const char kDebugConsole[];
+extern const char kLogConsole[];
 extern const char kLogFile[];
 
 class MiniOs : public MiniOsInterface {

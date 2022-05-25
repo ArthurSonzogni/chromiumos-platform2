@@ -29,8 +29,8 @@ bool RecoveryInstaller::RepartitionDisk() {
 #endif
           },
           ProcessManager::IORedirection{
-              .input = minios::kDebugConsole,
-              .output = minios::kDebugConsole,
+              .input = minios::kLogConsole,
+              .output = minios::kLogConsole,
           })) {
     PLOG(WARNING) << "Repartitioning the disk failed";
     // TODO(b/187206298): Chromeos-install script returns EBFD. Ignore for now.

@@ -40,8 +40,8 @@ void MetricsReporter::ReportNBRComplete() {
       !process_manager_->RunCommand(
           {"/usr/bin/stateful_partition_for_recovery", "--mount"},
           ProcessManager::IORedirection{
-              .input = minios::kDebugConsole,
-              .output = minios::kDebugConsole,
+              .input = minios::kLogConsole,
+              .output = minios::kLogConsole,
           })) {
     // Ignore EBADF (b/187206298).
     if (errno != EBADF) {

@@ -16,7 +16,7 @@
 
 namespace minios {
 
-const char kDebugConsole[] = "/dev/pts/2";
+const char kLogConsole[] = "/dev/pts/1";
 const char kLogFile[] = "/log/recovery.log";
 
 MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,

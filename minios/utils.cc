@@ -131,8 +131,8 @@ bool TriggerShutdown() {
   ProcessManager process_manager;
   if (!process_manager.RunCommand({"/sbin/poweroff", "-f"},
                                   ProcessManager::IORedirection{
-                                      .input = minios::kDebugConsole,
-                                      .output = minios::kDebugConsole,
+                                      .input = minios::kLogConsole,
+                                      .output = minios::kLogConsole,
                                   })) {
     LOG(ERROR) << "Could not trigger shutdown";
     return false;
