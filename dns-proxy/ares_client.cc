@@ -14,18 +14,17 @@
 #include <base/threading/thread_task_runner_handle.h>
 
 namespace dns_proxy {
+namespace {
+// Ares option to do a DNS lookup without trying to check hosts file.
+static char kLookupsOpt[] = "b";
+}  // namespace
 
 AresClient::State::State(AresClient* client,
                          ares_channel channel,
                          const QueryCallback& callback)
     : client(client), channel(channel), callback(callback) {}
 
-AresClient::AresClient(base::TimeDelta timeout,
-                       int max_concurrent_queries,
-                       Metrics* metrics)
-    : timeout_(timeout),
-      max_concurrent_queries_(max_concurrent_queries),
-      metrics_(metrics) {
+AresClient::AresClient(base::TimeDelta timeout) : timeout_(timeout) {
   if (ares_library_init(ARES_LIB_INIT_ALL) != ARES_SUCCESS) {
     LOG(DFATAL) << "Failed to initialize ares library";
   }
@@ -38,7 +37,7 @@ AresClient::~AresClient() {
   // equal to ARES_EDESTRUCTION. This callback ensures that the states of the
   // queries are cleared properly.
   for (const auto& channel : channels_inflight_) {
-    ares_destroy(channel.first);
+    ares_destroy(channel);
   }
   ares_library_cleanup();
 }
@@ -124,23 +123,15 @@ void AresClient::HandleResult(State* state,
     return;
   }
 
-  if (--channel_inflight->second < 0) {
-    LOG(ERROR) << "Got unexpected number of ares queries remaining "
-               << channel_inflight->second;
-    return;
-  }
-
   // Run the callback.
-  state->callback.Run(status, msg.get(), len, channel_inflight->second);
+  state->callback.Run(status, msg.get(), len);
   msg.reset();
 
   // Cleanup the states.
-  if (channel_inflight->second == 0) {
-    channels_inflight_.erase(state->channel);
-    read_watchers_.erase(state->channel);
-    write_watchers_.erase(state->channel);
-    ares_destroy(state->channel);
-  }
+  channels_inflight_.erase(state->channel);
+  read_watchers_.erase(state->channel);
+  write_watchers_.erase(state->channel);
+  ares_destroy(state->channel);
 }
 
 void AresClient::ResetTimeout(ares_channel channel) {
@@ -166,8 +157,7 @@ void AresClient::ResetTimeout(ares_channel channel) {
       base::Milliseconds(timeout_ms));
 }
 
-ares_channel AresClient::InitChannel(
-    const std::vector<std::string>& name_servers, int type) {
+ares_channel AresClient::InitChannel(const std::string& name_server, int type) {
   struct ares_options options;
   memset(&options, 0, sizeof(options));
   int optmask = 0;
@@ -180,9 +170,26 @@ ares_channel AresClient::InitChannel(
   optmask |= ARES_OPT_TRIES;
   options.tries = 1;
 
-  // Perform round-robin selection of name servers. This enables Resolve(...)
-  // to resolve using multiple servers concurrently.
-  optmask |= ARES_OPT_ROTATE;
+  // Explicitly supply ares option values below to avoid having ares read
+  // /etc/resolv.conf.
+  // The client is responsible for honoring the value inside /etc/resolv.conf.
+  // Number of servers to query. This will be overridden by the function
+  // ares_set_servers_csv below.
+  optmask |= ARES_OPT_SERVERS;
+  options.nservers = 0;
+  // Ares should not use any search domains as it is only proxying packets.
+  optmask |= ARES_OPT_DOMAINS;
+  options.ndomains = 0;
+  // Order of the result should not matter.
+  optmask |= ARES_OPT_SORTLIST;
+  options.nsort = 0;
+  // Only do DNS lookup without checking hosts file.
+  optmask |= ARES_OPT_LOOKUPS;
+  options.lookups = kLookupsOpt;
+  // Option to check number of dots before using search domains. This is not
+  // used as we don't use search domains.
+  optmask |= ARES_OPT_NDOTS;
+  options.ndots = 1;
 
   // Allow c-ares to use flags.
   optmask |= ARES_OPT_FLAGS;
@@ -205,10 +212,8 @@ ares_channel AresClient::InitChannel(
     return nullptr;
   }
 
-  if (ares_set_servers_csv(channel,
-                           base::JoinString(name_servers, ",").c_str()) !=
-      ARES_SUCCESS) {
-    LOG(ERROR) << "Failed to set ares name servers";
+  if (ares_set_servers_csv(channel, name_server.c_str()) != ARES_SUCCESS) {
+    LOG(ERROR) << "Failed to set ares name server";
     ares_destroy(channel);
     return nullptr;
   }
@@ -219,37 +224,17 @@ ares_channel AresClient::InitChannel(
 bool AresClient::Resolve(const unsigned char* msg,
                          size_t len,
                          const QueryCallback& callback,
-                         const std::vector<std::string>& name_servers,
+                         const std::string& name_server,
                          int type) {
-  if (name_servers.empty()) {
-    LOG(ERROR) << "Name servers must not be empty";
-    if (metrics_) {
-      metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
-                                  Metrics::QueryError::kEmptyNameServers);
-    }
+  ares_channel channel = InitChannel(name_server, type);
+  if (!channel)
     return false;
-  }
-  ares_channel channel = InitChannel(name_servers, type);
-  if (!channel) {
-    if (metrics_) {
-      metrics_->RecordQueryResult(
-          Metrics::QueryType::kPlainText,
-          Metrics::QueryError::kClientInitializationError);
-    }
-    return false;
-  }
-  // Query multiple name servers concurrently. Selection of name servers is
-  // done implicitly through round robin selection. This is enabled by ares
-  // option ARES_OPT_ROTATE.
-  const int num_queries =
-      std::min(static_cast<int>(name_servers.size()), max_concurrent_queries_);
-  for (int i = 0; i < num_queries; i++) {
-    State* state = new State(this, channel, callback);
-    ares_send(channel, msg, len, &AresClient::AresCallback, state);
-  }
+
+  State* state = new State(this, channel, callback);
+  ares_send(channel, msg, len, &AresClient::AresCallback, state);
 
   // Start timeout handler.
-  channels_inflight_.emplace(channel, num_queries);
+  channels_inflight_.emplace(channel);
   ResetTimeout(channel);
 
   // Set up file descriptor watchers.

@@ -32,14 +32,10 @@ class AresClient {
   // |status| stores the ares result of the ares query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the ares query.
-  // |num_remaining| is number of queries for a given request that are still
-  // being processed.
-  using QueryCallback = base::RepeatingCallback<void(
-      int status, unsigned char* msg, size_t len, int num_remaining)>;
+  using QueryCallback =
+      base::RepeatingCallback<void(int status, unsigned char* msg, size_t len)>;
 
-  AresClient(base::TimeDelta timeout,
-             int max_concurrent_queries,
-             Metrics* metrics = nullptr);
+  explicit AresClient(base::TimeDelta timeout);
   virtual ~AresClient();
 
   // Resolve DNS address using wire-format data |data| of size |len| with
@@ -54,7 +50,7 @@ class AresClient {
   virtual bool Resolve(const unsigned char* msg,
                        size_t len,
                        const QueryCallback& callback,
-                       const std::vector<std::string>& name_servers,
+                       const std::string& name_servers,
                        int type = SOCK_DGRAM);
 
  private:
@@ -104,8 +100,7 @@ class AresClient {
   // Initialize an ares channel. This will used for holding multiple concurrent
   // queries.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
-  ares_channel InitChannel(const std::vector<std::string>& name_servers,
-                           int type);
+  ares_channel InitChannel(const std::string& name_server, int type);
 
   // Update file descriptors to be watched.
   // |read_watchers_| and |write_watchers_| stores the watchers.
@@ -132,17 +127,11 @@ class AresClient {
   // Timeout for an ares query.
   base::TimeDelta timeout_;
 
-  // Maximum number of concurrent queries for a request.
-  int max_concurrent_queries_;
-
-  // |channels_inflight_| stores all active channels alongside the number of
-  // running queries for the channel.
+  // |channels_inflight_| stores all active channels.
   // A channel will be added to the set when it is created and will be removed
   // from the set when it is destroyed.
   // This will be used for callbacks to know whether a request is completed.
-  std::map<ares_channel, int> channels_inflight_;
-
-  Metrics* metrics_;
+  std::set<ares_channel> channels_inflight_;
 
   base::WeakPtrFactory<AresClient> weak_factory_{this};
 };

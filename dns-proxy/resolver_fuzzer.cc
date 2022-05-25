@@ -24,13 +24,13 @@ class Environment {
 class FakeAresClient : public AresClient {
  public:
   explicit FakeAresClient(FuzzedDataProvider* provider)
-      : AresClient(base::Seconds(1), 1), provider_(provider) {}
+      : AresClient(base::Seconds(1)), provider_(provider) {}
   ~FakeAresClient() = default;
 
   bool Resolve(const unsigned char* msg,
                size_t len,
                const AresClient::QueryCallback& callback,
-               const std::vector<std::string>& name_servers,
+               const std::string& name_server,
                int type) override {
     return provider_->ConsumeBool();
   }
@@ -48,7 +48,7 @@ class FakeCurlClient : public DoHCurlClientInterface {
                int,
                const DoHCurlClient::QueryCallback&,
                const std::vector<std::string>&,
-               const std::vector<std::string>&) override {
+               const std::string&) override {
     return provider_->ConsumeBool();
   }
 

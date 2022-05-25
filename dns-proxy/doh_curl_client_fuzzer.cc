@@ -29,16 +29,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   loop.SetAsCurrent();
 
   FuzzedDataProvider provider(data, size);
-  DoHCurlClient curl_client(base::Seconds(1), 1);
+  DoHCurlClient curl_client(base::Seconds(1));
 
   while (provider.remaining_bytes() > 0) {
     auto msg =
         provider.ConsumeBytes<char>(std::numeric_limits<unsigned int>::max());
     curl_client.Resolve(
         msg.data(), msg.size(),
-        base::BindRepeating([](const DoHCurlClientInterface::CurlResult&,
-                               uint8_t*, size_t, int) {}),
-        {"8.8.8.8"}, {"https://dns.google/dns-query"});
+        base::BindRepeating(
+            [](const DoHCurlClientInterface::CurlResult&, uint8_t*, size_t) {}),
+        {"8.8.8.8"}, "https://dns.google/dns-query");
     base::RunLoop().RunUntilIdle();
   }
   return 0;

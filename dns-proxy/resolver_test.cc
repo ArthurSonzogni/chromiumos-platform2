@@ -22,14 +22,14 @@ using testing::Return;
 
 namespace dns_proxy {
 namespace {
-const std::vector<std::string> kTestNameServers{"8.8.8.8"};
+const std::vector<std::string> kTestNameServers{"8.8.8.8", "8.8.4.4"};
 const std::vector<std::string> kTestDoHProviders{
-    "https://dns.google/dns-query"};
+    "https://dns.google/dns-query", "https://dns2.google/dns-query"};
 constexpr base::TimeDelta kTimeout = base::Seconds(3);
 
 class MockDoHCurlClient : public DoHCurlClient {
  public:
-  MockDoHCurlClient() : DoHCurlClient(kTimeout, kDefaultMaxConcurrentQueries) {}
+  MockDoHCurlClient() : DoHCurlClient(kTimeout) {}
   ~MockDoHCurlClient() = default;
 
   MOCK_METHOD5(Resolve,
@@ -37,19 +37,19 @@ class MockDoHCurlClient : public DoHCurlClient {
                     int len,
                     const QueryCallback& callback,
                     const std::vector<std::string>&,
-                    const std::vector<std::string>&));
+                    const std::string&));
 };
 
 class MockAresClient : public AresClient {
  public:
-  MockAresClient() : AresClient(kTimeout, kDefaultMaxConcurrentQueries) {}
+  MockAresClient() : AresClient(kTimeout) {}
   ~MockAresClient() = default;
 
   MOCK_METHOD5(Resolve,
                bool(const unsigned char* msg,
                     size_t len,
                     const QueryCallback& callback,
-                    const std::vector<std::string>&,
+                    const std::string& name_server,
                     int type));
 };
 
@@ -75,8 +75,10 @@ class ResolverTest : public testing::Test {
 };
 
 TEST_F(ResolverTest, SetNameServers) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, kTestNameServers, _))
-      .WillOnce(Return(true));
+  for (const auto& name_server : kTestNameServers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+        .WillOnce(Return(true));
+  }
 
   resolver_->SetNameServers(kTestNameServers);
 
@@ -85,9 +87,10 @@ TEST_F(ResolverTest, SetNameServers) {
 }
 
 TEST_F(ResolverTest, SetDoHProviders) {
-  EXPECT_CALL(*curl_client_,
-              Resolve(_, _, _, kTestNameServers, kTestDoHProviders))
-      .WillOnce(Return(true));
+  for (const auto& doh_provider : kTestDoHProviders) {
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, kTestNameServers, doh_provider))
+        .WillOnce(Return(true));
+  }
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -98,7 +101,9 @@ TEST_F(ResolverTest, SetDoHProviders) {
 
 TEST_F(ResolverTest, Resolve_DNSDoHServers) {
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
+      .Times(kTestDoHProviders.size())
+      .WillRepeatedly(Return(true));
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
@@ -108,7 +113,9 @@ TEST_F(ResolverTest, Resolve_DNSDoHServers) {
 }
 
 TEST_F(ResolverTest, Resolve_DNSServers) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+      .Times(kTestNameServers.size())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
@@ -118,7 +125,9 @@ TEST_F(ResolverTest, Resolve_DNSServers) {
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+      .Times(kTestNameServers.size())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
@@ -129,29 +138,33 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
 }
 
 TEST_F(ResolverTest, CurlResult_CURLFail) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+      .Times(kTestNameServers.size())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0, 1);
   DoHCurlClient::CurlResult res(CURLE_COULDNT_CONNECT, 0 /* http_code */,
                                 0 /* timeout */);
-  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0, 0);
+  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
 TEST_F(ResolverTest, CurlResult_HTTPError) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+      .Times(kTestNameServers.size())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0, 1);
   DoHCurlClient::CurlResult res(CURLE_OK, 403 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0, 0);
+  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -162,9 +175,9 @@ TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0, 1);
   DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(sock_fd, res, nullptr, 0, 0);
+  resolver_->HandleCurlResult(sock_fd, res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -175,17 +188,17 @@ TEST_F(ResolverTest, CurlResult_FailNoRetry) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders, true /* always_on */);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0, 1);
   DoHCurlClient::CurlResult res1(CURLE_OUT_OF_MEMORY, 200 /* http_code */,
                                  0 /* timeout */);
-  resolver_->HandleCurlResult(sock_fd, res1, nullptr, 0, 0);
+  resolver_->HandleCurlResult(sock_fd, res1, nullptr, 0);
   task_environment_.RunUntilIdle();
 
   // |sock_fd| should be freed by now.
-  sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0, 1);
   DoHCurlClient::CurlResult res2(CURLE_OK, 403 /* http_code */,
                                  0 /* timeout */);
-  resolver_->HandleCurlResult(sock_fd, res2, nullptr, 0, 0);
+  resolver_->HandleCurlResult(sock_fd, res2, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -196,10 +209,10 @@ TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0, 1);
   sock_fd->num_retries = INT_MAX;
   DoHCurlClient::CurlResult res(CURLE_OK, 429 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(sock_fd, res, nullptr, 0, 0);
+  resolver_->HandleCurlResult(sock_fd, res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -209,8 +222,8 @@ TEST_F(ResolverTest, HandleAresResult_Success) {
 
   resolver_->SetNameServers(kTestNameServers);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0);
-  resolver_->HandleAresResult(sock_fd, ARES_SUCCESS, nullptr, 0, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0, 1);
+  resolver_->HandleAresResult(sock_fd, ARES_SUCCESS, nullptr, 0);
 }
 
 TEST_F(ResolverTest, HandleAresResult_Fail) {
@@ -219,8 +232,8 @@ TEST_F(ResolverTest, HandleAresResult_Fail) {
 
   resolver_->SetNameServers(kTestNameServers);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0);
-  resolver_->HandleAresResult(sock_fd, ARES_SUCCESS, nullptr, 0, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0, 1);
+  resolver_->HandleAresResult(sock_fd, ARES_SUCCESS, nullptr, 0);
 }
 
 TEST_F(ResolverTest, ConstructServFailResponse_ValidQuery) {

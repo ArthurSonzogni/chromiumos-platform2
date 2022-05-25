@@ -29,25 +29,18 @@ DoHCurlClient::CurlResult::CurlResult(CURLcode curl_code,
       http_code(http_code),
       retry_delay_ms(retry_delay_ms) {}
 
-DoHCurlClient::State::State(CURL* curl,
-                            const QueryCallback& callback,
-                            int request_id)
-    : curl(curl),
-      callback(callback),
-      header_list(nullptr),
-      request_id(request_id) {}
+DoHCurlClient::State::State(CURL* curl, const QueryCallback& callback)
+    : curl(curl), callback(callback), header_list(nullptr) {}
 
 DoHCurlClient::State::~State() {
   curl_easy_cleanup(curl);
   curl_slist_free_all(header_list);
 }
 
-void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg,
-                                       int64_t http_code,
-                                       int num_remaining) {
+void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg, int64_t http_code) {
   // TODO(jasongustaman): Use HTTP 429, Retry-After header value.
   CurlResult res(curl_msg->data.result, http_code, 0 /* retry_delay_ms */);
-  callback.Run(res, response.data(), response.size(), num_remaining);
+  callback.Run(res, response.data(), response.size());
 }
 
 void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
@@ -58,12 +51,8 @@ void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
   response.insert(response.end(), msg, msg + len);
 }
 
-DoHCurlClient::DoHCurlClient(base::TimeDelta timeout,
-                             int max_concurrent_queries,
-                             Metrics* metrics)
-    : timeout_seconds_(timeout.InSeconds()),
-      max_concurrent_queries_(max_concurrent_queries),
-      metrics_(metrics) {
+DoHCurlClient::DoHCurlClient(base::TimeDelta timeout)
+    : timeout_seconds_(timeout.InSeconds()) {
   // Initialize CURL.
   curl_global_init(CURL_GLOBAL_DEFAULT);
   curlm_ = curl_multi_init();
@@ -85,9 +74,10 @@ DoHCurlClient::DoHCurlClient(base::TimeDelta timeout,
 
 DoHCurlClient::~DoHCurlClient() {
   // Cancel all in-flight queries.
-  for (const auto& requests : requests_) {
-    CancelRequest(requests.second);
+  for (const auto& state : states_) {
+    curl_multi_remove_handle(curlm_, state.first);
   }
+  states_.clear();
   curl_multi_cleanup(curlm_);
   curlm_ = nullptr;
   curl_global_cleanup();
@@ -108,21 +98,11 @@ void DoHCurlClient::HandleResult(CURLMsg* curl_msg) {
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
   // Run the callback.
-  int num_remaining = requests_[state->request_id].size() - 1;
-  if (num_remaining < 0) {
-    LOG(ERROR) << "Got unexpected number of curl queries remaining "
-               << num_remaining;
-    return;
-  }
-  state->RunCallback(curl_msg, http_code, num_remaining);
+  state->RunCallback(curl_msg, http_code);
 
   // Clean states.
   curl_multi_remove_handle(curlm_, state->curl);
   states_.erase(state->curl);
-  requests_[state->request_id].erase(state);
-  if (num_remaining == 0) {
-    requests_.erase(state->request_id);
-  }
 }
 
 void DoHCurlClient::CheckMultiInfo() {
@@ -255,13 +235,6 @@ size_t DoHCurlClient::HeaderCallback(char* data,
   return len;
 }
 
-void DoHCurlClient::CancelRequest(const std::set<State*>& states) {
-  for (const auto& state : states) {
-    curl_multi_remove_handle(curlm_, state->curl);
-    states_.erase(state->curl);
-  }
-}
-
 std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
     const std::string& doh_provider,
     const char* msg,
@@ -276,8 +249,7 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
   }
 
   // Allocate a state for the request.
-  std::unique_ptr<State> state =
-      std::make_unique<State>(curl, callback, next_request_id_);
+  std::unique_ptr<State> state = std::make_unique<State>(curl, callback);
 
   // Set the target URL which is the DoH provider to query to.
   curl_easy_setopt(curl, CURLOPT_URL, doh_provider.c_str());
@@ -325,62 +297,20 @@ bool DoHCurlClient::Resolve(const char* msg,
                             int len,
                             const QueryCallback& callback,
                             const std::vector<std::string>& name_servers,
-                            const std::vector<std::string>& doh_providers) {
-  if (name_servers.empty()) {
-    LOG(ERROR) << "Name server list must not be empty";
-    if (metrics_) {
-      metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
-                                  Metrics::QueryError::kEmptyNameServers);
-    }
+                            const std::string& doh_provider) {
+  std::unique_ptr<State> state =
+      InitCurl(doh_provider, msg, len, callback, name_servers);
+  if (!state) {
     return false;
   }
+  CURL* curl = state->curl;
 
-  if (doh_providers.empty()) {
-    LOG(ERROR) << "DoH provider list must not be empty";
-    if (metrics_) {
-      metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
-                                  Metrics::QueryError::kEmptyDoHProviders);
-    }
-    return false;
-  }
+  // Create state structure to store required data of each query.
+  states_.emplace(curl, std::move(state));
 
-  std::set<State*> requests;
-  int num_concurrent_queries = 0;
-  for (const auto& doh_provider : doh_providers) {
-    std::unique_ptr<State> state =
-        InitCurl(doh_provider, msg, len, callback, name_servers);
-    if (!state.get()) {
-      continue;
-    }
-    State* state_ptr = state.get();
+  // Runs the query asynchronously.
+  curl_multi_add_handle(curlm_, curl);
 
-    // Create state structure to store required data of each query.
-    states_.emplace(state_ptr->curl, std::move(state));
-    requests.emplace(state_ptr);
-
-    // Runs the query asynchronously.
-    curl_multi_add_handle(curlm_, state_ptr->curl);
-
-    // Queries at most |max_concurrent_queries_| times concurrently.
-    num_concurrent_queries++;
-    if (num_concurrent_queries >= max_concurrent_queries_) {
-      break;
-    }
-  }
-
-  if (requests.empty()) {
-    LOG(ERROR) << "No requests for query";
-    if (metrics_) {
-      metrics_->RecordQueryResult(
-          Metrics::QueryType::kDnsOverHttps,
-          Metrics::QueryError::kClientInitializationError);
-    }
-    return false;
-  }
-
-  // Store the concurrent requests and increment |next_request_id_|.
-  requests_.emplace(next_request_id_, requests);
-  next_request_id_++;
   return true;
 }
 }  // namespace dns_proxy

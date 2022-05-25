@@ -25,10 +25,6 @@ namespace dns_proxy {
 // |kDNSBufSize| holds the maximum size of a DNS message which is the maximum
 // size of a TCP packet.
 constexpr uint32_t kDNSBufSize = 65536;
-// Given multiple DNS and DoH servers, CurlClient and DoHClient will query each
-// servers concurrently. |kDefaultMaxConcurrentQueries| sets the maximum number
-// of servers to query concurrently.
-constexpr int kDefaultMaxConcurrentQueries = 3;
 
 // Resolver receives wire-format DNS queries and proxies them to DNS server(s).
 // This class supports standard plain-text resolving using c-ares and secure
@@ -48,7 +44,8 @@ class Resolver {
   // |SocketFd| stores client's socket data.
   // This is used to send reply to the client on callback called.
   struct SocketFd {
-    SocketFd(int type, int fd);
+    // |num_active_queries| is provided for testing.
+    SocketFd(int type, int fd, int num_active_queries = 0);
 
     // |type| is either SOCK_STREAM or SOCK_DGRAM.
     const int type;
@@ -76,6 +73,9 @@ class Resolver {
     // a certain threshold.
     int num_retries;
 
+    // Number of currently running queries.
+    int num_active_queries;
+
     // Boolean to track if the request to this SocketFd is handled.
     bool request_handled;
 
@@ -85,8 +85,7 @@ class Resolver {
 
   Resolver(base::TimeDelta timeout,
            base::TimeDelta retry_delay,
-           int max_num_retries,
-           int max_concurrent_queries = kDefaultMaxConcurrentQueries);
+           int max_num_retries);
   // Provided for testing only.
   Resolver(std::unique_ptr<AresClient> ares_client,
            std::unique_ptr<DoHCurlClientInterface> curl_client,
@@ -120,8 +119,7 @@ class Resolver {
   void HandleAresResult(SocketFd* sock_fd,
                         int status,
                         unsigned char* msg,
-                        size_t len,
-                        int num_remaining);
+                        size_t len);
 
   // Handle DNS result from |HandleAresResult|.
   // This function will check the response and proxies it to the client upon
@@ -145,8 +143,7 @@ class Resolver {
   void HandleCurlResult(SocketFd* sock_fd,
                         const DoHCurlClient::CurlResult& res,
                         unsigned char* msg,
-                        size_t len,
-                        int num_remaining);
+                        size_t len);
 
   // Handle DoH result from |HandleCurlResult|.
   // This function will check the response and proxies it to the client upon
@@ -182,6 +179,9 @@ class Resolver {
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len);
+
+  // Resolve a domain using CURL or Ares using data from |sock_fd|.
+  bool ResolveDNS(SocketFd* sock_fd, bool doh);
 
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;

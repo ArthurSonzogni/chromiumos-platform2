@@ -24,6 +24,10 @@ using patchpanel::operator<<;
 namespace dns_proxy {
 namespace {
 constexpr uint32_t kMaxClientTcpConn = 16;
+// Given multiple DNS and DoH servers, Resolver will query each servers
+// concurrently. |kMaxConcurrentQueries| sets the maximum number of servers to
+// query concurrently.
+constexpr int kMaxConcurrentQueries = 3;
 // Retries are delayed by +/- |kRetryDelayJitterMultiplier| times to avoid
 // coordinated spikes.
 constexpr float kRetryDelayJitterMultiplier = 0.15;
@@ -99,8 +103,12 @@ Metrics::QueryError CurlCodeMetric(int code) {
 
 }  // namespace
 
-Resolver::SocketFd::SocketFd(int type, int fd)
-    : type(type), fd(fd), num_retries(0), request_handled(false) {
+Resolver::SocketFd::SocketFd(int type, int fd, int num_active_queries)
+    : type(type),
+      fd(fd),
+      num_retries(0),
+      num_active_queries(num_active_queries),
+      request_handled(false) {
   if (type == SOCK_STREAM) {
     socklen = 0;
     return;
@@ -119,17 +127,14 @@ Resolver::TCPConnection::TCPConnection(
 
 Resolver::Resolver(base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
-                   int max_num_retries,
-                   int max_concurrent_queries)
+                   int max_num_retries)
     : always_on_doh_(false),
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
       metrics_(new Metrics) {
-  ares_client_ = std::make_unique<AresClient>(timeout, max_concurrent_queries,
-                                              metrics_.get());
-  curl_client_ = std::make_unique<DoHCurlClient>(
-      timeout, max_concurrent_queries, metrics_.get());
+  ares_client_ = std::make_unique<AresClient>(timeout);
+  curl_client_ = std::make_unique<DoHCurlClient>(timeout);
 }
 
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
@@ -207,15 +212,15 @@ void Resolver::OnTCPConnection() {
 void Resolver::HandleAresResult(SocketFd* sock_fd,
                                 int status,
                                 unsigned char* msg,
-                                size_t len,
-                                int num_remaining) {
+                                size_t len) {
+  sock_fd->num_active_queries--;
   if (!sock_fd->request_handled &&
-      (status == ARES_SUCCESS || num_remaining == 0)) {
+      (status == ARES_SUCCESS || sock_fd->num_active_queries == 0)) {
     HandleCombinedAresResult(sock_fd, status, msg, len);
   }
 
   // Delete |sock_fd| if all queries are processed and retry is not scheduled.
-  if (sock_fd->request_handled && num_remaining == 0) {
+  if (sock_fd->request_handled && sock_fd->num_active_queries == 0) {
     delete sock_fd;
   }
 }
@@ -252,15 +257,15 @@ void Resolver::HandleCombinedAresResult(SocketFd* sock_fd,
 void Resolver::HandleCurlResult(SocketFd* sock_fd,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
-                                size_t len,
-                                int num_remaining) {
+                                size_t len) {
+  sock_fd->num_active_queries--;
   if (!sock_fd->request_handled &&
-      (res.http_code == kHTTPOk || num_remaining == 0)) {
+      (res.http_code == kHTTPOk || sock_fd->num_active_queries == 0)) {
     HandleCombinedCurlResult(sock_fd, res, msg, len);
   }
 
   // Delete |sock_fd| if all queries are processed and retry is not scheduled.
-  if (sock_fd->request_handled && num_remaining == 0) {
+  if (sock_fd->request_handled && sock_fd->num_active_queries == 0) {
     delete sock_fd;
   }
 }
@@ -434,27 +439,77 @@ void Resolver::OnDNSQuery(int fd, int type) {
   Resolve(sock_fd);
 }
 
+bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
+  const auto query_type =
+      doh ? Metrics::QueryType::kDnsOverHttps : Metrics::QueryType::kPlainText;
+  if (name_servers_.empty()) {
+    LOG(ERROR) << "Name server list must not be empty";
+    if (metrics_) {
+      metrics_->RecordQueryResult(query_type,
+                                  Metrics::QueryError::kEmptyNameServers);
+    }
+    return false;
+  }
+
+  if (doh && doh_providers_.empty()) {
+    LOG(ERROR) << "DoH provider list must not be empty";
+    if (metrics_) {
+      metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
+                                  Metrics::QueryError::kEmptyDoHProviders);
+    }
+    return false;
+  }
+
+  // Start multiple concurrent queries.
+  const auto& targets = doh ? doh_providers_ : name_servers_;
+  for (const auto& target : targets) {
+    if (doh) {
+      if (!curl_client_->Resolve(
+              sock_fd->msg, sock_fd->len,
+              base::BindRepeating(&Resolver::HandleCurlResult,
+                                  weak_factory_.GetWeakPtr(), sock_fd),
+              name_servers_, target)) {
+        continue;
+      }
+    } else {
+      if (!ares_client_->Resolve(
+              reinterpret_cast<const unsigned char*>(sock_fd->msg),
+              sock_fd->len,
+              base::BindRepeating(&Resolver::HandleAresResult,
+                                  weak_factory_.GetWeakPtr(), sock_fd),
+              target, sock_fd->type)) {
+        continue;
+      }
+    }
+    if (++sock_fd->num_active_queries >= kMaxConcurrentQueries) {
+      break;
+    }
+  }
+
+  if (sock_fd->num_active_queries > 0)
+    return true;
+
+  LOG(ERROR) << "No requests for query";
+  if (metrics_) {
+    metrics_->RecordQueryResult(
+        query_type, Metrics::QueryError::kClientInitializationError);
+  }
+  return false;
+}
+
 void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
   if (doh_enabled_ && !fallback) {
     sock_fd->timer.StartResolve(true);
-    if (curl_client_->Resolve(
-            sock_fd->msg, sock_fd->len,
-            base::BindRepeating(&Resolver::HandleCurlResult,
-                                weak_factory_.GetWeakPtr(), sock_fd),
-            name_servers_, doh_providers_)) {
+    if (ResolveDNS(sock_fd, /*doh=*/true))
       return;
-    }
+
     sock_fd->timer.StopResolve(false);
   }
   if (!always_on_doh_) {
     sock_fd->timer.StartResolve();
-    if (ares_client_->Resolve(
-            reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
-            base::BindRepeating(&Resolver::HandleAresResult,
-                                weak_factory_.GetWeakPtr(), sock_fd),
-            name_servers_, sock_fd->type)) {
+    if (ResolveDNS(sock_fd, /*doh=*/false))
       return;
-    }
+
     sock_fd->timer.StopResolve(false);
   }
 

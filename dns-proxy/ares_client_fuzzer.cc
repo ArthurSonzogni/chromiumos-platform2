@@ -29,14 +29,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   loop.SetAsCurrent();
 
   FuzzedDataProvider provider(data, size);
-  AresClient ares_client(base::Seconds(1), 1);
+  AresClient ares_client(base::Seconds(1));
 
   while (provider.remaining_bytes() > 0) {
     auto msg = provider.ConsumeBytes<unsigned char>(
         std::numeric_limits<unsigned int>::max());
     ares_client.Resolve(msg.data(), msg.size(),
-                        base::BindRepeating([](int, uint8_t*, size_t, int) {}),
-                        {"8.8.8.8"});
+                        base::BindRepeating([](int, uint8_t*, size_t) {}),
+                        "8.8.8.8");
     base::RunLoop().RunUntilIdle();
   }
 

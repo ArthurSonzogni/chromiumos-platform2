@@ -40,12 +40,8 @@ class DoHCurlClientInterface {
   // query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the CURL query.
-  // |num_remaining| is number of queries for a given request that are
-  // still being processed.
-  using QueryCallback = base::RepeatingCallback<void(const CurlResult& res,
-                                                     unsigned char* msg,
-                                                     size_t len,
-                                                     int num_remaining)>;
+  using QueryCallback = base::RepeatingCallback<void(
+      const CurlResult& res, unsigned char* msg, size_t len)>;
 
   virtual ~DoHCurlClientInterface() = default;
 
@@ -58,7 +54,7 @@ class DoHCurlClientInterface {
                        int len,
                        const QueryCallback& callback,
                        const std::vector<std::string>& name_servers,
-                       const std::vector<std::string>& doh_providers) = 0;
+                       const std::string& doh_provider) = 0;
 };
 
 // DoHCurlClient receives a wire-format DNS query and re-send it using secure
@@ -68,9 +64,6 @@ class DoHCurlClientInterface {
 // response OR the last failing response.
 class DoHCurlClient : public DoHCurlClientInterface {
  public:
-  DoHCurlClient(base::TimeDelta timeout,
-                int max_concurrent_queries,
-                Metrics* metrics = nullptr);
   explicit DoHCurlClient(base::TimeDelta timeout);
   DoHCurlClient(const DoHCurlClient&) = delete;
   DoHCurlClient& operator=(const DoHCurlClient&) = delete;
@@ -89,7 +82,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
                int len,
                const DoHCurlClientInterface::QueryCallback& callback,
                const std::vector<std::string>& name_servers,
-               const std::vector<std::string>& doh_providers) override;
+               const std::string& doh_provider) override;
 
   // Returns a weak pointer to ensure that callbacks don't run after this class
   // is destroyed.
@@ -100,11 +93,11 @@ class DoHCurlClient : public DoHCurlClientInterface {
  private:
   // State of an individual query.
   struct State {
-    State(CURL* curl, const QueryCallback& callback, int request_id);
+    State(CURL* curl, const QueryCallback& callback);
     ~State();
 
     // Fetch the necessary response and run |callback|.
-    void RunCallback(CURLMsg* curl_msg, int64_t http_code, int num_remaining);
+    void RunCallback(CURLMsg* curl_msg, int64_t http_code);
 
     // Set DNS response |msg| of length |len| to |response|.
     void SetResponse(char* msg, size_t len);
@@ -124,11 +117,6 @@ class DoHCurlClient : public DoHCurlClientInterface {
     // |header_list| is owned by this struct. It is stored here in order to
     // free it when the request is done.
     curl_slist* header_list;
-
-    // Upon calling resolve, all available DoH providers will be queried
-    // concurrently. |request_id| is an identifier shared by the queries made
-    // for a single `Resolve(...)` call.
-    int request_id;
   };
 
   // Initialize CURL handle to resolve wire-format data |data| of length |len|.
@@ -229,20 +217,8 @@ class DoHCurlClient : public DoHCurlClientInterface {
            std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       write_watchers_;
 
-  // Maximum number of DoH providers to be queried concurrently.
-  int max_concurrent_queries_;
-
   // Current query's states keyed by it's CURL handle.
   std::map<CURL*, std::unique_ptr<State>> states_;
-
-  // Upon calling resolve, all available DoH providers will be queried
-  // concurrently. |requests_| stores these queries together keyed by their
-  // unique identifier.
-  std::map<int, std::set<State*>> requests_;
-
-  // Stores ID of a request. |next_request_id| will be incremented for each
-  // resolve call to keep the unique value.
-  int next_request_id_;
 
   // CURL multi handle to do asynchronous requests.
   CURLM* curlm_;
