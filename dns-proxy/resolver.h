@@ -212,6 +212,10 @@ class Resolver {
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len);
 
+  // Set either name servers or DoH providers |targets| based on the boolean
+  // type |doh|.
+  void SetServers(const std::vector<std::string>& targets, bool doh);
+
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   bool ResolveDNS(SocketFd* sock_fd, bool doh);
 

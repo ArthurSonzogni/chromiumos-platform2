@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
@@ -449,33 +450,66 @@ void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
 }
 
 void Resolver::SetNameServers(const std::vector<std::string>& name_servers) {
-  // TODO(jasongustaman): Only update the newly added / removed name servers.
-  name_servers_.clear();
-  validated_name_servers_.clear();
-
-  for (const auto& name_server : name_servers) {
-    const auto& probe_state =
-        name_servers_.emplace(name_server, std::make_unique<ProbeState>())
-            .first;
-    Probe(name_server, probe_state->second->weak_factory.GetWeakPtr(),
-          /*doh=*/false);
-  }
+  SetServers(name_servers, /*doh=*/false);
 }
 
 void Resolver::SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh) {
-  // TODO(jasongustaman): Only update the newly added / removed DoH providers.
   always_on_doh_ = always_on_doh;
   doh_enabled_ = !doh_providers.empty();
-  doh_providers_.clear();
-  validated_doh_providers_.clear();
 
-  for (const auto& doh_provider : doh_providers) {
+  SetServers(doh_providers, /*doh=*/true);
+}
+
+void Resolver::SetServers(const std::vector<std::string>& new_servers,
+                          bool doh) {
+  auto& servers = doh ? doh_providers_ : name_servers_;
+  auto& validated_servers =
+      doh ? validated_doh_providers_ : validated_name_servers_;
+  const std::set<std::string> new_servers_set(new_servers.begin(),
+                                              new_servers.end());
+  bool servers_equal = true;
+
+  // Remove any removed servers.
+  for (auto it = servers.begin(); it != servers.end();) {
+    if (base::Contains(new_servers_set, it->first)) {
+      ++it;
+      continue;
+    }
+    it = servers.erase(it);
+    servers_equal = false;
+  }
+
+  // Remove any removed servers from validated servers.
+  for (auto it = validated_servers.begin(); it != validated_servers.end();) {
+    if (base::Contains(new_servers_set, *it)) {
+      ++it;
+      continue;
+    }
+    it = validated_servers.erase(it);
+  }
+
+  // Probe the new servers.
+  for (const auto& new_server : new_servers_set) {
+    if (base::Contains(servers, new_server)) {
+      continue;
+    }
     const auto& probe_state =
-        doh_providers_.emplace(doh_provider, std::make_unique<ProbeState>())
-            .first;
-    Probe(doh_provider, probe_state->second->weak_factory.GetWeakPtr(),
-          /*doh=*/true);
+        servers.emplace(new_server, std::make_unique<ProbeState>()).first;
+    Probe(new_server, probe_state->second->weak_factory.GetWeakPtr(), doh);
+    servers_equal = false;
+  }
+
+  if (servers_equal)
+    return;
+
+  if (doh) {
+    LOG(INFO) << "DoH providers are updated, "
+              << validated_doh_providers_.size() << "/" << doh_providers_.size()
+              << " validated DoH providers";
+  } else {
+    LOG(INFO) << "Name servers are updated, " << validated_name_servers_.size()
+              << "/" << name_servers_.size() << " validated name servers";
   }
 }
 

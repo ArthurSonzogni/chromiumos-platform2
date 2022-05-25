@@ -397,4 +397,57 @@ TEST_F(ResolverTest, Probe_Started) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 }
+
+TEST_F(ResolverTest, Probe_SetNameServers) {
+  resolver_->SetProbingEnabled(true);
+
+  auto name_servers = kTestNameServers;
+  for (const auto& name_server : name_servers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+        .WillOnce(Return(true));
+  }
+
+  const auto& new_name_server = "9.9.9.9";
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, new_name_server, _)).Times(0);
+
+  resolver_->SetNameServers(name_servers);
+
+  name_servers.push_back(new_name_server);
+
+  // Check that only the newly added name servers are probed.
+  for (const auto& name_server : name_servers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _)).Times(0);
+  }
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, new_name_server, _))
+      .WillOnce(Return(true));
+
+  resolver_->SetNameServers(name_servers);
+}
+
+TEST_F(ResolverTest, Probe_SetDoHProviders) {
+  resolver_->SetProbingEnabled(true);
+
+  auto doh_providers = kTestDoHProviders;
+  for (const auto& doh_provider : doh_providers) {
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider))
+        .WillOnce(Return(true));
+  }
+
+  const auto& new_doh_provider = "https://dns3.google/dns-query";
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, new_doh_provider)).Times(0);
+
+  resolver_->SetNameServers(kTestNameServers);
+  resolver_->SetDoHProviders(doh_providers);
+
+  doh_providers.push_back(new_doh_provider);
+
+  // Check that only the newly added DoH providers and name servers are probed.
+  for (const auto& doh_provider : doh_providers) {
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider)).Times(0);
+  }
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, new_doh_provider))
+      .WillOnce(Return(true));
+
+  resolver_->SetDoHProviders(doh_providers);
+}
 }  // namespace dns_proxy
