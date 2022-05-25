@@ -9,6 +9,7 @@
 
 namespace screenshot {
 
+namespace {
 void runConvertBuffer(uint32_t crtc_width, uint32_t crtc_height) {
   uint32_t stride = crtc_width * kBytesPerPixel;
 
@@ -48,6 +49,7 @@ void runConvertBuffer(uint32_t crtc_width, uint32_t crtc_height) {
   }
   EXPECT_EQ(bufferMatched, true);
 }
+}  // namespace
 
 TEST(VncServerTest, HandlesPadding) {
   EXPECT_EQ(getVncWidth(5), 8);
