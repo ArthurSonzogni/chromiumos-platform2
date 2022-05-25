@@ -7714,12 +7714,16 @@ std::vector<const Group*> Request_Get_Printer_Attributes::GetKnownGroups()
 }
 std::vector<Attribute*>
 Request_Get_Printer_Attributes::G_operation_attributes::GetKnownAttributes() {
-  return {&attributes_charset, &attributes_natural_language, &printer_uri};
+  return {&attributes_charset,   &attributes_natural_language,
+          &printer_uri,          &requesting_user_name,
+          &requested_attributes, &document_format};
 }
 std::vector<const Attribute*>
 Request_Get_Printer_Attributes::G_operation_attributes::GetKnownAttributes()
     const {
-  return {&attributes_charset, &attributes_natural_language, &printer_uri};
+  return {&attributes_charset,   &attributes_natural_language,
+          &printer_uri,          &requesting_user_name,
+          &requested_attributes, &document_format};
 }
 const std::map<AttrName, AttrDef>
     Request_Get_Printer_Attributes::G_operation_attributes::defs_{
@@ -7727,7 +7731,13 @@ const std::map<AttrName, AttrDef>
          {AttrType::charset, InternalType::kString, false}},
         {AttrName::attributes_natural_language,
          {AttrType::naturalLanguage, InternalType::kString, false}},
-        {AttrName::printer_uri, {AttrType::uri, InternalType::kString, false}}};
+        {AttrName::printer_uri, {AttrType::uri, InternalType::kString, false}},
+        {AttrName::requesting_user_name,
+         {AttrType::name, InternalType::kStringWithLanguage, false}},
+        {AttrName::requested_attributes,
+         {AttrType::keyword, InternalType::kString, true}},
+        {AttrName::document_format,
+         {AttrType::mimeMediaType, InternalType::kString, false}}};
 Response_Get_Printer_Attributes::Response_Get_Printer_Attributes()
     : Response(Operation::Get_Printer_Attributes) {}
 std::vector<Group*> Response_Get_Printer_Attributes::GetKnownGroups() {
