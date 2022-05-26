@@ -8,6 +8,7 @@
 #include <cmath>
 #include <iterator>
 #include <optional>
+#include <set>
 #include <utility>
 
 #include <base/bind.h>
@@ -150,7 +151,10 @@ Resolver::TCPConnection::TCPConnection(
       base::BindRepeating(callback, TCPConnection::sock->fd(), SOCK_STREAM));
 }
 
-Resolver::ProbeState::ProbeState() : num_attempts(0) {}
+Resolver::ProbeState::ProbeState(const std::string& target,
+                                 bool doh,
+                                 bool validated)
+    : target(target), doh(doh), validated(validated), num_attempts(0) {}
 
 Resolver::Resolver(base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
@@ -239,14 +243,32 @@ void Resolver::OnTCPConnection() {
 }
 
 void Resolver::HandleAresResult(SocketFd* sock_fd,
+                                base::WeakPtr<ProbeState> probe_state,
                                 int status,
                                 unsigned char* msg,
                                 size_t len) {
-  // TODO(jasongustaman): Handle query errors for probing.
   sock_fd->num_active_queries--;
   if (!sock_fd->request_handled &&
       (status == ARES_SUCCESS || sock_fd->num_active_queries == 0)) {
     HandleCombinedAresResult(sock_fd, status, msg, len);
+  }
+
+  // Query failed, restart probing.
+  // Errors that may be caused by its query's data are not considered as
+  // failures:
+  // - ARES_FORMERR means that the query data is incorrect.
+  // - ARES_ENODATA means that the domain has no answers.
+  // - ARES_ENOTIMP means that the operation requested is not implemented.
+  // We don't treat this as an error as the user can create these packets
+  // manually.
+  static const std::set<int> query_success_statuses = {
+      ARES_SUCCESS, ARES_EFORMERR, ARES_ENODATA, ARES_ENOTIMP};
+  if (probe_state && probe_state->validated &&
+      !base::Contains(query_success_statuses, status)) {
+    RestartProbe(probe_state);
+    LOG(ERROR) << "Do53 query failed " << ares_strerror(status) << ". "
+               << validated_name_servers_.size() << "/" << name_servers_.size()
+               << " validated name servers";
   }
 
   // Delete |sock_fd| if all queries are processed and retry is not scheduled.
@@ -285,14 +307,21 @@ void Resolver::HandleCombinedAresResult(SocketFd* sock_fd,
 }
 
 void Resolver::HandleCurlResult(SocketFd* sock_fd,
+                                base::WeakPtr<ProbeState> probe_state,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
                                 size_t len) {
-  // TODO(jasongustaman): Handle query errors for probing.
   sock_fd->num_active_queries--;
   if (!sock_fd->request_handled &&
       (res.http_code == kHTTPOk || sock_fd->num_active_queries == 0)) {
     HandleCombinedCurlResult(sock_fd, res, msg, len);
+  }
+
+  // Query failed, restart probing.
+  if (probe_state && probe_state->validated && res.http_code != kHTTPOk) {
+    RestartProbe(probe_state);
+    LOG(ERROR) << "DoH query failed " << validated_doh_providers_.size() << "/"
+               << doh_providers_.size() << " validated DoH providers";
   }
 
   // Delete |sock_fd| if all queries are processed and retry is not scheduled.
@@ -369,8 +398,7 @@ void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
   }
 }
 
-void Resolver::HandleDoHProbeResult(const std::string& doh_provider,
-                                    base::WeakPtr<ProbeState> probe_state,
+void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
                                     const DoHCurlClient::CurlResult& res,
                                     unsigned char* msg,
                                     size_t len) {
@@ -387,14 +415,16 @@ void Resolver::HandleDoHProbeResult(const std::string& doh_provider,
   }
 
   // Clear the old probe state to stop running probes.
-  doh_providers_[doh_provider] = std::make_unique<ProbeState>();
-  validated_doh_providers_.push_back(doh_provider);
+  // Entry must be valid as |probe_state| is still valid.
+  const auto& doh_provider = doh_providers_.find(probe_state->target);
+  doh_provider->second = std::make_unique<ProbeState>(
+      doh_provider->first, probe_state->doh, /*validated=*/true);
+  validated_doh_providers_.push_back(doh_provider->first);
   LOG(INFO) << "DoH probe successful. " << validated_doh_providers_.size()
             << "/" << doh_providers_.size() << " validated DoH providers";
 }
 
-void Resolver::HandleDo53ProbeResult(const std::string& name_server,
-                                     base::WeakPtr<ProbeState> probe_state,
+void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
                                      int status,
                                      unsigned char* msg,
                                      size_t len) {
@@ -402,17 +432,21 @@ void Resolver::HandleDo53ProbeResult(const std::string& name_server,
     return;
 
   if (status != ARES_SUCCESS) {
-    LOG(ERROR) << "Do53 probe failed for " << name_server
+    LOG(ERROR) << "Do53 probe failed for " << probe_state->target
                << " with ares status " << ares_strerror(status);
     return;
   }
 
   // Clear the old probe state to stop running probes.
-  name_servers_[name_server] = std::make_unique<ProbeState>();
-  validated_name_servers_.push_back(name_server);
-  LOG(INFO) << "Do53 probe successful for " << name_server << ". "
-            << validated_name_servers_.size() << "/" << name_servers_.size()
-            << " validated name servers";
+  // Entry must be valid as |probe_state| is still valid.
+  const auto& name_server = name_servers_.find(probe_state->target);
+  name_server->second = std::make_unique<ProbeState>(
+      name_server->first, name_server->second->doh, /*validated=*/true);
+  validated_name_servers_.push_back(name_server->first);
+
+  LOG(INFO) << "Do53 probe successful for " << name_server->second->target
+            << ". " << validated_name_servers_.size() << "/"
+            << name_servers_.size() << " validated name servers";
 }
 
 void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
@@ -495,8 +529,10 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
       continue;
     }
     const auto& probe_state =
-        servers.emplace(new_server, std::make_unique<ProbeState>()).first;
-    Probe(new_server, probe_state->second->weak_factory.GetWeakPtr(), doh);
+        servers
+            .emplace(new_server, std::make_unique<ProbeState>(new_server, doh))
+            .first;
+    Probe(probe_state->second->weak_factory.GetWeakPtr());
     servers_equal = false;
   }
 
@@ -601,8 +637,9 @@ bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
     if (doh) {
       if (!curl_client_->Resolve(
               sock_fd->msg, sock_fd->len,
-              base::BindRepeating(&Resolver::HandleCurlResult,
-                                  weak_factory_.GetWeakPtr(), sock_fd),
+              base::BindRepeating(
+                  &Resolver::HandleCurlResult, weak_factory_.GetWeakPtr(),
+                  sock_fd, doh_providers_[target]->weak_factory.GetWeakPtr()),
               name_servers, target)) {
         continue;
       }
@@ -610,8 +647,9 @@ bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
       if (!ares_client_->Resolve(
               reinterpret_cast<const unsigned char*>(sock_fd->msg),
               sock_fd->len,
-              base::BindRepeating(&Resolver::HandleAresResult,
-                                  weak_factory_.GetWeakPtr(), sock_fd),
+              base::BindRepeating(
+                  &Resolver::HandleAresResult, weak_factory_.GetWeakPtr(),
+                  sock_fd, name_servers_[target]->weak_factory.GetWeakPtr()),
               target, sock_fd->type)) {
         continue;
       }
@@ -654,9 +692,25 @@ std::vector<std::string> Resolver::GetActiveNameServers() {
   return name_servers;
 }
 
-void Resolver::Probe(const std::string& target,
-                     base::WeakPtr<ProbeState> probe_state,
-                     bool doh) {
+void Resolver::RestartProbe(base::WeakPtr<ProbeState> probe_state) {
+  if (!probe_state)
+    return;
+
+  auto& targets = probe_state->doh ? doh_providers_ : name_servers_;
+  auto& validated_targets =
+      probe_state->doh ? validated_doh_providers_ : validated_name_servers_;
+  validated_targets.erase(
+      std::remove(validated_targets.begin(), validated_targets.end(),
+                  probe_state->target),
+      validated_targets.end());
+
+  const auto& target = targets.find(probe_state->target);
+  target->second =
+      std::make_unique<ProbeState>(target->first, probe_state->doh);
+  Probe(target->second->weak_factory.GetWeakPtr());
+}
+
+void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
   if (disable_probe_)
     return;
 
@@ -666,24 +720,23 @@ void Resolver::Probe(const std::string& target,
   // Schedule the next probe now as the probe may run for a long time.
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Resolver::Probe, weak_factory_.GetWeakPtr(), target,
-                     probe_state, doh),
+      base::BindOnce(&Resolver::Probe, weak_factory_.GetWeakPtr(), probe_state),
       GetTimeUntilProbe(probe_state->num_attempts));
 
   // Run the probe.
-  if (doh) {
+  if (probe_state->doh) {
     curl_client_->Resolve(
         kDNSQueryGstatic, sizeof(kDNSQueryGstatic),
         base::BindRepeating(&Resolver::HandleDoHProbeResult,
-                            weak_factory_.GetWeakPtr(), target, probe_state),
-        GetActiveNameServers(), target);
+                            weak_factory_.GetWeakPtr(), probe_state),
+        GetActiveNameServers(), probe_state->target);
   } else {
     ares_client_->Resolve(
         reinterpret_cast<const unsigned char*>(kDNSQueryGstatic),
         sizeof(kDNSQueryGstatic),
         base::BindRepeating(&Resolver::HandleDo53ProbeResult,
-                            weak_factory_.GetWeakPtr(), target, probe_state),
-        target);
+                            weak_factory_.GetWeakPtr(), probe_state),
+        probe_state->target);
   }
   probe_state->num_attempts++;
 }

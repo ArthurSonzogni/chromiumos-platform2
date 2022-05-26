@@ -90,8 +90,14 @@ class Resolver {
   // a failure, but the query is done prior to the name server being validated,
   // the name server will not be invalidated.
   struct ProbeState {
-    ProbeState();
+    ProbeState(const std::string& target, bool doh, bool validated = false);
 
+    // |target| is the DoH provider or name server used for the probe.
+    // |doh| defines whether target is a DoH provider or a name server.
+    std::string target;
+    bool doh;
+
+    bool validated;
     int num_attempts;
     base::WeakPtrFactory<ProbeState> weak_factory{this};
   };
@@ -122,6 +128,9 @@ class Resolver {
   // Handle DNS results queried through ares.
   // |sock_fd| stores the client's socket data and its request state. This is
   // used to reply back to the client.
+  // |probe_state| stores the current probing state including the name server
+  // used for the query. Upon failure, if |probe_state| is valid, the name
+  // server should be invalidated.
   // If multiple name servers are used, it is expected for the ares client to
   // call this method multiple times. This method will then call
   // |HandleCombinedAresResult| to process the first successful result or the
@@ -131,6 +140,7 @@ class Resolver {
   // of the DNS query given through `Resolve(...)` with the len |len|.
   // |msg| and its lifecycle is owned by ares.
   void HandleAresResult(SocketFd* sock_fd,
+                        base::WeakPtr<ProbeState> probe_state,
                         int status,
                         unsigned char* msg,
                         size_t len);
@@ -146,6 +156,9 @@ class Resolver {
   // Handle DoH results queried through curl.
   // |sock_fd| stores the client's socket data and its request state. This is
   // used to reply back to the client.
+  // |probe_state| stores the current probing state including the DoH provider
+  // used for the query. Upon failure, if |probe_state| is valid, the DoH
+  // provider should be invalidated.
   // If multiple DoH providers are used, it is expected for the curl client to
   // call this method multiple times. This method will then call
   // |HandleCombinedCurlResult| to process the first successful result or the
@@ -155,6 +168,7 @@ class Resolver {
   // wire-format response of the DNS query given through `Resolve(...)` with
   // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
   void HandleCurlResult(SocketFd* sock_fd,
+                        base::WeakPtr<ProbeState> probe_state,
                         const DoHCurlClient::CurlResult& res,
                         unsigned char* msg,
                         size_t len);
@@ -171,17 +185,15 @@ class Resolver {
   // If |fallback| is true, force to use standard plain-text DNS.
   void Resolve(SocketFd* sock_fd, bool fallback = false);
 
-  // Handle DoH and Do53 probe result of |doh_provider| or |name_server|.
-  // |probe_state| defines the current probing state, including if it is
-  // already successful. If the probe is successful, the provider or name
-  // server will be validated.
-  void HandleDoHProbeResult(const std::string& doh_provider,
-                            base::WeakPtr<ProbeState> probe_state,
+  // Handle DoH and Do53 probe result from the DoH provider or name server
+  // provided inside |probe_state|. |probe_state| also defines the current
+  // probing state, including if it is already successful. If the probe is
+  // successful, the provider or name server will be validated.
+  void HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
                             const DoHCurlClient::CurlResult& res,
                             unsigned char* msg,
                             size_t len);
-  void HandleDo53ProbeResult(const std::string& name_server,
-                             base::WeakPtr<ProbeState> probe_state,
+  void HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
                              int status,
                              unsigned char* msg,
                              size_t len);
@@ -228,13 +240,14 @@ class Resolver {
   std::vector<std::string> GetActiveDoHProviders();
   std::vector<std::string> GetActiveNameServers();
 
-  // Start a probe to validate a DoH provider or name server |target|.
-  // |probe_state| is used to keep the current probing state. Weak pointer is
-  // used here to cancel remaining probes if it is no longer interesting.
-  // |doh| defines if the probe is using DoH or Do53.
-  void Probe(const std::string& target,
-             base::WeakPtr<ProbeState> probe_state,
-             bool doh);
+  // Restart probe upon DNS query failure. |probe_state| store the data needed
+  // for probing, DoH provider or name server.
+  void RestartProbe(base::WeakPtr<ProbeState> probe_state);
+
+  // Start a probe to validate a DoH provider or name server defines inside
+  // |probe_state|. Weak pointer is used here to cancel remaining probes if it
+  // is no longer interesting.
+  void Probe(base::WeakPtr<ProbeState> probe_state);
 
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;
