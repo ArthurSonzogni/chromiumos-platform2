@@ -228,11 +228,9 @@ void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
     return;
   }
 
-  if (ac_connect_time_ == base::Time()) {
-    LOG(ERROR) << "Latest charge event has a duration on AC unplug, which "
-               << "means the plug-in event was missed.";
+  // This occurs on Init when the charger isn't connected.
+  if (ac_connect_time_ == base::Time())
     return;
-  }
 
   // On AC disconnect, write the charging duration to the latest charge event
   // file (the name of which will be the connection time), the time_on_ac files,
@@ -613,8 +611,12 @@ void AdaptiveChargingController::HandlePolicyChange(
     if (adaptive_charging_supported_) {
       adaptive_charging_enabled_ = policy.adaptive_charging_enabled();
       restart_adaptive = true;
-      if (!adaptive_charging_enabled_)
+      if (!adaptive_charging_enabled_) {
+        LOG(INFO) << "Policy update disabling Adaptive Charging";
         state_ = AdaptiveChargingState::USER_DISABLED;
+      } else {
+        LOG(INFO) << "Policy update enabling Adaptive Charging";
+      }
     } else {
       LOG(ERROR) << "Policy Change attempted to enable Adaptive Charging "
                  << "without platform support.";
@@ -675,6 +677,9 @@ void AdaptiveChargingController::OnPredictionResponse(
     if (result[i] > result[hour])
       hour = i;
   }
+
+  LOG(INFO) << "Adaptive Charging ML predicts AC unplug will occur after "
+            << hour << " hour(s)";
 
   // If the max probability is less than `min_probability_` we treat that as the
   // model not having enough confidence in the prediction to delay charging.
