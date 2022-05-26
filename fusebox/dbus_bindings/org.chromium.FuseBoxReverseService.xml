@@ -50,5 +50,16 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="TestIsAlive">
+      <tp:docstring>
+        Test daemon is alive: D-BUS setup and FUSE frontend is serving.
+      </tp:docstring>
+      <arg name="alive" type="b" direction="out">
+      <tp:docstring>
+        Boolean true if the deamon is alive.
+      </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

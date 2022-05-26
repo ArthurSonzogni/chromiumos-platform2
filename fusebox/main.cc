@@ -78,6 +78,10 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
   }
 
+  bool TestIsAlive() override {
+    return dbus_proxy_.get() && fuse_frontend_;  // setup and serving
+  }
+
   static FileSystem* CreateFakeFileSystem() {
     static base::NoDestructor<FileSystemFake> fake_file_system;
     return fake_file_system.get();
