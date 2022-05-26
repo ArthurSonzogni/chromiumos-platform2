@@ -227,16 +227,6 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
   DCHECK_NE(runtime_options_, nullptr);
   CHECK(thread_.Start());
 
-  if (!config_.IsValid()) {
-    if (base::PathExists(
-            base::FilePath(constants::kForceEnableAutoFramingPath))) {
-      LOGF(INFO) << "AutoFramingStreamManipulator forcibly turned on";
-      options_.enable = true;
-    } else {
-      LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
-      options_.enable = false;
-    }
-  }
   config_.SetCallback(base::BindRepeating(
       &AutoFramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }
