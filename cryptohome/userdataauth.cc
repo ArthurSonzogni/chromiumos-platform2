@@ -307,8 +307,8 @@ UserDataAuth::UserDataAuth()
       default_fingerprint_manager_(),
       fingerprint_manager_(nullptr),
       ownership_callback_has_run_(false),
-      default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
-      install_attrs_(default_install_attrs_.get()),
+      default_install_attrs_(nullptr),
+      install_attrs_(nullptr),
       enterprise_owned_(false),
       reported_pkcs11_init_fail_(false),
       default_user_activity_timestamp_manager_(
@@ -384,6 +384,12 @@ bool UserDataAuth::Initialize() {
     default_firmware_management_params_ =
         FirmwareManagementParameters::CreateInstance(tpm_->GetHwsec());
     firmware_management_parameters_ = default_firmware_management_params_.get();
+  }
+
+  if (!install_attrs_) {
+    default_install_attrs_ =
+        std::make_unique<InstallAttributes>(tpm_->GetHwsec());
+    install_attrs_ = default_install_attrs_.get();
   }
 
   if (!crypto_) {
@@ -1222,8 +1228,7 @@ void UserDataAuth::InitializeInstallAttributes() {
 
   // The TPM owning instance may have changed since initialization.
   // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
-  install_attrs_->SetTpm(tpm_);
-  install_attrs_->Init(tpm_);
+  install_attrs_->Init();
 
   // Check if the machine is enterprise owned and report to mount_ then.
   DetectEnterpriseOwnership();
@@ -3367,7 +3372,7 @@ int UserDataAuth::InstallAttributesCount() {
 
 bool UserDataAuth::InstallAttributesIsSecure() {
   AssertOnMountThread();
-  return install_attrs_->is_secure();
+  return install_attrs_->IsSecure();
 }
 
 InstallAttributes::Status UserDataAuth::InstallAttributesGetStatus() {

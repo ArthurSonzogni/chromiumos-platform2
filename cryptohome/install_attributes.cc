@@ -15,37 +15,11 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "cryptohome/lockbox.h"
-#include "cryptohome/tpm.h"
 
 using base::FilePath;
-
-namespace {
-
-// Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
-uint32_t GetLockboxIndex() {
-  TPM_SELECT_BEGIN;
-  TPM1_SECTION({
-    // See lockbox.md for information on how this was selected.
-    return 0x20000004;
-  });
-  TPM2_SECTION({
-    if (USE_TPM_DYNAMIC) {
-      // For TPM runtime selection case.
-      return 0x9da5b0;
-    }
-    return 0x800004;
-  });
-  OTHER_TPM_SECTION({
-    LOG(ERROR) << "Failed to get the lockbox index on none supported TPM.";
-    return 0;
-  });
-  TPM_SELECT_END;
-}
-
-}  // namespace
+using StorageState = hwsec::CryptohomeFrontend::StorageState;
 
 namespace cryptohome {
 
@@ -58,35 +32,39 @@ const char InstallAttributes::kDefaultCacheFile[] =
     "/run/lockbox/install_attributes.pb";
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
-InstallAttributes::InstallAttributes(Tpm* tpm)
+InstallAttributes::InstallAttributes(hwsec::CryptohomeFrontend* hwsec)
     : data_file_(kDefaultDataFile),
       cache_file_(kDefaultCacheFile),
       default_attributes_(new SerializedInstallAttributes()),
-      default_lockbox_(new Lockbox(tpm, GetLockboxIndex())),
+      default_lockbox_(new Lockbox(hwsec, hwsec::Space::kInstallAttributes)),
       default_platform_(new Platform()),
+      hwsec_(hwsec),
       attributes_(default_attributes_.get()),
       lockbox_(default_lockbox_.get()),
       platform_(default_platform_.get()) {
-  SetTpm(tpm);  // make sure to check TPM status if needed.
+  CHECK(hwsec_);
   version_ = attributes_->version();  // versioning controlled by pb default.
 }
 
 InstallAttributes::~InstallAttributes() {}
 
-void InstallAttributes::SetTpm(Tpm* tpm) {
-  // Technically, it is safe to call SetTpm, then Init() again, but it could
-  // also cause weirdness and report that data is TPM-backed when it isn't.
-  DCHECK(status_ != Status::kValid && status_ != Status::kFirstInstall)
-      << "SetTpm used after a successful Init().";
-  if (tpm && !tpm->IsEnabled()) {
-    LOG(WARNING) << "set_tpm() missing or disabled TPM provided.";
-    tpm = NULL;  // Don't give it to Lockbox.
+bool InstallAttributes::IsSecure() {
+  if (!USE_TPM_INSECURE_FALLBACK) {
+    // We should always enable the hardware protection if we don't enable the
+    // fallback feature.
+    return true;
   }
-  set_is_secure(tpm != NULL);
-  lockbox_->set_tpm(tpm);
+
+  hwsec::StatusOr<bool> is_enabled = hwsec_->IsEnabled();
+  if (!is_enabled.ok()) {
+    LOG(ERROR) << "Failed to check hwsec is enabled or not: "
+               << is_enabled.status();
+    return false;
+  }
+  return is_enabled.value();
 }
 
-bool InstallAttributes::Init(Tpm* tpm) {
+bool InstallAttributes::Init() {
   // Ensure that if Init() was called and it failed, we can retry cleanly.
   attributes_->Clear();
   status_ = Status::kUnknown;
@@ -94,6 +72,7 @@ bool InstallAttributes::Init(Tpm* tpm) {
   // Read the cache file. If it exists, lockbox-cache has successfully
   // verified install attributes during early boot, so use them.
   brillo::Blob blob;
+  bool valid_cache = false;
   if (platform_->ReadFile(cache_file_, &blob)) {
     if (!attributes_->ParseFromArray(
             static_cast<google::protobuf::uint8*>(blob.data()), blob.size())) {
@@ -102,58 +81,67 @@ bool InstallAttributes::Init(Tpm* tpm) {
       status_ = Status::kInvalid;
       return false;
     }
+    valid_cache = true;
+  }
 
-    status_ = Status::kValid;
-    // Install attributes are valid, no need to hold owner dependency. So,
-    // repeat removing owner dependency in case it didn't succeed during the
-    // first boot.
-    if (tpm->RemoveOwnerDependency(
-            Tpm::TpmOwnerDependency::kInstallAttributes)) {
-      LOG(WARNING) << "Failed to RemoveOwnerDependency().";
+  if (!IsSecure()) {
+    if (valid_cache) {
+      LOG(INFO) << "Valid insecure install attributes cache found.";
+      status_ = Status::kValid;
+    } else {
+      // No cache file, so TPM lockbox is either not yet set up or data is
+      // invalid.
+      LOG(INFO) << "Init() assuming first-time install for TPM-less system.";
+      status_ = Status::kFirstInstall;
     }
-    LOG(INFO) << "Valid install attributes cache found.";
     return true;
   }
 
-  // No cache file, so TPM lockbox is either not yet set up or data is invalid.
-  if (!is_secure()) {
-    LOG(INFO) << "Init() assuming first-time install for TPM-less system.";
-    status_ = Status::kFirstInstall;
-    return true;
-  }
-
-  // TPM not ready yet, i.e. setup after ownership not completed. Init() is
-  // supposed to get invoked again once the TPM is owned and configured.
-  if (!tpm->IsEnabled() || !tpm->IsOwned()) {
-    // To ensure that we get a fresh start after taking ownership, remove the
-    // data file when we boot up after a TPM clear. If we didn't do so, the
-    // previous data file might validate against a left-around NVRAM space,
-    // incorrectly indicating that install attributes are already initialized
-    // and locked.
-    //
-    // Note that we theoretically could delete the file unconditionally here,
-    // since IsTpmReady() should always return true after the TPM has been set
-    // up correctly. However, previous experience tells us that there might be
-    // hardware glitches or driver/firmware bugs that could make the TPM look
-    // disabled. If we accidentally delete the data file in such a situation,
-    // we'd make install attributes inconsistent until next TPM clear, which has
-    // far-reaching consequences (enterprise enrollment would be lost for
-    // example). Thus, be careful and only clear data if the TPM looks
-    // positively unowned.
-    if (tpm->IsEnabled() && !tpm->IsOwned()) {
-      ClearData();
-      // Don't flag invalid here - Chrome verifies that install attributes
-      // aren't invalid before locking them as part of enterprise enrollment.
-      LOG(INFO) << "Init() TPM is not ready and not owned, while install "
-                << "attributes are missing or invalid.";
-      status_ = Status::kTpmNotOwned;
+  if (valid_cache) {
+    // Ensure the space is defined correctly and removing the owner dependency
+    // if necessary.
+    hwsec::StatusOr<StorageState> state =
+        hwsec_->GetSpaceState(hwsec::Space::kInstallAttributes);
+    if (!state.ok()) {
+      LOG(ERROR) << "Failed to get install attributes state: "
+                 << state.status();
+      attributes_->Clear();
+      status_ = Status::kInvalid;
       return false;
     }
 
-    // Cases that don't look like a cleared TPM get flagged invalid.
-    LOG(INFO) << "Init() TPM is not cleared, but install attributes are "
-              << "missing or invalid.";
+    if (state.value() == StorageState::kWriteLocked) {
+      LOG(INFO) << "Valid secure install attributes cache found.";
+      status_ = Status::kValid;
+      return true;
+    }
+
+    if (state.value() == StorageState::kReady) {
+      LOG(WARNING) << "Found unfinalized install attributs.";
+      status_ = Status::kFirstInstall;
+      return true;
+    }
+
+    LOG(ERROR) << "Found invalid install attributes. Reinitialize it.";
+    attributes_->Clear();
+  }
+
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsReady();
+  if (!is_ready.ok()) {
+    LOG(ERROR) << "Failed to check hwsec is ready or not: "
+               << is_ready.status();
     status_ = Status::kInvalid;
+    return false;
+  }
+
+  // HWSec is not ready yet, i.e. setup after ownership not completed.
+  // Init() is supposed to get invoked again once the Hwsec is ready.
+  if (!is_ready.value()) {
+    // Don't flag invalid here - Chrome verifies that install attributes
+    // aren't invalid before locking them as part of enterprise enrollment.
+    LOG(ERROR) << "Init() hwsec is not ready, while install "
+               << "attributes are missing or invalid.";
+    status_ = Status::kTpmNotOwned;
     return false;
   }
 
@@ -187,9 +175,6 @@ bool InstallAttributes::Init(Tpm* tpm) {
   }
 
   status_ = Status::kFirstInstall;
-  if (tpm->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kInstallAttributes)) {
-    LOG(WARNING) << "Failed to RemoveOwnerDependency().";
-  }
   LOG(INFO) << "Install attributes reset back to first install.";
   return true;
 }
@@ -291,7 +276,7 @@ bool InstallAttributes::Finalize() {
 
   LockboxError error;
   DLOG(INFO) << "Finalizing() " << attr_bytes.size() << " bytes.";
-  if (is_secure() && !lockbox()->Store(attr_bytes, &error)) {
+  if (IsSecure() && !lockbox()->Store(attr_bytes, &error)) {
     LOG(ERROR) << "Finalize() failed with Lockbox error: " << error;
     // It may be possible to recover from a failed NVRAM store. So the
     // instance is not marked invalid.
@@ -343,9 +328,8 @@ base::Value InstallAttributes::GetStatus() {
   dv.SetBoolKey("initialized",
                 status_ == Status::kFirstInstall || status_ == Status::kValid);
   dv.SetIntKey("version", version());
-  dv.SetIntKey("lockbox_index", lockbox()->nvram_index());
   dv.SetIntKey("lockbox_nvram_version", 2);
-  dv.SetBoolKey("secure", is_secure());
+  dv.SetBoolKey("secure", IsSecure());
   dv.SetBoolKey("invalid", status_ == Status::kInvalid);
   dv.SetBoolKey("first_install", status_ == Status::kFirstInstall);
   dv.SetIntKey("size", Count());

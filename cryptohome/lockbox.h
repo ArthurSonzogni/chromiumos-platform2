@@ -12,9 +12,9 @@
 
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/platform.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -41,7 +41,7 @@ std::ostream& operator<<(std::ostream& out, LockboxError error);
 // A normal usage flow for Lockbox would be something as follows:
 //
 // Initializing new data against a lockbox (except with error checking :)
-//   Lockbox lockbox(tpm, kNvramSpace);
+//   Lockbox lockbox(hwsec, hwsec::Space::kInstallAttributes);
 //   LockboxError error;
 //   lockbox->Create(&error);
 //   lockbox->Store(mah_locked_data, &error);
@@ -52,13 +52,10 @@ class Lockbox {
   // Populates the basic internal state of the Lockbox.
   //
   // Parameters
-  // - tpm: a required pointer to a TPM object.
-  // - nvram_index: the TPM NVRAM Index to use for this space.
-  //
-  // Lockbox requires a |tpm|.  If a NULL |tpm| is supplied, none of the
-  // operations will succeed, but it should not crash or behave unexpectedly.
-  // The |nvram_index| should be chosen carefully. See README.lockbox for info.
-  Lockbox(Tpm* tpm, uint32_t nvram_index);
+  // - hwsec: a required pointer to hwsec object.
+  // - space: the space for lockbox.
+  Lockbox(hwsec::CryptohomeFrontend* hwsec, hwsec::Space space);
+
   Lockbox(const Lockbox&) = delete;
   Lockbox& operator=(const Lockbox&) = delete;
 
@@ -87,26 +84,13 @@ class Lockbox {
   // - false if the data could not be persisted.
   virtual bool Store(const brillo::Blob& data, LockboxError* error);
 
-  // Replaces the tpm implementation.
-  // Does NOT take ownership of the pointer.
-  virtual void set_tpm(Tpm* tpm) { tpm_ = tpm; }
-
-  // Return NVRAM index.
-  virtual uint32_t nvram_index() const { return nvram_index_; }
-
-  virtual Tpm* tpm() { return tpm_; }
-
-  // Tells if on this platform we store disk encryption key material in lockbox.
-  // If true, it also requires additional protection for lockbox.
-  // If false, the key material field is just filled with zeroes and not used.
-  // Currently, the key material is stored separately for TPM 2.0.
-  virtual bool IsKeyMaterialInLockbox() const {
-    return tpm_->GetVersion() != Tpm::TpmVersion::TPM_2_0;
-  }
+ protected:
+  // constructor for mock testing purpose.
+  Lockbox() {}
 
  private:
-  Tpm* tpm_;
-  uint32_t nvram_index_;
+  hwsec::CryptohomeFrontend* hwsec_;
+  hwsec::Space space_;
 };
 
 // Represents decoded lockbox NVRAM space contents and provides operations to

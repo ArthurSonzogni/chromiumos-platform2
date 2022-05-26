@@ -1183,7 +1183,7 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
 
   std::string str_true = "true";
   std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
@@ -1199,7 +1199,7 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
 
   std::string str_true = "false";
   std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
@@ -1289,11 +1289,11 @@ TEST_F(UserDataAuthTest, InstallAttributesCount) {
 TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
-  EXPECT_CALL(*attrs_, is_secure()).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, IsSecure()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesIsSecure());
 
   // Test for unsuccessful case.
-  EXPECT_CALL(*attrs_, is_secure()).WillOnce(Return(false));
+  EXPECT_CALL(*attrs_, IsSecure()).WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_->InstallAttributesIsSecure());
 }
 
@@ -1693,7 +1693,7 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
   EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey())
       .WillOnce(Return(true));
   // Called by InitializeInstallAttributes()
-  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
 
   callback.Run();
 }
@@ -1717,7 +1717,7 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
       .WillOnce(Return(false));
   EXPECT_CALL(cryptohome_keys_manager_, Init()).Times(1);
   // Called by InitializeInstallAttributes()
-  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
 
   // Call OwnershipCallback twice and see if any of the above gets called more
   // than once.

@@ -6,7 +6,7 @@
 
 namespace cryptohome {
 
-MockLockbox::MockLockbox() : Lockbox(NULL, 0) {}
+MockLockbox::MockLockbox() : Lockbox() {}
 MockLockbox::~MockLockbox() {}
 
 }  // namespace cryptohome

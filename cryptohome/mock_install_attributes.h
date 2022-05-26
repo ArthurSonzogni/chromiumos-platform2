@@ -12,8 +12,6 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/tpm.h"
-
 namespace cryptohome {
 
 class MockInstallAttributes : public InstallAttributes {
@@ -21,8 +19,7 @@ class MockInstallAttributes : public InstallAttributes {
   MockInstallAttributes();
   virtual ~MockInstallAttributes();
 
-  MOCK_METHOD(void, SetTpm, (Tpm*), (override));
-  MOCK_METHOD(bool, Init, (Tpm*), (override));
+  MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(bool,
               Get,
               (const std::string&, brillo::Blob*),
@@ -34,7 +31,7 @@ class MockInstallAttributes : public InstallAttributes {
   MOCK_METHOD(bool, Set, (const std::string&, const brillo::Blob&), (override));
   MOCK_METHOD(bool, Finalize, (), (override));
   MOCK_METHOD(int, Count, (), (const, override));
-  MOCK_METHOD(bool, is_secure, (), (const, override));
+  MOCK_METHOD(bool, IsSecure, (), (override));
   MOCK_METHOD(InstallAttributes::Status, status, (), (const, override));
 };
 

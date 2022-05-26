@@ -15,12 +15,12 @@
 #include <base/observer_list_types.h>
 #include <base/values.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "bindings/install_attributes.pb.h"  // NOLINT(build/include_directory)
 #include "cryptohome/crypto.h"
 #include "cryptohome/lockbox.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -49,10 +49,9 @@ class InstallAttributes {
     virtual void OnFinalized() = 0;
   };
 
-  // Creates an instance of install attributes that will use the |tpm|. If |tpm|
-  // is NULL, InstallAttributes will proceed insecurely (unless it is set with
-  // SetTpm at a later time).
-  explicit InstallAttributes(Tpm* tpm);
+  // Creates an instance of install attributes that will use the |hwsec|.
+  explicit InstallAttributes(hwsec::CryptohomeFrontend* hwsec);
+
   InstallAttributes(const InstallAttributes&) = delete;
   InstallAttributes& operator=(const InstallAttributes&) = delete;
 
@@ -63,14 +62,9 @@ class InstallAttributes {
   // Sets status (for testing).
   void set_status_for_testing(Status status) { status_ = status; }
 
-  // Updates the TPM used by Lockbox or disables the use of the TPM.
-  // This does NOT take ownership of the pointer.
-  virtual void SetTpm(Tpm* tpm);
-
   // Prepares the class for use including instantiating a new environment
-  // if needed. If initialization completes, |tpm| will be used to remove
-  // this instance's dependency on the TPM ownership.
-  virtual bool Init(Tpm* tpm);
+  // if needed.
+  virtual bool Init();
 
   // Populates |value| based on the content referenced by |name|.
   //
@@ -108,6 +102,9 @@ class InstallAttributes {
   // Returns the number of entries in the Lockbox.
   virtual int Count() const;
 
+  // Indicates if there is hardware protection or not.
+  virtual bool IsSecure();
+
   // Return InstallAttributes version.
   // This is populated from the default value in install_attributes.proto and
   // should be incremented there when behavior vesioning is needed.
@@ -115,13 +112,6 @@ class InstallAttributes {
 
   // Allows overriding the version, often for testing.
   virtual void set_version(uint64_t version) { version_ = version; }
-
-  // Returns true if the attribute storage is securely stored.  It does not
-  // indicate if the store has been finalized, just if the system TPM/Lockbox
-  // is being used.
-  virtual bool is_secure() const { return is_secure_; }
-
-  virtual void set_is_secure(bool is_secure) { is_secure_ = is_secure; }
 
   // Allows replacement of the underlying lockbox.
   // This does NOT take ownership of the pointer.
@@ -160,6 +150,9 @@ class InstallAttributes {
   static const mode_t kCacheFilePermissions;
 
  protected:
+  // constructor for mock testing purpose.
+  InstallAttributes() {}
+
   // Helper to find a given entry index using its name.
   virtual int FindIndexByName(const std::string& name) const;
   // Convert the current attributes to a byte stream and write it
@@ -170,7 +163,6 @@ class InstallAttributes {
 
  private:
   Status status_ = Status::kUnknown;
-  bool is_secure_ = false;  // Indicates if there is hardware protection (TPM).
   base::FilePath data_file_;   // Location data is persisted to.
   base::FilePath cache_file_;  // World-readable data cache file.
   uint64_t version_ = 0;       // Default implementation version.
@@ -179,6 +171,7 @@ class InstallAttributes {
   std::unique_ptr<Lockbox> default_lockbox_;
   std::unique_ptr<Platform> default_platform_;
   // Overridable dependency pointer which allow for easy injection.
+  hwsec::CryptohomeFrontend* hwsec_;
   SerializedInstallAttributes* attributes_ = nullptr;
   Lockbox* lockbox_ = nullptr;
   Platform* platform_ = nullptr;

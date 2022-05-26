@@ -16,13 +16,15 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/lockbox.h"
 #include "cryptohome/mock_lockbox.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/mock_tpm.h"
 
 using base::FilePath;
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;
@@ -45,24 +47,21 @@ static constexpr char kTestData[] = "Duffle";
 // boots.
 class InstallAttributesTest : public ::testing::Test {
  public:
-  InstallAttributesTest() : install_attrs_(nullptr) {}
+  InstallAttributesTest() : install_attrs_(&hwsec_) {}
   InstallAttributesTest(const InstallAttributesTest&) = delete;
   InstallAttributesTest& operator=(const InstallAttributesTest&) = delete;
 
   ~InstallAttributesTest() override = default;
 
   void SetUp() override {
-    ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
-    ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
+    ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
 
     install_attrs_.set_lockbox(&lockbox_);
     install_attrs_.set_platform(&platform_);
     // No pre-existing data and no TPM auth.
-    EXPECT_CALL(lockbox_, set_tpm(&tpm_)).Times(1);
-    EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
-    install_attrs_.SetTpm(&tpm_);
     Mock::VerifyAndClearExpectations(&lockbox_);
-    Mock::VerifyAndClearExpectations(&tpm_);
+    Mock::VerifyAndClearExpectations(&hwsec_);
   }
 
   void GetAndCheck() {
@@ -88,34 +87,24 @@ class InstallAttributesTest : public ::testing::Test {
     return data;
   }
 
-  void ExpectRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_, RemoveOwnerDependency(
-                          Tpm::TpmOwnerDependency::kInstallAttributes))
-        .Times(1);
-  }
-
-  void ExpectNotRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_, RemoveOwnerDependency(_)).Times(0);
-  }
-
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<MockLockbox> lockbox_;
   brillo::Blob lockbox_data_;
   InstallAttributes install_attrs_;
   NiceMock<MockPlatform> platform_;
-  NiceMock<MockTpm> tpm_;
 };
 
 TEST_F(InstallAttributesTest, OobeWithTpm) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
   // The first Init() call finds no data file and an unowned TPM.
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(install_attrs_.Init(&tpm_));
-  Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
+  EXPECT_FALSE(install_attrs_.Init());
+  Mock::VerifyAndClearExpectations(&hwsec_);
   Mock::VerifyAndClearExpectations(&platform_);
   EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
 
@@ -124,8 +113,7 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
-  ExpectRemovingOwnerDependency();
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
   Mock::VerifyAndClearExpectations(&lockbox_);
   Mock::VerifyAndClearExpectations(&platform_);
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
@@ -159,32 +147,32 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
 }
 
 TEST_F(InstallAttributesTest, OobeWithoutTpm) {
-  EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
-  install_attrs_.SetTpm(nullptr);
+  if (!USE_TPM_INSECURE_FALLBACK) {
+    // The test would not work on force hard backed device.
+    return;
+  }
+
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_FALSE(install_attrs_.is_secure());
+  EXPECT_FALSE(install_attrs_.IsSecure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
-  ExpectNotRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
 }
 
 TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
-  // Assume authorization and working tpm.
-  EXPECT_CALL(lockbox_, tpm()).WillRepeatedly(Return(&tpm_));
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
-  ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
   Mock::VerifyAndClearExpectations(&lockbox_);
 
   brillo::Blob data;
@@ -202,15 +190,18 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
 
 TEST_F(InstallAttributesTest, NormalBootWithTpm) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
+
+  EXPECT_CALL(hwsec_, GetSpaceState(hwsec::Space::kInstallAttributes))
+      .WillRepeatedly(
+          ReturnValue(hwsec::CryptohomeFrontend::StorageState::kWriteLocked));
 
   brillo::Blob serialized_data = GenerateTestDataFileContents();
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
-  ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
@@ -219,19 +210,22 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
-  EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
-  install_attrs_.SetTpm(nullptr);
+  if (!USE_TPM_INSECURE_FALLBACK) {
+    // The test would not work on force hard backed device.
+    return;
+  }
+
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_FALSE(install_attrs_.is_secure());
+  EXPECT_FALSE(install_attrs_.IsSecure());
 
   brillo::Blob serialized_data = GenerateTestDataFileContents();
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
-  ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
@@ -246,15 +240,14 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
 // failing empty).
 TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
-  ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -264,12 +257,11 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
 // to Finalize() being called, and before the Lockbox was Created.
 TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
-  ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_));
+  EXPECT_TRUE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -277,7 +269,7 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
 
 TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -285,11 +277,10 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_CALL(lockbox_, Reset(_))
       .WillOnce(
           DoAll(SetArgPointee<0>(LockboxError::kNvramInvalid), Return(false)));
-  ExpectNotRemovingOwnerDependency();
   EXPECT_CALL(platform_, DeleteFile(_)).Times(0);
   EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_));
+  EXPECT_FALSE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -299,7 +290,7 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
 // still be treated as if locked without any attributes set.
 TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -308,36 +299,9 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
       .WillOnce(
           DoAll(SetArgPointee<0>(LockboxError::kTpmError), Return(false)));
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_));
+  EXPECT_FALSE(install_attrs_.Init());
 
   EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
-  EXPECT_EQ(0, install_attrs_.Count());
-}
-
-// If initializing with an unowned TPM, the old data file should be deleted to
-// make sure that we don't accidentally pick it up as valid after taking
-// ownership.
-TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
-  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
-
-  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(false));
-
-  // The cache file isn't present because lockbox-cache won't receive a dump of
-  // the lockbox space if the TPM isn't owned.
-  EXPECT_CALL(platform_,
-              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-              FileExists(FilePath(InstallAttributes::kDefaultDataFile)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              DeleteFile(FilePath(InstallAttributes::kDefaultDataFile)))
-      .WillOnce(Return(true));
-
-  EXPECT_FALSE(install_attrs_.Init(&tpm_));
-
-  EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
@@ -346,10 +310,10 @@ TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
 // attributes should the TPM start functioning again after reboot.
 TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
-  EXPECT_TRUE(install_attrs_.is_secure());
+  EXPECT_TRUE(install_attrs_.IsSecure());
 
-  EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
 
   // The cache file isn't present because lockbox-cache won't receive a dump of
   // the lockbox space if the TPM isn't owned.
@@ -366,9 +330,9 @@ TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
                              FilePath(InstallAttributes::kDefaultDataFile)))
       .Times(0);
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_));
+  EXPECT_FALSE(install_attrs_.Init());
 
-  EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
+  EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 

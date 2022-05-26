@@ -6,7 +6,7 @@
 
 namespace cryptohome {
 
-MockInstallAttributes::MockInstallAttributes() : InstallAttributes(NULL) {}
+MockInstallAttributes::MockInstallAttributes() : InstallAttributes() {}
 MockInstallAttributes::~MockInstallAttributes() {}
 
 }  // namespace cryptohome
