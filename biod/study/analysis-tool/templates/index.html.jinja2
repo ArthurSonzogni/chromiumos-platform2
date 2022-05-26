@@ -1,0 +1,403 @@
+{#-
+Copyright 2022 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-#}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- TODO: Replace icon with Chrome OS Fingerprint logo. -->
+    <link rel="icon" href="assets/icon.svg">
+    <!-- https://github.com/andybrewer/mvp -->
+    <link rel="stylesheet" href="assets/mvp.css">
+    <!-- Override width specified in mvp.css. This is used for the main tag. -->
+    <style>
+        :root {
+            --width-content: 75%;
+        }
+    </style>
+
+    <meta charset="utf-8">
+    <meta name="description" content="Fingerprint performance analysis for the FPC1025.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>FPC1025</title>
+
+    <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+    <script src="assets/plotly.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <a href="/"><img alt="Logo" src="assets/icon.svg" height="70"></a>
+            <ul>
+                <li><a href="#summary">Summary</a></li>
+                <li><a href="#histograms">Histograms</a>
+                    <ul>
+                        <li><a href="#histograms-by-user">By User</a>
+                        <li><a href="#histograms-by-finger">By Finger</a>
+                        <li><a href="#histograms-by-sample">By Sample</a>
+                        <li><a href="#histograms-by-group">By Group</a>
+                    </ul
+                </li>
+                <li>
+                    <a href="#bootstrap">Bootstrap</a>
+                    <ul>
+                        <li><a href="#bootstrap-far">FAR</a></li>
+                        <li><a href="#bootstrap-frr">FRR</a></li>
+                    </ul>
+                </li>
+                <li><a href="#glossary">Glossary</a></li>
+            </ul>
+        </nav>
+
+        <h1>Fingerprint Performance Analysis for FPC1025</h1>
+        <p>
+            Chrome OS Fingerprint Team
+            (<a href="mailto:chromeos-fingerprint@google.com">
+                chromeos-fingerprint@google.com
+            </a>)
+        </p>
+        <p>Report generated {{date}}.</p>
+    </header>
+
+    <main>
+
+        <hr>
+
+        <section id="summary">
+            <header>
+                <h1>Summary</h1>
+                <!-- <p>The overview of numeric analysis.</p> -->
+            </header>
+            <figure>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Test Case</th>
+                            <th>
+                                FAR
+                                <br>
+                                <small>mean (lower, upper)</small>
+                            </th>
+                            <th>
+                                FRR
+                                <br>
+                                <small>mean (lower, upper)</small>
+                            </th>
+                            <th>
+                                FAR
+                            </th>
+                            <th>
+                                FRR
+                            </th>
+                        </tr>
+                    </thead>
+                    {%- for tc in test_cases.children() %}
+                    {%- with info = tc.find('score/Info') %}
+                    <tr>
+                        <td>
+                            {{ tc.name() }}
+                            <br>
+                            <small><i>{{ tc.description() }}</i></small>
+                        </td>
+                        <td>
+                            {{-
+                             '{0} ({1}, {2})'.format(
+                                    info.get('FAR_Mean')     | fmt_far,
+                                    info.get('FAR_CI_Lower') | fmt_far,
+                                    info.get('FAR_CI_Upper') | fmt_far,
+                                )
+                             }}
+                        </td>
+                        <td>
+                            {{-
+                             '{0} ({1}, {2})'.format(
+                                    info.get('FRR_Mean')     | fmt_frr,
+                                    info.get('FRR_CI_Lower') | fmt_frr,
+                                    info.get('FRR_CI_Upper') | fmt_frr,
+                                )
+                             }}
+                        </td>
+                        <td>
+                            {%- if info.get('FAR_Pass') -%}
+                            <b><font color='green'>PASS</font></b>
+                            {%- else -%}
+                            <b><font color='red'>FAIL</font></b>
+                            {%- endif -%}
+                        </td>
+                        <td>
+                            {%- if info.get('FRR_Pass') -%}
+                            <b><font color='green'>PASS</font></b>
+                            {%- else -%}
+                            <b><font color='red'>FAIL</font></b>
+                            {%- endif -%}
+                        </td>
+                    </tr>
+                    {%- endwith %}
+                    {%- endfor %}
+                </table>
+                <figcaption><i>
+                    The confidence interval is calculated using percentiles at 95%.
+                </i></figcaption>
+            </figure>
+        </section>
+
+        <hr>
+
+        <article id="histograms">
+            <h1>Histograms</h1>
+            <p>
+                This shows the number of FA/FR as a function of each parameter.
+                This helps to show if there is some enrollment user,
+                verification user, finger, or sample that has an unusually
+                high false acceptable rate.
+            </p>
+
+            {#- Plot all individual histograms. -#}
+            {%- macro section_plots(header_name, find_str, html_id=None, width='600px') %}
+            {%- if html_id %}
+            <section id="{{html_id}}">
+            {%- else %}
+            <section>
+            {%- endif %}
+                <header>
+                    <h2>{{header_name}}</h2>
+                    <!-- <p>Section Subheading</p> -->
+                </header>
+                {%- for tc in test_cases.children() %}
+                {%- set fig = tc.find(find_str) %}
+                <aside style="width:{{width}}">
+                    <figure>
+                        {{ fig.html() }}
+                        {# <img alt="Stock photo" src="https://via.placeholder.com/600x500?text=Plot"> #}
+                        <figcaption><i>{{ tc.name() }}</i></figcaption>
+                    </figure>
+                </aside>
+                {%- endfor %}
+            </section>
+            {%- endmacro %}
+
+            {#- Plot a single overall histogram with all testcases contained. -#}
+            {%- macro section_plot(header_name, find_str, html_id=None, width='800px') %}
+            {%- if html_id %}
+            <section id="{{html_id}}">
+            {%- else %}
+            <section>
+            {%- endif %}
+                <header>
+                    <h2>{{header_name}}</h2>
+                    <!-- <p>Section Subheading</p> -->
+                </header>
+                {%- with fig = overall.find(find_str) %}
+                <aside style="width:{{width}}">
+                    <figure>
+                        {{ fig.html() }}
+                        <figcaption><i>{{ fig.description() }}</i></figcaption>
+                    </figure>
+                </aside>
+                {%- endwith %}
+            </section>
+            {#- TODO: Remove the following dropdown. #}
+            <details>
+                <summary>Independent Plots for {{header_name}}</summary>
+                {{ section_plots('', 'hist/'+find_str) }}
+            </details>
+            {%- endmacro %}
+
+            <!-- User -->
+            <div id="histograms-by-user">
+                {{ section_plot('False Accepts by User', 'FA_by_User', None, '100%') }}
+                {{ section_plot('False Rejects by User', 'FR_by_User', None, '100%') }}
+            </div>
+
+            <!-- Finger -->
+            <div id="histograms-by-finger">
+                {{ section_plot('False Accepts by Finger', 'FA_by_Finger') }}
+                {{ section_plot('False Rejects by Finger', 'FR_by_Finger') }}
+
+            <!-- Sample -->
+            <div id="histograms-by-sample">
+                {{ section_plot('False Accepts by Sample', 'FA_by_Sample', None, '100%') }}
+                {{ section_plots('False Rejects by Sample', 'hist/FR_by_Sample') }}
+            </div>
+
+            <!-- Group -->
+            <div id="histograms-by-group">
+                {{ section_plot('False Accepts by Group', 'FA_by_Group') }}
+                {{ section_plot('False Rejects by Group', 'FR_by_Group') }}
+            </div>
+
+        </article>
+
+        <hr>
+
+        <article id="bootstrap">
+            <h1>Bootstrap Analysis</h1>
+            <p>
+                We preset the FAR and FRR by using the hierarchical bootstrap
+                method presented in ISO 2006.
+            </p>
+
+            {{ section_plots(
+                'FAR Bootstrap',
+                'score/FAR_Bootstrap',
+                'bootstrap-far', '800px') }}
+            {{ section_plots('FRR Bootstrap',
+                'score/FRR_Bootstrap',
+                'bootstrap-frr', '800px') }}
+        </article>
+
+        <article id="glossary">
+            <h1>Glossary</h1>
+
+            {%- import "glossary.jinja2" as glossary %}
+            <dl>
+                {%- for word, def in glossary.glossary %}
+                <dt>{{word}}</dt>
+                <dd>{{def}}</dd>
+                {%- endfor %}
+            </dl>
+        </article>
+
+
+        <hr>
+
+        <!-- ############################################################### -->
+
+        <!-- Start Extra Functionality -->
+        <details>
+        <summary>Extra Functionality</summary>
+        <section>
+            <header>
+                <h2>Section Heading</h2>
+                <p>Section Subheading</p>
+            </header>
+            <aside>
+                <h3>Card heading</h3>
+                <p>Card content*</p>
+                <p><small>*with small content</small></p>
+            </aside>
+            <aside>
+                <h3>Card heading</h3>
+                <p>Card content <sup>with notification</sup></p>
+            </aside>
+            <aside>
+                <h3>Card heading</h3>
+                <p>Card content</p>
+            </aside>
+        </section>
+
+        <hr>
+
+        <section>
+            <blockquote>
+                "Quote"
+                <footer><i>- Attribution</i></footer>
+            </blockquote>
+        </section>
+
+        <hr>
+
+        <section>
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Col A</th>
+                        <th>Col B</th>
+                        <th>Col C</th>
+                    </tr>
+                </thead>
+                <tr>
+                    <td>Row 1</td>
+                    <td>Cell A1</td>
+                    <td>Cell B1</td>
+                    <td>Cell C1</td>
+                </tr>
+                <tr>
+                    <td>Row 2</td>
+                    <td>Cell A2</td>
+                    <td>Cell B2</td>
+                    <td>Cell C2</td>
+                </tr>
+            </table>
+        </section>
+
+        <hr>
+
+        <article>
+            <h2>Left-aligned header</h2>
+            <p>Left-aligned paragraph</p>
+            <aside>
+                <p>Article callout</p>
+            </aside>
+            <ul>
+                <li>List item 1</li>
+                <li>List item 2</li>
+            </ul>
+            <figure>
+                <img alt="Stock photo" src="https://via.placeholder.com/1080x500?text=Amazing+stock+photo">
+                <figcaption><i>Image caption</i></figcaption>
+            </figure>
+        </article>
+
+        <hr>
+
+        <div>
+            <details>
+                <summary>Expandable title</summary>
+                <p>Revealed content</p>
+            </details>
+            <details>
+                <summary>Another expandable title</summary>
+                <p>More revealed content</p>
+            </details>
+            <br>
+            <p>Inline <code>code</code> snippets</p>
+            <pre>
+                <code>
+// preformatted code block
+                </code>
+            </pre>
+        </div>
+
+        <hr>
+
+        <section>
+            <form>
+                <header>
+                    <h2>Form title</h2>
+                </header>
+                <label for="input1">Input label:</label>
+                <input type="text" id="input1" name="input1" size="20" placeholder="Input1">
+                <label for="select1">Select label:</label>
+                <select id="select1">
+                    <option value="option1">option1</option>
+                    <option value="option2">option2</option>
+                </select>
+                <label for="textarea1">Textarea label:</label>
+                <textarea cols="40" rows="5" id="textarea1"></textarea>
+                <button type="submit">Submit</button>
+            </form>
+        </section>
+        </details>
+        <!-- End Extra Functionality -->
+
+    </main>
+
+    <footer>
+        <hr>
+        <p>
+            <small>Chrome OS Fingerprint Team
+            (<a href="mailto:chromeos-fingerprint@google.com">
+                chromeos-fingerprint@google.com</a>)
+            </small>
+        </p>
+    </footer>
+
+</body>
+
+</html>

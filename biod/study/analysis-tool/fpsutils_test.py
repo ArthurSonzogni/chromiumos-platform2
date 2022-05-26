@@ -198,6 +198,21 @@ class Test_Simple_Functions(unittest.TestCase):
             "5hr 1min 2s 34ms 67us 999.870ns",
         )
 
+    def test_fmt_far(self):
+        far = 1 / 123456.789
+        # Don't forget that truncation will round the last digit!
+        self.assertEqual(fpsutils.fmt_far(far, "k", 3), "1/123.457k")
+        self.assertEqual(fpsutils.fmt_far(far, "k", 5), "1/123.45679k")
+
+        far = (123456 / 100000) * (1 / 100000)
+        self.assertEqual(fpsutils.fmt_far(far, "s", 3), "1.235e-05")
+        self.assertEqual(fpsutils.fmt_far(far, "s", 5), "1.23456e-05")
+
+    def test_fmt_frr(self):
+        frr = 1.234567 / 100
+        self.assertEqual(fpsutils.fmt_frr(frr, 3), "1.235%")
+        self.assertEqual(fpsutils.fmt_frr(frr, 5), "1.23457%")
+
     def test_benchmark(self):
         SLEEP_TIME = 1.245
         TIME_EQ_DELTA = 0.100

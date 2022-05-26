@@ -10,31 +10,49 @@ from __future__ import annotations
 
 from enum import Enum
 import pathlib
-from typing import List, Optional, Tuple, TypeVar, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 from cached_data_file import CachedCSVFile
 from experiment import Experiment
 import pandas as pd
+from test_case import TestCase
 
 
 class FPCBETResults:
-    class TestCase(Enum):
+    # TODO: Add parsing of the BET yaml config file to get information
+    # about number of enrollment samples and whatnot.
+
+    class TestCase(TestCase):
         """Identify which experiment test case."""
 
-        TUDisabled = "TC-01"
-        TUSpecificSamples_Disabled = "TC-02-TU/EnableTemplateUpdating-0"
-        TUSpecificSamples_Enabled = "TC-02-TU/EnableTemplateUpdating-1"
+        # TODO: Add note about using different sets of captures during each
+        # test case. I believe we add the template updating samples into
+        # the verification set on the TUContinuous TC.
+
+        TUDisabled = ("All template updating disabled.", "TC-01")
+        TUSpecificSamples_Disabled = (
+            "Use template updating on dedicated samples, but "
+            "temporarily disable this mechanism as a control.",
+            "TC-02-TU/EnableTemplateUpdating-0",
+        )
+        TUSpecificSamples_Enabled = (
+            "Use template updating on dedicated samples.",
+            "TC-02-TU/EnableTemplateUpdating-1",
+        )
         # The normal operating mode for production.
-        TUContinuous_Disabled = "TC-03-TU-Continuous/EnableTemplateUpdating-0"
-        TUContinuous_Enabled = "TC-03-TU-Continuous/EnableTemplateUpdating-1"
+        TUContinuous_Disabled = (
+            "Update the template after each match, but "
+            "temporarily disable this mechanism as a control.",
+            "TC-03-TU-Continuous/EnableTemplateUpdating-0",
+        )
+        TUContinuous_Enabled = (
+            "Update the template after each match.",
+            "TC-03-TU-Continuous/EnableTemplateUpdating-1",
+        )
 
-        @classmethod
-        def all(cls) -> List[FPCBETResults.TestCase]:
-            return list(level for level in cls)
-
-        @classmethod
-        def all_values(cls) -> List[str]:
-            return list(level.value for level in cls)
+        def path(self) -> str:
+            assert len(self.extra()) == 1
+            return self.extra()[0]
 
     class TableType(Enum):
         """Identify what type of experiment data is represented in a table."""
@@ -95,7 +113,8 @@ class FPCBETResults:
         self, test_case: TestCase, table_type: TableType
     ) -> pathlib.Path:
         """Return the file path for the given `test_case` and `table_type`."""
-        return self._dir.joinpath(test_case.value).joinpath(table_type.value)
+        assert isinstance(test_case, FPCBETResults.TestCase)
+        return self._dir / test_case.path() / table_type.value
 
     @staticmethod
     def _find_blank_lines(file_name: pathlib.Path) -> List[int]:
@@ -109,7 +128,8 @@ class FPCBETResults:
         VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
         """
 
-        assert test_case in self.TestCase
+        assert isinstance(test_case, FPCBETResults.TestCase)
+        assert test_case in FPCBETResults.TestCase
 
         file_name = self._file_name(test_case, self.TableType.FA_List)
         tbl = pd.read_csv(
@@ -150,7 +170,8 @@ class FPCBETResults:
         VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
         """
 
-        assert test_case in self.TestCase
+        assert isinstance(test_case, FPCBETResults.TestCase)
+        assert test_case in FPCBETResults.TestCase
         assert table_type in [
             self.TableType.FAR_Decision,
             self.TableType.FRR_Decision,
@@ -189,7 +210,8 @@ class FPCBETResults:
         This file and function only gives a summary counts of groups of matches.
         """
 
-        assert test_case in self.TestCase
+        assert isinstance(test_case, FPCBETResults.TestCase)
+        assert test_case in FPCBETResults.TestCase
         assert table_type in [
             self.TableType.FAR_Stats,
             self.TableType.FRR_Stats,
@@ -250,7 +272,8 @@ class FPCBETResults:
         the specified table.
         """
 
-        assert test_case in self.TestCase
+        assert isinstance(test_case, FPCBETResults.TestCase)
+        assert test_case in FPCBETResults.TestCase
         assert table_type in self.TableType
 
         if table_type in [self.TableType.FAR_Stats, self.TableType.FRR_Stats]:
@@ -266,11 +289,11 @@ class FPCBETResults:
             return None
 
     def read_files(
-        self, case_table_pairs: List[Tuple[TestCase, TableType]]
+        self, case_table_pairs: Iterable[Tuple[TestCase, TableType]]
     ) -> List[Optional[pd.DataFrame]]:
         """Read all test-case/table-type pairs as fast as possible.
 
-        This may be parallelizied in the future.
+        This may be parallelized in the future.
         """
 
         dfs = list()

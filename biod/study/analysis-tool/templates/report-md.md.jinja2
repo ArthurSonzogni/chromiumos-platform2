@@ -1,0 +1,109 @@
+---
+# https://pandoc.org/MANUAL.html
+# Fare warning: Some writers do not honor some params in this variables section,
+# but DO honor them when given as command argument.
+
+verbosity: INFO # --verbose
+# verbosity: ERROR # --quiet
+
+lang: en-US
+title: Fingerprint Study
+subtitle: FPC 1025
+author: Chrome OS Fingerprint Team (<chromeos-fingerprint@google.com>)
+# date: {{ date }}
+# abstract: Blah blah blah.
+# bibliography: Blah blah blah.
+
+# article, book, and report
+documentclass: report
+
+# Include Table Of contents
+# table-of-contents: true
+toc: true
+toc-depth: 2
+# The toc-title is really only needed for gfm and html output.
+# PDF has one set by default.
+toc-title: Table of Contents
+
+# Include List of Figures
+# lof: true
+# Include List of Tables
+# lot: true
+
+standalone: true
+self-contained: true
+# https://jinja.palletsprojects.com/en/3.1.x/templates/
+...
+
+# Summary
+
+TODO: Insert table of pass falis and CI.
+
+PASS/FAIL
+
+|   |   |   |
+| - | - | - |
+{% for tc in test_cases.children() %}| {{ tc.name() }} | PASS/FAIL | CI |
+{% endfor %}
+
+# Test Cases
+
+{% for tc in test_cases.children() %}
+## {{ tc.name() }}
+
+{{ tc.description() }}
+
+{#
+{% for err_type in tc.children() %}
+### {{ err_type.title() }}
+
+#### Distribution of {{ err_type.title() }}
+
+This shows the number of {{ err_type.title()|lower }} as a function of each parameter.
+This helps to show if there is some enrollment user, verification user, finger,
+or sample that has an unusually high false acceptable rate.
+
+|   |   |
+| - | - |
+{%- for figs in err_type.children()|batch(2, '') %}
+| {% for fig in figs%}![]({{ fig.image('svg') }}) | {% endfor %}
+{%- endfor %}
+
+
+#### Bootstrap Analysis
+
+Blah.
+
+{% endfor %}
+#}
+
+### Distribution of False Acceptances and False Rejections
+
+This shows the number of FA/FR as a function of each parameter.
+This helps to show if there is some enrollment user, verification user, finger,
+or sample that has an unusually high false acceptable rate.
+
+{% for figs in tc.find('hist').children()|batch(2, '') %}
+{# {% for fig in figs%}![]({{ fig.image('html') }}) {% endfor %} #}
+{% for fig in figs -%}{%- if fig -%}
+<iframe width="600" height="500" frameborder="0" scrolling="no" src="{{ fig.image('html') }}"></iframe>
+{%- endif -%}{%- endfor %}
+{%- endfor %}
+
+### Bootstrap Analysis
+
+TODO: Rebuild this histogram with confidence intervals.
+
+{% for figs in tc.find('score').children()|batch(2, '') %}
+{# {% for fig in figs%}![]({{ fig.image('html') }}) {% endfor %} #}
+{% for fig in figs -%}{%- if fig -%}
+<iframe width="600" height="500" frameborder="0" scrolling="no" src="{{ fig.image('html') }}"></iframe>
+{%- endif -%}{%- endfor %}
+{%- endfor %}
+
+{% endfor %}
+
+
+# Glossary
+
+{% include "glossary.md.jinja2" %}

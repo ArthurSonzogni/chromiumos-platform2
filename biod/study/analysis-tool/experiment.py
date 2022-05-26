@@ -186,6 +186,7 @@ class Experiment:
         num_fingers: int,
         num_users: int,
         far_decisions: Optional[pd.DataFrame] = None,
+        frr_decisions: Optional[pd.DataFrame] = None,
         fa_list: Optional[pd.DataFrame] = None,
     ):
         """Initialize a new experiment."""
@@ -195,7 +196,9 @@ class Experiment:
         self.num_fingers = num_fingers
         self.num_users = num_users
         self._tbl_far_decisions = far_decisions
+        self._tbl_frr_decisions = frr_decisions
         self._tbl_fa_list = fa_list
+        self._tbl_fr_list = None
 
     def Describe(self):
         print("Users:", self.num_users)
@@ -220,6 +223,22 @@ class Experiment:
 
         return self._tbl_fa_list
 
+    def fr_table(self) -> pd.DataFrame:
+        """Return an FRR table that only contains the False Rejections."""
+        if self._tbl_fr_list is None:
+            frr = self.frr_decisions()
+            fr_list = frr.loc[
+                frr[Experiment.TableCol.Decision.value]
+                == Experiment.Decision.Reject.value
+            ].copy(deep=True)
+            fr_list.drop(
+                [Experiment.TableCol.Decision.value], axis=1, inplace=True
+            )
+            fr_list.reset_index(drop=True, inplace=True)
+            self._tbl_fr_list = fr_list
+
+        return self._tbl_fr_list
+
     def fa_trials_count(self) -> int:
         """Return the total number of false accept cross matches."""
         return self.far_decisions().shape[0]
@@ -228,8 +247,19 @@ class Experiment:
         """Return the number of False Acceptances."""
         return self.fa_table().shape[0]
 
+    def fr_trials_count(self) -> int:
+        """Return the total number of false reject cross matches."""
+        return self.frr_decisions().shape[0]
+
+    def fr_count(self) -> int:
+        """Return the number of False Rejections."""
+        return self.fr_table().shape[0]
+
     def far_decisions(self) -> pd.DataFrame:
         return self._tbl_far_decisions
+
+    def frr_decisions(self) -> pd.DataFrame:
+        return self._tbl_frr_decisions
 
     def unique_list(self, column: TableCol) -> npt.NDArray:
         """Return a unique and sorted list of items for the given column.
@@ -273,6 +303,70 @@ class Experiment:
         """
 
         return self.unique_list(Experiment.TableCol.Verify_Group)
+
+    def fa_counts_by(self, column: TableCol) -> pd.Series:
+        """Return a Series of False Accept counts based on `column`.
+
+        The series index will be `column` values and the data values will be the
+        counts. All column values will be represented from `unique_list(column)`.
+
+        This function is faster than doing the counts directly from the entire
+        FAR decision table.
+        """
+
+        # Ultimately, we want to generate a histogram over the entire FAR/FRR
+        # decision dataset, but doing so directly with the large DataFrame
+        # is much too slow.
+        #
+        # The fastest method is by reverse constructing the complete
+        # counts table by using the pre-aggregated fa_table.
+        # This runs in about 66ms, which is primarily the time to run
+        # `self.unique_list(column)`.
+        # This method could be sped up by caching the `unique_list` function.
+        #
+        # A similar method might be using the following, which runs
+        # in about 300ms:
+        # far[[column, 'Decision']].groupby([column]).sum()
+
+        fa_table = self.fa_table()
+        unique_indices = self.unique_list(column)
+        non_zero_counts = fa_table[column.value].value_counts()
+        # We will now backfill the 0 counts for indices that aren't represented
+        # in the simplified false list. Providing a sorted index list means
+        # that the output series will have sorted indices.
+        return non_zero_counts.reindex(index=unique_indices, fill_value=0)
+
+    def fr_counts_by(self, column: TableCol) -> pd.Series:
+        """Return a Series of False Reject counts based on `column`.
+
+        The series index will be `column` values and the data values will be the
+        counts. All column values will be represented from `unique_list(column)`.
+
+        This function is faster than doing the counts directly from the entire
+        FRR decision table.
+        """
+
+        # Ultimately, we want to generate a histogram over the entire FAR/FRR
+        # decision dataset, but doing so directly with the large DataFrame
+        # is much too slow.
+        #
+        # The fastest method is by reverse constructing the complete
+        # counts table by using the pre-aggregated fa_table.
+        # This runs in about 66ms, which is primarily the time to run
+        # `self.unique_list(column)`.
+        # This method could be sped up by caching the `unique_list` function.
+        #
+        # A similar method might be using the following, which runs
+        # in about 300ms:
+        # frr[[column, 'Decision']].groupby([column]).sum()
+
+        fr_table = self.fr_table()
+        unique_indices = self.unique_list(column)
+        non_zero_counts = fr_table[column.value].value_counts()
+        # We will now backfill the 0 counts for indices that aren't represented
+        # in the simplified false list. Providing a sorted index list means
+        # that the output series will have sorted indices.
+        return non_zero_counts.reindex(index=unique_indices, fill_value=0)
 
     def fa_query(
         self,
@@ -320,6 +414,11 @@ class Experiment:
         if not self._tbl_far_decisions is None:
             self._tbl_far_decisions = Experiment._add_groups_to_table(
                 self._tbl_far_decisions, user_groups
+            )
+
+        if not self._tbl_frr_decisions is None:
+            self._tbl_frr_decisions = Experiment._add_groups_to_table(
+                self._tbl_frr_decisions, user_groups
             )
 
         if not self._tbl_fa_list is None:

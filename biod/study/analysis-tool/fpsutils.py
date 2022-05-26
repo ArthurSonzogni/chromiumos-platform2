@@ -9,7 +9,7 @@
 from collections import Counter
 from enum import Enum
 import timeit
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Literal, Optional, Set, Tuple, Union
 
 from IPython.display import display
 from IPython.display import Markdown
@@ -24,7 +24,7 @@ class DataFrameSetAccess:
     """Provides a quick method of checking if a given row exists in the table.
 
     This look method takes hundreds of nanoseconds vs other methods that take
-    hudreds of micro seconds. Given the amount of times we must query certain
+    hundreds of micro seconds. Given the amount of times we must query certain
     tables, this order of magnitude difference is unacceptable.
     """
 
@@ -125,12 +125,26 @@ def boot_sample_range(
     return rng.choice(range, size=range, replace=True)
 
 
+def plot_pd_column_hist_discrete(
+    tbl: pd.DataFrame, column: str, title_prefix: Optional[str] = None
+):
+    """Plot the histogram of a single column of a DataFrame"""
+
+    vals = np.unique(tbl[column], return_counts=True)
+    plt.bar(*vals)
+    plt.xticks(vals[0], rotation="vertical", fontsize=5)
+    plt.xlabel(column)
+    plt.ylabel("Count")
+    if title_prefix:
+        plt.title(f"{title_prefix} by {column}")
+
+
 def plot_pd_hist_discrete(
     tbl: pd.DataFrame,
     title_prefix: Optional[str] = None,
     figsize: Optional[tuple] = None,
 ):
-    """Plot the histograms of a DataFrame columns.
+    """Plot the histograms of each column in a DataFrame.
 
     This is different than `pd.DataFrame.hist`, because it ensures that all
     unique elements of the column are represented in a bar plot. Other
@@ -145,13 +159,7 @@ def plot_pd_hist_discrete(
     plt.figure(figsize=figsize)
     for index, col in enumerate(tbl.columns):
         plt.subplot(num_plots, 1, index + 1)
-        vals = np.unique(tbl[col], return_counts=True)
-        plt.bar(*vals)
-        plt.xticks(vals[0], rotation="vertical", fontsize=5)
-        plt.xlabel(col)
-        plt.ylabel("Count")
-        if title_prefix:
-            plt.title(f"{title_prefix} by {col}")
+        plot_pd_column_hist_discrete(tbl, col, title_prefix)
     plt.show()
 
 
@@ -302,3 +310,39 @@ def benchmark(
         f"It took {elapsed_time_str(sec/loops)} per loop."
     )
     return loops, sec, np.divide(sec, loops)
+
+
+def fmt_far(
+    far_value: float, fmt: Literal["k", "s"] = "k", decimal_places: int = 3
+) -> str:
+    """Pretty print an FAR value.
+
+    Args:
+        `far_value` is the FAR value to show.
+
+        `fmt` indicates the output format.
+        Either `'k'` for `1/<FAR>k` or `'s'` for scientific notation.
+
+        `decimal_places` indicates the number of values to show past
+        the decimal point.
+    """
+
+    if not fmt in ["k", "s"]:
+        raise TypeError("type must be 'k' or 's'.")
+
+    if fmt == "k":
+        return f"1/{{:.{decimal_places}f}}k".format(1 / (far_value * 1000))
+    else:
+        return f"{{:.{decimal_places}e}}".format(far_value)
+
+
+def fmt_frr(frr_value: float, decimal_places: int = 3) -> str:
+    """Pretty print an FRR value as a percentage.
+
+    Args:
+        `frr_value` is the FRR value to show.
+
+        `decimal_places` indicates the number of values to show past
+        the decimal point.
+    """
+    return f"{{:.{decimal_places}%}}".format(frr_value)
