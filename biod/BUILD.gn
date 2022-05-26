@@ -65,6 +65,7 @@ static_library("libbiod") {
     "biod_storage.cc",
     "biod_system.cc",
     "biometrics_daemon.cc",
+    "biometrics_manager_wrapper.cc",
     "cros_fp_biometrics_manager.cc",
     "cros_fp_device.cc",
     "cros_fp_firmware.cc",

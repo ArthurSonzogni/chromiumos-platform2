@@ -17,7 +17,7 @@
 #include <dbus/object_path.h>
 #include <dbus/property.h>
 
-#include <biod/biometrics_daemon.h>
+#include <biod/biometrics_manager_wrapper.h>
 #include <biod/mock_biometrics_manager.h>
 #include <biod/mock_biometrics_manager_record.h>
 #include <biod/mock_session_state_manager.h>
