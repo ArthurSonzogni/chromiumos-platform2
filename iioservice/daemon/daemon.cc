@@ -127,9 +127,13 @@ void Daemon::OnServerReceived(
 }
 
 void Daemon::OnMojoDisconnect() {
-  LOGF(WARNING) << "Chromium crashed. Try to establish a new Mojo connection.";
+  // The SensorHalServer Mojo parent is probably dead. We need to restart
+  // another process in order to connect to the new Mojo parent.
+  LOGF(WARNING) << "Mojo connection to (Chromium) SensorHalServer is "
+                   "disconnected. Chromium may have crashed.";
   sensor_hal_server_.reset();
-  ReconnectMojoWithDelay();
+
+  Quit();
 }
 
 }  // namespace iioservice
