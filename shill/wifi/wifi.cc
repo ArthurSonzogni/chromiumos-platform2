@@ -1052,7 +1052,6 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
     }
   }
 
-  RpcIdentifier old_bss = supplicant_bss_;
   supplicant_bss_ = new_bss;
   has_already_completed_ = false;
   is_roaming_in_progress_ = false;
@@ -1086,7 +1085,7 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
       Scan(nullptr, __func__);
     }
   } else {
-    HandleRoam(new_bss, old_bss);
+    HandleRoam(new_bss);
   }
 
   // Reset the EAP handler only after calling HandleDisconnect() above
@@ -1163,7 +1162,7 @@ bool WiFi::IsStateTransitionConnectionMaintenance(
   // will trigger a transition from |kInterfaceStateCompleted| to
   // |kInterfaceStateGroupHandshake| and back to |kInterfaceStateCompleted|,
   // but it's not a full connection attempt.
-  return service.is_rekey_in_progress();
+  return service.is_rekey_in_progress() || is_roaming_in_progress_;
 }
 
 void WiFi::HandleDisconnect() {
@@ -1404,8 +1403,7 @@ Service::ConnectFailure WiFi::ExamineStatusCodes() const {
 
 // We use the term "Roam" loosely. In particular, we include the case
 // where we "Roam" to a BSS from the disconnected state.
-void WiFi::HandleRoam(const RpcIdentifier& new_bss,
-                      const RpcIdentifier& old_bss) {
+void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(new_bss);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(WARNING) << "WiFi " << link_name() << " connected to unknown BSS "
@@ -1517,21 +1515,6 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   // At this point, we know that |pending_service_| was nullptr, and that
   // we're still on |current_service_|.  We should track this roaming
   // event so we can refresh our IPConfig if it succeeds.
-  if (!is_roaming_in_progress_) {
-    // We're roaming, so report an expected disconnection event (from the old
-    // BSSID) and a new connection attempt event (to the new BSSID).
-    if (old_bss.value() != WPASupplicant::kCurrentBSSNull &&
-        old_bss.value() != new_bss.value()) {
-      // During a roam, wpa_supplicant sends us multiple CurrentBSS property
-      // changes, and some are a "fake" transition between identical BSSIDs.
-      // Only emit the "disconnect"/"connection attempts" events if it's a
-      // "real" roam.
-      service->EmitDisconnectionEvent(
-          Metrics::kWiFiDisconnectionTypeExpectedRoaming,
-          IEEE_80211::kReasonCodeReserved0);
-      service->EmitConnectionAttemptEvent();
-    }
-  }
   is_roaming_in_progress_ = true;
 
   return;

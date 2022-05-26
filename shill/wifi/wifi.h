@@ -484,7 +484,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Returns inferred type of failure, which is useful in cases where we don't
   // have a disconnect reason from supplicant.
   Service::ConnectFailure ExamineStatusCodes() const;
-  void HandleRoam(const RpcIdentifier& new_bss, const RpcIdentifier& old_bss);
+  void HandleRoam(const RpcIdentifier& new_bssid);
   void BSSAddedTask(const RpcIdentifier& BSS, const KeyValueStore& properties);
   void BSSRemovedTask(const RpcIdentifier& BSS);
   void CertificationTask(const KeyValueStore& properties);
