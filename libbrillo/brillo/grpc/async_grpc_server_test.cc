@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "brillo/grpc/async_grpc_server.h"
-#include "test_rpcs.grpc.pb.h"  // NOLINT(build/include)
+#include "test_rpcs.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace brillo {
 
