@@ -70,7 +70,7 @@ void Daemon::InitDBus() {
       base::BindRepeating(&Daemon::HandleMemsRemoveDone,
                           weak_factory_.GetWeakPtr())));
 
-  // Take ownership of the ML service.
+  // Take ownership of the IIO service.
   CHECK(bus_->RequestOwnershipAndBlock(::iioservice::kIioserviceServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
