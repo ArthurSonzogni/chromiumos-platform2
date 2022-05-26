@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "libinstallattributes.h"
+#include "install_attributes/libinstallattributes.h"
 
 #include "bindings/install_attributes.pb.h"
 

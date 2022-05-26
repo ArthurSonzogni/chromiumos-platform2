@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mock_install_attributes_reader.h"
+#include "install_attributes/mock_install_attributes_reader.h"
 
 MockInstallAttributesReader::MockInstallAttributesReader(
     const cryptohome::SerializedInstallAttributes& install_attributes) {
