@@ -6,7 +6,7 @@ Android Documents Provider (ADP), and Android Content Providers (ACP)) to
 make their file content available to POSIX file API system calls from the
 Linux operating system.
 
-<div style='display:flex; flex-direction:column; align-items:center'>
-  <img style='width:450px' title='fuse layers' alt='fuse layers'
+<p align='center' width='100%'>
+  <img width='500px' title='fuse layers' alt='fuse layers'
     src='https://storage.googleapis.com/chromium-website-lob-storage/daf66f5c0802b0a4b2d38ed0d1a6978e37f9fb06'>
-</div>
+</p>
