@@ -1024,8 +1024,20 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
     const std::optional<brillo::SecureBlob> user_input) {
   // Check whether an update is needed for the VaultKeyset. If the user setup
   // their account and the TPM was not owned, re-save it with the TPM.
+  // Also check whether the VaultKeyset has a wrapped reset seed and add reset
+  // seed if missing.
+  bool needs_update = false;
   VaultKeyset updated_vault_keyset = *vault_keyset_.get();
-  if (!keyset_management_->ShouldReSaveKeyset(&updated_vault_keyset)) {
+  if (keyset_management_->ShouldReSaveKeyset(&updated_vault_keyset)) {
+    needs_update = true;
+  }
+
+  // Adds a reset seed only to the password VaultKeysets.
+  if (keyset_management_->AddResetSeedIfMissing(updated_vault_keyset)) {
+    needs_update = true;
+  }
+
+  if (needs_update == false) {
     // No change is needed for |vault_keyset_|
     return;
   }

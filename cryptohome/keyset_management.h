@@ -102,7 +102,8 @@ class KeysetManagement {
 
   // This function should be called after successful authentication.
   // Populate a value to |vault_keyset|'s reset seed if it is missing, but
-  // doesn't save.
+  // doesn't save. Returns true if the seed is added, returns false if there is
+  // no need to add the reset seed, i.e if it already exists.
   virtual bool AddResetSeedIfMissing(VaultKeyset& vault_keyset);
 
   // Adds randomly generated reset_seed to the vault keyset if |reset_seed_|

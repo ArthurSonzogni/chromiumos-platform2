@@ -1026,6 +1026,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   EXPECT_TRUE(
       std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
   EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state).ok());
+  EXPECT_FALSE(pin_vault_keyset_.HasWrappedResetSeed());
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {

@@ -87,6 +87,7 @@ constexpr char kCredDirName[] = "low_entropy_creds";
 constexpr char kPasswordLabel[] = "password";
 constexpr char kPinLabel[] = "lecred1";
 constexpr char kAltPasswordLabel[] = "alt_password";
+constexpr char kEasyUnlockLabel[] = "easy-unlock-1";
 
 constexpr char kWrongPasskey[] = "wrong pass";
 constexpr char kNewPasskey[] = "new pass";
@@ -2601,6 +2602,62 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
 
   // Verify
   EXPECT_TRUE(init_vk_status.value()->HasWrappedResetSeed());
+}
+
+// Tests that AddResetSeedIfMissing() doesn't add a reset seed if the
+// VaultKeyset has smartunlock label
+TEST_F(KeysetManagementTest, NotAddingResetSeedToSmartUnlockKeyset) {
+  // Setup a vault keyset.
+  //
+  // Non-scrypt encryption would fail on missing reset seed, so use scrypt.
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
+
+  KeyData key_data;
+  key_data.set_label(kEasyUnlockLabel);
+  vk.SetKeyData(key_data);
+
+  key_blobs_.scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+  key_blobs_.chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+  key_blobs_.scrypt_wrapped_reset_seed_key =
+      std::make_unique<LibScryptCompatKeyObjects>(
+          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/);
+  LibScryptCompatAuthBlockState scrypt_state = {.salt = kInitialBlob32};
+  auth_state_->state = scrypt_state;
+
+  // Explicitly set |reset_seed_| to be empty.
+  vk.reset_seed_.clear();
+  ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_).ok());
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+
+  MountStatusOr<std::unique_ptr<VaultKeyset>> init_vk_status =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kEasyUnlockLabel);
+  ASSERT_TRUE(init_vk_status.ok());
+  EXPECT_FALSE(init_vk_status.value()->HasWrappedResetSeed());
+  // Generate reset seed and add it to the VaultKeyset object. Need to generate
+  // the Keyblobs again since it is not available any more.
+  KeyBlobs key_blobs = {
+      .scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+      .chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+      .scrypt_wrapped_reset_seed_key =
+          std::make_unique<LibScryptCompatKeyObjects>(
+              kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/)};
+  // Test
+  EXPECT_FALSE(
+      keyset_management_->AddResetSeedIfMissing(*init_vk_status.value().get()));
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->SaveKeysetWithKeyBlobs(
+                *init_vk_status.value().get(), key_blobs, *auth_state_));
+
+  // Verify
+  EXPECT_FALSE(init_vk_status.value()->HasWrappedResetSeed());
 }
 
 }  // namespace cryptohome

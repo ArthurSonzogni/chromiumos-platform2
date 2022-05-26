@@ -441,6 +441,12 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave);
+  FRIEND_TEST(AuthSessionTest,
+              AuthenticateAuthFactorExistingVKUserAndResaveForResetSeed);
+  FRIEND_TEST(AuthSessionTest,
+              AuthenticateAuthFactorNotAddingResetSeedToPINVaultKeyset);
+  FRIEND_TEST(AuthSessionTest,
+              AuthenticateAuthFactorExistingVKUserAndResaveForUpdate);
   FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
