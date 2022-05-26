@@ -46,6 +46,7 @@ using std::vector;
 namespace {
 
 constexpr uid_t kRootUid = 0;
+constexpr uid_t kChronosUid = 1000;
 constexpr uid_t kDlcServiceUid = 20118;
 constexpr char kDlcServiceUser[] = "dlcservice";
 constexpr char kDlcServiceGroup[] = "dlcservice";
@@ -451,10 +452,12 @@ int main(int argc, const char** argv) {
     case kRootUid:
       EnterMinijail();
       break;
+    case kChronosUid:
     case kDlcServiceUid:
       break;
     default:
-      LOG(ERROR) << "dlcservice_util can only be run as root or dlcservice";
+      LOG(ERROR) << "dlcservice_util can only be run as "
+                    "root, chronos, or dlcservice";
       return 1;
   }
   DlcServiceUtil client(argc, argv);
