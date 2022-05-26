@@ -29,6 +29,10 @@ UMA. In order to use the library in a module, you need to do the following:
   and installed into the sysroot libdir (e.g. `$SYSROOT/usr/lib/`). By default
   `-lmetrics` links against `libmetrics.so`, which is preferred.
 
+- Make sure `/var/lib/metrics` is writable by the daemon. For example, if you
+  are using libmetrics in a daemon, you can achieve this by adding
+  `-b /var/lib/metrics,,1` to the `minijail0` command that starts the daemon.
+
 - To access the metrics library API in the module, include the
   `<metrics/metrics_library.h>` header file. The file is installed in
   `$SYSROOT/usr/include/` when the metrics library is built and installed.

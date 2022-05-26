@@ -134,7 +134,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
                  int max,
                  int nbuckets) override;
 
-  // Sends linear histogram data to Chrome for transport to UMA and
+  // Sends enumerated histogram data to Chrome for transport to UMA and
   // returns true on success. These methods result in the equivalent of
   // an asynchronous non-blocking RPC to UMA_HISTOGRAM_ENUMERATION
   // inside Chrome (see base/metrics/histogram_macros.h).
