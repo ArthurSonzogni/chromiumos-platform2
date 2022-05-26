@@ -16,7 +16,9 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/timer/elapsed_timer.h>
 
+#include "base/time/time.h"
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/common.h"
 
@@ -68,7 +70,7 @@ bool AutoFramingClient::SetUp(const Options& options) {
   detector_input_buffer_.resize(kDetectorInputWidth * kDetectorInputHeight);
 
   region_of_interest_ = std::nullopt;
-  crop_window_ = NormalizeRect(
+  full_crop_ = NormalizeRect(
       GetCenteringFullCrop(options.input_size, options.target_aspect_ratio_x,
                            options.target_aspect_ratio_y),
       image_size_);
@@ -117,9 +119,23 @@ std::optional<Rect<float>> AutoFramingClient::TakeNewRegionOfInterest() {
   return roi;
 }
 
-Rect<float> AutoFramingClient::GetCropWindow() {
+Rect<float> AutoFramingClient::GetCropWindow(int64_t timestamp) {
+  constexpr base::TimeDelta kCropCalculationTimeout = base::Milliseconds(100);
+
   base::AutoLock lock(lock_);
-  return crop_window_;
+  base::ElapsedTimer timer;
+  while (crop_windows_.find(timestamp) == crop_windows_.end()) {
+    base::TimeDelta elapsed_time = timer.Elapsed();
+    if (elapsed_time >= kCropCalculationTimeout) {
+      LOGF(WARNING) << "Calculating crop window timed out; using the last";
+      return crop_windows_.empty() ? full_crop_
+                                   : crop_windows_.rbegin()->second;
+    }
+    crop_window_received_cv_.TimedWait(kCropCalculationTimeout - elapsed_time);
+  }
+  const Rect<float> crop_window = crop_windows_.at(timestamp);
+  crop_windows_.erase(timestamp);
+  return crop_window;
 }
 
 void AutoFramingClient::TearDown() {
@@ -158,10 +174,11 @@ void AutoFramingClient::OnNewCropWindow(
            << "," << x_max << "," << y_max;
 
   base::AutoLock lock(lock_);
-  crop_window_ = NormalizeRect(
+  crop_windows_[timestamp] = NormalizeRect(
       Rect<int>(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1)
           .AsRect<uint32_t>(),
       image_size_);
+  crop_window_received_cv_.Signal();
 }
 
 void AutoFramingClient::OnNewAnnotatedFrame(int64_t timestamp,

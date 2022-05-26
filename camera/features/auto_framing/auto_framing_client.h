@@ -9,11 +9,13 @@
 
 #include <cutils/native_handle.h>
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <vector>
 
 #include <base/callback.h>
+#include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 
 #include "cros-camera/auto_framing_cros.h"
@@ -32,6 +34,8 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
     uint32_t target_aspect_ratio_y = 0;
   };
 
+  AutoFramingClient() : crop_window_received_cv_(&lock_) {}
+
   // Set up the pipeline.
   bool SetUp(const Options& options);
 
@@ -44,7 +48,7 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   std::optional<Rect<float>> TakeNewRegionOfInterest();
 
   // Gets the crop window calculated by the full auto-framing pipeline.
-  Rect<float> GetCropWindow();
+  Rect<float> GetCropWindow(int64_t timestamp);
 
   // Tear down the pipeline and clear states.
   void TearDown();
@@ -61,12 +65,14 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
 
  private:
   base::Lock lock_;
+  base::ConditionVariable crop_window_received_cv_ GUARDED_BY(lock_);
   Size image_size_ GUARDED_BY(lock_);
+  Rect<float> full_crop_ GUARDED_BY(lock_);
   std::unique_ptr<AutoFramingCrOS> auto_framing_ GUARDED_BY(lock_);
   std::vector<uint8_t> detector_input_buffer_ GUARDED_BY(lock_);
   std::optional<int64_t> detector_input_buffer_timestamp_ GUARDED_BY(lock_);
   std::optional<Rect<float>> region_of_interest_ GUARDED_BY(lock_);
-  Rect<float> crop_window_ GUARDED_BY(lock_);
+  std::map<int64_t, Rect<float>> crop_windows_ GUARDED_BY(lock_);
 };
 
 }  // namespace cros

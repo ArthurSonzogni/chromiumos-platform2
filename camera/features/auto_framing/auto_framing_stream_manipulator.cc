@@ -626,7 +626,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
 
   // Crop the full frame into client buffers.
   if (override_crop_window_) {
-    active_crop_region_ = auto_framing_client_.GetCropWindow();
+    active_crop_region_ = auto_framing_client_.GetCropWindow(*ctx->timestamp);
   } else {
     DCHECK_NE(framer_, nullptr);
     active_crop_region_ =
