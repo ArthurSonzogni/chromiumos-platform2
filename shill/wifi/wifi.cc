@@ -1146,22 +1146,6 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
                                               ? Metrics::kDisconnectedNotByAp
                                               : Metrics::kDisconnectedByAp;
   metrics()->Notify80211Disconnect(by_whom, new_reason);
-
-  WiFiService* affected_service =
-      current_service_.get() ? current_service_.get() : pending_service_.get();
-
-  if (!affected_service) {
-    SLOG(this, 2) << "WiFi " << link_name()
-                  << " received a disconnection reason change while not"
-                  << " connected or connecting";
-    return;
-  }
-  // TODO(b/225737253): Make the difference between the various types of
-  // disconnection (expected, unexpected, ...)
-  Metrics::WiFiDisconnectionType disconnect_type =
-      Metrics::kWiFiDisconnectionTypeUnknown;
-  affected_service->EmitDisconnectionEvent(disconnect_type,
-                                           supplicant_disconnect_reason_);
 }
 
 void WiFi::CurrentAuthModeChanged(const std::string& auth_mode) {
@@ -1364,7 +1348,8 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
       // We attempted to connect to a service but the attempt failed. Report
       // a failure to connect (as opposed to a disconnection from a service we
       // were successfully connected to).
-      affected_service->EmitConnectionAttemptResultEvent(failure);
+      metrics()->NotifyWiFiConnectionAttemptResult(
+          Metrics::ConnectFailureToServiceErrorEnum(failure));
       LOG(ERROR) << "Failed to connect due to reason: "
                  << Service::ConnectFailureToString(failure);
     } else {
@@ -2338,7 +2323,8 @@ void WiFi::StateChanged(const std::string& new_state) {
       // |kInterfaceStateCompleted| was caused by a "maintenance" event
       // (e.g. rekeying) from a fully connected state rather than a genuine
       // attempt to connect from a "disconnected" state.
-      affected_service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
+      metrics()->NotifyWiFiConnectionAttemptResult(
+          Metrics::kNetworkServiceErrorNone);
     }
     if (affected_service->IsConnected()) {
       StopReconnectTimer();

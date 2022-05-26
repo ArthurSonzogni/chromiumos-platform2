@@ -27,7 +27,6 @@
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
 #include "shill/wifi/wifi_endpoint.h"
-#include "shill/wifi/wifi_service.h"
 
 namespace shill {
 
@@ -73,12 +72,6 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
       LOG(WARNING) << "Unexpected error type: " << error;
       return Metrics::CellularConnectResult::kCellularConnectResultUnknown;
   }
-}
-
-bool ShouldEmitWiFiSessionTag() {
-  // TODO(b/226145383): Once the WiFi Session Tag mechanism has been stabilized,
-  // start reporting the Session Tag along with the "sessionized" WiFi metrics.
-  return false;
 }
 
 // List of WiFi adapters that have been added to AVL.
@@ -1423,8 +1416,8 @@ Metrics::ConvertEndPointFeatures(const WiFiEndpoint* ep) {
   return ap_features;
 }
 
-void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
-                                          uint64_t session_tag) {
+void Metrics::NotifyWiFiConnectionAttempt(
+    const WiFiConnectionAttemptInfo& info) {
   int64_t usecs;
   if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
     LOG(ERROR) << "Failed to read timestamp";
@@ -1438,15 +1431,10 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
   // an allowlist of sufficiently popular manufacturers that can be reported
   // along the rest of the connection information.
   int unknown_oui = 0xFFFFFFFF;
-  // Do NOT modify the verbosity of the Session Tag log without a privacy
-  // review.
-  SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
-      << __func__ << ": Session Tag 0x" << std::hex << session_tag;
   metrics::structured::events::wi_fi::WiFiConnectionAttempt()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetSessionTag(ShouldEmitWiFiSessionTag() ? session_tag : 0)
       .SetAttemptType(info.type)
       .SetAPPhyMode(info.mode)
       .SetAPSecurityMode(info.security)
@@ -1475,45 +1463,18 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       .Record();
 }
 
-void Metrics::NotifyWiFiConnectionAttemptResult(NetworkServiceError result_code,
-                                                uint64_t session_tag) {
+void Metrics::NotifyWiFiConnectionAttemptResult(
+    NetworkServiceError result_code) {
   int64_t usecs;
   if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
     LOG(ERROR) << "Failed to read timestamp";
     usecs = kWiFiStructuredMetricsErrorValue;
   }
-  // Do NOT modify the verbosity of the Session Tag log without a privacy
-  // review.
-  SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
-      << __func__ << ": Session Tag 0x" << std::hex << session_tag;
   metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetSessionTag(ShouldEmitWiFiSessionTag() ? session_tag : 0)
       .SetResultCode(result_code)
-      .Record();
-}
-
-void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
-                                      IEEE_80211::WiFiReasonCode reason,
-                                      uint64_t session_tag) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
-  // Do NOT modify the verbosity of the Session Tag log without a privacy
-  // review.
-  SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
-      << __func__ << ": Session Tag 0x" << std::hex << session_tag;
-  metrics::structured::events::wi_fi::WiFiConnectionEnd()
-      .SetBootId(GetBootId())
-      .SetSystemTime(usecs)
-      .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetSessionTag(ShouldEmitWiFiSessionTag() ? session_tag : 0)
-      .SetDisconnectionType(type)
-      .SetDisconnectionReasonCode(reason)
       .Record();
 }
 
