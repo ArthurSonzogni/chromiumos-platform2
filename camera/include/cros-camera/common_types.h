@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include <base/numerics/safe_conversions.h>
@@ -42,6 +43,13 @@ struct Rect {
   Rect<U> AsRect() const {
     return Rect<U>(base::checked_cast<U>(left), base::checked_cast<U>(top),
                    base::checked_cast<U>(width), base::checked_cast<U>(height));
+  }
+  std::string ToString() const {
+    std::stringstream ss;
+    ss << left << "," << top << "+" << width << "x" << height;
+    std::string str;
+    ss >> str;
+    return str;
   }
 };
 

@@ -21,6 +21,7 @@
 #include <base/files/file_util.h>
 #include <base/task/bind_post_task.h>
 #include <base/strings/string_number_conversions.h>
+#include <sys/types.h>
 
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/constants.h"

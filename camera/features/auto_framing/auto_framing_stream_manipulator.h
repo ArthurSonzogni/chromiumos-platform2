@@ -86,6 +86,10 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
 
+  // For testing.
+  const Rect<float>& region_of_interest() const { return region_of_interest_; }
+  const Rect<float>& active_crop_region() const { return active_crop_region_; }
+
  private:
   struct CaptureContext;
 
