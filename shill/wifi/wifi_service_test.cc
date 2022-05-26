@@ -16,6 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/simple_test_clock.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -2372,6 +2373,117 @@ TEST_F(WiFiServiceTest, DisconnectionEmitsStructuredMetricWithTagOnFailure) {
   EXPECT_CALL(*metrics(), NotifyWiFiDisconnection(disconnection_type,
                                                   error_code, session_tag));
   service->EmitDisconnectionEvent(disconnection_type, error_code);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptValidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  // Catch-all call to avoid failing on unrelated UMA calls.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+
+  // The session tag should be in the "expected" state.
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(
+          base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                             Metrics::kWiFiSessionTagConnectionAttemptSuffix),
+          Metrics::kWiFiSessionTagStateExpected,
+          Metrics::kWiFiSessionTagStateMax));
+  service->EmitConnectionAttemptEvent();
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInvalidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  // Catch-all call to avoid failing on unrelated UMA calls.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+
+  // If we try to emit 2 "connection attempt" events in a row, the second one
+  // should report that the session tag was unexpected.
+  service->EmitConnectionAttemptEvent();
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(
+          base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                             Metrics::kWiFiSessionTagConnectionAttemptSuffix),
+          Metrics::kWiFiSessionTagStateUnexpected,
+          Metrics::kWiFiSessionTagStateMax));
+  // Second call will emit an "unexpected tag" UMA.
+  service->EmitConnectionAttemptEvent();
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptResultValidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  // Catch-all call to avoid failing on unrelated UMA calls.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+
+  service->EmitConnectionAttemptEvent();
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(base::StringPrintf(
+                        "%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                        Metrics::kWiFiSessionTagConnectionAttemptResultSuffix),
+                    Metrics::kWiFiSessionTagStateExpected,
+                    Metrics::kWiFiSessionTagStateMax));
+  // For a "connection attempt result" that happens immediately after a
+  // "connection attempt", the state of the session tag should be expected.
+  service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptResultInvalidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  // Catch-all call to avoid failing on unrelated UMA calls.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(base::StringPrintf(
+                        "%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                        Metrics::kWiFiSessionTagConnectionAttemptResultSuffix),
+                    Metrics::kWiFiSessionTagStateUnexpected,
+                    Metrics::kWiFiSessionTagStateMax));
+  // For a "connection attempt result" that happens without a corresponding
+  // "connection attempt", the state of the session tag should be unexpected.
+  service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
+}
+
+TEST_F(WiFiServiceTest, DisconnectionValidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  // Catch-all call to avoid failing on unrelated UMA calls.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+
+  service->EmitConnectionAttemptEvent();
+  service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(
+          base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                             Metrics::kWiFiSessionTagDisconnectionSuffix),
+          Metrics::kWiFiSessionTagStateExpected,
+          Metrics::kWiFiSessionTagStateMax));
+  // For the usual "connection attempt"->"connection attempt result"
+  // ->"disconnection" sequence, the state of the session tag should be
+  // expected.
+  service->EmitDisconnectionEvent(
+      Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+      IEEE_80211::kReasonCodeTooManySTAs);
+}
+
+TEST_F(WiFiServiceTest, DisconnectionInvalidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  // Catch-all call to avoid failing on unrelated UMA calls.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(
+          base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                             Metrics::kWiFiSessionTagDisconnectionSuffix),
+          Metrics::kWiFiSessionTagStateUnexpected,
+          Metrics::kWiFiSessionTagStateMax));
+  // For a "disconnection" event without a "connection attempt/result" event,
+  // the state of the session tag should be unexpected.
+  service->EmitDisconnectionEvent(
+      Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+      IEEE_80211::kReasonCodeTooManySTAs);
 }
 
 TEST_F(WiFiServiceTest, CompareWithSameTechnology) {
