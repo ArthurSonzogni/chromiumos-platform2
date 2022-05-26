@@ -3038,8 +3038,6 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
 
 TEST_F(WiFiMainTest, DisconnectReasonUpdated) {
   ScopedMockLog log;
-  // Don't error if there are extra logs on top of the ones we're testing for.
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   IEEE_80211::WiFiReasonCode test_reason = IEEE_80211::kReasonCodeInactivity;
   EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
       .Times(AnyNumber());
