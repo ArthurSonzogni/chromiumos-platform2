@@ -25,9 +25,9 @@ namespace dbus_utils {
 // lifetimes of their respective copies of the FD.
 struct FileDescriptor {
   FileDescriptor() = default;
-  FileDescriptor(int fd) : fd(dup(fd)) {}
+  FileDescriptor(int fd) : fd(dup(fd)) {}  // NOLINT(runtime/explicit)
   FileDescriptor(FileDescriptor&& other) : fd(std::move(other.fd)) {}
-  FileDescriptor(base::ScopedFD&& other) : fd(std::move(other)) {}
+  FileDescriptor(base::ScopedFD&& other) : fd(std::move(other)) {}  // NOLINT
   FileDescriptor(const FileDescriptor&) = delete;
   FileDescriptor& operator=(const FileDescriptor&) = delete;
 
@@ -51,7 +51,6 @@ struct FileDescriptor {
   int get() const { return fd.get(); }
 
  private:
-
   base::ScopedFD fd;
 };
 
