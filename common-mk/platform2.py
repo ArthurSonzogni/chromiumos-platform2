@@ -448,9 +448,14 @@ class Platform2(object):
             '--args=%s' % ' '.join(gn_args_args),
             self.get_products_path(),
         ]
-        cros_build_lib.run(gn_args,
-                           extra_env=self.get_build_environment(),
-                           cwd=self.get_platform2_root())
+        try:
+            cros_build_lib.run(gn_args,
+                               extra_env=self.get_build_environment(),
+                               cwd=self.get_platform2_root())
+        except cros_build_lib.RunCommandError:
+            cros_build_lib.Die('Unable to configure GN. Please check if USE '
+                               'flags have been added to _IUSE. See '
+                               'http://go/chromeos-gn for more details.')
 
     def gn_desc(self, *args):
         """Describe BUILD.gn.
