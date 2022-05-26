@@ -31,31 +31,37 @@ class CachedDataFile:
         policies and storage medium are used.
         """
         orig_path = self._orig_file_path
-        name_parts = orig_path.name.split('.')
+        name_parts = orig_path.name.split(".")
         assert len(name_parts) >= 2
         # <parent_dirs>/<basename>-<ver>.<extensions...>.pickle
-        name = name_parts[0] + '-' + ver + '.' + \
-            '.'.join(name_parts[1:]) + '.pickle'
+        name = (
+            name_parts[0]
+            + "-"
+            + ver
+            + "."
+            + ".".join(name_parts[1:])
+            + ".pickle"
+        )
         return orig_path.parent / name
 
     def _cache_file_pattern(self) -> str:
         """Build the glob pattern to find cache files for all file versions."""
-        return str(self._cache_file_path('*'))
+        return str(self._cache_file_path("*"))
 
     def _find_cache_files(self) -> List[pathlib.Path]:
         """Return a list of all cache files for the data file."""
         cache_files = glob.glob(self._cache_file_pattern())
         return [pathlib.Path(p) for p in cache_files]
 
-    def __init__(self,
-                 data_file_path: Union[pathlib.Path, str],
-                 verbose: bool = False) -> None:
-        self._ver = ''
+    def __init__(
+        self, data_file_path: Union[pathlib.Path, str], verbose: bool = False
+    ) -> None:
+        self._ver = ""
         self._orig_file_path = pathlib.Path(data_file_path)
         self._verbose = verbose
 
     def open(self):
-        self._f = open(self._orig_file_path, 'rb')
+        self._f = open(self._orig_file_path, "rb")
         # We lock the original data file to ensure that we will not collide
         # with another instance of this object when listing/reading/writing
         # cache files.
@@ -75,10 +81,12 @@ class CachedDataFile:
             self._ver = hashlib.md5(self._mm).hexdigest()
         return self._ver
 
-    def _delete_file(self,
-                     file: pathlib.Path,
-                     rm_cmd: Optional[str] = None,
-                     rm_cmd_opts: Optional[List[str]] = None):
+    def _delete_file(
+        self,
+        file: pathlib.Path,
+        rm_cmd: Optional[str] = None,
+        rm_cmd_opts: Optional[List[str]] = None,
+    ):
         """Delete a cache file.
 
         This can be used to simply `unlink` the file or invoke another removal
@@ -95,14 +103,14 @@ class CachedDataFile:
                  one file simultaneously.
         """
         if self._verbose:
-            print(f'Removing {file}.')
+            print(f"Removing {file}.")
         if rm_cmd:
             cmd = [rm_cmd]
             if rm_cmd_opts:
                 cmd.extend(rm_cmd_opts)
             cmd.append(str(file))
             if self._verbose:
-                print(f'Running {cmd}.')
+                print(f"Running {cmd}.")
             s = subprocess.run(
                 cmd,
                 stderr=subprocess.STDOUT,
@@ -111,20 +119,24 @@ class CachedDataFile:
         else:
             file.unlink()
 
-    def prune(self,
-              rm_cmd: Optional[str] = None,
-              rm_cmd_opts: Optional[List[str]] = None):
+    def prune(
+        self,
+        rm_cmd: Optional[str] = None,
+        rm_cmd_opts: Optional[List[str]] = None,
+    ):
         """Remove obsolete cache files."""
         ver = self.version()
         cached_file_path = self._cache_file_path(ver)
         cache_files = self._find_cache_files()
 
-        for cache_file in (set(cache_files) - {cached_file_path}):
+        for cache_file in set(cache_files) - {cached_file_path}:
             self._delete_file(cache_file, rm_cmd, rm_cmd_opts)
 
-    def remove(self,
-               rm_cmd: Optional[str] = None,
-               rm_cmd_opts: Optional[List[str]] = None):
+    def remove(
+        self,
+        rm_cmd: Optional[str] = None,
+        rm_cmd_opts: Optional[List[str]] = None,
+    ):
         """Remove all cache files."""
         for cache_file in self._find_cache_files():
             self._delete_file(cache_file, rm_cmd, rm_cmd_opts)
@@ -144,14 +156,14 @@ class CachedDataFile:
             cached_file_path = self._cache_file_path(self.version())
             if cached_file_path in self._find_cache_files():
                 if self._verbose:
-                    print(f'Using cache file {cached_file_path}.')
-                with open(cached_file_path, 'rb') as f:
+                    print(f"Using cache file {cached_file_path}.")
+                with open(cached_file_path, "rb") as f:
                     return pickle.load(f)
             else:
                 parsed = self._parse()
                 if self._verbose:
-                    print(f'Saving to cache file {cached_file_path}.')
-                with open(cached_file_path, 'wb') as f:
+                    print(f"Saving to cache file {cached_file_path}.")
+                with open(cached_file_path, "wb") as f:
                     # Might want pickle.HIGHEST_PROTOCOL arg.
                     pickle.dump(parsed, f)
                 return parsed
@@ -167,10 +179,12 @@ class CachedDataFile:
 
 
 class CachedCSVFile(CachedDataFile):
-    def __init__(self,
-                 data_file_path: Union[pathlib.Path, str],
-                 verbose: bool = False,
-                 **read_csv_args) -> None:
+    def __init__(
+        self,
+        data_file_path: Union[pathlib.Path, str],
+        verbose: bool = False,
+        **read_csv_args,
+    ) -> None:
         self._read_csv_arg = read_csv_args
         return super().__init__(data_file_path=data_file_path, verbose=verbose)
 

@@ -6,16 +6,17 @@
 
 """Utilities needed for Fingerprint Study Analysis."""
 
-import timeit
 from collections import Counter
 from enum import Enum
+import timeit
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
+from IPython.display import display
+from IPython.display import Markdown
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from IPython.display import Markdown, display
 from scipy.stats import norm
 
 
@@ -28,7 +29,6 @@ class DataFrameSetAccess:
     """
 
     def __init__(self, table: pd.DataFrame, cols: Optional[List[str]] = None):
-
         if not cols:
             cols = list(table.columns)
         self.cols = cols
@@ -70,7 +70,7 @@ class DataFrameCountTrieAccess:
         self.counts_dict = Counter[Tuple]()
 
         for row in np.array(table[cols]):
-            for i in range(len(cols)+1):
+            for i in range(len(cols) + 1):
                 # We include the empty tuple (row[0:0]) count also.
                 t = tuple(row)[0:i]
                 self.counts_dict[t] += 1
@@ -89,7 +89,7 @@ def boot_sample(
     a: npt.NDArray[Any],
     *,
     n: Optional[int] = None,
-    rng: np.random.Generator = np.random.default_rng()
+    rng: np.random.Generator = np.random.default_rng(),
 ) -> npt.NDArray:
     """Sample with replacement the same number of elements given.
 
@@ -113,7 +113,7 @@ def boot_sample_range(
     # Scalar input is the fastest invocation to rng.choice.
     range: int,
     n: Optional[int] = None,
-    rng: np.random.Generator = np.random.default_rng()
+    rng: np.random.Generator = np.random.default_rng(),
 ) -> npt.NDArray[np.int64]:
     """Sample with replacement `range` elements from `0` to `range`.
 
@@ -125,9 +125,11 @@ def boot_sample_range(
     return rng.choice(range, size=range, replace=True)
 
 
-def plot_pd_hist_discrete(tbl: pd.DataFrame,
-                          title_prefix: Optional[str] = None,
-                          figsize: Optional[tuple] = None):
+def plot_pd_hist_discrete(
+    tbl: pd.DataFrame,
+    title_prefix: Optional[str] = None,
+    figsize: Optional[tuple] = None,
+):
     """Plot the histograms of a DataFrame columns.
 
     This is different than `pd.DataFrame.hist`, because it ensures that all
@@ -138,18 +140,18 @@ def plot_pd_hist_discrete(tbl: pd.DataFrame,
 
     num_plots = len(tbl.columns)
     if not figsize:
-        figsize = (10, 6*num_plots)
+        figsize = (10, 6 * num_plots)
 
     plt.figure(figsize=figsize)
     for index, col in enumerate(tbl.columns):
-        plt.subplot(num_plots, 1, index+1)
+        plt.subplot(num_plots, 1, index + 1)
         vals = np.unique(tbl[col], return_counts=True)
         plt.bar(*vals)
-        plt.xticks(vals[0], rotation='vertical', fontsize=5)
+        plt.xticks(vals[0], rotation="vertical", fontsize=5)
         plt.xlabel(col)
-        plt.ylabel('Count')
+        plt.ylabel("Count")
         if title_prefix:
-            plt.title(f'{title_prefix} by {col}')
+            plt.title(f"{title_prefix} by {col}")
     plt.show()
 
 
@@ -175,7 +177,6 @@ def has_columns(df: pd.DataFrame, cols: Iterable[Union[Enum, str]]) -> bool:
 
 
 def plt_discrete_hist(data):
-
     counts = np.bincount(data)
 
     # We need to zoom in, since there would be thousands of thousands of bars that
@@ -185,34 +186,38 @@ def plt_discrete_hist(data):
     # first_index = 0
     last_index = np.max(nonzero_indicies)
 
-    if (last_index-first_index) < 2000:
+    if (last_index - first_index) < 2000:
         # plt.title(f'Samples {np.size(r)} | p = {p:.3e} | Groups {groups}')
 
-        x = np.arange(start=first_index, stop=last_index+1)
-        h = counts[first_index:last_index+1]
+        x = np.arange(start=first_index, stop=last_index + 1)
+        h = counts[first_index : last_index + 1]
         plt.bar(x, h)
         # plt.xticks(x)
         # plt.xlabel('Group Sums')
-        plt.ylabel('Frequency')
+        plt.ylabel("Frequency")
         # plt.vlines(bin_edges[:np.size(bin_edges)-1], 0, hist)
 
         # Overlay Norm Curve
         mu, std = norm.fit(data)
         mean = np.mean(data)
-        print(f'first={first_index} last={last_index}')
-        print(f'mu={mu} , std={std} 3*std={3*std}, np.mean(data) = {np.mean(data)}')
+        print(f"first={first_index} last={last_index}")
+        print(
+            f"mu={mu} , std={std} 3*std={3*std}, np.mean(data) = {np.mean(data)}"
+        )
 
         # x_curve = x
-        x_curve = np.linspace(mean - 3*std, mean + 3*std, 50)
+        x_curve = np.linspace(mean - 3 * std, mean + 3 * std, 50)
         p = norm.pdf(x_curve, mu, std)
         p_scaled = p * np.sum(h)
-        plt.plot(x_curve, p_scaled, 'k', linewidth=2)
-        plt.xticks([mean - 3*std, mean, mean + 3*std])
+        plt.plot(x_curve, p_scaled, "k", linewidth=2)
+        plt.xticks([mean - 3 * std, mean, mean + 3 * std])
     else:
-        display(Markdown(
-            f'Plot is too large (first={first_index} last={last_index}),'
-            ' not diplaying.'
-        ))
+        display(
+            Markdown(
+                f"Plot is too large (first={first_index} last={last_index}),"
+                " not diplaying."
+            )
+        )
 
 
 def plt_discrete_hist2(data):
@@ -223,29 +228,33 @@ def plt_discrete_hist2(data):
     """
     vals, counts = np.unique(data, return_counts=True)
     plt.bar(vals, counts)
-    plt.xticks(vals, rotation='vertical', fontsize=5)
+    plt.xticks(vals, rotation="vertical", fontsize=5)
     # plt.xlabel(col)
-    plt.ylabel('Frequency')
+    plt.ylabel("Frequency")
     # plt.show()
 
     # Overlay normal curve that spans 3x standard deviations.
     mean, std = norm.fit(data)
-    x_curve = np.linspace(mean - 3*std, mean + 3*std, 50)
+    x_curve = np.linspace(mean - 3 * std, mean + 3 * std, 50)
     p = norm.pdf(x_curve, mean, std)
     p_scaled = p * np.sum(counts)
-    plt.plot(x_curve, p_scaled, 'k', linewidth=2)
+    plt.plot(x_curve, p_scaled, "k", linewidth=2)
 
     # Place 2x standard deviation confidence lines and mean.
     mid_y = np.max(counts) / 2
-    for ci_x, ci_label in [(mean - 2*std, 'lower 2*std'),
-                           (mean, 'mean'),
-                           (mean + 2*std, 'upper 2*std')]:
-        plt.axvline(ci_x, color='red')
-        plt.text(ci_x + 1,
-                 mid_y,
-                 f'{ci_x:.3f} is {ci_label}',
-                 rotation=90,
-                 color='red')
+    for ci_x, ci_label in [
+        (mean - 2 * std, "lower 2*std"),
+        (mean, "mean"),
+        (mean + 2 * std, "upper 2*std"),
+    ]:
+        plt.axvline(ci_x, color="red")
+        plt.text(
+            ci_x + 1,
+            mid_y,
+            f"{ci_x:.3f} is {ci_label}",
+            rotation=90,
+            color="red",
+        )
 
 
 def elapsed_time_str(sec: float) -> str:
@@ -265,20 +274,19 @@ def elapsed_time_str(sec: float) -> str:
     us = int(sec * 1e6) % 1000
     ns = (sec * 1e9) % 1000
 
-    string = ''
-    string += hour and f'{hour}hr ' or ''
-    string += min and f'{min}min ' or ''
-    string += s and f'{s}s ' or ''
-    string += ms and f'{ms}ms ' or ''
-    string += us and f'{us}us ' or ''
-    string += ns and f'{ns:3.3f}ns ' or ''
+    string = ""
+    string += hour and f"{hour}hr " or ""
+    string += min and f"{min}min " or ""
+    string += s and f"{s}s " or ""
+    string += ms and f"{ms}ms " or ""
+    string += us and f"{us}us " or ""
+    string += ns and f"{ns:3.3f}ns " or ""
     return string.rstrip()
 
 
-def benchmark(stmt: str,
-              setup: str = 'pass',
-              globals: dict = {**locals(), **globals()}) \
-        -> Tuple[int, float, float]:
+def benchmark(
+    stmt: str, setup: str = "pass", globals: dict = {**locals(), **globals()}
+) -> Tuple[int, float, float]:
     """Measure the runtime of `stmt`.
 
     This method invokes timeit.Timer.autorange and print results.
@@ -287,11 +295,10 @@ def benchmark(stmt: str,
         (num_loops, sec_total, sec_per_loop)
     """
 
-    loops, sec = timeit.Timer(
-        stmt,
-        setup=setup,
-        globals=globals).autorange()
-    print(f'Ran "{stmt}" {loops} times over {sec}s.'
-          ' '
-          f'It took {elapsed_time_str(sec/loops)} per loop.')
+    loops, sec = timeit.Timer(stmt, setup=setup, globals=globals).autorange()
+    print(
+        f'Ran "{stmt}" {loops} times over {sec}s.'
+        " "
+        f"It took {elapsed_time_str(sec/loops)} per loop."
+    )
     return loops, sec, np.divide(sec, loops)

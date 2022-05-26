@@ -10,17 +10,16 @@ import tempfile
 import time
 import unittest
 
-import pandas as pd
-
-import simulate_fpstudy
 from cached_data_file import CachedCSVFile
+import pandas as pd
+import simulate_fpstudy
 
 
 class Test_CachedCSVFile(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.temp_csv = pathlib.Path(self.temp_dir.name) / 'test.csv'
-        print(f'Temp CSV file is {self.temp_csv}.')
+        self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"
+        print(f"Temp CSV file is {self.temp_csv}.")
         self._generate_decisions_file()
 
         return super().setUp()
@@ -53,7 +52,7 @@ class Test_CachedCSVFile(unittest.TestCase):
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             _ = c.get()
 
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / "*.pickle"))
         self.assertEqual(len(pickles), 2)
 
     def test_benchmark(self):
@@ -81,20 +80,22 @@ class Test_CachedCSVFile(unittest.TestCase):
             _ = c.get()
         time_load_end = time.time()
 
-        delta_original = time_original_end-time_original_start
-        delta_parse_nocache = time_parse_nocache_end-time_parse_nocache_start
-        delta_parse = time_parse_end-time_parse_start
-        delta_load = time_load_end-time_load_start
+        delta_original = time_original_end - time_original_start
+        delta_parse_nocache = time_parse_nocache_end - time_parse_nocache_start
+        delta_parse = time_parse_end - time_parse_start
+        delta_load = time_load_end - time_load_start
 
-        print(f'The original pd.read_csv took {delta_original}s.')
-        print(f'It took {delta_parse_nocache}s to parse.')
-        print(f'It took {delta_parse}s to hash, parse, and save cache.')
-        print(f'It took {delta_load}s to hash and load from cache.')
-        print('SUMMARY:')
-        slowdown = delta_parse/delta_original
-        speedup = delta_original/delta_load
-        print(f'For an initial {slowdown:.3f} slowdown, '
-              f'we see an {speedup:.3f} speedup for using cache.')
+        print(f"The original pd.read_csv took {delta_original}s.")
+        print(f"It took {delta_parse_nocache}s to parse.")
+        print(f"It took {delta_parse}s to hash, parse, and save cache.")
+        print(f"It took {delta_load}s to hash and load from cache.")
+        print("SUMMARY:")
+        slowdown = delta_parse / delta_original
+        speedup = delta_original / delta_load
+        print(
+            f"For an initial {slowdown:.3f} slowdown, "
+            f"we see an {speedup:.3f} speedup for using cache."
+        )
 
     def test_basic(self):
         # Get timing for running the alternative pd.read_csv.
@@ -123,14 +124,14 @@ class Test_CachedCSVFile(unittest.TestCase):
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             first = c.get()
 
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / "*.pickle"))
         self.assertEqual(len(pickles), 1)
 
         self._generate_decisions_file()
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             second = c.get()
 
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / "*.pickle"))
         self.assertEqual(len(pickles), 2)
 
         self.assertFalse(first.equals(second))
@@ -141,16 +142,16 @@ class Test_CachedCSVFile(unittest.TestCase):
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             c.prune()
 
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / "*.pickle"))
         self.assertEqual(len(pickles), 1)
 
     def test_prune_shred(self):
         self._setup_two_cache_files()
 
         with CachedCSVFile(self.temp_csv, verbose=True) as c:
-            c.prune(rm_cmd='shred', rm_cmd_opts=['-v', '-u'])
+            c.prune(rm_cmd="shred", rm_cmd_opts=["-v", "-u"])
 
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / "*.pickle"))
         self.assertEqual(len(pickles), 1)
 
     def test_remove(self):
@@ -159,9 +160,9 @@ class Test_CachedCSVFile(unittest.TestCase):
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             c.remove()
 
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / "*.pickle"))
         self.assertEqual(len(pickles), 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

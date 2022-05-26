@@ -10,10 +10,10 @@ import math
 import pickle
 import unittest
 
-import fpsutils
-import simulate_fpstudy
 from bootstrap import BootstrapFullFARHierarchy
 from experiment import Experiment
+import fpsutils
+import simulate_fpstudy
 
 
 class Test_Bootstrap(unittest.TestCase):
@@ -35,8 +35,7 @@ class Test_Bootstrap(unittest.TestCase):
         )
 
     def test_benchmark(self):
-        """Test how long it takes to run the sampling using different modes.
-        """
+        """Test how long it takes to run the sampling using different modes."""
 
         boot = BootstrapFullFARHierarchy(self.exp, verbose=True)
         boot.USE_GLOBAL_SHARING = True
@@ -60,29 +59,39 @@ class Test_Bootstrap(unittest.TestCase):
         HYPOTHETICAL_NUM_SAMPLES = [5000, 10000, 100000]
 
         boot = BootstrapFullFARHierarchy(self.exp)
-        fpsutils.benchmark('vals = pickle.loads(pickle.dumps(123456))',
-                           globals={**locals(), **globals()})
-        _, _, pkl_time = fpsutils.benchmark('pickle.dumps(boot)',
-                                            globals={**locals(), **globals()})
+        fpsutils.benchmark(
+            "vals = pickle.loads(pickle.dumps(123456))",
+            globals={**locals(), **globals()},
+        )
+        _, _, pkl_time = fpsutils.benchmark(
+            "pickle.dumps(boot)", globals={**locals(), **globals()}
+        )
         pkl_data = pickle.dumps(boot)
-        _, _, unpkl_time = fpsutils.benchmark('pickle.loads(pkl_data)',
-                                              globals={**locals(), **globals()})
+        _, _, unpkl_time = fpsutils.benchmark(
+            "pickle.loads(pkl_data)", globals={**locals(), **globals()}
+        )
 
         print(
-            f'Total pickling time is {fpsutils.elapsed_time_str(pkl_time + unpkl_time)}.')
+            f"Total pickling time is {fpsutils.elapsed_time_str(pkl_time + unpkl_time)}."
+        )
 
         for c in HYPOTHETICAL_NUM_CORES:
             for s in HYPOTHETICAL_NUM_SAMPLES:
-                eta_calc = pkl_time + \
-                    (unpkl_time * math.ceil(float(s)/float(c)))
+                eta_calc = pkl_time + (
+                    unpkl_time * math.ceil(float(s) / float(c))
+                )
                 eta = fpsutils.elapsed_time_str(eta_calc)
-                print(f'Processing {s} samples running over {c},',
-                      f'could take {eta} in pickling.')
+                print(
+                    f"Processing {s} samples running over {c},",
+                    f"could take {eta} in pickling.",
+                )
 
-        print('In reality, there is some other mechanism that seems '
-              'to increase runtime with increasing number of processes, when '
-              'the map interable objects are large.')
+        print(
+            "In reality, there is some other mechanism that seems "
+            "to increase runtime with increasing number of processes, when "
+            "the map interable objects are large."
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

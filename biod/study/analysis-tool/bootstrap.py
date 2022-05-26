@@ -9,10 +9,10 @@ import multiprocessing as mp
 import time
 from typing import Any, Callable, Iterable, List, Optional
 
+from experiment import Experiment
+import fpsutils
 import numpy as np
 
-import fpsutils
-from experiment import Experiment
 
 # There are many issues and performance bottlenecks when using
 # multiprocessing. Checkout some of the articles on
@@ -35,7 +35,7 @@ class Bootstrap:
     def __init__(self, exp: Experiment, verbose: bool = False) -> None:
         self._verbose = verbose
         if self._verbose:
-            print('# Initializing Runtime and Caches.')
+            print("# Initializing Runtime and Caches.")
         self._time_init_start = time.time()
         self._init(exp)
         self._time_init_end = time.time()
@@ -81,21 +81,21 @@ class Bootstrap:
     def _process_global_sample(cls, sample_id: int) -> int:
         return cls.__data._sample(cls.__rng)
 
-    def __run_single_process(self,
-                             num_samples: int,
-                             progress: Callable[[Iterable[Any], int], Iterable[Any]],
-                             ) -> List[int]:
-
+    def __run_single_process(
+        self,
+        num_samples: int,
+        progress: Callable[[Iterable[Any], int], Iterable[Any]],
+    ) -> List[int]:
         boot_counts = list()
 
         if self._verbose:
-            print('# Initializing RNG.')
+            print("# Initializing RNG.")
         self._time_rng_start = time.time()
         rng = np.random.default_rng()
         self._time_rng_end = time.time()
 
         if self._verbose:
-            print('# Starting Bootstrap Samples.')
+            print("# Starting Bootstrap Samples.")
         self._time_samples_start = time.time()
         for _ in progress(range(num_samples), num_samples):
             boot_counts.append(self._sample(rng))
@@ -103,12 +103,12 @@ class Bootstrap:
 
         return boot_counts
 
-    def __run_multi_process(self,
-                            num_samples: int,
-                            num_proc: Optional[int],
-                            progress: Callable[[Iterable[Any], int], Iterable[Any]],
-                            ) -> List[int]:
-
+    def __run_multi_process(
+        self,
+        num_samples: int,
+        num_proc: Optional[int],
+        progress: Callable[[Iterable[Any], int], Iterable[Any]],
+    ) -> List[int]:
         # All processes must have their own unique seed for their pseudo random
         # number generator, otherwise they will all generate the same random values.
         #
@@ -129,8 +129,10 @@ class Bootstrap:
             num_proc = mp.cpu_count()
 
         if self._verbose:
-            print(f'# Dispatching {num_samples} bootstrap samples over '
-                  f'{num_proc} processes.')
+            print(
+                f"# Dispatching {num_samples} bootstrap samples over "
+                f"{num_proc} processes."
+            )
 
         if self.USE_GLOBAL_SHARING:
             # It is my understanding, from experimentation and documentation,
@@ -157,17 +159,20 @@ class Bootstrap:
             # the parent process. the assumption is that you much reinitialize
             # a new pool for each Bootsrap sampling.
             self._time_pool_startup_start = time.time()
-            with mp.Pool(initializer=self._process_global_init,
-                         initargs=(self,),
-                         processes=num_proc) as pool:
+            with mp.Pool(
+                initializer=self._process_global_init,
+                initargs=(self,),
+                processes=num_proc,
+            ) as pool:
                 self._time_pool_startup_end = time.time()
 
                 if self._verbose:
-                    print('# Blastoff.')
+                    print("# Blastoff.")
                 self._time_samples_start = time.time()
-                boot_counts = pool.map(self._process_global_sample,
-                                       progress(range(num_samples),
-                                                num_samples))
+                boot_counts = pool.map(
+                    self._process_global_sample,
+                    progress(range(num_samples), num_samples),
+                )
                 self._time_samples_end = time.time()
 
                 return boot_counts
@@ -177,27 +182,30 @@ class Bootstrap:
                 self._time_pool_startup_end = time.time()
 
                 if self._verbose:
-                    print('# Initializing RNGs.')
+                    print("# Initializing RNGs.")
                 self._time_rng_start = time.time()
                 rngs = progress(
                     (np.random.default_rng(i) for i in range(num_samples)),
-                    num_samples)
+                    num_samples,
+                )
                 self._time_rng_end = time.time()
 
                 if self._verbose:
-                    print('# Blastoff.')
+                    print("# Blastoff.")
                 self._time_samples_start = time.time()
                 boot_counts = pool.map(self._sample, rngs)
                 self._time_samples_end = time.time()
 
                 return boot_counts
 
-    def run(self,
-            num_samples: int = 5000,
-            num_proc: Optional[int] = 0,
-            progress: Callable[[Iterable[Any], int], Iterable[Any]] =
-            lambda it, total: iter(it),
-            ) -> List[int]:
+    def run(
+        self,
+        num_samples: int = 5000,
+        num_proc: Optional[int] = 0,
+        progress: Callable[
+            [Iterable[Any], int], Iterable[Any]
+        ] = lambda it, total: iter(it),
+    ) -> List[int]:
         """Run all bootstrap samples.
 
         Args:
@@ -213,7 +221,8 @@ class Bootstrap:
             boot_counts = self.__run_single_process(num_samples, progress)
         else:
             boot_counts = self.__run_multi_process(
-                num_samples, num_proc, progress)
+                num_samples, num_proc, progress
+            )
 
         if self._verbose:
             self.print_timing()
@@ -223,24 +232,27 @@ class Bootstrap:
     def print_timing(self):
         """Print the saved timing values."""
 
-        delta_init = self._time_init_end-self._time_init_start
-        delta_rng = self._time_rng_end-self._time_rng_start
-        delta_pool_startup = self._time_pool_startup_end-self._time_pool_startup_start
-        delta_samples = self._time_samples_end-self._time_samples_start
+        delta_init = self._time_init_end - self._time_init_start
+        delta_rng = self._time_rng_end - self._time_rng_start
+        delta_pool_startup = (
+            self._time_pool_startup_end - self._time_pool_startup_start
+        )
+        delta_samples = self._time_samples_end - self._time_samples_start
 
         total = delta_init + delta_rng + delta_pool_startup + delta_samples
 
-        print(f'Cache init took {delta_init:.6f}s.')
-        print(f'RNG init took {delta_rng:.6f}s.')
-        print(f'Process pool setup took {delta_pool_startup:.6f}s'
-              f'{self.USE_GLOBAL_SHARING and " (includes RNG init)" or ""}.')
-        print(f'Bootstrap sampling took {delta_samples:.6f}s.')
-        print('-----------------------------------------')
-        print(f'Total combined runtime was {total:.6f}s.')
+        print(f"Cache init took {delta_init:.6f}s.")
+        print(f"RNG init took {delta_rng:.6f}s.")
+        print(
+            f"Process pool setup took {delta_pool_startup:.6f}s"
+            f'{self.USE_GLOBAL_SHARING and " (includes RNG init)" or ""}.'
+        )
+        print(f"Bootstrap sampling took {delta_samples:.6f}s.")
+        print("-----------------------------------------")
+        print(f"Total combined runtime was {total:.6f}s.")
 
 
 class BootstrapFullFARHierarchy(Bootstrap):
-
     # For the 100000 sample case, enabling this reduces overall time by
     # 3 seconds.
     USE_GLOBAL_SHARING = True
@@ -248,15 +260,16 @@ class BootstrapFullFARHierarchy(Bootstrap):
     def _init(self, exp: Experiment) -> None:
         fa_table = exp.fa_table()
         # The accepted tuples for fa_set and fa_trie.
-        fa_set_tuple = [Experiment.TableCol.Verify_User.value,
-                        Experiment.TableCol.Enroll_User.value,
-                        Experiment.TableCol.Verify_Finger.value,
-                        Experiment.TableCol.Enroll_Finger.value,
-                        Experiment.TableCol.Verify_Sample.value]
+        fa_set_tuple = [
+            Experiment.TableCol.Verify_User.value,
+            Experiment.TableCol.Enroll_User.value,
+            Experiment.TableCol.Verify_Finger.value,
+            Experiment.TableCol.Enroll_Finger.value,
+            Experiment.TableCol.Verify_Sample.value,
+        ]
         assert fpsutils.has_columns(fa_table, fa_set_tuple)
         self.fa_set = fpsutils.DataFrameSetAccess(fa_table, fa_set_tuple)
-        self.fa_trie = fpsutils.DataFrameCountTrieAccess(
-            fa_table, fa_set_tuple)
+        self.fa_trie = fpsutils.DataFrameCountTrieAccess(fa_table, fa_set_tuple)
 
         self.users_list = exp.user_list()
         self.fingers_list = exp.finger_list()

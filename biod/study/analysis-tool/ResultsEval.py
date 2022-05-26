@@ -21,24 +21,27 @@ import os
 import pathlib
 from typing import List, Optional
 
+#! %aimport fpsutils, simulate_fpstudy, experiment, fpc_bet_results
+import bootstrap
+from experiment import Experiment
+from fpc_bet_results import FPCBETResults
+import fpsutils
+from IPython.display import display
+from IPython.display import HTML
+from IPython.display import Markdown
 import matplotlib
+from matplotlib import pyplot as plt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-from IPython.display import HTML, Markdown, display
-from matplotlib import pyplot as plt
 from scipy.stats import norm
+import simulate_fpstudy
+
 # import tqdm
 # import tqdm.notebook as tqdm
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
-#! %aimport fpsutils, simulate_fpstudy, experiment, fpc_bet_results
-import bootstrap
-import fpsutils
-import simulate_fpstudy
-from experiment import Experiment
-from fpc_bet_results import FPCBETResults
 
 # https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-matplotlib
 # To open matplotlib in interactive mode
@@ -53,11 +56,13 @@ from fpc_bet_results import FPCBETResults
 # %matplotlib --list
 
 
-def print_far_value(val: float, k_comparisons: List[int] = [20, 50, 100, 500]) -> str:
-    """Print the science notation """
-    str = f'{val:.4e}'
+def print_far_value(
+    val: float, k_comparisons: List[int] = [20, 50, 100, 500]
+) -> str:
+    """Print the science notation"""
+    str = f"{val:.4e}"
     for c in k_comparisons:
-        str += f' = {val * 100 * c*1000:.3f}% of 1/{c}k'
+        str += f" = {val * 100 * c*1000:.3f}% of 1/{c}k"
     return str
 
 
@@ -65,7 +70,7 @@ def print_far_value(val: float, k_comparisons: List[int] = [20, 50, 100, 500]) -
 # USE_SIMULATED_DATA = True
 USE_SIMULATED_DATA = False
 # USE_SIMULATED_PROB = 1/100000.0
-USE_SIMULATED_PROB = 1/155000.0
+USE_SIMULATED_PROB = 1 / 155000.0
 # USE_SIMULATED_PROB = 1/175000.0
 # USE_SIMULATED_PROB = 1/200000.0
 
@@ -73,32 +78,34 @@ exp: Optional[Experiment] = None
 
 if USE_SIMULATED_DATA:
     # Load simulated data
-    print('# Loading Simulated Data')
+    print("# Loading Simulated Data")
     sim_far_decisions = simulate_fpstudy.GenerateFARResults(
         num_users=72,
         num_fingers=6,
         num_verify_samples=80,
-        user_groups=['A', 'B', 'C', 'D', 'E', 'F'],
+        user_groups=["A", "B", "C", "D", "E", "F"],
         prob=USE_SIMULATED_PROB,
         verbose=True,
     )
-    exp = Experiment(num_verification=60,
-                     num_fingers=6,
-                     num_users=72,
-                     far_decisions=sim_far_decisions)
+    exp = Experiment(
+        num_verification=60,
+        num_fingers=6,
+        num_users=72,
+        far_decisions=sim_far_decisions,
+    )
 else:
     # Find Data
     # We expect a symbolic link named `data` to point to the directory that
     # contains the FPC BET reports and raw collection.
-    print('# Discover Root Data Directory')
-    data_root = pathlib.Path(os.readlink('data'))
+    print("# Discover Root Data Directory")
+    data_root = pathlib.Path(os.readlink("data"))
     if not data_root.is_dir():
-        raise Exception('Data root doesn\'t exist')
-    print(f'Using root {data_root}')
+        raise Exception("Data root doesn't exist")
+    print(f"Using root {data_root}")
 
     # REPORT_DIR = str(data_root.joinpath('report2'))
-    REPORT_DIR = data_root.joinpath('report-100k')
-    COLLECTION_DIR = data_root.joinpath('orig-data')
+    REPORT_DIR = data_root.joinpath("report-100k")
+    COLLECTION_DIR = data_root.joinpath("orig-data")
 
     # %% Import Data From BET Results
 
@@ -106,21 +113,30 @@ else:
 
     decisions_cases = FPCBETResults.TestCase.all()
 
-    far_decisions = bet.read_files(list(zip(
-        decisions_cases,
-        [FPCBETResults.TableType.FAR_Decision]*len(decisions_cases)
-    )))
+    far_decisions = bet.read_files(
+        list(
+            zip(
+                decisions_cases,
+                [FPCBETResults.TableType.FAR_Decision] * len(decisions_cases),
+            )
+        )
+    )
 
-    frr_decisions = bet.read_files(list(zip(
-        decisions_cases,
-        [FPCBETResults.TableType.FRR_Decision]*len(decisions_cases)
-    )))
+    frr_decisions = bet.read_files(
+        list(
+            zip(
+                decisions_cases,
+                [FPCBETResults.TableType.FRR_Decision] * len(decisions_cases),
+            )
+        )
+    )
 
-    exp = Experiment(num_verification=60,
-                     num_fingers=6,
-                     num_users=72,
-                     far_decisions=far_decisions[0],
-                     )
+    exp = Experiment(
+        num_verification=60,
+        num_fingers=6,
+        num_users=72,
+        far_decisions=far_decisions[0],
+    )
 
 
 exp.add_groups_from_collection_dir(COLLECTION_DIR)
@@ -132,14 +148,18 @@ exp.add_groups_from_collection_dir(COLLECTION_DIR)
 
 # %% Check
 
-display(Markdown('''
+display(
+    Markdown(
+        """
 # Distribution of False Accepts
 
 This shows the number of false accepts as a function of each parameter.
 This helps to show if there is some enrollment user, verification user, finger,
 or sample that has an unusually high false acceptable rate.
-'''))
-fpsutils.plot_pd_hist_discrete(exp.fa_table(), title_prefix='False Accepts')
+"""
+    )
+)
+fpsutils.plot_pd_hist_discrete(exp.fa_table(), title_prefix="False Accepts")
 
 # %%
 
@@ -154,38 +174,40 @@ PARALLEL_BOOTSTRAP = True
 # %% Run FAR bootstrap
 
 boot = bootstrap.BootstrapFullFARHierarchy(exp, verbose=True)
-boot_means = boot.run(num_samples=BOOTSTRAP_SAMPLES,
-                      num_proc=0,
-                      progress=lambda it, total: tqdm(it, total=total))
+boot_means = boot.run(
+    num_samples=BOOTSTRAP_SAMPLES,
+    num_proc=0,
+    progress=lambda it, total: tqdm(it, total=total),
+)
 
 # %%
 
-df = pd.DataFrame({'Sample Means': boot_means}, dtype=int)
+df = pd.DataFrame({"Sample Means": boot_means}, dtype=int)
 print(df)
 print(df.describe())
 
 # %%
 
 plt.figure()
-plt.title('Histogram of all unique bootstrap samples (bin=1)')
+plt.title("Histogram of all unique bootstrap samples (bin=1)")
 # fpsutils.plt_discrete_hist(boot_means)
 fpsutils.plt_discrete_hist2(boot_means)
 plt.show()
 
-print(f'Total Cross Matches: {exp.fa_trials_count()}')
-print(f'Total Cross False Accepts: {exp.fa_count()}')
+print(f"Total Cross Matches: {exp.fa_trials_count()}")
+print(f"Total Cross False Accepts: {exp.fa_count()}")
 boot_mean = np.mean(boot_means)  # bootstrapped sample means
-print('Mean:', boot_mean)
+print("Mean:", boot_mean)
 boot_std = np.std(boot_means)  # bootstrapped std
-print('Std:', boot_std)
+print("Std:", boot_std)
 
-ci_percent_lower = (100-CONFIDENCE_PERCENT) / 2
-ci_percent_upper = 100-ci_percent_lower
+ci_percent_lower = (100 - CONFIDENCE_PERCENT) / 2
+ci_percent_upper = 100 - ci_percent_lower
 # 95% C.I.
 boot_limits = np.percentile(boot_means, [ci_percent_lower, ci_percent_upper])
-print('Limits:', boot_limits)
+print("Limits:", boot_limits)
 limit_diff = boot_limits[1] - boot_limits[0]
-print('Limits Diff:', limit_diff)
+print("Limits Diff:", limit_diff)
 
 
 #################
@@ -209,33 +231,38 @@ mu, std = norm.fit(boot_means_ratio)
 # Plot the histogram.
 bins = 25
 # bins=50
-plt.hist(boot_means_ratio, bins=bins, density=True, alpha=0.6, color='b')
+plt.hist(boot_means_ratio, bins=bins, density=True, alpha=0.6, color="b")
 
 # Plot the PDF.
 xmin, xmax = plt.xlim()
 x = np.linspace(xmin, xmax, 100)
 p = norm.pdf(x, mu, std)
 
-plt.plot(x, p, 'k', linewidth=2)
-plt.title(f'Fit Values: {mu} and {std}')
+plt.plot(x, p, "k", linewidth=2)
+plt.title(f"Fit Values: {mu} and {std}")
 
-plt.axvline(x=far_limits[0], color='blue')
-plt.axvline(x=far_limits[1], color='blue')
-plt.axvline(x=1/100000.0, color='red')
-plt.text(1/100000.0, 100000, '1/100k', rotation=90, color='red')
-plt.axvline(x=1/200000.0, color='red')
-plt.text(1/200000.0, 100000, '1/200k', rotation=90, color='red')
+plt.axvline(x=far_limits[0], color="blue")
+plt.axvline(x=far_limits[1], color="blue")
+plt.axvline(x=1 / 100000.0, color="red")
+plt.text(1 / 100000.0, 100000, "1/100k", rotation=90, color="red")
+plt.axvline(x=1 / 200000.0, color="red")
+plt.text(1 / 200000.0, 100000, "1/200k", rotation=90, color="red")
 
 plt.show()
 
-print('FAR Mean:', far_mean)
-print('FAR Std:', far_std)
+print("FAR Mean:", far_mean)
+print("FAR Std:", far_std)
 
-print(f'FAR Limits: {far_limits} <= 1/100k = {far_limits <= 1/100000.0}')
-print('FAR Limits:', [print_far_value(far_limits[0], [100]),
-                      print_far_value(far_limits[1], [100])])
-print(f'FAR Limits 1/{1/far_limits}')
-print(f'FAR Limits {far_limits <= 1/100000.0}')
+print(f"FAR Limits: {far_limits} <= 1/100k = {far_limits <= 1/100000.0}")
+print(
+    "FAR Limits:",
+    [
+        print_far_value(far_limits[0], [100]),
+        print_far_value(far_limits[1], [100]),
+    ],
+)
+print(f"FAR Limits 1/{1/far_limits}")
+print(f"FAR Limits {far_limits <= 1/100000.0}")
 
 
 ###############################################################################

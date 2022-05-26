@@ -19,8 +19,8 @@ class Collection:
 
     def discover_user_groups(self) -> List[Tuple[int, str]]:
         user_groups_set = []
-        for path in glob.glob(str(self._collection_dir) + '/*/*'):
-            path_split = path.split('/')
+        for path in glob.glob(str(self._collection_dir) + "/*/*"):
+            path_split = path.split("/")
             user_id, user_group = path_split[-2], path_split[-1]
             user_groups_set.append((int(user_id), str(user_group)))
         return user_groups_set
