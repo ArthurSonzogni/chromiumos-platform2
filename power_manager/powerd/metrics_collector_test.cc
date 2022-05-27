@@ -791,23 +791,22 @@ TEST_F(MetricsCollectorTest, GenerateDimEventDurationMetrics) {
 
 class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
  public:
-  void TestMetricsForState(AdaptiveChargingState state,
-                           const std::string& metric_name) {
+  void SetExpectedMetrics(const std::string& metric_name,
+                          base::TimeTicks target_time,
+                          base::TimeTicks hold_start_time,
+                          base::TimeTicks hold_end_time,
+                          base::TimeTicks charge_finished_time,
+                          double display_battery_percentage) {
     metrics_to_test_ = {
+        metric_name,
         kAdaptiveChargingBatteryPercentageOnUnplugName,
         kAdaptiveChargingMinutesToFullName,
         kAdaptiveChargingMinutesDelayName,
         kAdaptiveChargingMinutesAvailableName,
     };
-    metrics_to_test_.insert(metric_name);
     base::TimeTicks now = GetCurrentTime();
-    base::TimeTicks target_time = now - base::Minutes(60);
-    base::TimeTicks hold_start_time = target_time - base::Hours(5);
-    base::TimeTicks hold_end_time = target_time - base::Hours(2);
-    base::TimeTicks charge_finished_time = target_time - base::Minutes(50);
-    double display_battery_percentage = 100.0;
 
-    ExpectMetric(metric_name, (now - target_time).InMinutes(),
+    ExpectMetric(metric_name, (now - target_time).magnitude().InMinutes(),
                  kAdaptiveChargingMinutesDeltaMin,
                  kAdaptiveChargingMinutesDeltaMax, kDefaultBuckets);
     ExpectEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName,
@@ -824,6 +823,37 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
                  (now - hold_start_time).InMinutes(),
                  kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
                  kAdaptiveChargingMinutesBuckets);
+  }
+
+  void TestMetricsForState(AdaptiveChargingState state,
+                           const std::string& metric_name) {
+    metrics_to_test_ = {
+        kAdaptiveChargingBatteryPercentageOnUnplugName,
+        kAdaptiveChargingMinutesToFullName,
+        kAdaptiveChargingMinutesDelayName,
+        kAdaptiveChargingMinutesAvailableName,
+    };
+    base::TimeTicks now = GetCurrentTime();
+    base::TimeTicks target_time = now - base::Minutes(60);
+    base::TimeTicks hold_start_time = target_time - base::Hours(5);
+    base::TimeTicks hold_end_time = target_time - base::Hours(2);
+    base::TimeTicks charge_finished_time = target_time - base::Minutes(50);
+    double display_battery_percentage = 100.0;
+
+    SetExpectedMetrics(metric_name + kAdaptiveChargingMinutesDeltaEarlySuffix,
+                       target_time, hold_start_time, hold_end_time,
+                       charge_finished_time, display_battery_percentage);
+    collector_.GenerateAdaptiveChargingUnplugMetrics(
+        state, target_time, hold_start_time, hold_end_time,
+        charge_finished_time, display_battery_percentage);
+
+    // Test that the suffix for `metric_name` changes when `target_time` is
+    // after `now`. Other metrics should be unaffected.
+    now = GetCurrentTime();
+    target_time = now + base::Minutes(60);
+    SetExpectedMetrics(metric_name + kAdaptiveChargingMinutesDeltaLateSuffix,
+                       target_time, hold_start_time, hold_end_time,
+                       charge_finished_time, display_battery_percentage);
     collector_.GenerateAdaptiveChargingUnplugMetrics(
         state, target_time, hold_start_time, hold_end_time,
         charge_finished_time, display_battery_percentage);

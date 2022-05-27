@@ -78,12 +78,17 @@ const char kAdaptiveChargingMinutesDeltaUserDisabledName[] =
     "Power.AdaptiveChargingMinutesDelta.UserDisabled";
 const char kAdaptiveChargingMinutesDeltaNotSupportedName[] =
     "Power.AdaptiveChargingMinutesDelta.NotSupported";
-// Sets the range to -12 hours to 12 hours. If our prediction is too late, the
-// result is a negative number between 0 and 8 hours (in minutes) or a very
-// large negative number (no prediction made). For too early predictions, we
-// generally care how far we're off, but anything more than 12 hours may as well
-// be infinite.
-const int kAdaptiveChargingMinutesDeltaMin = -12 * 60;
+
+const char kAdaptiveChargingMinutesDeltaLateSuffix[] = ".Late";
+const char kAdaptiveChargingMinutesDeltaEarlySuffix[] = ".Early";
+
+// Sets the range to 0 to 12 hours. If our prediction is too late, the
+// `kAdaptiveChargingMinutesDeltaLateSuffix` is appended to the name. For
+// accurate and too early predictions, we append the
+// `kAdaptiveChargingMinutesDeltaEarlySuffix`. We use the suffixes since UMA
+// doesn't support negative numbers. If too many reports hit the 12 hour limit,
+// the max should be increased.
+const int kAdaptiveChargingMinutesDeltaMin = 0;
 const int kAdaptiveChargingMinutesDeltaMax = 12 * 60;
 
 const char kAdaptiveChargingBatteryPercentageOnUnplugName[] =

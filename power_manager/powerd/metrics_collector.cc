@@ -539,9 +539,16 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
                  << static_cast<int>(state);
   }
 
-  SendMetric(metric_name, (now - target_time).InMinutes(),
-             kAdaptiveChargingMinutesDeltaMin, kAdaptiveChargingMinutesDeltaMax,
-             kDefaultBuckets);
+  base::TimeDelta delta = now - target_time;
+  if (delta.is_negative()) {
+    metric_name += kAdaptiveChargingMinutesDeltaLateSuffix;
+    delta = delta.magnitude();
+  } else {
+    metric_name += kAdaptiveChargingMinutesDeltaEarlySuffix;
+  }
+
+  SendMetric(metric_name, delta.InMinutes(), kAdaptiveChargingMinutesDeltaMin,
+             kAdaptiveChargingMinutesDeltaMax, kDefaultBuckets);
   SendEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName,
                  lround(display_battery_percentage), kMaxPercent);
   if (charge_finished_time != base::TimeTicks()) {

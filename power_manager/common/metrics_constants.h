@@ -73,6 +73,8 @@ extern const char kAdaptiveChargingMinutesDeltaHeuristicDisabledName[];
 extern const char kAdaptiveChargingMinutesDeltaUserCanceledName[];
 extern const char kAdaptiveChargingMinutesDeltaUserDisabledName[];
 extern const char kAdaptiveChargingMinutesDeltaNotSupportedName[];
+extern const char kAdaptiveChargingMinutesDeltaLateSuffix[];
+extern const char kAdaptiveChargingMinutesDeltaEarlySuffix[];
 extern const int kAdaptiveChargingMinutesDeltaMin;
 extern const int kAdaptiveChargingMinutesDeltaMax;
 
