@@ -260,8 +260,9 @@ class WiFiService : public Service {
 
   // Emits the |WiFiConnectionEnd| structured events that signals the end of the
   // session. It also resets the session tag.
-  void EmitDisconnectionEvent(Metrics::WiFiDisconnectionType type,
-                              IEEE_80211::WiFiReasonCode disconnect_reason);
+  mockable void EmitDisconnectionEvent(
+      Metrics::WiFiDisconnectionType type,
+      IEEE_80211::WiFiReasonCode disconnect_reason);
 
   uint64_t session_tag() const { return session_tag_; }
 

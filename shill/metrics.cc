@@ -1386,6 +1386,7 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
   // review.
   SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
       << __func__ << ": Session Tag 0x" << std::hex << session_tag;
+  SLOG(this, 2) << __func__ << ": Type " << type << " Reason " << reason;
   metrics::structured::events::wi_fi::WiFiConnectionEnd()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)

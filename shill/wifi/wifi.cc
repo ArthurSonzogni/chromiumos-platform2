@@ -797,6 +797,11 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   }
 
   service->EmitConnectionAttemptEvent();
+  if (current_service_) {
+    // If we're already connected, |SelectNetwork| will make wpa_supplicant
+    // disconnect the current service before connecting to the new service.
+    current_service_->set_expecting_disconnect(true);
+  }
   supplicant_interface_proxy_->SelectNetwork(network_rpcid);
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
@@ -1278,10 +1283,19 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
                   << " connected or connecting";
     return;
   }
-  // TODO(b/225737253): Make the difference between the various types of
-  // disconnection (expected, unexpected, ...)
+  // The case where the device is roaming is handled separately in
+  // |HandleRoam()|.
   Metrics::WiFiDisconnectionType disconnect_type =
       Metrics::kWiFiDisconnectionTypeUnknown;
+  if (affected_service->explicitly_disconnected() ||
+      affected_service->expecting_disconnect()) {
+    disconnect_type = Metrics::kWiFiDisconnectionTypeExpectedUserAction;
+  } else {
+    disconnect_type =
+        by_whom == Metrics::kDisconnectedNotByAp
+            ? Metrics::kWiFiDisconnectionTypeUnexpectedSTADisconnect
+            : Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect;
+  }
   affected_service->EmitDisconnectionEvent(disconnect_type,
                                            supplicant_disconnect_reason_);
 }

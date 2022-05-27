@@ -3081,6 +3081,83 @@ TEST_F(WiFiMainTest, DisconnectReasonCleared) {
             IEEE_80211::kReasonCodeInvalid);
 }
 
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUserDisconnection) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  int32_t reason = -IEEE_80211::kReasonCodeNonAssociated;
+  // If the disconnection is user-initiated, we report that the disconnection
+  // is expected.
+  Error error;
+  service->UserInitiatedDisconnect("", &error);
+  EXPECT_CALL(*service, EmitDisconnectionEvent(
+                            Metrics::kWiFiDisconnectionTypeExpectedUserAction,
+                            IEEE_80211::kReasonCodeNonAssociated));
+  ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnExpectedSTA) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  int32_t reason = -IEEE_80211::kReasonCodeSenderHasLeft;
+  service->set_expecting_disconnect(true);
+  // If supplicant reports a < 0 disconnection reason it means the station
+  // decided to disconnect. If the service was expecting a disconnection, we
+  // report that the disconnection is expected.
+  EXPECT_CALL(*service, EmitDisconnectionEvent(
+                            Metrics::kWiFiDisconnectionTypeExpectedUserAction,
+                            IEEE_80211::kReasonCodeSenderHasLeft));
+  ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnSSIDSwitch) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service0 =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  MockWiFiServiceRefPtr service1;
+  RpcIdentifier bss_path1(MakeNewEndpointAndService(0, 0, nullptr, &service1));
+  int32_t reason = -IEEE_80211::kReasonCodeSenderHasLeft;
+  // When we're already connected to |service0| and we attempt to connect to
+  // another service, we expect |service0| to report that the disconnection was
+  // expected.
+  EXPECT_CALL(*service0, EmitDisconnectionEvent(
+                             Metrics::kWiFiDisconnectionTypeExpectedUserAction,
+                             IEEE_80211::kReasonCodeSenderHasLeft));
+  InitiateConnect(service1);
+  ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedSTA) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  int32_t reason = -IEEE_80211::kReasonCodeInactivity;
+  service->set_expecting_disconnect(false);
+  // If supplicant reports a < 0 disconnection reason it means the station
+  // decided to disconnect. If the service wasn't expecting a disconnection, we
+  // report that the disconnection is unexpected.
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedSTADisconnect,
+                  IEEE_80211::kReasonCodeInactivity));
+  ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedAP) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  int32_t reason = IEEE_80211::kReasonCodeInactivity;
+  // If supplicant reports a > 0 disconnection reason it means the AP decided to
+  // disconnect.
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+                  IEEE_80211::kReasonCodeInactivity));
+  ReportDisconnectReasonChanged(reason);
+}
+
 TEST_F(WiFiMainTest, GetSuffixFromAuthMode) {
   EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA-PSK"));
   EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA2-PSK"));

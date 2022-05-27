@@ -1356,6 +1356,8 @@ class Metrics : public DefaultServiceObserver {
 
 #if !defined(DISABLE_WIFI)
   // Notifies this object of WiFi disconnect.
+  // TODO(b/234176329): Deprecate those metrics once
+  // go/cros-wifi-structured-metrics-dd has fully landed.
   virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                      IEEE_80211::WiFiReasonCode reason);
 #endif  // DISABLE_WIFI
