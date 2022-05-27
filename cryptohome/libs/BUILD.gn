@@ -398,6 +398,7 @@ static_library("libcryptohome") {
     "../error/cryptohome_le_cred_error.cc",
     "../error/cryptohome_mount_error.cc",
     "../error/cryptohome_tpm_error.cc",
+    "../error/reap.cc",
     "../error/reporting.cc",
     "../error/utilities.cc",
     "../filesystem_layout.cc",

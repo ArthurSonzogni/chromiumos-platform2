@@ -228,6 +228,29 @@ This can be done through verifying the resulting reply's actions:
               ElementsAre(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
 ```
 
+### Disposing of Expected Errors or Retries
+
+Sometimes we'll have a StatusChain that will be disposed because there's a retry that followed or if the error is working as intended. In those situations, we should dispose of the said StatusChain with the Reap*() functions instead of simply letting it disappear.
+
+For instance:
+
+```
+  // The action may fail and it is expected.
+  CryptohomeStatus status = ...;
+  // The WAI error should be disposed of properly.
+  ReapWorkingAsIntendedError(std::move(status));
+```
+
+```
+  CryptohomeStatus status = ...;
+  if (!status.ok()) {
+    // Failed, we'll retry.
+    // The previous error should be disposed of properly.
+    ReapRetryError(std::move(status));
+    status = ...;
+  }
+```
+
 ## Error Locations Tool
 
 A tool is written to deal with the location enums used in
