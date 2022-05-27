@@ -27,10 +27,12 @@ SamplesObserver::ScopedSamplesObserver SamplesObserver::Create(
     double frequency,
     int timeout,
     int samples,
+    OnMojoDisconnectCallback on_mojo_disconnect_callback,
     QuitCallback quit_callback) {
   ScopedSamplesObserver observer(
       new SamplesObserver(ipc_task_runner, device_id, device_type,
                           std::move(channel_ids), frequency, timeout, samples,
+                          std::move(on_mojo_disconnect_callback),
                           std::move(quit_callback)),
       SensorClientDeleter);
 
@@ -75,8 +77,10 @@ SamplesObserver::SamplesObserver(
     double frequency,
     int timeout,
     int samples,
+    OnMojoDisconnectCallback on_mojo_disconnect_callback,
     QuitCallback quit_callback)
     : Observer(std::move(ipc_task_runner),
+               std::move(on_mojo_disconnect_callback),
                std::move(quit_callback),
                device_id,
                device_type,

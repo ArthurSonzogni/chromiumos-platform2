@@ -30,12 +30,14 @@ class QueryImpl final : public SensorClient {
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       cros::mojom::DeviceType device_type,
       std::vector<std::string> attributes,
+      OnMojoDisconnectCallback on_mojo_disconnect_callback,
       QuitCallback quit_callback);
 
  private:
   QueryImpl(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
             cros::mojom::DeviceType device_type,
             std::vector<std::string> attributes,
+            OnMojoDisconnectCallback on_mojo_disconnect_callback,
             QuitCallback quit_callback);
 
   // SensorClient overrides:

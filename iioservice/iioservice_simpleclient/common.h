@@ -8,22 +8,26 @@
 #include <sstream>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 
-std::string GetDeviceTypesInString() {
-  std::stringstream ss;
-  for (int i = 0; i <= static_cast<int32_t>(cros::mojom::DeviceType::kMaxValue);
-       ++i) {
-    if (i != 0)
-      ss << ", ";
-    auto type = static_cast<cros::mojom::DeviceType>(i);
-    ss << type << ": " << i;
-  }
+std::string GetDeviceTypesInString();
 
-  return ss.str();
-}
+class TimeoutDelegate {
+ public:
+  TimeoutDelegate(int timeout_in_milliseconds,
+                  std::string timeout_log,
+                  base::OnceCallback<void()> quit_closure);
+
+ private:
+  void TimeoutTask(std::string timeout_log,
+                   base::OnceCallback<void()> quit_closure);
+
+  base::WeakPtrFactory<TimeoutDelegate> weak_factory_{this};
+};
 
 }  // namespace iioservice
 

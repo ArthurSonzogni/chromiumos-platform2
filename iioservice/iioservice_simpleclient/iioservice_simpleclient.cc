@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
   DEFINE_double(frequency, -1.0, "frequency in Hz set to the device.");
   DEFINE_uint64(timeout, 1000, "Timeout for I/O operations. 0 as no timeout");
   DEFINE_uint64(samples, kNumSuccessReads, "Number of samples to wait for");
+  DEFINE_int32(disconnect_tolerance, 0, "Mojo broker disconnect tolerance");
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS iioservice_simpleclient");
   logging::LoggingSettings settings;
@@ -79,7 +80,8 @@ int main(int argc, char** argv) {
 
   exec_daemon = std::make_unique<iioservice::DaemonSamplesObserver>(
       FLAGS_device_id, static_cast<cros::mojom::DeviceType>(FLAGS_device_type),
-      std::move(channel_ids), FLAGS_frequency, FLAGS_timeout, FLAGS_samples);
+      std::move(channel_ids), FLAGS_frequency, FLAGS_timeout, FLAGS_samples,
+      FLAGS_disconnect_tolerance);
   signal(SIGTERM, signal_handler_stop);
   signal(SIGINT, signal_handler_stop);
   daemon_running = true;

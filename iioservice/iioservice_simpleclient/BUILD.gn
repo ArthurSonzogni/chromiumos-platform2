@@ -22,6 +22,7 @@ pkg_config("target_defaults_pkg_deps") {
 
 static_library("libiioservice_simpleclient") {
   sources = [
+    "common.cc",
     "daemon.cc",
     "daemon_events_observer.cc",
     "daemon_query.cc",

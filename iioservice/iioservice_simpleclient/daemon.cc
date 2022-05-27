@@ -12,13 +12,24 @@
 #include <base/bind.h>
 #include <mojo/core/embedder/embedder.h>
 
-#include "iioservice/include/common.h"
-
 namespace iioservice {
+
+namespace {
+
+constexpr int kMojoBootstrapTimeoutInMilliseconds = 10000;
+constexpr const char kMojoBootstrapTimeoutLog[] =
+    "Daemon is not bootstrapped to the mojo network";
+
+constexpr int kMojoDisconnectTimeoutInMilliseconds = 5000;
+constexpr const char kMojoDisconnectTimeoutLog[] =
+    "Mojo broker didn't disconnect";
+
+}  // namespace
 
 Daemon::~Daemon() = default;
 
-Daemon::Daemon() = default;
+Daemon::Daemon(int mojo_broker_disconnect_tolerance)
+    : mojo_broker_disconnect_tolerance_(mojo_broker_disconnect_tolerance) {}
 
 int Daemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();
@@ -32,6 +43,7 @@ int Daemon::OnInit() {
 
   SetBus(bus_.get());
   BootstrapMojoConnection();
+  SetMojoBootstrapTimeout();
 
   SetSensorClient();
 
@@ -40,12 +52,34 @@ int Daemon::OnInit() {
 
 void Daemon::OnClientReceived(
     mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
+  timeout_delegate_.reset();
   sensor_client_->BindClient(std::move(client));
 }
 
-void Daemon::OnMojoDisconnect() {
-  LOGF(INFO) << "Quitting this process.";
-  Quit();
+void Daemon::OnMojoDisconnect(bool mojo_broker) {
+  if (mojo_broker_disconnect_tolerance_ == 0) {
+    Quit();
+    return;
+  }
+
+  if (!mojo_broker) {
+    DCHECK(!timeout_delegate_);
+    timeout_delegate_.reset(new TimeoutDelegate(
+        kMojoDisconnectTimeoutInMilliseconds, kMojoDisconnectTimeoutLog,
+        base::BindOnce(&Daemon::Quit, base::Unretained(this))));
+    return;
+  }
+
+  timeout_delegate_.reset();
+  --mojo_broker_disconnect_tolerance_;
+  ReconnectMojoWithDelay();
+  SetMojoBootstrapTimeout();
+}
+
+void Daemon::SetMojoBootstrapTimeout() {
+  timeout_delegate_.reset(new TimeoutDelegate(
+      kMojoBootstrapTimeoutInMilliseconds, kMojoBootstrapTimeoutLog,
+      base::BindOnce(&Daemon::Quit, base::Unretained(this))));
 }
 
 }  // namespace iioservice

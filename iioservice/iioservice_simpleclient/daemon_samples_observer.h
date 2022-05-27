@@ -21,7 +21,8 @@ class DaemonSamplesObserver : public Daemon {
                         std::vector<std::string> channel_ids,
                         double frequency,
                         int timeout,
-                        int samples);
+                        int samples,
+                        int mojo_broker_disconnect_tolerance);
   ~DaemonSamplesObserver() override;
 
  protected:

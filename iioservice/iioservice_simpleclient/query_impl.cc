@@ -17,9 +17,11 @@ QueryImpl::ScopedQueryImpl QueryImpl::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     cros::mojom::DeviceType device_type,
     std::vector<std::string> attributes,
+    OnMojoDisconnectCallback on_mojo_disconnect_callback,
     QuitCallback quit_callback) {
   ScopedQueryImpl query(
       new QueryImpl(ipc_task_runner, device_type, std::move(attributes),
+                    std::move(on_mojo_disconnect_callback),
                     std::move(quit_callback)),
       SensorClientDeleter);
 
@@ -29,8 +31,11 @@ QueryImpl::ScopedQueryImpl QueryImpl::Create(
 QueryImpl::QueryImpl(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
                      cros::mojom::DeviceType device_type,
                      std::vector<std::string> attributes,
+                     OnMojoDisconnectCallback on_mojo_disconnect_callback,
                      QuitCallback quit_callback)
-    : SensorClient(std::move(ipc_task_runner), std::move(quit_callback)),
+    : SensorClient(std::move(ipc_task_runner),
+                   std::move(on_mojo_disconnect_callback),
+                   std::move(quit_callback)),
       device_type_(device_type),
       attributes_(std::move(attributes)) {
   DCHECK(!attributes_.empty());
@@ -59,7 +64,7 @@ void QueryImpl::OnDeviceDisconnect(mojo::RemoteSetElementId id) {
   LOGF(ERROR) << "SensorDevice disconnected with RemoteSetElementId: " << id;
 
   if (remotes_.empty())
-    Reset();
+    OnMojoDisconnect(false);
 }
 
 void QueryImpl::GetAllDeviceIdsCallback(

@@ -25,10 +25,12 @@ EventsObserver::ScopedEventsObserver EventsObserver::Create(
     cros::mojom::DeviceType device_type,
     std::vector<int> event_indices,
     int events,
+    OnMojoDisconnectCallback on_mojo_disconnect_callback,
     QuitCallback quit_callback) {
   ScopedEventsObserver observer(
       new EventsObserver(ipc_task_runner, device_id, device_type,
                          std::move(event_indices), events,
+                         std::move(on_mojo_disconnect_callback),
                          std::move(quit_callback)),
       SensorClientDeleter);
 
@@ -64,8 +66,10 @@ EventsObserver::EventsObserver(
     cros::mojom::DeviceType device_type,
     std::vector<int> event_indices,
     int events,
+    OnMojoDisconnectCallback on_mojo_disconnect_callback,
     QuitCallback quit_callback)
     : Observer(std::move(ipc_task_runner),
+               std::move(on_mojo_disconnect_callback),
                std::move(quit_callback),
                device_id,
                device_type,
