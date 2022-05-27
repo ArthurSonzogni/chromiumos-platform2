@@ -348,6 +348,22 @@ message StartArcVmRequest {
 
   // Option to enable disable consumer auto update toggle.
   bool enable_consumer_auto_update_toggle = 16;
+
+  // Display orientation in clock-wise degrees. ORIENTATION_90 means the panel's
+  // right side is the top side of the natural device orientation.
+  enum DisplayOrientation {
+    ORIENTATION_0 = 0;
+    ORIENTATION_90 = 1;
+    ORIENTATION_180 = 2;
+    ORIENTATION_270 = 3;
+  }
+  // The orientation of the display panel in respect to the natural device
+  // orientation. For some devices, the panel's orientation doesn't match to the
+  // device's default orientation. (e.g. a device this is default landscape may
+  // have a portrait display.). It's used to set
+  // 'ro.surface_flinger.primary_display_orientation' property to tell the
+  // orientation to surfaceflinger.
+  DisplayOrientation panel_orientation = 17;
 }
 
 enum VmStatus {

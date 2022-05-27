@@ -124,7 +124,9 @@ class ArcVm final : public VmBaseImpl {
 
   // Returns the kernel parameters for the VM
   static std::vector<std::string> GetKernelParams(
-      crossystem::Crossystem* cros_system, int seneschal_server_port);
+      crossystem::Crossystem* cros_system,
+      int seneschal_server_port,
+      const StartArcVmRequest& request);
 
   // Adjusts the amount of CPU the ARCVM processes are allowed to use. When
   // the state is CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED, the

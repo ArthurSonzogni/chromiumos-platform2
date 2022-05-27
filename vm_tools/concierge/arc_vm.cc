@@ -831,7 +831,9 @@ void ArcVm::HandleLmkdVsockRead() {
 
 // static
 std::vector<std::string> ArcVm::GetKernelParams(
-    crossystem::Crossystem* cros_system, int seneschal_server_port) {
+    crossystem::Crossystem* cros_system,
+    int seneschal_server_port,
+    const StartArcVmRequest& request) {
   // Build the plugin params.
   bool is_dev_mode = cros_system->VbGetSystemPropertyInt("cros_debug") == 1;
   std::string channel = GetChromeOsChannelFromLsbRelease();
@@ -848,6 +850,9 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "androidboot.chromeos_channel=" + channel,
       base::StringPrintf("androidboot.seneschal_server_port=%d",
                          seneschal_server_port),
+      "androidboot.arc.primary_display_rotation=" +
+          StartArcVmRequest::DisplayOrientation_Name(
+              request.panel_orientation()),
   };
   // We run vshd under a restricted domain on non-test images.
   // (go/arcvm-android-sh-restricted)
