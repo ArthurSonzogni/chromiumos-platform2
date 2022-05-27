@@ -19,7 +19,6 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
-
 #include "vm_tools/cicerone/service.h"
 
 namespace {
@@ -61,10 +60,28 @@ grpc::Status ContainerListenerImpl::ContainerReady(
                      &result, &event));
   event.Wait();
   if (!result) {
-    LOG(ERROR) << "Received ContainerReady but could not find matching VM: "
-               << ctx->peer();
-    return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Cannot find VM for ContainerListener");
+    // TODO(b/233831053): We're trying again in a minute to see if this is the
+    // cause of b/233831053. If it isn't, we should delete this. If it is, we
+    // should check more frequently than once after a minute so users don't need
+    // to wait unnecessarily long.
+    LOG(ERROR)
+        << "Received ContainerReady but could not find matching VM: "
+        << ctx->peer()
+        << ". Trying again in a minute in case LXD's being slow to transition";
+    task_runner_->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&vm_tools::cicerone::Service::ContainerStartupCompleted,
+                       service_, request->token(), cid, request->garcon_port(),
+                       &result, &event),
+        base::Minutes(1));
+    event.Wait();
+
+    if (result) {
+      LOG(INFO) << "ContainerStartupCompleted succeeded on retry";
+    } else {
+      return grpc::Status(grpc::FAILED_PRECONDITION,
+                          "Cannot find VM for ContainerListener");
+    }
   }
 
   return grpc::Status::OK;
