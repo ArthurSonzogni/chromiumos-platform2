@@ -69,7 +69,7 @@ bool ShillScriptsTool::Run(const base::ScopedFD& outfd,
 
   auto p = std::make_unique<ProcessWithId>();
   p->SandboxAs(kUser, kGroup);
-  p->Init();
+  p->Init({"-n"});  // Add NoNewPrivs.
 
   const base::FilePath dir(kScriptsDir);
   p->AddArg(dir.Append(script).value());
