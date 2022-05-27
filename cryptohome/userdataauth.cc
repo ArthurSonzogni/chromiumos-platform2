@@ -1110,19 +1110,21 @@ void UserDataAuth::Pkcs11RestoreTpmTokens() {
   }
 }
 
-void UserDataAuth::ResetAllTPMContext() {
+void UserDataAuth::EnsureCryptohomeKeys() {
   if (!IsOnMountThread()) {
     // We are not on mount thread, but to be safe, we'll only access Mount
     // objects on mount thread, so let's post ourself there.
     PostTaskToMountThread(FROM_HERE,
-                          base::BindOnce(&UserDataAuth::ResetAllTPMContext,
+                          base::BindOnce(&UserDataAuth::EnsureCryptohomeKeys,
                                          base::Unretained(this)));
     return;
   }
 
   AssertOnMountThread();
 
-  crypto_->EnsureTpm(true);
+  if (!cryptohome_keys_manager_->HasAnyCryptohomeKey()) {
+    cryptohome_keys_manager_->Init();
+  }
 }
 
 void UserDataAuth::set_cleanup_threshold(uint64_t cleanup_threshold) {
@@ -1160,9 +1162,8 @@ void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
   ownership_callback_has_run_ = true;
 
   if (took_ownership) {
-    // Reset the TPM context of all mounts, that is, force a reload of
-    // cryptohome keys, and make sure it is loaded and ready for every mount.
-    ResetAllTPMContext();
+    // Make sure cryptohome keys are loaded and ready for every mount.
+    EnsureCryptohomeKeys();
 
     // There might be some mounts that is half way through the PKCS#11
     // initialization, let's resume them.

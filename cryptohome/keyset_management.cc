@@ -423,13 +423,15 @@ KeysetManagement::AddInitialKeysetImpl(
 }
 
 bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
-  // Calling EnsureTpm here handles the case where a user logged in while
-  // cryptohome was taking TPM ownership.  In that case, their vault keyset
-  // would be scrypt-wrapped and the TPM would not be connected.  If we're
-  // configured to use the TPM, calling EnsureTpm will try to connect, and
-  // if successful, the call to is_cryptohome_key_loaded() below will succeed,
-  // allowing re-wrapping (migration) using the TPM.
-  crypto_->EnsureTpm(false);
+  // Ensure the cryptohome keys are initialized to handle the case where a user
+  // logged in while cryptohome was taking TPM ownership.  In that case, their
+  // vault keyset may be scrypt-wrapped. If the call to
+  // is_cryptohome_key_loaded() below succeed, allowing re-wrapping (migration)
+  // using the TPM.
+  CryptohomeKeysManager* keys_manager = crypto_->cryptohome_keys_manager();
+  if (keys_manager && !keys_manager->HasAnyCryptohomeKey()) {
+    keys_manager->Init();
+  }
 
   if (!vault_keyset->HasWrappedChapsKey()) {
     vault_keyset->CreateRandomChapsKey();

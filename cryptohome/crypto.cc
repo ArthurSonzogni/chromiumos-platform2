@@ -83,16 +83,6 @@ bool Crypto::Init(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager) {
   return true;
 }
 
-CryptoError Crypto::EnsureTpm(bool reload_key) const {
-  CryptoError result = CryptoError::CE_NONE;
-  if (tpm_ && cryptohome_keys_manager_) {
-    if (reload_key || !cryptohome_keys_manager_->HasAnyCryptohomeKey()) {
-      cryptohome_keys_manager_->Init();
-    }
-  }
-  return result;
-}
-
 void Crypto::PasswordToPasskey(const char* password,
                                const brillo::SecureBlob& salt,
                                SecureBlob* passkey) {

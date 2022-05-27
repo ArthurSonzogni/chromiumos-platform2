@@ -56,9 +56,6 @@ class Crypto {
                                 const brillo::SecureBlob& salt,
                                 brillo::SecureBlob* passkey);
 
-  // Ensures that the TPM is connected
-  virtual CryptoError EnsureTpm(bool reload_key) const;
-
   // Attempts to reset an LE credential, specified by |vk|.
   // Returns true on success.
   // On failure, false is returned and |error| is set with the appropriate

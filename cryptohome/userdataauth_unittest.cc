@@ -1690,8 +1690,9 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
 
   SetupMount("foo@gmail.com");
 
-  // Called by ResetAllTPMContext().
-  EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
+  // Called by EnsureCryptohomeKeys().
+  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey())
+      .WillOnce(Return(true));
   // Called by InitializeInstallAttributes()
   EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
 
@@ -1712,8 +1713,10 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
 
   SetupMount("foo@gmail.com");
 
-  // Called by ResetAllTPMContext().
-  EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
+  // Called by EnsureCryptohomeKeys().
+  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey())
+      .WillOnce(Return(false));
+  EXPECT_CALL(cryptohome_keys_manager_, Init()).Times(1);
   // Called by InitializeInstallAttributes()
   EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
 

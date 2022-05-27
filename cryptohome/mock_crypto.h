@@ -22,8 +22,6 @@ class MockCrypto : public Crypto {
  public:
   MockCrypto() : Crypto(NULL) {}
   virtual ~MockCrypto() {}
-
-  MOCK_METHOD(CryptoError, EnsureTpm, (bool), (const, override));
 };
 
 }  // namespace cryptohome

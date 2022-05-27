@@ -162,9 +162,8 @@ class UserDataAuth {
   //          if false, unmounts shadows mounts with no open files.
   bool CleanUpStaleMounts(bool force);
 
-  // Calling this function will reset the TPM context of every mount, that is,
-  // it'll force a reload of all cryptohome key that is associated with mounts.
-  void ResetAllTPMContext();
+  // Ensures the cryptohome keys had been loaded.
+  void EnsureCryptohomeKeys();
 
   // Set the |force_ecryptfs_| variable, if true, all mounts will use eCryptfs
   // for encryption. If eCryptfs is not used, then dircrypto (the ext4
