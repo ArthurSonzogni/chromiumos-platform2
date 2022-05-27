@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <map>
 
 #include "runtime_probe/utils/file_test_utils.h"
 #include "runtime_probe/utils/file_utils.h"
@@ -11,16 +12,7 @@ namespace runtime_probe {
 
 class FileUtilsTest : public BaseFileTest {
  protected:
-  void SetUp() {
-    CreateTestRoot();
-    SetFile("a/b1/c1", "c1");
-    SetFile("a/b1/c2", "c2");
-    SetFile("a/b1/c3", "c3");
-    SetFile("a/b2/c1", "c1");
-    SetFile("a/b3/c1", "c1");
-    SetFile("s/*", "");
-    SetFile("s/[test]", "");
-  }
+  void SetUp() { CreateTestRoot(); }
 
   std::vector<base::FilePath> ToFilePathVector(
       const std::vector<std::string>& in) {
@@ -30,6 +22,14 @@ class FileUtilsTest : public BaseFileTest {
     }
     // Make sure the order is the same as the glob results.
     sort(res.begin(), res.end());
+    return res;
+  }
+
+  base::Value ToDictValue(const std::map<std::string, std::string>& data) {
+    base::Value res(base::Value::Type::DICTIONARY);
+    for (const auto& item : data) {
+      res.SetKey(item.first, base::Value(item.second));
+    }
     return res;
   }
 };
@@ -46,30 +46,45 @@ std::vector<base::FilePath> GlobForTest(const base::FilePath& pattern) {
 }  // namespace
 
 TEST_F(FileUtilsTest, MapFilesToDict) {
+  SetFile("a/b1/c1", "c1");
+  SetFile("a/b1/c2", "c2");
+  SetFile("a/b1/c3", "c3");
+
   const std::vector<std::string> keys{"c1", "c2"};
   const std::vector<std::string> optional_keys{"c3", "c4"};
-  const std::vector<std::string> res_files{"c1", "c2", "c3"};
-  base::Value res(base::Value::Type::DICTIONARY);
-  for (const auto& file : res_files) {
-    res.SetKey(file, base::Value(file));
-  }
   auto path = GetPathUnderRoot("a/b1");
-  EXPECT_EQ(MapFilesToDict(path, keys, optional_keys), res);
+  EXPECT_EQ(MapFilesToDict(path, keys, optional_keys), ToDictValue({
+                                                           {"c1", "c1"},
+                                                           {"c2", "c2"},
+                                                           {"c3", "c3"},
+                                                       }));
 }
 
 TEST_F(FileUtilsTest, Glob) {
+  SetFile("a/b1/c1", "c1");
+  SetFile("a/b1/c2", "c2");
+  SetFile("a/b1/c3", "c3");
+  SetFile("a/b2/c1", "c1");
+  SetFile("a/b3/c1", "c1");
+
   auto path = GetPathUnderRoot("a/*/?1");
   const std::vector<std::string> res{"a/b1/c1", "a/b2/c1", "a/b3/c1"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobOneFile) {
+  SetFile("a/b2/c1", "c1");
+  SetFile("a/b2/c2", "c2");  // This should match.
+
   auto path = GetPathUnderRoot("a/b2/c1");
   const std::vector<std::string> res{"a/b2/c1"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobDir) {
+  SetFile("a/b2/c1", "c1");
+  SetFile("a/b1/c1", "c1");  // This should match.
+
   auto path = GetPathUnderRoot("a/b2/");
   const std::vector<std::string> res{"a/b2"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
@@ -82,12 +97,16 @@ TEST_F(FileUtilsTest, GlobNoFile) {
 }
 
 TEST_F(FileUtilsTest, GlobSpecial1) {
+  SetFile("s/*", "");  // File name contains "*".
+
   auto path = GetPathUnderRoot("s/[*]");
   const std::vector<std::string> res{"s/*"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobSpecial2) {
+  SetFile("s/[test]", "");  // File name contains "[]".
+
   auto path = GetPathUnderRoot("s/[[]test]");
   const std::vector<std::string> res{"s/[test]"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
