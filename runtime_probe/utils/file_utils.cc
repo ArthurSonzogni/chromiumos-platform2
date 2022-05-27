@@ -16,15 +16,6 @@
 
 #include "runtime_probe/utils/file_utils.h"
 
-using base::FilePath;
-using base::ReadFileToStringWithMaxSize;
-using base::TrimWhitespaceASCII;
-using base::Value;
-using base::TrimPositions::TRIM_ALL;
-using std::pair;
-using std::string;
-using std::vector;
-
 namespace {
 
 constexpr int kReadFileMaxSize = 1024;
@@ -32,7 +23,7 @@ constexpr int kGlobIterateCountLimit = 32768;
 
 bool ReadFile(const base::FilePath& dir_path,
               base::StringPiece file_name,
-              string* out) {
+              std::string* out) {
   if (base::FilePath{file_name}.IsAbsolute()) {
     LOG(ERROR) << "file_name " << file_name << " is absolute";
     return false;
@@ -40,18 +31,18 @@ bool ReadFile(const base::FilePath& dir_path,
   const auto file_path = dir_path.Append(file_name);
   if (!base::PathExists(file_path))
     return false;
-  if (!ReadFileToStringWithMaxSize(file_path, out, kReadFileMaxSize)) {
+  if (!base::ReadFileToStringWithMaxSize(file_path, out, kReadFileMaxSize)) {
     LOG(ERROR) << file_path.value() << " exists, but we can't read it";
     return false;
   }
-  TrimWhitespaceASCII(*out, TRIM_ALL, out);
+  base::TrimWhitespaceASCII(*out, base::TrimPositions::TRIM_ALL, out);
   return true;
 }
 
-bool HasPathWildcard(const string& path) {
+bool HasPathWildcard(const std::string& path) {
   const std::string wildcard = "*?[";
   for (const auto& c : path) {
-    if (wildcard.find(c) != string::npos)
+    if (wildcard.find(c) != std::string::npos)
       return true;
   }
   return false;
@@ -94,19 +85,19 @@ std::vector<base::FilePath> GlobInternal(
 namespace runtime_probe {
 namespace internal {
 
-bool ReadFileToDict(const FilePath& dir_path,
+bool ReadFileToDict(const base::FilePath& dir_path,
                     base::StringPiece key,
                     bool log_error,
-                    Value& result) {
+                    base::Value& result) {
   return ReadFileToDict(dir_path, {key, key}, log_error, result);
 }
 
-bool ReadFileToDict(const FilePath& dir_path,
-                    const pair<base::StringPiece, base::StringPiece>& key,
+bool ReadFileToDict(const base::FilePath& dir_path,
+                    const std::pair<base::StringPiece, base::StringPiece>& key,
                     bool log_error,
-                    Value& result) {
+                    base::Value& result) {
   base::StringPiece file_name = key.second;
-  string content;
+  std::string content;
   if (!ReadFile(dir_path, file_name, &content)) {
     LOG_IF(ERROR, log_error) << "file \"" << file_name << "\" is required.";
     return false;
