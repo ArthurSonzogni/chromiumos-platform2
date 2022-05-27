@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -37,8 +38,8 @@ class UsbDriverTracker {
 
   // Register a client with |path| and watch its lifeline using |lifeline_fd|.
   // Return the assigned client id after successfully registration.
-  absl::optional<std::string> RegisterClient(int lifeline_fd,
-                                             const base::FilePath& path);
+  std::optional<std::string> RegisterClient(int lifeline_fd,
+                                            const base::FilePath& path);
 
  private:
   friend class UsbDriverTrackerTest;

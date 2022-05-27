@@ -133,7 +133,7 @@ UsbDriverTracker::WatchLifelineFd(const std::string& client_id,
                           weak_ptr_factory_.GetWeakPtr(), client_id));
 }
 
-absl::optional<std::string> UsbDriverTracker::RegisterClient(
+std::optional<std::string> UsbDriverTracker::RegisterClient(
     int lifeline_fd, const base::FilePath& path) {
   // |dup_lifeline_fd| is the duplicated file descriptor of the client's
   // lifeline pipe read end. The ownership needs to be transferred to the
@@ -141,12 +141,12 @@ absl::optional<std::string> UsbDriverTracker::RegisterClient(
   base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), O_RDWR)));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to open path " << path;
-    return absl::nullopt;
+    return std::nullopt;
   }
   base::ScopedFD dup_lifeline_fd(HANDLE_EINTR(dup(lifeline_fd)));
   if (!dup_lifeline_fd.is_valid()) {
     PLOG(ERROR) << "Failed to dup lifeline_fd " << lifeline_fd;
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   std::string client_id;
@@ -158,7 +158,7 @@ absl::optional<std::string> UsbDriverTracker::RegisterClient(
   if (!controller) {
     LOG(ERROR) << "Unable to watch lifeline_fd " << dup_lifeline_fd.get()
                << " for client " << client_id;
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   dev_fds_.emplace(client_id,
