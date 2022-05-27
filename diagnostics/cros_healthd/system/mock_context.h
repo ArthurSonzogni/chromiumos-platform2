@@ -16,7 +16,6 @@
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
 #include "diagnostics/common/system/fake_powerd_adapter.h"
-#include "diagnostics/common/system/mock_debugd_adapter.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
@@ -63,7 +62,6 @@ class MockContext final : public Context {
   org::chromium::debugdProxyMock* mock_debugd_proxy() const;
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
   org::freedesktop::fwupdProxyMock* mock_fwupd_proxy() const;
-  MockDebugdAdapter* mock_debugd_adapter() const;
   FakeNetworkHealthAdapter* fake_network_health_adapter() const;
   MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() const;
   FakePowerdAdapter* fake_powerd_adapter() const;

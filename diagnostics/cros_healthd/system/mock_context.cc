@@ -27,7 +27,6 @@ MockContext::MockContext() {
       std::make_unique<testing::StrictMock<org::chromium::debugdProxyMock>>();
   fwupd_proxy_ =
       std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
-  debugd_adapter_ = std::make_unique<testing::StrictMock<MockDebugdAdapter>>();
   network_health_adapter_ = std::make_unique<FakeNetworkHealthAdapter>();
   network_diagnostics_adapter_ =
       std::make_unique<MockNetworkDiagnosticsAdapter>();
@@ -80,11 +79,6 @@ org::chromium::cras::ControlProxyMock* MockContext::mock_cras_proxy() const {
 org::freedesktop::fwupdProxyMock* MockContext::mock_fwupd_proxy() const {
   return static_cast<testing::StrictMock<org::freedesktop::fwupdProxyMock>*>(
       fwupd_proxy_.get());
-}
-
-MockDebugdAdapter* MockContext::mock_debugd_adapter() const {
-  return static_cast<testing::StrictMock<MockDebugdAdapter>*>(
-      debugd_adapter_.get());
 }
 
 FakeNetworkHealthAdapter* MockContext::fake_network_health_adapter() const {

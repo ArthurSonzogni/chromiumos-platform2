@@ -21,7 +21,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "diagnostics/common/system/debugd_adapter_impl.h"
 #include "diagnostics/common/system/powerd_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
@@ -83,8 +82,6 @@ std::unique_ptr<Context> Context::Create(
       dbus::ObjectPath(cras::kCrasServicePath));
   context->debugd_proxy_ =
       std::make_unique<org::chromium::debugdProxy>(dbus_bus);
-  context->debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
-      std::make_unique<org::chromium::debugdProxy>(dbus_bus));
   context->fwupd_proxy_ = std::make_unique<org::freedesktop::fwupdProxy>(
       dbus_bus, kFwupdServiceName);
   context->powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
@@ -146,10 +143,6 @@ org::chromium::cras::ControlProxyInterface* Context::cras_proxy() const {
 
 org::freedesktop::fwupdProxyInterface* Context::fwupd_proxy() const {
   return fwupd_proxy_.get();
-}
-
-DebugdAdapter* Context::debugd_adapter() const {
-  return debugd_adapter_.get();
 }
 
 NetworkHealthAdapter* Context::network_health_adapter() const {

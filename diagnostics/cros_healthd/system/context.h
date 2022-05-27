@@ -18,7 +18,6 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
-#include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/common/system/powerd_adapter.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
@@ -97,10 +96,6 @@ class Context {
   // Use the object returned by fwupd_proxy() to communicate with fwupd through
   // dbus.
   org::freedesktop::fwupdProxyInterface* fwupd_proxy() const;
-  // Use the object returned by debugd_adapter() to make calls to debugd.
-  // Example: cros_healthd calls out to debugd with async callbacks when it
-  // needs to trigger nvme self-test or collect data like progress info.
-  DebugdAdapter* debugd_adapter() const;
   // Use the object returned by network_health_adapter() to make requests to the
   // NetworkHealthService. Example: cros_healthd calls out to the
   // NetworkHealthService to get network telemetry data.
@@ -167,7 +162,6 @@ class Context {
       chromium_data_collector_relay_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
-  std::unique_ptr<DebugdAdapter> debugd_adapter_;
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
   std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
