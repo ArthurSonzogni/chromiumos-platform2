@@ -77,17 +77,12 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
       const ErrorLocationPair& loc,
       const std::set<CryptohomeError::Action>& actions,
       const hwsec::TPMRetryAction retry,
-      std::optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>
-          tpm_error,
       const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
   hwsec::TPMRetryAction ToTPMRetryAction() const { return retry_; }
 
  private:
   hwsec::TPMRetryAction retry_;
-
-  std::optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>
-      tpm_error_;
 };
 
 }  // namespace error

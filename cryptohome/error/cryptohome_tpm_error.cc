@@ -75,17 +75,19 @@ StatusChain<CryptohomeTPMError> FromTPMErrorBase(
     last = err;
   }
 
-  // Populate the retry actions.
-  std::set<CryptohomeError::Action> actual_actions;
-  auto retry = last->ToTPMRetryAction();
-  PopulateActionFromRetry(retry, &actual_actions);
-
   // Get the unified error code from the last node.
   CryptohomeError::ErrorLocation loc = last->UnifiedErrorCode();
-  std::string loc_str = last->ToString();
+
+  // Populate the retry actions and status string.
+  std::set<CryptohomeError::Action> actual_actions;
+  auto retry = status->ToTPMRetryAction();
+  PopulateActionFromRetry(retry, &actual_actions);
+  std::string loc_str =
+      base::StringPrintf("(%s)", status.ToFullString().c_str());
+
   return NewStatus<CryptohomeTPMError>(
       CryptohomeError::ErrorLocationPair(loc, std::move(loc_str)),
-      std::move(actual_actions), retry, std::move(status), std::nullopt);
+      std::move(actual_actions), retry, std::nullopt);
 }
 
 }  // namespace
@@ -94,13 +96,10 @@ CryptohomeTPMError::CryptohomeTPMError(
     const ErrorLocationPair& loc,
     const std::set<CryptohomeError::Action>& actions,
     const hwsec::TPMRetryAction retry,
-    std::optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>
-        tpm_error,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : CryptohomeCryptoError(
           loc, actions, TpmAuthBlockUtils::TPMRetryActionToCrypto(retry), ec),
-      retry_(retry),
-      tpm_error_(std::move(tpm_error)) {}
+      retry_(retry) {}
 
 StatusChain<CryptohomeTPMError> CryptohomeTPMError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
@@ -109,7 +108,7 @@ StatusChain<CryptohomeTPMError> CryptohomeTPMError::MakeStatusTrait::operator()(
   PopulateActionFromRetry(retry, &actions);
   auto unified = ErrorLocationToUnified(loc);
   return NewStatus<CryptohomeTPMError>(unified, std::move(actions), retry,
-                                       std::nullopt, std::nullopt);
+                                       std::nullopt);
 }
 
 StatusChain<CryptohomeTPMError> CryptohomeTPMError::MakeStatusTrait::operator()(
@@ -140,8 +139,7 @@ CryptohomeTPMError::MakeStatusTrait::Unactioned::Wrap(
     StatusChain<CryptohomeTPMError> status) && {
   DCHECK(!status.ok());
   return NewStatus<CryptohomeTPMError>(unified_loc_, std::move(actions_),
-                                       status->ToTPMRetryAction(), std::nullopt,
-                                       std::nullopt)
+                                       status->ToTPMRetryAction(), std::nullopt)
       .Wrap(std::move(status));
 }
 

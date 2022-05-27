@@ -72,9 +72,9 @@ TEST_F(CryptohomeTPMErrorTest, FromTPMError) {
 
 TEST_F(CryptohomeTPMErrorTest, FromTPMErrorStacked) {
   StatusChain<TPMErrorBase> status1 =
-      MakeStatus<TPMError>("QAQ", hwsec::TPMRetryAction::kReboot);
+      MakeStatus<TPMError>("QAQ", hwsec::TPMRetryAction::kLater);
   StatusChain<TPMErrorBase> status2 =
-      MakeStatus<TPMError>("QwQ", hwsec::TPMRetryAction::kLater)
+      MakeStatus<TPMError>("QwQ", hwsec::TPMRetryAction::kReboot)
           .Wrap(std::move(status1));
 
   auto err1 = MakeStatus<CryptohomeTPMError>(std::move(status2));
