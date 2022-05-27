@@ -74,7 +74,7 @@ constexpr char kUser[] = "Test User";
 
 class AuthBlockUtilityImplTest : public ::testing::Test {
  public:
-  AuthBlockUtilityImplTest() : crypto_(&platform_) {}
+  AuthBlockUtilityImplTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
   AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
   AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
   virtual ~AuthBlockUtilityImplTest() {}
@@ -93,10 +93,10 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
-  Crypto crypto_;
   brillo::SecureBlob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockTpm> tpm_;
+  Crypto crypto_;
   hwsec::MockCryptohomeFrontend& hwsec_ = *tpm_.get_mock_hwsec();
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
@@ -119,7 +119,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
           DoAll(SaveArg<0>(&le_secret), ReturnError<CryptohomeLECredError>()));
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
@@ -154,7 +154,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
 
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   ASSERT_TRUE(DeriveSecretsScrypt(passkey, salt, {&le_secret}));
 
@@ -190,7 +190,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   Credentials credentials(kUser, passkey);
 
   brillo::SecureBlob scrypt_derived_key;
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(hwsec_, GetAuthValue(_, _))
@@ -231,7 +231,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob tpm_key(20, 'B');
   brillo::SecureBlob salt(system_salt_);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
@@ -266,7 +266,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob aes_key;
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   brillo::Blob encrypt_out(64, 'X');
   EXPECT_CALL(hwsec_, Encrypt(_, _)).WillOnce(ReturnValue(encrypt_out));
@@ -302,7 +302,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
   brillo::SecureBlob tpm_key;
   brillo::SecureBlob salt(system_salt_);
   brillo::SecureBlob aes_key(32);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
   ASSERT_TRUE(DeriveSecretsScrypt(passkey, salt, {&aes_key}));
 
   brillo::Blob encrypt_out(64, 'X');
@@ -335,7 +335,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   // Setup test inputs and the mock expectations.
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   brillo::SecureBlob scrypt_derived_key;
   brillo::SecureBlob auth_value(32, 'a');
@@ -378,7 +378,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob salt(system_salt_);
   brillo::SecureBlob fake_hash("public key hash");
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
   EXPECT_CALL(hwsec_, GetAuthValue(_, _))
@@ -531,7 +531,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
 // AuthBlockType::kDoubleWrappedCompat.
 TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
   // Setup test inputs and the mock expectations.
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
   brillo::SecureBlob wrapped_keyset = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0x4D, 0xEE, 0xFC, 0x79, 0x0D, 0x79, 0x08, 0x79,
@@ -748,7 +748,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
   Credentials credentials(kUser, passkey);
 
   brillo::SecureBlob scrypt_derived_key;
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(hwsec_, GetAuthValue(_, _))
@@ -796,7 +796,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob tpm_key(20, 'B');
   brillo::SecureBlob salt(system_salt_);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
@@ -837,7 +837,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
 TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   EXPECT_CALL(challenge_credentials_helper_, GenerateNew(kUser, _, _, _, _))
       .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&,
@@ -928,7 +928,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
 TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   AuthBlockState auth_state{
       .state =
@@ -1103,7 +1103,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
   Credentials credentials(kUser, passkey);
 
   brillo::SecureBlob scrypt_derived_key;
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
@@ -1358,7 +1358,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
 TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
@@ -1608,7 +1608,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
   auto mock_key_challenge_service =
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
@@ -1631,7 +1631,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
-  crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+  crypto_.Init();
   // Test. No valid challenge_credentials, no valid key_challenge_service or
   // account_id.
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(

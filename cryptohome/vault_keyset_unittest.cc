@@ -53,6 +53,7 @@ using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::SecureBlobToHex;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::OkStatus;
 
@@ -160,7 +161,7 @@ class LibScryptCompatVaultKeyset : public VaultKeyset {
 
 class VaultKeysetTest : public ::testing::Test {
  public:
-  VaultKeysetTest() : crypto_(&platform_) {}
+  VaultKeysetTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
   VaultKeysetTest(const VaultKeysetTest&) = delete;
   VaultKeysetTest& operator=(const VaultKeysetTest&) = delete;
 
@@ -182,8 +183,9 @@ class VaultKeysetTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
-  Crypto crypto_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
+  Crypto crypto_;
 };
 
 TEST_F(VaultKeysetTest, AllocateRandom) {
@@ -645,8 +647,7 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
 TEST_F(VaultKeysetTest, DecryptTPMReboot) {
   // Test to have Decrypt() fail because of CE_TPM_REBOOT.
   // Setup
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  crypto_.Init(&tpm_, &cryptohome_keys_manager);
+  crypto_.Init();
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
@@ -681,7 +682,7 @@ TEST_F(VaultKeysetTest, DecryptTPMReboot) {
   new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
 
-  EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
+  EXPECT_CALL(*cryptohome_keys_manager_.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillRepeatedly(Return(false));
 
@@ -811,7 +812,7 @@ TEST_F(VaultKeysetTest, DecryptWithAuthBlockFailNotLoaded) {
 
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
-  LeCredentialsManagerTest() : crypto_(&platform_) {
+  LeCredentialsManagerTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {
     EXPECT_CALL(cryptohome_keys_manager_, Init())
         .WillOnce(Return());  // because HasCryptohomeKey returned false once.
 
@@ -830,7 +831,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
 
-    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    crypto_.Init();
 
     pin_vault_keyset_.Initialize(&platform_, &crypto_);
   }
@@ -845,9 +846,9 @@ class LeCredentialsManagerTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
-  Crypto crypto_;
   NiceMock<MockTpm> tpm_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
+  Crypto crypto_;
   MockLECredentialManager* le_cred_manager_;
 
   VaultKeyset pin_vault_keyset_;

@@ -40,7 +40,6 @@
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
@@ -224,9 +223,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   }
 
  protected:
-  // Mock Crypto object, will be passed to UserDataAuth for its internal use.
-  NiceMock<MockCrypto> crypto_;
-
   // Mock KeysetManagent object, will be passed to UserDataAuth for its internal
   // use.
   NiceMock<MockKeysetManagement> keyset_management_;
@@ -261,6 +257,9 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Cryptohome Key Loader object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
+
+  // Fake Crypto object, will be passed to UserDataAuth for its internal use.
+  Crypto crypto_{&tpm_, &cryptohome_keys_manager_};
 
   // Mock TPM Manager utility object, will be passed to UserDataAuth for its
   // internal use.

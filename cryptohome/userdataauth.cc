@@ -295,8 +295,8 @@ UserDataAuth::UserDataAuth()
       tpm_manager_util_(nullptr),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
-      default_crypto_(new Crypto(platform_)),
-      crypto_(default_crypto_.get()),
+      default_crypto_(nullptr),
+      crypto_(nullptr),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
@@ -386,7 +386,13 @@ bool UserDataAuth::Initialize() {
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
-  if (!crypto_->Init(tpm_, cryptohome_keys_manager_)) {
+  if (!crypto_) {
+    default_crypto_ = std::make_unique<Crypto>(tpm_, cryptohome_keys_manager_);
+    crypto_ = default_crypto_.get();
+  }
+
+  if (!crypto_->Init()) {
+    LOG(ERROR) << "Failed to initialize crypto.";
     return false;
   }
 

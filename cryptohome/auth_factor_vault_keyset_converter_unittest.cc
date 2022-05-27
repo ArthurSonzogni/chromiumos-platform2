@@ -29,7 +29,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -59,7 +58,8 @@ namespace cryptohome {
 
 class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
  public:
-  AuthFactorVaultKeysetConverterTest() : crypto_(&platform_) {}
+  AuthFactorVaultKeysetConverterTest()
+      : crypto_(&tpm_, &cryptohome_keys_manager_) {}
 
   ~AuthFactorVaultKeysetConverterTest() override {}
 
@@ -91,7 +91,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
 
-    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    crypto_.Init();
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     converter_ = std::make_unique<AuthFactorVaultKeysetConverter>(
@@ -104,8 +104,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   }
 
  protected:
-  NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockPlatform> platform_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;

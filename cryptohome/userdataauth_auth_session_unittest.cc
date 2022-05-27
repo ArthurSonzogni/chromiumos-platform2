@@ -72,7 +72,7 @@ constexpr char kPassword3[] = "password3";
 
 class AuthSessionInterfaceTest : public ::testing::Test {
  public:
-  AuthSessionInterfaceTest() : crypto_(&platform_) {}
+  AuthSessionInterfaceTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
   ~AuthSessionInterfaceTest() override = default;
   AuthSessionInterfaceTest(const AuthSessionInterfaceTest&) = delete;
   AuthSessionInterfaceTest& operator=(const AuthSessionInterfaceTest&) = delete;
@@ -81,7 +81,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
-    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    crypto_.Init();
     auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
@@ -110,10 +110,10 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   TaskEnvironment task_environment{
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
   NiceMock<MockPlatform> platform_;
-  Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockTpm> tpm_;
+  Crypto crypto_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};

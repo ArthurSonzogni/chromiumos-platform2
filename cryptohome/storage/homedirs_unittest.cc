@@ -21,7 +21,6 @@
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/credentials.h"
-#include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -91,9 +90,7 @@ struct test_homedir {
 class HomeDirsTest
     : public ::testing::TestWithParam<bool /* should_test_ecryptfs */> {
  public:
-  HomeDirsTest()
-      : crypto_(&platform_),
-        mock_device_policy_(new policy::MockDevicePolicy()) {}
+  HomeDirsTest() : mock_device_policy_(new policy::MockDevicePolicy()) {}
   ~HomeDirsTest() override {}
 
   // Not copyable or movable
@@ -162,7 +159,6 @@ class HomeDirsTest
  protected:
   NiceMock<MockPlatform> platform_;
   MockKeysetManagement keyset_management_;
-  Crypto crypto_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<HomeDirs> homedirs_;
 
@@ -672,7 +668,6 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
 
   for (const auto& test_case : test_cases) {
     NiceMock<MockPlatform> platform;
-    Crypto crypto(&platform);
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform, std::make_unique<FakeKeyring>(),

@@ -6,7 +6,6 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
-#include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 
@@ -15,7 +14,6 @@ int main(int argc, char** argv) {
 
   // Read the file before we daemonize so it can be deleted as soon as we exit.
   cryptohome::Platform platform;
-  cryptohome::Crypto crypto(&platform);
 
   if (!cryptohome::InitializeFilesystemLayout(&platform, nullptr)) {
     return 1;

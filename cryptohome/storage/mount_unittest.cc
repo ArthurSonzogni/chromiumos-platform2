@@ -41,7 +41,6 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -408,7 +407,7 @@ void CheckSkel(Platform* platform,
 // TODO(dlunev): add test ecryptfs blasts "mount".
 class PersistentSystemTest : public ::testing::Test {
  public:
-  PersistentSystemTest() : crypto_(&platform_) {}
+  PersistentSystemTest() {}
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
@@ -438,7 +437,6 @@ class PersistentSystemTest : public ::testing::Test {
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
-  Crypto crypto_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
 
@@ -1291,7 +1289,7 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
 
 class EphemeralSystemTest : public ::testing::Test {
  public:
-  EphemeralSystemTest() : crypto_(&platform_) {}
+  EphemeralSystemTest() {}
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
@@ -1315,7 +1313,6 @@ class EphemeralSystemTest : public ::testing::Test {
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
-  Crypto crypto_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
   struct statvfs ephemeral_statvfs_;

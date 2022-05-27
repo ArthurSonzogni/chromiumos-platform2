@@ -24,7 +24,6 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/error.h"
@@ -56,7 +55,7 @@ namespace cryptohome {
 
 class OutOfProcessMountHelperTest : public ::testing::Test {
  public:
-  OutOfProcessMountHelperTest() : crypto_(&platform_) {}
+  OutOfProcessMountHelperTest() {}
   OutOfProcessMountHelperTest(const OutOfProcessMountHelperTest&) = delete;
   OutOfProcessMountHelperTest& operator=(const OutOfProcessMountHelperTest&) =
       delete;
@@ -92,7 +91,6 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
 
  protected:
   NiceMock<MockPlatform> platform_;
-  Crypto crypto_;
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
 };
 

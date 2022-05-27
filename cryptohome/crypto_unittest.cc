@@ -174,9 +174,9 @@ TEST_F(CryptoTest, BlobToHexTest) {
 TEST_F(CryptoTest, TpmStepTest) {
   // Check that the code path changes to support the TPM work
   MockPlatform platform;
-  Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  Crypto crypto(&tpm, &cryptohome_keys_manager);
 
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
@@ -203,7 +203,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   EXPECT_CALL(*tpm.get_mock_hwsec(), IsReady())
       .WillRepeatedly(ReturnValue(true));
 
-  crypto.Init(&tpm, &cryptohome_keys_manager);
+  crypto.Init();
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -250,9 +250,9 @@ TEST_F(CryptoTest, TpmStepTest) {
 TEST_F(CryptoTest, Tpm1_2_StepTest) {
   // Check that the code path changes to support the TPM work
   MockPlatform platform;
-  Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  Crypto crypto(&tpm, &cryptohome_keys_manager);
 
   SecureBlob vkk_key;
   Blob encrypt_out(64, 'X');
@@ -279,7 +279,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   EXPECT_CALL(*tpm.get_mock_hwsec(), IsReady())
       .WillRepeatedly(ReturnValue(true));
 
-  crypto.Init(&tpm, &cryptohome_keys_manager);
+  crypto.Init();
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -323,9 +323,9 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 TEST_F(CryptoTest, TpmDecryptFailureTest) {
   // Check how TPM error on Decrypt is reported.
   MockPlatform platform;
-  Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  Crypto crypto(&tpm, &cryptohome_keys_manager);
 
   EXPECT_CALL(*tpm.get_mock_hwsec(), GetAuthValue(_, _))
       .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
@@ -349,7 +349,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
       .WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(*tpm.get_mock_hwsec(), IsReady())
       .WillRepeatedly(ReturnValue(true));
-  crypto.Init(&tpm, &cryptohome_keys_manager);
+  crypto.Init();
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -378,7 +378,9 @@ TEST_F(CryptoTest, ScryptStepTest) {
   if (USE_TPM_INSECURE_FALLBACK) {
     // Check that the code path changes to support scrypt work
     MockPlatform platform;
-    Crypto crypto(&platform);
+    NiceMock<MockTpm> tpm;
+    NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+    Crypto crypto(&tpm, &cryptohome_keys_manager);
 
     VaultKeyset vault_keyset;
     vault_keyset.Initialize(&platform, &crypto);
@@ -409,8 +411,6 @@ TEST_F(CryptoTest, ScryptStepTest) {
 }
 
 TEST_F(CryptoTest, GetSha1FipsTest) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   ShaTestVectors vectors(1);
   for (size_t i = 0; i < vectors.count(); ++i) {
     Blob digest = Sha1(*vectors.input(i));
@@ -422,8 +422,6 @@ TEST_F(CryptoTest, GetSha1FipsTest) {
 }
 
 TEST_F(CryptoTest, GetSha256FipsTest) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   ShaTestVectors vectors(256);
   for (size_t i = 0; i < vectors.count(); ++i) {
     Blob digest = Sha256(*vectors.input(i));

@@ -34,7 +34,6 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -98,16 +97,16 @@ class AuthSessionTest : public ::testing::Test {
     EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
 
-    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    crypto_.Init();
   }
 
  protected:
   base::test::SingleThreadTaskEnvironment task_environment_;
   // Mock and fake objects, will be passed to AuthSession for its internal use.
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  NiceMock<MockCrypto> crypto_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
+  Crypto crypto_{&tpm_, &cryptohome_keys_manager_};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};

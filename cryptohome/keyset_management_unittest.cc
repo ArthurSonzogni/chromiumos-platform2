@@ -38,7 +38,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
-#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -155,7 +154,7 @@ class FallbackVaultKeyset : public VaultKeyset {
 
 class KeysetManagementTest : public ::testing::Test {
  public:
-  KeysetManagementTest() : crypto_(&platform_) {
+  KeysetManagementTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {
     CHECK(temp_dir_.CreateUniqueTempDir());
   }
 
@@ -181,7 +180,6 @@ class KeysetManagementTest : public ::testing::Test {
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
     auth_state_ = std::make_unique<AuthBlockState>();
     AddUser(kUser0, kUserPassword0);
-
     PrepareDirectoryStructure();
   }
 
@@ -193,6 +191,7 @@ class KeysetManagementTest : public ::testing::Test {
  protected:
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
@@ -1034,7 +1033,7 @@ TEST_F(KeysetManagementTest, GetNonLEVaultKeysetLabels) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   // Setup initial user.
   KeysetSetUpWithKeyData(DefaultKeyData());
@@ -1361,6 +1360,9 @@ TEST_F(KeysetManagementTest, ReSaveKeysetChapsRepopulation) {
 TEST_F(KeysetManagementTest, ReSaveOnLoadNoReSave) {
   // SETUP
 
+  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey)
+      .WillRepeatedly(Return(false));
+
   KeysetSetUpWithKeyData(DefaultKeyData());
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk0_status =
@@ -1393,7 +1395,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   // TEST
 
@@ -1442,7 +1444,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   KeysetSetUpWithKeyData(DefaultLEKeyData());
 
@@ -1469,7 +1471,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   // Setup initial user.
   KeysetSetUpWithKeyData(DefaultKeyData());
@@ -1548,7 +1550,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
@@ -1606,7 +1608,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
@@ -1660,7 +1662,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
@@ -1721,7 +1723,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWithPreValidatedKeyset) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
@@ -1778,7 +1780,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+  crypto_.Init();
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 

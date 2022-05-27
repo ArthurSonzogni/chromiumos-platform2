@@ -24,8 +24,10 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -59,7 +61,7 @@ constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 class RealUserSessionTest : public ::testing::Test {
  public:
-  RealUserSessionTest() : crypto_(&platform_) {}
+  RealUserSessionTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
   ~RealUserSessionTest() override {}
 
   // Not copyable or movable
@@ -115,7 +117,9 @@ class RealUserSessionTest : public ::testing::Test {
 
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
+  NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   Crypto crypto_;
   std::unique_ptr<KeysetManagement> keyset_management_;

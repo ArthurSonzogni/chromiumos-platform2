@@ -38,7 +38,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -58,22 +57,15 @@ const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
 
 }  // namespace
 
-Crypto::Crypto(Platform* platform)
-    : tpm_(NULL),
-      platform_(platform),
-      cryptohome_keys_manager_(NULL),
-      disable_logging_for_tests_(false) {}
+Crypto::Crypto(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager)
+    : tpm_(tpm), cryptohome_keys_manager_(cryptohome_keys_manager) {
+  CHECK(tpm);
+  CHECK(cryptohome_keys_manager);
+}
 
 Crypto::~Crypto() {}
 
-bool Crypto::Init(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager) {
-  CHECK(cryptohome_keys_manager)
-      << "Crypto wanted to use CryptohomeKeysManager but was not provided";
-  CHECK(tpm) << "Crypto wanted to use Tpm but was not provided";
-  if (tpm_ == NULL) {
-    tpm_ = tpm;
-  }
-  cryptohome_keys_manager_ = cryptohome_keys_manager;
+bool Crypto::Init() {
   cryptohome_keys_manager_->Init();
   if (tpm_->GetLECredentialBackend() &&
       tpm_->GetLECredentialBackend()->IsSupported()) {
@@ -104,19 +96,9 @@ void Crypto::PasswordToPasskey(const char* password,
   passkey->swap(local_passkey);
 }
 
-bool Crypto::NeedsPcrBinding(const uint64_t& label) const {
-  DCHECK(le_manager_)
-      << "le_manage_ doesn't exist when calling NeedsPcrBinding()";
-  return le_manager_->NeedsPcrBinding(label);
-}
-
 bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
                                const VaultKeyset& vk,
                                CryptoError* error) const {
-  if (!tpm_) {
-    return false;
-  }
-
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
     LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
@@ -148,12 +130,6 @@ bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
 bool Crypto::ResetLeCredentialEx(const uint64_t le_label,
                                  const SecureBlob& reset_secret,
                                  CryptoError& out_error) const {
-  if (!tpm_) {
-    LOG(ERROR) << "TPM not found while ResetLeCredentials.";
-    PopulateError(&out_error, CryptoError::CE_OTHER_FATAL);
-    return false;
-  }
-
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
     LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
@@ -180,11 +156,6 @@ int Crypto::GetWrongAuthAttempts(uint64_t le_label) const {
 }
 
 bool Crypto::RemoveLECredential(uint64_t label) const {
-  if (!tpm_) {
-    LOG(WARNING) << "No TPM instance for RemoveLECredential.";
-    return false;
-  }
-
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
     LOG(ERROR) << "No LECredentialManager instance for RemoveLECredential.";
@@ -195,15 +166,10 @@ bool Crypto::RemoveLECredential(uint64_t label) const {
 }
 
 bool Crypto::is_cryptohome_key_loaded() const {
-  if (tpm_ == NULL || cryptohome_keys_manager_ == NULL) {
-    return false;
-  }
   return cryptohome_keys_manager_->HasAnyCryptohomeKey();
 }
 
 bool Crypto::CanUnsealWithUserAuth() const {
-  if (!tpm_)
-    return false;
   if (tpm_->GetVersion() != Tpm::TPM_1_2)
     return true;
   if (!tpm_->DelegateCanResetDACounter())

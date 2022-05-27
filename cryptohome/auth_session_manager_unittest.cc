@@ -14,9 +14,10 @@
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
 using base::test::TaskEnvironment;
@@ -39,10 +40,12 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthSessionManagerTest& operator=(AuthSessionManagerTest&) = delete;
 
  protected:
-  NiceMock<MockCrypto> crypto_;
+  NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  Crypto crypto_{&tpm_, &cryptohome_keys_manager_};
 };
 
 TEST_F(AuthSessionManagerTest, CreateFindRemove) {
