@@ -23,6 +23,10 @@ namespace hwsec {
 
 using SealingTpm2 = BackendTpm2::SealingTpm2;
 
+StatusOr<bool> SealingTpm2::IsSupported() {
+  return true;
+}
+
 StatusOr<brillo::Blob> SealingTpm2::Seal(
     const OperationPolicySetting& policy,
     const brillo::SecureBlob& unsealed_data) {

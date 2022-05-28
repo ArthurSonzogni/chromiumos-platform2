@@ -38,6 +38,15 @@ class BackendTpm1 : public Backend {
     Status Prepare() override;
   };
 
+  class DAMitigationTpm1 : public DAMitigation,
+                           public SubClassHelper<BackendTpm1> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<bool> IsReady() override;
+    StatusOr<DAMitigationStatus> GetStatus() override;
+    Status Mitigate() override;
+  };
+
   class StorageTpm1 : public Storage, public SubClassHelper<BackendTpm1> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -53,6 +62,7 @@ class BackendTpm1 : public Backend {
   class SealingTpm1 : public Sealing, public SubClassHelper<BackendTpm1> {
    public:
     using SubClassHelper::SubClassHelper;
+    StatusOr<bool> IsSupported() override;
     StatusOr<brillo::Blob> Seal(
         const OperationPolicySetting& policy,
         const brillo::SecureBlob& unsealed_data) override;
@@ -214,7 +224,7 @@ class BackendTpm1 : public Backend {
   StatusOr<TssTpmContext> GetTssUserContext();
 
   State* GetState() override { return &state_; }
-  DAMitigation* GetDAMitigation() override { return nullptr; }
+  DAMitigation* GetDAMitigation() override { return &da_mitigation_; }
   Storage* GetStorage() override { return &storage_; }
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
@@ -237,6 +247,7 @@ class BackendTpm1 : public Backend {
   std::optional<TssTpmContext> tss_user_context_cache_;
 
   StateTpm1 state_{*this};
+  DAMitigationTpm1 da_mitigation_{*this};
   StorageTpm1 storage_{*this};
   SealingTpm1 sealing_{*this};
   DerivingTpm1 deriving_{*this};

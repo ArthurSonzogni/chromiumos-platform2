@@ -36,6 +36,15 @@ class BackendTpm2 : public Backend {
     Status Prepare() override;
   };
 
+  class DAMitigationTpm2 : public DAMitigation,
+                           public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<bool> IsReady() override;
+    StatusOr<DAMitigationStatus> GetStatus() override;
+    Status Mitigate() override;
+  };
+
   class StorageTpm2 : public Storage, public SubClassHelper<BackendTpm2> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -51,6 +60,7 @@ class BackendTpm2 : public Backend {
   class SealingTpm2 : public Sealing, public SubClassHelper<BackendTpm2> {
    public:
     using SubClassHelper::SubClassHelper;
+    StatusOr<bool> IsSupported() override;
     StatusOr<brillo::Blob> Seal(
         const OperationPolicySetting& policy,
         const brillo::SecureBlob& unsealed_data) override;
@@ -217,7 +227,7 @@ class BackendTpm2 : public Backend {
   };
 
   State* GetState() override { return &state_; }
-  DAMitigation* GetDAMitigation() override { return nullptr; }
+  DAMitigation* GetDAMitigation() override { return &da_mitigation_; }
   Storage* GetStorage() override { return &storage_; }
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
@@ -237,6 +247,7 @@ class BackendTpm2 : public Backend {
   TrunksClientContext trunks_context_;
 
   StateTpm2 state_{*this};
+  DAMitigationTpm2 da_mitigation_{*this};
   StorageTpm2 storage_{*this};
   SealingTpm2 sealing_{*this};
   DerivingTpm2 deriving_{*this};

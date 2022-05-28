@@ -61,6 +61,7 @@ class MockBackend : public Backend {
 
   class MockSealing : public Sealing {
    public:
+    MOCK_METHOD(StatusOr<bool>, IsSupported, (), (override));
     MOCK_METHOD(StatusOr<brillo::Blob>,
                 Seal,
                 (const OperationPolicySetting& policy,

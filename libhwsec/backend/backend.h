@@ -14,6 +14,7 @@
 
 #include <absl/container/flat_hash_set.h>
 #include <base/notreached.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/status.h"
@@ -53,7 +54,7 @@ class Backend {
    public:
     struct DAMitigationStatus {
       bool lockout;
-      uint32_t seconds_remaining;
+      base::TimeDelta remaining;
     };
 
     // Is DA counter can be mitigated or not.
@@ -137,6 +138,9 @@ class Backend {
       // The preload_data returned from |PreloadSealedData|.
       std::optional<Key> preload_data;
     };
+
+    // Is the device supported sealing/unsealing or not.
+    virtual StatusOr<bool> IsSupported() = 0;
 
     // Seals the |unsealed_data| with |policy|.
     virtual StatusOr<brillo::Blob> Seal(

@@ -23,6 +23,12 @@ namespace hwsec {
 
 using SealingTpm1 = BackendTpm1::SealingTpm1;
 
+StatusOr<bool> SealingTpm1::IsSupported() {
+  // We only support sealing/unsealing when we have the ability to do the DA
+  // mitigation.
+  return backend_.da_mitigation_.IsReady();
+}
+
 StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
     const brillo::SecureBlob& auth_value) {
   ASSIGN_OR_RETURN(const TssTpmContext& user_context,
