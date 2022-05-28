@@ -26,7 +26,7 @@ allow cros_spaced proc_sys_kernel:file read;
 allow cros_spaced sysfs:dir { open read };
 allow cros_spaced sysfs:file { getattr open read };
 allow cros_spaced sysfs_dm:dir { open read search };
-allow cros_spaced sysfs_dm:file { getattr open read };
+allow cros_spaced sysfs_dm:{ file lnk_file } { getattr open read };
 
 allow cros_spaced cros_home_file_type:dir search;
 
@@ -34,8 +34,8 @@ allow cros_spaced cros_system_bus_socket:sock_file write;
 
 allow cros_spaced tmpfs:file { getattr open read write };
 
-# Spaced/LVM iterates through /dev and requires permissions to enumerate the following devices.
-allow cros_spaced {
+# Spaced/LVM iterates through /dev and will try to access the following devices.
+dontaudit cros_spaced {
   audio_device
   cros_hps_device
   devpts
@@ -46,10 +46,15 @@ allow cros_spaced {
   usb_device
 }:chr_file getattr;
 
-allow cros_spaced {
+dontaudit cros_spaced cros_shm:file getattr;
+
+dontaudit cros_spaced {
   audio_device
+  cros_run_daemon_store
   cros_shm
+  devpts
   input_device
+  sysfs_loop
   sysfs_zram
   usb_device
 }:dir { getattr open read search };
