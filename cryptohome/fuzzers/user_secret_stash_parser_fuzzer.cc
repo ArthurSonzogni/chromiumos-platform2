@@ -147,11 +147,12 @@ void AssertStashesEqual(const UserSecretStash& first,
         second.GetFileSystemKeyset().chaps_key());
   CHECK_EQ(first.GetCreatedOnOsVersion(), second.GetCreatedOnOsVersion());
 
-  // Check the reset secrets
-  CHECK(first.GetResetSecretForLabel(kResetSecretLabelOne).value() ==
-        second.GetResetSecretForLabel(kResetSecretLabelOne).value());
-  CHECK(first.GetResetSecretForLabel(kResetSecretLabelTwo).value() ==
-        second.GetResetSecretForLabel(kResetSecretLabelTwo).value());
+  // Check the reset secrets. Do not assert the reset secrets are present,
+  // because the fuzzer could've dropped them while mutating the blobs.
+  CHECK(first.GetResetSecretForLabel(kResetSecretLabelOne) ==
+        second.GetResetSecretForLabel(kResetSecretLabelOne));
+  CHECK(first.GetResetSecretForLabel(kResetSecretLabelTwo) ==
+        second.GetResetSecretForLabel(kResetSecretLabelTwo));
 }
 
 }  // namespace
