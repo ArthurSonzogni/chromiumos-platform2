@@ -10,6 +10,8 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 
 namespace arc {
 namespace keymaster {
@@ -18,10 +20,10 @@ CertStoreInstance::CertStoreInstance(
     base::WeakPtr<KeymasterServer> keymaster_server)
     : keymaster_server_(keymaster_server) {}
 
-void CertStoreInstance::Init(mojom::CertStoreHostPtr host_ptr,
+void CertStoreInstance::Init(mojo::PendingRemote<mojom::CertStoreHost> host,
                              InitCallback callback) {
   LOG(INFO) << "CertStoreInstance::Init";
-  host_ptr_ = std::move(host_ptr);
+  host_.Bind(std::move(host));
   std::move(callback).Run();
 
   RequestSecurityTokenOperation();
@@ -42,13 +44,13 @@ void CertStoreInstance::RequestSecurityTokenOperation() {
   LOG(INFO) << "CertStoreInstance::RequestSecurityTokenOperation";
   if (is_security_token_operation_proxy_ready_)
     return;
-  mojo::InterfaceRequest<mojom::SecurityTokenOperation> request =
-      mojo::MakeRequest(&security_token_operation_proxy_);
-  security_token_operation_proxy_.set_connection_error_handler(
+  mojo::PendingReceiver<mojom::SecurityTokenOperation> receiver =
+      security_token_operation_proxy_.BindNewPipeAndPassReceiver();
+  security_token_operation_proxy_.set_disconnect_handler(
       base::Bind(&CertStoreInstance::ResetSecurityTokenOperationProxy,
                  weak_ptr_factory_.GetWeakPtr()));
-  host_ptr_->GetSecurityTokenOperation(
-      std::move(request),
+  host_->GetSecurityTokenOperation(
+      std::move(receiver),
       base::Bind(&CertStoreInstance::OnSecurityTokenOperationProxyReady,
                  weak_ptr_factory_.GetWeakPtr()));
 }

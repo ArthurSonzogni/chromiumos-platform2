@@ -9,6 +9,8 @@
 
 #include <base/memory/weak_ptr.h>
 #include <mojo/cert_store.mojom.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "arc/keymaster/keymaster_server.h"
 
@@ -25,7 +27,8 @@ class CertStoreInstance : public mojom::CertStoreInstance {
   ~CertStoreInstance() override = default;
 
   // mojom::CertStoreInstance overrides.
-  void Init(mojom::CertStoreHostPtr host_ptr, InitCallback callback) override;
+  void Init(mojo::PendingRemote<mojom::CertStoreHost> host,
+            InitCallback callback) override;
 
   void UpdatePlaceholderKeys(std::vector<mojom::ChromeOsKeyPtr> keys,
                              UpdatePlaceholderKeysCallback callback) override;
@@ -37,10 +40,10 @@ class CertStoreInstance : public mojom::CertStoreInstance {
   void ResetSecurityTokenOperationProxy();
   void OnSecurityTokenOperationProxyReady();
 
-  mojom::CertStoreHostPtr host_ptr_;
+  mojo::Remote<mojom::CertStoreHost> host_;
   // Use as proxy only when initialized:
   // |is_security_token_operation_proxy_ready_| is true.
-  mojom::SecurityTokenOperationPtr security_token_operation_proxy_;
+  mojo::Remote<mojom::SecurityTokenOperation> security_token_operation_proxy_;
   bool is_security_token_operation_proxy_ready_ = false;
 
   base::WeakPtr<KeymasterServer> keymaster_server_;
