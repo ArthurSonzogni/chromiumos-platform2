@@ -164,6 +164,28 @@ class BackendTpm2 : public Backend {
     StatusOr<brillo::Blob> SendCommand(const brillo::Blob& command) override;
   };
 
+  class VendorTpm2 : public Vendor, public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<uint32_t> GetFamily() override;
+    StatusOr<uint64_t> GetSpecLevel() override;
+    StatusOr<uint32_t> GetManufacturer() override;
+    StatusOr<uint32_t> GetTpmModel() override;
+    StatusOr<uint64_t> GetFirmwareVersion() override;
+    StatusOr<brillo::Blob> GetVendorSpecific() override;
+    StatusOr<int32_t> GetFingerprint() override;
+    StatusOr<bool> IsSrkRocaVulnerable() override;
+    StatusOr<brillo::Blob> GetIFXFieldUpgradeInfo() override;
+    Status DeclareTpmFirmwareStable() override;
+    StatusOr<brillo::Blob> SendRawCommand(const brillo::Blob& command) override;
+
+   private:
+    Status EnsureVersionInfo();
+
+    bool fw_declared_stable_ = false;
+    std::optional<tpm_manager::GetVersionInfoReply> version_info_;
+  };
+
   BackendTpm2(Proxy& proxy, MiddlewareDerivative middleware_derivative);
 
   ~BackendTpm2() override;
@@ -196,7 +218,7 @@ class BackendTpm2 : public Backend {
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
-  Vendor* GetVendor() override { return nullptr; }
+  Vendor* GetVendor() override { return &vendor_; }
 
   Proxy& proxy_;
 
@@ -210,6 +232,7 @@ class BackendTpm2 : public Backend {
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
   PinWeaverTpm2 pinweaver_{*this};
+  VendorTpm2 vendor_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 };

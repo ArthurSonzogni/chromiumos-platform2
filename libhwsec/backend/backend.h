@@ -444,7 +444,7 @@ class Backend {
     virtual StatusOr<uint64_t> GetFirmwareVersion() = 0;
 
     // Gets the vendor specific string.
-    virtual StatusOr<std::string> GetVendorSpecific() = 0;
+    virtual StatusOr<brillo::Blob> GetVendorSpecific() = 0;
 
     // Gets the TPM fingerprint.
     virtual StatusOr<int32_t> GetFingerprint() = 0;

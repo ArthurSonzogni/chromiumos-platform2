@@ -238,7 +238,7 @@ class MockBackend : public Backend {
     MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (override));
     MOCK_METHOD(StatusOr<uint32_t>, GetTpmModel, (), (override));
     MOCK_METHOD(StatusOr<uint64_t>, GetFirmwareVersion, (), (override));
-    MOCK_METHOD(StatusOr<std::string>, GetVendorSpecific, (), (override));
+    MOCK_METHOD(StatusOr<brillo::Blob>, GetVendorSpecific, (), (override));
     MOCK_METHOD(StatusOr<int32_t>, GetFingerprint, (), (override));
     MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
     MOCK_METHOD(StatusOr<brillo::Blob>, GetIFXFieldUpgradeInfo, (), (override));
