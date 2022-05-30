@@ -236,15 +236,15 @@ class WireGuardDriverTest : public testing::Test {
                          int peers_num,
                          Metrics::VpnWireGuardAllowedIPsType allowed_ips_type) {
     EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                        Metrics::kVpnDriverWireGuard, _));
+                                        Metrics::kVpnDriverWireGuard));
     EXPECT_CALL(metrics_,
                 SendEnumToUMA(Metrics::kMetricVpnWireGuardKeyPairSource,
-                              key_pair_source, _));
-    EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricVpnWireGuardPeersNum,
-                                    peers_num, _, _, _));
+                              key_pair_source));
+    EXPECT_CALL(metrics_,
+                SendToUMA(Metrics::kMetricVpnWireGuardPeersNum, peers_num));
     EXPECT_CALL(metrics_,
                 SendEnumToUMA(Metrics::kMetricVpnWireGuardAllowedIPsType,
-                              allowed_ips_type, _));
+                              allowed_ips_type));
   }
 
   MockControl control_;

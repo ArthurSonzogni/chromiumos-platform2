@@ -419,8 +419,7 @@ void ThirdPartyVpnDriver::SetParameters(
   if (!ip_properties_set_) {
     ip_properties_set_ = true;
     metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                             Metrics::kVpnDriverThirdParty,
-                             Metrics::kMetricVpnDriverMax);
+                             Metrics::kVpnDriverThirdParty);
   }
 
   if (event_handler_) {

@@ -519,7 +519,12 @@ class Metrics : public DefaultServiceObserver {
     kVpnDriverIKEv2 = 6,
     kVpnDriverMax
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnDriver = {
+      .n = FixedName{"Network.Shill.Vpn.Driver"},
+      .max = kVpnDriverMax,
+  };
 
+  // Remote authentication statistics for VPN connections.
   enum VpnRemoteAuthenticationType {
     kVpnRemoteAuthenticationTypeOpenVpnDefault = 0,
     kVpnRemoteAuthenticationTypeOpenVpnCertificate = 1,
@@ -528,7 +533,12 @@ class Metrics : public DefaultServiceObserver {
     kVpnRemoteAuthenticationTypeL2tpIpsecPsk = 4,
     kVpnRemoteAuthenticationTypeMax
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnRemoteAuthenticationType = {
+      .n = FixedName{"Network.Shill.Vpn.RemoteAuthenticationType"},
+      .max = kVpnRemoteAuthenticationTypeMax,
+  };
 
+  // User authentication type statistics for VPN connections.
   enum VpnUserAuthenticationType {
     kVpnUserAuthenticationTypeOpenVpnNone = 0,
     kVpnUserAuthenticationTypeOpenVpnCertificate = 1,
@@ -540,7 +550,12 @@ class Metrics : public DefaultServiceObserver {
     kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword = 6,
     kVpnUserAuthenticationTypeMax
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnUserAuthenticationType = {
+      .n = FixedName{"Network.Shill.Vpn.UserAuthenticationType"},
+      .max = kVpnUserAuthenticationTypeMax,
+  };
 
+  // IKEv2 IPsec authentication statistics.
   enum VpnIpsecAuthenticationType {
     kVpnIpsecAuthenticationTypeUnknown = 0,
     kVpnIpsecAuthenticationTypePsk = 1,
@@ -548,11 +563,20 @@ class Metrics : public DefaultServiceObserver {
     kVpnIpsecAuthenticationTypeCertificate = 3,
     kVpnIpsecAuthenticationTypeMax
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2AuthenticationType = {
+      .n = FixedName{"Network.Shill.Vpn.Ikev2.AuthenticationType"},
+      .max = kVpnIpsecAuthenticationTypeMax,
+  };
 
+  // L2TP/IPsec group usage statistics.
   enum VpnL2tpIpsecTunnelGroupUsage {
     kVpnL2tpIpsecTunnelGroupUsageNo = 0,
     kVpnL2tpIpsecTunnelGroupUsageYes = 1,
     kVpnL2tpIpsecTunnelGroupUsageMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecTunnelGroupUsage = {
+      .n = FixedName{"Network.Shill.Vpn.L2tpIpsecTunnelGroupUsage"},
+      .max = kVpnL2tpIpsecTunnelGroupUsageMax,
   };
 
   // This enum contains the encryption algorithms we are using for IPsec now,
@@ -581,6 +605,26 @@ class Metrics : public DefaultServiceObserver {
 
     kVpnIpsecEncryptionAlgorithmMax,
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2IkeEncryptionAlgorithm =
+      {
+          .n = FixedName{"Network.Shill.Vpn.Ikev2.IkeEncryptionAlgorithm"},
+          .max = kVpnIpsecEncryptionAlgorithmMax,
+      };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2EspEncryptionAlgorithm =
+      {
+          .n = FixedName{"Network.Shill.Vpn.Ikev2.EspEncryptionAlgorithm"},
+          .max = kVpnIpsecEncryptionAlgorithmMax,
+      };
+  static constexpr EnumMetric<FixedName>
+      kMetricVpnL2tpIpsecIkeEncryptionAlgorithm = {
+          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.IkeEncryptionAlgorithm"},
+          .max = kVpnIpsecEncryptionAlgorithmMax,
+      };
+  static constexpr EnumMetric<FixedName>
+      kMetricVpnL2tpIpsecEspEncryptionAlgorithm = {
+          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.EspEncryptionAlgorithm"},
+          .max = kVpnIpsecEncryptionAlgorithmMax,
+      };
 
   enum VpnIpsecIntegrityAlgorithm {
     kVpnIpsecIntegrityAlgorithmUnknown = 0,
@@ -594,6 +638,26 @@ class Metrics : public DefaultServiceObserver {
 
     kVpnIpsecIntegrityAlgorithmMax,
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2IkeIntegrityAlgorithm =
+      {
+          .n = FixedName{"Network.Shill.Vpn.Ikev2.IkeIntegrityAlgorithm"},
+          .max = kVpnIpsecIntegrityAlgorithmMax,
+      };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2EspIntegrityAlgorithm =
+      {
+          .n = FixedName{"Network.Shill.Vpn.Ikev2.EspIntegrityAlgorithm"},
+          .max = kVpnIpsecIntegrityAlgorithmMax,
+      };
+  static constexpr EnumMetric<FixedName>
+      kMetricVpnL2tpIpsecIkeIntegrityAlgorithm = {
+          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.IkeIntegrityAlgorithm"},
+          .max = kVpnIpsecIntegrityAlgorithmMax,
+      };
+  static constexpr EnumMetric<FixedName>
+      kMetricVpnL2tpIpsecEspIntegrityAlgorithm = {
+          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.EspIntegrityAlgorithm"},
+          .max = kVpnIpsecIntegrityAlgorithmMax,
+      };
 
   enum VpnIpsecDHGroup {
     kVpnIpsecDHGroupUnknown = 0,
@@ -616,7 +680,16 @@ class Metrics : public DefaultServiceObserver {
 
     kVpnIpsecDHGroupMax,
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2IkeDHGroup = {
+      .n = FixedName{"Network.Shill.Vpn.Ikev2.IkeDHGroup"},
+      .max = kVpnIpsecDHGroupMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecIkeDHGroup = {
+      .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.IkeDHGroup"},
+      .max = kVpnIpsecDHGroupMax,
+  };
 
+  // OpenVPN cipher algorithm used after negotiating with server.
   enum VpnOpenVPNCipher {
     kVpnOpenVPNCipherUnknown = 0,
     kVpnOpenVPNCipher_BF_CBC = 1,
@@ -624,18 +697,32 @@ class Metrics : public DefaultServiceObserver {
     kVpnOpenVPNCipher_AES_128_GCM = 3,
     kVpnOpenVPNCipherMax
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnOpenVPNCipher = {
+      .n = FixedName{"Network.Shill.Vpn.OpenVPNCipher"},
+      .max = kVpnOpenVPNCipherMax,
+  };
 
+  // Key pair source (e.g., user input) used in a WireGuard Connection.
   enum VpnWireGuardKeyPairSource {
     kVpnWireguardKeyPairSourceUnknown = 0,
     kVpnWireGuardKeyPairSourceUserInput = 1,
     kVpnWireGuardKeyPairSourceSoftwareGenerated = 2,
     kVpnWireGuardKeyPairSourceMax
   };
+  static constexpr EnumMetric<FixedName> kMetricVpnWireGuardKeyPairSource = {
+      .n = FixedName{"Network.Shill.Vpn.WireGuardKeyPairSource"},
+      .max = kVpnWireGuardKeyPairSourceMax,
+  };
 
+  // Allowed IPs type used in a WireGuard connection.
   enum VpnWireGuardAllowedIPsType {
     kVpnWireGuardAllowedIPsTypeHasDefaultRoute = 0,
     kVpnWireGuardAllowedIPsTypeNoDefaultRoute = 1,
     kVpnWireGuardAllowedIPsTypeMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricVpnWireGuardAllowedIPsType = {
+      .n = FixedName{"Network.Shill.Vpn.WireGuardAllowedIPsType"},
+      .max = kVpnWireGuardAllowedIPsTypeMax,
   };
 
   // Result of a connection initiated by Service::UserInitiatedConnect.
@@ -763,6 +850,20 @@ class Metrics : public DefaultServiceObserver {
   };
   static constexpr EnumMetric<NameByTechnology> kMetricNetworkServiceError = {
       .n = NameByTechnology{"ServiceErrors"},
+      .max = kNetworkServiceErrorMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricVpnIkev2EndReason = {
+      .n = FixedName{"Network.Shill.Vpn.Ikev2.EndReason"},
+      .max = kNetworkServiceErrorMax,
+  };
+  // Temporary metrics for comparing the robustness of the two L2TP/IPsec
+  // drivers (b/204261554).
+  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecSwanctlEndReason = {
+      .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason"},
+      .max = kNetworkServiceErrorMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecStrokeEndReason = {
+      .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.StrokeEndReason"},
       .max = kNetworkServiceErrorMax,
   };
 
@@ -1029,104 +1130,13 @@ class Metrics : public DefaultServiceObserver {
           .num_buckets = 10,
       };
 
-  // VPN connection statistics.
-  static constexpr char kMetricVpnDriver[] = "Network.Shill.Vpn.Driver";
-  static constexpr int kMetricVpnDriverMax = kVpnDriverMax;
-  static constexpr char kMetricVpnRemoteAuthenticationType[] =
-      "Network.Shill.Vpn.RemoteAuthenticationType";
-  static constexpr int kMetricVpnRemoteAuthenticationTypeMax =
-      kVpnRemoteAuthenticationTypeMax;
-  static constexpr char kMetricVpnUserAuthenticationType[] =
-      "Network.Shill.Vpn.UserAuthenticationType";
-  static constexpr int kMetricVpnUserAuthenticationTypeMax =
-      kVpnUserAuthenticationTypeMax;
-
-  // IKEv2 connection statistics.
-  static constexpr char kMetricVpnIkev2AuthenticationType[] =
-      "Network.Shill.Vpn.Ikev2.AuthenticationType";
-  static constexpr int kMetricVpnIkev2AuthenticationMax =
-      kVpnIpsecAuthenticationTypeMax;
-  static constexpr char kMetricVpnIkev2IkeEncryptionAlgorithm[] =
-      "Network.Shill.Vpn.Ikev2.IkeEncryptionAlgorithm";
-  static constexpr int kMetricVpnIkev2IkeEncryptionAlgorithmMax =
-      kVpnIpsecEncryptionAlgorithmMax;
-  static constexpr char kMetricVpnIkev2IkeIntegrityAlgorithm[] =
-      "Network.Shill.Vpn.Ikev2.IkeIntegrityAlgorithm";
-  static constexpr int kMetricVpnIkev2IkeIntegrityAlgorithmMax =
-      kVpnIpsecIntegrityAlgorithmMax;
-  static constexpr char kMetricVpnIkev2IkeDHGroup[] =
-      "Network.Shill.Vpn.Ikev2.IkeDHGroup";
-  static constexpr int kMetricVpnIkev2IkeDHGroupMax = kVpnIpsecDHGroupMax;
-  static constexpr char kMetricVpnIkev2EspEncryptionAlgorithm[] =
-      "Network.Shill.Vpn.Ikev2.EspEncryptionAlgorithm";
-  static constexpr int kMetricVpnIkev2EspEncryptionAlgorithmMax =
-      kVpnIpsecEncryptionAlgorithmMax;
-  static constexpr char kMetricVpnIkev2EspIntegrityAlgorithm[] =
-      "Network.Shill.Vpn.Ikev2.EspIntegrityAlgorithm";
-  static constexpr int kMetricVpnIkev2EspIntegrityAlgorithmMax =
-      kVpnIpsecIntegrityAlgorithmMax;
-  static constexpr char kMetricVpnIkev2EndReason[] =
-      "Network.Shill.Vpn.Ikev2.EndReason";
-  static constexpr int kMetricVpnIkev2EndReasonMax = kNetworkServiceErrorMax;
-
-  // L2TP/IPsec connection statistics.
-  static constexpr char kMetricVpnL2tpIpsecTunnelGroupUsage[] =
-      "Network.Shill.Vpn.L2tpIpsecTunnelGroupUsage";
-  static constexpr int kMetricVpnL2tpIpsecTunnelGroupUsageMax =
-      kVpnL2tpIpsecTunnelGroupUsageMax;
-  static constexpr char kMetricVpnL2tpIpsecIkeEncryptionAlgorithm[] =
-      "Network.Shill.Vpn.L2tpIpsec.IkeEncryptionAlgorithm";
-  static constexpr int kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax =
-      kVpnIpsecEncryptionAlgorithmMax;
-  static constexpr char kMetricVpnL2tpIpsecIkeIntegrityAlgorithm[] =
-      "Network.Shill.Vpn.L2tpIpsec.IkeIntegrityAlgorithm";
-  static constexpr int kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax =
-      kVpnIpsecIntegrityAlgorithmMax;
-  static constexpr char kMetricVpnL2tpIpsecIkeDHGroup[] =
-      "Network.Shill.Vpn.L2tpIpsec.IkeDHGroup";
-  static constexpr int kMetricVpnL2tpIpsecIkeDHGroupMax = kVpnIpsecDHGroupMax;
-  static constexpr char kMetricVpnL2tpIpsecEspEncryptionAlgorithm[] =
-      "Network.Shill.Vpn.L2tpIpsec.EspEncryptionAlgorithm";
-  static constexpr int kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax =
-      kVpnIpsecEncryptionAlgorithmMax;
-  static constexpr char kMetricVpnL2tpIpsecEspIntegrityAlgorithm[] =
-      "Network.Shill.Vpn.L2tpIpsec.EspIntegrityAlgorithm";
-  static constexpr int kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax =
-      kVpnIpsecIntegrityAlgorithmMax;
-  // Temporary metrics for comparing the robustness of the two L2TP/IPsec
-  // drivers (b/204261554).
-  static constexpr char kMetricVpnL2tpIpsecStrokeEndReason[] =
-      "Network.Shill.Vpn.L2tpIpsec.StrokeEndReason";
-  static constexpr int kMetricVpnL2tpIpsecStrokeEndReasonMax =
-      kNetworkServiceErrorMax;
-  static constexpr char kMetricVpnL2tpIpsecSwanctlEndReason[] =
-      "Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason";
-  static constexpr int kMetricVpnL2tpIpsecSwanctlEndReasonMax =
-      kNetworkServiceErrorMax;
-
-  // OpenVPN connection statistics.
-  // Cipher algorithm used after negotiating with server.
-  static constexpr char kMetricVpnOpenVPNCipher[] =
-      "Network.Shill.Vpn.OpenVPNCipher";
-  static constexpr int kMetricVpnOpenVPNCipherMax = kVpnOpenVPNCipherMax;
-
-  // WireGuard connection statistics.
-  // Key pair source (e.g., user input) used in a WireGuard Connection.
-  static constexpr char kMetricVpnWireGuardKeyPairSource[] =
-      "Network.Shill.Vpn.WireGuardKeyPairSource";
-  static constexpr int kMetricVpnWireGuardKeyPairSourceMax =
-      kVpnWireGuardKeyPairSourceMax;
   // Number of peers used in a WireGuard connection.
-  static constexpr char kMetricVpnWireGuardPeersNum[] =
-      "Network.Shill.Vpn.WireGuardPeersNum";
-  static constexpr int kMetricVpnWireGuardPeersNumMin = 1;
-  static constexpr int kMetricVpnWireGuardPeersNumMax = 10;
-  static constexpr int kMetricVpnWireGuardPeersNumNumBuckets = 11;
-  // Allowed IPs type used in a WireGuard connection.
-  static constexpr char kMetricVpnWireGuardAllowedIPsType[] =
-      "Network.Shill.Vpn.WireGuardAllowedIPsType";
-  static constexpr int kMetricVpnWireGuardAllowedIPsTypeMax =
-      kVpnWireGuardAllowedIPsTypeMax;
+  static constexpr HistogramMetric<FixedName> kMetricVpnWireGuardPeersNum = {
+      .n = FixedName{"Network.Shill.Vpn.WireGuardPeersNum"},
+      .min = 1,
+      .max = 10,
+      .num_buckets = 11,
+  };
 
   // The length in seconds of a lease that has expired while the DHCP client was
   // attempting to renew the lease. CL:557297 changed the number of buckets for

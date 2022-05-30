@@ -109,8 +109,7 @@ class NewL2TPIPsecDriverTest : public testing::Test {
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecSwanctlEndReason,
-                      Metrics::ConnectFailureToServiceErrorEnum(failure),
-                      Metrics::kMetricVpnL2tpIpsecSwanctlEndReasonMax));
+                      Metrics::ConnectFailureToServiceErrorEnum(failure)));
   }
 
   // Dependencies used by |driver_|.
@@ -142,21 +141,18 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
   driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {});
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                      Metrics::kVpnDriverL2tpIpsec,
-                                      Metrics::kMetricVpnDriverMax));
+                                      Metrics::kVpnDriverL2tpIpsec));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
-                            Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
-                            Metrics::kVpnRemoteAuthenticationTypeMax));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(
-                  Metrics::kMetricVpnUserAuthenticationType,
-                  Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
-                  Metrics::kVpnUserAuthenticationTypeMax));
+                            Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(
+          Metrics::kMetricVpnUserAuthenticationType,
+          Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
-                            Metrics::kVpnL2tpIpsecTunnelGroupUsageYes,
-                            Metrics::kVpnL2tpIpsecTunnelGroupUsageMax));
+                            Metrics::kVpnL2tpIpsecTunnelGroupUsageYes));
 
   dispatcher_.DispatchPendingEvents();
 

@@ -319,17 +319,14 @@ TEST_P(OpenVPNDriverTest, NotifyUMA) {
 
   // Check that UMA metrics are emitted on Notify.
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                      Metrics::kVpnDriverOpenVpn,
-                                      Metrics::kMetricVpnDriverMax));
+                                      Metrics::kVpnDriverOpenVpn));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
-                            GetParam().remote_authentication_type,
-                            Metrics::kVpnRemoteAuthenticationTypeMax));
+                            GetParam().remote_authentication_type));
   for (const auto& authentication_type : GetParam().user_authentication_types) {
     EXPECT_CALL(metrics_,
                 SendEnumToUMA(Metrics::kMetricVpnUserAuthenticationType,
-                              authentication_type,
-                              Metrics::kVpnUserAuthenticationTypeMax));
+                              authentication_type));
   }
 
   Error unused_error;

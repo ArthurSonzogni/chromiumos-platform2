@@ -181,22 +181,19 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
     store.SetStringProperty(kL2TPIPsecPasswordProperty, "y", &unused_error);
     store.SetStringProperty(kL2TPIPsecTunnelGroupProperty, "z", &unused_error);
     EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                        Metrics::kVpnDriverL2tpIpsec,
-                                        Metrics::kMetricVpnDriverMax));
-    EXPECT_CALL(metrics_,
-                SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
-                              Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
-                              Metrics::kVpnRemoteAuthenticationTypeMax));
+                                        Metrics::kVpnDriverL2tpIpsec));
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
+                      Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk));
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(
             Metrics::kMetricVpnUserAuthenticationType,
-            Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
-            Metrics::kVpnUserAuthenticationTypeMax));
+            Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword));
     EXPECT_CALL(metrics_,
                 SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
-                              Metrics::kVpnL2tpIpsecTunnelGroupUsageYes,
-                              Metrics::kVpnL2tpIpsecTunnelGroupUsageMax));
+                              Metrics::kVpnL2tpIpsecTunnelGroupUsageYes));
 
     ExpectCipherMetricsReported();
   }
@@ -214,37 +211,30 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithm,
-                      Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128,
-                      Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax));
+                      Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128));
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm,
-                      Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128,
-                      Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax));
-    EXPECT_CALL(metrics_,
-                SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeDHGroup,
-                              Metrics::kVpnIpsecDHGroup_MODP_3072,
-                              Metrics::kMetricVpnL2tpIpsecIkeDHGroupMax));
+                      Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128));
+    EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeDHGroup,
+                                        Metrics::kVpnIpsecDHGroup_MODP_3072));
 
     // Expect metrics for ESP.
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithm,
-                      Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128,
-                      Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax));
+                      Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128));
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm,
-                      Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128,
-                      Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax));
+                      Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128));
   }
 
   void ExpectEndReasonMetricsReported(Service::ConnectFailure failure) {
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecStrokeEndReason,
-                      Metrics::ConnectFailureToServiceErrorEnum(failure),
-                      Metrics::kMetricVpnL2tpIpsecStrokeEndReasonMax));
+                      Metrics::ConnectFailureToServiceErrorEnum(failure)));
   }
 
   void SaveLoginPassword(const std::string& password_str) {

@@ -1071,8 +1071,7 @@ void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
 
 void OpenVPNDriver::ReportConnectionMetrics() {
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                           Metrics::kVpnDriverOpenVpn,
-                           Metrics::kMetricVpnDriverMax);
+                           Metrics::kVpnDriverOpenVpn);
 
   if (args()->Contains<std::vector<std::string>>(kOpenVPNCaCertPemProperty) &&
       !args()
@@ -1080,49 +1079,42 @@ void OpenVPNDriver::ReportConnectionMetrics() {
            .empty()) {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
-        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+        Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate);
   } else {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+        Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault);
   }
 
   bool has_user_authentication = false;
   if (args()->Lookup<std::string>(kOpenVPNTokenProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken);
     has_user_authentication = true;
   }
   if (args()->Lookup<std::string>(kOpenVPNOTPProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp);
     has_user_authentication = true;
   }
   if (args()->Lookup<std::string>(kOpenVPNAuthUserPassProperty, "") != "" ||
       args()->Lookup<std::string>(kOpenVPNUserProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword);
     has_user_authentication = true;
   }
   if (args()->Lookup<std::string>(kOpenVPNClientCertIdProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+        Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate);
     has_user_authentication = true;
   }
   if (!has_user_authentication) {
     metrics()->SendEnumToUMA(Metrics::kMetricVpnUserAuthenticationType,
-                             Metrics::kVpnUserAuthenticationTypeOpenVpnNone,
-                             Metrics::kMetricVpnUserAuthenticationTypeMax);
+                             Metrics::kVpnUserAuthenticationTypeOpenVpnNone);
   }
 }
 
@@ -1138,8 +1130,7 @@ void OpenVPNDriver::ReportCipherMetrics(const std::string& cipher) {
     metric = it->second;
   }
 
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnOpenVPNCipher, metric,
-                           Metrics::kMetricVpnOpenVPNCipherMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnOpenVPNCipher, metric);
 }
 
 }  // namespace shill

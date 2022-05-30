@@ -83,8 +83,7 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
 void ReportConnectionEndReason(Metrics* metrics,
                                Service::ConnectFailure failure) {
   metrics->SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
-                         Metrics::ConnectFailureToServiceErrorEnum(failure),
-                         Metrics::kMetricVpnIkev2EndReasonMax);
+                         Metrics::ConnectFailureToServiceErrorEnum(failure));
 }
 
 }  // namespace
@@ -287,8 +286,7 @@ KeyValueStore IKEv2Driver::GetProvider(Error* error) {
 }
 
 void IKEv2Driver::ReportConnectionMetrics() {
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverIKEv2,
-                           Metrics::kMetricVpnDriverMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverIKEv2);
 
   Metrics::VpnIpsecAuthenticationType auth_type_metrics =
       Metrics::kVpnIpsecAuthenticationTypeUnknown;
@@ -307,8 +305,7 @@ void IKEv2Driver::ReportConnectionMetrics() {
     LOG(ERROR) << "Unexpected auth type: " << auth_type_str;
   }
   metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2AuthenticationType,
-                           auth_type_metrics,
-                           Metrics::kMetricVpnIkev2AuthenticationMax);
+                           auth_type_metrics);
 
   // To access the methods only defined in the inherited class. The cast will
   // only fail in unit tests.
@@ -316,22 +313,17 @@ void IKEv2Driver::ReportConnectionMetrics() {
   if (conn) {
     // Cipher suite for IKE.
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeEncryptionAlgorithm,
-                             conn->ike_encryption_algo(),
-                             Metrics::kMetricVpnIkev2IkeEncryptionAlgorithmMax);
+                             conn->ike_encryption_algo());
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeIntegrityAlgorithm,
-                             conn->ike_integrity_algo(),
-                             Metrics::kMetricVpnIkev2IkeIntegrityAlgorithmMax);
+                             conn->ike_integrity_algo());
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeDHGroup,
-                             conn->ike_dh_group(),
-                             Metrics::kMetricVpnIkev2IkeDHGroupMax);
+                             conn->ike_dh_group());
 
     // Cipher suite for ESP.
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2EspEncryptionAlgorithm,
-                             conn->esp_encryption_algo(),
-                             Metrics::kMetricVpnIkev2EspEncryptionAlgorithmMax);
+                             conn->esp_encryption_algo());
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2EspIntegrityAlgorithm,
-                             conn->esp_integrity_algo(),
-                             Metrics::kMetricVpnIkev2EspIntegrityAlgorithmMax);
+                             conn->esp_integrity_algo());
   }
 }
 

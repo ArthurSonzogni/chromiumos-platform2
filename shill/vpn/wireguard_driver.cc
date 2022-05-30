@@ -670,19 +670,14 @@ void WireGuardDriver::ClearPeers(Error* error) {
 void WireGuardDriver::ReportConnectionMetrics() {
   // VPN type.
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                           Metrics::kVpnDriverWireGuard,
-                           Metrics::kMetricVpnDriverMax);
+                           Metrics::kVpnDriverWireGuard);
 
   // Key pair source.
   metrics()->SendEnumToUMA(Metrics::kMetricVpnWireGuardKeyPairSource,
-                           key_pair_source_,
-                           Metrics::kMetricVpnWireGuardKeyPairSourceMax);
+                           key_pair_source_);
 
   // Number of peers.
-  metrics()->SendToUMA(Metrics::kMetricVpnWireGuardPeersNum, peers_.size(),
-                       Metrics::kMetricVpnWireGuardPeersNumMin,
-                       Metrics::kMetricVpnWireGuardPeersNumMax,
-                       Metrics::kMetricVpnWireGuardPeersNumNumBuckets);
+  metrics()->SendToUMA(Metrics::kMetricVpnWireGuardPeersNum, peers_.size());
 
   // Allowed IPs type.
   // TODO(b/194243702): Collect metrics for IPv6 usages in Allowed IPs.
@@ -694,8 +689,7 @@ void WireGuardDriver::ReportConnectionMetrics() {
     }
   }
   metrics()->SendEnumToUMA(Metrics::kMetricVpnWireGuardAllowedIPsType,
-                           allowed_ips_type,
-                           Metrics::kMetricVpnWireGuardAllowedIPsTypeMax);
+                           allowed_ips_type);
 }
 
 // static

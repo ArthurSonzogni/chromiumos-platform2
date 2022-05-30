@@ -92,8 +92,7 @@ class IKEv2DriverTest : public testing::Test {
     EXPECT_CALL(
         metrics_,
         SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
-                      Metrics::ConnectFailureToServiceErrorEnum(failure),
-                      Metrics::kMetricVpnIkev2EndReasonMax));
+                      Metrics::ConnectFailureToServiceErrorEnum(failure)));
   }
 
   // Dependencies used by |driver_|.
@@ -122,13 +121,11 @@ TEST_F(IKEv2DriverTest, ConnectAndDisconnect) {
   constexpr int kIfIndex = 123;
   driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {});
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverIKEv2,
-                            Metrics::kMetricVpnDriverMax));
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
+                                      Metrics::kVpnDriverIKEv2));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnIkev2AuthenticationType,
-                            Metrics::kVpnIpsecAuthenticationTypePsk,
-                            Metrics::kMetricVpnIkev2AuthenticationMax));
+                            Metrics::kVpnIpsecAuthenticationTypePsk));
   dispatcher_.DispatchPendingEvents();
 
   // Triggers disconnect.

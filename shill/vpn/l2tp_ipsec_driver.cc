@@ -103,8 +103,7 @@ Service::ConnectFailure ExitStatusToFailure(int status) {
 void ReportConnectionEndReason(Metrics* metrics,
                                Service::ConnectFailure failure) {
   metrics->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecStrokeEndReason,
-                         Metrics::ConnectFailureToServiceErrorEnum(failure),
-                         Metrics::kMetricVpnL2tpIpsecStrokeEndReasonMax);
+                         Metrics::ConnectFailureToServiceErrorEnum(failure));
 }
 
 }  // namespace
@@ -586,8 +585,7 @@ KeyValueStore L2TPIPsecDriver::GetProvider(Error* error) {
 
 void L2TPIPsecDriver::ReportConnectionMetrics() {
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                           Metrics::kVpnDriverL2tpIpsec,
-                           Metrics::kMetricVpnDriverMax);
+                           Metrics::kVpnDriverL2tpIpsec);
 
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
@@ -596,29 +594,25 @@ void L2TPIPsecDriver::ReportConnectionMetrics() {
       !args()->Get<Strings>(kL2TPIPsecCaCertPemProperty).empty()) {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
-        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate);
     has_remote_authentication = true;
   }
   if (args()->Lookup<std::string>(kL2TPIPsecPskProperty, "") != "") {
     metrics()->SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
-                             Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
-                             Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+                             Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk);
     has_remote_authentication = true;
   }
   if (!has_remote_authentication) {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecDefault,
-        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecDefault);
   }
 
   bool has_user_authentication = false;
   if (args()->Lookup<std::string>(kL2TPIPsecClientCertIdProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate);
     has_user_authentication = true;
   }
   if (args()->Lookup<std::string>(kL2TPIPsecPasswordProperty, "") != "" ||
@@ -626,14 +620,12 @@ void L2TPIPsecDriver::ReportConnectionMetrics() {
           "true") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword);
     has_user_authentication = true;
   }
   if (!has_user_authentication) {
     metrics()->SendEnumToUMA(Metrics::kMetricVpnUserAuthenticationType,
-                             Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
-                             Metrics::kMetricVpnUserAuthenticationTypeMax);
+                             Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone);
   }
 
   // Reports whether tunnel group is set or not (b/201478824).
@@ -642,8 +634,7 @@ void L2TPIPsecDriver::ReportConnectionMetrics() {
           ? Metrics::kVpnL2tpIpsecTunnelGroupUsageYes
           : Metrics::kVpnL2tpIpsecTunnelGroupUsageNo;
   metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
-                           tunnel_group_usage,
-                           Metrics::kMetricVpnL2tpIpsecTunnelGroupUsageMax);
+                           tunnel_group_usage);
 
   // Reports cipher suites for IKE and ESP asynchronously.
   int pid = process_manager()->StartProcessInMinijailWithStdout(
@@ -669,27 +660,18 @@ void L2TPIPsecDriver::ParseCipherSuitesAndReport(
   }
 
   // Reports cipher suite for IKE.
-  metrics()->SendEnumToUMA(
-      Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithm,
-      std::get<0>(ike_cipher),
-      Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax);
-  metrics()->SendEnumToUMA(
-      Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm,
-      std::get<1>(ike_cipher),
-      Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithm,
+                           std::get<0>(ike_cipher));
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm,
+                           std::get<1>(ike_cipher));
   metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeDHGroup,
-                           std::get<2>(ike_cipher),
-                           Metrics::kMetricVpnL2tpIpsecIkeDHGroupMax);
+                           std::get<2>(ike_cipher));
 
   // Reports cipher suite for ESP.
-  metrics()->SendEnumToUMA(
-      Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithm,
-      std::get<0>(esp_cipher),
-      Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax);
-  metrics()->SendEnumToUMA(
-      Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm,
-      std::get<1>(esp_cipher),
-      Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithm,
+                           std::get<0>(esp_cipher));
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm,
+                           std::get<1>(esp_cipher));
 }
 
 }  // namespace shill
