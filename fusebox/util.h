@@ -24,7 +24,4 @@ std::string OpenFlagsToString(int flags);
 // Returns fuse `to_set` flags string.
 std::string ToSetFlagsToString(int flags);
 
-// Redacts name to "redacted" depending on base::logging LOG level.
-std::string Redact(const std::string& name);
-
 #endif  // FUSEBOX_UTIL_H_
