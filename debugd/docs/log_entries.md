@@ -138,6 +138,9 @@ of the [proc(5)] man page for an explanation of each field.
 
 ## console-ramoops
 
+Contains logs from Linux kernel from previous boot, in pstore [ramoops
+logger](https://www.kernel.org/doc/html/latest/admin-guide/ramoops.html).
+
 ## cpuinfo
 
 Various CPU & system architecture details.  Often shows exact CPU models and
@@ -188,6 +191,9 @@ described below, but with additional categories enabled. See
 http://go/cros-displaydebug for more details.
 
 ## dmesg
+
+Linux kernel logs from the current run. See [console-ramoops](#console_ramoops)
+for previous boot.
 
 ## drm_gem_objects
 
