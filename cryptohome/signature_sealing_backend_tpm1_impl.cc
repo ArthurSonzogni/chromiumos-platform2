@@ -51,6 +51,7 @@ using hwsec_foundation::RsaOaepEncrypt;
 using hwsec_foundation::Sha1;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::MakeStatus;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -404,11 +405,13 @@ bool ObtainCmkMigrationSignatureTicket(
     return false;
   }
   SecureBlob local_cmk_migration_signature_ticket;
-  if (hwsec::Status err = tpm->GetDataAttribute(
+  if (hwsec::Status status = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_TICKET_DATA,
           TSS_MIGATTRIB_TICKET_SIG_TICKET,
-          &local_cmk_migration_signature_ticket)) {
-    LOG(ERROR) << "Error reading the CMK migration signature ticket: " << err;
+          &local_cmk_migration_signature_ticket);
+      !status.ok()) {
+    LOG(ERROR) << "Error reading the CMK migration signature ticket: "
+               << status;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -535,10 +538,11 @@ bool MigrateCmk(TpmImpl* tpm,
       migration_random_buf.value(),
       migration_random_buf.value() + migration_random_buf_size);
   SecureBlob local_migrated_cmk_key12_blob;
-  if (hwsec::Status err = tpm->GetDataAttribute(
+  if (hwsec::Status status = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_MIGRATIONBLOB,
-          TSS_MIGATTRIB_MIG_XOR_BLOB, &local_migrated_cmk_key12_blob)) {
-    LOG(ERROR) << "Failed to read the migrated key blob " << err;
+          TSS_MIGATTRIB_MIG_XOR_BLOB, &local_migrated_cmk_key12_blob);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to read the migrated key blob " << status;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -600,10 +604,12 @@ bool ObtainMaApprovalTicket(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_ma_approval_ticket;
-  if (hwsec::Status err = tpm->GetDataAttribute(
+  if (hwsec::Status status = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_AUTHORITY_DATA,
-          TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, &local_ma_approval_ticket)) {
-    LOG(ERROR) << "Error reading migration authority approval ticket: " << err;
+          TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, &local_ma_approval_ticket);
+      !status.ok()) {
+    LOG(ERROR) << "Error reading migration authority approval ticket: "
+               << status;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -917,19 +923,22 @@ bool GenerateCmk(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_cmk_pubkey;
-  if (hwsec::Status err = tpm->GetDataAttribute(
+  if (hwsec::Status status = tpm->GetDataAttribute(
           tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
-          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &local_cmk_pubkey)) {
-    LOG(ERROR) << "Failed to read the certified migratable public key: " << err;
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &local_cmk_pubkey);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to read the certified migratable public key: "
+               << status;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
   cmk_pubkey->assign(local_cmk_pubkey.begin(), local_cmk_pubkey.end());
   SecureBlob local_srk_wrapped_cmk;
-  if (hwsec::Status err = tpm->GetDataAttribute(
+  if (hwsec::Status status = tpm->GetDataAttribute(
           tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
-          TSS_TSPATTRIB_KEYBLOB_BLOB, &local_srk_wrapped_cmk)) {
-    LOG(ERROR) << "Failed to read the certified migratable key: " << err;
+          TSS_TSPATTRIB_KEYBLOB_BLOB, &local_srk_wrapped_cmk);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to read the certified migratable key: " << status;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -993,7 +1002,8 @@ hwsec::Status UnsealingSessionTpm1Impl::Unseal(
   }
   // Load the required keys into Trousers.
   ScopedTssKey srk_handle(tpm_context);
-  if (hwsec::Status err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+  if (hwsec::Status err = tpm_->LoadSrk(tpm_context, srk_handle.ptr());
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   int protection_key_size_bits = 0;
@@ -1068,12 +1078,14 @@ hwsec::Status UnsealingSessionTpm1Impl::Unseal(
   // Unseal the secret value bound to PCRs and the AuthData value.
   SecureBlob auth_value;
   if (hwsec::Status err =
-          tpm_->GetAuthValue(std::nullopt, auth_data, &auth_value)) {
+          tpm_->GetAuthValue(std::nullopt, auth_data, &auth_value);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
   if (hwsec::Status err = tpm_->UnsealWithAuthorization(
           std::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
-          {} /* pcr_map */, unsealed_value)) {
+          {} /* pcr_map */, unsealed_value);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to unseal the secret value");
   }
@@ -1089,12 +1101,14 @@ hwsec::Status MakePcrBoundSecret(
   CHECK(pcr_bound_secret);
   brillo::SecureBlob auth_value;
   if (hwsec::Status err =
-          tpm->GetAuthValue(std::nullopt, auth_data, &auth_value)) {
+          tpm->GetAuthValue(std::nullopt, auth_data, &auth_value);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
   SecureBlob secure_pcr_bound_secret;
   if (hwsec::Status err = tpm->SealToPcrWithAuthorization(
-          secret_value, auth_data, pcr_map, &secure_pcr_bound_secret)) {
+          secret_value, auth_data, pcr_map, &secure_pcr_bound_secret);
+      !err.ok()) {
     return WrapError<TPMError>(
         std::move(err),
         "Error binding the secret value to PCRs and authorization data");
@@ -1149,11 +1163,12 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
                                  TPMRetryAction::kNoRetry);
   }
   SecureBlob protection_key_pubkey;
-  if (tpm_->GetDataAttribute(
+  if (hwsec::Status status = tpm_->GetDataAttribute(
           tpm_context, protection_key_handle, TSS_TSPATTRIB_KEY_BLOB,
-          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey)) {
-    return CreateError<TPMError>("Failed to load the protection public key",
-                                 TPMRetryAction::kLater);
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey);
+      !status.ok()) {
+    return MakeStatus<TPMError>("Failed to load the protection public key")
+        .Wrap(std::move(status));
   }
   const Blob protection_key_pubkey_digest =
       Sha1(Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()));
@@ -1170,7 +1185,8 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Load the SRK.
   ScopedTssKey srk_handle(tpm_context);
-  if (hwsec::Status err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+  if (hwsec::Status err = tpm_->LoadSrk(tpm_context, srk_handle.ptr());
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   // Generate the Certified Migratable Key, associated with the protection
@@ -1188,7 +1204,8 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Generate the AuthData value randomly.
   SecureBlob auth_data;
   if (hwsec::Status err =
-          tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data)) {
+          tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to generate the authorization data");
   }
@@ -1208,7 +1225,8 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Generate the secret value randomly.
   if (hwsec::Status err =
-          tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
+          tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err),
                                "Error generating random secret");
   }
@@ -1223,7 +1241,8 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   brillo::Blob default_pcr_bound_secret;
   if (hwsec::Status err =
           MakePcrBoundSecret(tpm_, *secret_value, auth_data, default_pcr_map,
-                             &default_pcr_bound_secret)) {
+                             &default_pcr_bound_secret);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to make default pcr bound secret");
   }
@@ -1232,7 +1251,8 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   brillo::Blob extended_pcr_bound_secret;
   if (hwsec::Status err =
           MakePcrBoundSecret(tpm_, *secret_value, auth_data, extended_pcr_map,
-                             &extended_pcr_bound_secret)) {
+                             &extended_pcr_bound_secret);
+      !err.ok()) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to make extended pcr bound secret");
   }
@@ -1326,11 +1346,12 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
                                  TPMRetryAction::kNoRetry);
   }
   SecureBlob protection_key_pubkey;
-  if (tpm_->GetDataAttribute(
+  if (hwsec::Status status = tpm_->GetDataAttribute(
           tpm_context, protection_key_handle, TSS_TSPATTRIB_KEY_BLOB,
-          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey)) {
-    return CreateError<TPMError>("Failed to read the protection public key",
-                                 TPMRetryAction::kNoRetry);
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey);
+      !status.ok()) {
+    return MakeStatus<TPMError>("Failed to read the protection public key")
+        .Wrap(std::move(status));
   }
   // Generate the migration destination RSA key. Onto this key the CMK private
   // key will be migrated; to complete the unsealing, the decryption operation
@@ -1363,13 +1384,13 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
                                  TPMRetryAction::kNoRetry);
   }
   SecureBlob migration_destination_key_pubkey;
-  if (tpm_->GetDataAttribute(tpm_context, migration_destination_key_handle,
-                             TSS_TSPATTRIB_KEY_BLOB,
-                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
-                             &migration_destination_key_pubkey)) {
-    return CreateError<TPMError>(
-        "Failed to read the migration destination public key",
-        TPMRetryAction::kNoRetry);
+  if (hwsec::Status status = tpm_->GetDataAttribute(
+          tpm_context, migration_destination_key_handle, TSS_TSPATTRIB_KEY_BLOB,
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &migration_destination_key_pubkey);
+      !status.ok()) {
+    return MakeStatus<TPMError>(
+               "Failed to read the migration destination public key")
+        .Wrap(std::move(status));
   }
   *unsealing_session = std::make_unique<UnsealingSessionTpm1Impl>(
       tpm_, data.srk_wrapped_cmk, data.cmk_wrapped_auth_data, pcr_bound_secret,

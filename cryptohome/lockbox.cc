@@ -133,7 +133,8 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   brillo::SecureBlob key_material(contents->key_material_size());
   if (IsKeyMaterialInLockbox()) {
     if (hwsec::Status err =
-            tpm_->GetRandomDataSecureBlob(key_material.size(), &key_material)) {
+            tpm_->GetRandomDataSecureBlob(key_material.size(), &key_material);
+        !err.ok()) {
       LOG(ERROR) << "Failed to get key material from the TPM: " << err;
       *error = LockboxError::kTpmError;
       return false;
