@@ -3100,9 +3100,11 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(
       // non-exempt label, should be removed
       std::unique_ptr<VaultKeyset> remove_vk(
           keyset_management_->GetVaultKeyset(obfuscated_username, label));
-      if (!keyset_management_->ForceRemoveKeyset(obfuscated_username,
-                                                 remove_vk->GetLegacyIndex())) {
-        LOG(ERROR) << "MassRemoveKeys: failed to remove keyset " << label;
+      if (CryptohomeStatus status = keyset_management_->ForceRemoveKeyset(
+              obfuscated_username, remove_vk->GetLegacyIndex());
+          !status.ok()) {
+        LOG(ERROR) << "MassRemoveKeys: failed to remove keyset " << label
+                   << ": " << status;
         return user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
       }
     }
