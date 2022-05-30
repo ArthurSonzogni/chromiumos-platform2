@@ -20,10 +20,12 @@
 #include <fuse/fuse.h>
 #include <fuse/fuse_common.h>
 #include <fuse/fuse_lowlevel.h>
+#include <linux/fs.h>
 #include <linux/limits.h>
 #include <signal.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
@@ -206,6 +208,30 @@ int passthrough_getxattr(const char* path,
   }
   return WRAP_FS_CALL(
       lgetxattr(GetAbsolutePath(path).value().c_str(), name, value, size));
+}
+
+int passthrough_ioctl(const char*,
+                      int cmd,
+                      void* arg,
+                      struct fuse_file_info* fi,
+                      unsigned int flags,
+                      void* data) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
+  // NOTE: We don't check if FUSE_IOCTL_COMPAT is included in the flags because
+  // currently all supported ioctl commands are not affected by the difference
+  // between 32-bit and 64-bit.
+  int fd = static_cast<int>(fi->fh);
+  switch (static_cast<unsigned int>(cmd)) {
+    case FS_IOC_FSGETXATTR:
+      return WRAP_FS_CALL(ioctl(fd, FS_IOC_FSGETXATTR, data));
+    case FS_IOC_FSSETXATTR:
+      return WRAP_FS_CALL(ioctl(fd, FS_IOC_FSSETXATTR, data));
+    default:
+      return -ENOTTY;
+  }
 }
 
 int passthrough_mkdir(const char* path, mode_t mode) {
@@ -398,6 +424,7 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   FILL_OP(ftruncate);
   FILL_OP(getattr);
   FILL_OP(getxattr);
+  FILL_OP(ioctl);
   FILL_OP(mkdir);
   FILL_OP(open);
   FILL_OP(opendir);
