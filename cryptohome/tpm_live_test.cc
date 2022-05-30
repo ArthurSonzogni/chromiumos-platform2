@@ -177,7 +177,8 @@ bool TpmLiveTest::DecryptionKeyTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &handle)) {
+  if (hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &handle);
+      !err.ok()) {
     LOG(ERROR) << "Error loading key: " << err;
     return false;
   }
@@ -185,13 +186,15 @@ bool TpmLiveTest::DecryptionKeyTest() {
   SecureBlob plaintext(32, 'b');
   SecureBlob ciphertext;
   if (hwsec::Status err =
-          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext)) {
+          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext);
+      !err.ok()) {
     LOG(ERROR) << "Error encrypting blob: " << err;
     return false;
   }
   SecureBlob decrypted_plaintext;
   if (hwsec::Status err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
-                                            &decrypted_plaintext)) {
+                                            &decrypted_plaintext);
+      !err.ok()) {
     LOG(ERROR) << "Error decrypting blob: " << err;
     return false;
   }
@@ -218,7 +221,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &handle)) {
+  if (hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &handle);
+      !err.ok()) {
     LOG(ERROR) << "Error loading key: " << err;
     return false;
   }
@@ -232,18 +236,21 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   SecureBlob ciphertext;
   brillo::SecureBlob auth_value;
   if (hwsec::Status err =
-          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
+          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value);
+      !err.ok()) {
     LOG(ERROR) << "Failed to get auth value: " << err;
     return false;
   }
   if (hwsec::Status err = tpm_->SealToPcrWithAuthorization(
-          plaintext, auth_value, pcr_map, &ciphertext)) {
+          plaintext, auth_value, pcr_map, &ciphertext);
+      !err.ok()) {
     LOG(ERROR) << "Error sealing the blob: " << err;
     return false;
   }
   SecureBlob unsealed_text;
   if (hwsec::Status err = tpm_->UnsealWithAuthorization(
-          std::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text)) {
+          std::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text);
+      !err.ok()) {
     LOG(ERROR) << "Error unsealing blob: " << err;
     return false;
   }
@@ -255,7 +262,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   // Check that unsealing doesn't work with wrong pass_blob.
   pass_blob.char_data()[255] = 'a';
   if (hwsec::Status err =
-          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
+          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value);
+      !err.ok()) {
     LOG(ERROR) << "Failed to get auth value: " << err;
     return false;
   }
@@ -570,8 +578,8 @@ class SignatureSealedSecretTestCase final {
                     structure::SignatureSealedData* sealed_secret_data) {
     if (hwsec::Status err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
-            delegate_blob_, delegate_secret_, secret_value,
-            sealed_secret_data)) {
+            delegate_blob_, delegate_secret_, secret_value, sealed_secret_data);
+        !err.ok()) {
       LOG(ERROR) << "Error creating signature-sealed secret: " << err;
       return false;
     }
@@ -584,7 +592,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
             delegate_blob_, delegate_secret_, &secret_value,
-            &sealed_secret_data)) {
+            &sealed_secret_data);
+        !err.ok()) {
       // TODO(b/174816474): check the error message is expected.
       LOG(INFO) << "Successfully failed to create signature-sealed secret: "
                 << err;
@@ -602,7 +611,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
-            /*locked_to_single_user=*/false, &unsealing_session)) {
+            /*locked_to_single_user=*/false, &unsealing_session);
+        !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
@@ -622,7 +632,8 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     if (hwsec::Status err =
-            unsealing_session->Unseal(*challenge_signature, unsealed_value)) {
+            unsealing_session->Unseal(*challenge_signature, unsealed_value);
+        !err.ok()) {
       LOG(ERROR) << "Error unsealing the secret: " << err;
       return false;
     }
@@ -640,7 +651,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
-            /*locked_to_single_user=*/false, &unsealing_session)) {
+            /*locked_to_single_user=*/false, &unsealing_session);
+        !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
@@ -660,7 +672,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
-            /*locked_to_single_user=*/false, &unsealing_session)) {
+            /*locked_to_single_user=*/false, &unsealing_session);
+        !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
@@ -687,7 +700,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
-            /*locked_to_single_user=*/false, &unsealing_session)) {
+            /*locked_to_single_user=*/false, &unsealing_session);
+        !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
@@ -718,7 +732,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, {wrong_algorithm}, kPcrIndexes,
             delegate_blob_, delegate_secret_, /*locked_to_single_user=*/false,
-            &unsealing_session)) {
+            &unsealing_session);
+        !err.ok()) {
       // TODO(b/174816474): check the error message is expected.
       return true;
     } else {
@@ -741,7 +756,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
-            /*locked_to_single_user=*/false, &unsealing_session)) {
+            /*locked_to_single_user=*/false, &unsealing_session);
+        !err.ok()) {
       // TODO(b/174816474): check the error message is expected.
       return true;
     } else {
@@ -757,7 +773,8 @@ class SignatureSealedSecretTestCase final {
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
-            /*locked_to_single_user=*/false, &unsealing_session)) {
+            /*locked_to_single_user=*/false, &unsealing_session);
+        !err.ok()) {
       // TODO(yich): check the error message is expected.
       LOG(INFO) << "Failed to starting the unsealing session: " << err;
       return true;

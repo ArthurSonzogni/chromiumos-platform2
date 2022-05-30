@@ -162,7 +162,8 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
   }
   Blob challenge;
   if (hwsec::Status err =
-          tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge)) {
+          tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge);
+      !err.ok()) {
     LOG(ERROR)
         << "Failed to generate random bytes for the verification challenge: "
         << err;

@@ -370,14 +370,6 @@ class [[nodiscard]] StackableError {
   constexpr const StackableError& status() const& noexcept { return *this; }
   StackableError status()&& noexcept { return std::move(*this); }
 
-  // Explicit conversion to bool returns true if the object doesn't represent
-  // a a success. This semantic added to preserve the behaviour of the code upon
-  // conversion, without the need to change every conditional. Current code
-  // uses unique_ptr bool conversion semantic to detect a presence of an error.
-  // TODO(dlunev): remove this once the code base is converted to use explicit
-  // |!ok()| check.
-  explicit operator bool() const noexcept { return !ok(); }
-
   // Const reference to the top error object. It is a logic error to query
   // |error()| or dereference a |StackableError| that represents success.
   // |noexcept(noexcept(*std::declval<pointer>()))| means that the function is

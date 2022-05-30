@@ -144,7 +144,8 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
 TPMStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
   Blob salt_random_bytes;
   if (hwsec::Status err = tpm_->GetRandomDataBlob(
-          kChallengeCredentialsSaltRandomByteCount, &salt_random_bytes)) {
+          kChallengeCredentialsSaltRandomByteCount, &salt_random_bytes);
+      !err.ok()) {
     LOG(ERROR) << "Failed to generate random bytes for the salt: " << err;
     return MakeStatus<CryptohomeTPMError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewGenerateRandomSaltFailed),
@@ -189,7 +190,8 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
           public_key_info_.public_key_spki_der,
           public_key_info_.signature_algorithm, obfuscated_username_,
           delegate_blob_, delegate_secret_, &local_tpm_protected_secret_value,
-          &tpm_sealed_secret_data_)) {
+          &tpm_sealed_secret_data_);
+      !err.ok()) {
     LOG(ERROR) << "Failed to create TPM-protected secret: " << err;
     TPMStatus status = MakeStatus<CryptohomeTPMError>(std::move(err));
     return MakeStatus<CryptohomeTPMError>(
