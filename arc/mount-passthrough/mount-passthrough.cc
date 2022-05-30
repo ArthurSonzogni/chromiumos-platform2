@@ -52,6 +52,7 @@ constexpr uid_t kAndroidAppUidEnd = 19999 + USER_NS_SHIFT;
 struct FusePrivateData {
   std::string android_app_access_type;
   bool force_group_permission = false;
+  base::FilePath root;
 };
 
 // Given android_app_access_type, figure out the source of /storage mount in
@@ -133,6 +134,13 @@ int check_allowed() {
   return -EPERM;
 }
 
+// Converts the given relative path to an absolute path.
+base::FilePath GetAbsolutePath(const char* path) {
+  DCHECK_EQ(path[0], '/');
+  return static_cast<FusePrivateData*>(fuse_get_context()->private_data)
+      ->root.Append(path + 1);
+}
+
 int passthrough_create(const char* path,
                        mode_t mode,
                        struct fuse_file_info* fi) {
@@ -147,7 +155,8 @@ int passthrough_create(const char* path,
 
   // Ignore specified |mode| and always use a fixed mode since we do not allow
   // chmod anyway. Note that we explicitly set the umask in main().
-  int fd = open(path, fi->flags, force_group_permission ? 0664 : 0644);
+  int fd = open(GetAbsolutePath(path).value().c_str(), fi->flags,
+                force_group_permission ? 0664 : 0644);
   if (fd < 0) {
     return -errno;
   }
@@ -184,7 +193,7 @@ int passthrough_getattr(const char* path, struct stat* buf) {
   // Unfortunately, we dont have check_allowed() here because getattr is called
   // by kernel VFS during fstat (which receives fd). We couldn't prohibit such
   // fd calls to happen, so we need to relax this.
-  return WRAP_FS_CALL(lstat(path, buf));
+  return WRAP_FS_CALL(lstat(GetAbsolutePath(path).value().c_str(), buf));
 }
 
 int passthrough_getxattr(const char* path,
@@ -195,7 +204,8 @@ int passthrough_getxattr(const char* path,
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(lgetxattr(path, name, value, size));
+  return WRAP_FS_CALL(
+      lgetxattr(GetAbsolutePath(path).value().c_str(), name, value, size));
 }
 
 int passthrough_mkdir(const char* path, mode_t mode) {
@@ -211,7 +221,7 @@ int passthrough_mkdir(const char* path, mode_t mode) {
     mode |= S_IRWXG;
   }
 
-  return WRAP_FS_CALL(mkdir(path, mode));
+  return WRAP_FS_CALL(mkdir(GetAbsolutePath(path).value().c_str(), mode));
 }
 
 int passthrough_open(const char* path, struct fuse_file_info* fi) {
@@ -219,7 +229,7 @@ int passthrough_open(const char* path, struct fuse_file_info* fi) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  int fd = open(path, fi->flags);
+  int fd = open(GetAbsolutePath(path).value().c_str(), fi->flags);
   if (fd < 0) {
     return -errno;
   }
@@ -232,7 +242,7 @@ int passthrough_opendir(const char* path, struct fuse_file_info* fi) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  DIR* dirp = opendir(path);
+  DIR* dirp = opendir(GetAbsolutePath(path).value().c_str());
   if (!dirp) {
     return -errno;
   }
@@ -307,7 +317,8 @@ int passthrough_rename(const char* oldpath, const char* newpath) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(rename(oldpath, newpath));
+  return WRAP_FS_CALL(rename(GetAbsolutePath(oldpath).value().c_str(),
+                             GetAbsolutePath(newpath).value().c_str()));
 }
 
 int passthrough_rmdir(const char* path) {
@@ -315,7 +326,7 @@ int passthrough_rmdir(const char* path) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(rmdir(path));
+  return WRAP_FS_CALL(rmdir(GetAbsolutePath(path).value().c_str()));
 }
 
 int passthrough_statfs(const char* path, struct statvfs* buf) {
@@ -323,7 +334,7 @@ int passthrough_statfs(const char* path, struct statvfs* buf) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(statvfs(path, buf));
+  return WRAP_FS_CALL(statvfs(GetAbsolutePath(path).value().c_str(), buf));
 }
 
 int passthrough_truncate(const char* path, off_t size) {
@@ -331,7 +342,7 @@ int passthrough_truncate(const char* path, off_t size) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(truncate(path, size));
+  return WRAP_FS_CALL(truncate(GetAbsolutePath(path).value().c_str(), size));
 }
 
 int passthrough_unlink(const char* path) {
@@ -339,7 +350,7 @@ int passthrough_unlink(const char* path) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(unlink(path));
+  return WRAP_FS_CALL(unlink(GetAbsolutePath(path).value().c_str()));
 }
 
 int passthrough_utimens(const char* path, const struct timespec tv[2]) {
@@ -347,7 +358,8 @@ int passthrough_utimens(const char* path, const struct timespec tv[2]) {
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
-  return WRAP_FS_CALL(utimensat(AT_FDCWD, path, tv, 0));
+  return WRAP_FS_CALL(
+      utimensat(AT_FDCWD, GetAbsolutePath(path).value().c_str(), tv, 0));
 }
 
 int passthrough_write(const char*,
@@ -484,14 +496,12 @@ int main(int argc, char** argv) {
   struct fuse_operations passthrough_ops;
   setup_passthrough_ops(&passthrough_ops);
 
-  const std::string fuse_subdir_opt("subdir=" + FLAGS_source);
   const std::string fuse_uid_opt(
       "uid=" + std::to_string(FLAGS_fuse_uid + USER_NS_SHIFT));
   const std::string fuse_gid_opt(
       "gid=" + std::to_string(FLAGS_fuse_gid + USER_NS_SHIFT));
   const std::string fuse_umask_opt("umask=" + FLAGS_fuse_umask);
-  LOG(INFO) << "subdir_opt(" << fuse_subdir_opt << ") "
-            << "uid_opt(" << fuse_uid_opt << ") "
+  LOG(INFO) << "uid_opt(" << fuse_uid_opt << ") "
             << "gid_opt(" << fuse_gid_opt << ") "
             << "umask_opt(" << fuse_umask_opt << ")";
 
@@ -520,10 +530,6 @@ int main(int argc, char** argv) {
       "-o",
       fuse_gid_opt.c_str(),
       "-o",
-      "modules=subdir",
-      "-o",
-      fuse_subdir_opt.c_str(),
-      "-o",
       "direct_io",
       "-o",
       fuse_umask_opt.c_str(),
@@ -538,6 +544,7 @@ int main(int argc, char** argv) {
   FusePrivateData private_data;
   private_data.android_app_access_type = FLAGS_android_app_access_type;
   private_data.force_group_permission = FLAGS_force_group_permission;
+  private_data.root = base::FilePath(FLAGS_source);
 
   // The code below does the same thing as fuse_main() except that it ignores
   // signals during shutdown to perform clean shutdown. b/183343552
