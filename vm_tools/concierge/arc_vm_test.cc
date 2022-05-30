@@ -99,5 +99,15 @@ TEST(ArcVmTest, EnableConsumerAutoUpdateToggle) {
       params, "androidboot.enable_consumer_auto_update_toggle=1"));
 }
 
+TEST(ArcVmTest, IioservicePresentParam) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  EXPECT_TRUE(base::Contains(
+      params,
+      base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE)));
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

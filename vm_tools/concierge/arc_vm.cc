@@ -854,6 +854,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "androidboot.chromeos_channel=" + channel,
       base::StringPrintf("androidboot.seneschal_server_port=%d",
                          seneschal_server_port),
+      base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE),
       "androidboot.arc.primary_display_rotation=" +
           StartArcVmRequest::DisplayOrientation_Name(
               request.panel_orientation()),
