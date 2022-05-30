@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_MOCK_TPM_VENDOR_CMD_H_
-#define U2FD_MOCK_TPM_VENDOR_CMD_H_
+#ifndef U2FD_CLIENT_MOCK_TPM_VENDOR_CMD_H_
+#define U2FD_CLIENT_MOCK_TPM_VENDOR_CMD_H_
 
 #include "u2fd/client/tpm_vendor_cmd.h"
 
@@ -42,4 +42,4 @@ class MockTpmVendorCommandProxy : public TpmVendorCommandProxy {
 
 }  // namespace u2f
 
-#endif  // U2FD_MOCK_TPM_VENDOR_CMD_H_
+#endif  // U2FD_CLIENT_MOCK_TPM_VENDOR_CMD_H_

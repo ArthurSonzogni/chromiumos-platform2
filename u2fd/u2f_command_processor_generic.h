@@ -16,9 +16,9 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
+#include "u2fd/client/user_state.h"
 #include "u2fd/sign_manager/sign_manager.h"
 #include "u2fd/u2f_command_processor.h"
-#include "u2fd/user_state.h"
 #include "u2fd/webauthn_handler.h"
 
 namespace u2f {

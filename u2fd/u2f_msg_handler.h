@@ -16,9 +16,9 @@
 #include "u2fd/allowlisting_util.h"
 #include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/u2f_apdu.h"
+#include "u2fd/client/user_state.h"
 #include "u2fd/u2f_corp_processor_interface.h"
 #include "u2fd/u2f_msg_handler_interface.h"
-#include "u2fd/user_state.h"
 
 namespace u2f {
 
@@ -31,6 +31,7 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
                     std::function<void()> request_user_presence,
                     UserState* user_state,
                     TpmVendorCommandProxy* proxy,
+                    org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                     MetricsLibraryInterface* metrics,
                     bool allow_legacy_kh_sign,
                     bool allow_g2f_attestation,

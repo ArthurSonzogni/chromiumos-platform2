@@ -214,7 +214,7 @@ int U2fDaemon::StartU2fHidService() {
   return u2fhid_service_->CreateU2fHid(
              u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
              include_g2f_allowlist_data, request_presence, user_state_.get(),
-             &metrics_library_)
+             sm_proxy_.get(), &metrics_library_)
              ? EX_OK
              : EX_PROTOCOL;
 }

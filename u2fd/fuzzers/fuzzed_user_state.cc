@@ -8,7 +8,7 @@
 
 #include <base/sys_byteorder.h>
 
-#include "u2fd/util.h"
+#include "u2fd/client/util.h"
 
 namespace u2f {
 

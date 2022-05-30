@@ -24,11 +24,11 @@
 #include <metrics/metrics_library_mock.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
+#include "u2fd/client/util.h"
 #include "u2fd/mock_allowlisting_util.h"
 #include "u2fd/mock_u2f_command_processor.h"
 #include "u2fd/mock_user_state.h"
 #include "u2fd/mock_webauthn_storage.h"
-#include "u2fd/util.h"
 
 namespace u2f {
 namespace {

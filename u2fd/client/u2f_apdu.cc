@@ -226,8 +226,8 @@ bool ParseApduBody(
     if (field_start < 0 || (field_start + field_length) > body.size())
       return false;
 
-    clientutil::AppendSubstringToVector(body, field_start, field_length,
-                                        field.second);
+    util::AppendSubstringToVector(body, field_start, field_length,
+                                  field.second);
   }
   return true;
 }

@@ -55,6 +55,8 @@ class U2F_CLIENT_EXPORT U2fCommandApdu {
   U2fIns Ins() const { return header_.ins_; }
   // Returns the P1 parameter for this APDU.
   uint8_t P1() const { return header_.p1_; }
+  // Returns the P2 parameter for this APDU.
+  uint8_t P2() const { return header_.p2_; }
   // Returns the request body for this APDU.
   const std::string& Body() const { return data_; }
   // Returns the max response length for this APDU.
@@ -144,14 +146,14 @@ class U2F_CLIENT_EXPORT U2fResponseApdu {
   // Methods to append data to the response.
   void AppendByte(uint8_t byte) { data_.push_back(byte); }
   void AppendBytes(const std::vector<uint8_t>& bytes) {
-    clientutil::AppendToVector(bytes, &data_);
+    util::AppendToVector(bytes, &data_);
   }
   void AppendString(const std::string& string) {
-    clientutil::AppendToVector(string, &data_);
+    util::AppendToVector(string, &data_);
   }
   template <typename T>
   void AppendObject(const T& obj) {
-    clientutil::AppendToVector(obj, &data_);
+    util::AppendToVector(obj, &data_);
   }
 
   // Sets the return status for the response.

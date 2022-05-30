@@ -19,7 +19,7 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include "u2fd/util.h"
+#include "u2fd/client/util.h"
 
 namespace u2f {
 

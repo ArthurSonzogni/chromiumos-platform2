@@ -14,8 +14,8 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/client/tpm_vendor_cmd.h"
+#include "u2fd/client/user_state.h"
 #include "u2fd/u2f_command_processor.h"
-#include "u2fd/user_state.h"
 #include "u2fd/webauthn_handler.h"
 
 namespace u2f {

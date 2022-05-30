@@ -14,11 +14,12 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <metrics/metrics_library.h>
+#include <session_manager/dbus-proxies.h>
 
+#include "u2fd/client/user_state.h"
 #include "u2fd/u2f_msg_handler.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/uhid_device.h"
-#include "u2fd/user_state.h"
 
 namespace u2f {
 
@@ -40,6 +41,7 @@ class U2fHidServiceImpl : public U2fHidService {
                     bool include_g2f_allowlisting_data,
                     std::function<void()> request_user_presence,
                     UserState* user_state,
+                    org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                     MetricsLibraryInterface* metrics) override;
 
   // Returns a certified copy of the G2F certificate from attestationd, or

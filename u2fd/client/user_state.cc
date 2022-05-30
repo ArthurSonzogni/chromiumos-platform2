@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "u2fd/user_state.h"
+#include "u2fd/client/user_state.h"
 
 #include <algorithm>
 #include <optional>
@@ -17,8 +17,8 @@
 #include <dbus/login_manager/dbus-constants.h>
 #include <openssl/rand.h>
 
-#include "u2fd/user_state.pb.h"
-#include "u2fd/util.h"
+#include "u2fd/client/user_state.pb.h"
+#include "u2fd/client/util.h"
 
 namespace u2f {
 

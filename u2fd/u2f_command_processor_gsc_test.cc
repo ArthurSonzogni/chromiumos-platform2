@@ -16,9 +16,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "u2fd/mock_tpm_vendor_cmd.h"
+#include "u2fd/client/mock_tpm_vendor_cmd.h"
+#include "u2fd/client/util.h"
 #include "u2fd/u2f_command_processor_gsc.h"
-#include "u2fd/util.h"
 
 namespace u2f {
 namespace {

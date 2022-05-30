@@ -17,7 +17,7 @@
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
 
-#include "u2fd/util.h"
+#include "u2fd/client/util.h"
 
 namespace u2f {
 namespace {

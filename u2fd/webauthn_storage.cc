@@ -21,7 +21,7 @@
 #include <base/values.h>
 
 #include "brillo/scoped_umask.h"
-#include "u2fd/util.h"
+#include "u2fd/client/util.h"
 
 namespace u2f {
 

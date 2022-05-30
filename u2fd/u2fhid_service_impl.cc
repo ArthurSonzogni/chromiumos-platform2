@@ -13,9 +13,10 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/logging.h>
 #include <metrics/metrics_library.h>
+#include <session_manager/dbus-proxies.h>
 #include <trunks/cr50_headers/virtual_nvmem.h>
 
-#include "u2fd/user_state.h"
+#include "u2fd/client/user_state.h"
 
 namespace u2f {
 
@@ -58,6 +59,7 @@ bool U2fHidServiceImpl::CreateU2fHid(
     bool include_g2f_allowlisting_data,
     std::function<void()> request_user_presence,
     UserState* user_state,
+    org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics) {
   std::unique_ptr<u2f::AllowlistingUtil> allowlisting_util;
 
@@ -68,8 +70,8 @@ bool U2fHidServiceImpl::CreateU2fHid(
 
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
       std::move(allowlisting_util), request_user_presence, user_state,
-      &tpm_proxy_, metrics, legacy_kh_fallback_, allow_g2f_attestation,
-      enable_corp_protocol_);
+      &tpm_proxy_, sm_proxy, metrics, legacy_kh_fallback_,
+      allow_g2f_attestation, enable_corp_protocol_);
 
   u2fhid_ = std::make_unique<u2f::U2fHid>(
       std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,

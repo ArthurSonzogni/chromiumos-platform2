@@ -52,9 +52,11 @@ U2fCorpProcessorInterface::~U2fCorpProcessorInterface() {
   dlclose(handle_);
 }
 
-void U2fCorpProcessorInterface::Initialize() {
+void U2fCorpProcessorInterface::Initialize(
+    org::chromium::SessionManagerInterfaceProxy* sm_proxy,
+    TpmVendorCommandProxy* tpm_proxy) {
   if (processor_) {
-    processor_->Initialize();
+    processor_->Initialize(sm_proxy, tpm_proxy);
   } else {
     VLOG(1) << "Stub initialized.";
   }

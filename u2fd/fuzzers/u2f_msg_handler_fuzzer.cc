@@ -52,7 +52,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   auto u2f_msg_handler = std::make_unique<u2f::U2fMessageHandler>(
       std::move(allowlisting_util), request_presence, user_state.get(),
-      &tpm_proxy, &mock_metrics, legacy_kh_fallback, allow_g2f_attestation);
+      &tpm_proxy, nullptr, &mock_metrics, legacy_kh_fallback,
+      allow_g2f_attestation, false);
 
   int rounds = 0;
   while (data_provider.remaining_bytes() > 0 && rounds < kMaxIterations) {

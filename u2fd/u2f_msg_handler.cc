@@ -11,11 +11,12 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <session_manager/dbus-proxies.h>
 #include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/client/tpm_vendor_cmd.h"
+#include "u2fd/client/util.h"
 #include "u2fd/u2f_corp_processor_interface.h"
-#include "u2fd/util.h"
 
 namespace u2f {
 
@@ -60,6 +61,7 @@ U2fMessageHandler::U2fMessageHandler(
     std::function<void()> request_user_presence,
     UserState* user_state,
     TpmVendorCommandProxy* proxy,
+    org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics,
     bool allow_legacy_kh_sign,
     bool allow_g2f_attestation,
@@ -73,7 +75,7 @@ U2fMessageHandler::U2fMessageHandler(
       allow_g2f_attestation_(allow_g2f_attestation) {
   if (enable_corp_protocol) {
     u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-    u2f_corp_processor_->Initialize();
+    u2f_corp_processor_->Initialize(sm_proxy, proxy);
   }
 }
 

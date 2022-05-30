@@ -20,8 +20,8 @@
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/allowlisting_util.h"
+#include "u2fd/client/user_state.h"
 #include "u2fd/u2f_mode.h"
-#include "u2fd/user_state.h"
 #include "u2fd/webauthn_storage.h"
 
 namespace u2f {

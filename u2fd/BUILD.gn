@@ -46,15 +46,13 @@ pkg_config("u2fd_config") {
     "libattestation-client",
     "libmetrics",
     "libpower_manager-client",
+    "libu2fd-client",
     "libuser_data_auth-client",
     "openssl",
     "system_api",
   ]
   if (use.cr50_onboard || use.ti50_onboard) {
-    pkg_deps += [
-      "libtrunks",
-      "libu2fd-client",
-    ]
+    pkg_deps += [ "libtrunks" ]
   }
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
@@ -67,8 +65,6 @@ static_library("libu2fd") {
   sources = [
     "allowlisting_util.cc",
     "u2f_daemon.cc",
-    "user_state.cc",
-    "util.cc",
     "webauthn_handler.cc",
     "webauthn_storage.cc",
   ]
@@ -80,10 +76,7 @@ static_library("libu2fd") {
     "policy",
     "cbor",
   ]
-  deps = [
-    ":user_state_proto",
-    "//common-mk/external_dependencies:policy-protos",
-  ]
+  deps = [ "//common-mk/external_dependencies:policy-protos" ]
   if (use.tpm) {
     sources += [
       "sign_manager/sign_manager_tpm_v1.cc",
@@ -112,12 +105,6 @@ executable("u2fd") {
   configs += [ ":target_defaults" ]
   libs = [ "policy" ]
   deps = [ ":libu2fd" ]
-}
-
-proto_library("user_state_proto") {
-  proto_in_dir = "."
-  proto_out_dir = "include/u2fd"
-  sources = [ "user_state.proto" ]
 }
 
 if (use.cr50_onboard || use.ti50_onboard) {
@@ -220,10 +207,7 @@ if (use.test) {
 
 if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
   executable("u2f_apdu_fuzzer") {
-    sources = [
-      "fuzzers/u2f_apdu_fuzzer.cc",
-      "util.cc",
-    ]
+    sources = [ "fuzzers/u2f_apdu_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
@@ -241,7 +225,6 @@ if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
       "fuzzers/fake_uhid_device.cc",
       "fuzzers/u2fhid_fuzzer.cc",
       "u2fhid.cc",
-      "util.cc",
     ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",

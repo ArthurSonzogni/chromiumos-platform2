@@ -16,8 +16,8 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "u2fd/client/mock_tpm_vendor_cmd.h"
 #include "u2fd/mock_allowlisting_util.h"
-#include "u2fd/mock_tpm_vendor_cmd.h"
 #include "u2fd/mock_user_state.h"
 
 namespace u2f {
@@ -102,7 +102,7 @@ class U2fMessageHandlerTest : public ::testing::Test {
     handler_.reset(new U2fMessageHandler(
         std::unique_ptr<AllowlistingUtil>(mock_allowlisting_util_),
         [this]() { presence_requested_count_++; }, &mock_user_state_,
-        &mock_tpm_proxy_, &mock_metrics_, allow_legacy_kh,
+        &mock_tpm_proxy_, /*sm_proxy=*/nullptr, &mock_metrics_, allow_legacy_kh,
         allow_g2f_attestation, false));
   }
 

@@ -5,7 +5,7 @@
 #ifndef U2FD_MOCK_USER_STATE_H_
 #define U2FD_MOCK_USER_STATE_H_
 
-#include "u2fd/user_state.h"
+#include "u2fd/client/user_state.h"
 
 #include <optional>
 #include <string>

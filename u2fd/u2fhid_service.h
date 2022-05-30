@@ -11,8 +11,9 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <metrics/metrics_library.h>
+#include <session_manager/dbus-proxies.h>
 
-#include "u2fd/user_state.h"
+#include "u2fd/client/user_state.h"
 
 namespace u2f {
 
@@ -26,11 +27,13 @@ class U2fHidService {
 
   virtual bool InitializeDBusProxies(dbus::Bus* bus) = 0;
 
-  virtual bool CreateU2fHid(bool allow_g2f_attestation,
-                            bool include_g2f_allowlisting_data,
-                            std::function<void()> request_user_presence,
-                            UserState* user_state,
-                            MetricsLibraryInterface* metrics) = 0;
+  virtual bool CreateU2fHid(
+      bool allow_g2f_attestation,
+      bool include_g2f_allowlisting_data,
+      std::function<void()> request_user_presence,
+      UserState* user_state,
+      org::chromium::SessionManagerInterfaceProxy* sm_proxy,
+      MetricsLibraryInterface* metrics) = 0;
 
   // Returns a certified copy of the G2F certificate from attestationd, or
   // std::nullopt on error. The size of the G2F certificate is variable, and

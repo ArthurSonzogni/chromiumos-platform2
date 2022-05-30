@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_USER_STATE_H_
-#define U2FD_USER_STATE_H_
+#ifndef U2FD_CLIENT_USER_STATE_H_
+#define U2FD_CLIENT_USER_STATE_H_
 
 #include <optional>
 #include <string>
@@ -14,11 +14,13 @@
 #include <dbus/bus.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "u2fd/client/u2f_client_export.h"
+
 namespace u2f {
 
 // Encapsulates access to user-specific U2F state. This class is not
 // thread-safe.
-class UserState {
+class U2F_CLIENT_EXPORT UserState {
  public:
   // Constructs a new UserState object using the specified dbus object.
   // The counter values returned by this object will be >= counter_min.
@@ -114,4 +116,4 @@ class UserState {
 
 }  // namespace u2f
 
-#endif  // U2FD_USER_STATE_H_
+#endif  // U2FD_CLIENT_USER_STATE_H_

@@ -19,11 +19,11 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
+#include "u2fd/client/user_state.h"
+#include "u2fd/client/util.h"
 #include "u2fd/sign_manager/sign_manager.h"
 #include "u2fd/sign_manager/sign_manager_tpm_v1.h"
 #include "u2fd/u2f_command_processor.h"
-#include "u2fd/user_state.h"
-#include "u2fd/util.h"
 #include "u2fd/webauthn_handler.h"
 #include "u2fd/webauthn_storage.h"
 

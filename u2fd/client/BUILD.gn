@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -14,17 +15,38 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
-    "libtrunks",
+    "libsession_manager-client",
+    "openssl",
+    "protobuf",
+    "system_api",
   ]
+  if (use.cr50_onboard || use.ti50_onboard) {
+    pkg_deps += [ "libtrunks" ]
+  }
+}
+
+proto_library("user_state_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/u2fd/client"
+  sources = [ "user_state.proto" ]
+
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
 }
 
 shared_library("libu2fd-client") {
   sources = [
-    "tpm_vendor_cmd.cc",
-    "u2f_apdu.cc",
+    "user_state.cc",
     "util.cc",
   ]
+  if (use.cr50_onboard || use.ti50_onboard) {
+    sources += [
+      "tpm_vendor_cmd.cc",
+      "u2f_apdu.cc",
+    ]
+  }
   configs += [ ":target_defaults" ]
+  deps = [ ":user_state_proto" ]
   install_path = "lib"
 }
 

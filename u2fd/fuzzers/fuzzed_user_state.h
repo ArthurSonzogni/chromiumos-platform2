@@ -15,7 +15,7 @@
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "u2fd/user_state.h"
+#include "u2fd/client/user_state.h"
 
 namespace u2f {
 
