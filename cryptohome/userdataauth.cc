@@ -2335,10 +2335,13 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> UserDataAuth::LoadVaultKeyset(
   }
   std::unique_ptr<AuthBlockState> auth_state =
       std::make_unique<AuthBlockState>(out_state);
-  if (!keyset_management_->ReSaveKeysetWithKeyBlobs(
-          updated_vault_keyset, std::move(key_blobs), std::move(auth_state))) {
+
+  CryptohomeStatus status = keyset_management_->ReSaveKeysetWithKeyBlobs(
+      updated_vault_keyset, std::move(key_blobs), std::move(auth_state));
+  if (!status.ok()) {
     LOG(ERROR) << "Error in resaving updated vault keyset. Old vault keyset "
-                  "will be used.";
+                  "will be used: "
+               << status;
     return vk_status;
   }
   return std::make_unique<VaultKeyset>(updated_vault_keyset);

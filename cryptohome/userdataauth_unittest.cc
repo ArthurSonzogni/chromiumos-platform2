@@ -2992,6 +2992,58 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
   EXPECT_TRUE(called);
 }
 
+TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
+  constexpr char kUser[] = "chromeos-user";
+  PrepareArguments();
+
+  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
+    SetupMount(kUser);
+    EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
+
+    std::vector<std::string> key_labels;
+    key_labels.push_back("label");
+    EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<2>(key_labels), Return(true)));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+        .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
+        .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
+    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+        .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
+    EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+        .WillOnce(Return(true));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+        .WillOnce(Return(AuthBlockType::kTpmEcc));
+    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
+        .WillOnce(ReturnError<CryptohomeCryptoError>());
+    EXPECT_CALL(keyset_management_, ReSaveKeysetWithKeyBlobs(_, _, _))
+        .WillOnce(ReturnError<CryptohomeError>());
+    EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
+    EXPECT_CALL(*session_, MountVault(_, _, _))
+        .WillOnce(ReturnError<CryptohomeMountError>());
+    return true;
+  }));
+  bool called = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+  }
+  EXPECT_TRUE(called);
+}
+
 TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   constexpr char kUser[] = "chromeos-user";
 
