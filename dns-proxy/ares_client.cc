@@ -82,7 +82,7 @@ void AresClient::UpdateWatchers(ares_channel channel) {
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
       write_watchers->second.emplace_back(
-          base::FileDescriptorWatcher::WatchReadable(
+          base::FileDescriptorWatcher::WatchWritable(
               sockets[i],
               base::BindRepeating(&AresClient::OnFileCanWriteWithoutBlocking,
                                   weak_factory_.GetWeakPtr(), channel,
@@ -175,7 +175,7 @@ void AresClient::ResetTimeout(ares_channel channel) {
       base::Milliseconds(timeout_ms));
 }
 
-ares_channel AresClient::InitChannel() {
+ares_channel AresClient::InitChannel(int type) {
   struct ares_options options;
   memset(&options, 0, sizeof(options));
   int optmask = 0;
@@ -191,6 +191,20 @@ ares_channel AresClient::InitChannel() {
   // Perform round-robin selection of name servers. This enables Resolve(...)
   // to resolve using multiple servers concurrently.
   optmask |= ARES_OPT_ROTATE;
+
+  // Allow c-ares to use flags.
+  optmask |= ARES_OPT_FLAGS;
+
+  // Send the query using the original protocol used.
+  if (type == SOCK_DGRAM) {
+    // Disable TCP fallback. Whenever a TCP fallback is necessary, instead of
+    // having ares redo the query through TCP, return the response to client
+    // as-is. The client is responsible to retry with TCP.
+    options.flags |= ARES_FLAG_IGNTC;
+  } else {
+    // Force to use TCP.
+    options.flags |= ARES_FLAG_USEVC;
+  }
 
   ares_channel channel;
   if (ares_init_options(&channel, &options, optmask) != ARES_SUCCESS) {
@@ -214,7 +228,8 @@ ares_channel AresClient::InitChannel() {
 bool AresClient::Resolve(const unsigned char* msg,
                          size_t len,
                          const QueryCallback& callback,
-                         void* ctx) {
+                         void* ctx,
+                         int type) {
   if (name_servers_.empty()) {
     LOG(ERROR) << "Name servers must not be empty";
     if (metrics_) {
@@ -223,7 +238,7 @@ bool AresClient::Resolve(const unsigned char* msg,
     }
     return false;
   }
-  ares_channel channel = InitChannel();
+  ares_channel channel = InitChannel(type);
   if (!channel) {
     if (metrics_) {
       metrics_->RecordQueryResult(

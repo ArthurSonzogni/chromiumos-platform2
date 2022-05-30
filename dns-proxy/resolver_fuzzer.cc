@@ -30,7 +30,8 @@ class FakeAresClient : public AresClient {
   bool Resolve(const unsigned char* msg,
                size_t len,
                const AresClient::QueryCallback& callback,
-               void* ctx) override {
+               void* ctx,
+               int type) override {
     return provider_->ConsumeBool();
   }
 

@@ -50,6 +50,7 @@ class AresClient {
   // |callback| will be called with |ctx| upon query completion.
   // |msg| and |ctx| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
+  // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
   // The callback will return the wire-format response.
   // See: |QueryCallback|
   //
@@ -57,7 +58,8 @@ class AresClient {
   virtual bool Resolve(const unsigned char* msg,
                        size_t len,
                        const QueryCallback& callback,
-                       void* ctx);
+                       void* ctx,
+                       int type = SOCK_DGRAM);
 
   // Set the target name servers to resolve DNS to.
   virtual void SetNameServers(const std::vector<std::string>& name_servers);
@@ -117,7 +119,8 @@ class AresClient {
 
   // Initialize an ares channel. This will used for holding multiple concurrent
   // queries.
-  ares_channel InitChannel();
+  // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
+  ares_channel InitChannel(int type);
 
   // Update file descriptors to be watched.
   // |read_watchers_| and |write_watchers_| stores the watchers.

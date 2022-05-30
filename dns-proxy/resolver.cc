@@ -409,7 +409,7 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
             reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
             base::BindRepeating(&Resolver::HandleAresResult,
                                 weak_factory_.GetWeakPtr()),
-            reinterpret_cast<void*>(sock_fd))) {
+            reinterpret_cast<void*>(sock_fd), sock_fd->type)) {
       return;
     }
     sock_fd->timer.StopResolve(false);
