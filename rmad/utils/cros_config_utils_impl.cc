@@ -152,8 +152,7 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
   }
 
   DCHECK(cros_configs->is_list());
-  auto list_configs = cros_configs->GetList();
-  for (auto& config : list_configs) {
+  for (const auto& config : cros_configs->GetList()) {
     DCHECK(config.is_dict());
     const std::string* name = config.FindStringKey(kCrosModelNameKey);
     if (!name || *name != model_name) {
