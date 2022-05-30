@@ -13,6 +13,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/time/time.h>
 #include <base/values.h>
 
 #include "cros-camera/common_types.h"
