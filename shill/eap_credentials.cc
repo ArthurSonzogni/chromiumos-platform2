@@ -429,17 +429,13 @@ void EapCredentials::OutputConnectionMetrics(Metrics* metrics,
                                              Technology technology) const {
   Metrics::EapOuterProtocol outer_protocol =
       Metrics::EapOuterProtocolStringToEnum(eap_);
-  metrics->SendEnumToUMA(
-      metrics->GetFullMetricName(Metrics::kMetricNetworkEapOuterProtocolSuffix,
-                                 technology),
-      outer_protocol, Metrics::kMetricNetworkEapOuterProtocolMax);
+  metrics->SendEnumToUMA(Metrics::kMetricNetworkEapOuterProtocol, technology,
+                         outer_protocol);
 
   Metrics::EapInnerProtocol inner_protocol =
       Metrics::EapInnerProtocolStringToEnum(inner_eap_);
-  metrics->SendEnumToUMA(
-      metrics->GetFullMetricName(Metrics::kMetricNetworkEapInnerProtocolSuffix,
-                                 technology),
-      inner_protocol, Metrics::kMetricNetworkEapInnerProtocolMax);
+  metrics->SendEnumToUMA(Metrics::kMetricNetworkEapInnerProtocol, technology,
+                         inner_protocol);
 }
 
 void EapCredentials::Save(StoreInterface* storage,

@@ -285,11 +285,8 @@ TEST_F(DHCPControllerTest, ExpiryMetrics) {
 
   dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
 
-  EXPECT_CALL(metrics_,
-              SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds2", 1,
-                        Metrics::kMetricExpiredLeaseLengthSecondsMin,
-                        Metrics::kMetricExpiredLeaseLengthSecondsMax,
-                        Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricExpiredLeaseLengthSeconds,
+                                  Technology(Technology::kUnknown), 1));
   dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
 }
 

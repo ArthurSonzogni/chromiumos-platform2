@@ -416,12 +416,8 @@ void DHCPController::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
   LOG(ERROR) << "DHCP lease expired on " << device_name()
              << "; restarting DHCP client instance.";
 
-  metrics_->SendToUMA(
-      metrics_->GetFullMetricName(
-          Metrics::kMetricExpiredLeaseLengthSecondsSuffix, technology_),
-      lease_duration.InSeconds(), Metrics::kMetricExpiredLeaseLengthSecondsMin,
-      Metrics::kMetricExpiredLeaseLengthSecondsMax,
-      Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
+  metrics_->SendToUMA(Metrics::kMetricExpiredLeaseLengthSeconds, technology_,
+                      lease_duration.InSeconds());
 
   if (!Restart()) {
     NotifyFailure();

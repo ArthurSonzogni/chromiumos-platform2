@@ -237,6 +237,11 @@ class Metrics : public DefaultServiceObserver {
 
     kEapOuterProtocolMax
   };
+  static constexpr EnumMetric<NameByTechnology> kMetricNetworkEapOuterProtocol =
+      {
+          .n = NameByTechnology{"EapOuterProtocol"},
+          .max = kEapOuterProtocolMax,
+      };
 
   enum EapInnerProtocol {
     kEapInnerProtocolUnknown = 0,
@@ -252,6 +257,11 @@ class Metrics : public DefaultServiceObserver {
 
     kEapInnerProtocolMax
   };
+  static constexpr EnumMetric<NameByTechnology> kMetricNetworkEapInnerProtocol =
+      {
+          .n = NameByTechnology{"EapInnerProtocol"},
+          .max = kEapInnerProtocolMax,
+      };
 
   enum WiFiSecurity {
     kWiFiSecurityUnknown = 0,
@@ -266,6 +276,7 @@ class Metrics : public DefaultServiceObserver {
     kWiFiSecurityMax
   };
 
+  // The result of the portal detection.
   enum PortalResult {
     kPortalResultSuccess = 0,
     kPortalResultDNSFailure = 1,
@@ -280,6 +291,10 @@ class Metrics : public DefaultServiceObserver {
     kPortalResultContentRedirect = 10,
 
     kPortalResultMax
+  };
+  static constexpr EnumMetric<NameByTechnology> kMetricPortalResult = {
+      .n = NameByTechnology{"PortalResult"},
+      .max = kPortalResultMax,
   };
 
   // patchpanel::NeighborLinkMonitor statistics.
@@ -952,12 +967,6 @@ class Metrics : public DefaultServiceObserver {
 
   static constexpr char kMetricNetworkChannelSuffix[] = "Channel";
   static constexpr int kMetricNetworkChannelMax = kWiFiChannelMax;
-  static constexpr char kMetricNetworkEapInnerProtocolSuffix[] =
-      "EapInnerProtocol";
-  static constexpr int kMetricNetworkEapInnerProtocolMax = kEapInnerProtocolMax;
-  static constexpr char kMetricNetworkEapOuterProtocolSuffix[] =
-      "EapOuterProtocol";
-  static constexpr int kMetricNetworkEapOuterProtocolMax = kEapOuterProtocolMax;
   static constexpr char kMetricNetworkPhyModeSuffix[] = "PhyMode";
   static constexpr int kMetricNetworkPhyModeMax = kWiFiNetworkPhyModeMax;
   static constexpr char kMetricNetworkSecuritySuffix[] = "Security";
@@ -1038,14 +1047,13 @@ class Metrics : public DefaultServiceObserver {
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
   // and the final successful attempt.
-  static constexpr char kMetricPortalAttemptsToOnlineSuffix[] =
-      "PortalAttemptsToOnline";
-  static constexpr int kMetricPortalAttemptsToOnlineMax = 100;
-  static constexpr int kMetricPortalAttemptsToOnlineMin = 1;
-  static constexpr int kMetricPortalAttemptsToOnlineNumBuckets = 10;
-
-  // The result of the portal detection.
-  static constexpr char kMetricPortalResultSuffix[] = "PortalResult";
+  static constexpr HistogramMetric<NameByTechnology>
+      kMetricPortalAttemptsToOnline = {
+          .n = NameByTechnology{"PortalAttemptsToOnline"},
+          .min = 1,
+          .max = 100,
+          .num_buckets = 10,
+      };
 
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
       "Network.Shill.WiFi.ScanTimeInEbusy";
@@ -1144,12 +1152,13 @@ class Metrics : public DefaultServiceObserver {
   // display of samples collected before and after the change. To avoid that,
   // the 'ExpiredLeaseLengthSeconds' metric is renamed to
   // 'ExpiredLeaseLengthSeconds2'.
-  static constexpr char kMetricExpiredLeaseLengthSecondsSuffix[] =
-      "ExpiredLeaseLengthSeconds2";
-  static constexpr int kMetricExpiredLeaseLengthSecondsMax =
-      7 * 24 * 60 * 60;  // 7 days
-  static constexpr int kMetricExpiredLeaseLengthSecondsMin = 1;
-  static constexpr int kMetricExpiredLeaseLengthSecondsNumBuckets = 100;
+  static constexpr HistogramMetric<NameByTechnology>
+      kMetricExpiredLeaseLengthSeconds = {
+          .n = NameByTechnology{"ExpiredLeaseLengthSeconds2"},
+          .min = 1,
+          .max = 7 * 24 * 60 * 60,  // 7 days
+          .num_buckets = 100,
+      };
 
   // Number of wifi services available when auto-connect is initiated.
   static constexpr HistogramMetric<FixedName>

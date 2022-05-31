@@ -1259,10 +1259,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
                 << " Received status: " << result.http_status;
 
   int portal_status = Metrics::PortalDetectionResultToEnum(result);
-  metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricPortalResultSuffix,
-                                   technology()),
-      portal_status, Metrics::kPortalResultMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricPortalResult, technology(),
+                           portal_status);
 
   Service::ConnectState state = result.GetConnectionState();
   if (selected_service_) {
@@ -1272,12 +1270,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   if (state == Service::kStateOnline) {
     SetServiceConnectedState(state);
     OnNetworkValidationSuccess();
-    metrics()->SendToUMA(
-        metrics()->GetFullMetricName(
-            Metrics::kMetricPortalAttemptsToOnlineSuffix, technology()),
-        result.num_attempts, Metrics::kMetricPortalAttemptsToOnlineMin,
-        Metrics::kMetricPortalAttemptsToOnlineMax,
-        Metrics::kMetricPortalAttemptsToOnlineNumBuckets);
+    metrics()->SendToUMA(Metrics::kMetricPortalAttemptsToOnline, technology(),
+                         result.num_attempts);
   } else {
     // Set failure phase and status.
     if (selected_service_) {

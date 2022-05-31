@@ -1360,9 +1360,10 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
                                         kPortalDetectionStatusFailure,
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*metrics(), SendEnumToUMA("Network.Shill.Unknown.PortalResult",
-                                        Metrics::kPortalResultConnectionFailure,
-                                        Metrics::kPortalResultMax));
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricPortalResult,
+                            Technology(Technology::kUnknown),
+                            Metrics::kPortalResultConnectionFailure));
   EXPECT_CALL(
       *metrics(),
       SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline", _, _, _, _))
@@ -1386,15 +1387,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _, _)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_CALL(*metrics(), SendEnumToUMA("Network.Shill.Unknown.PortalResult",
-                                        Metrics::kPortalResultSuccess,
-                                        Metrics::kPortalResultMax));
-  EXPECT_CALL(
-      *metrics(),
-      SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline", kPortalAttempts,
-                Metrics::kMetricPortalAttemptsToOnlineMin,
-                Metrics::kMetricPortalAttemptsToOnlineMax,
-                Metrics::kMetricPortalAttemptsToOnlineNumBuckets));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricPortalResult,
+                                        Technology(Technology::kUnknown),
+                                        Metrics::kPortalResultSuccess));
+  EXPECT_CALL(*metrics(),
+              SendToUMA(Metrics::kMetricPortalAttemptsToOnline,
+                        Technology(Technology::kUnknown), kPortalAttempts));
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent;
   result.http_status = PortalDetector::Status::kSuccess;

@@ -343,12 +343,12 @@ TEST_F(EapCredentialsTest, OutputConnectionMetrics) {
   SetInnerEap(kEapPhase2AuthPEAPMSCHAPV2);
 
   MockMetrics metrics;
-  EXPECT_CALL(metrics, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
-                                     Metrics::kEapOuterProtocolPeap,
-                                     Metrics::kEapOuterProtocolMax));
-  EXPECT_CALL(metrics, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
-                                     Metrics::kEapInnerProtocolPeapMschapv2,
-                                     Metrics::kEapInnerProtocolMax));
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricNetworkEapOuterProtocol,
+                                     Technology(Technology::kWiFi),
+                                     Metrics::kEapOuterProtocolPeap));
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricNetworkEapInnerProtocol,
+                                     Technology(Technology::kWiFi),
+                                     Metrics::kEapInnerProtocolPeapMschapv2));
   eap_.OutputConnectionMetrics(&metrics, Technology::kWiFi);
 }
 
