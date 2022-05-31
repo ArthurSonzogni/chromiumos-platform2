@@ -111,7 +111,7 @@ Commands:
       Enrolls the device to the specified CA.
   create_cert_request [--attestation-server=default|test]
         [--profile=<profile>] [--user=<user>] [--origin=<origin>]
-        [--output=<output_file>]
+        [--key-type={rsa|ecc}] [--output=<output_file>]
       Creates certificate request to CA for |user|, using provided certificate
         |profile| and |origin|, and stores it to |output_file|.
         Possible |profile| values: user, machine, enrollment, content, cpsi,
@@ -393,6 +393,11 @@ class ClientLoop : public ClientLoopBase {
       if (status != EX_OK) {
         return status;
       }
+      KeyType key_type;
+      status = GetKeyType(command_line, &key_type);
+      if (status != EX_OK) {
+        return status;
+      }
       std::string profile_str = command_line->GetSwitchValueASCII("profile");
       CertificateProfile profile;
       if (profile_str.empty() || profile_str == "enterprise_user" ||
@@ -417,10 +422,10 @@ class ClientLoop : public ClientLoopBase {
       } else {
         return EX_USAGE;
       }
-      task = base::BindOnce(&ClientLoop::CallCreateCertRequest,
-                            weak_factory_.GetWeakPtr(), aca_type, profile,
-                            command_line->GetSwitchValueASCII("user"),
-                            command_line->GetSwitchValueASCII("origin"));
+      task = base::BindOnce(
+          &ClientLoop::CallCreateCertRequest, weak_factory_.GetWeakPtr(),
+          aca_type, profile, command_line->GetSwitchValueASCII("user"),
+          command_line->GetSwitchValueASCII("origin"), key_type);
     } else if (args.front() == kFinishCertRequestCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -952,12 +957,14 @@ class ClientLoop : public ClientLoopBase {
   void CallCreateCertRequest(ACAType aca_type,
                              CertificateProfile profile,
                              const std::string& username,
-                             const std::string& origin) {
+                             const std::string& origin,
+                             KeyType key_type) {
     CreateCertificateRequestRequest request;
     request.set_aca_type(aca_type);
     request.set_certificate_profile(profile);
     request.set_username(username);
     request.set_request_origin(origin);
+    request.set_key_type(key_type);
     attestation_->CreateCertificateRequestAsync(
         request,
         base::BindOnce(&ClientLoop::OnCreateCertRequestComplete,
