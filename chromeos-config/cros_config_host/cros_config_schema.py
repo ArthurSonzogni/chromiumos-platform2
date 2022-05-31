@@ -712,30 +712,6 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
                     )
 
 
-def _ValidateSingleMosysPlatform(configs):
-    """Validate that all /identity:platform-name entries are equivalent.
-
-    Mosys is supporting only one platform per unibuild board by
-    determining the platform at compile-time instead of probing from a
-    platform list.  This means it is not valid for configs to have
-    differing values for /identity:platform-name on the same board.
-
-    Args:
-      configs: The transformed config to be validated.
-    """
-    platform_names = set()
-    for device in configs["chromeos"]["configs"]:
-        platform_name = device.get("identity", {}).get("platform-name")
-        if platform_name is not None:
-            platform_names.add(platform_name)
-
-    if len(platform_names) > 1:
-        raise ValidationError(
-            "You may not use multiple mosys platforms on the same board. "
-            "You are using: %s" % ", ".join(platform_names)
-        )
-
-
 def _ValidateConsistentFingerprintFirmwareROVersion(configs):
     """Validate all /fingerprint:ro-version entries.
 
@@ -777,7 +753,6 @@ def ValidateConfig(config):
     _ValidateUniqueIdentities(json_config)
     _ValidateCustomLabelBrandChangesOnly(json_config)
     _ValidateHardwarePropertiesAreValidType(json_config)
-    _ValidateSingleMosysPlatform(json_config)
     _ValidateConsistentFingerprintFirmwareROVersion(json_config)
 
 

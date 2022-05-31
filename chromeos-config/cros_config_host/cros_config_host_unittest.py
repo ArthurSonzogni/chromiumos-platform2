@@ -102,10 +102,6 @@ class CrosConfigHostTest(unittest.TestCase):
         output = self._check_output("get-firmware-uris")
         self.CheckManyLines(output)
 
-    def testGetMosysPlatform(self):
-        output = self._check_output("get-mosys-platform")
-        self.assertEqual(output, "Some\n")
-
     def testGetFingerprintFirmwareROVersionFound(self):
         output = self._check_output("get-fpmcu-firmware-ro-version", "bloonchipper")
         self.assertEqual(output, "VERSION1\n")

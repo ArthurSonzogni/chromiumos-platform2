@@ -178,28 +178,6 @@ def GetFirmwareBuildTargets(config, target_type):
         print(target)
 
 
-def GetMosysPlatform(config):
-    """Get the name of the mosys platform for this board.
-
-    cros_config_schema validates there is only one mosys platform per
-    board.  This function finds and prints the first platform name.
-
-    Args:
-      config: A CrosConfig instance.
-
-    Returns:
-      An exit status (0 for success, 1 for failure).
-    """
-    devices = config.GetDeviceConfigs()
-    for device in devices:
-        identity = device.GetProperties("/identity")
-        platform_name = identity.get("platform-name")
-        if platform_name is not None:
-            print(platform_name)
-            return 0
-    return 1
-
-
 def GetFingerprintFirmwareROVersion(config, fpmcu):
     """Get the read-only versions of the fingerprint firmware for this board.
 
@@ -425,11 +403,6 @@ def GetParser(description):
     build_target_parser.add_argument(
         "type", help="The build-targets type to get (ex. coreboot, ec, depthcharge)"
     )
-    # Parser: get-mosys-platform
-    subparsers.add_parser(
-        "get-mosys-platform",
-        help="Get the name of the mosys platform compiled for this device.",
-    )
     # Parser: get-fpmcu-firmware-ro-version
     fpmcu_firmware_ro_parser = subparsers.add_parser(
         "get-fpmcu-firmware-ro-version",
@@ -549,8 +522,6 @@ def main(argv=None):
         GetCameraFiles(config)
     elif opts.subcommand == "get-firmware-build-targets":
         GetFirmwareBuildTargets(config, opts.type)
-    elif opts.subcommand == "get-mosys-platform":
-        return GetMosysPlatform(config)
     elif opts.subcommand == "get-fpmcu-firmware-ro-version":
         return GetFingerprintFirmwareROVersion(config, opts.fpmcu)
     elif opts.subcommand == "get-thermal-files":
