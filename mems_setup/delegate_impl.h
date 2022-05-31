@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <chromeos-config/libcros_config/cros_config.h>
+
 #include "mems_setup/delegate.h"
 
 namespace mems_setup {
@@ -30,6 +32,7 @@ class DelegateImpl : public Delegate {
   bool Exists(const base::FilePath&) override;
   std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) override;
+  std::optional<std::string> ReadFileToString(const base::FilePath&) override;
 
   std::optional<gid_t> FindGroupId(const char* group) override;
 
@@ -40,11 +43,18 @@ class DelegateImpl : public Delegate {
                     uid_t user,
                     gid_t group) override;
 
+  std::optional<std::string> GetIioSarSensorDevlink(
+      std::string sys_path) override;
+
+  brillo::CrosConfigInterface* GetCrosConfig() override;
+
  private:
   void LoadVpdIfNeeded();
 
   std::map<std::string, std::string> vpd_cache_;
   bool vpd_loaded_ = false;
+
+  brillo::CrosConfig cros_config_;
 };
 
 }  // namespace mems_setup

@@ -19,6 +19,7 @@
 #include "mems_setup/delegate.h"
 
 #include <base/check.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 
 namespace mems_setup {
 namespace fakes {
@@ -41,8 +42,10 @@ class FakeDelegate : public Delegate {
   bool Exists(const base::FilePath&) override;
   std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) override;
+  std::optional<std::string> ReadFileToString(const base::FilePath&) override;
 
   void CreateFile(const base::FilePath&);
+  void SetStringToFile(const base::FilePath&, const std::string&);
 
   std::optional<gid_t> FindGroupId(const char* group) override;
 
@@ -58,6 +61,15 @@ class FakeDelegate : public Delegate {
                     uid_t user,
                     gid_t group) override;
 
+  void SetMockDevlink(std::string mock_devlink) {
+    mock_devlink_ = mock_devlink;
+  }
+  std::optional<std::string> GetIioSarSensorDevlink(
+      std::string sys_path) override;
+
+  brillo::CrosConfigInterface* GetCrosConfig() override;
+  brillo::FakeCrosConfig* GetFakeCrosConfig();
+
   void SetMockContext(libmems::fakes::FakeIioContext* mock_context) {
     mock_context_ = mock_context;
   }
@@ -69,6 +81,9 @@ class FakeDelegate : public Delegate {
   std::map<std::string, int> permissions_;
   std::map<std::string, std::pair<uid_t, gid_t>> ownerships_;
   std::set<base::FilePath> existing_files_;
+  std::map<base::FilePath, std::string> existing_files_with_data_;
+  std::optional<std::string> mock_devlink_;
+  std::unique_ptr<brillo::FakeCrosConfig> cros_config_;
 
   libmems::fakes::FakeIioContext* mock_context_ = nullptr;
 };

@@ -82,6 +82,11 @@ void SensorTestBase::SetSingleSensor(const char* location) {
 
     mock_device_->AddChannel(
         std::make_unique<FakeIioChannel>("timestamp", true));
+  } else if (sensor_kind_ == SensorKind::PROXIMITY) {
+    mock_device_->AddChannel(
+        std::make_unique<FakeIioChannel>("proximity0", false));
+    mock_device_->AddChannel(
+        std::make_unique<FakeIioChannel>("proximity1", false));
   }
 }
 

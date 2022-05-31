@@ -23,6 +23,7 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcros_config",
     "re2",
   ]
 }
@@ -69,6 +70,7 @@ if (use.test) {
       "als_test.cc",
       "gyroscope_test.cc",
       "light_test.cc",
+      "proximity_test.cc",
       "test_fakes.cc",
       "test_helper.cc",
       "vpd_loader_test.cc",

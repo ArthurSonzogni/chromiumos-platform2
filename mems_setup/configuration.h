@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/values.h>
 
 #include <libmems/iio_device.h>
 #include "mems_setup/delegate.h"
@@ -20,8 +21,6 @@ namespace mems_setup {
 
 class Configuration {
  public:
-  static const char* GetGroupNameForSysfs();
-
   Configuration(libmems::IioContext* context,
                 libmems::IioDevice* sensor,
                 Delegate* delegate);
@@ -30,12 +29,24 @@ class Configuration {
 
   bool Configure();
 
+  const char* GetGroupNameForSysfs();
+
  private:
   bool ConfigureOnKind();
 
   bool ConfigGyro();
   bool ConfigAccelerometer();
   bool ConfigIlluminance();
+  bool ConfigProximity();
+
+  bool IsIioActivitySensor(const std::string& sys_path);
+
+  bool GetDevlinks(const std::string& syspath, std::vector<std::string>* out);
+
+  bool SetIioRisingFallingValue(const base::Value& config_dict,
+                                const std::string& config_postfix,
+                                const std::string& path_prefix,
+                                const std::string& postfix);
 
   bool CopyImuCalibationFromVpd(int max_value);
   bool CopyImuCalibationFromVpd(int max_value, const std::string& location);

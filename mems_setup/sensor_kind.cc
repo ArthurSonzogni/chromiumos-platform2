@@ -18,11 +18,14 @@ constexpr char kAccelDeviceName[] = "cros-ec-accel";
 constexpr char kGyroDeviceName[] = "cros-ec-gyro";
 constexpr char kLightDeviceName[] = "cros-ec-light";
 constexpr char kAlsDeviceName[] = "acpi-als";
-constexpr char kProxDeviceName[] = "cros-ec-prox";
 constexpr char kSyncDeviceName[] = "cros-ec-sync";
 constexpr char kMagnDeviceName[] = "cros-ec-mag";
 constexpr char kLidAngleDeviceName[] = "cros-ec-lid-angle";
 constexpr char kBaroDeviceName[] = "cros-ec-baro";
+
+constexpr char kProxDeviceNames[][23] = {
+    "cros-ec-prox",          "sx9310", "sx9311", "sx9324", "sx932x", "sx9360",
+    "cros-ec-mkbp-proximity"};
 
 constexpr char kHidDeviceNames[][13] = {
     "accel_3d",    "gyro_3d",  "magn_3d",     "als",
@@ -62,8 +65,6 @@ SensorKind SensorKindFromString(const std::string& name) {
     return SensorKind::GYROSCOPE;
   if (name == kLightDeviceName || name == kAlsDeviceName)
     return SensorKind::LIGHT;
-  if (name == kProxDeviceName)
-    return SensorKind::PROXIMITY;
   if (name == kSyncDeviceName)
     return SensorKind::SYNC;
   if (name == kMagnDeviceName)
@@ -72,6 +73,11 @@ SensorKind SensorKindFromString(const std::string& name) {
     return SensorKind::LID_ANGLE;
   if (name == kBaroDeviceName)
     return SensorKind::BAROMETER;
+
+  for (const auto& prox_device_name : kProxDeviceNames) {
+    if (name.compare(prox_device_name) == 0)
+      return SensorKind::PROXIMITY;
+  }
 
   for (const auto& hid_device_name : kHidDeviceNames) {
     if (name.compare(hid_device_name) == 0)

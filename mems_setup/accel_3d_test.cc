@@ -37,7 +37,7 @@ constexpr char kInvalidChannel[] = "in_accel_a_enn";
 class HidAccelerometerTest : public SensorTestBase {
  public:
   HidAccelerometerTest() : SensorTestBase("accel_3d", kDeviceId) {
-    mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
+    mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),
                              kIioserviceGroupId);
   }
 

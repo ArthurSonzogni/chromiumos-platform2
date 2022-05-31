@@ -29,7 +29,7 @@ static gid_t kIioserviceGroupId = 777;
 class GyroscopeTest : public SensorTestBase {
  public:
   GyroscopeTest() : SensorTestBase("cros-ec-gyro", 2) {
-    mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
+    mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),
                              kIioserviceGroupId);
   }
 };

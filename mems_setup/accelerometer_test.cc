@@ -38,7 +38,7 @@ class AccelerometerTest : public SensorTestBase {
  public:
   AccelerometerTest() : SensorTestBase("cros-ec-accel", kDeviceId) {
     mock_delegate_->AddGroup("chronos", kChronosGroupId);
-    mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
+    mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),
                              kIioserviceGroupId);
 
     std::string dev_name = libmems::IioDeviceImpl::GetStringFromId(kDeviceId);

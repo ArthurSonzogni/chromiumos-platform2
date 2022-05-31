@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <chromeos-config/libcros_config/cros_config_interface.h>
 
 namespace mems_setup {
 
@@ -26,6 +27,8 @@ class Delegate {
   virtual bool Exists(const base::FilePath&) = 0;
   virtual std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) = 0;
+  virtual std::optional<std::string> ReadFileToString(
+      const base::FilePath&) = 0;
 
   virtual std::optional<gid_t> FindGroupId(const char* group) = 0;
 
@@ -35,6 +38,11 @@ class Delegate {
   virtual bool SetOwnership(const base::FilePath& path,
                             uid_t user,
                             gid_t group) = 0;
+
+  virtual std::optional<std::string> GetIioSarSensorDevlink(
+      std::string sys_path) = 0;
+
+  virtual brillo::CrosConfigInterface* GetCrosConfig() = 0;
 
  protected:
   Delegate() = default;

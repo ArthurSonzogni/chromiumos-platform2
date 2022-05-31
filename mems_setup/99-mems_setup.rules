@@ -10,6 +10,8 @@ ATTR{name}=="cros-ec-sync", RUN+="/usr/sbin/mems_setup --device_id=%n"
 ATTR{name}=="cros-ec-mag", RUN+="/usr/sbin/mems_setup --device_id=%n"
 ATTR{name}=="cros-ec-lid-angle", RUN+="/usr/sbin/mems_setup --device_id=%n"
 ATTR{name}=="cros-ec-baro", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="sx9360", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="sx9310|sx9311|sx9324|sx932x|sx9360|cros-ec-mkbp-proximity", RUN+="/usr/sbin/mems_setup --device_id=%n"
 
 # HID stack sensors
 ATTR{name}=="accel_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"

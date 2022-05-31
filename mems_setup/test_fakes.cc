@@ -50,8 +50,23 @@ std::vector<base::FilePath> FakeDelegate::EnumerateAllFiles(
   return files;
 }
 
+std::optional<std::string> FakeDelegate::ReadFileToString(
+    const base::FilePath& fp) {
+  auto it = existing_files_with_data_.find(fp);
+  if (it == existing_files_with_data_.end())
+    return std::nullopt;
+
+  return it->second;
+}
+
 void FakeDelegate::CreateFile(const base::FilePath& fp) {
   existing_files_.emplace(fp);
+}
+
+void FakeDelegate::SetStringToFile(const base::FilePath& fp,
+                                   const std::string& data) {
+  CreateFile(fp);
+  existing_files_with_data_.emplace(fp, data);
 }
 
 std::optional<gid_t> FakeDelegate::FindGroupId(const char* group) {
@@ -91,6 +106,22 @@ bool FakeDelegate::SetOwnership(const base::FilePath& path,
                                 gid_t group) {
   ownerships_[path.value()] = {user, group};
   return true;
+}
+
+std::optional<std::string> FakeDelegate::GetIioSarSensorDevlink(
+    std::string sys_path) {
+  return mock_devlink_;
+}
+
+brillo::CrosConfigInterface* FakeDelegate::GetCrosConfig() {
+  return static_cast<brillo::CrosConfigInterface*>(GetFakeCrosConfig());
+}
+
+brillo::FakeCrosConfig* FakeDelegate::GetFakeCrosConfig() {
+  if (!cros_config_)
+    cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+
+  return cros_config_.get();
 }
 
 }  // namespace fakes

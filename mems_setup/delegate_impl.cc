@@ -20,6 +20,7 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/stringprintf.h>
+#include <libmems/common_types.h>
 
 #include "mems_setup/delegate_impl.h"
 
@@ -136,6 +137,15 @@ std::vector<base::FilePath> DelegateImpl::EnumerateAllFiles(
   return files;
 }
 
+std::optional<std::string> DelegateImpl::ReadFileToString(
+    const base::FilePath& fp) {
+  std::string data;
+  if (!base::ReadFileToString(fp, &data))
+    return std::nullopt;
+
+  return data;
+}
+
 std::optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
   size_t len = 1024;
   const auto max_len = sysconf(_SC_GETGR_R_SIZE_MAX);
@@ -169,6 +179,15 @@ bool DelegateImpl::SetOwnership(const base::FilePath& path,
                                 uid_t user,
                                 gid_t group) {
   return lchown(path.value().c_str(), user, group) == 0;
+}
+
+std::optional<std::string> DelegateImpl::GetIioSarSensorDevlink(
+    std::string sys_path) {
+  return libmems::GetIioSarSensorDevlink(sys_path);
+}
+
+brillo::CrosConfigInterface* DelegateImpl::GetCrosConfig() {
+  return &cros_config_;
 }
 
 }  // namespace mems_setup

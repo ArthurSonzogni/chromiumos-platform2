@@ -8,11 +8,13 @@
 #include <initializer_list>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/stl_util.h>
@@ -52,6 +54,7 @@ struct LightColorCalibrationEntry {
   libmems::IioChannel* chn;
 };
 
+constexpr char kPowerGroupName[] = "power";
 #if USE_IIOSERVICE
 constexpr char kIioServiceGroupName[] = "iioservice";
 #else
@@ -76,6 +79,10 @@ constexpr std::initializer_list<const char*> kAccelAxes = {
 
 constexpr char kTriggerString[] = "trigger";
 
+constexpr char kDevlinkPrefix[] = "/dev/proximity-";
+constexpr int kSystemPathIndexLimit = 100;
+constexpr char kSystemPathProperty[] = "system-path";
+
 constexpr char kFilesToSetReadAndOwnership[][28] = {
     "buffer/hwfifo_timeout", "buffer/hwfifo_watermark_max", "buffer/enable",
     "buffer/length", "trigger/current_trigger"};
@@ -96,8 +103,10 @@ constexpr char kEventsString[] = "events";
 
 }  // namespace
 
-// static
 const char* Configuration::GetGroupNameForSysfs() {
+  // TODO(chenghaoyang): Remove it when iioservice owns proximity sensors.
+  if (kind_ == SensorKind::PROXIMITY)
+    return kPowerGroupName;
 #if USE_IIOSERVICE
   return kIioServiceGroupName;
 #else
@@ -493,8 +502,7 @@ bool Configuration::ConfigureOnKind() {
       // No other configs needed.
       return true;
     case SensorKind::PROXIMITY:
-      // No other configs needed.
-      return true;
+      return ConfigProximity();
     case SensorKind::BAROMETER:
       // TODO(chenghaoyang): Setup calibrations for the barometer.
       return true;
@@ -599,6 +607,188 @@ bool Configuration::ConfigIlluminance() {
   EnableCalibration(false);
 
   LOG(INFO) << "light configuration complete";
+  return true;
+}
+
+bool Configuration::ConfigProximity() {
+  auto* cros_config = delegate_->GetCrosConfig();
+
+  auto sys_path = sensor_->GetAbsoluteSysPath();
+  if (!sys_path.has_value()) {
+    LOG(ERROR) << "Invalid absolute SysPath";
+    return false;
+  }
+
+  bool isSar;
+
+  auto devlink_opt = delegate_->GetIioSarSensorDevlink(sys_path->value());
+  if (devlink_opt.has_value())
+    isSar = true;
+  else if (IsIioActivitySensor(sys_path->value()))
+    isSar = false;
+  else
+    return false;
+
+  if (isSar) {
+    // |devlink_opt.value()| should have prefix "/dev/proximity-"
+    if (devlink_opt.value().compare(0, std::strlen(kDevlinkPrefix),
+                                    kDevlinkPrefix) != 0) {
+      LOG(ERROR) << "Devlink isn't in the proper format: "
+                 << devlink_opt.value();
+      return false;
+    }
+
+    std::string devlink_suffix =
+        devlink_opt.value().substr(std::strlen(kDevlinkPrefix));
+    if (devlink_suffix.compare("lte") == 0)
+      devlink_suffix = "cellular";
+
+    std::string config_filename = "";
+    for (int i = 0; i < kSystemPathIndexLimit; ++i) {
+      std::string system_path;
+      if (!cros_config->GetString(
+              base::StringPrintf("/proximity-sensor/semtech-config/%i/file", i),
+              kSystemPathProperty, &system_path)) {
+        // Checked all system paths.
+        break;
+      }
+
+      // It should have the format of
+      // "/.../semtech_config_|devlink_suffix|.json".
+      if (system_path.size() > devlink_suffix.size() + 5 &&
+          system_path
+                  .substr(system_path.size() - (devlink_suffix.size() + 5),
+                          devlink_suffix.size())
+                  .compare(devlink_suffix) == 0) {
+        config_filename = system_path;
+        break;
+      }
+    }
+
+    if (config_filename.empty()) {
+      LOG(ERROR) << "Failed to find the config in CrosConfig";
+      return false;
+    }
+
+    auto config_json_data =
+        delegate_->ReadFileToString(base::FilePath(config_filename));
+    if (!config_json_data.has_value()) {
+      LOG(ERROR) << "Failed to read config from " << config_filename;
+      return false;
+    }
+
+    auto config_root = base::JSONReader::ReadAndReturnValueWithError(
+        config_json_data.value(), base::JSON_PARSE_RFC);
+    if (!config_root.has_value()) {
+      LOG(ERROR) << "Failed to parse : " << config_json_data.value();
+      return false;
+    }
+    if (!config_root.value().is_dict()) {
+      LOG(ERROR) << "Failed to parse root dictionary from "
+                 << config_json_data.value();
+      return false;
+    }
+
+    const base::Value& config_dict = std::move(config_root.value());
+
+    std::optional<double> sampling_frequency =
+        config_dict.FindDoubleKey("samplingFrequency");
+    if (sampling_frequency.has_value()) {
+      if (!sensor_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
+                                         sampling_frequency.value())) {
+        LOG(ERROR) << "Could not set proximity sensor sampling frequency";
+        return false;
+      }
+    }
+
+    const base::Value* channel_list = config_dict.FindListKey("channelConfig");
+    if (channel_list) {
+      // Semtech supports multiple channels, a given observer may received
+      // FAR/NEAR message from multiple channels.
+      for (const base::Value& channel : channel_list->GetList()) {
+        const std::string* channel_name = channel.FindStringKey("channel");
+        if (!channel_name) {
+          LOG(ERROR) << "channel identifier required";
+          return false;
+        }
+        int channel_int;
+        if (!base::StringToInt(*channel_name, &channel_int)) {
+          LOG(ERROR) << "Invalid channel_name: " << channel_name;
+          return false;
+        }
+
+        std::optional<int> hardwaregain = channel.FindIntKey("hardwaregain");
+        if (hardwaregain.has_value()) {
+          auto* iio_channel = sensor_->GetChannel("proximity" + *channel_name);
+          if (!iio_channel || !iio_channel->WriteNumberAttribute(
+                                  "hardwaregain", hardwaregain.value())) {
+            LOG(ERROR) << "Could not set proximity sensor hardware gain";
+            return false;
+          }
+        }
+
+        if (!SetIioRisingFallingValue(
+                channel, "", "events/in_proximity" + *channel_name + "_",
+                "_value")) {
+          return false;
+        }
+
+        if (!SetIioRisingFallingValue(
+                channel, "Hysteresis",
+                "events/in_proximity" + *channel_name + "_", "_hysteresis")) {
+          return false;
+        }
+      }
+    }
+
+    if (!SetIioRisingFallingValue(config_dict, "Period", "events/", "_period"))
+      return false;
+  }
+
+  LOG(INFO) << "proximity configuration complete";
+  return true;
+}
+
+bool Configuration::IsIioActivitySensor(const std::string& sys_path) {
+  return sys_path.find("-activity") != std::string::npos;
+}
+
+bool Configuration::SetIioRisingFallingValue(const base::Value& config_dict,
+                                             const std::string& config_postfix,
+                                             const std::string& path_prefix,
+                                             const std::string& postfix) {
+  std::string rising_config = "threshRising" + config_postfix;
+  std::string falling_config = "threshFalling" + config_postfix;
+  std::optional<int> rising_value = config_dict.FindIntKey(rising_config);
+  std::optional<int> falling_value = config_dict.FindIntKey(falling_config);
+
+  if (!rising_value.has_value() && !falling_value.has_value())
+    return true;
+
+  bool try_either = rising_value.has_value() && falling_value.has_value() &&
+                    falling_value.value() == rising_value.value();
+
+  std::string prefix = path_prefix + "thresh_";
+  std::string falling_path = prefix + "falling" + postfix;
+  std::string rising_path = prefix + "rising" + postfix;
+  std::string either_path = prefix + "either" + postfix;
+
+  if (!try_either ||
+      !sensor_->WriteNumberAttribute(either_path, rising_value.value())) {
+    if (rising_value.has_value() &&
+        !sensor_->WriteNumberAttribute(rising_path, rising_value.value())) {
+      LOG(ERROR) << "Could not set proximity sensor " << rising_path << " to "
+                 << rising_value.value();
+      return false;
+    }
+    if (falling_value.has_value() &&
+        !sensor_->WriteNumberAttribute(falling_path, falling_value.value())) {
+      LOG(ERROR) << "Could not set proximity sensor " << falling_path << " to "
+                 << falling_value.value();
+      return false;
+    }
+  }
+
   return true;
 }
 
