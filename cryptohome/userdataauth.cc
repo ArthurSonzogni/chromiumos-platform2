@@ -2374,14 +2374,14 @@ MountStatus UserDataAuth::AttemptUserMount(
         .Wrap(std::move(err));
   }
 
-  MountError error = MOUNT_ERROR_NONE;
   const std::string obfuscated_username = credentials.GetObfuscatedUsername();
   bool created = false;
   auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
 
   if (!exists_or.ok()) {
     LOG(ERROR) << "Failed to check cryptohome existence for : "
-               << obfuscated_username << " error = " << error;
+               << obfuscated_username
+               << " error = " << exists_or.status()->error();
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthCheckExistenceFailedInAttemptUserMountCred),
@@ -2408,7 +2408,7 @@ MountStatus UserDataAuth::AttemptUserMount(
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                           ErrorAction::kRetry, ErrorAction::kReboot,
                           ErrorAction::kPowerwash}),
-          error);
+          MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED);
     }
     created = true;
   }
