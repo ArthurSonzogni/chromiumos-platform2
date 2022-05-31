@@ -227,12 +227,6 @@ StorageStatus Mount::MountCryptohome(
                << ") failed.";
   }
 
-  // TODO(crbug.com/1287022): Remove in M101.
-  // Remove the Chrome Logs if they are too large. This is a mitigation for
-  // crbug.com/1231192.
-  if (!RemoveLargeChromeLogs())
-    LOG(ERROR) << "Failed to remove Chrome logs";
-
   return StorageStatus::Ok();
 }
 
@@ -416,26 +410,6 @@ void Mount::MaybeCancelMigrateEncryptionAndWait() {
     dircrypto_migration_stopped_condition_.Wait();
     LOG(INFO) << "Dircrypto migration stopped.";
   }
-}
-
-// TODO(crbug.com/1287022): Remove in M101.
-// Remove the Chrome Logs if they are too large. This is a mitigation for
-// crbug.com/1231192.
-bool Mount::RemoveLargeChromeLogs() const {
-  base::FilePath path("/home/chronos/user/log/chrome");
-
-  int64_t size;
-  if (!platform_->GetFileSize(path, &size)) {
-    LOG(ERROR) << "Failed to get the size of Chrome logs";
-    return false;
-  }
-
-  // Only remove the Chrome logs if they are larger than 200 MiB.
-  if (size < 200 * 1024 * 1024) {
-    return true;
-  }
-
-  return platform_->DeleteFile(path);
 }
 
 }  // namespace cryptohome
