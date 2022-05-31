@@ -250,6 +250,10 @@ message AttestationCertificateRequest {
     // `DEVICE_SETUP_CERTIFICATE` specific metadata.
     DeviceSetupCertificateMetadata device_setup_certificate_metadata = 16;
   }
+  // ADID read from the VPD. Used as the host identifier incorporated in the
+  // certificates.
+  // Used for `ENTERPRISE_VTPM_EK_CERTIFICATE` profile only.
+  optional bytes attested_device_id = 17;
 }
 
 // The response from the attestation server for the certificate request.
