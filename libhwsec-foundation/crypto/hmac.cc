@@ -13,20 +13,20 @@ template <class T>
 brillo::SecureBlob HmacSha512Helper(const brillo::SecureBlob& key,
                                     const T& data) {
   const int kSha512OutputSize = 64;
-  unsigned char mac[kSha512OutputSize];
-  HMAC(EVP_sha512(), key.data(), key.size(), data.data(), data.size(), mac,
-       NULL);
-  return brillo::SecureBlob(std::begin(mac), std::end(mac));
+  brillo::SecureBlob mac(kSha512OutputSize);
+  HMAC(EVP_sha512(), key.data(), key.size(), data.data(), data.size(),
+       mac.data(), nullptr);
+  return mac;
 }
 
 template <class T>
 brillo::SecureBlob HmacSha256Helper(const brillo::SecureBlob& key,
                                     const T& data) {
   const int kSha256OutputSize = 32;
-  unsigned char mac[kSha256OutputSize];
-  HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(), mac,
-       NULL);
-  return brillo::SecureBlob(std::begin(mac), std::end(mac));
+  brillo::SecureBlob mac(kSha256OutputSize);
+  HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(),
+       mac.data(), nullptr);
+  return mac;
 }
 
 }  // namespace
