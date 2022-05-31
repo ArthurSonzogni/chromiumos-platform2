@@ -553,6 +553,11 @@ type sysfs_efi_vars, sysfs_type;
 
 type debugfs_gpu, debugfs_type;
 
+type cros_mount_passthrough_fs, fs_type;
+has_arc(`
+allow media_rw_data_file cros_mount_passthrough_fs:filesystem associate;
+')
+
 type wayland_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_system_bus_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_mojo_service_manager_socket, file_type, cros_file_type, cros_run_file_type;

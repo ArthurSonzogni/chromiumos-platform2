@@ -51,6 +51,10 @@ namespace {
 constexpr uid_t kAndroidAppUidStart = 10000 + USER_NS_SHIFT;
 constexpr uid_t kAndroidAppUidEnd = 19999 + USER_NS_SHIFT;
 
+constexpr char kCrosMountPassthroughFsContext[] =
+    "u:object_r:cros_mount_passthrough_fs:s0";
+constexpr char kMediaRwDataFileContext[] = "u:object_r:media_rw_data_file:s0";
+
 struct FusePrivateData {
   std::string android_app_access_type;
   bool force_group_permission = false;
@@ -528,6 +532,10 @@ int main(int argc, char** argv) {
   const std::string fuse_gid_opt(
       "gid=" + std::to_string(FLAGS_fuse_gid + USER_NS_SHIFT));
   const std::string fuse_umask_opt("umask=" + FLAGS_fuse_umask);
+  const std::string fuse_context_opt(std::string("context=") +
+                                     kMediaRwDataFileContext);
+  const std::string fuse_fscontext_opt(std::string("fscontext=") +
+                                       kCrosMountPassthroughFsContext);
   LOG(INFO) << "uid_opt(" << fuse_uid_opt << ") "
             << "gid_opt(" << fuse_gid_opt << ") "
             << "umask_opt(" << fuse_umask_opt << ")";
@@ -562,6 +570,10 @@ int main(int argc, char** argv) {
       fuse_umask_opt.c_str(),
       "-o",
       "noexec",
+      "-o",
+      fuse_context_opt.c_str(),
+      "-o",
+      fuse_fscontext_opt.c_str(),
   };
   int fuse_argc = sizeof(fuse_argv) / sizeof(fuse_argv[0]);
 
