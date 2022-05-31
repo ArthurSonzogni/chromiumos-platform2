@@ -1,0 +1,11 @@
+[package]
+name = "featured"
+version = "0.1.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+
+[build-dependencies]
+bindgen = "0.59"
+
+[dev-dependencies]
+log = "0.4"
