@@ -59,8 +59,11 @@ constexpr char kGenericCarrierFirmware2Version[] = "2017-10-14";
 
 // Associated payloads
 constexpr char kApFirmwareTag[] = "ap";
-constexpr char kApFirmwarePath[] = "ap_firmware";
-constexpr char kApFirmwareVersion[] = "abc.a40";
+constexpr char kApFirmware1Path[] = "ap_firmware";
+constexpr char kApFirmware1Version[] = "abc.a40";
+
+constexpr char kApFirmware2Path[] = "ap_firmware_2";
+constexpr char kApFirmware2Version[] = "def.g50";
 
 constexpr char kDevFirmwareTag[] = "dev";
 constexpr char kDevFirmwarePath[] = "dev_firmware";
@@ -782,9 +785,9 @@ TEST_F(ModemFlasherTest, SkipCarrierWithTwoUuidSameFirmware) {
 TEST_F(ModemFlasherTest, FlashSingleAssociatedFirmware) {
   const base::FilePath main_fw_path(kMainFirmware2Path);
   AddMainFirmwareFile(kDeviceId1, main_fw_path, kMainFirmware2Version);
-  const base::FilePath ap_fw_path(kApFirmwarePath);
+  const base::FilePath ap_fw_path(kApFirmware1Path);
   AddAssocFirmwareFile(kMainFirmware2Path, kApFirmwareTag, ap_fw_path,
-                       kApFirmwareVersion);
+                       kApFirmware1Version);
   const base::FilePath dev_fw_path(kDevFirmwarePath);
   AddAssocFirmwareFile(kMainFirmware2Path, kDevFirmwareTag, dev_fw_path,
                        kDevFirmwareVersion);
@@ -792,9 +795,25 @@ TEST_F(ModemFlasherTest, FlashSingleAssociatedFirmware) {
   auto modem = GetDefaultModem();
   std::vector<FirmwareConfig> main_cfg = {
       {kFwMain, main_fw_path, kMainFirmware2Version},
-      {kApFirmwareTag, ap_fw_path, kApFirmwareVersion},
+      {kApFirmwareTag, ap_fw_path, kApFirmware1Version},
       {kDevFirmwareTag, dev_fw_path, kDevFirmwareVersion}};
   EXPECT_CALL(*modem, FlashFirmwares(main_cfg)).WillOnce(Return(true));
+  modem_flasher_->TryFlash(modem.get(), &err);
+  ASSERT_EQ(err.get(), nullptr);
+}
+
+TEST_F(ModemFlasherTest, UpgradeAssocFirmwareOnly) {
+  const base::FilePath main_fw_path(kMainFirmware1Path);
+  AddMainFirmwareFile(kDeviceId1, main_fw_path, kMainFirmware1Version);
+  const base::FilePath ap_fw_path(kApFirmware2Path);
+  AddAssocFirmwareFile(kMainFirmware1Path, kApFirmwareTag, ap_fw_path,
+                       kApFirmware2Version);
+
+  auto modem = GetDefaultModem();
+  std::vector<FirmwareConfig> config = {
+      {kApFirmwareTag, ap_fw_path, kApFirmware2Version}};
+  EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, FlashFirmwares(config)).WillOnce(Return(true));
   modem_flasher_->TryFlash(modem.get(), &err);
   ASSERT_EQ(err.get(), nullptr);
 }

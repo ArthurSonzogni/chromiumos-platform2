@@ -13,6 +13,7 @@
 
 #include <base/callback.h>
 #include <brillo/errors/error.h>
+#include <chromeos/switches/modemfwd_switches.h>
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/journal.h"
@@ -50,17 +51,20 @@ class ModemFlasher {
     void OnFlashFailed() { tries_--; }
     bool ShouldFlash() const { return tries_ > 0; }
 
-    void OnFlashedMainFirmware() { should_flash_main_fw_ = false; }
-    bool ShouldFlashMainFirmware() const { return should_flash_main_fw_; }
-
-    void OnFlashedOemFirmware() { should_flash_oem_fw_ = false; }
-    bool ShouldFlashOemFirmware() const { return should_flash_oem_fw_; }
-
-    void OnFlashedCarrierFirmware(const base::FilePath& path) {
-      last_carrier_fw_flashed_ = path;
+    void OnFlashedFirmware(const std::string& type,
+                           const base::FilePath& path) {
+      if (type == kFwCarrier) {
+        last_carrier_fw_flashed_ = path;
+        return;
+      }
+      flashed_fw_types_.insert(type);
     }
-    bool ShouldFlashCarrierFirmware(const base::FilePath& path) const {
-      return last_carrier_fw_flashed_ != path;
+
+    bool ShouldFlashFirmware(const std::string& type,
+                             const base::FilePath& path) {
+      if (type == kFwCarrier)
+        return last_carrier_fw_flashed_ != path;
+      return flashed_fw_types_.count(type) == 0;
     }
 
     void OnCarrierSeen(const std::string& carrier_id) {
@@ -68,8 +72,7 @@ class ModemFlasher {
         return;
 
       last_carrier_id_ = carrier_id;
-      should_flash_main_fw_ = true;
-      should_flash_oem_fw_ = true;
+      flashed_fw_types_.clear();
     }
 
     // Used to determine if any FW was installed before reporting metrics.
@@ -87,9 +90,8 @@ class ModemFlasher {
     //
     // We should retry flashing the main firmware if the carrier changes since
     // we might have different main firmware versions. As such, when we see a
-    // new carrier, reset the |should_flash_main_fw_| for this modem.
-    bool should_flash_main_fw_ = true;
-    bool should_flash_oem_fw_ = true;
+    // new carrier, clear the flashed types for this modem.
+    std::set<std::string> flashed_fw_types_;
     std::string last_carrier_id_;
 
     // For carrier firmware, once we've tried to upgrade versions on a
@@ -105,6 +107,8 @@ class ModemFlasher {
     static const int kDefaultTries = 2;
     int tries_ = kDefaultTries;
   };
+
+  base::FilePath GetFirmwarePath(const FirmwareFileInfo& info);
 
   // Notify UpdateFirmwareComplete failure and reset the |fw_flashed_| flag.
   void ProcessFailedToPrepareFirmwareFile(const base::Location& code_location,

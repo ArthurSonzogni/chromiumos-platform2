@@ -133,8 +133,9 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
   std::vector<FirmwareConfig> flash_cfg;
   std::map<std::string, std::unique_ptr<FirmwareFile>> flash_files;
   // Check if we need to update the main firmware.
-  if (flash_state->ShouldFlashMainFirmware() &&
-      files.main_firmware.has_value()) {
+  if (files.main_firmware.has_value() &&
+      flash_state->ShouldFlashFirmware(
+          kFwMain, GetFirmwarePath(files.main_firmware.value()))) {
     const FirmwareFileInfo& file_info = files.main_firmware.value();
     ELOG(INFO) << "Found main firmware blob " << file_info.version
                << ", currently installed main firmware version: "
@@ -142,7 +143,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
     if (file_info.version == modem->GetMainFirmwareVersion()) {
       // We don't need to check the main firmware again if there's nothing new.
       // Pretend that we successfully flashed it.
-      flash_state->OnFlashedMainFirmware();
+      flash_state->OnFlashedFirmware(
+          kFwMain, GetFirmwarePath(files.main_firmware.value()));
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
@@ -157,32 +159,50 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
       flash_cfg.push_back(
           {kFwMain, firmware_file->path_on_filesystem(), file_info.version});
       flash_files[kFwMain] = std::move(firmware_file);
+    }
+  }
 
-      // If there are associated firmwares, we also need to prepare those.
-      for (const auto& assoc_entry : files.assoc_firmware) {
-        auto assoc_file = std::make_unique<FirmwareFile>();
-        if (!assoc_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
-                                     assoc_entry.second)) {
-          ProcessFailedToPrepareFirmwareFile(
-              FROM_HERE, flash_state, assoc_entry.second.firmware_path, err);
-          return base::OnceClosure();
-        }
-        flash_cfg.push_back({assoc_entry.first,
-                             assoc_file->path_on_filesystem(),
-                             assoc_entry.second.version});
-        flash_files[assoc_entry.first] = std::move(assoc_file);
+  for (const auto& assoc_entry : files.assoc_firmware) {
+    const FirmwareFileInfo& file_info = assoc_entry.second;
+    if (!flash_state->ShouldFlashFirmware(assoc_entry.first,
+                                          GetFirmwarePath(file_info))) {
+      continue;
+    }
+
+    ELOG(INFO) << "Found " << assoc_entry.first << " firmware blob "
+               << file_info.version << ", currently installed "
+               << assoc_entry.first << " firmware version: "
+               << modem->GetAssocFirmwareVersion(assoc_entry.first);
+    if (file_info.version ==
+        modem->GetAssocFirmwareVersion(assoc_entry.first)) {
+      flash_state->OnFlashedFirmware(assoc_entry.first,
+                                     GetFirmwarePath(file_info));
+    } else {
+      auto firmware_file = std::make_unique<FirmwareFile>();
+      if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                      file_info)) {
+        ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
+                                           file_info.firmware_path, err);
+        return base::OnceClosure();
       }
+
+      flash_cfg.push_back({assoc_entry.first,
+                           firmware_file->path_on_filesystem(),
+                           file_info.version});
+      flash_files[assoc_entry.first] = std::move(firmware_file);
     }
   }
 
   // Check if we need to update the OEM firmware.
-  if (flash_state->ShouldFlashOemFirmware() && files.oem_firmware.has_value()) {
+  if (files.oem_firmware.has_value() &&
+      flash_state->ShouldFlashFirmware(
+          kFwOem, GetFirmwarePath(files.oem_firmware.value()))) {
     const FirmwareFileInfo& file_info = files.oem_firmware.value();
     ELOG(INFO) << "Found OEM firmware blob " << file_info.version
                << ", currently installed OEM firmware version: "
                << modem->GetOemFirmwareVersion();
     if (file_info.version == modem->GetOemFirmwareVersion()) {
-      flash_state->OnFlashedOemFirmware();
+      flash_state->OnFlashedFirmware(kFwOem, GetFirmwarePath(file_info));
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
@@ -200,9 +220,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
 
   // Check if we need to update the carrier firmware.
   if (!current_carrier.empty() && files.carrier_firmware.has_value() &&
-      flash_state->ShouldFlashCarrierFirmware(
-          firmware_directory_->GetFirmwarePath().Append(
-              files.carrier_firmware.value().firmware_path))) {
+      flash_state->ShouldFlashFirmware(
+          kFwCarrier, GetFirmwarePath(files.carrier_firmware.value()))) {
     const FirmwareFileInfo& file_info = files.carrier_firmware.value();
 
     ELOG(INFO) << "Found carrier firmware blob " << file_info.version
@@ -286,18 +305,17 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
   for (const auto& info : flash_cfg) {
     std::string fw_type = info.fw_type;
     base::FilePath path_for_logging = flash_files[fw_type]->path_for_logging();
-    if (fw_type == kFwMain)
-      flash_state->OnFlashedMainFirmware();
-    else if (fw_type == kFwOem)
-      flash_state->OnFlashedOemFirmware();
-    else if (fw_type == kFwCarrier)
-      flash_state->OnFlashedCarrierFirmware(path_for_logging);
+    flash_state->OnFlashedFirmware(fw_type, path_for_logging);
     ELOG(INFO) << "Flashed " << fw_type << " firmware (" << path_for_logging
                << ") to the modem";
   }
   return base::BindOnce(&Journal::MarkEndOfFlashingFirmware,
                         base::Unretained(journal_.get()), device_id,
                         current_carrier);
+}
+
+base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
+  return firmware_directory_->GetFirmwarePath().Append(info.firmware_path);
 }
 
 }  // namespace modemfwd
