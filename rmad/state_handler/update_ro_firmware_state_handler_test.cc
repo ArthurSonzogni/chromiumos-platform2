@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
@@ -34,7 +35,8 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<UpdateRoFirmwareStateHandler> CreateStateHandler(
       bool ro_verified, int hwwp_status) {
-    json_store_->SetValue(kRoFirmwareVerified, ro_verified);
+    MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified,
+                                  ro_verified);
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
     // Mock |CrosSystemUtils|.

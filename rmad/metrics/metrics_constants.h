@@ -12,6 +12,8 @@
 namespace rmad {
 
 // JsonStore additional keys for metrics usage.
+inline constexpr char kMetrics[] = "metrics";
+
 inline constexpr char kFirstSetupTimestamp[] = "first_setup_timestamp";
 inline constexpr char kSetupTimestamp[] = "setup_timestamp";
 inline constexpr char kRunningTime[] = "running_time";

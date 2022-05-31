@@ -12,6 +12,7 @@
 
 #include "rmad/common/types.h"
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/fake_cr50_utils.h"
@@ -115,8 +116,9 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
   if (wp_disable_required_) {
     if (cr50_utils_->IsFactoryModeEnabled()) {
       // Skip WP disabling steps if factory mode is already turned on.
-      json_store_->SetValue(kWpDisableMethod,
-                            WpDisableMethod_Name(WpDisableMethod::SKIPPED));
+      MetricsUtils::SetMetricsValue(
+          json_store_, kWpDisableMethod,
+          WpDisableMethod_Name(WpDisableMethod::SKIPPED));
       next_state = RmadState::StateCase::kWpDisableComplete;
     } else if (ccd_blocked_) {
       if (wipe_device) {

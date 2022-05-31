@@ -801,8 +801,8 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
   rmad_interface.RecordBrowserActionMetric(request, base::BindOnce(callback));
 
   std::vector<int> additional_activities;
-  EXPECT_TRUE(
-      json_store->GetValue(kAdditionalActivities, &additional_activities));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store, kAdditionalActivities,
+                                            &additional_activities));
   EXPECT_EQ(
       additional_activities,
       std::vector<int>({static_cast<int>(AdditionalActivity::DIAGNOSTICS),

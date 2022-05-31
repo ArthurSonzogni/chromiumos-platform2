@@ -38,8 +38,10 @@ class MetricsUtilsImplTest : public testing::Test {
         temp_dir_.GetPath().AppendASCII(kTestJsonStoreFilename);
     json_store_ = base::MakeRefCounted<JsonStore>(file_path);
     double current_timestamp = base::Time::Now().ToDoubleT();
-    EXPECT_TRUE(json_store_->SetValue(kFirstSetupTimestamp, current_timestamp));
-    EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp, current_timestamp));
+    EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kFirstSetupTimestamp,
+                                              current_timestamp));
+    EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                              current_timestamp));
   }
 
   base::ScopedTempDir temp_dir_;
@@ -49,16 +51,20 @@ class MetricsUtilsImplTest : public testing::Test {
 TEST_F(MetricsUtilsImplTest, Record_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
   double current_timestamp = base::Time::Now().ToDoubleT();
-  EXPECT_TRUE(json_store_->SetValue(kFirstSetupTimestamp, current_timestamp));
-  EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp, current_timestamp));
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kFirstSetupTimestamp,
+                                            current_timestamp));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                            current_timestamp));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
 }
 
 TEST_F(MetricsUtilsImplTest, Record_RoUnsupportedSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, false));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, false));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
 }
@@ -71,14 +77,16 @@ TEST_F(MetricsUtilsImplTest, Record_RoUnknownSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_AbortSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, false));
 }
 
 TEST_F(MetricsUtilsImplTest, Record_SameOnwerSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
@@ -86,7 +94,8 @@ TEST_F(MetricsUtilsImplTest, Record_SameOnwerSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_DifferentOnwerSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
@@ -94,7 +103,8 @@ TEST_F(MetricsUtilsImplTest, Record_DifferentOnwerSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_MainboardReplacedSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(kMlbRepair, true));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
@@ -102,7 +112,8 @@ TEST_F(MetricsUtilsImplTest, Record_MainboardReplacedSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_MainboardOriginalSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(kMlbRepair, false));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
@@ -110,7 +121,8 @@ TEST_F(MetricsUtilsImplTest, Record_MainboardOriginalSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
 
   // The write protect disable method hasn't been set yet.
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
@@ -120,7 +132,8 @@ TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
       WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE,
       WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN};
   for (auto wp_disable_method : methods) {
-    EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod,
+    EXPECT_TRUE(
+        MetricsUtils::SetMetricsValue(json_store_, kWpDisableMethod,
                                       WpDisableMethod_Name(wp_disable_method)));
     EXPECT_TRUE(metrics_utils->Record(json_store_, true));
   }
@@ -128,7 +141,8 @@ TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_ReplacedComponentsSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(
       kReplacedComponentNames,
       std::vector<std::string>({RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC),
@@ -139,7 +153,8 @@ TEST_F(MetricsUtilsImplTest, Record_ReplacedComponentsSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_OccurredErrorsSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(
       kOccurredErrors, std::vector<std::string>(
                            {RmadErrorCode_Name(RMAD_ERROR_CANNOT_CANCEL_RMA),
@@ -150,9 +165,10 @@ TEST_F(MetricsUtilsImplTest, Record_OccurredErrorsSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_AdditionalActivitiesSuccess) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(
-      kAdditionalActivities,
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kAdditionalActivities,
       std::vector<int>({static_cast<int>(AdditionalActivity::REBOOT),
                         static_cast<int>(AdditionalActivity::SHUTDOWN)})));
 
@@ -161,31 +177,37 @@ TEST_F(MetricsUtilsImplTest, Record_AdditionalActivitiesSuccess) {
 
 TEST_F(MetricsUtilsImplTest, Record_OverallTimeFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kFirstSetupTimestamp, ""));
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kFirstSetupTimestamp, ""));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }
 
 TEST_F(MetricsUtilsImplTest, Record_RunningTimeFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp, ""));
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp, ""));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }
 
 TEST_F(MetricsUtilsImplTest, Record_UnknownWriteProtectDisableFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod, "abc"));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kWpDisableMethod, "abc"));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }
 
 TEST_F(MetricsUtilsImplTest, Record_UnknownReplacedComponentFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(json_store_->SetValue(kReplacedComponentNames,
                                     std::vector<std::string>({"ABC"})));
 
@@ -194,18 +216,20 @@ TEST_F(MetricsUtilsImplTest, Record_UnknownReplacedComponentFailed) {
 
 TEST_F(MetricsUtilsImplTest, Record_UnknownOccurredErrorFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kOccurredErrors,
-                                    std::vector<std::string>({"ABC"})));
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kOccurredErrors,
+                                            std::vector<std::string>({"ABC"})));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }
 
 TEST_F(MetricsUtilsImplTest, Record_UnknownAdditionalActivityFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(json_store_->SetValue(kRoFirmwareVerified, true));
   EXPECT_TRUE(
-      json_store_->SetValue(kAdditionalActivities, std::vector<int>(123)));
+      MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
+                                            std::vector<int>(123)));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }

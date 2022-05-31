@@ -19,6 +19,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
+#include "rmad/metrics/metrics_utils.h"
 
 namespace {
 
@@ -111,10 +112,11 @@ bool BaseStateHandler::StoreErrorCode(RmadErrorCode error) {
 
   std::vector<std::string> occurred_errors;
   // Ignore the return value, since it may not have been set yet.
-  json_store_->GetValue(kOccurredErrors, &occurred_errors);
+  MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
   occurred_errors.push_back(RmadErrorCode_Name(error));
 
-  return json_store_->SetValue(kOccurredErrors, occurred_errors);
+  return MetricsUtils::SetMetricsValue(json_store_, kOccurredErrors,
+                                       occurred_errors);
 }
 
 bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
@@ -124,7 +126,8 @@ bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
 
   std::vector<int> additional_activities;
   // Ignore the return value, since it may not have been set yet.
-  json_store_->GetValue(kAdditionalActivities, &additional_activities);
+  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+                                &additional_activities);
   additional_activities.push_back(static_cast<int>(activity));
 
   // For those expected power cycle events, we calculate running time and append
@@ -134,7 +137,8 @@ bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
                 activity) != kExpectedPowerCycleActivities.end()) {
     double current_timestamp = base::Time::Now().ToDoubleT();
     double setup_timestamp;
-    if (!json_store_->GetValue(kSetupTimestamp, &setup_timestamp)) {
+    if (!MetricsUtils::GetMetricsValue(json_store_, kSetupTimestamp,
+                                       &setup_timestamp)) {
       LOG(ERROR) << "Failed to get setup timestamp for measuring "
                     "running time.";
       return false;
@@ -142,18 +146,21 @@ bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
 
     double running_time = 0;
     // Ignore the return value, since it may not have been set yet.
-    json_store_->GetValue(kRunningTime, &running_time);
+    MetricsUtils::GetMetricsValue(json_store_, kRunningTime, &running_time);
     running_time += current_timestamp - setup_timestamp;
     // Once we increase the running time, we should also update the timestamp to
     // prevent double counting issues.
-    if (!json_store_->SetValue(kRunningTime, running_time) ||
-        !json_store_->SetValue(kSetupTimestamp, current_timestamp)) {
+    if (!MetricsUtils::SetMetricsValue(json_store_, kRunningTime,
+                                       running_time) ||
+        !MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                       current_timestamp)) {
       LOG(ERROR) << "Failed to set running time for metrics.";
       return false;
     }
   }
 
-  return json_store_->SetValue(kAdditionalActivities, additional_activities);
+  return MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
+                                       additional_activities);
 }
 
 bool BaseStateHandler::RequestCutoff(

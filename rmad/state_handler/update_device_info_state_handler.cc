@@ -13,6 +13,7 @@
 #include <google/protobuf/repeated_field.h>
 
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"

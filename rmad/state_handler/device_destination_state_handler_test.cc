@@ -12,6 +12,7 @@
 
 #include "rmad/common/types.h"
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/device_destination_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_cryptohome_client.h"
@@ -218,7 +219,8 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
   std::string wp_disable_method_name;
   WpDisableMethod wp_disable_method;
-  EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kWpDisableMethod,
+                                            &wp_disable_method_name));
   EXPECT_TRUE(
       WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
   EXPECT_EQ(wp_disable_method, WpDisableMethod::SKIPPED);

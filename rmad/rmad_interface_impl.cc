@@ -212,13 +212,16 @@ bool RmadInterfaceImpl::SetUp() {
   }
 
   double current_timestamp = base::Time::Now().ToDoubleT();
-  if (!json_store_->SetValue(kSetupTimestamp, current_timestamp)) {
+  if (!MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                     current_timestamp)) {
     LOG(ERROR) << "Could not store setup time";
     return false;
   }
   if (double first_setup_time;
-      !json_store_->GetValue(kFirstSetupTimestamp, &first_setup_time) &&
-      !json_store_->SetValue(kFirstSetupTimestamp, current_timestamp)) {
+      !MetricsUtils::GetMetricsValue(json_store_, kFirstSetupTimestamp,
+                                     &first_setup_time) &&
+      !MetricsUtils::SetMetricsValue(json_store_, kFirstSetupTimestamp,
+                                     current_timestamp)) {
     LOG(ERROR) << "Could not store first setup time";
     return false;
   }
@@ -549,7 +552,8 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
     RecordBrowserActionMetricCallback callback) {
   std::vector<int> additional_activities;
   // Ignore the return value, since it may not have been set yet.
-  json_store_->GetValue(kAdditionalActivities, &additional_activities);
+  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+                                &additional_activities);
 
   // TODO(genechang): Add a table to map all actions to metrics to simplify it.
   if (browser_action.diagnostics()) {
@@ -563,7 +567,8 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
   }
 
   RecordBrowserActionMetricReply reply;
-  if (json_store_->SetValue(kAdditionalActivities, additional_activities)) {
+  if (MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
+                                    additional_activities)) {
     reply.set_error(RMAD_ERROR_OK);
   } else {
     reply.set_error(RMAD_ERROR_CANNOT_RECORD_BROWSER_ACTION);

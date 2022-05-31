@@ -14,6 +14,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 
 namespace {
@@ -170,7 +171,7 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Success) {
   }
 
   std::vector<std::string> occurred_errors;
-  json_store_->GetValue(kOccurredErrors, &occurred_errors);
+  MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
   EXPECT_EQ(occurred_errors, target_occurred_errors);
 }
 
@@ -202,17 +203,19 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
     if (std::find(kExpectedPowerCycleActivities.begin(),
                   kExpectedPowerCycleActivities.end(),
                   activity) != kExpectedPowerCycleActivities.end()) {
-      EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp,
-                                        base::Time::Now().ToDoubleT()));
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                                base::Time::Now().ToDoubleT()));
       task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
-      json_store_->GetValue(kRunningTime, &pre_running_time);
+      MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
+                                    &pre_running_time);
 
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
 
       double running_time;
-      EXPECT_TRUE(json_store_->GetValue(kRunningTime, &running_time));
+      EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
+                                                &running_time));
       EXPECT_EQ(running_time - pre_running_time, kDelayTimeInSec);
     } else {
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
@@ -224,13 +227,14 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
   }
 
   std::vector<int> additional_activities;
-  json_store_->GetValue(kAdditionalActivities, &additional_activities);
+  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+                                &additional_activities);
   EXPECT_EQ(additional_activities, target_additional_activities);
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_JsonFailed) {
-  EXPECT_TRUE(
-      json_store_->SetValue(kSetupTimestamp, base::Time::Now().ToDoubleT()));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                            base::Time::Now().ToDoubleT()));
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
 
   for (AdditionalActivity activity : kValidAdditionalActivities) {
@@ -281,12 +285,13 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
     if (std::find(kExpectedPowerCycleActivities.begin(),
                   kExpectedPowerCycleActivities.end(),
                   activity) != kExpectedPowerCycleActivities.end()) {
-      EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp,
-                                        base::Time::Now().ToDoubleT()));
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+                                                base::Time::Now().ToDoubleT()));
       task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
-      json_store_->GetValue(kRunningTime, &pre_running_time);
+      MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
+                                    &pre_running_time);
 
       BaseStateHandler::GetNextStateCaseReply reply =
           handler->NextStateCaseWrapper(state_case, RMAD_ERROR_OK, activity);
@@ -294,7 +299,8 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
       EXPECT_EQ(reply.error, RMAD_ERROR_OK);
 
       double running_time;
-      EXPECT_TRUE(json_store_->GetValue(kRunningTime, &running_time));
+      EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
+                                                &running_time));
       EXPECT_EQ(running_time - pre_running_time, kDelayTimeInSec);
     } else {
       BaseStateHandler::GetNextStateCaseReply reply =
@@ -309,12 +315,13 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
   }
 
   std::vector<int> additional_activities;
-  EXPECT_TRUE(
-      json_store_->GetValue(kAdditionalActivities, &additional_activities));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+                                            &additional_activities));
   EXPECT_EQ(additional_activities, target_additional_activities);
 
   std::vector<std::string> occurred_errors;
-  EXPECT_TRUE(json_store_->GetValue(kOccurredErrors, &occurred_errors));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
+                                            &occurred_errors));
   EXPECT_EQ(occurred_errors, target_occurred_errors);
 }
 
@@ -346,11 +353,12 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
   }
 
   std::vector<int> additional_activities;
-  json_store_->GetValue(kAdditionalActivities, &additional_activities);
+  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+                                &additional_activities);
   EXPECT_EQ(additional_activities, std::vector<int>());
 
   std::vector<std::string> occurred_errors;
-  json_store_->GetValue(kOccurredErrors, &occurred_errors);
+  MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
   EXPECT_EQ(occurred_errors, std::vector<std::string>());
 }
 
@@ -393,12 +401,13 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
   }
 
   std::vector<int> additional_activities;
-  EXPECT_TRUE(
-      json_store_->GetValue(kAdditionalActivities, &additional_activities));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+                                            &additional_activities));
   EXPECT_EQ(additional_activities, target_additional_activities);
 
   std::vector<std::string> occurred_errors;
-  EXPECT_TRUE(json_store_->GetValue(kOccurredErrors, &occurred_errors));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
+                                            &occurred_errors));
   EXPECT_EQ(occurred_errors, target_occurred_errors);
 }
 

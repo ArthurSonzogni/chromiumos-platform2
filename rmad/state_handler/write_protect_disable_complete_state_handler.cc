@@ -13,6 +13,7 @@
 
 #include "rmad/common/types.h"
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/fake_flashrom_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
@@ -45,7 +46,8 @@ WriteProtectDisableCompleteStateHandler::
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   WpDisableMethod wp_disable_method;
   if (std::string wp_disable_method_name;
-      !json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name) ||
+      !MetricsUtils::GetMetricsValue(json_store_, kWpDisableMethod,
+                                     &wp_disable_method_name) ||
       !WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method)) {
     LOG(ERROR) << "Failed to get |wp_disable_method|";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;

@@ -47,7 +47,8 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   auto report = StructuredShimlessRmaReport();
   double current_timestamp = base::Time::Now().ToDoubleT();
   double first_setup_timestamp;
-  if (!json_store->GetValue(kFirstSetupTimestamp, &first_setup_timestamp)) {
+  if (!GetMetricsValue(json_store, kFirstSetupTimestamp,
+                       &first_setup_timestamp)) {
     LOG(ERROR) << "Failed to get timestamp of the first setup.";
     return false;
   }
@@ -55,8 +56,8 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
       static_cast<int>(current_timestamp - first_setup_timestamp));
 
   double setup_timestamp;
-  if (!json_store->GetValue(kSetupTimestamp, &setup_timestamp) ||
-      !json_store->SetValue(kSetupTimestamp, current_timestamp)) {
+  if (!GetMetricsValue(json_store, kSetupTimestamp, &setup_timestamp) ||
+      !SetMetricsValue(json_store, kSetupTimestamp, current_timestamp)) {
     LOG(ERROR) << "Failed to get and reset setup timestamp for measuring "
                   "running time.";
     return false;
@@ -64,14 +65,14 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   double running_time = 0.0;
   // It could be the first time we have calculated the running time, thus the
   // return value is ignored.
-  json_store->GetValue(kRunningTime, &running_time);
+  GetMetricsValue(json_store, kRunningTime, &running_time);
   running_time += current_timestamp - setup_timestamp;
   report.SetRunningTime(static_cast<int>(running_time));
 
   report.SetIsComplete(is_complete);
 
   if (bool is_ro_verified;
-      json_store->GetValue(kRoFirmwareVerified, &is_ro_verified)) {
+      GetMetricsValue(json_store, kRoFirmwareVerified, &is_ro_verified)) {
     if (is_ro_verified) {
       report.SetRoVerification(static_cast<int64_t>(RoVerification::PASS));
     } else {
@@ -110,7 +111,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   std::string wp_disable_method_name;
   WpDisableMethod wp_disable_method = WpDisableMethod::UNKNOWN;
   // Ignore the else part, because we may not have decided on it.
-  if (json_store->GetValue(kWpDisableMethod, &wp_disable_method_name)) {
+  if (GetMetricsValue(json_store, kWpDisableMethod, &wp_disable_method_name)) {
     if (!WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method)) {
       LOG(ERROR) << "Failed to parse |wp_disable_method|";
       return false;
@@ -154,7 +155,7 @@ bool MetricsUtilsImpl::RecordOccurredErrors(
     scoped_refptr<JsonStore> json_store) {
   // Ignore the else part, because we may have no errors.
   if (std::vector<std::string> occurred_errors;
-      json_store->GetValue(kOccurredErrors, &occurred_errors)) {
+      GetMetricsValue(json_store, kOccurredErrors, &occurred_errors)) {
     for (const std::string& occurred_error : occurred_errors) {
       if (RmadErrorCode error_code;
           RmadErrorCode_Parse(occurred_error, &error_code)) {
@@ -177,8 +178,8 @@ bool MetricsUtilsImpl::RecordOccurredErrors(
 bool MetricsUtilsImpl::RecordAdditionalActivities(
     scoped_refptr<JsonStore> json_store) {
   // Ignore the else part, because we may have no additional activities.
-  if (std::vector<int> additional_activities;
-      json_store->GetValue(kAdditionalActivities, &additional_activities)) {
+  if (std::vector<int> additional_activities; GetMetricsValue(
+          json_store, kAdditionalActivities, &additional_activities)) {
     for (int additional_activity : additional_activities) {
       if (std::find(kValidAdditionalActivities.begin(),
                     kValidAdditionalActivities.end(),

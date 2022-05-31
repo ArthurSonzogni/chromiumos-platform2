@@ -11,6 +11,7 @@
 
 #include "rmad/common/types.h"
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
@@ -108,12 +109,12 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
   // to keep the device open).
   if (CanSkipEnablingFactoryMode() && IsHwwpDisabled()) {
     if (cr50_utils_->IsFactoryModeEnabled()) {
-      json_store_->SetValue(
-          kWpDisableMethod,
+      MetricsUtils::SetMetricsValue(
+          json_store_, kWpDisableMethod,
           WpDisableMethod_Name(WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
     } else {
-      json_store_->SetValue(
-          kWpDisableMethod,
+      MetricsUtils::SetMetricsValue(
+          json_store_, kWpDisableMethod,
           WpDisableMethod_Name(WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
     }
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
