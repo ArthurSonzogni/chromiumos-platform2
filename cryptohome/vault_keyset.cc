@@ -288,13 +288,7 @@ CryptoStatus VaultKeyset::DecryptEx(const KeyBlobs& key_blobs) {
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  CryptoStatus status = DecryptVaultKeysetEx(key_blobs);
-  if (!status.ok() &&
-      status->local_crypto_error() == CryptoError::CE_TPM_COMM_ERROR) {
-    status = DecryptVaultKeysetEx(key_blobs);
-  }
-
-  return status;
+  return DecryptVaultKeysetEx(key_blobs);
 }
 
 CryptoStatus VaultKeyset::DecryptVaultKeysetEx(const KeyBlobs& key_blobs) {
@@ -326,24 +320,22 @@ CryptoStatus VaultKeyset::Decrypt(const SecureBlob& key,
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  CryptoStatus status = DecryptVaultKeyset(key, locked_to_single_user);
-  if (!status.ok() &&
-      status->local_crypto_error() == CryptoError::CE_TPM_COMM_ERROR) {
-    status = DecryptVaultKeyset(key, locked_to_single_user);
-  }
-
-  if (!status.ok() && IsLECredential() &&
-      status->local_crypto_error() == CryptoError::CE_TPM_DEFEND_LOCK) {
-    // For LE credentials, if decrypting the keyset failed due to too many
-    // attempts, set auth_locked=true in the keyset. Then save it for future
-    // callers who can Load it w/o Decrypt'ing to check that flag.
-    auth_locked_ = true;
-    if (!Save(source_file_)) {
-      LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
+  if (CryptoStatus status = DecryptVaultKeyset(key, locked_to_single_user);
+      !status.ok()) {
+    if (IsLECredential() &&
+        status->local_crypto_error() == CryptoError::CE_TPM_DEFEND_LOCK) {
+      // For LE credentials, if decrypting the keyset failed due to too many
+      // attempts, set auth_locked=true in the keyset. Then save it for future
+      // callers who can Load it w/o Decrypt'ing to check that flag.
+      auth_locked_ = true;
+      if (!Save(source_file_)) {
+        LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
+      }
     }
+    return status;
   }
 
-  return status;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 CryptoStatus VaultKeyset::DecryptVaultKeyset(const SecureBlob& vault_key,

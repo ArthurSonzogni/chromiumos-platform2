@@ -2061,15 +2061,6 @@ void UserDataAuth::ContinueMountWithCredentials(
   } else {
     code = AttemptUserMount(*credentials, mount_args, user_session);
   }
-  // Does actual mounting here.
-  if (!code.ok() && code->mount_error() == MOUNT_ERROR_TPM_COMM_ERROR) {
-    LOG(WARNING) << "TPM communication error. Retrying.";
-    if (auth_session) {
-      code = AttemptUserMount(auth_session, mount_args, user_session);
-    } else {
-      code = AttemptUserMount(*credentials, mount_args, user_session);
-    }
-  }
 
   if (!code.ok() && code->mount_error() == MOUNT_ERROR_VAULT_UNRECOVERABLE) {
     LOG(ERROR) << "Unrecoverable vault, removing.";
@@ -4315,13 +4306,6 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
   MountStatus mount_status = session_status.value()->MountVault(
       auth_session_status.value()->username(),
       auth_session_status.value()->file_system_keyset(), vault_options);
-  if (!mount_status.ok() &&
-      mount_status->mount_error() == MOUNT_ERROR_TPM_COMM_ERROR) {
-    LOG(WARNING) << "TPM communication error. Retrying.";
-    mount_status = session_status.value()->MountVault(
-        auth_session_status.value()->username(),
-        auth_session_status.value()->file_system_keyset(), vault_options);
-  }
   ReportTimerStop(kMountExTimer);
   PostMountHook(session_status.value(), mount_status);
   if (!mount_status.ok()) {
