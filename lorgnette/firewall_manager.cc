@@ -5,6 +5,7 @@
 #include "lorgnette/firewall_manager.h"
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -41,19 +42,16 @@ PortToken::~PortToken() {
 FirewallManager::FirewallManager(const std::string& interface)
     : interface_(interface) {}
 
-void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
+void FirewallManager::Init(
+    std::unique_ptr<org::chromium::PermissionBrokerProxyInterface>
+        permission_broker_proxy) {
   CHECK(!permission_broker_proxy_) << "Already started";
 
   if (!SetupLifelinePipe()) {
     return;
   }
 
-  if (!bus) {
-    LOG(ERROR) << "Bus is null; assuming we are in tests.";
-    return;
-  }
-
-  permission_broker_proxy_.reset(new org::chromium::PermissionBrokerProxy(bus));
+  permission_broker_proxy_ = std::move(permission_broker_proxy);
 
   // This will connect the name owner changed signal in DBus object proxy,
   // The callback will be invoked as soon as service is avalilable and will

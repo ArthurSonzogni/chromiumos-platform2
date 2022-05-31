@@ -8,6 +8,7 @@
 #include <setjmp.h>
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -35,6 +36,7 @@
 #include "lorgnette/image_readers/jpeg_reader.h"
 #include "lorgnette/image_readers/png_reader.h"
 #include "lorgnette/ippusb_device.h"
+#include "permission_broker/dbus-proxies.h"
 
 using std::string;
 
@@ -176,7 +178,8 @@ void Manager::RegisterAsync(
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
   firewall_manager_.reset(new FirewallManager(""));
-  firewall_manager_->Init(bus);
+  firewall_manager_->Init(
+      std::make_unique<org::chromium::PermissionBrokerProxy>(bus));
 }
 
 bool Manager::ListScanners(brillo::ErrorPtr* error,

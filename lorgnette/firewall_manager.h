@@ -41,7 +41,8 @@ class FirewallManager final {
   FirewallManager& operator=(const FirewallManager&) = delete;
   ~FirewallManager() = default;
 
-  void Init(const scoped_refptr<dbus::Bus>& bus);
+  void Init(std::unique_ptr<org::chromium::PermissionBrokerProxyInterface>
+                permission_broker_proxy);
 
   // Request port access for all well-known Canon scanner port.
   PortToken RequestPixmaPortAccess();
@@ -73,7 +74,7 @@ class FirewallManager final {
   void ReleaseUdpPortAccess(uint16_t port);
 
   // DBus proxy for permission_broker.
-  std::unique_ptr<org::chromium::PermissionBrokerProxy>
+  std::unique_ptr<org::chromium::PermissionBrokerProxyInterface>
       permission_broker_proxy_;
   // File descriptors for the two end of the pipe use for communicating with
   // remote firewall server (permission_broker), where the remote firewall

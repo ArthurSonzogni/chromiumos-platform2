@@ -111,8 +111,13 @@ install_config("install_init") {
 }
 
 if (use.test) {
+  pkg_config("liblorgnette_config_test") {
+    pkg_deps = [ "libpermission_broker-client-test" ]
+  }
+
   executable("lorgnette_unittest") {
     sources = [
+      "firewall_manager_test.cc",
       "image_readers/jpeg_reader_test.cc",
       "image_readers/png_reader_test.cc",
       "ippusb_device_test.cc",
@@ -122,6 +127,7 @@ if (use.test) {
     ]
     configs += [
       "//common-mk:test",
+      ":liblorgnette_config_test",
       ":target_defaults",
     ]
     deps = [
