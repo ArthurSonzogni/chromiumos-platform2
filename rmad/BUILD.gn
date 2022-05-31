@@ -95,6 +95,7 @@ static_library("libutils") {
     "utils/regions_utils_impl.cc",
     "utils/ssfc_utils_impl.cc",
     "utils/sys_utils_impl.cc",
+    "utils/type_conversions.cc",
     "utils/vpd_utils_impl.cc",
     "utils/vpd_utils_impl_thread_safe.cc",
   ]
@@ -244,6 +245,7 @@ if (use.test) {
       "utils/regions_utils_test.cc",
       "utils/ssfc_utils_test.cc",
       "utils/sys_utils_test.cc",
+      "utils/type_conversions_test.cc",
       "utils/vpd_utils_test.cc",
     ]
     configs += [

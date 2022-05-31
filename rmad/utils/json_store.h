@@ -15,6 +15,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/values.h>
 
+#include "rmad/utils/type_conversions.h"
+
 namespace rmad {
 
 // A class to store a JSON dictionary and keep in sync with a file.
@@ -59,7 +61,7 @@ class JsonStore : public base::RefCounted<JsonStore> {
   template <typename T>
   bool GetValue(const std::string& key, T* result) const {
     DCHECK(data_.is_dict());
-    return GetValueInternal(data_.FindKey(key), result);
+    return ConvertFromValue(data_.FindKey(key), result);
   }
 
   // Get the value associated to the key, and assign its const pointer to
@@ -109,82 +111,6 @@ class JsonStore : public base::RefCounted<JsonStore> {
 
   // Read result returned from internal read tasks.
   struct ReadResult;
-
-  // Convert the input type to base::Value. The input type should be supported
-  // by base::Value (bool, int, double, string).
-  template <typename T>
-  base::Value ConvertToValue(const T& value) {
-    return base::Value(value);
-  }
-
-  // Convert a vector to base::Value. The vector type should be supported
-  // by base::Value (bool, int, double, string) or vector/map of these types.
-  template <typename T>
-  base::Value ConvertToValue(const std::vector<T>& values) {
-    base::Value list(base::Value::Type::LIST);
-    for (const auto& value : values) {
-      list.Append(ConvertToValue(value));
-    }
-    return list;
-  }
-
-  // Convert a map to base::Value. The value type should be supported by
-  // base::Value (bool, int, double, string) or vector/map of these types.
-  // TODO(chenghan): Support more types, e.g. unordered_map.
-  template <typename T>
-  base::Value ConvertToValue(const std::map<std::string, T>& values) {
-    base::Value dict(base::Value::Type::DICTIONARY);
-    for (const auto& [key, value] : values) {
-      dict.SetKey(key, ConvertToValue(value));
-    }
-    return dict;
-  }
-
-  static bool GetValueInternal(const base::Value* data, bool* result);
-  static bool GetValueInternal(const base::Value* data, int* result);
-  static bool GetValueInternal(const base::Value* data, uint64_t* result);
-  static bool GetValueInternal(const base::Value* data, double* result);
-  static bool GetValueInternal(const base::Value* data, std::string* result);
-
-  template <typename T>
-  static bool GetValueInternal(const base::Value* data,
-                               std::vector<T>* result) {
-    if (!data || !data->is_list()) {
-      return false;
-    }
-    std::vector<T> r;
-    for (const auto& child_data : data->GetList()) {
-      if (T child_result; GetValueInternal(&child_data, &child_result)) {
-        r.push_back(child_result);
-      } else {
-        return false;
-      }
-    }
-    if (result) {
-      *result = std::move(r);
-    }
-    return true;
-  }
-
-  template <typename T>
-  static bool GetValueInternal(const base::Value* data,
-                               std::map<std::string, T>* result) {
-    if (!data || !data->is_dict()) {
-      return false;
-    }
-    std::map<std::string, T> r;
-    for (const auto& [key, child_data] : data->DictItems()) {
-      if (T child_result; GetValueInternal(&child_data, &child_result)) {
-        r.insert({key, child_result});
-      } else {
-        return false;
-      }
-    }
-    if (result) {
-      *result = std::move(r);
-    }
-    return true;
-  }
 
   std::unique_ptr<JsonStore::ReadResult> ReadFromFile();
   // This function is guarded by |read_only_|, but can be overridden by |force|
