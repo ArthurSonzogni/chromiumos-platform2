@@ -32,7 +32,8 @@ class UploadJob : public Scheduler::Job {
   class UploadDelegate : public Job::JobDelegate {
    public:
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
-                   bool need_encryption_key);
+                   bool need_encryption_key,
+                   uint64_t remaining_storage_capacity);
     UploadDelegate(const UploadDelegate& other) = delete;
     UploadDelegate& operator=(const UploadDelegate& other) = delete;
     ~UploadDelegate() override;
@@ -48,6 +49,7 @@ class UploadJob : public Scheduler::Job {
     const scoped_refptr<UploadClient> upload_client_;
     const bool need_encryption_key_;
     Records records_;
+    uint64_t remaining_storage_capacity_;
   };
 
   class RecordProcessor : public UploaderInterface {
@@ -82,6 +84,7 @@ class UploadJob : public Scheduler::Job {
   static StatusOr<SmartPtr<UploadJob>> Create(
       scoped_refptr<UploadClient> upload_client,
       bool need_encryption_key,
+      uint64_t remaining_storage_capacity,
       UploaderInterface::UploaderInterfaceResultCb start_cb);
 
  protected:

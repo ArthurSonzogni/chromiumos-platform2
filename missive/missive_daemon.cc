@@ -78,6 +78,7 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
       .set_signature_verification_public_key(
           SignatureVerifier::VerificationKey());
   auto memory_resource = storage_options.memory_resource();
+  disk_space_resource_ = storage_options.disk_space_resource();
   StorageModule::Create(
       std::move(storage_options),
       base::BindRepeating(&MissiveDaemon::AsyncStartUpload,
@@ -107,11 +108,14 @@ void MissiveDaemon::AsyncStartUpload(
     UploaderInterface::UploadReason reason,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK(uploader_result_cb);
+  DCHECK(storage_module_);
   auto upload_job_result = UploadJob::Create(
       upload_client_,
       /*need_encryption_key=*/
       (EncryptionModuleInterface::is_enabled() &&
        reason == UploaderInterface::UploadReason::KEY_DELIVERY),
+      /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
+          disk_space_resource_->GetUsed(),
       std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call

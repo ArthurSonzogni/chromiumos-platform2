@@ -4,6 +4,7 @@
 
 #include "missive/dbus/upload_client.h"
 
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -180,6 +181,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   records->push_back(encrypted_record);
   upload_client_->SendEncryptedRecords(std::move(records),
                                        /*need_encryption_keys=*/false,
+                                       /*remaining_storage_capacity=*/0U,
                                        std::move(response_callback));
   waiter.Wait();
 }
@@ -221,9 +223,11 @@ TEST_F(UploadClientTest, CallUnavailable) {
   std::unique_ptr<std::vector<EncryptedRecord>> records =
       std::make_unique<std::vector<EncryptedRecord>>();
   records->push_back(encrypted_record);
-  upload_client_->SendEncryptedRecords(std::move(records),
-                                       /*need_encryption_keys=*/false,
-                                       std::move(response_callback));
+  upload_client_->SendEncryptedRecords(
+      std::move(records),
+      /*need_encryption_keys=*/false,
+      /*remaining_storage_capacity=*/std::numeric_limits<uint64_t>::max(),
+      std::move(response_callback));
   waiter.Wait();
 }
 
@@ -267,6 +271,7 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
   records->push_back(encrypted_record);
   upload_client_->SendEncryptedRecords(std::move(records),
                                        /*need_encryption_keys=*/false,
+                                       /*remaining_storage_capacity=*/3000U,
                                        std::move(response_callback));
 
   upload_client_->SetAvailabilityForTest(/*is_available=*/false);

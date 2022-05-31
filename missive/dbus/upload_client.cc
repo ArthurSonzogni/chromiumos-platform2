@@ -74,6 +74,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   UploadEncryptedRecordDelegate(
       std::unique_ptr<std::vector<EncryptedRecord>> records,
       const bool need_encryption_keys,
+      uint64_t remaining_storage_capacity,
       scoped_refptr<dbus::Bus> bus,
       dbus::ObjectProxy* chrome_proxy,
       UploadClient::HandleUploadResponseCallback response_callback)
@@ -85,6 +86,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
       request_.add_encrypted_record()->CheckTypeAndMergeFrom(record);
     }
     request_.set_need_encryption_keys(need_encryption_keys);
+    request_.set_remaining_storage_capacity(remaining_storage_capacity);
   }
 
   // Implementation of DisconnectableClient::Delegate
@@ -172,12 +174,13 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 void UploadClient::MaybeMakeCall(
     std::unique_ptr<std::vector<EncryptedRecord>> records,
     const bool need_encryption_keys,
+    uint64_t remaining_storage_capacity,
     HandleUploadResponseCallback response_callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
-      std::move(records), need_encryption_keys, bus_, chrome_proxy_,
-      std::move(response_callback));
+      std::move(records), need_encryption_keys, remaining_storage_capacity,
+      bus_, chrome_proxy_, std::move(response_callback));
   GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
 }
 
@@ -195,12 +198,14 @@ DisconnectableClient* UploadClient::GetDisconnectableClient() {
 void UploadClient::SendEncryptedRecords(
     std::unique_ptr<std::vector<EncryptedRecord>> records,
     const bool need_encryption_keys,
+    uint64_t remaining_storage_capacity,
     HandleUploadResponseCallback response_callback) {
   bus_->GetOriginTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&UploadClient::MaybeMakeCall,
                      weak_ptr_factory_.GetWeakPtr(), std::move(records),
-                     need_encryption_keys, std::move(response_callback)));
+                     need_encryption_keys, remaining_storage_capacity,
+                     std::move(response_callback)));
 }
 
 void UploadClient::OwnerChanged(const std::string& old_owner,

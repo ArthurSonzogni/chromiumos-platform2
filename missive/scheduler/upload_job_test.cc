@@ -215,7 +215,9 @@ TEST_F(UploadJobTest, UploadsRecords) {
   TestRecordUploader record_uploader(std::move(records));
 
   auto job_result =
-      UploadJob::Create(upload_client_, false,
+      UploadJob::Create(upload_client_,
+                        /*need_encryption_keys=*/false,
+                        /*remaining_storage_capacity=*/3000U,
                         base::BindOnce(&TestRecordUploader::StartUpload,
                                        base::Unretained(&record_uploader)));
   ASSERT_TRUE(job_result.ok()) << job_result.status();

@@ -14,6 +14,7 @@
 #include "missive/analytics/registry.h"
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/interface.pb.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
@@ -76,6 +77,7 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
 
   scoped_refptr<UploadClient> upload_client_;
   scoped_refptr<StorageModuleInterface> storage_module_;
+  scoped_refptr<const ResourceInterface> disk_space_resource_;
   Scheduler scheduler_;
   analytics::Registry analytics_registry_{};
 };

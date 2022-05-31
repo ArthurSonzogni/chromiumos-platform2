@@ -40,6 +40,7 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
   virtual void SendEncryptedRecords(
       std::unique_ptr<std::vector<EncryptedRecord>> records,
       bool need_encryption_keys,
+      uint64_t remaining_storage_capacity,
       HandleUploadResponseCallback response_callback);
 
   // Sets availability for testing only.
@@ -64,6 +65,7 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
 
   void MaybeMakeCall(std::unique_ptr<std::vector<EncryptedRecord>> records,
                      const bool need_encryption_keys,
+                     uint64_t remaining_storage_capacity,
                      HandleUploadResponseCallback response_callback);
 
   // Returns disconnectable client, creating it if not created yet.
