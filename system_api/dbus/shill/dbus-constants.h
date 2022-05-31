@@ -100,6 +100,10 @@ const char kServiceCompleteListProperty[] = "ServiceCompleteList";
 const char kServiceWatchListProperty[] = "ServiceWatchList";
 const char kServicesProperty[] = "Services";  // Also used for Profile.
 const char kSupportedVPNTypesProperty[] = "SupportedVPNTypes";
+const char kTetheringAllowedProperty[] = "TetheringAllowed";
+const char kTetheringCapabilitiesProperty[] = "TetheringCapabilities";
+const char kTetheringConfigProperty[] = "TetheringConfig";
+const char kTetheringStatusProperty[] = "TetheringStatus";
 const char kUninitializedTechnologiesProperty[] = "UninitializedTechnologies";
 const char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 const char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
@@ -865,6 +869,49 @@ const char kTrafficCounterSourcePluginvm[] = "pluginvm";
 const char kTrafficCounterSourceUpdateEngine[] = "update_engine";
 const char kTrafficCounterSourceVpn[] = "vpn";
 const char kTrafficCounterSourceSystem[] = "system";
+
+// Manager kTetheringConfigProperty dictionary key names.
+const char kTetheringConfAutoDisableProperty[] = "auto_disable";
+const char kTetheringConfBandProperty[] = "band";
+const char kTetheringConfPassphraseProperty[] = "passphrase";
+const char kTetheringConfSecurityProperty[] = "security";
+const char kTetheringConfSSIDProperty[] = "ssid";
+const char kTetheringConfUpstreamTech[] = "upstream_technology";
+
+// Manager kTetheringCapabilitiesProperty dictionary key names.
+const char kTetheringCapBandProperty[] = "wifi_bands";
+const char kTetheringCapDownstreamProperty[] = "downstream_technologies";
+const char kTetheringCapSecurityProperty[] = "wifi_security_modes";
+const char kTetheringCapUpstreamProperty[] = "upstream_technologies";
+
+// Manager kTetheringStatusProperty dictionary key names.
+const char kTetheringStatusChannelProperty[] = "channel";
+const char kTetheringStatusClientHostnameProperty[] = "hostname";
+const char kTetheringStatusClientIPv4Property[] = "IPv4";
+const char kTetheringStatusClientIPv6Property[] = "IPv6";
+const char kTetheringStatusClientMACProperty[] = "MAC";
+const char kTetheringStatusClientsProperty[] = "active_clients";
+const char kTetheringStatusDownstreamTechProperty[] = "downstream_technology";
+const char kTetheringStatusErrorProperty[] = "error";
+const char kTetheringStatusStateProperty[] = "state";
+const char kTetheringStatusUpstreamTechProperty[] = "upstream_technology";
+const char kTetheringStatusUpstreamServiceProperty[] = "upstream_service";
+
+// kTetheringStatusStateProperty values
+const char kTetheringStateActive[] = "active";
+const char kTetheringStateFailure[] = "failure";
+const char kTetheringStateIdle[] = "idle";
+const char kTetheringStateStarting[] = "starting";
+const char kTetheringStateStopping[] = "stopping";
+
+// kTetheringStatusErrorProperty values
+const char kTetheringErrorDownstreamFailure[] = "downstream_failure";
+const char kTetheringErrorInvalid[] = "invalid_properties";
+const char kTetheringErrorNetworkFailure[] = "network_failure";
+const char kTetheringErrorNotAllowed[] = "not_allowed";
+const char kTetheringErrorNoUpstream[] = "no_upstream";
+const char kTetheringErrorUpstreamFailure[] = "upstream_failure";
+const char kTetheringErrorUpstreamNotReady[] = "upstream_not_ready";
 
 }  // namespace shill
 

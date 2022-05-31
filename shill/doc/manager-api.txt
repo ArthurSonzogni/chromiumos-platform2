@@ -465,6 +465,12 @@ Methods		dict GetProperties()
 					 [service].Error.NotFound
 					 [service].Error.OperationFailed
 
+		void SetTetheringEnabled(boolean enabled)
+
+			Enables or disables tethering with the corresponding properties in
+			Manager.TetheringConfig. Only supports cellular and ethernet as the
+			upstream technologies. Only supports WiFi as the downstream technology.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -682,6 +688,81 @@ Properties	object ActiveProfile [readonly]
 			The global connection state of a system. Possible values are
 			"online" if at least one connection exists and "offline" if no
 			device is connected.
+
+		boolean TetheringAllowed [readwrite]
+
+			Whether tethering feature is allowed. When false, SetTetheringState
+			cannot be modified and is pinned to false. The value is controlled by
+			a feature flag in Chrome. Should only be modified by Chrome feature
+			flag or tests.
+
+		dict TetheringCapabilities [readonly]
+
+			Dictionary containing the tethering hardware capabilities of the device.
+
+			array{string} downstream_technologies
+				array containing any/all of "wifi", "ethernet"
+			array{string} upstream_technologies
+				array containing any/all of "wifi", "cellular", "ethernet"
+			array{string} wifi_security_modes
+				array containing any/all of "wpa2", "wpa3"
+			array{string} wifi_bands
+				array containing any/all of "2.4GHz", "5GHz", "6GHz"
+
+		dict TetheringConfig [readwrite]
+
+			Dictionary that contains the following Tethering related properties.
+
+			boolean auto_disable
+				automatically disable tethering if no devices have been
+				associated for 10 minutes
+			string hexSSID
+				the hex-encoded tethering SSID name to be advertised (WiFi
+				downstream only)
+			string band
+				the tethering band preference (WiFi downstream only)
+				this should be one of “2.4GHz”, “5GHz”, or “6GHz”
+			string security
+				the tethering security to be used (WiFi downstream only)
+				this should be one of "wpa2", "wpa3", "wpa2wpa3"
+			string passphrase
+				the password to be used to authenticate to the tethering network
+				(WiFi downstream only)
+			string upstream_technology
+				Preferred upstream technology to use, one of "wifi", "cellular",
+				"ethernet". If not set, Shill will use cellular as the default
+				upstream technology.
+
+		dict TetheringStatus [readonly]
+
+			Dictionary that contains the status of the active tethering connection,
+
+			string downstream_technology
+				one of "wifi", "ethernet"
+			string upstream_technology
+				one of "wifi", "cellular", "ethernet"
+			int channel
+				channel number for WiFi downstream (WiFi downstream only)
+			string state
+				state of the tethering instance. The state could be any one of
+				"idle", "starting", "active", "stopping", "failure"
+			string error
+				string indicating the failure reason if the state property is
+				"failure". This could be any one of "not_allowed", "no_upstream",
+				"invalid_properties", "upstream_not_ready", "upstream_failure",
+				"downstream_failure", "network_failure"
+			array{dict} active_clients
+				string IPv4
+					IPv4 address of the associated client expressed in the
+					dotted-decimal format
+				array{string} IPv6
+					IPv6 addresses of the associated client in allowed format
+					as specified in RFC 2373
+				string MAC
+					EUI-64 or EUI-48 hardware address of the associated client
+				string hostname
+					hostname of the associated client. This value is present
+					only if the client advertises it in its DHCP request.
 
 		array{string} UninitializedTechnologies [readonly]
 
