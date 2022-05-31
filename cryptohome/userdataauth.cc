@@ -207,7 +207,7 @@ CryptoStatus CreateKeyBlobs(const AuthBlockUtility& auth_block_utility,
   }
 
   CryptoStatus err = auth_block_utility.CreateKeyBlobsWithAuthBlock(
-      auth_block_type, credentials, base::nullopt /*reset_secret*/, out_state,
+      auth_block_type, credentials, std::nullopt /*reset_secret*/, out_state,
       out_key_blobs);
   if (!err.ok()) {
     LOG(ERROR) << "Error in creating AuthBlock.";
