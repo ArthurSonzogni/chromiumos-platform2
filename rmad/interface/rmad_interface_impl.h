@@ -75,6 +75,7 @@ class RmadInterfaceImpl final : public RmadInterface {
  private:
   void InitializeExternalUtils(scoped_refptr<DaemonCallback> daemon_callback);
   bool WaitForServices();
+  bool StartFromInitialState();
 
   // Wrapper to trigger D-Bus callbacks.
   template <typename ReplyProtobufType>

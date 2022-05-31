@@ -687,6 +687,19 @@
       </summary>
     </metric>
   </event>
+  <event name="StateOverallTime">
+    <summary>
+      The overall time Shimless RMA spent on the state.
+    </summary>
+    <metric name="StateCase" type="int">
+      <summary>
+        Please refer to the RmadState of rmad.proto for more info.
+      </summary>
+    </metric>
+    <metric name="OverallTime" type="int">
+      <summary>Overall time spent to complete the state in seconds.</summary>
+    </metric>
+  </event>
 </project>
 
 <project name="WiFiChipset">

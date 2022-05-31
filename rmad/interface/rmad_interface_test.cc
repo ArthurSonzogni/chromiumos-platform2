@@ -13,6 +13,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -54,6 +56,8 @@ constexpr char kInitializeNextStateFailJson[] =
 constexpr char kInitializePreviousStateFailJson[] =
     R"({"state_history": [ 1, 2 ]})";
 constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
+
+constexpr base::TimeDelta kTestTransitionInterval = base::Seconds(1);
 
 class RmadInterfaceImplTest : public testing::Test {
  public:
@@ -218,6 +222,8 @@ class RmadInterfaceImplTest : public testing::Test {
   RmadState components_repair_proto_;
   RmadState device_destination_proto_;
   base::ScopedTempDir temp_dir_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
@@ -506,6 +512,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  MetricsUtils::SetStateSetupTimestamp(json_store, RmadState::kWelcome,
+                                       base::Time::Now().ToDoubleT());
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -513,6 +521,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
   EXPECT_EQ(true, rmad_interface.CanAbort());
+
+  task_environment_.FastForwardBy(kTestTransitionInterval);
 
   TransitionNextStateRequest request;
   auto callback1 = [](const GetStateReply& reply, bool quit_daemon) {
@@ -524,6 +534,15 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
   EXPECT_EQ(true, rmad_interface.CanAbort());
+  std::map<std::string, std::map<std::string, double>> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  EXPECT_FLOAT_EQ(
+      state_metrics[base::NumberToString(static_cast<int>(RmadState::kWelcome))]
+                   [kStateOverallTime],
+      kTestTransitionInterval.InSecondsF());
+
+  task_environment_.FastForwardBy(kTestTransitionInterval);
 
   auto callback2 = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -534,6 +553,11 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback2));
   EXPECT_EQ(false, rmad_interface.CanAbort());
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  EXPECT_FLOAT_EQ(state_metrics[base::NumberToString(static_cast<int>(
+                      RmadState::kComponentsRepair))][kStateOverallTime],
+                  kTestTransitionInterval.InSecondsF());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
@@ -585,12 +609,16 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
       std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  MetricsUtils::SetStateSetupTimestamp(json_store, RmadState::kComponentsRepair,
+                                       base::Time::Now().ToDoubleT());
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+
+  task_environment_.FastForwardBy(kTestTransitionInterval);
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -600,6 +628,12 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
+  std::map<std::string, std::map<std::string, double>> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  EXPECT_FLOAT_EQ(state_metrics[base::NumberToString(static_cast<int>(
+                      RmadState::kComponentsRepair))][kStateOverallTime],
+                  kTestTransitionInterval.InSecondsF());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {

@@ -136,6 +136,24 @@ bool RmadInterfaceImpl::WaitForServices() {
   return false;
 }
 
+bool RmadInterfaceImpl::StartFromInitialState() {
+  current_state_case_ = kInitialStateCase;
+  state_history_.push_back(current_state_case_);
+  if (!MetricsUtils::SetStateSetupTimestamp(json_store_, kInitialStateCase,
+                                            base::Time::Now().ToDoubleT())) {
+    LOG(ERROR) << "Failed to initialize timestamp for the initial state.";
+    // TODO(genechang): Send a signal to Chrome that the json store failed
+    //                  so a message can be displayed.
+  }
+  if (!StoreStateHistory()) {
+    LOG(ERROR) << "Could not store initial state";
+    // TODO(chenghan): Send a signal to Chrome that the json store failed so
+    //                 a message can be displayed.
+    return false;
+  }
+  return true;
+}
+
 bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
@@ -183,12 +201,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
     } else {
       LOG(WARNING) << "Could not read state history from json store, reset to "
                       "initial state.";
-      current_state_case_ = kInitialStateCase;
-      state_history_.push_back(current_state_case_);
-      if (!StoreStateHistory()) {
-        LOG(ERROR) << "Could not store initial state";
-        // TODO(chenghan): Send a signal to Chrome that the json store failed so
-        //                 a message can be displayed.
+      if (!StartFromInitialState()) {
         return false;
       }
     }
@@ -197,12 +210,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
              (status == RoVerificationStatus::PASS ||
               status == RoVerificationStatus::UNSUPPORTED_TRIGGERED)) {
     VLOG(1) << "RO verification triggered";
-    current_state_case_ = kInitialStateCase;
-    state_history_.push_back(current_state_case_);
-    if (!StoreStateHistory()) {
-      LOG(ERROR) << "Could not store initial state";
-      // TODO(chenghan): Send a signal to Chrome that the json store failed so
-      //                 a message can be displayed.
+    if (!StartFromInitialState()) {
       return false;
     }
 
@@ -363,6 +371,18 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     // TODO(chenghan): Add error replies when failed to write |json_store_|.
     LOG(ERROR) << "Could not store history";
   }
+
+  // Update state overall time for metrics.
+  double current_timestamp = base::Time::Now().ToDoubleT();
+  if (!MetricsUtils::SetStateSetupTimestamp(json_store_, next_state_case,
+                                            current_timestamp) ||
+      !MetricsUtils::CalculateStateOverallTime(json_store_, current_state_case_,
+                                               current_timestamp)) {
+    // TODO(genechang): Add error replies when failed to update state overall
+    // time in |json_store| -> |metrics| -> |state_metrics|.
+    LOG(ERROR) << "Could not update state overall time";
+  }
+
   // Update state and run it.
   current_state_case_ = next_state_case;
   next_state_handler->RunState();
@@ -431,6 +451,18 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   if (!StoreStateHistory()) {
     LOG(ERROR) << "Could not store history";
   }
+
+  // Update state overall time for metrics.
+  double current_timestamp = base::Time::Now().ToDoubleT();
+  if (!MetricsUtils::SetStateSetupTimestamp(json_store_, prev_state_case,
+                                            current_timestamp) ||
+      !MetricsUtils::CalculateStateOverallTime(json_store_, current_state_case_,
+                                               current_timestamp)) {
+    // TODO(genechang): Add error replies when failed to update state overall
+    // time in |json_store| -> |metrics| -> |state_metrics|.
+    LOG(ERROR) << "Could not update state overall time";
+  }
+
   // Update state and run it.
   current_state_case_ = prev_state_case;
   prev_state_handler->RunState();
@@ -448,7 +480,14 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else if (can_abort_) {
     VLOG(1) << "AbortRma: Abort allowed.";
+    if (!MetricsUtils::CalculateStateOverallTime(
+            json_store_, current_state_case_, base::Time::Now().ToDoubleT())) {
+      // TODO(genechang): Add error replies when failed to update state overall
+      // time in |json_store| -> |metrics| -> |state_metrics|.
+      LOG(ERROR) << "Could not update state overall time";
+    }
     if (!metrics_utils_->Record(json_store_, false)) {
+      // TODO(genechang): Add error replies when failed to record metrics.
       LOG(ERROR) << "AbortRma: Failed to generate and record metrics.";
     }
     if (json_store_->ClearAndDeleteFile()) {

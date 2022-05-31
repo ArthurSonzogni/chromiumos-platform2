@@ -55,6 +55,14 @@ class MetricsUtils {
     }
     return true;
   }
+
+  static bool SetStateSetupTimestamp(scoped_refptr<JsonStore> json_store,
+                                     RmadState::StateCase state_case,
+                                     double setup_timestamp);
+
+  static bool CalculateStateOverallTime(scoped_refptr<JsonStore> json_store,
+                                        RmadState::StateCase state_case,
+                                        double leave_timestamp);
 };
 
 }  // namespace rmad

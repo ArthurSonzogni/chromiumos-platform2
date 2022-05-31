@@ -21,6 +21,13 @@ inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
 inline constexpr char kOccurredErrors[] = "occurred_errors";
 inline constexpr char kAdditionalActivities[] = "additional_activities";
 
+// This is a dict of dicts for states store info by |state_case|.
+inline constexpr char kStateMetrics[] = "state_metrics";
+// This should be under kStateMetrics[state_case].
+inline constexpr char kStateSetupTimestamp[] = "state_setup_timestamp";
+// This should be under kStateMetrics[state_case].
+inline constexpr char kStateOverallTime[] = "state_overall_time";
+
 // Defined RO verification status.
 enum class RoVerification : int {
   UNKNOWN = 0,

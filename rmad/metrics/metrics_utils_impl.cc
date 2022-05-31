@@ -4,11 +4,13 @@
 
 #include "rmad/metrics/metrics_utils_impl.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <metrics/structured/structured_events.h>
 
@@ -25,6 +27,8 @@ using StructuredOccurredError =
     metrics::structured::events::rmad::OccurredError;
 using StructuredAdditionalActivity =
     metrics::structured::events::rmad::AdditionalActivity;
+using StructuredStateOverallTime =
+    metrics::structured::events::rmad::StateOverallTime;
 
 namespace rmad {
 
@@ -36,7 +40,8 @@ bool MetricsUtilsImpl::Record(scoped_refptr<JsonStore> json_store,
   if (!RecordShimlessRmaReport(json_store, is_complete) ||
       !RecordOccurredErrors(json_store) ||
       !RecordReplacedComponents(json_store) ||
-      !RecordAdditionalActivities(json_store)) {
+      !RecordAdditionalActivities(json_store) ||
+      !RecordStateOverallTime(json_store)) {
     return false;
   }
   return true;
@@ -198,6 +203,40 @@ bool MetricsUtilsImpl::RecordAdditionalActivities(
       }
     }
   }
+  return true;
+}
+
+bool MetricsUtilsImpl::RecordStateOverallTime(
+    scoped_refptr<JsonStore> json_store) {
+  std::map<std::string, std::map<std::string, double>> state_metrics;
+
+  if (GetMetricsValue(json_store, kStateMetrics, &state_metrics)) {
+    for (auto [key, data] : state_metrics) {
+      int state_case;
+      if (!base::StringToInt(key, &state_case)) {
+        LOG(ERROR) << "Failed to get state case from metrics.";
+        return false;
+      }
+
+      double overall_time = data[kStateOverallTime];
+      if (overall_time <= 0) {
+        LOG(ERROR) << "Invalid overall time: "
+                   << base::NumberToString(overall_time);
+        return false;
+      }
+
+      auto structured_state_overall_time = StructuredStateOverallTime();
+      structured_state_overall_time.SetStateCase(state_case);
+      structured_state_overall_time.SetOverallTime(
+          static_cast<int>(overall_time));
+
+      if (record_to_system_ && !structured_state_overall_time.Record()) {
+        LOG(ERROR) << "Failed to record state overall time to metrics.";
+        return false;
+      }
+    }
+  }
+
   return true;
 }
 

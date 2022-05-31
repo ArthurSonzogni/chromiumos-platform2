@@ -15,10 +15,15 @@ pkg_config("target_defaults") {
 source_set("libmetrics") {
   sources = [
     "fake_metrics_utils.cc",
+    "metrics_utils.cc",
     "metrics_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//metrics/structured:libstructuredmetrics" ]
+  deps = [
+    "//metrics/structured:libstructuredmetrics",
+    "//rmad/common:libcommon",
+    "//rmad/utils:libutils",
+  ]
 }
 
 if (use.test) {

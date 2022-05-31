@@ -50,7 +50,8 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       bool* shutdown_called = nullptr,
       bool* metrics_called = nullptr,
       bool is_cros_debug = true,
-      bool record_metrics_success = true) {
+      bool record_metrics_success = true,
+      bool state_metrics_recorded = true) {
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
@@ -87,6 +88,12 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_metrics_utils, Record(_, _))
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
+
+    if (state_metrics_recorded) {
+      EXPECT_TRUE(MetricsUtils::SetStateSetupTimestamp(
+          json_store_, RmadState::kRepairComplete,
+          base::Time::Now().ToDoubleT()));
+    }
 
     // Register signal callback.
     ON_CALL(signal_sender_, SendPowerCableSignal(_)).WillByDefault(Return());
@@ -628,6 +635,46 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_ArgsViolation) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_StateMetricsNotRecorded) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false, shutdown_called = false, metrics_called = false;
+  auto handler = CreateStateHandler(&reboot_called, &shutdown_called,
+                                    &metrics_called, true, true, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  handler->RunState();
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  // Structured metrics recording is expected to fail as current library does
+  // not support recording locally without user consent. We shouldn't let it
+  // block the flow until the library actually supports it.
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(metrics_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Cutoff and reboot are called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(base::PathExists(GetCutoffRequestFilePath()));
+}
+
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
@@ -692,7 +739,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
+  EXPECT_FALSE(metrics_called);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 

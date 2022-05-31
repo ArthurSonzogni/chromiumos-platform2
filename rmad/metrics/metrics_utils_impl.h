@@ -26,6 +26,7 @@ class MetricsUtilsImpl : public MetricsUtils {
   bool RecordReplacedComponents(scoped_refptr<JsonStore> json_store);
   bool RecordOccurredErrors(scoped_refptr<JsonStore> json_store);
   bool RecordAdditionalActivities(scoped_refptr<JsonStore> json_store);
+  bool RecordStateOverallTime(scoped_refptr<JsonStore> json_store);
 
   // TODO(genechang): Update it when structured metrics can be mocked.
   // Used to skip recording to the metrics system for testing.
