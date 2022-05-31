@@ -1021,6 +1021,13 @@ legacy_offset_size_export() {
   NUM_STATEFUL_SECTORS="$(partsize "$1" "${PARTITION_NUM_STATE}")"
 }
 
+ufs_init() {
+  local ufs_init_bin="/usr/sbin/factory_ufs"
+  if [ -x "${ufs_init_bin}" ]; then
+    ${ufs_init_bin}
+  fi
+}
+
 main() {
   # Be aggressive.
   set -eu
@@ -1077,6 +1084,8 @@ main() {
   # Now that we have loaded the partition table we can actually read the format
   # and partition information.
   STATEFUL_FORMAT="$(get_format "${PARTITION_NUM_STATE}")"
+
+  ufs_init
 
   DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
   check_dst
