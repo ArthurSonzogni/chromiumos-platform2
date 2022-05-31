@@ -127,14 +127,16 @@ Metrics::QueryError CurlCodeMetric(int code) {
   }
 }
 
+// Return the next ID for SocketFds.
+int NextId() {
+  static int next_id = 1;
+  return next_id++;
+}
+
 }  // namespace
 
-Resolver::SocketFd::SocketFd(int type, int fd, int num_active_queries)
-    : type(type),
-      fd(fd),
-      num_retries(0),
-      num_active_queries(num_active_queries),
-      request_handled(false) {
+Resolver::SocketFd::SocketFd(int type, int fd)
+    : type(type), fd(fd), num_retries(0), num_active_queries(0), id(NextId()) {
   if (type == SOCK_STREAM) {
     socklen = 0;
     return;
@@ -242,17 +244,11 @@ void Resolver::OnTCPConnection() {
                                             weak_factory_.GetWeakPtr())));
 }
 
-void Resolver::HandleAresResult(SocketFd* sock_fd,
+void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                                 base::WeakPtr<ProbeState> probe_state,
                                 int status,
                                 unsigned char* msg,
                                 size_t len) {
-  sock_fd->num_active_queries--;
-  if (!sock_fd->request_handled &&
-      (status == ARES_SUCCESS || sock_fd->num_active_queries == 0)) {
-    HandleCombinedAresResult(sock_fd, status, msg, len);
-  }
-
   // Query failed, restart probing.
   // Errors that may be caused by its query's data are not considered as
   // failures:
@@ -271,31 +267,31 @@ void Resolver::HandleAresResult(SocketFd* sock_fd,
                << " validated name servers";
   }
 
-  // Delete |sock_fd| if all queries are processed and retry is not scheduled.
-  if (sock_fd->request_handled && sock_fd->num_active_queries == 0) {
-    delete sock_fd;
-  }
-}
+  // Query is already handled.
+  if (!sock_fd)
+    return;
 
-void Resolver::HandleCombinedAresResult(SocketFd* sock_fd,
-                                        int status,
-                                        unsigned char* msg,
-                                        size_t len) {
+  sock_fd->num_active_queries--;
+  // Don't process failing result that is not the last result.
+  if (status != ARES_SUCCESS && sock_fd->num_active_queries > 0)
+    return;
+
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
   if (metrics_)
     metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
                                 AresStatusMetric(status));
 
   if (status == ARES_SUCCESS) {
-    sock_fd->request_handled = true;
     ReplyDNS(sock_fd, msg, len);
+    sock_fds_.erase(sock_fd->id);
     return;
   }
 
+  // Process the last unsuccessful result.
   // Retry query upon failure.
   if (sock_fd->num_retries++ >= max_num_retries_) {
     LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
-    sock_fd->request_handled = true;
+    sock_fds_.erase(sock_fd->id);
     return;
   }
 
@@ -303,20 +299,13 @@ void Resolver::HandleCombinedAresResult(SocketFd* sock_fd,
   base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
                                 sock_fd, false /* fallback */));
-  return;
 }
 
-void Resolver::HandleCurlResult(SocketFd* sock_fd,
+void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                                 base::WeakPtr<ProbeState> probe_state,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
                                 size_t len) {
-  sock_fd->num_active_queries--;
-  if (!sock_fd->request_handled &&
-      (res.http_code == kHTTPOk || sock_fd->num_active_queries == 0)) {
-    HandleCombinedCurlResult(sock_fd, res, msg, len);
-  }
-
   // Query failed, restart probing.
   if (probe_state && probe_state->validated && res.http_code != kHTTPOk) {
     RestartProbe(probe_state);
@@ -324,27 +313,27 @@ void Resolver::HandleCurlResult(SocketFd* sock_fd,
                << doh_providers_.size() << " validated DoH providers";
   }
 
-  // Delete |sock_fd| if all queries are processed and retry is not scheduled.
-  if (sock_fd->request_handled && sock_fd->num_active_queries == 0) {
-    delete sock_fd;
-  }
-}
+  // Query is already handled.
+  if (!sock_fd)
+    return;
 
-void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
-                                        const DoHCurlClient::CurlResult& res,
-                                        unsigned char* msg,
-                                        size_t len) {
+  sock_fd->num_active_queries--;
+  // Don't process failing result that is not the last result.
+  if (res.http_code != kHTTPOk && sock_fd->num_active_queries > 0)
+    return;
+
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
   if (metrics_)
     metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
                                 CurlCodeMetric(res.curl_code), res.http_code);
 
+  // Process result.
   if (res.curl_code != CURLE_OK) {
     LOG(ERROR) << "DoH resolution failed: "
                << curl_easy_strerror(res.curl_code);
     if (always_on_doh_) {
       // TODO(jasongustaman): Send failure reply with RCODE.
-      sock_fd->request_handled = true;
+      sock_fds_.erase(sock_fd->id);
       return;
     }
     base::ThreadTaskRunnerHandle::Get()->PostTask(
@@ -357,14 +346,14 @@ void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
   switch (res.http_code) {
     case kHTTPOk: {
       ReplyDNS(sock_fd, msg, len);
-      sock_fd->request_handled = true;
+      sock_fds_.erase(sock_fd->id);
       return;
     }
     case kHTTPTooManyRequests: {
       if (sock_fd->num_retries >= max_num_retries_) {
         LOG(ERROR) << "Failed to resolve hostname, retried " << max_num_retries_
                    << " tries";
-        sock_fd->request_handled = true;
+        sock_fds_.erase(sock_fd->id);
         return;
       }
 
@@ -386,14 +375,13 @@ void Resolver::HandleCombinedCurlResult(SocketFd* sock_fd,
                  << res.http_code;
       if (always_on_doh_) {
         // TODO(jasongustaman): Send failure reply with RCODE.
-        sock_fd->request_handled = true;
-      } else {
-        base::ThreadTaskRunnerHandle::Get()->PostTask(
-            FROM_HERE,
-            base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
-                           sock_fd, true /* fallback */));
+        sock_fds_.erase(sock_fd->id);
+        return;
       }
-      return;
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
+                         sock_fd, true /* fallback */));
     }
   }
 }
@@ -449,7 +437,9 @@ void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
             << name_servers_.size() << " validated name servers";
 }
 
-void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
+void Resolver::ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
+                        unsigned char* msg,
+                        size_t len) {
   sock_fd->timer.StartReply();
   // For TCP, DNS messages have an additional 2-bytes header representing
   // the length of the query. Add the additional header for the reply.
@@ -550,9 +540,8 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
 }
 
 void Resolver::OnDNSQuery(int fd, int type) {
-  // Initialize SocketFd to carry necessary data. |sock_fd| must be freed when
-  // it is done being used.
-  SocketFd* sock_fd = new SocketFd(type, fd);
+  // Initialize SocketFd to carry necessary data.
+  auto sock_fd = std::make_unique<SocketFd>(type, fd);
   // Metrics will be recorded automatically when this object is deleted.
   sock_fd->timer.set_metrics(metrics_.get());
 
@@ -583,13 +572,11 @@ void Resolver::OnDNSQuery(int fd, int type) {
   if (sock_fd->len < 0) {
     sock_fd->timer.StopReceive(false);
     PLOG(WARNING) << "recvfrom failed";
-    delete sock_fd;
     return;
   }
   // Handle TCP connection closed.
   if (sock_fd->len == 0) {
     sock_fd->timer.StopReceive(false);
-    delete sock_fd;
     tcp_connections_.erase(fd);
     return;
   }
@@ -601,10 +588,17 @@ void Resolver::OnDNSQuery(int fd, int type) {
     sock_fd->len -= 2;
   }
 
-  Resolve(sock_fd);
+  const auto& sock_fd_it =
+      sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
+  Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
 }
 
-bool Resolver::ResolveDNS(SocketFd* sock_fd, bool doh) {
+bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
+  if (!sock_fd) {
+    LOG(ERROR) << "Unexpected ResolveDNS() call with deleted SocketFd";
+    return false;
+  }
+
   const auto query_type =
       doh ? Metrics::QueryType::kDnsOverHttps : Metrics::QueryType::kPlainText;
   const auto& name_servers = GetActiveNameServers();
@@ -741,7 +735,12 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
   probe_state->num_attempts++;
 }
 
-void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
+void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
+  if (!sock_fd) {
+    LOG(ERROR) << "Unexpected Resolve() call with deleted SocketFd";
+    return;
+  }
+
   if (doh_enabled_ && !fallback) {
     sock_fd->timer.StartResolve(true);
     if (ResolveDNS(sock_fd, /*doh=*/true))
@@ -763,14 +762,9 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
   ReplyDNS(sock_fd,
            reinterpret_cast<unsigned char*>(response.io_buffer()->data()),
            response.io_buffer_size());
-  // |sock_fd| pointer must be deleted when the request associated with the
-  // pointer is done. Normally, the pointer is deleted after c-ares or CURL
-  // finish handling the request, `HandleAresResult(...)` or
-  // `HandleCurlResult(...)`. However, we need to do it here because there is an
-  // error when starting the request of c-ares or CURL resulting in no query
-  // sent to the name servers, completing the request by sending a failure
-  // response.
-  delete sock_fd;
+
+  // Query is completed, remove SocketFd.
+  sock_fds_.erase(sock_fd->id);
 }
 
 patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,

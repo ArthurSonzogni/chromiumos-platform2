@@ -44,8 +44,7 @@ class Resolver {
   // |SocketFd| stores client's socket data.
   // This is used to send reply to the client on callback called.
   struct SocketFd {
-    // |num_active_queries| is provided for testing.
-    SocketFd(int type, int fd, int num_active_queries = 0);
+    SocketFd(int type, int fd);
 
     // |type| is either SOCK_STREAM or SOCK_DGRAM.
     const int type;
@@ -76,11 +75,13 @@ class Resolver {
     // Number of currently running queries.
     int num_active_queries;
 
-    // Boolean to track if the request to this SocketFd is handled.
-    bool request_handled;
+    // Identifier for the socket. |fd| is not a suitable identifier here as it
+    // can be used for multiple SocketFds.
+    const int id;
 
     // Records timings for metrics.
     Metrics::QueryTimer timer;
+    base::WeakPtrFactory<SocketFd> weak_factory{this};
   };
 
   // |ProbeState| is used to store the probe state of a DoH provider or name
@@ -126,64 +127,44 @@ class Resolver {
                                bool always_on_doh = false);
 
   // Handle DNS results queried through ares.
-  // |sock_fd| stores the client's socket data and its request state. This is
-  // used to reply back to the client.
+  // |sock_fd| is the socket data needed to reply to the client. Empty
+  // |sock_fd| means that the request is already handled.
   // |probe_state| stores the current probing state including the name server
   // used for the query. Upon failure, if |probe_state| is valid, the name
   // server should be invalidated.
-  // If multiple name servers are used, it is expected for the ares client to
-  // call this method multiple times. This method will then call
-  // |HandleCombinedAresResult| to process the first successful result or the
-  // last result.
+  // This function passed the first successful result or the last result back
+  // to the client.
   //
   // |status| is the ares response status. |msg| is the wire-format response
   // of the DNS query given through `Resolve(...)` with the len |len|.
   // |msg| and its lifecycle is owned by ares.
-  void HandleAresResult(SocketFd* sock_fd,
+  void HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                         base::WeakPtr<ProbeState> probe_state,
                         int status,
                         unsigned char* msg,
                         size_t len);
 
-  // Handle DNS result from |HandleAresResult|.
-  // This function will check the response and proxies it to the client upon
-  // successful. On failure, it will disregard the response.
-  void HandleCombinedAresResult(SocketFd* sock_fd,
-                                int status,
-                                unsigned char* msg,
-                                size_t len);
-
   // Handle DoH results queried through curl.
-  // |sock_fd| stores the client's socket data and its request state. This is
-  // used to reply back to the client.
+  // |sock_fd| is the socket data needed to reply to the client. Empty
+  // |sock_fd| means that the request is already handled.
   // |probe_state| stores the current probing state including the DoH provider
   // used for the query. Upon failure, if |probe_state| is valid, the DoH
   // provider should be invalidated.
-  // If multiple DoH providers are used, it is expected for the curl client to
-  // call this method multiple times. This method will then call
-  // |HandleCombinedCurlResult| to process the first successful result or the
-  // last result.
+  // This function passed the first successful result or the last result back
+  // to the client.
   //
   // |http_code| is the HTTP status code of the response. |msg| is the
   // wire-format response of the DNS query given through `Resolve(...)` with
   // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
-  void HandleCurlResult(SocketFd* sock_fd,
+  void HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                         base::WeakPtr<ProbeState> probe_state,
                         const DoHCurlClient::CurlResult& res,
                         unsigned char* msg,
                         size_t len);
 
-  // Handle DoH result from |HandleCurlResult|.
-  // This function will check the response and proxies it to the client upon
-  // successful. On failure, it will disregard the response.
-  void HandleCombinedCurlResult(SocketFd* sock_fd,
-                                const DoHCurlClient::CurlResult& res,
-                                unsigned char* msg,
-                                size_t len);
-
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   // If |fallback| is true, force to use standard plain-text DNS.
-  void Resolve(SocketFd* sock_fd, bool fallback = false);
+  void Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback = false);
 
   // Handle DoH and Do53 probe result from the DoH provider or name server
   // provided inside |probe_state|. |probe_state| also defines the current
@@ -222,14 +203,16 @@ class Resolver {
   void OnDNSQuery(int fd, int type);
 
   // Send back data taken from CURL or Ares to the client.
-  void ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len);
+  void ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
+                unsigned char* msg,
+                size_t len);
 
   // Set either name servers or DoH providers |targets| based on the boolean
   // type |doh|.
   void SetServers(const std::vector<std::string>& targets, bool doh);
 
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
-  bool ResolveDNS(SocketFd* sock_fd, bool doh);
+  bool ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh);
 
   // Get the active DoH providers / name servers. It will try to return the
   // validated DoH providers / name servers unless there are none.
@@ -274,6 +257,9 @@ class Resolver {
   // probe state.
   std::map<std::string, std::unique_ptr<ProbeState>> name_servers_;
   std::map<std::string, std::unique_ptr<ProbeState>> doh_providers_;
+
+  // Map of SocketFds keyed by its SocketFd ID.
+  std::map<int, std::unique_ptr<SocketFd>> sock_fds_;
 
   // Provided for testing only. Boolean to disable probe.
   bool disable_probe_ = false;
