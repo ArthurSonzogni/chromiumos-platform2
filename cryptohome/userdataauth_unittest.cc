@@ -3017,7 +3017,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
         .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
     EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
         .WillOnce(Return(true));
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _, _))
         .WillOnce(Return(AuthBlockType::kTpmEcc));
     EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
         .WillOnce(ReturnError<CryptohomeCryptoError>());
