@@ -257,6 +257,11 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   FilePath log_path = GetCrashPath(crash_path, dump_basename, "log");
   FilePath proc_log_path = GetCrashPath(crash_path, dump_basename, "proclog");
 
+#if USE_DIRENCRYPTION
+  // Join the session keyring, if one exists.
+  util::JoinSessionKeyring();
+#endif  // USE_DIRENCRYPTION
+
   if (GetLogContents(FilePath(log_config_path_), exec, log_path)) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
@@ -264,11 +269,6 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   if (GetProcessTree(pid, proc_log_path)) {
     AddCrashMetaUploadFile("process_tree", proc_log_path.BaseName().value());
   }
-
-#if USE_DIRENCRYPTION
-  // Join the session keyring, if one exists.
-  util::JoinSessionKeyring();
-#endif  // USE_DIRENCRYPTION
 
   ErrorType error_type =
       ConvertCoreToMinidump(pid, container_dir, core_path, minidump_path);
