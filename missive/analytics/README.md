@@ -2,6 +2,14 @@
 
 This directory contains implementation of internal analytics of Missive via UMA.
 
+To see the analytics results, visit the
+[UMA Dashboard](https://uma.googleplex.com/p/chrome/timeline_v2). Select "Chrome
+OS" as the platform and the channel of your interest. Then, click on
+"Metrics/Formula +" and search for "Platform.Missive.". All items shown are
+analytics of the Missive daemon recorded and uploaded by this directory.
+
+## Add an Analytics Resource
+
 To add a new analytics resource:
 
 1. Create a new class `ResourceCollectorMyResource` that inherits
