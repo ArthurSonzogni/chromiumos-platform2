@@ -20,8 +20,6 @@ Clear any PPP username and PPP password for an existing cellular connection.
   ${PROGRAM} -c
 "
 
-. /usr/share/misc/shflags
-
 DEFAULT_PROFILE_NAME=default
 FLIMFLAM=org.chromium.flimflam
 IMANAGER=${FLIMFLAM}.Manager
@@ -34,7 +32,7 @@ USERNAME_PROPERTY=Cellular.PPP.Username
 usage() {
   echo "$*"
   echo
-  flags_help
+  echo "${FLAGS_HELP}"
   exit 1
 }
 
@@ -112,7 +110,7 @@ get_default_profile() {
 
   for profile in $(get_profiles); do
     profile_name="$(get_property "${IPROFILE}" "${profile}" Name)"
-    if [ "${profile_name}" = ${DEFAULT_PROFILE_NAME} ]; then
+    if [ "${profile_name}" = "${DEFAULT_PROFILE_NAME}" ]; then
       echo "${profile}"
       break
     fi
@@ -156,12 +154,26 @@ move_service_to_profile() {
   fi
 }
 
-DEFINE_string 'username' "" 'PPP username for the Service' 'u'
-DEFINE_string 'password' "" 'PPP password for the Service' 'p'
-DEFINE_boolean 'clear' false \
-  'clear any username and password that has been previously set' 'c'
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
+FLAGS_username=
+FLAGS_password=
+FLAGS_clear=0
+while getopts ":u:p:c" flag; do
+  case ${flag} in
+    u) # Username.
+      FLAGS_username="${OPTARG}"
+      ;;
+    p) # Password.
+      FLAGS_password="${OPTARG}"
+      ;;
+    c)
+      FLAGS_clear=1
+      ;;
+    *)
+      echo "${FLAGS_HELP}"
+      exit 1
+      ;;
+  esac
+done
 
 service="$(get_first_cellular_service)"
 if [ -z "${service}" ]; then
