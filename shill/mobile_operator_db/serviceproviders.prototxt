@@ -12329,6 +12329,7 @@ mno {
       localized_name {
         name : "LaptopConnect (data cards)"
       }
+      ip_type: IPV4V6
       is_attach_apn : true
     }
     mobile_apn {
