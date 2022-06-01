@@ -580,6 +580,10 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
         cmds.sibling_cmd_args.end(),
         {"--params", base::JoinString(kernel_params_, " ")});
 
+  // Enable strict ballooning, since manatee's strict memory management
+  // is incompatible with deflate-on-oom.
+  cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(), "--strict-balloon");
+
   return cmds;
 }
 
