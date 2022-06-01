@@ -11,5 +11,12 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Starting Chrome OS RGB Keyboard Daemon";
 
-  return rgbkbd::RgbkbdDaemon().Run();
+  auto result = rgbkbd::RgbkbdDaemon().Run();
+  if (result == 0) {
+    LOG(INFO) << "Chrome OS RGB Keyboard Daemon exited successfully";
+  } else {
+    LOG(ERROR) << "Exiting Chrome OS RGB Keyboard Daemon with error code "
+               << result;
+  }
+  return result;
 }

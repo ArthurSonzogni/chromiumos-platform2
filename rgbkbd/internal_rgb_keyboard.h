@@ -5,7 +5,12 @@
 #ifndef RGBKBD_INTERNAL_RGB_KEYBOARD_H_
 #define RGBKBD_INTERNAL_RGB_KEYBOARD_H_
 
+#include <memory>
+#include <optional>
+
+#include <base/files/scoped_file.h>
 #include <dbus/rgbkbd/dbus-constants.h>
+#include <libec/ec_usb_endpoint.h>
 #include <stdint.h>
 
 #include "rgbkbd/rgb_keyboard.h"
@@ -22,6 +27,11 @@ class InternalRgbKeyboard : public RgbKeyboard {
   bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) override;
   bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) override;
   RgbKeyboardCapabilities GetRgbKeyboardCapabilities() override;
+
+ private:
+  std::optional<RgbKeyboardCapabilities> capabilities_;
+  std::unique_ptr<ec::EcUsbEndpointInterface> usb_endpoint_;
+  base::ScopedFD ec_fd_;
 };
 
 }  // namespace rgbkbd
