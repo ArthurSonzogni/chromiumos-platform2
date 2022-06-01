@@ -909,8 +909,8 @@ static void sl_handle_create_notify(struct sl_context* ctx,
                    event->height, event->border_width);
 }
 
-static void sl_handle_destroy_notify(struct sl_context* ctx,
-                                     xcb_destroy_notify_event_t* event) {
+void sl_handle_destroy_notify(struct sl_context* ctx,
+                              xcb_destroy_notify_event_t* event) {
   struct sl_window* window;
 
   if (sl_is_our_window(ctx, event->window))
@@ -923,8 +923,8 @@ static void sl_handle_destroy_notify(struct sl_context* ctx,
   sl_destroy_window(window);
 }
 
-static void sl_handle_reparent_notify(struct sl_context* ctx,
-                                      xcb_reparent_notify_event_t* event) {
+void sl_handle_reparent_notify(struct sl_context* ctx,
+                               xcb_reparent_notify_event_t* event) {
   struct sl_window* window;
 
   if (event->parent == ctx->screen->root) {
@@ -988,8 +988,8 @@ static void sl_set_application_id_from_atom(struct sl_context* ctx,
   }
 }
 
-static void sl_handle_map_request(struct sl_context* ctx,
-                                  xcb_map_request_event_t* event) {
+void sl_handle_map_request(struct sl_context* ctx,
+                           xcb_map_request_event_t* event) {
   TRACE_EVENT("shm", "sl_handle_map_request", [&](perfetto::EventContext p) {
     perfetto_annotate_window(ctx, p, "window", event->window);
   });
@@ -1330,8 +1330,8 @@ static void sl_handle_map_request(struct sl_context* ctx,
 static void sl_handle_map_notify(struct sl_context* ctx,
                                  xcb_map_notify_event_t* event) {}
 
-static void sl_handle_unmap_notify(struct sl_context* ctx,
-                                   xcb_unmap_notify_event_t* event) {
+void sl_handle_unmap_notify(struct sl_context* ctx,
+                            xcb_unmap_notify_event_t* event) {
   struct sl_window* window;
 
   if (sl_is_our_window(ctx, event->window))
@@ -1371,9 +1371,11 @@ static void sl_handle_unmap_notify(struct sl_context* ctx,
   window->size_flags = P_POSITION;
 }
 
-static void sl_handle_configure_request(struct sl_context* ctx,
-                                        xcb_configure_request_event_t* event) {
+void sl_handle_configure_request(struct sl_context* ctx,
+                                 xcb_configure_request_event_t* event) {
   struct sl_window* window = sl_lookup_window(ctx, event->window);
+  if (!window)
+    return;
   int width = window->width;
   int height = window->height;
   uint32_t values[7];
@@ -1928,8 +1930,8 @@ static int sl_handle_selection_fd_readable(int fd, uint32_t mask, void* data) {
   return 1;
 }
 
-static void sl_handle_property_notify(struct sl_context* ctx,
-                                      xcb_property_notify_event_t* event) {
+void sl_handle_property_notify(struct sl_context* ctx,
+                               xcb_property_notify_event_t* event) {
   TRACE_EVENT("x11wm", "XCB_PROPERTY_NOTIFY", [&](perfetto::EventContext p) {
     perfetto_annotate_atom(ctx, p, "event->atom", event->atom);
     perfetto_annotate_xcb_property_state(p, "event->state", event->state);

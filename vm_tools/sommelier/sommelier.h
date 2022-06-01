@@ -410,7 +410,19 @@ void sl_roundtrip(struct sl_context* ctx);
 struct sl_window* sl_lookup_window(struct sl_context* ctx, xcb_window_t id);
 int sl_is_our_window(struct sl_context* ctx, xcb_window_t id);
 
-// Exported for testing.
+// Exported for testing
+void sl_handle_destroy_notify(struct sl_context* ctx,
+                              xcb_destroy_notify_event_t* event);
+void sl_handle_reparent_notify(struct sl_context* ctx,
+                               xcb_reparent_notify_event_t* event);
+void sl_handle_map_request(struct sl_context* ctx,
+                           xcb_map_request_event_t* event);
+void sl_handle_unmap_notify(struct sl_context* ctx,
+                            xcb_unmap_notify_event_t* event);
+void sl_handle_configure_request(struct sl_context* ctx,
+                                 xcb_configure_request_event_t* event);
+void sl_handle_property_notify(struct sl_context* ctx,
+                               xcb_property_notify_event_t* event);
 void sl_create_window(struct sl_context* ctx,
                       xcb_window_t id,
                       int x,

@@ -484,6 +484,81 @@ TEST_F(X11Test, UpdatesApplicationIdFromXid) {
   Pump();
 }
 
+TEST_F(X11Test, NonExistentWindowDoesNotCrash) {
+  // This test is testing cases where sl_lookup_window returns NULL
+
+  // sl_handle_destroy_notify
+  xcb_destroy_notify_event_t destroy_event;
+  // Arrange: Use a window that does not exist.
+  destroy_event.window = 123;
+  // Act/Assert: Sommelier does not crash.
+  sl_handle_destroy_notify(&ctx, &destroy_event);
+
+  // sl_handle_client_message
+  xcb_client_message_event_t message_event;
+  message_event.window = 123;
+  message_event.type = ctx.atoms[ATOM_WL_SURFACE_ID].value;
+  sl_handle_client_message(&ctx, &message_event);
+  message_event.type = ctx.atoms[ATOM_NET_ACTIVE_WINDOW].value;
+  sl_handle_client_message(&ctx, &message_event);
+  message_event.type = ctx.atoms[ATOM_NET_WM_MOVERESIZE].value;
+  sl_handle_client_message(&ctx, &message_event);
+  message_event.type = ctx.atoms[ATOM_NET_WM_STATE].value;
+  sl_handle_client_message(&ctx, &message_event);
+  message_event.type = ctx.atoms[ATOM_WM_CHANGE_STATE].value;
+  sl_handle_client_message(&ctx, &message_event);
+
+  // sl_handle_map_request
+  xcb_map_request_event_t map_event;
+  map_event.window = 123;
+  sl_handle_map_request(&ctx, &map_event);
+
+  // sl_handle_unmap_notify
+  xcb_unmap_notify_event_t unmap_event;
+  unmap_event.window = 123;
+  sl_handle_unmap_notify(&ctx, &unmap_event);
+
+  // sl_handle_configure_request
+  xcb_configure_request_event_t configure_event;
+  configure_event.window = 123;
+  sl_handle_configure_request(&ctx, &configure_event);
+
+  // sl_handle_focus_in
+  xcb_focus_in_event_t focus_event;
+  focus_event.event = 123;
+  sl_handle_focus_in(&ctx, &focus_event);
+
+  // sl_handle_property_notify
+  xcb_property_notify_event_t notify_event;
+  notify_event.window = 123;
+  notify_event.atom = XCB_ATOM_WM_NAME;
+  sl_handle_property_notify(&ctx, &notify_event);
+  notify_event.atom = XCB_ATOM_WM_CLASS;
+  sl_handle_property_notify(&ctx, &notify_event);
+  notify_event.atom = ctx.application_id_property_atom;
+  sl_handle_property_notify(&ctx, &notify_event);
+  notify_event.atom = XCB_ATOM_WM_NORMAL_HINTS;
+  sl_handle_property_notify(&ctx, &notify_event);
+  notify_event.atom = XCB_ATOM_WM_HINTS;
+  sl_handle_property_notify(&ctx, &notify_event);
+  notify_event.atom = ATOM_MOTIF_WM_HINTS;
+  sl_handle_property_notify(&ctx, &notify_event);
+  notify_event.atom = ATOM_GTK_THEME_VARIANT;
+  sl_handle_property_notify(&ctx, &notify_event);
+
+  // sl_handle_reparent_notify
+  // Put this one last and used a different window id as it creates a window.
+  xcb_reparent_notify_event_t reparent_event;
+  reparent_event.window = 1234;
+  xcb_screen_t screen;
+  screen.root = 1234;
+  ctx.screen = &screen;
+  reparent_event.parent = ctx.screen->root;
+  reparent_event.x = 0;
+  reparent_event.y = 0;
+  sl_handle_reparent_notify(&ctx, &reparent_event);
+}
+
 #ifdef BLACK_SCREEN_FIX
 TEST_F(X11Test, IconifySuppressesStateChanges) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not iconified.
