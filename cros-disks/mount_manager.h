@@ -194,7 +194,8 @@ class MountManager {
                       MountErrorType error);
 
   // Called when the sandbox holding a FUSE process finishes.
-  void OnSandboxedProcessExit(const base::FilePath& mount_path,
+  void OnSandboxedProcessExit(const std::string& program_name,
+                              const base::FilePath& mount_path,
                               const base::WeakPtr<MountPoint> mount_point,
                               const siginfo_t& info);
 

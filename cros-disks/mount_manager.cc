@@ -208,8 +208,8 @@ void MountManager::MountNewSource(const std::string& source,
     process_reaper_->WatchForChild(
         FROM_HERE, process->pid(),
         base::BindOnce(&MountManager::OnSandboxedProcessExit,
-                       base::Unretained(this), mount_path,
-                       mount_point->GetWeakPtr()));
+                       base::Unretained(this), process->GetProgramName(),
+                       mount_path, mount_point->GetWeakPtr()));
 
     DCHECK(callback);
     mount_point->SetLauncherExitCallback(base::BindOnce(
@@ -296,20 +296,23 @@ bool MountManager::RemoveMount(const MountPoint* const mount_point) {
 }
 
 void MountManager::OnSandboxedProcessExit(
+    const std::string& program_name,
     const base::FilePath& mount_path,
     const base::WeakPtr<MountPoint> mount_point,
     const siginfo_t& info) {
   DCHECK_EQ(SIGCHLD, info.si_signo);
   if (info.si_code != CLD_EXITED) {
-    LOG(ERROR) << "FUSE sandbox for " << redact(mount_path)
-               << " was killed by signal " << info.si_status << ": "
-               << strsignal(info.si_status);
+    LOG(ERROR) << "Sandbox of FUSE program " << quote(program_name) << " for "
+               << redact(mount_path) << " was killed by signal "
+               << info.si_status << ": " << strsignal(info.si_status);
   } else if (mount_point) {
-    LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
-               << " finished unexpectedly with exit code " << info.si_status;
+    LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
+               << redact(mount_path) << " finished unexpectedly with exit code "
+               << info.si_status;
   } else {
-    LOG(INFO) << "FUSE daemon for " << redact(mount_path)
-              << " finished with exit code " << info.si_status;
+    LOG(INFO) << "FUSE program " << quote(program_name) << " for "
+              << redact(mount_path) << " finished with exit code "
+              << info.si_status;
   }
 
   if (!mount_point) {

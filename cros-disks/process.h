@@ -87,6 +87,10 @@ class Process {
   // namespace, then this gets the PID of the 'launcher' process.
   pid_t pid() const { return pid_; }
 
+  // Gets the name of the program (from the first argument passed to
+  // AddArgument()).
+  std::string GetProgramName() const { return program_name_; }
+
   const std::vector<std::string>& arguments() const { return arguments_; }
   const std::vector<std::string>& environment() const { return environment_; }
   const std::string& input() const { return input_; }
@@ -135,10 +139,6 @@ class Process {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> launcher_watch_;
 
  private:
-  // Gets the name of the program (from the first argument passed to
-  // AddArgument()).
-  std::string GetProgramName() const { return program_name_; }
-
   // Starts the process. The started process has its stdin, stdout and stderr
   // redirected to the given file descriptors. Returns true in case of success.
   bool Start(base::ScopedFD in_fd, base::ScopedFD out_fd);
