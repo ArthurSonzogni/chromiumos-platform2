@@ -20,8 +20,6 @@ The -c option clears the APN to be used, so that the default APN will be used
 instead.
 "
 
-. /usr/share/misc/shflags
-
 FLIMFLAM=org.chromium.flimflam
 IMANAGER=${FLIMFLAM}.Manager
 ISERVICE=${FLIMFLAM}.Service
@@ -38,7 +36,7 @@ fi
 usage() {
   echo "$*"
   echo
-  flags_help
+  echo "${FLAGS_HELP}"
   exit 1
 }
 
@@ -137,12 +135,30 @@ get_cellular_service_network_id() {
   get_service_property "${service}" "Cellular.ServingOperator\/[0-9]\/code"
 }
 
-DEFINE_string 'network_id' "" 'network ID (MCCMNC) of the operator with which the APN should be used' 'n'
-DEFINE_string 'username' "" 'username to be used with the APN' 'u'
-DEFINE_string 'password' "" 'password to be used with the APN' 'p'
-DEFINE_boolean 'clear' false 'clear any APN that has been previously set' 'c'
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
+FLAGS_network_id=
+FLAGS_username=
+FLAGS_password=
+FLAGS_clear=0
+while getopts ":n:u:p:c" flag; do
+  case ${flag} in
+    n) # Network ID.
+      FLAGS_network_id="${OPTARG}"
+      ;;
+    u) # Username.
+      FLAGS_username="${OPTARG}"
+      ;;
+    p) # Password.
+      FLAGS_password="${OPTARG}"
+      ;;
+    c)
+      FLAGS_clear=1
+      ;;
+    *)
+      echo "${FLAGS_HELP}"
+      exit 1
+      ;;
+  esac
+done
 
 service="$(get_first_cellular_service)"
 if [ -z "${service}" ]; then
