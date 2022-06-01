@@ -60,7 +60,9 @@ class Metrics {
     kArchiveZ = 16,
     kArchiveTarZst = 17,
     kArchiveZst = 18,
-    kArchiveMaxValue = 19,
+    kArchiveTarLz = 19,
+    kArchiveLz = 20,
+    kArchiveMaxValue = 21,
   };
 
   // Don't renumber these values. They are recorded in UMA metrics.

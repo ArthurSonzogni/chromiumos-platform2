@@ -87,6 +87,7 @@ bool ArchiveManager::Initialize() {
       "crx",    //
       "gz",     //
       "iso",    //
+      "lz",     //
       "lzma",   //
       "tar",    //
       "taz",    // Short for .tar.gz or .tar.Z

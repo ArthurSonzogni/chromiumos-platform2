@@ -20,6 +20,7 @@ Metrics::ArchiveType Metrics::GetArchiveType(base::StringPiece path) {
       {".tar.bz", kArchiveTarBzip2},   //
       {".tar.bz2", kArchiveTarBzip2},  //
       {".tar.gz", kArchiveTarGzip},    //
+      {".tar.lz", kArchiveTarLz},      //
       {".tar.lzma", kArchiveTarLzma},  //
       {".tar.xz", kArchiveTarXz},      //
       {".tar.z", kArchiveTarZ},        //
@@ -30,6 +31,7 @@ Metrics::ArchiveType Metrics::GetArchiveType(base::StringPiece path) {
       {".crx", kArchiveCrx},           //
       {".gz", kArchiveGzip},           //
       {".iso", kArchiveIso},           //
+      {".lz", kArchiveLz},             //
       {".lzma", kArchiveLzma},         //
       {".rar", kArchiveRar},           //
       {".tar", kArchiveTar},           //

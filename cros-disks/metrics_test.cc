@@ -42,6 +42,8 @@ TEST_F(MetricsTest, GetArchiveType) {
   EXPECT_EQ(Metrics::kArchiveTarGzip,
             metrics_.GetArchiveType("/foo/bar.tar.gz"));
   EXPECT_EQ(Metrics::kArchiveTarGzip, metrics_.GetArchiveType("/foo/bar.tgz"));
+  EXPECT_EQ(Metrics::kArchiveLz, metrics_.GetArchiveType("/foo/bar.lz"));
+  EXPECT_EQ(Metrics::kArchiveTarLz, metrics_.GetArchiveType("/foo/bar.tar.lz"));
   EXPECT_EQ(Metrics::kArchiveLzma,
             metrics_.GetArchiveType("/foo/bar.txt.lzma"));
   EXPECT_EQ(Metrics::kArchiveLzma, metrics_.GetArchiveType("/foo/bar.lzma"));
