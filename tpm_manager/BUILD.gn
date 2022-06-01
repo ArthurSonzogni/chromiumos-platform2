@@ -130,6 +130,7 @@ executable("tpm_managerd") {
     ":target_defaults",
     ":tpm_managerd_config",
   ]
+  libs = [ "rootdev" ]
   deps = [ ":server_library" ]
 
   # NOSORT

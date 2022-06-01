@@ -9,10 +9,14 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <linux/limits.h>
+#include <rootdev/rootdev.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #if USE_TPM2
 #include <trunks/trunks_factory_impl.h>
@@ -31,6 +35,50 @@ constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 constexpr char kIsRunningFromInstaller[] = "is_running_from_installer";
 constexpr char kInstallerYes[] = "yes\n";
 
+constexpr char kDevDir[] = "/dev/";
+constexpr char kSysBlock[] = "/sys/block/";
+constexpr char kRemovable[] = "removable";
+
+std::string GetBootDeviceName() {
+  char path[PATH_MAX];
+  int ret = rootdev(path, sizeof(path), /* full resolution = */ true,
+                    /* remove partition = */ true);
+  if (ret != 0) {
+    LOG(WARNING) << "rootdev failed with error code: " << ret;
+    return "";
+  }
+
+  std::string boot_path(path);
+  if (boot_path.substr(0, sizeof(kDevDir) - 1) != kDevDir) {
+    LOG(WARNING) << "Unknown device prefix: " << boot_path;
+    return "";
+  }
+
+  return boot_path.substr(sizeof(kDevDir) - 1);
+}
+
+bool IsBootFromRemoveableDevice() {
+  base::FilePath file =
+      base::FilePath(kSysBlock).Append(GetBootDeviceName()).Append(kRemovable);
+
+  std::string file_content;
+
+  if (!base::ReadFileToString(file, &file_content)) {
+    return false;
+  }
+
+  std::string removable_str;
+  base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, &removable_str);
+
+  int removable = 0;
+  if (!base::StringToInt(removable_str, &removable)) {
+    LOG(WARNING) << "removable is not a number: " << removable_str;
+    return false;
+  }
+
+  return removable;
+}
+
 bool PreformPreinit() {
   if (base::PathExists(base::FilePath(kNoPreinitFlagFile))) {
     return false;
@@ -47,6 +95,15 @@ bool PreformPreinit() {
     if (output == kInstallerYes) {
       return false;
     }
+
+    return true;
+  }
+
+  // Normal ChromeOS case.
+  if (IsBootFromRemoveableDevice()) {
+    // Don't preform preinit when we are booting from removable device.
+    // Because we may not store the data at correct location.
+    return false;
   }
 
   return true;
