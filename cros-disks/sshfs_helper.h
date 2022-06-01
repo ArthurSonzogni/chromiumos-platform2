@@ -10,10 +10,16 @@
 #include <vector>
 
 #include "cros-disks/fuse_mounter.h"
+#include "cros-disks/sandboxed_process.h"
+#include "cros-disks/uri.h"
 
 namespace cros_disks {
 
-// Invokes sshfs to provide access to files over SFTP protocol.
+// Invokes sshfs to provide access to files over SFTP protocol. Supports
+// sshfs://... URIs, which behaves per usual sftp-over-ssh, and
+// sftp://$cid:$port which will instead skip ssh and instead connect directly to
+// an already-running sftp-server instance on port $port inside the VM
+// identified by $cid.
 class SshfsHelper : public FUSEMounterHelper {
  public:
   SshfsHelper(const Platform* platform,
@@ -35,6 +41,11 @@ class SshfsHelper : public FUSEMounterHelper {
                                   SandboxedProcess* sandbox) const override;
 
  private:
+  MountErrorType ConfigureSandboxSshfs(const Uri& source,
+                                       std::vector<std::string> params,
+                                       SandboxedProcess* sandbox) const;
+  MountErrorType ConfigureSandboxSftpVsock(const Uri& source,
+                                           SandboxedProcess* sandbox) const;
   const FUSESandboxedProcessFactory sandbox_factory_;
   const base::FilePath working_dir_;
 

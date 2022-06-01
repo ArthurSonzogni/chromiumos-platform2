@@ -73,6 +73,10 @@ MountErrorType WriteConfigurationFile(const Platform* platform,
   return MOUNT_ERROR_NONE;
 }
 
+bool IsSupportedScheme(const std::string& scheme) {
+  return scheme == "sftp" || scheme == "sshfs";
+}
+
 }  // namespace
 
 SshfsHelper::SshfsHelper(const Platform* platform,
@@ -95,11 +99,11 @@ bool SshfsHelper::CanMount(const std::string& source,
                            const std::vector<std::string>& params,
                            base::FilePath* suggested_name) const {
   const Uri uri = Uri::Parse(source);
-  if (!uri.valid() || uri.scheme() != kType)
+  if (!uri.valid() || !IsSupportedScheme(uri.scheme()))
     return false;
 
   if (uri.path().empty()) {
-    *suggested_name = base::FilePath(kType);
+    *suggested_name = base::FilePath(uri.scheme());
   } else {
     std::string path = uri.path();
     std::replace(path.begin(), path.end(), '/', '$');
@@ -114,11 +118,24 @@ MountErrorType SshfsHelper::ConfigureSandbox(const std::string& source,
                                              std::vector<std::string> params,
                                              SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
-  if (!uri.valid() || uri.scheme() != kType || uri.path().empty()) {
+  if (!uri.valid() || uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
+  if (uri.scheme() == "sshfs") {
+    return ConfigureSandboxSshfs(uri, params, sandbox);
+  } else if (uri.scheme() == "sftp") {
+    return ConfigureSandboxSftpVsock(uri, sandbox);
+  } else {
+    LOG(ERROR) << "Invalid source " << quote(source);
+    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+  }
+}
 
+MountErrorType SshfsHelper::ConfigureSandboxSshfs(
+    const Uri& uri,
+    std::vector<std::string> params,
+    SandboxedProcess* sandbox) const {
   std::string b64_identity;
   if (!GetParamValue(params, kOptionIdentityBase64, &b64_identity) ||
       b64_identity.empty()) {
@@ -202,7 +219,23 @@ MountErrorType SshfsHelper::ConfigureSandbox(const std::string& source,
   }
   sandbox->AddArgument("-o");
   sandbox->AddArgument(option_string);
+  return MOUNT_ERROR_NONE;
+}
 
+MountErrorType SshfsHelper::ConfigureSandboxSftpVsock(
+    const Uri& uri, SandboxedProcess* sandbox) const {
+  // sftp doesn't use the hostname but there has to be one otherwise sshfs
+  // complains. And the path is always empty because we run sftp-server where
+  // we want to serve files from.
+  sandbox->AddArgument("localhost:");
+  std::vector<std::string> options = {"BatchMode=yes", "follow_symlinks",
+                                      "cache=no", "vsock=" + uri.path()};
+  std::string option_string;
+  if (!JoinParamsIntoOptions(options, &option_string)) {
+    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+  }
+  sandbox->AddArgument("-o");
+  sandbox->AddArgument(option_string);
   return MOUNT_ERROR_NONE;
 }
 
