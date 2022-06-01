@@ -243,27 +243,28 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
 
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
-  Disk::Config config{};
-  config.o_direct = false;
-  config.writable = request.rootfs_writable();
+  Disk::Config rootfs_config{};
+  rootfs_config.o_direct = false;
+  rootfs_config.writable = request.rootfs_writable();
   const size_t rootfs_block_size = request.rootfs_block_size();
   if (rootfs_block_size) {
-    config.block_size = rootfs_block_size;
+    rootfs_config.block_size = rootfs_block_size;
   }
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   auto rootfsPath = GetImagePath(base::FilePath(kRootfsPath), is_dev_mode);
-  auto failure_reason =
-      ConvertToFdBasedPath(root_fd.first, &rootfsPath,
-                           config.writable ? O_RDWR : O_RDONLY, owned_fds);
+  auto failure_reason = ConvertToFdBasedPath(
+      root_fd.first, &rootfsPath, rootfs_config.writable ? O_RDWR : O_RDONLY,
+      owned_fds);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Could not open rootfs image" << rootfsPath;
     response.set_failure_reason("Rootfs path does not exist");
     return response;
   }
 
-  disks.push_back(Disk(rootfsPath, config));
+  disks.push_back(Disk(rootfsPath, rootfs_config));
 
   for (const auto& disk : request.disks()) {
+    Disk::Config config{};
     base::FilePath path =
         GetImagePath(base::FilePath(disk.path()), is_dev_mode);
     if (!base::PathExists(path)) {
