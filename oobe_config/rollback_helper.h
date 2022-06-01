@@ -29,14 +29,6 @@ base::FilePath PrefixAbsolutePath(const base::FilePath& prefix,
 void TryFileCopy(const base::FilePath& source,
                  const base::FilePath& destination);
 
-bool IsSymlink(const base::FilePath& path);
-
-bool CopyFileAndSetPermissions(const base::FilePath& source,
-                               const base::FilePath& destination,
-                               const std::string& owner_username,
-                               mode_t permissions,
-                               bool ignore_permissions_for_testing);
-
 bool GetUidGid(const std::string& user, uid_t* uid, gid_t* gid);
 bool GetGid(const std::string& group, gid_t* gid);
 

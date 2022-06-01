@@ -5,6 +5,7 @@
 #include "oobe_config/rollback_helper.h"
 
 #include <iterator>
+#include <set>
 #include <vector>
 
 #include <fcntl.h>
@@ -29,21 +30,6 @@ const int kDefaultPwnameLength = 1024;
 
 bool PrepareSave(const base::FilePath& root_path,
                  bool ignore_permissions_for_testing) {
-  LOG(INFO) << "Delete and recreate path to save rollback data";
-  // Make sure we have an empty folder where only we can write, otherwise exit.
-  base::FilePath save_path =
-      PrefixAbsolutePath(root_path, base::FilePath(kSaveTempPath));
-  if (!base::DeletePathRecursively(save_path)) {
-    PLOG(ERROR) << "Couldn't delete directory " << save_path.value();
-    return false;
-  }
-  base::File::Error error;
-  if (!base::CreateDirectoryAndGetError(save_path, &error)) {
-    PLOG(ERROR) << "Couldn't create directory " << save_path.value()
-                << ", error: " << error;
-    return false;
-  }
-
   base::FilePath rollback_data_path = PrefixAbsolutePath(
       root_path, base::FilePath(kUnencryptedStatefulRollbackDataFile));
 
@@ -54,7 +40,6 @@ bool PrepareSave(const base::FilePath& root_path,
     gid_t root_gid;
     gid_t preserve_gid;
 
-    LOG(INFO) << "Setting and verifying permissions for save path";
     if (!GetUidGid(kOobeConfigSaveUsername, &oobe_config_save_uid,
                    &oobe_config_save_gid)) {
       PLOG(ERROR) << "Couldn't get uid and gid of oobe_config_save.";
@@ -72,25 +57,6 @@ bool PrepareSave(const base::FilePath& root_path,
     } else {
       LOG(INFO) << "preserve group is " << preserve_gid;
     }
-    // chown oobe_config_save:oobe_config_save
-    if (lchown(save_path.value().c_str(), oobe_config_save_uid,
-               oobe_config_save_gid) != 0) {
-      PLOG(ERROR) << "Couldn't chown " << save_path.value();
-      return false;
-    }
-    // chmod 700
-    if (chmod(save_path.value().c_str(), 0700) != 0) {
-      PLOG(ERROR) << "Couldn't chmod " << save_path.value();
-      return false;
-    }
-    if (!base::VerifyPathControlledByUser(save_path, save_path,
-                                          oobe_config_save_uid,
-                                          {oobe_config_save_gid})) {
-      LOG(ERROR) << "VerifyPathControlledByUser failed for "
-                 << save_path.value();
-      return false;
-    }
-
     // Preparing rollback_data file.
 
     // The directory should be root-writeable only on TPM1 devices
@@ -133,6 +99,21 @@ bool PrepareSave(const base::FilePath& root_path,
       LOG(ERROR) << "VerifyPathControlledByUser failed for "
                  << rollback_data_path.value();
       return false;
+    }
+  }
+
+  LOG(INFO) << "Emptying save path";
+  base::FilePath save_path =
+      PrefixAbsolutePath(root_path, base::FilePath(kSaveTempPath));
+  base::FileEnumerator folder_enumerator(
+      save_path, false,
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
+  for (auto file = folder_enumerator.Next(); !file.empty();
+       file = folder_enumerator.Next()) {
+    if (!base::DeletePathRecursively(file)) {
+      LOG(ERROR) << "Couldn't delete " << file.value();
+    } else {
+      LOG(INFO) << "Deleted file: " << file.value();
     }
   }
 
@@ -194,55 +175,6 @@ void TryFileCopy(const base::FilePath& source,
   } else {
     LOG(INFO) << "Copied " << source.value() << " to " << destination.value();
   }
-}
-
-// TODO(mpolzer) This was a quickfix, make sure we do not follow symlinks when
-// opening files (see crbug/960109#c11).
-bool IsSymlink(const base::FilePath& path) {
-  int fd = HANDLE_EINTR(open(path.value().c_str(), O_PATH));
-  if (fd < 0)
-    return false;
-  char buf[PATH_MAX];
-  ssize_t count = readlink(base::StringPrintf("/proc/self/fd/%d", fd).c_str(),
-                           buf, std::size(buf));
-  if (count <= 0)
-    return false;
-  base::FilePath real(std::string(buf, count));
-  return real != path;
-}
-
-bool CopyFileAndSetPermissions(const base::FilePath& source,
-                               const base::FilePath& destination,
-                               const std::string& owner_username,
-                               mode_t permissions,
-                               bool ignore_permissions_for_testing) {
-  if (!base::PathExists(source.DirName())) {
-    LOG(ERROR) << "Parent path doesn't exist: " << source.DirName().value();
-    return false;
-  }
-  if (IsSymlink(destination)) {
-    PLOG(ERROR) << "Couldn't copy file " << source.value() << " to a symlink "
-                << destination.value();
-    return false;
-  }
-  TryFileCopy(source, destination);
-  if (!ignore_permissions_for_testing) {
-    uid_t owner_user;
-    gid_t owner_group;
-    if (!GetUidGid(owner_username, &owner_user, &owner_group)) {
-      PLOG(ERROR) << "Couldn't get uid and gid of user " << owner_username;
-      return false;
-    }
-    if (lchown(destination.value().c_str(), owner_user, owner_group) != 0) {
-      PLOG(ERROR) << "Couldn't chown " << destination.value();
-      return false;
-    }
-    if (chmod(destination.value().c_str(), permissions) != 0) {
-      PLOG(ERROR) << "Couldn't chmod " << destination.value();
-      return false;
-    }
-  }
-  return true;
 }
 
 bool GetUidGid(const std::string& user, uid_t* uid, gid_t* gid) {

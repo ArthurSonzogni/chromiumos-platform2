@@ -41,6 +41,10 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
 
+  // Create /var/lib/oobe_config_save under tmp path.
+  ASSERT_TRUE(base::CreateDirectory(
+      PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))));
+
   WriteTestFile(
       PrefixAbsolutePath(temp_path, base::FilePath(kOobeCompletedFile)));
   WriteTestFile(PrefixAbsolutePath(
@@ -59,6 +63,10 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
+
+  // Create /var/lib/oobe_config_save under tmp path.
+  ASSERT_TRUE(base::CreateDirectory(
+      PrefixAbsolutePath(temp_path, base::FilePath(kSaveTempPath))));
 
   WriteTestFile(
       PrefixAbsolutePath(temp_path, base::FilePath(kOobeCompletedFile)));
