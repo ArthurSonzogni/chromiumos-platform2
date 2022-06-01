@@ -14,8 +14,6 @@ Enable or disable Wake on LAN for Ethernet devices.  This command takes
 effect after re-connecting to Ethernet and is not persistent across system
 restarts."
 
-. /usr/share/misc/shflags
-
 FLIMFLAM=org.chromium.flimflam
 IMANAGER="${FLIMFLAM}.Manager"
 PROPERTY_NAME=WakeOnLanEnabled
@@ -24,11 +22,11 @@ PROPERTY_DESC="Wake on LAN"
 usage() {
   echo "Invalid invocation: $*"
   echo
-  flags_help
+  echo "${FLAGS_HELP}"
   exit 1
 }
 
-dbus () {
+dbus() {
   local obj="$1"
   local meth="$2"
   shift 2
@@ -53,17 +51,14 @@ display_value () {
   exit 0
 }
 
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
-
 if [ $# -lt 1 ]; then
-    display_value
+  display_value
 fi
 
 set_value="$1"
 
 if [ "${set_value}" != "false" ] && [ "${set_value}" != "true" ] ; then
-    usage "Argument must be 'true' or 'false'"
+  usage "Argument must be 'true' or 'false'"
 fi
 
 dbus / "${IMANAGER}.SetProperty" string:"${PROPERTY_NAME}" "variant:boolean:${set_value}"
