@@ -1286,22 +1286,15 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
       const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state,
       cryptorecovery::CryptoRecoveryRpcResponse* response_proto,
       brillo::SecureBlob* ephemeral_pub_key) {
-    ASSERT_TRUE(cryptohome_recovery_state.hsm_payload.has_value());
-    ASSERT_TRUE(
-        cryptohome_recovery_state.plaintext_destination_share.has_value());
-    ASSERT_TRUE(cryptohome_recovery_state.channel_priv_key.has_value());
-    ASSERT_TRUE(cryptohome_recovery_state.channel_pub_key.has_value());
-
-    brillo::SecureBlob channel_priv_key =
-        cryptohome_recovery_state.channel_priv_key.value();
-    brillo::SecureBlob channel_pub_key =
-        cryptohome_recovery_state.channel_pub_key.value();
-    brillo::SecureBlob hsm_payload_cbor =
-        cryptohome_recovery_state.hsm_payload.value();
+    EXPECT_FALSE(cryptohome_recovery_state.hsm_payload.empty());
+    EXPECT_FALSE(cryptohome_recovery_state.encrypted_destination_share.empty());
+    EXPECT_FALSE(cryptohome_recovery_state.encrypted_channel_priv_key.empty());
+    EXPECT_FALSE(cryptohome_recovery_state.channel_pub_key.empty());
 
     // Deserialize HSM payload stored on disk.
     cryptorecovery::HsmPayload hsm_payload;
-    EXPECT_TRUE(DeserializeHsmPayloadFromCbor(hsm_payload_cbor, &hsm_payload));
+    EXPECT_TRUE(DeserializeHsmPayloadFromCbor(
+        cryptohome_recovery_state.hsm_payload, &hsm_payload));
 
     // Start recovery process.
     std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
@@ -1312,7 +1305,8 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
     cryptorecovery::RequestMetadata request_metadata;
     ASSERT_TRUE(recovery->GenerateRecoveryRequest(
         hsm_payload, request_metadata, epoch_response_, rsa_priv_key,
-        channel_priv_key, channel_pub_key, &recovery_request,
+        cryptohome_recovery_state.encrypted_channel_priv_key,
+        cryptohome_recovery_state.channel_pub_key, &recovery_request,
         ephemeral_pub_key));
 
     // Simulate mediation (it will be done by Recovery Mediator service).

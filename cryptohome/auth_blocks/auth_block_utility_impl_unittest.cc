@@ -36,6 +36,10 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
@@ -1641,6 +1645,120 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
           AuthBlockType::kChallengeCredential);
   EXPECT_FALSE(auth_block.ok());
+}
+
+class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
+ public:
+  AuthBlockUtilityImplRecoveryTest() = default;
+  ~AuthBlockUtilityImplRecoveryTest() = default;
+
+  void SetUp() override {
+    AuthBlockUtilityImplTest::SetUp();
+    EXPECT_CALL(tpm_, GetRecoveryCryptoBackend())
+        .WillRepeatedly(Return(&recovery_crypto_fake_tpm_backend_));
+
+    brillo::SecureBlob mediator_pub_key;
+    ASSERT_TRUE(
+        cryptorecovery::FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
+            &mediator_pub_key));
+    cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
+    ASSERT_TRUE(
+        cryptorecovery::FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
+            &epoch_response));
+    epoch_response_blob_ =
+        brillo::BlobFromString(epoch_response.SerializeAsString());
+
+    auto recovery = cryptorecovery::RecoveryCryptoImpl::Create(
+        &recovery_crypto_fake_tpm_backend_);
+    ASSERT_TRUE(recovery);
+
+    cryptorecovery::HsmPayload hsm_payload;
+    brillo::SecureBlob recovery_key;
+    EXPECT_TRUE(recovery->GenerateHsmPayload(
+        mediator_pub_key, cryptorecovery::OnboardingMetadata{}, &hsm_payload,
+        &rsa_priv_key_, &destination_share_, &recovery_key, &channel_pub_key_,
+        &channel_priv_key_));
+    EXPECT_TRUE(SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_));
+
+    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
+        keyset_management_.get(), &crypto_, &platform_);
+  }
+
+ protected:
+  CryptohomeRecoveryAuthBlockState GetAuthBlockState() {
+    return {
+        .hsm_payload = hsm_payload_,
+        .salt = brillo::SecureBlob("salt"),
+        .encrypted_destination_share = destination_share_,
+        .channel_pub_key = channel_pub_key_,
+        .encrypted_channel_priv_key = channel_priv_key_,
+    };
+  }
+
+  brillo::SecureBlob hsm_payload_;
+  brillo::SecureBlob rsa_priv_key_;
+  brillo::SecureBlob channel_pub_key_;
+  brillo::SecureBlob channel_priv_key_;
+  brillo::SecureBlob destination_share_;
+  brillo::Blob epoch_response_blob_;
+
+ private:
+  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend_;
+};
+
+TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestSuccess) {
+  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_,
+      GetAuthBlockState(), crypto_.tpm(), &recovery_request,
+      &ephemeral_pub_key);
+  EXPECT_TRUE(status.ok());
+  EXPECT_FALSE(ephemeral_pub_key.empty());
+  EXPECT_FALSE(recovery_request.empty());
+}
+
+TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestNoHsmPayload) {
+  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  auto state = GetAuthBlockState();
+  state.hsm_payload = brillo::SecureBlob();
+  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
+      crypto_.tpm(), &recovery_request, &ephemeral_pub_key);
+  EXPECT_FALSE(status.ok());
+}
+
+TEST_F(AuthBlockUtilityImplRecoveryTest,
+       GenerateRecoveryRequestNoChannelPubKey) {
+  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  auto state = GetAuthBlockState();
+  state.channel_pub_key = brillo::SecureBlob();
+  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
+      crypto_.tpm(), &recovery_request, &ephemeral_pub_key);
+  EXPECT_FALSE(status.ok());
+}
+
+TEST_F(AuthBlockUtilityImplRecoveryTest,
+       GenerateRecoveryRequestNoChannelPrivKey) {
+  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  auto state = GetAuthBlockState();
+  state.encrypted_channel_priv_key = brillo::SecureBlob();
+  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
+      crypto_.tpm(), &recovery_request, &ephemeral_pub_key);
+  EXPECT_FALSE(status.ok());
+}
+
+TEST_F(AuthBlockUtilityImplRecoveryTest,
+       GenerateRecoveryRequestNoEpochResponse) {
+  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+      cryptorecovery::RequestMetadata{},
+      /*epoch_response=*/brillo::Blob(), GetAuthBlockState(), crypto_.tpm(),
+      &recovery_request, &ephemeral_pub_key);
+  EXPECT_FALSE(status.ok());
 }
 
 }  // namespace cryptohome

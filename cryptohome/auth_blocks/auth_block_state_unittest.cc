@@ -371,10 +371,10 @@ TEST(AuthBlockStateBindingTest, CryptohomeRecoveryAuthBlockState) {
   AuthBlockState state = {.state = CryptohomeRecoveryAuthBlockState{
                               .hsm_payload = SecureBlob("hsm_payload"),
                               .salt = SecureBlob("salt"),
-                              .plaintext_destination_share =
-                                  SecureBlob("plaintext_destination_share"),
-                              .channel_pub_key = std::nullopt,
-                              .channel_priv_key = std::nullopt,
+                              .encrypted_destination_share =
+                                  SecureBlob("encrypted_destination_share"),
+                              .channel_pub_key = SecureBlob(),
+                              .encrypted_channel_priv_key = SecureBlob(),
                           }};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());

@@ -621,8 +621,8 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     brillo::SecureBlob* out_recovery_request,
     brillo::SecureBlob* out_ephemeral_pub_key) const {
   // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.
-  if (!state.hsm_payload.has_value() || !state.channel_pub_key.has_value() ||
-      !state.channel_priv_key.has_value()) {
+  if (state.hsm_payload.empty() || state.channel_pub_key.empty() ||
+      state.encrypted_channel_priv_key.empty()) {
     LOG(ERROR) << "CryptohomeRecoveryAuthBlockState is invalid";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocAuthBlockStateInvalidInGenerateRecoveryRequest),
@@ -632,7 +632,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
 
   // Deserialize HSM payload from CryptohomeRecoveryAuthBlockState.
   cryptorecovery::HsmPayload hsm_payload;
-  if (!cryptorecovery::DeserializeHsmPayloadFromCbor(state.hsm_payload.value(),
+  if (!cryptorecovery::DeserializeHsmPayloadFromCbor(state.hsm_payload,
                                                      &hsm_payload)) {
     LOG(ERROR) << "Failed to deserialize HSM payload";
     return MakeStatus<CryptohomeCryptoError>(
@@ -669,12 +669,10 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
   // Generate recovery request proto which will be sent back to Chrome, and then
   // to the recovery server.
   cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
-  // TODO(b/196191918): Get rsa_priv_key from CryptohomeRecoveryAuthBlockState.
   if (!recovery->GenerateRecoveryRequest(
           hsm_payload, request_metadata, epoch_response_proto,
-          brillo::SecureBlob() /*rsa_priv_key*/, state.channel_priv_key.value(),
-          state.channel_pub_key.value(), &recovery_request,
-          out_ephemeral_pub_key)) {
+          state.encrypted_rsa_priv_key, state.encrypted_channel_priv_key,
+          state.channel_pub_key, &recovery_request, out_ephemeral_pub_key)) {
     LOG(ERROR) << "Call to GenerateRecoveryRequest failed";
     // TODO(b/231297066): send more specific error.
     return MakeStatus<CryptohomeCryptoError>(

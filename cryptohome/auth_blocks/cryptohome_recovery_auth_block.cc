@@ -88,17 +88,17 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
 
   // Generates HSM payload that would be persisted on a chromebook.
   HsmPayload hsm_payload;
-  brillo::SecureBlob rsa_pub_key;
-  brillo::SecureBlob destination_share;
+  brillo::SecureBlob encrypted_rsa_priv_key;
+  brillo::SecureBlob encrypted_destination_share;
   brillo::SecureBlob recovery_key;
   brillo::SecureBlob channel_pub_key;
-  brillo::SecureBlob channel_priv_key;
+  brillo::SecureBlob encrypted_channel_priv_key;
   // TODO(b/184924482): set values in onboarding_metadata.
   OnboardingMetadata onboarding_metadata;
-  if (!recovery->GenerateHsmPayload(mediator_pub_key, onboarding_metadata,
-                                    &hsm_payload, &rsa_pub_key,
-                                    &destination_share, &recovery_key,
-                                    &channel_pub_key, &channel_priv_key)) {
+  if (!recovery->GenerateHsmPayload(
+          mediator_pub_key, onboarding_metadata, &hsm_payload,
+          &encrypted_rsa_priv_key, &encrypted_destination_share, &recovery_key,
+          &channel_pub_key, &encrypted_channel_priv_key)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockGenerateHSMPayloadFailedInCreate),
@@ -137,11 +137,10 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   }
   auth_state.hsm_payload = hsm_payload_cbor;
 
-  // TODO(b/184924482): wrap the destination share with TPM.
-  auth_state.plaintext_destination_share = destination_share;
-  // TODO(b/196192089): store encrypted keys.
-  auth_state.channel_priv_key = channel_priv_key;
+  auth_state.encrypted_destination_share = encrypted_destination_share;
+  auth_state.encrypted_channel_priv_key = encrypted_channel_priv_key;
   auth_state.channel_pub_key = channel_pub_key;
+  auth_state.encrypted_rsa_priv_key = encrypted_rsa_priv_key;
   auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
 
@@ -211,11 +210,6 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  brillo::SecureBlob plaintext_destination_share =
-      auth_state->plaintext_destination_share.value();
-  brillo::SecureBlob channel_priv_key = auth_state->channel_priv_key.value();
-  brillo::SecureBlob salt = auth_state->salt.value();
-
   std::unique_ptr<RecoveryCryptoImpl> recovery =
       RecoveryCryptoImpl::Create(tpm_backend_);
   if (!recovery) {
@@ -228,8 +222,9 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   HsmResponsePlainText response_plain_text;
-  if (!recovery->DecryptResponsePayload(channel_priv_key, epoch_response,
-                                        response_proto, &response_plain_text)) {
+  if (!recovery->DecryptResponsePayload(auth_state->encrypted_channel_priv_key,
+                                        epoch_response, response_proto,
+                                        &response_plain_text)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockDecryptFailedInDerive),
@@ -241,9 +236,9 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob recovery_key;
   if (!recovery->RecoverDestination(
           response_plain_text.dealer_pub_key,
-          response_plain_text.key_auth_value, plaintext_destination_share,
-          ephemeral_pub_key, response_plain_text.mediated_point,
-          &recovery_key)) {
+          response_plain_text.key_auth_value,
+          auth_state->encrypted_destination_share, ephemeral_pub_key,
+          response_plain_text.mediated_point, &recovery_key)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockRecoveryFailedInDerive),
@@ -256,7 +251,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!DeriveSecretsScrypt(recovery_key, salt, {&aes_skey, &vkk_iv})) {
+  if (!DeriveSecretsScrypt(recovery_key, auth_state->salt,
+                           {&aes_skey, &vkk_iv})) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInDerive),
