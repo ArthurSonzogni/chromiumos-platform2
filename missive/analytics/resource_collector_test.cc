@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-using testing::NiceMock;
+using testing::AnyNumber;
 
 namespace reporting::analytics {
 
@@ -20,13 +20,15 @@ class ResourceCollectorTest : public ::testing::TestWithParam<base::TimeDelta> {
   void SetUp() override {
     // Replace the metrics library instance with a mock one
     resource_collector_.metrics_ = std::make_unique<MetricsLibraryMock>();
+    // Uninterested in ResourceCollectorMock::Destruct calls
+    EXPECT_CALL(resource_collector_, Destruct()).Times(AnyNumber());
   }
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // The time interval that resource collector is expected to collect resources
   const base::TimeDelta interval_{GetParam()};
-  NiceMock<ResourceCollectorMock> resource_collector_{interval_};
+  ResourceCollectorMock resource_collector_{interval_};
 };
 
 TEST_P(ResourceCollectorTest, CallOnceInAWhile) {
