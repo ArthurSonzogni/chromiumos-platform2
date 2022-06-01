@@ -5,7 +5,6 @@
 accept4: 1
 bind: 1
 brk: 1
-chmod: 1
 close: 1
 connect: 1
 epoll_create1: 1
@@ -16,6 +15,8 @@ exit: 1
 exit_group: 1
 faccessat: 1
 fallocate: 1
+fchmod: 1
+fchmodat: 1
 fcntl: 1
 fstatfs: 1
 ftruncate: 1
