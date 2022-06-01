@@ -34,14 +34,15 @@
 
 namespace fusebox {
 
+#define kFuseBoxClientPath kFuseBoxReverseServicePath
+
 class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
                       public org::chromium::FuseBoxReverseServiceAdaptor,
                       public FileSystem {
  public:
   FuseBoxClient(scoped_refptr<dbus::Bus> bus, FuseMount* fuse)
       : org::chromium::FuseBoxReverseServiceAdaptor(this),
-        dbus_object_(
-            nullptr, bus, dbus::ObjectPath(kFuseBoxReverseServicePath)),
+        dbus_object_(nullptr, bus, dbus::ObjectPath(kFuseBoxClientPath)),
         bus_(bus),
         fuse_(fuse) {}
   FuseBoxClient(const FuseBoxClient&) = delete;
