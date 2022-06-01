@@ -635,8 +635,17 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
   EfiBootManager efi_boot_manager(efivar, EfiDescription());
   if (!efi_boot_manager.UpdateEfiBootEntries(install_config,
                                              efi_size.value())) {
-    LOG(ERROR) << "Failed to manage EFI boot entries, can't continue.";
-    return false;
+    // On install if we can't manage efi entries we can't be sure that we've
+    // created a system that will boot (some firmware can't find the default
+    // location).
+    const bool management_required = getenv(kEnvIsInstall);
+    if (management_required) {
+      LOG(ERROR) << "Failed to manage EFI boot entries, can't continue.";
+      return false;
+    } else {
+      LOG(WARNING) << "Failed to manage EFI boot entries, "
+                   << "safe because we're updating.";
+    }
   }
 
   return true;
