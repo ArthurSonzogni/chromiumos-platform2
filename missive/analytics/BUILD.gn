@@ -25,6 +25,10 @@ static_library("libanalytics") {
     "resource_collector_storage.h",
   ]
   configs += [ ":target_defaults" ]
+  deps = [
+    "//missive/proto:libmissiveprotostatus",
+    "//missive/resources:resource_interface",
+  ]
 }
 
 source_set("unit_tests") {
