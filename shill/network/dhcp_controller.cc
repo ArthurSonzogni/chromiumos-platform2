@@ -352,6 +352,8 @@ bool DHCPController::ShouldKeepLeaseOnDisconnect() const {
 std::vector<std::string> DHCPController::GetFlags() {
   std::vector<std::string> flags;
   flags.push_back("-B");  // Run in foreground.
+  flags.push_back("-i");  // Static value for Vendor class info.
+  flags.push_back("chromeos");
   flags.push_back("-q");  // Only warnings+errors to stderr.
   flags.push_back("-4");  // IPv4 only.
 

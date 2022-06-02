@@ -168,11 +168,12 @@ TEST_F(DHCPControllerTest, StartFail) {
 }
 
 MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
-  if (arg[0] != "-B" || arg[1] != "-q" || arg[2] != "-4") {
+  if (arg[0] != "-B" || arg[1] != "-i" || arg[2] != "chromeos" ||
+      arg[3] != "-q" || arg[4] != "-4") {
     return false;
   }
 
-  int end_offset = 3;
+  int end_offset = 5;
   if (has_hostname) {
     if (arg[end_offset] != "-h" || arg[end_offset + 1] != kHostName) {
       return false;
