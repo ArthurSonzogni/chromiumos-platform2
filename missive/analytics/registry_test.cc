@@ -14,6 +14,7 @@
 
 #include "missive/analytics/resource_collector_mock.h"
 
+using ::testing::AnyNumber;
 using ::testing::Assign;
 
 namespace reporting::analytics {
@@ -58,8 +59,11 @@ TEST_F(RegistryTest, RegisterAndUnregister) {
   // replacing the second collector
   ASSERT_FALSE(second_collector_destructed)
       << "second-collector is not yet replaced but is destructed";
-  registry.Add("second-collector",
-               std::make_unique<ResourceCollectorMock>(base::Minutes(100)));
+  auto additional_collector =
+      std::make_unique<ResourceCollectorMock>(base::Minutes(100));
+  // We are not interested in destructor called by additional_collector
+  EXPECT_CALL(*additional_collector, Destruct()).Times(AnyNumber());
+  registry.Add("second-collector", std::move(additional_collector));
   ASSERT_TRUE(second_collector_destructed)
       << "second-collector is replaced but is not destructed";
 }
