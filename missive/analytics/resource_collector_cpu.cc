@@ -4,6 +4,7 @@
 
 #include "missive/analytics/resource_collector_cpu.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
@@ -69,7 +70,7 @@ StatusOr<uint64_t> ResourceCollectorCpu::CpuUsageTallier::Tally()
   // We ignore the nanosecond part because we don't need that level of accuracy.
   uint64_t result = static_cast<uint64_t>(tp_cpu.tv_sec - last_cpu_time_) *
                     100U /
-                    static_cast<uint64_t>(tp_wall.tv_sec - last_wall_time_);
+                    std::max<uint64_t>(tp_wall.tv_sec - last_wall_time_, 1U);
 
   // Update stored CPU time and wall time
   last_cpu_time_ = tp_cpu.tv_sec;
