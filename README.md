@@ -106,6 +106,7 @@ copies.
 | [mist](./mist/) | Modem USB Interface Switching Tool |
 | [ml](./ml/) | Machine learning service |
 | [ml_benchmark](./ml_benchmark/) | ML performance benchmark for Chrome OS |
+| [ml_core](./ml_core/) | Machine learning feature library |
 | [modem-utilities](./modem-utilities/) ||
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
 | [mojo_service_manager](./mojo_service_manager/) | Daemon for managing mojo services |
