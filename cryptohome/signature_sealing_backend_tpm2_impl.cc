@@ -336,10 +336,11 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   pcr_policy_digests.push_back(default_pcr_policy_digest);
 
   std::string extended_pcr_policy_digest;
-  if (hwsec::Status err = GetPcrPolicyDigest(
-          policy_session.get(), default_pcr_map, &extended_pcr_policy_digest)) {
+  if (hwsec::Status err =
+          GetPcrPolicyDigest(policy_session.get(), extended_pcr_map,
+                             &extended_pcr_policy_digest)) {
     return WrapError<TPMError>(std::move(err),
-                               "Error getting default PCR policy digest");
+                               "Error getting extended PCR policy digest");
   }
   pcr_policy_digests.push_back(extended_pcr_policy_digest);
 
