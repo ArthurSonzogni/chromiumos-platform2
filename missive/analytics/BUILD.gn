@@ -25,9 +25,10 @@ static_library("libanalytics") {
     "resource_collector_storage.h",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
+  public_deps = [
     "//missive/proto:libmissiveprotostatus",
     "//missive/resources:resource_interface",
+    "//missive/util:time",
   ]
 }
 

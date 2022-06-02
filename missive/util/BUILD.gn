@@ -46,6 +46,15 @@ static_library("status") {
   public_deps = [ "//missive/proto:libmissiveprotostatus" ]
 }
 
+static_library("time") {
+  sources = [
+    "time.cc",
+    "time.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":status" ]
+}
+
 source_set("shared_queue") {
   sources = [ "shared_queue.h" ]
   deps = [ ":status" ]

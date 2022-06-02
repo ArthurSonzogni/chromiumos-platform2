@@ -5,32 +5,17 @@
 #include "missive/analytics/resource_collector_cpu.h"
 
 #include <algorithm>
-#include <cerrno>
 #include <cstddef>
-#include <cstring>
-#include <ctime>
 #include <string>
 
 #include <base/logging.h>
-#include <base/strings/strcat.h>
 #include <metrics/metrics_library.h>
 
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
+#include "missive/util/time.h"
 
 namespace reporting::analytics {
-
-namespace {
-std::string GetSystemErrorMessage() {
-  static constexpr size_t kBufSize = 256U;
-  std::string error_msg;
-  error_msg.reserve(kBufSize);
-  const char* error_str = strerror_r(errno, error_msg.data(), error_msg.size());
-  if (error_str == nullptr) {
-    error_msg = "Unknown error";
-  }
-  return error_msg;
-}
-}  // namespace
 
 ResourceCollectorCpu::ResourceCollectorCpu(base::TimeDelta interval)
     : ResourceCollector(interval) {}
@@ -55,26 +40,16 @@ bool ResourceCollectorCpu::SendCpuUsagePercentageToUma(
 
 StatusOr<uint64_t> ResourceCollectorCpu::CpuUsageTallier::Tally()
     VALID_CONTEXT_REQUIRED(sequence_checker_) {
-  struct timespec tp_cpu, tp_wall;
-  // If we fail to retrieve either CPU or wall time, we give up for this round.
-  if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tp_cpu)) {
-    return Status(error::UNKNOWN, base::StrCat({"Failed to retrieve CPU time: ",
-                                                GetSystemErrorMessage()}));
-  }
-  if (clock_gettime(CLOCK_REALTIME, &tp_wall)) {
-    return Status(error::UNKNOWN,
-                  base::StrCat({"Failed to retrieve wall-clock time: ",
-                                GetSystemErrorMessage()}));
-  }
+  ASSIGN_OR_RETURN(uint64_t cpu_time, GetCurrentTime(TimeType::kProcessCpu));
+  ASSIGN_OR_RETURN(uint64_t wall_time, GetCurrentTime(TimeType::kWall));
 
   // We ignore the nanosecond part because we don't need that level of accuracy.
-  uint64_t result = static_cast<uint64_t>(tp_cpu.tv_sec - last_cpu_time_) *
-                    100U /
-                    std::max<uint64_t>(tp_wall.tv_sec - last_wall_time_, 1U);
+  uint64_t result = static_cast<uint64_t>(cpu_time - last_cpu_time_) * 100U /
+                    std::max<uint64_t>(wall_time - last_wall_time_, 1U);
 
   // Update stored CPU time and wall time
-  last_cpu_time_ = tp_cpu.tv_sec;
-  last_wall_time_ = tp_wall.tv_sec;
+  last_cpu_time_ = cpu_time;
+  last_wall_time_ = wall_time;
 
   return result;
 }

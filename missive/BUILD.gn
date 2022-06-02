@@ -191,6 +191,7 @@ if (use.test) {
       "util/status_macros_test.cc",
       "util/status_test.cc",
       "util/statusor_test.cc",
+      "util/time_test.cc",
     ]
 
     configs += [
@@ -219,6 +220,7 @@ if (use.test) {
       "//missive/util:shared_queue",
       "//missive/util:status",
       "//missive/util:test_callbacks_support",
+      "//missive/util:time",
     ]
   }
 }
