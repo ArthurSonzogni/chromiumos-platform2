@@ -32,7 +32,7 @@ use crate::hiberutil::{
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
-use crate::lvm::activate_physical_vg;
+use crate::lvm::activate_physical_lv;
 use crate::metrics::{read_and_send_metrics, MetricsFile, MetricsLogger};
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
@@ -71,7 +71,7 @@ impl ResumeConductor {
     pub fn resume(&mut self, options: ResumeOptions) -> Result<()> {
         info!("Beginning resume");
         // Ensure the persistent version of the stateful block device is available.
-        let _rw_volume_group = activate_physical_vg()?;
+        let _rw_stateful_lv = activate_physical_lv("unencrypted")?;
         self.options = options;
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;

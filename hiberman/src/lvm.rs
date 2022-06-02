@@ -103,44 +103,41 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size_mb: i64) -> Result<()> 
     Ok(())
 }
 
-pub struct ActivatedVolumeGroup {
-    vg_name: Option<String>,
+pub struct ActivatedLogicalVolume {
+    lv_arg: String,
 }
 
-impl ActivatedVolumeGroup {
-    fn new(vg_name: String) -> Result<Self> {
+impl ActivatedLogicalVolume {
+    fn new(vg_name: &str, lv_name: &str) -> Result<Option<Self>> {
         // If it already exists, don't reactivate it.
-        if fs::metadata(format!("/dev/{}/unencrypted", vg_name)).is_ok() {
-            return Ok(Self { vg_name: None });
+        if fs::metadata(format!("/dev/{}/{}", vg_name, lv_name)).is_ok() {
+            return Ok(None);
         }
 
-        checked_command(Command::new("/sbin/vgchange").args(["-ay", &vg_name]))
-            .context("Cannot activate volume group")?;
+        let lv_arg = format!("{}/{}", vg_name, lv_name);
+        checked_command(Command::new("/sbin/lvchange").args(["-ay", &lv_arg]))
+            .context("Cannot activate logical volume")?;
 
-        Ok(Self {
-            vg_name: Some(vg_name),
-        })
+        Ok(Some(Self { lv_arg }))
     }
 }
 
-impl Drop for ActivatedVolumeGroup {
+impl Drop for ActivatedLogicalVolume {
     fn drop(&mut self) {
-        if let Some(vg_name) = &self.vg_name {
-            let r = checked_command(Command::new("/sbin/vgchange").args(["-an", vg_name]));
+        let r = checked_command(Command::new("/sbin/lvchange").args(["-an", &self.lv_arg]));
 
-            match r {
-                Ok(_) => {
-                    info!("Deactivated vg {}", vg_name);
-                }
-                Err(e) => {
-                    warn!("Failed to deactivate VG {}: {}", vg_name, e);
-                }
+        match r {
+            Ok(_) => {
+                info!("Deactivated LV {}", self.lv_arg);
+            }
+            Err(e) => {
+                warn!("Failed to deactivate LV {}: {}", self.lv_arg, e);
             }
         }
     }
 }
 
-pub fn activate_physical_vg() -> Result<Option<ActivatedVolumeGroup>> {
+pub fn activate_physical_lv(lv_name: &str) -> Result<Option<ActivatedLogicalVolume>> {
     if !is_snapshot_active() {
         return Ok(None);
     }
@@ -154,6 +151,5 @@ pub fn activate_physical_vg() -> Result<Option<ActivatedVolumeGroup>> {
         }
     };
 
-    let vg = ActivatedVolumeGroup::new(vg_name)?;
-    Ok(Some(vg))
+    ActivatedLogicalVolume::new(&vg_name, lv_name)
 }
