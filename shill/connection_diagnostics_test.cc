@@ -4,9 +4,6 @@
 
 #include "shill/connection_diagnostics.h"
 
-#include <linux/rtnetlink.h>
-#include <net/if_arp.h>
-
 #include <memory>
 #include <set>
 #include <string>
@@ -16,22 +13,13 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
-#include "shill/arp_client_test_helper.h"
 #include "shill/icmp_session.h"
 #include "shill/manager.h"
-#include "shill/mock_arp_client.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_icmp_session.h"
-#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_routing_table.h"
-#include "shill/net/arp_client.h"
-#include "shill/net/mock_io_handler_factory.h"
-#include "shill/net/mock_rtnl_handler.h"
-#include "shill/routing_table_entry.h"
 
 using testing::_;
 using testing::ByMove;
@@ -54,8 +42,6 @@ const std::vector<std::string> kIPv6DnsList{
     "2001:4860:4860::8844",
 };
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
-constexpr const char kDeviceMacAddressASCIIString[] = "123456";
-constexpr const char kArpReplySenderMacAddressASCIIString[] = "345678";
 const shill::IPAddress kIPv4DeviceAddress("100.200.43.22");
 const shill::IPAddress kIPv6DeviceAddress("2001:db8::3333:4444:5555");
 const shill::IPAddress kIPv4ServerAddress("8.8.8.8");
@@ -65,8 +51,6 @@ const shill::IPAddress kIPv6GatewayAddress("fee2::11b2:53f:13be:125e");
 const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
 const std::vector<base::TimeDelta> kEmptyResult;
 const std::vector<base::TimeDelta> kNonEmptyResult{base::Milliseconds(10)};
-constexpr const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00,
-                                             0x00, 0x00, 0x00};
 }  // namespace
 
 namespace shill {
@@ -145,9 +129,6 @@ class ConnectionDiagnosticsTest : public Test {
       : ip_address_(kIPv4DeviceAddress),
         gateway_(kIPv4GatewayAddress),
         dns_list_(kIPv4DnsList),
-        local_mac_address_(std::string(kDeviceMacAddressASCIIString), false),
-        manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
         connection_diagnostics_(kInterfaceName,
                                 kInterfaceIndex,
                                 kIPv4DeviceAddress,
@@ -155,10 +136,7 @@ class ConnectionDiagnosticsTest : public Test {
                                 kIPv4DnsList,
                                 &dispatcher_,
                                 &metrics_,
-                                &device_info_,
-                                callback_target_.result_callback()) {
-    connection_diagnostics_.io_handler_factory_ = &io_handler_factory_;
-  }
+                                callback_target_.result_callback()) {}
 
   ~ConnectionDiagnosticsTest() override = default;
 
@@ -170,15 +148,10 @@ class ConnectionDiagnosticsTest : public Test {
     ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6GatewayAddress.family());
 
     dns_client_ = new NiceMock<MockDnsClient>();
-    arp_client_ = new NiceMock<MockArpClient>();
-    client_test_helper_.reset(new ArpClientTestHelper(arp_client_));
     icmp_session_ = new NiceMock<MockIcmpSession>(&dispatcher_);
     connection_diagnostics_.dns_client_.reset(dns_client_);  // Passes ownership
-    connection_diagnostics_.arp_client_.reset(arp_client_);  // Passes ownership
     connection_diagnostics_.icmp_session_.reset(
         icmp_session_);  // Passes ownership
-    connection_diagnostics_.routing_table_ = &routing_table_;
-    connection_diagnostics_.rtnl_handler_ = &rtnl_handler_;
   }
 
   void TearDown() override {}
@@ -250,20 +223,10 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_EQ(0, connection_diagnostics_.num_dns_attempts_);
     EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());
     EXPECT_EQ(nullptr, connection_diagnostics_.dns_client_);
-    EXPECT_FALSE(connection_diagnostics_.arp_client_->IsStarted());
     EXPECT_FALSE(connection_diagnostics_.icmp_session_->IsStarted());
-    EXPECT_EQ(nullptr, connection_diagnostics_.receive_response_handler_);
-    EXPECT_EQ(nullptr, connection_diagnostics_.neighbor_msg_listener_);
     EXPECT_TRUE(
         connection_diagnostics_.id_to_pending_dns_server_icmp_session_.empty());
     EXPECT_EQ(nullptr, connection_diagnostics_.target_url_);
-    EXPECT_TRUE(connection_diagnostics_.route_query_callback_.IsCancelled());
-    EXPECT_TRUE(
-        connection_diagnostics_.route_query_timeout_callback_.IsCancelled());
-    EXPECT_TRUE(
-        connection_diagnostics_.arp_reply_timeout_callback_.IsCancelled());
-    EXPECT_TRUE(connection_diagnostics_.neighbor_request_timeout_callback_
-                    .IsCancelled());
   }
 
   void ExpectIcmpSessionStop() { EXPECT_CALL(*icmp_session_, Stop()); }
@@ -378,160 +341,13 @@ class ConnectionDiagnosticsTest : public Test {
                                 const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
-    // Next action is either to find a route to the target web server, find an
-    // ARP entry for the IPv4 gateway, or find a neighbor table entry for the
-    // IPv6 gateway.
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
+    // If the ping destination was not the gateway, the next action is to try
+    // to ping the gateway.
+    if (ping_event_type == ConnectionDiagnostics::kTypePingTargetServer) {
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
+    }
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
                                                kEmptyResult);
-  }
-
-  void ExpectFindRouteToHostStartSuccess(const IPAddress& address) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeFindRoute,
-                     ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(routing_table_, RequestRouteToHost(IsSameIPAddress(address),
-                                                   kInterfaceIndex, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(
-        dispatcher_,
-        PostDelayedTask(_, _, ConnectionDiagnostics::kRouteQueryTimeout));
-    connection_diagnostics_.FindRouteToHost(address);
-    EXPECT_FALSE(
-        connection_diagnostics_.route_query_timeout_callback_.IsCancelled());
-  }
-
-  void ExpectFindRouteToHostEndSuccess(const IPAddress& address_queried,
-                                       bool is_local_address) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeFindRoute,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultSuccess);
-
-    IPAddress gateway(IPAddress::kFamilyIPv4);
-    if (is_local_address) {
-      gateway.SetAddressToDefault();
-    } else {
-      // Could be an IPv6 address, but we instrument this later with the
-      // argument passed to ExpectPingHostStartSuccess.
-      gateway = kIPv4GatewayAddress;
-    }
-
-    // Next action is either to ping the gateway, find an ARP table entry for
-    // the local IPv4 web server, or find a neighbor table entry for the local
-    // IPv6 web server.
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    auto entry =
-        RoutingTableEntry::Create(address_queried,
-                                  IPAddress(address_queried.family()), gateway)
-            .SetTable(kInterfaceIndex + 1000);
-    connection_diagnostics_.OnRouteQueryResponse(kInterfaceIndex, entry);
-  }
-
-  void ExpectFindRouteToHostEndFailure() {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeFindRoute,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
-                              ConnectionDiagnostics::kIssueRouting));
-    EXPECT_CALL(callback_target(),
-                ResultCallback(ConnectionDiagnostics::kIssueRouting,
-                               IsEventList(expected_events_)));
-    connection_diagnostics_.OnRouteQueryTimeout();
-  }
-
-  void ExpectArpTableLookupStartSuccessEndSuccess(const IPAddress& address,
-                                                  bool is_gateway) {
-    ExpectArpTableLookup(address, true, is_gateway);
-  }
-
-  void ExpectArpTableLookupStartSuccessEndFailure(const IPAddress& address) {
-    ExpectArpTableLookup(address, false, false);
-  }
-
-  void ExpectNeighborTableLookupStartSuccess(const IPAddress& address) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeNeighborTableLookup,
-                     ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestNeighbor));
-    EXPECT_CALL(dispatcher_,
-                PostDelayedTask(
-                    _, _, ConnectionDiagnostics::kNeighborTableRequestTimeout));
-    connection_diagnostics_.FindNeighborTableEntry(address);
-  }
-
-  void ExpectNeighborTableLookupEndSuccess(const IPAddress& address_queried,
-                                           bool is_gateway) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeNeighborTableLookup,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultSuccess);
-    RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0, 0,
-                    kInterfaceIndex, IPAddress::kFamilyIPv6);
-    msg.set_neighbor_status(
-        RTNLMessage::NeighborStatus(NUD_REACHABLE, 0, NDA_DST));
-    msg.SetAttribute(NDA_DST, address_queried.address());
-    const auto& issue = is_gateway
-                            ? ConnectionDiagnostics::kIssueGatewayNotResponding
-                            : ConnectionDiagnostics::kIssueServerNotResponding;
-    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
-    EXPECT_CALL(callback_target(),
-                ResultCallback(issue, IsEventList(expected_events_)));
-    connection_diagnostics_.OnNeighborMsgReceived(address_queried, msg);
-  }
-
-  void ExpectNeighborTableLookupEndFailureNotReachable(
-      const IPAddress& address_queried, bool is_gateway) {
-    ExpectNeighborTableLookupEndFailure(address_queried, is_gateway, false);
-  }
-
-  void ExpectNeighborTableLookupEndFailureNoEntry(
-      const IPAddress& address_queried, bool is_gateway) {
-    ExpectNeighborTableLookupEndFailure(address_queried, is_gateway, true);
-  }
-
-  void ExpectCheckIPCollisionStartSuccess() {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
-                     ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(device_info_, GetMacAddress(kInterfaceIndex, _))
-        .WillOnce(DoAll(SetArgPointee<1>(local_mac_address_), Return(true)));
-    EXPECT_CALL(*arp_client_, StartReplyListener()).WillOnce(Return(true));
-    // We should send an ARP probe request for our own local IP address.
-    EXPECT_CALL(*arp_client_,
-                TransmitRequest(IsArpRequest(
-                    kIPv4ZeroAddress, ip_address_, local_mac_address_,
-                    ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)))))
-        .WillOnce(Return(true));
-    EXPECT_CALL(dispatcher_,
-                PostDelayedTask(_, _, ConnectionDiagnostics::kArpReplyTimeout));
-    connection_diagnostics_.CheckIpCollision();
-  }
-
-  void ExpectCheckIPCollisionEndSuccess() {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultSuccess);
-    // Simulate ARP response from a sender with the same IP address as our
-    // connection, directed at our local IP address and local MAC address.
-    client_test_helper_->GeneratePacket(
-        ARPOP_REPLY, ip_address_,
-        ByteString(std::string(kArpReplySenderMacAddressASCIIString), false),
-        ip_address_, local_mac_address_);
-    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
-                              ConnectionDiagnostics::kIssueIPCollision));
-    EXPECT_CALL(callback_target(),
-                ResultCallback(ConnectionDiagnostics::kIssueIPCollision,
-                               IsEventList(expected_events_)));
-    connection_diagnostics_.OnArpReplyReceived(1);
-  }
-
-  void ExpectCheckIPCollisionEndFailureGatewayArpFailed() {
-    ExpectCheckIPCollisionEndFailure(
-        ConnectionDiagnostics::kIssueGatewayArpFailed);
-  }
-
-  void ExpectCheckIPCollisionEndFailureServerArpFailed() {
-    ExpectCheckIPCollisionEndFailure(
-        ConnectionDiagnostics::kIssueServerArpFailed);
   }
 
  private:
@@ -647,94 +463,17 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
   }
 
-  void ExpectArpTableLookup(const IPAddress& address,
-                            bool success,
-                            bool is_gateway) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeArpTableLookup,
-                     ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultSuccess);
-    AddExpectedEvent(ConnectionDiagnostics::kTypeArpTableLookup,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     success ? ConnectionDiagnostics::kResultSuccess
-                             : ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(device_info_, GetMacAddressOfPeer(kInterfaceIndex,
-                                                  IsSameIPAddress(address), _))
-        .WillOnce(Return(success));
-    if (success) {
-      const auto& issue =
-          is_gateway ? ConnectionDiagnostics::kIssueGatewayNotResponding
-                     : ConnectionDiagnostics::kIssueServerNotResponding;
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
-      EXPECT_CALL(callback_target(),
-                  ResultCallback(issue, IsEventList(expected_events_)));
-    } else {
-      // Checking for IP collision.
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    }
-    connection_diagnostics_.FindArpTableEntry(address);
-  }
-
-  void ExpectCheckIPCollisionEndFailure(const std::string& expected_issue) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(expected_issue));
-    EXPECT_CALL(callback_target(),
-                ResultCallback(expected_issue, IsEventList(expected_events_)));
-    connection_diagnostics_.OnArpRequestTimeout();
-  }
-
-  void ExpectNeighborTableLookupEndFailure(const IPAddress& address_queried,
-                                           bool is_gateway,
-                                           bool is_timeout) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeNeighborTableLookup,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultFailure);
-    std::string issue;
-    if (is_timeout) {
-      issue = is_gateway ? ConnectionDiagnostics::kIssueGatewayNoNeighborEntry
-                         : ConnectionDiagnostics::kIssueServerNoNeighborEntry;
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
-      EXPECT_CALL(callback_target(),
-                  ResultCallback(issue, IsEventList(expected_events_)));
-      connection_diagnostics_.OnNeighborTableRequestTimeout(address_queried);
-    } else {
-      issue =
-          is_gateway
-              ? ConnectionDiagnostics::kIssueGatewayNeighborEntryNotConnected
-              : ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected;
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
-      EXPECT_CALL(callback_target(),
-                  ResultCallback(issue, IsEventList(expected_events_)));
-      RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
-                      0, kInterfaceIndex, IPAddress::kFamilyIPv6);
-      msg.set_neighbor_status(
-          RTNLMessage::NeighborStatus(NUD_FAILED, 0, NDA_DST));
-      msg.SetAttribute(NDA_DST, address_queried.address());
-      connection_diagnostics_.OnNeighborMsgReceived(address_queried, msg);
-    }
-  }
-
   IPAddress ip_address_;
   IPAddress gateway_;
   std::vector<std::string> dns_list_;
-  ByteString local_mac_address_;
   CallbackTarget callback_target_;
-  MockControl control_;
   NiceMock<MockMetrics> metrics_;
-  MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
-  MockIOHandlerFactory io_handler_factory_;
   ConnectionDiagnostics connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
-  NiceMock<MockRoutingTable> routing_table_;
-  NiceMock<MockRTNLHandler> rtnl_handler_;
-  std::unique_ptr<ArpClientTestHelper> client_test_helper_;
 
   // Used only for EXPECT_CALL(). Objects are owned by
   // |connection_diagnostics_|.
   NiceMock<MockDnsClient>* dns_client_;
-  NiceMock<MockArpClient>* arp_client_;
   NiceMock<MockIcmpSession>* icmp_session_;
 
   // For each test, all events we expect to appear in the final result are
@@ -904,68 +643,6 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   VerifyStopped();
 }
 
-TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_1) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we fail
-  // to get a route for the IP address, so we end diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndFailure();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_FindRoute_Failure_2) {
-  // Pinging DNS servers succeeds, DNS resolution succeeds, pinging the resolved
-  // IP address fails, and we fail to get a route for the IP address, so we end
-  // diagnostics.
-  ExpectSuccessfulStart();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndFailure();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_3) {
-  // DNS resolution times out, pinging DNS servers succeeds, DNS resolution
-  // succeeds, pinging the resolved IP address fails, and we fail to get a route
-  // for the IP address, so we end diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndTimeout();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndFailure();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_4) {
-  // Pinging DNS servers fails, get a route for the first DNS server, so we end
-  // diagnostics.
-  ExpectSuccessfulStart();
-  ExpectPingDNSServersStartSuccess();
-  ExpectPingDNSServersEndFailure();
-  ExpectFindRouteToHostStartSuccess(gateway());
-  ExpectFindRouteToHostEndFailure();
-  VerifyStopped();
-}
-
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
   // DNS resolution succeeds, pinging the resolved IP address fails, and we
   // successfully get route for the IP address. This address is remote, so ping
@@ -977,8 +654,6 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
                              kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
                            kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              gateway());
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
@@ -997,8 +672,6 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
                              kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
                            kIPv6ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              gateway());
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
@@ -1017,8 +690,6 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
                            kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              gateway());
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
@@ -1041,24 +712,15 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
                              kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
                            kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              gateway());
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
   VerifyStopped();
 }
 
-// Note: for the test below, several other possible paths through the diagnostic
-// state machine that will lead us to end diagnostics at ARP table lookup or IP
-// collision check are not explicitly tested. We do this to avoid redundancy
-// since the above tests have already exercised these sub-paths extensively,
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote, pinging
-  // the local gateway fails, and we find an ARP table entry for the gateway
-  // address, so we end diagnostics.
+TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewayFailure) {
+  // DNS resolution succeeds, pinging the resolved IP address fails. Pinging
+  // the gateway also fails, so we end diagnostics.
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
@@ -1066,201 +728,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
                              kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
                            kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              gateway());
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
-  ExpectArpTableLookupStartSuccessEndSuccess(gateway(), true);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_2) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is local, and we
-  // find an ARP table entry for this address, so we end diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, true);
-  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4ServerAddress, false);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_1) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote, pinging
-  // the local gateway fails, ARP table lookup fails, we check for IP collision
-  // and find one, so we end diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             gateway());
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
-  ExpectArpTableLookupStartSuccessEndFailure(gateway());
-  ExpectCheckIPCollisionStartSuccess();
-  ExpectCheckIPCollisionEndSuccess();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_2) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is local, ARP table
-  // lookup fails, we check for IP collision and find one, so we end
-  // diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, true);
-  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4ServerAddress, false);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_1) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote, pinging
-  // the local gateway fails, ARP table lookup fails, we check for IP collision
-  // and do not find one, so we end diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             gateway());
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
-  ExpectArpTableLookupStartSuccessEndFailure(gateway());
-  ExpectCheckIPCollisionStartSuccess();
-  ExpectCheckIPCollisionEndFailureGatewayArpFailed();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_2) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is local, ARP table
-  // lookup fails, we check for IP collision and do not find one, so we end
-  // diagnostics.
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, true);
-  ExpectArpTableLookupStartSuccessEndFailure(kIPv4ServerAddress);
-  ExpectCheckIPCollisionStartSuccess();
-  ExpectCheckIPCollisionEndFailureServerArpFailed();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote, pinging
-  // the local IPv6 gateway fails, and we find a neighbor table entry for the
-  // gateway. End diagnostics.
-  UseIPv6();
-
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             gateway());
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
-  ExpectNeighborTableLookupStartSuccess(gateway());
-  ExpectNeighborTableLookupEndSuccess(gateway(), true);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_2) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, we succeed
-  // in getting a route for the IP address. This address is a local IPv6
-  // address, and we find a neighbor table entry for it. End diagnostics.
-  UseIPv6();
-
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, true);
-  ExpectNeighborTableLookupStartSuccess(kIPv6ServerAddress);
-  ExpectNeighborTableLookupEndSuccess(kIPv6ServerAddress, false);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, and we
-  // successfully get route for the IP address. This address is remote,
-  // pinging the local IPv6 gateway fails, and we find a neighbor table entry
-  // for the gateway, but it is not marked as reachable. End diagnostics.
-  UseIPv6();
-
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             gateway());
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
-  ExpectNeighborTableLookupStartSuccess(gateway());
-  ExpectNeighborTableLookupEndFailureNotReachable(gateway(), true);
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_2) {
-  // DNS resolution succeeds, pinging the resolved IP address fails, we succeed
-  // in getting a route for the IP address. This address is a local IPv6
-  // address, and we do not find a neighbor table entry for it. End diagnostics.
-  UseIPv6();
-
-  ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6ServerAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, true);
-  ExpectNeighborTableLookupStartSuccess(kIPv6ServerAddress);
-  ExpectNeighborTableLookupEndFailureNoEntry(kIPv6ServerAddress, false);
   VerifyStopped();
 }
 

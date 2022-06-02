@@ -4,14 +4,11 @@
 
 #include "shill/connection_diagnostics.h"
 
-#include <linux/rtnetlink.h>
-
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/device_info.h"
 #include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -20,24 +17,14 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/arp_client.h"
-#include "shill/net/arp_packet.h"
-#include "shill/net/byte_string.h"
-#include "shill/net/io_handler_factory.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
-#include "shill/routing_table.h"
-#include "shill/routing_table_entry.h"
 
 namespace {
 // These strings are dependent on ConnectionDiagnostics::Type. Any changes to
 // this array should be synced with ConnectionDiagnostics::Type.
-const char* const kEventNames[] = {
-    "Portal detection",         "Ping DNS servers",      "DNS resolution",
-    "Ping (target web server)", "Ping (gateway)",        "Find route",
-    "ARP table lookup",         "Neighbor table lookup", "IP collision check"};
+const char* const kEventNames[] = {"Portal detection", "Ping DNS servers",
+                                   "DNS resolution", "Ping (target web server)",
+                                   "Ping (gateway)"};
 // These strings are dependent on ConnectionDiagnostics::Phase. Any changes to
 // this array should be synced with ConnectionDiagnostics::Phase.
 const char* const kPhaseNames[] = {"Start", "End", "End (Content)", "End (DNS)",
@@ -45,11 +32,6 @@ const char* const kPhaseNames[] = {"Start", "End", "End (Content)", "End (DNS)",
 // These strings are dependent on ConnectionDiagnostics::Result. Any changes to
 // this array should be synced with ConnectionDiagnostics::Result.
 const char* const kResultNames[] = {"Success", "Failure", "Timeout"};
-// After we fail to ping the gateway, we 1) start ARP lookup, 2) fail ARP
-// lookup, 3) start IP collision check, 4) end IP collision check.
-const int kNumEventsFromPingGatewayEndToIpCollisionCheckEnd = 4;
-const char kIPv4ZeroAddress[] = "0.0.0.0";
-const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 }  // namespace
 
@@ -121,24 +103,18 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     const std::vector<std::string>& dns_list,
     EventDispatcher* dispatcher,
     Metrics* metrics,
-    const DeviceInfo* device_info,
     const ResultCallback& result_callback)
     : dispatcher_(dispatcher),
       metrics_(metrics),
-      routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()),
-      device_info_(device_info),
       iface_name_(iface_name),
       iface_index_(iface_index),
       ip_address_(ip_address),
       gateway_(gateway),
       dns_list_(dns_list),
-      arp_client_(new ArpClient(iface_index_)),
       icmp_session_(new IcmpSession(dispatcher_)),
       num_dns_attempts_(0),
       running_(false),
       result_callback_(result_callback),
-      io_handler_factory_(IOHandlerFactory::GetInstance()),
       weak_ptr_factory_(this) {
   dns_client_.reset(new DnsClient(
       ip_address.family(), iface_name, DnsClient::kDnsTimeoutMilliseconds,
@@ -185,16 +161,9 @@ void ConnectionDiagnostics::Stop() {
   num_dns_attempts_ = 0;
   diagnostic_events_.clear();
   dns_client_.reset();
-  arp_client_->Stop();
   icmp_session_->Stop();
-  receive_response_handler_.reset();
-  neighbor_msg_listener_.reset();
   id_to_pending_dns_server_icmp_session_.clear();
   target_url_.reset();
-  route_query_callback_.Cancel();
-  route_query_timeout_callback_.Cancel();
-  arp_reply_timeout_callback_.Cancel();
-  neighbor_request_timeout_callback_.Cancel();
 }
 
 // static
@@ -310,143 +279,6 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 }
 
-void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
-  SLOG(2) << __func__;
-
-  RoutingTableEntry entry;
-  route_query_callback_.Reset(
-      base::Bind(&ConnectionDiagnostics::OnRouteQueryResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
-  if (!routing_table_->RequestRouteToHost(address, iface_index_,
-                                          route_query_callback_.callback())) {
-    route_query_callback_.Cancel();
-    LOG(ERROR) << iface_name_ << ": could not request route to "
-               << address.ToString();
-    AddEventWithMessage(kTypeFindRoute, kPhaseStart, kResultFailure,
-                        "Could not request route to " + address.ToString());
-    ReportResultAndStop(kIssueInternalError);
-    return;
-  }
-
-  // RoutingTable implementation does not have a built-in timeout mechanism
-  // for un-replied route requests, so use our own.
-  route_query_timeout_callback_.Reset(
-      base::BindOnce(&ConnectionDiagnostics::OnRouteQueryTimeout,
-                     weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
-      FROM_HERE, route_query_timeout_callback_.callback(), kRouteQueryTimeout);
-  AddEventWithMessage(kTypeFindRoute, kPhaseStart, kResultSuccess,
-                      "Requesting route to " + address.ToString());
-}
-
-void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
-  SLOG(2) << __func__;
-
-  if (address.family() != IPAddress::kFamilyIPv4) {
-    // We only perform ARP table lookups for IPv4 addresses.
-    LOG(ERROR) << iface_name_ << ": " << address.ToString()
-               << " is not an IPv4 address";
-    AddEventWithMessage(kTypeArpTableLookup, kPhaseStart, kResultFailure,
-                        address.ToString() + " is not an IPv4 address");
-    ReportResultAndStop(kIssueInternalError);
-    return;
-  }
-
-  AddEventWithMessage(kTypeArpTableLookup, kPhaseStart, kResultSuccess,
-                      "Finding ARP table entry for " + address.ToString());
-  ByteString target_mac_address;
-  if (device_info_->GetMacAddressOfPeer(iface_index_, address,
-                                        &target_mac_address)) {
-    AddEventWithMessage(kTypeArpTableLookup, kPhaseEnd, kResultSuccess,
-                        "Found ARP table entry for " + address.ToString());
-    ReportResultAndStop(address.Equals(gateway_) ? kIssueGatewayNotResponding
-                                                 : kIssueServerNotResponding);
-    return;
-  }
-
-  AddEventWithMessage(
-      kTypeArpTableLookup, kPhaseEnd, kResultFailure,
-      "Could not find ARP table entry for " + address.ToString());
-  dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&ConnectionDiagnostics::CheckIpCollision,
-                                       weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
-  SLOG(2) << __func__;
-
-  if (address.family() != IPAddress::kFamilyIPv6) {
-    // We only perform neighbor table lookups for IPv6 addresses.
-    LOG(ERROR) << iface_name_ << ": " << address.ToString()
-               << " is not an IPv6 address";
-    AddEventWithMessage(kTypeNeighborTableLookup, kPhaseStart, kResultFailure,
-                        address.ToString() + " is not an IPv6 address");
-    ReportResultAndStop(kIssueInternalError);
-    return;
-  }
-
-  neighbor_msg_listener_.reset(new RTNLListener(
-      RTNLHandler::kRequestNeighbor,
-      base::BindRepeating(&ConnectionDiagnostics::OnNeighborMsgReceived,
-                          weak_ptr_factory_.GetWeakPtr(), address)));
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestNeighbor);
-
-  neighbor_request_timeout_callback_.Reset(
-      base::BindOnce(&ConnectionDiagnostics::OnNeighborTableRequestTimeout,
-                     weak_ptr_factory_.GetWeakPtr(), address));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               neighbor_request_timeout_callback_.callback(),
-                               kNeighborTableRequestTimeout);
-  AddEventWithMessage(kTypeNeighborTableLookup, kPhaseStart, kResultSuccess,
-                      "Finding neighbor table entry for " + address.ToString());
-}
-
-void ConnectionDiagnostics::CheckIpCollision() {
-  SLOG(2) << __func__;
-
-  if (!device_info_->GetMacAddress(iface_index_, &mac_address_)) {
-    LOG(ERROR) << iface_name_ << ": could not get local MAC address";
-    AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
-                        "Could not get local MAC address");
-    ReportResultAndStop(kIssueInternalError);
-    return;
-  }
-
-  if (!arp_client_->StartReplyListener()) {
-    LOG(ERROR) << iface_name_ << ": failed to start ARP client";
-    AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
-                        "Failed to start ARP client");
-    ReportResultAndStop(kIssueInternalError);
-    return;
-  }
-
-  receive_response_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
-      arp_client_->socket(), IOHandler::kModeInput,
-      base::Bind(&ConnectionDiagnostics::OnArpReplyReceived,
-                 weak_ptr_factory_.GetWeakPtr())));
-
-  // Create an 'Arp Probe' Packet.
-  ArpPacket request(IPAddress(std::string(kIPv4ZeroAddress)), ip_address_,
-                    mac_address_,
-                    ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)));
-  if (!arp_client_->TransmitRequest(request)) {
-    LOG(ERROR) << iface_name_ << ": failed to send ARP request";
-    AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
-                        "Failed to send ARP request");
-    arp_client_->Stop();
-    receive_response_handler_.reset();
-    ReportResultAndStop(kIssueInternalError);
-    return;
-  }
-
-  arp_reply_timeout_callback_.Reset(
-      base::BindOnce(&ConnectionDiagnostics::OnArpRequestTimeout,
-                     weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
-      FROM_HERE, arp_reply_timeout_callback_.callback(), kArpReplyTimeout);
-  AddEvent(kTypeIPCollisionCheck, kPhaseStart, kResultSuccess);
-}
-
 void ConnectionDiagnostics::PingHost(const IPAddress& address) {
   SLOG(2) << __func__;
 
@@ -495,26 +327,14 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (pingable_dns_servers_.empty()) {
-    // Use the first DNS server on the list and diagnose its connectivity.
-    IPAddress first_dns_server_ip_addr(dns_list_[0]);
-    if (first_dns_server_ip_addr.family() == IPAddress::kFamilyUnknown) {
-      LOG(ERROR) << iface_name_ << ": could not parse DNS server IP address "
-                 << dns_list_[0];
-      AddEventWithMessage(kTypePingDNSServers, kPhaseEnd, kResultFailure,
-                          "Could not parse DNS "
-                          "server IP address " +
-                              dns_list_[0]);
-      ReportResultAndStop(kIssueInternalError);
-      return;
-    }
     AddEventWithMessage(
         kTypePingDNSServers, kPhaseEnd, kResultFailure,
-        "No DNS servers responded to pings. Pinging first DNS server at " +
-            first_dns_server_ip_addr.ToString());
+        "No DNS servers responded to pings. Pinging the gateway at " +
+            gateway_.ToString());
+    // If no DNS servers can be pinged, try to ping the gateway.
     dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::FindRouteToHost,
-                                  weak_ptr_factory_.GetWeakPtr(),
-                                  first_dns_server_ip_addr));
+        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                  weak_ptr_factory_.GetWeakPtr(), gateway_));
     return;
   }
 
@@ -592,159 +412,19 @@ void ConnectionDiagnostics::OnPingHostComplete(
                             : kIssueHTTP);
   } else if (result_type == kResultFailure &&
              ping_event_type == kTypePingTargetServer) {
+    // If pinging the target web server fails, try pinging the gateway.
     dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ConnectionDiagnostics::FindRouteToHost,
-                       weak_ptr_factory_.GetWeakPtr(), address_pinged));
+        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                  weak_ptr_factory_.GetWeakPtr(), gateway_));
   } else if (result_type == kResultFailure &&
-             ping_event_type == kTypePingGateway &&
-             address_pinged.family() == IPAddress::kFamilyIPv4) {
-    dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ConnectionDiagnostics::FindArpTableEntry,
-                       weak_ptr_factory_.GetWeakPtr(), address_pinged));
+             ping_event_type == kTypePingGateway) {
+    ReportResultAndStop(kIssueGatewayUpstream);
   } else {
-    // We failed to ping an IPv6 gateway. Check for neighbor table entry for
-    // this gateway.
-    dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ConnectionDiagnostics::FindNeighborTableEntry,
-                       weak_ptr_factory_.GetWeakPtr(), address_pinged));
+    LOG(WARNING) << iface_name_ << ": " << __func__
+                 << " received unexpected event type " << ping_event_type
+                 << " while pinging " << address_pinged.ToString();
+    ReportResultAndStop(kIssueInternalError);
   }
-}
-
-void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
-  SLOG(2) << __func__ << "(fd " << fd << ")";
-
-  ArpPacket packet;
-  ByteString sender;
-  if (!arp_client_->ReceivePacket(&packet, &sender)) {
-    return;
-  }
-  // According to RFC 5227, we only check the sender's ip address.
-  if (ip_address_.Equals(packet.local_ip_address())) {
-    arp_reply_timeout_callback_.Cancel();
-    AddEventWithMessage(kTypeIPCollisionCheck, kPhaseEnd, kResultSuccess,
-                        "IP collision found");
-    ReportResultAndStop(kIssueIPCollision);
-  }
-}
-
-void ConnectionDiagnostics::OnArpRequestTimeout() {
-  SLOG(2) << __func__;
-
-  AddEventWithMessage(kTypeIPCollisionCheck, kPhaseEnd, kResultFailure,
-                      "No IP collision found");
-  // TODO(samueltan): perform link-level diagnostics.
-  if (DoesPreviousEventMatch(
-          kTypePingGateway, kPhaseEnd, kResultFailure,
-          kNumEventsFromPingGatewayEndToIpCollisionCheckEnd)) {
-    // We came here from failing to ping the gateway.
-    ReportResultAndStop(kIssueGatewayArpFailed);
-  } else {
-    // Otherwise, we must have come here from failing to ping the target web
-    // server and successfully finding a route.
-    ReportResultAndStop(kIssueServerArpFailed);
-  }
-}
-
-void ConnectionDiagnostics::OnNeighborMsgReceived(
-    const IPAddress& address_queried, const RTNLMessage& msg) {
-  SLOG(2) << __func__;
-
-  DCHECK(msg.type() == RTNLMessage::kTypeNeighbor);
-  const RTNLMessage::NeighborStatus& neighbor = msg.neighbor_status();
-
-  if (neighbor.type != NDA_DST || !msg.HasAttribute(NDA_DST)) {
-    SLOG(4) << __func__ << ": neighbor message has no destination";
-    return;
-  }
-
-  IPAddress address(msg.family(), msg.GetAttribute(NDA_DST));
-  if (!address.Equals(address_queried)) {
-    SLOG(4) << __func__ << ": destination address (" << address.ToString()
-            << ") does not match address queried ("
-            << address_queried.ToString() << ")";
-    return;
-  }
-
-  neighbor_request_timeout_callback_.Cancel();
-  if (!(neighbor.state & (NUD_PERMANENT | NUD_NOARP | NUD_REACHABLE))) {
-    AddEventWithMessage(
-        kTypeNeighborTableLookup, kPhaseEnd, kResultFailure,
-        base::StringPrintf(
-            "Neighbor table entry for %s is not in a connected state "
-            "(actual state = 0x%2x)",
-            address_queried.ToString().c_str(), neighbor.state));
-    ReportResultAndStop(address_queried.Equals(gateway_)
-                            ? kIssueGatewayNeighborEntryNotConnected
-                            : kIssueServerNeighborEntryNotConnected);
-    return;
-  }
-
-  AddEventWithMessage(
-      kTypeNeighborTableLookup, kPhaseEnd, kResultSuccess,
-      "Neighbor table entry found for " + address_queried.ToString());
-  ReportResultAndStop(address_queried.Equals(gateway_)
-                          ? kIssueGatewayNotResponding
-                          : kIssueServerNotResponding);
-}
-
-void ConnectionDiagnostics::OnNeighborTableRequestTimeout(
-    const IPAddress& address_queried) {
-  SLOG(2) << __func__;
-
-  AddEventWithMessage(
-      kTypeNeighborTableLookup, kPhaseEnd, kResultFailure,
-      "Failed to find neighbor table entry for " + address_queried.ToString());
-  ReportResultAndStop(address_queried.Equals(gateway_)
-                          ? kIssueGatewayNoNeighborEntry
-                          : kIssueServerNoNeighborEntry);
-}
-
-void ConnectionDiagnostics::OnRouteQueryResponse(
-    int interface_index, const RoutingTableEntry& entry) {
-  SLOG(2) << __func__ << "(interface " << interface_index << ")";
-
-  if (interface_index != iface_index_) {
-    SLOG(2) << __func__
-            << ": route query response not meant for this interface";
-    return;
-  }
-
-  route_query_timeout_callback_.Cancel();
-  AddEventWithMessage(
-      kTypeFindRoute, kPhaseEnd, kResultSuccess,
-      base::StringPrintf("Found route to %s (%s)", entry.dst.ToString().c_str(),
-                         entry.gateway.IsDefault() ? "remote" : "local"));
-  if (!entry.gateway.IsDefault()) {
-    // We have a route to a remote destination, so ping the route gateway to
-    // check if we have a means of reaching this host.
-    dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ConnectionDiagnostics::PingHost,
-                       weak_ptr_factory_.GetWeakPtr(), entry.gateway));
-  } else if (entry.dst.family() == IPAddress::kFamilyIPv4) {
-    // We have a route to a local IPv4 destination, so check for an ARP table
-    // entry.
-    dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::FindArpTableEntry,
-                                  weak_ptr_factory_.GetWeakPtr(), entry.dst));
-  } else {
-    // We have a route to a local IPv6 destination, so check for a neighbor
-    // table entry.
-    dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ConnectionDiagnostics::FindNeighborTableEntry,
-                       weak_ptr_factory_.GetWeakPtr(), entry.dst));
-  }
-}
-
-void ConnectionDiagnostics::OnRouteQueryTimeout() {
-  SLOG(2) << __func__;
-
-  AddEvent(kTypeFindRoute, kPhaseEnd, kResultFailure);
-  ReportResultAndStop(kIssueRouting);
 }
 
 bool ConnectionDiagnostics::DoesPreviousEventMatch(Type type,

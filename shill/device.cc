@@ -641,7 +641,7 @@ void Device::StartConnectionDiagnosticsAfterPortalDetection() {
   connection_diagnostics_.reset(new ConnectionDiagnostics(
       network_->interface_name(), network_->interface_index(),
       network_->local(), network_->gateway(), network_->dns_servers(),
-      dispatcher(), metrics(), manager_->device_info(), base::DoNothing()));
+      dispatcher(), metrics(), base::DoNothing()));
   if (!connection_diagnostics_->Start(
           manager_->GetProperties().portal_http_url)) {
     connection_diagnostics_.reset();

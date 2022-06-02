@@ -19,31 +19,21 @@
 
 namespace shill {
 
-class ArpClient;
-class ByteString;
-class DeviceInfo;
 class DnsClient;
 class Error;
 class EventDispatcher;
 class HttpUrl;
-class IOHandler;
-class IOHandlerFactory;
 class IcmpSession;
 class IcmpSessionFactory;
 class Metrics;
-class RoutingTable;
-struct RoutingTableEntry;
-class RTNLHandler;
-class RTNLListener;
-class RTNLMessage;
 
 // Given a connected Network and a URL, ConnectionDiagnostics performs the
 // following actions to diagnose a connectivity problem on the current
 // Connection:
 // (A) Starts by pinging all DNS servers.
 //     (B) If none of the DNS servers reply to pings, then we might have a
-//         problem issue reaching DNS servers. Send a request to the kernel
-//         for a route the first DNS server on our list (step I).
+//         problem reaching DNS servers. Check if the gateway can be pinged
+//         (step I).
 //     (C) If at least one DNS server replies to pings but we are out of DNS
 //         retries, the DNS servers are at fault. END.
 //     (D) If at least one DNS server replies to pings, and we have DNS
@@ -55,50 +45,17 @@ class RTNLMessage;
 //         (G) Otherwise, ping the IP address of the target web server.
 //             (H) If ping is successful, we can reach the target web server. We
 //                 might have a HTTP issue or a broken portal. END.
-//             (I) If ping is unsuccessful, we send a request to the kernel for
-//                 a route to the IP address of the target web server.
-//                 (J) If no route is found, a routing issue has been found.
+//             (I) If ping is unsuccessful, ping the IP address of the gateway.
+//                 (J) If the local gateway respond to pings, then we have
+//                     found an upstream connectivity problem or gateway
+//                     problem. END.
+//                 (K) If there is no response, then the local gateway may not
+//                     be responding to pings, or it may not exist on the local
+//                     network or be unreachable if there are link layer issues.
 //                     END.
-//                 (K) If a route is found, and the destination is a local IPv6
-//                     address, look for a neighbor table entry.
-//                     (L) If a neighbor table entry is found, then this
-//                         gateway/web server appears to be on the local
-//                         network, but is not responding to pings. END.
-//                     (M) If a neighbor table entry is not found, then either
-//                         this gateway/web server does not exist on the local
-//                         network, or there are link layer issues.
-//                 (N) If a route is found and the destination is a remote
-//                     address, ping the local gateway.
-//                     (O) If the local gateway respond to pings, then we have
-//                         found an upstream connectivity problem or gateway
-//                         problem. END.
-//                     (P) If the local gateway is at an IPv6 address and does
-//                         not respond to pings, look for a neighbor table
-//                         entry (step K).
-//                     (Q) If the local gateway is at an IPv4 address and does
-//                         not respond to pings, check for an ARP table entry
-//                         for its address (step R).
-//                 (R) Otherwise, if a route is found and the destination is a
-//                     local IPv4 address, look for an ARP table entry for it.
-//                     (S) If an ARP table entry is found, then this gateway/
-//                         web server appears to be on the local network, but is
-//                         not responding to pings. END.
-//                     (T) If an ARP table entry is not found, check for IP
-//                         address collision in the local network by sending out
-//                         an ARP request for the local IP address of this
-//                         connection.
-//                         (U) If a reply is received, an IP collision has been
-//                             detected. END.
-//                         (V) If no reply was received, no IP address collision
-//                             was detected. Since we are here because ARP and
-//                             ping failed, either the web server or gateway
-//                             does not actually exist on the local network, or
-//                             there is a link layer issue. END.
 //
 // TODO(samueltan): Step F: if retry succeeds, remove the unresponsive DNS
 // servers so Chrome does not try to use them.
-// TODO(samueltan): Step X: find ways to disambiguate the cause (e.g. can we see
-// packets from other hosts?).
 class ConnectionDiagnostics {
  public:
   // The ConnectionDiagnostics::kEventNames string array depends on this enum.
@@ -108,10 +65,6 @@ class ConnectionDiagnostics {
     kTypeResolveTargetServerIP = 2,
     kTypePingTargetServer = 3,
     kTypePingGateway = 4,
-    kTypeFindRoute = 5,
-    kTypeArpTableLookup = 6,
-    kTypeNeighborTableLookup = 7,
-    kTypeIPCollisionCheck = 8
   };
 
   // The ConnectionDiagnostics::kPhaseNames string array depends on this enum.
@@ -146,6 +99,7 @@ class ConnectionDiagnostics {
   using ResultCallback =
       base::Callback<void(const std::string&, const std::vector<Event>&)>;
 
+  // TODO(b/229309479) Remove obsolete descriptions.
   // Metrics::NotifyConnectionDiagnosticsIssue depends on these kIssue strings.
   // Any changes to these strings should be synced with that Metrics function.
   static const char kIssueIPCollision[];
@@ -174,7 +128,6 @@ class ConnectionDiagnostics {
                         const std::vector<std::string>& dns_list,
                         EventDispatcher* dispatcher,
                         Metrics* metrics,
-                        const DeviceInfo* device_info,
                         const ResultCallback& result_callback);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
@@ -194,10 +147,6 @@ class ConnectionDiagnostics {
   friend class ConnectionDiagnosticsTest;
 
   static const int kMaxDNSRetries;
-  static constexpr base::TimeDelta kRouteQueryTimeout = base::Seconds(1);
-  static constexpr base::TimeDelta kArpReplyTimeout = base::Seconds(1);
-  static constexpr base::TimeDelta kNeighborTableRequestTimeout =
-      base::Seconds(1);
 
   // Create a new Event with |type|, |phase|, |result|, and an empty message,
   // and add it to the end of |diagnostic_events_|.
@@ -221,22 +170,6 @@ class ConnectionDiagnostics {
 
   // Pings all the DNS servers of |dns_list_|.
   void PingDNSServers();
-
-  // Finds a route to the host at |address| by querying the kernel's routing
-  // table.
-  void FindRouteToHost(const IPAddress& address);
-
-  // Finds an ARP table entry for |address| by querying the kernel's ARP table.
-  void FindArpTableEntry(const IPAddress& address);
-
-  // Finds a neighbor table entry for |address| by requesting an RTNL neighbor
-  // table dump, and looking for a matching neighbor table entry for |address|
-  // in ConnectionDiagnostics::OnNeighborMsgReceived.
-  void FindNeighborTableEntry(const IPAddress& address);
-
-  // Checks for an IP collision by sending out an ARP request for the local IP
-  // address |address_|.
-  void CheckIpCollision();
 
   // Starts an IcmpSession with |address|. Called when we want to ping the
   // target web server or local gateway.
@@ -263,35 +196,6 @@ class ConnectionDiagnostics {
                           const IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);
 
-  // This I/O callback is triggered whenever the ARP reception socket has data
-  // available to be received.
-  void OnArpReplyReceived(int fd);
-
-  // Called if no replies to the ARP request sent in
-  // ConnectionDiagnostics::CheckIpCollision are received within
-  // |kArpReplyTimeout|.
-  void OnArpRequestTimeout();
-
-  // Called when replies are received to the neighbor table dump request issued
-  // in ConnectionDiagnostics::FindNeighborTableEntry.
-  void OnNeighborMsgReceived(const IPAddress& address_queried,
-                             const RTNLMessage& msg);
-
-  // Called if no neighbor table entry for |address_queried| is received within
-  // |kNeighborTableRequestTimeout| of issuing a dump request in
-  // ConnectionDiagnostics::FindNeighborTableEntry.
-  void OnNeighborTableRequestTimeout(const IPAddress& address_queried);
-
-  // Called upon receiving a reply to the routing table query issued in
-  // ConnectionDiagnostics::FindRoute.
-  void OnRouteQueryResponse(int interface_index,
-                            const RoutingTableEntry& entry);
-
-  // Called if no replies to the routing table query issued in
-  // ConnectionDiagnostics::FindRoute are received within
-  // |kRouteQueryTimeout|.
-  void OnRouteQueryTimeout();
-
   // Utility function that returns true iff the event in |diagnostic_events_|
   // that is |num_events_ago| before the last event has a matching |type|,
   // |phase|, and |result|.
@@ -302,11 +206,7 @@ class ConnectionDiagnostics {
 
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
-  RoutingTable* routing_table_;
-  RTNLHandler* rtnl_handler_;
 
-  // Used to get the MAC address of the device associated with the connection.
-  const DeviceInfo* device_info_;
   // The name of the network interface associated with the connection.
   std::string iface_name_;
   // The index of the network interface associated with the connection.
@@ -316,11 +216,8 @@ class ConnectionDiagnostics {
   // The IP address of the gateway.
   IPAddress gateway_;
   std::vector<std::string> dns_list_;
-  // The MAC address of network interface associated with the connection.
-  ByteString mac_address_;
 
   std::unique_ptr<DnsClient> dns_client_;
-  std::unique_ptr<ArpClient> arp_client_;
   std::unique_ptr<IcmpSession> icmp_session_;
 
   // The URL whose hostname is being diagnosed. Stored in unique_ptr so that it
@@ -336,19 +233,6 @@ class ConnectionDiagnostics {
   bool running_;
 
   ResultCallback result_callback_;
-  base::CancelableCallback<void(int, const RoutingTableEntry&)>
-      route_query_callback_;
-  base::CancelableOnceClosure route_query_timeout_callback_;
-  base::CancelableOnceClosure arp_reply_timeout_callback_;
-  base::CancelableOnceClosure neighbor_request_timeout_callback_;
-
-  IOHandlerFactory* io_handler_factory_;
-
-  // IOCallback that fires when the socket associated with |arp_client_| has a
-  // packet to be received.  Calls ConnectionDiagnostics::OnArpReplyReceived.
-  std::unique_ptr<IOHandler> receive_response_handler_;
-
-  std::unique_ptr<RTNLListener> neighbor_msg_listener_;
 
   // Record of all diagnostic events that occurred, sorted in order of
   // occurrence.
