@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <deque>
 #include <fcntl.h>
+#include <optional>
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -51,7 +52,8 @@ constexpr size_t kCompressionThreshold = 512U;
 MissiveDaemon::MissiveDaemon()
     : brillo::DBusServiceDaemon(::missive::kMissiveServiceName),
       org::chromium::MissivedAdaptor(this),
-      upload_client_(UploadClient::Create()) {
+      upload_client_(UploadClient::Create()),
+      enqueuing_record_tallier_{base::Minutes(3)} {
   analytics_registry_.Add(
       "Storage", std::make_unique<analytics::ResourceCollectorStorage>(
                      base::Minutes(10), base::FilePath(kReportingDirectory)));
@@ -116,6 +118,7 @@ void MissiveDaemon::AsyncStartUpload(
        reason == UploaderInterface::UploadReason::KEY_DELIVERY),
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
+      /*new_events_rate=*/enqueuing_record_tallier_.GetAverage(),
       std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call
@@ -156,6 +159,11 @@ void MissiveDaemon::EnqueueRecord(
     status->set_error_message("Request had no Priority");
     response->Return(response_body);
     return;
+  }
+
+  // Tally the enqueuing record
+  if (in_request.has_record()) {
+    enqueuing_record_tallier_.Tally(in_request.record());
   }
 
   scheduler_.EnqueueJob(

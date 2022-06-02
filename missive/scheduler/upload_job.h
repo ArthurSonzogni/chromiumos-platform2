@@ -6,6 +6,7 @@
 #define MISSIVE_SCHEDULER_UPLOAD_JOB_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/callback.h>
@@ -33,7 +34,8 @@ class UploadJob : public Scheduler::Job {
    public:
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
                    bool need_encryption_key,
-                   uint64_t remaining_storage_capacity);
+                   uint64_t remaining_storage_capacity,
+                   std::optional<uint64_t> new_events_rate);
     UploadDelegate(const UploadDelegate& other) = delete;
     UploadDelegate& operator=(const UploadDelegate& other) = delete;
     ~UploadDelegate() override;
@@ -50,6 +52,7 @@ class UploadJob : public Scheduler::Job {
     const bool need_encryption_key_;
     Records records_;
     uint64_t remaining_storage_capacity_;
+    std::optional<uint64_t> new_events_rate_;
   };
 
   class RecordProcessor : public UploaderInterface {
@@ -85,6 +88,7 @@ class UploadJob : public Scheduler::Job {
       scoped_refptr<UploadClient> upload_client,
       bool need_encryption_key,
       uint64_t remaining_storage_capacity,
+      std::optional<uint64_t> new_events_rate,
       UploaderInterface::UploaderInterfaceResultCb start_cb);
 
  protected:

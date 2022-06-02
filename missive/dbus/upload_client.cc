@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -75,6 +76,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
       std::unique_ptr<std::vector<EncryptedRecord>> records,
       const bool need_encryption_keys,
       uint64_t remaining_storage_capacity,
+      std::optional<uint64_t> new_events_rate,
       scoped_refptr<dbus::Bus> bus,
       dbus::ObjectProxy* chrome_proxy,
       UploadClient::HandleUploadResponseCallback response_callback)
@@ -87,6 +89,11 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     }
     request_.set_need_encryption_keys(need_encryption_keys);
     request_.set_remaining_storage_capacity(remaining_storage_capacity);
+    // If for some reason new events rate couldn't be calculated, leave the
+    // field absent.
+    if (new_events_rate.has_value()) {
+      request_.set_new_events_rate(new_events_rate.value());
+    }
   }
 
   // Implementation of DisconnectableClient::Delegate
@@ -175,12 +182,13 @@ void UploadClient::MaybeMakeCall(
     std::unique_ptr<std::vector<EncryptedRecord>> records,
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
+    std::optional<uint64_t> new_events_rate,
     HandleUploadResponseCallback response_callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
       std::move(records), need_encryption_keys, remaining_storage_capacity,
-      bus_, chrome_proxy_, std::move(response_callback));
+      new_events_rate, bus_, chrome_proxy_, std::move(response_callback));
   GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
 }
 
@@ -199,13 +207,14 @@ void UploadClient::SendEncryptedRecords(
     std::unique_ptr<std::vector<EncryptedRecord>> records,
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
+    std::optional<uint64_t> new_events_rate,
     HandleUploadResponseCallback response_callback) {
   bus_->GetOriginTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&UploadClient::MaybeMakeCall,
                      weak_ptr_factory_.GetWeakPtr(), std::move(records),
                      need_encryption_keys, remaining_storage_capacity,
-                     std::move(response_callback)));
+                     new_events_rate, std::move(response_callback)));
 }
 
 void UploadClient::OwnerChanged(const std::string& old_owner,

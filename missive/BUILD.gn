@@ -178,6 +178,7 @@ if (use.test) {
       "compression/compression_module_test.cc",
       "dbus/upload_client_test.cc",
       "missive_daemon_test.cc",
+      "resources/enqueuing_record_tallier_test.cc",
       "resources/resource_interface_test.cc",
       "scheduler/enqueue_job_test.cc",
       "scheduler/scheduler_test.cc",

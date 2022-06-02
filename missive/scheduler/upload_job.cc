@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -39,10 +40,12 @@ constexpr size_t kMaxUploadSize = 10UL * 1024UL * 1024UL;  // 10MiB
 UploadJob::UploadDelegate::UploadDelegate(
     scoped_refptr<UploadClient> upload_client,
     bool need_encryption_key,
-    uint64_t remaining_storage_capacity)
+    uint64_t remaining_storage_capacity,
+    std::optional<uint64_t> new_events_rate)
     : upload_client_(upload_client),
       need_encryption_key_(need_encryption_key),
-      remaining_storage_capacity_(remaining_storage_capacity) {}
+      remaining_storage_capacity_(remaining_storage_capacity),
+      new_events_rate_(new_events_rate) {}
 
 UploadJob::UploadDelegate::~UploadDelegate() = default;
 UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
@@ -52,6 +55,7 @@ UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
 Status UploadJob::UploadDelegate::Complete() {
   upload_client_->SendEncryptedRecords(
       std::move(records_), need_encryption_key_, remaining_storage_capacity_,
+      new_events_rate_,
       // For now the response doesn't contain anything interesting, so we don't
       // handle it. In the future this could change. If it does, UploadClient
       // should be updated to use CallMethodAndBlock rather than CallMethod.
@@ -124,6 +128,7 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
     scoped_refptr<UploadClient> upload_client,
     bool need_encryption_key,
     uint64_t remaining_storage_capacity,
+    std::optional<uint64_t> new_events_rate,
     UploaderInterface::UploaderInterfaceResultCb start_cb) {
   if (upload_client == nullptr) {
     Status status(error::INVALID_ARGUMENT,
@@ -133,7 +138,8 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
   }
 
   auto upload_delegate = std::make_unique<UploadDelegate>(
-      upload_client, need_encryption_key, remaining_storage_capacity);
+      upload_client, need_encryption_key, remaining_storage_capacity,
+      new_events_rate);
   SetRecordsCb set_records_callback = upload_delegate->GetSetRecordsCb();
 
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =

@@ -5,6 +5,7 @@
 #include "missive/dbus/upload_client.h"
 
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -182,6 +183,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   upload_client_->SendEncryptedRecords(std::move(records),
                                        /*need_encryption_keys=*/false,
                                        /*remaining_storage_capacity=*/0U,
+                                       /*new_events_rate=*/1U,
                                        std::move(response_callback));
   waiter.Wait();
 }
@@ -227,7 +229,7 @@ TEST_F(UploadClientTest, CallUnavailable) {
       std::move(records),
       /*need_encryption_keys=*/false,
       /*remaining_storage_capacity=*/std::numeric_limits<uint64_t>::max(),
-      std::move(response_callback));
+      /*new_events_rate=*/10U, std::move(response_callback));
   waiter.Wait();
 }
 
@@ -272,6 +274,7 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
   upload_client_->SendEncryptedRecords(std::move(records),
                                        /*need_encryption_keys=*/false,
                                        /*remaining_storage_capacity=*/3000U,
+                                       /*new_events_rate=*/std::nullopt,
                                        std::move(response_callback));
 
   upload_client_->SetAvailabilityForTest(/*is_available=*/false);

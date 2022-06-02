@@ -22,6 +22,8 @@ static_library("resource_interface") {
   sources = [
     "disk_resource_impl.cc",
     "disk_resource_impl.h",
+    "enqueuing_record_tallier.cc",
+    "enqueuing_record_tallier.h",
     "memory_resource_impl.cc",
     "memory_resource_impl.h",
     "resource_interface.cc",
@@ -29,4 +31,10 @@ static_library("resource_interface") {
   ]
 
   configs += [ ":target_defaults" ]
+
+  public_deps = [
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/util:status",
+    "//missive/util:time",
+  ]
 }
