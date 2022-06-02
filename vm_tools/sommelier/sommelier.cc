@@ -140,8 +140,6 @@ static void sl_adjust_window_position_for_screen_size(
   window->y = ctx->screen->height_in_pixels / 2 - window->height / 2;
 }
 
-
-
 static void sl_set_input_focus(struct sl_context* ctx,
                                struct sl_window* window) {
   if (window) {
@@ -438,7 +436,6 @@ void sl_host_seat_removed(struct sl_host_seat* host) {
   if (host->seat->ctx->default_seat == host)
     host->seat->ctx->default_seat = NULL;
 }
-
 
 static void sl_global_destroy(struct sl_global* global) {
   TRACE_EVENT("other", "sl_global_destroy");
@@ -2132,11 +2129,10 @@ void sl_handle_property_notify(struct sl_context* ctx,
       return;
 
     zaura_surface_set_frame(window->aura_surface,
-                            window->decorated
-                                ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
-                                : window->depth == 32
-                                      ? ZAURA_SURFACE_FRAME_TYPE_NONE
-                                      : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
+                            window->decorated ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
+                            : window->depth == 32
+                                ? ZAURA_SURFACE_FRAME_TYPE_NONE
+                                : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
   } else if (event->atom == ctx->atoms[ATOM_GTK_THEME_VARIANT].value) {
     struct sl_window* window;
     uint32_t frame_color;
@@ -3699,6 +3695,11 @@ int real_main(int argc, char** argv) {
   if (tracing_needed || ctx.timing) {
     ctx.sigusr1_event_source.reset(
         wl_event_loop_add_signal(event_loop, SIGUSR1, sl_handle_sigusr1, &ctx));
+  }
+
+  // Initialize timing log values.
+  if (ctx.timing) {
+    ctx.timing->RecordStartTime();
   }
 
   wl_client_add_destroy_listener(ctx.client, &client_destroy_listener);
