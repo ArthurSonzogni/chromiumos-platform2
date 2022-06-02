@@ -210,6 +210,7 @@ bool DiskCleanup::FreeDiskSpaceDuringLogin(const std::string& obfuscated) {
                                 after_cleanup.value() - free_space.value()) /
                        1024 / 1024;
 
+  ReportFreeDiskSpaceDuringLoginTotalFreedInMb(cleaned_in_mb);
   VLOG(1) << "Login disk cleanup cleared " << cleaned_in_mb << "MB.";
 
   LOG(INFO) << "Login disk cleanup complete.";

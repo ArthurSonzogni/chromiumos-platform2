@@ -41,6 +41,8 @@ constexpr char kCryptohomeLoginDiskCleanupTotalTime[] =
     "Cryptohome.LoginDiskCleanupTotalTime";
 constexpr char kCryptohomeFreeDiskSpaceTotalFreedInMbHistogram[] =
     "Cryptohome.FreeDiskSpaceTotalFreedInMb";
+constexpr char kCryptohomeFreeDiskSpaceDuringLoginTotalFreedInMbHistogram[] =
+    "Cryptohome.FreeDiskSpaceDuringLoginTotalFreedInMb";
 constexpr char kCryptohomeTimeBetweenFreeDiskSpaceHistogram[] =
     "Cryptohome.TimeBetweenFreeDiskSpace";
 constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
@@ -369,6 +371,17 @@ void ReportLoginDiskCleanupTotalTime(int ms) {
   }
   g_metrics->SendToUMA(kCryptohomeLoginDiskCleanupTotalTime, ms, 1, 60 * 1000,
                        50);
+}
+
+void ReportFreeDiskSpaceDuringLoginTotalFreedInMb(int mb) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 1, kMax = 1024 * 10, /* 10 GiB maximum */
+      kNumBuckets = 50;
+  g_metrics->SendToUMA(
+      kCryptohomeFreeDiskSpaceDuringLoginTotalFreedInMbHistogram, mb, kMin,
+      kMax, kNumBuckets);
 }
 
 void ReportDircryptoMigrationStartStatus(MigrationType migration_type,

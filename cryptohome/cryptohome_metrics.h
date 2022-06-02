@@ -559,7 +559,7 @@ void ReportDeletedUserProfiles(int user_profile_count);
 void ReportFreeDiskSpaceTotalTime(int ms);
 
 // Reports total space freed by HomeDirs::FreeDiskSpace (in MiB) to
-// the "Cryptohome.FreeDiskSpaceTotalTime" histogram.
+// the "Cryptohome.FreeDiskSpaceTotalFreedInMb" histogram.
 void ReportFreeDiskSpaceTotalFreedInMb(int mb);
 
 // Reports the time between HomeDirs::FreeDiskSpace cleanup calls (seconds) to
@@ -577,6 +577,10 @@ void ReportFreedCacheVaultDiskSpaceInMb(int mb);
 // Reports total time taken by HomeDirs::FreeDiskSpaceDuringLogin cleanup
 // (milliseconds) to the "Cryptohome.LoginDiskCleanupTotalTime" histogram.
 void ReportLoginDiskCleanupTotalTime(int ms);
+
+// Reports total space freed by HomeDirs::FreeDiskSpaceDuringLogin (in MiB) to
+// the "Cryptohome.FreeDiskSpaceDuringLoginTotalFreedInMb" histogram.
+void ReportFreeDiskSpaceDuringLoginTotalFreedInMb(int mb);
 
 // The |status| value is reported to the
 // "Cryptohome.DircryptoMigrationStartStatus" (full migration)
