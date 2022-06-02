@@ -749,9 +749,9 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
   // if it does, then initialization process will eventually come back
   // into this function and succeed.
   if (!shill_ready_) {
-    LOG(ERROR) << "No connection to shill - cannot set dns-proxy address "
-                  "property IPv4 ["
-               << ipv4_addr << "], IPv6 [" << ipv6_addr << "]";
+    LOG(WARNING) << "No connection to shill - cannot set dns-proxy address "
+                    "property IPv4 ["
+                 << ipv4_addr << "], IPv6 [" << ipv6_addr << "]";
     return;
   }
 
