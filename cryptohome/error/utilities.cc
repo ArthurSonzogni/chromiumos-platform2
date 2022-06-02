@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_le_cred_error.h"
 #include "cryptohome/error/utilities.h"
 
 namespace cryptohome {
@@ -30,6 +31,9 @@ bool ContainsActionInStack(
 template bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
     const ErrorAction action);
+template bool ContainsActionInStack(const hwsec_foundation::status::StatusChain<
+                                        error::CryptohomeLECredError>& error,
+                                    const ErrorAction action);
 
 }  // namespace error
 

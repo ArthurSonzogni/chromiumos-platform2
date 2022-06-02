@@ -389,8 +389,13 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(LECredBackendError err) {
   LECredError conv_err = BackendErrorToCredError(err);
   if (conv_err == LE_CRED_SUCCESS)
     return OkStatus<CryptohomeLECredError>();
+
+  ErrorActionSet action_set;
+  if (conv_err == LE_CRED_ERROR_TOO_MANY_ATTEMPTS)
+    action_set.insert(ErrorAction::kTpmLockout);
+
   return MakeStatus<CryptohomeLECredError>(
-      CRYPTOHOME_ERR_LOC(kLocLECredManConvertTpmError), ErrorActionSet({}),
+      CRYPTOHOME_ERR_LOC(kLocLECredManConvertTpmError), std::move(action_set),
       conv_err);
 }
 

@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/tpm.h"
@@ -257,17 +258,17 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   // all subsequent checks will return false.
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  LECredStatus status =
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
+  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
+  EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kTpmLockout));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
-  EXPECT_EQ(
-      LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  status =
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
+  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
+  EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kTpmLockout));
 }
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent
