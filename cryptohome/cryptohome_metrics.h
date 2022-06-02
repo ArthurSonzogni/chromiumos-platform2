@@ -237,6 +237,7 @@ enum class DiskCleanupProgress {
 enum class LoginDiskCleanupProgress {
   kWholeUserProfilesCleanedAboveTarget = 1,
   kWholeUserProfilesCleaned = 2,
+  kNoUnmountedCryptohomes = 3,
   kNumBuckets
 };
 

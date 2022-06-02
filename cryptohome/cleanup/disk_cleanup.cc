@@ -487,6 +487,9 @@ bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
       });
 
   bool result = true;
+  bool performed_cleanup = false;
+
+  DiskCleanup::FreeSpaceState state;
 
   for (auto dir = unmounted_homedirs.rbegin(); dir != unmounted_homedirs.rend();
        dir++) {
@@ -500,12 +503,34 @@ bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
       result = false;
     timestamp_manager_->RemoveUser(dir->obfuscated);
 
+    performed_cleanup = true;
+
     // Login cleanup stops at kAboveThreshold.
-    auto state = GetFreeDiskSpaceState();
+    state = GetFreeDiskSpaceState();
     if (state == DiskCleanup::FreeSpaceState::kAboveThreshold ||
         state == DiskCleanup::FreeSpaceState::kAboveTarget) {
       break;
     }
+  }
+
+  if (performed_cleanup) {
+    switch (state) {
+      case DiskCleanup::FreeSpaceState::kError:
+        result = false;
+        break;
+      case DiskCleanup::FreeSpaceState::kAboveThreshold:
+      case DiskCleanup::FreeSpaceState::kAboveTarget:
+        ReportLoginDiskCleanupProgress(
+            LoginDiskCleanupProgress::kWholeUserProfilesCleanedAboveTarget);
+        break;
+      default:
+        ReportLoginDiskCleanupProgress(
+            LoginDiskCleanupProgress::kWholeUserProfilesCleaned);
+        break;
+    }
+  } else {
+    ReportLoginDiskCleanupProgress(
+        LoginDiskCleanupProgress::kNoUnmountedCryptohomes);
   }
 
   return result;
