@@ -30,10 +30,9 @@ class FreconTest : public ::testing::Test {
     ASSERT_TRUE(fake_sysroot_.CreateUniqueTempDir());
 
     auto sbin_dir = fake_sysroot_.GetPath().Append("sbin");
-    base::File::Error err;
 
-    base::CreateDirectoryAndGetError(sbin_dir, &err);
-    ASSERT_EQ(err, base::File::FILE_OK);
+    base::File::Error err;
+    ASSERT_TRUE(base::CreateDirectoryAndGetError(sbin_dir, &err));
 
     auto frecon_path = sbin_dir.Append("frecon");
     ASSERT_TRUE(base::WriteFile(frecon_path, kFakeFreconProgram));
