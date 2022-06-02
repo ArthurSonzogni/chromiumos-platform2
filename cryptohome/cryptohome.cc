@@ -313,6 +313,7 @@ static const char kOldPasswordSwitch[] = "old_password";
 static const char kNewPasswordSwitch[] = "new_password";
 static const char kForceSwitch[] = "force";
 static const char kCreateSwitch[] = "create";
+static const char kCreateEmptyLabelSwitch[] = "create_empty_label";
 static const char kAttrNameSwitch[] = "name";
 static const char kAttrPrefixSwitch[] = "prefix";
 static const char kAttrValueSwitch[] = "value";
@@ -832,6 +833,13 @@ int main(int argc, char** argv) {
         cryptohome::Key* key = create->add_keys();
         key->mutable_data()->set_label(
             req.authorization().key().data().label());
+      } else if (cl->HasSwitch(switches::kCreateEmptyLabelSwitch)) {
+        // Cryptohome will create a VK with an empty label if it's not set in
+        // `authorization`. Pass the label in `create`, as Cryptohome would
+        // refuse the call otherwise.
+        *create->add_keys() = req.authorization().key();
+        req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
+            "");
       } else {
         create->set_copy_authorization_key(true);
       }
