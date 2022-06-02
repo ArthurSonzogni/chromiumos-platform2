@@ -309,7 +309,7 @@ fn stateful_block_partition_one() -> Result<String> {
 /// Farm this out to rootdev to keep the magic in one place.
 pub fn path_to_stateful_block() -> Result<String> {
     let output = Command::new("/usr/bin/rootdev")
-        .arg("-d")
+        .args(["-d", "-s"])
         .output()
         .context("Cannot get rootdev")?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
