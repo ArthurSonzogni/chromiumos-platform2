@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":cros_camera_test" ]
+  deps = [
+    ":cros_camera_test",
+    ":libfake_date_time",
+  ]
 }
 
 pkg_config("target_defaults") {
@@ -20,6 +23,13 @@ pkg_config("target_defaults") {
     "libyuv",
   ]
   configs = [ "//camera/build:cros_camera_common" ]
+}
+
+shared_library("libfake_date_time") {
+  output_name = "libfake_date_time"
+  sources = [ "utils/fake_date_time.cc" ]
+  configs += [ ":target_defaults" ]
+  libs = [ "dl" ]
 }
 
 executable("cros_camera_test") {
