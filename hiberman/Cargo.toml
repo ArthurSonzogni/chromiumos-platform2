@@ -14,7 +14,7 @@ name = "hiberman"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.0"
+anyhow = "1.0"
 dbus = "0.9"
 dbus-crossroads = "0.5.0"
 getopts = "0.2"
