@@ -133,18 +133,12 @@ class RoutingTable {
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
 
-  // Get the default route to |destination| through |interface_index| and create
-  // a host route to that destination.  When creating the route, tag our local
-  // entry with |tag|, so we can remove it later.  Connections use their
-  // interface index as the tag, so that as they are destroyed, they can remove
-  // all their dependent routes.  If |callback| is not null, it will be invoked
-  // when the request-route response is received and the add-route request has
-  // been sent successfully.
+  // Get the route to |destination| through |interface_index|.  If |callback|
+  // is not null, it will be invoked when the request-route response is
+  // received.
   virtual bool RequestRouteToHost(const IPAddress& destination,
                                   int interface_index,
-                                  int tag,
-                                  const QueryCallback& callback,
-                                  uint32_t table_id);
+                                  const QueryCallback& callback);
 
   static uint32_t GetInterfaceTableId(int interface_index);
 
@@ -171,20 +165,12 @@ class RoutingTable {
   using PolicyTables = std::unordered_map<int, PolicyTableEntryVector>;
 
   struct Query {
-    Query() : sequence(0), tag(0), table_id(0) {}
-    Query(uint32_t sequence_in,
-          int tag_in,
-          QueryCallback callback_in,
-          uint32_t table_id_in)
-        : sequence(sequence_in),
-          tag(tag_in),
-          callback(callback_in),
-          table_id(table_id_in) {}
+    Query() : sequence(0) {}
+    Query(uint32_t sequence_in, QueryCallback callback_in)
+        : sequence(sequence_in), callback(callback_in) {}
 
     uint32_t sequence;
-    int tag;
     QueryCallback callback;
-    uint32_t table_id;
   };
 
   // Add an entry to the kernel routing table without modifying the internal

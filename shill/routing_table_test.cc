@@ -564,9 +564,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, kTestDeviceIndex0, kTestRouteTag,
-      RoutingTable::QueryCallback(),
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+      destination_address, kTestDeviceIndex0, RoutingTable::QueryCallback()));
 
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   gateway_address.SetAddressFromString(kTestGatewayAddress4);
@@ -580,38 +578,6 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                                 gateway_address)
           .SetMetric(kMetric)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
-
-  EXPECT_CALL(
-      rtnl_handler_,
-      DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd, kTestDeviceIndex0,
-                                    entry, NLM_F_CREATE | NLM_F_EXCL),
-                    _));
-  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry,
-                                kTestRequestSeq, RTPROT_UNSPEC);
-
-  std::unordered_map<int, std::vector<RoutingTableEntry>>* tables =
-      GetRoutingTables();
-
-  // We should have a single table, which should in turn have a single entry.
-  EXPECT_EQ(1, tables->size());
-  EXPECT_TRUE(base::Contains(*tables, kTestDeviceIndex0));
-  EXPECT_EQ(1, (*tables)[kTestDeviceIndex0].size());
-
-  // This entry's tag should match the tag we requested.
-  EXPECT_EQ(kTestRouteTag, (*tables)[kTestDeviceIndex0][0].tag);
-
-  EXPECT_TRUE(GetQueries()->empty());
-
-  // Ask to flush routes with our tag.  We should see a delete message sent.
-  EXPECT_CALL(rtnl_handler_,
-              DoSendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
-                                            kTestDeviceIndex0, entry, 0),
-                            _));
-
-  routing_table_->FlushRoutesWithTag(kTestRouteTag);
-
-  // After flushing routes for this tag, we should end up with no routes.
-  EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 }
 
 TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
@@ -625,9 +591,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, kTestDeviceIndex0, kTestRouteTag,
-      RoutingTable::QueryCallback(),
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+      destination_address, kTestDeviceIndex0, RoutingTable::QueryCallback()));
 
   // Don't specify a gateway address.
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
@@ -656,9 +620,7 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, kTestDeviceIndex0, kTestRouteTag,
-      target.mocked_callback(),
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+      destination_address, kTestDeviceIndex0, target.mocked_callback()));
   EXPECT_FALSE(GetQueries()->empty());
 
   auto entry = RoutingTableEntry::Create(
@@ -684,9 +646,8 @@ TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   QueryCallbackTarget target;
-  EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, -1, kTestRouteTag, target.mocked_callback(),
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address, -1,
+                                                 target.mocked_callback()));
 
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   gateway_address.SetAddressFromString(kTestGatewayAddress4);
@@ -697,10 +658,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
                                          gateway_address)
                    .SetMetric(kMetric);
 
-  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _));
-  EXPECT_CALL(target,
-              MockedTarget(kTestDeviceIndex0,
-                           Field(&RoutingTableEntry::tag, kTestRouteTag)));
+  EXPECT_CALL(target, MockedTarget(kTestDeviceIndex0, _));
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry,
                                 kTestRequestSeq, RTPROT_UNSPEC);
 }
@@ -712,9 +670,8 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   QueryCallbackTarget target;
-  EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, -1, kTestRouteTag, target.mocked_callback(),
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address, -1,
+                                                 target.mocked_callback()));
 
   const int kMetric = 10;
   auto entry = RoutingTableEntry::Create(destination_address,
@@ -722,9 +679,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
                                          IPAddress(IPAddress::kFamilyIPv4))
                    .SetMetric(kMetric);
 
-  EXPECT_CALL(target,
-              MockedTarget(kTestDeviceIndex0,
-                           Field(&RoutingTableEntry::tag, kTestRouteTag)));
+  EXPECT_CALL(target, MockedTarget(kTestDeviceIndex0, _));
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry,
                                 kTestRequestSeq, RTPROT_UNSPEC);
 }
@@ -737,9 +692,7 @@ TEST_F(RoutingTableTest, CancelQueryCallback) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, kTestDeviceIndex0, kTestRouteTag,
-      target->unreached_callback(),
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+      destination_address, kTestDeviceIndex0, target->unreached_callback()));
   ASSERT_EQ(1, GetQueries()->size());
   // Cancels the callback by destroying the owner object.
   target.reset();

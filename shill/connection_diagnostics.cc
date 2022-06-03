@@ -326,10 +326,8 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
   route_query_callback_.Reset(
       base::Bind(&ConnectionDiagnostics::OnRouteQueryResponse,
                  weak_ptr_factory_.GetWeakPtr()));
-  int table_id = RoutingTable::GetInterfaceTableId(iface_index_);
-  if (!routing_table_->RequestRouteToHost(address, iface_index_, -1,
-                                          route_query_callback_.callback(),
-                                          table_id)) {
+  if (!routing_table_->RequestRouteToHost(address, iface_index_,
+                                          route_query_callback_.callback())) {
     route_query_callback_.Cancel();
     LOG(ERROR) << iface_name_ << ": could not request route to "
                << address.ToString();

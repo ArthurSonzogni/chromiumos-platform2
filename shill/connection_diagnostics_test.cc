@@ -390,9 +390,8 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeFindRoute,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(routing_table_,
-                RequestRouteToHost(IsSameIPAddress(address), kInterfaceIndex, _,
-                                   _, kInterfaceIndex + 1000))
+    EXPECT_CALL(routing_table_, RequestRouteToHost(IsSameIPAddress(address),
+                                                   kInterfaceIndex, _))
         .WillOnce(Return(true));
     EXPECT_CALL(
         dispatcher_,

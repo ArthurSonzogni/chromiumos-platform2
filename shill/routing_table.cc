@@ -454,22 +454,9 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
 
     const Query& query = route_queries_.front();
     if (query.sequence == message.seq()) {
-      RoutingTableEntry add_entry(entry);
-      add_entry.tag = query.tag;
-      add_entry.table = query.table_id;
-      add_entry.protocol = RTPROT_BOOT;
-      bool added = true;
-      if (add_entry.gateway.IsDefault()) {
-        SLOG(this, 2) << __func__ << ": Ignoring route result with no gateway "
-                      << "since we don't need to plumb these.";
-      } else {
-        SLOG(this, 2) << __func__ << ": Adding host route to "
-                      << add_entry.dst.ToString();
-        added = AddRoute(interface_index, add_entry);
-      }
-      if (added && !query.callback.is_null()) {
+      if (!query.callback.is_null()) {
         SLOG(this, 2) << "Running query callback.";
-        query.callback.Run(interface_index, add_entry);
+        query.callback.Run(interface_index, entry);
       }
       route_queries_.pop_front();
     }
@@ -624,9 +611,7 @@ bool RoutingTable::FlushCache() {
 
 bool RoutingTable::RequestRouteToHost(const IPAddress& address,
                                       int interface_index,
-                                      int tag,
-                                      const QueryCallback& callback,
-                                      uint32_t table_id) {
+                                      const QueryCallback& callback) {
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();
 
@@ -648,9 +633,9 @@ bool RoutingTable::RequestRouteToHost(const IPAddress& address,
     return false;
   }
 
-  // Save the sequence number of the request so we can create a route for
-  // this host when we get a reply.
-  route_queries_.push_back(Query(seq, tag, callback, table_id));
+  // Save the sequence number of the request so we can trigger the callback
+  // when we get a reply.
+  route_queries_.push_back(Query(seq, callback));
 
   return true;
 }
