@@ -26,8 +26,9 @@ class PersistentRamBufferTest : public ::testing::Test {
  public:
   std::string GetRandomString(size_t length) {
     std::string s;
+    std::uniform_int_distribution<uint16_t> dist('A', 'Z');
     while (s.length() < length) {
-      s.push_back(std::uniform_int_distribution<char>('A', 'Z')(gen));
+      s.push_back(static_cast<char>(dist(gen)));
     }
     return s;
   }
