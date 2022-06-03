@@ -515,9 +515,6 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
 }
 
 void ChromiumCommandBuilder::AddUiFlags() {
-  if (UseFlagIsSet("opengles"))
-    AddArg("--use-gl=egl");
-
   // On boards with ARM NEON support, force libvpx to use the NEON-optimized
   // code paths. Remove once http://crbug.com/161834 is fixed.
   // This is needed because libvpx cannot check cpuinfo within the sandbox.
