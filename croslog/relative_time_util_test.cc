@@ -22,7 +22,7 @@ class RelativeTimeUtilTest : public ::testing::Test {
 };
 
 TEST_F(RelativeTimeUtilTest, Parse) {
-  const auto tol = base::Milliseconds(1);
+  const auto tol = base::Milliseconds(100);
   base::Time output;
   base::Time target_time;
 
