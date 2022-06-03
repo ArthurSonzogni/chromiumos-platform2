@@ -70,4 +70,25 @@ TEST_F(LoopbackDeviceTest, ValidLoopbackDeviceTeardown) {
   EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
 
+// Test creating and purging of a fixed loopback device does not succeed.
+TEST_F(LoopbackDeviceTest, FixedLoopbackWontCreateOrPurge) {
+  // Ensure the backing file already exists.
+  EXPECT_TRUE(backing_device_->Create());
+  // Set up a new loopback device with the same config plus the fixed option.
+  BackingDeviceConfig fixed_config = config_;
+  fixed_config.loopback.fixed_backing = true;
+  std::unique_ptr<LoopbackDevice> loop =
+      std::make_unique<LoopbackDevice>(fixed_config, &platform_);
+
+  // Ensure the backing device already exists so the the failure can only be due
+  // to it being fixed.
+  EXPECT_TRUE(loop->Exists());
+  // Create should not succeed on a fixed device.
+  EXPECT_FALSE(loop->Create());
+  // Purge should not succeed on a fixed device.
+  EXPECT_FALSE(loop->Purge());
+  // Setup and teardown, however, should still work fine.
+  EXPECT_TRUE(loop->Setup());
+  EXPECT_TRUE(loop->Teardown());
+}
 }  // namespace cryptohome

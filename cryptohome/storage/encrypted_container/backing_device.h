@@ -33,6 +33,7 @@ struct BackingDeviceConfig {
   int64_t size;
   struct {
     base::FilePath backing_file_path;
+    bool fixed_backing;
   } loopback;
   struct {
     std::string backing_file_name;
