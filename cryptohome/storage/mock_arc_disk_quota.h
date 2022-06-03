@@ -25,13 +25,6 @@ class MockArcDiskQuota : public ArcDiskQuota {
   MOCK_METHOD(int64_t, GetCurrentSpaceForGid, (gid_t), (const, override));
   MOCK_METHOD(int64_t, GetCurrentSpaceForProjectId, (int), (const, override));
   MOCK_METHOD(bool,
-              SetProjectId,
-              (int,
-               SetProjectIdAllowedPathType,
-               const base::FilePath&,
-               const std::string&),
-              (const, override));
-  MOCK_METHOD(bool,
               SetMediaRWDataFileProjectId,
               (int, int, int*),
               (const, override));

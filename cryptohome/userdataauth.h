@@ -285,13 +285,6 @@ class UserDataAuth {
   // cryptohome/arc_disk_quota.h for more details.
   int64_t GetCurrentSpaceForArcProjectId(int project_id);
 
-  // Sets the project ID to the file/directory pointed by path.
-  // See cryptohome/arc_disk_quota.h for more details.
-  bool SetProjectId(int project_id,
-                    user_data_auth::SetProjectIdAllowedPathType parent_path,
-                    const FilePath& child_path,
-                    const cryptohome::AccountIdentifier& account);
-
   // Sets the project ID of a media_rw_data_file.
   // See cryptohome/arc_disk_quota.h for more details.
   bool SetMediaRWDataFileProjectId(int project_id, int fd, int* out_error);

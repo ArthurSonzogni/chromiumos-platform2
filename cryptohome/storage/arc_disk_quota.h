@@ -11,8 +11,6 @@
 #include <memory>
 #include <string>
 
-#include <cryptohome/proto_bindings/rpc.pb.h>
-
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
@@ -21,10 +19,6 @@ namespace cryptohome {
 // This is the constant that is usually fed to the |home| parameter in
 // ArcDiskQuota's constructor.
 inline constexpr char kArcDiskHome[] = "/home/chronos/user";
-
-// Used for constructing the target path for SetProjectId().
-inline constexpr char kUserDownloadsDir[] = "MyFiles/Downloads";
-inline constexpr char kAndroidDataDir[] = "android-data";
 
 // SELinux context of Android media files.
 inline constexpr std::array<const char*, 4>
@@ -102,15 +96,6 @@ class ArcDiskQuota {
   // Get the current disk space usage for a project ID.
   // Returns -1 if quotactl fails.
   virtual int64_t GetCurrentSpaceForProjectId(int project_id) const;
-
-  // Set the project ID to the file/directory pointed by path.
-  // |parent_path|, |child_path| and |obfuscated_username| are used for
-  // constructing the target path.
-  // Returns true if ioctl succeeds.
-  virtual bool SetProjectId(int project_id,
-                            SetProjectIdAllowedPathType parent_path,
-                            const base::FilePath& child_path,
-                            const std::string& obfuscated_username) const;
 
   // Set the project ID of a media_rw_data_file.
   // Returns true if ioctl succeeds.

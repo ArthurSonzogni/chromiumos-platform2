@@ -3440,19 +3440,6 @@ int64_t UserDataAuth::GetCurrentSpaceForArcProjectId(int project_id) {
   return arc_disk_quota_->GetCurrentSpaceForProjectId(project_id);
 }
 
-bool UserDataAuth::SetProjectId(
-    int project_id,
-    user_data_auth::SetProjectIdAllowedPathType parent_path,
-    const FilePath& child_path,
-    const cryptohome::AccountIdentifier& account) {
-  AssertOnOriginThread();
-  const std::string& account_id = GetAccountId(account);
-  const std::string obfuscated_username = SanitizeUserName(account_id);
-  return arc_disk_quota_->SetProjectId(
-      project_id, static_cast<SetProjectIdAllowedPathType>(parent_path),
-      child_path, obfuscated_username);
-}
-
 bool UserDataAuth::SetMediaRWDataFileProjectId(int project_id,
                                                int fd,
                                                int* out_error) {

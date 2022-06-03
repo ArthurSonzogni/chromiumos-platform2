@@ -1395,24 +1395,6 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcProjectId) {
             userdataauth_->GetCurrentSpaceForArcProjectId(kProjectId));
 }
 
-TEST_F(UserDataAuthTest, SetProjectId) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  constexpr int kProjectId = 1001;
-  const base::FilePath kChildPath = base::FilePath("/child/path");
-  constexpr char kUsername[] = "foo@gmail.com";
-  cryptohome::AccountIdentifier account_id;
-  account_id.set_account_id(kUsername);
-
-  EXPECT_CALL(
-      arc_disk_quota_,
-      SetProjectId(kProjectId, SetProjectIdAllowedPathType::PATH_DOWNLOADS,
-                   kChildPath, GetObfuscatedUsername(kUsername)))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_->SetProjectId(
-      kProjectId, user_data_auth::SetProjectIdAllowedPathType::PATH_DOWNLOADS,
-      kChildPath, account_id));
-}
-
 TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectId) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr int kProjectId = 1001;

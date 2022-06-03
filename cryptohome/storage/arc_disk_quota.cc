@@ -121,64 +121,6 @@ int64_t ArcDiskQuota::GetCurrentSpaceForProjectId(int project_id) const {
   return current_space;
 }
 
-bool ArcDiskQuota::SetProjectId(int project_id,
-                                SetProjectIdAllowedPathType parent_path,
-                                const base::FilePath& child_path,
-                                const std::string& obfuscated_username) const {
-  if (!IsAndroidProjectId(project_id)) {
-    LOG(ERROR) << "Project id " << project_id
-               << " is outside the allowed query range";
-    return false;
-  }
-
-  if (child_path.ReferencesParent()) {
-    LOG(ERROR) << "child_path contains \"..\" : " << child_path;
-    return false;
-  }
-
-  if (child_path.IsAbsolute()) {
-    LOG(ERROR) << "child_path is an absolute path : " << child_path;
-    return false;
-  }
-
-  auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
-  if (!exists_or.ok()) {
-    LOG(ERROR) << "Failed to check cryptohome existence for : "
-               << obfuscated_username
-               << " error = " << exists_or.status()->error();
-  }
-  if (!exists_or.value()) {
-    LOG(ERROR) << "A cryptohome vault doesn't exist for : "
-               << obfuscated_username;
-    return false;
-  }
-
-  base::FilePath path;
-  switch (parent_path) {
-    case PATH_DOWNLOADS:
-      // /home/user/<obfuscated_username>/MyFiles/Downloads/<child_path>
-      path = brillo::cryptohome::home::GetUserPathPrefix()
-                 .Append(obfuscated_username)
-                 .Append(kUserDownloadsDir)
-                 .Append(child_path);
-      break;
-    case PATH_ANDROID_DATA:
-      // /home/root/<obfuscated_username>/android-data/<child_path>
-      path = brillo::cryptohome::home::GetRootPathPrefix()
-                 .Append(obfuscated_username)
-                 .Append(kAndroidDataDir)
-                 .Append(child_path);
-      break;
-  }
-
-  if (path.empty()) {
-    LOG(ERROR) << "Invalid parent path type : " << parent_path;
-    return false;
-  }
-
-  return platform_->SetQuotaProjectId(project_id, path);
-}
-
 bool ArcDiskQuota::IsMediaRWDataFileContext(const std::string& context) {
   const auto context_tokens = base::SplitStringPiece(
       context, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);

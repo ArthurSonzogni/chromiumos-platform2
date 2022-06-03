@@ -329,10 +329,6 @@ class MockPlatform : public Platform {
               (const base::FilePath&, int),
               (const, override));
   MOCK_METHOD(bool,
-              SetQuotaProjectId,
-              (int, const base::FilePath&),
-              (const, override));
-  MOCK_METHOD(bool,
               SetQuotaProjectIdWithFd,
               (int, int, int*),
               (const, override));

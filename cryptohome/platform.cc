@@ -149,22 +149,6 @@ bool DecodeProcInfoLine(const std::string& line,
   }
 }
 
-bool SetQuotaProjectIdInternal(int project_id, int fd, int* out_error) {
-  struct fsxattr fsx = {};
-  if (ioctl(fd, FS_IOC_FSGETXATTR, &fsx) < 0) {
-    *out_error = errno;
-    PLOG(ERROR) << "ioctl(FS_IOC_FSGETXATTR) failed";
-    return false;
-  }
-  fsx.fsx_projid = project_id;
-  if (ioctl(fd, FS_IOC_FSSETXATTR, &fsx) < 0) {
-    *out_error = errno;
-    PLOG(ERROR) << "ioctl(FS_IOC_FSSETXATTR) failed";
-    return false;
-  }
-  return true;
-}
-
 }  // namespace
 
 namespace cryptohome {
@@ -544,42 +528,22 @@ int64_t Platform::GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
   return dq.dqb_curspace;
 }
 
-bool Platform::SetQuotaProjectId(int project_id,
-                                 const base::FilePath& path) const {
-  base::stat_wrapper_t stat;
-  if (base::File::Lstat(path.value().c_str(), &stat) != 0) {
-    PLOG(ERROR) << "Failed to stat " << path.value();
-    return false;
-  }
-  brillo::SafeFD fd;
-  brillo::SafeFD::Error err;
-  if (S_ISDIR(stat.st_mode)) {
-    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingDir(path);
-  } else {
-    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
-  }
-  if (brillo::SafeFD::IsError(err)) {
-    PLOG(ERROR) << "Failed to open " << path.value() << " with error "
-                << static_cast<int>(err);
-    return false;
-  }
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << path.value();
-    return false;
-  }
-
-  int error = 0;
-  if (!SetQuotaProjectIdInternal(project_id, fd.get(), &error)) {
-    LOG(ERROR) << "Failed to set quota project id: " << path.value();
-    return false;
-  }
-  return true;
-}
-
 bool Platform::SetQuotaProjectIdWithFd(int project_id,
                                        int fd,
                                        int* out_error) const {
-  return SetQuotaProjectIdInternal(project_id, fd, out_error);
+  struct fsxattr fsx = {};
+  if (ioctl(fd, FS_IOC_FSGETXATTR, &fsx) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_FSGETXATTR) failed";
+    return false;
+  }
+  fsx.fsx_projid = project_id;
+  if (ioctl(fd, FS_IOC_FSSETXATTR, &fsx) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_FSSETXATTR) failed";
+    return false;
+  }
+  return true;
 }
 
 bool Platform::SetQuotaProjectInheritanceFlagWithFd(bool enable,
