@@ -47,6 +47,7 @@ struct sl_pointer_constraints;
 struct sl_window;
 struct zaura_shell;
 struct zcr_keyboard_extension_v1;
+struct zxdg_output_manager_v1;
 
 #ifdef GAMEPAD_SUPPORT
 struct sl_gamepad;
@@ -189,10 +190,18 @@ struct sl_output {
   struct wl_list link;
 };
 
+struct sl_xdg_output_manager {
+  struct sl_context* ctx;
+  uint32_t id;
+  uint32_t version;
+  struct zxdg_output_manager_v1* internal;
+};
+
 struct sl_host_output {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct wl_output* proxy;
+  struct zxdg_output_v1* zxdg_output;
   struct zaura_output* aura_output;
   int internal;
   int x;
@@ -212,6 +221,11 @@ struct sl_host_output {
   int preferred_scale;
   int device_scale_factor;
   int expecting_scale;
+  bool expecting_logical_size;
+  int32_t logical_width;
+  int32_t logical_height;
+  int32_t logical_x;
+  int32_t logical_y;
   struct wl_list link;
 };
 
