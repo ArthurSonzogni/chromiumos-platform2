@@ -164,9 +164,6 @@ class VmInterface {
   // or 0 for unknown.
   virtual uint64_t GetAvailableDiskSpace() { return 0; }
 
-  // Notes that SetVmId() has been called for the VM.
-  virtual void VmIdChanged() {}
-
   // Makes RT vCPU for the VM.
   virtual void MakeRtVcpu() = 0;
 

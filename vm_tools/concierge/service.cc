@@ -1290,7 +1290,6 @@ bool Service::Init() {
       {kListUsbDeviceMethod, &Service::ListUsbDevices},
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
-      {kSetVmIdMethod, &Service::SetVmId},
       {kListVmsMethod, &Service::ListVms},
   };
 
@@ -3858,52 +3857,6 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
   return dbus_response;
 }
 
-std::unique_ptr<dbus::Response> Service::SetVmId(
-    dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received SetVmId request";
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  SetVmIdRequest request;
-  SetVmIdResponse response;
-
-  response.set_success(false);
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse SetVmIdRequest from message";
-    response.set_failure_reason("Unable to parse SetVmIdRequest from message");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  auto iter = FindVm(request.src_owner_id(), request.name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
-    response.set_failure_reason("Requested VM does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  auto vm = std::move(iter->second);
-  auto cid = vm->GetInfo().cid;
-  auto old_id = iter->first;
-  vms_.erase(iter);
-  VmId new_id(request.dest_owner_id(), request.name());
-  vms_[new_id] = std::move(vm);
-  vms_[new_id]->VmIdChanged();
-
-  SendVmIdChangedSignal(new_id, old_id, cid);
-
-  response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
 std::unique_ptr<dbus::Response> Service::ListVms(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -4146,19 +4099,6 @@ void Service::NotifyVmStopped(const VmId& vm_id,
   proto.set_name(vm_id.name());
   proto.set_cid(cid);
   proto.set_reason(reason);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
-}
-
-void Service::SendVmIdChangedSignal(const VmId& id,
-                                    const VmId& prev_id,
-                                    int64_t cid) {
-  dbus::Signal signal(kVmConciergeInterface, kVmIdChangedSignal);
-  vm_tools::concierge::VmIdChangedSignal proto;
-  proto.set_owner_id(id.owner_id());
-  proto.set_name(id.name());
-  proto.set_cid(cid);
-  proto.set_prev_owner_id(prev_id.owner_id());
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
 }

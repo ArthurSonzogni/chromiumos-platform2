@@ -430,21 +430,15 @@ bool ArcVm::Shutdown() {
   }
 
   LOG(INFO) << "Shutting down ARCVM";
-
-  // Ask arc-powerctl running on the guest to power off the VM.
-  if (vm_upgraded_) {
-    if (ShutdownArcVm(vsock_cid_)) {
-      if (WaitForChild(process_.pid(), kChildExitTimeout)) {
-        LOG(INFO) << "ARCVM is shut down";
-        process_.Release();
-        return true;
-      }
-      LOG(WARNING) << "Timed out waiting for ARCVM to shut down.";
+  if (ShutdownArcVm(vsock_cid_)) {
+    if (WaitForChild(process_.pid(), kChildExitTimeout)) {
+      LOG(INFO) << "ARCVM is shut down";
+      process_.Release();
+      return true;
     }
-    LOG(WARNING) << "Failed to shut down ARCVM gracefully.";
-  } else {
-    LOG(INFO) << "ARCVM is not yet upgraded. Skip graceful shutdown.";
+    LOG(WARNING) << "Timed out waiting for ARCVM to shut down.";
   }
+  LOG(WARNING) << "Failed to shut down ARCVM gracefully.";
 
   LOG(WARNING) << "Trying to shut ARCVM down via the crosvm socket.";
   RunCrosvmCommand("stop");

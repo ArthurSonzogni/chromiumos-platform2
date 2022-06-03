@@ -121,7 +121,6 @@ class ArcVm final : public VmBaseImpl {
       uint64_t new_size, std::string* failure_reason) override;
   vm_tools::concierge::DiskImageStatus GetDiskResizeStatus(
       std::string* failure_reason) override;
-  void VmIdChanged() override { vm_upgraded_ = true; }
 
   // Returns the kernel parameters for the VM
   static std::vector<std::string> GetKernelParams(
@@ -174,9 +173,6 @@ class ArcVm final : public VmBaseImpl {
 
   // Flags passed to vmc start.
   ArcVmFeatures features_;
-
-  // This is set to true once ARCVM has been upgraded.
-  bool vm_upgraded_ = false;
 
   // It may take a few tries to initialize a LimitCacheBalloonPolicy, but give
   // up and log an error after too many failures.

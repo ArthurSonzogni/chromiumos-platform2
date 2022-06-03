@@ -1173,42 +1173,6 @@ message AdjustVmResponse {
   string failure_reason = 2;
 };
 
-// Request to set owner id of a given VM.
-message SetVmIdRequest {
-  // An identifier for this VM.
-  string name = 1;
-
-  // The current cyptohome id of this VM.
-  string src_owner_id = 2;
-
-  // The cryptohome id to set for this VM.
-  string dest_owner_id = 3;
-}
-
-// Response to a SetVmIdRequest.
-message SetVmIdResponse {
-  // If true, the owner id of the VM was successfully changed.
-  bool success = 1;
-
-  // If the attempt to set the owner id failed, the reason for failure.
-  string failure_reason = 2;
-}
-
-// Message used in the signal for when a VM owner id is changed.
-message VmIdChangedSignal {
-  // The name of the VM which has changed.
-  string name = 1;
-
-  // The new owner of the vm.
-  string owner_id = 2;
-
-  // The previous owner of the vm.
-  string prev_owner_id = 3;
-
-  // The virtual socket context id assigned to the VM which has changed.
-  int64 cid = 4;
-}
-
 // Request to reclaim memory of a given VM.
 message ReclaimVmMemoryRequest {
   // An identifier for this VM.

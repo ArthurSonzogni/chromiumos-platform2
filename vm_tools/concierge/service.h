@@ -223,9 +223,6 @@ class Service final {
   // Handles a request to adjust parameters of a given VM.
   std::unique_ptr<dbus::Response> AdjustVm(dbus::MethodCall* method_call);
 
-  // Handles a request to set the owner id of a given VM.
-  std::unique_ptr<dbus::Response> SetVmId(dbus::MethodCall* method_call);
-
   // Handles a request to list all the VMs.
   std::unique_ptr<dbus::Response> ListVms(dbus::MethodCall* method_call);
 
@@ -266,7 +263,6 @@ class Service final {
                               const vm_tools::concierge::VmInfo& vm_info);
   void NotifyVmStopping(const VmId& vm_id, int64_t cid);
   void NotifyVmStopped(const VmId& vm_id, int64_t cid, VmStopReason reason);
-  void SendVmIdChangedSignal(const VmId& id, const VmId& prev_id, int64_t cid);
 
   std::string GetContainerToken(const VmId& vm_id,
                                 const std::string& container_name);
