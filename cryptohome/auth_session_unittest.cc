@@ -451,6 +451,162 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   EXPECT_TRUE(called);
 }
 
+// Test Authenticate() authenticates the existing user with PIN credentials.
+TEST_F(AuthSessionTest, AuthenticateWithPIN) {
+  // Setup.
+  bool called_timeout = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called_timeout, const base::UnguessableToken&) {
+        called_timeout = true;
+      },
+      std::ref(called_timeout));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &crypto_, &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+
+  // Test.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+
+  cryptohome::AuthorizationRequest authorization_request;
+  authorization_request.mutable_key()->set_secret(kFakePin);
+  authorization_request.mutable_key()->mutable_data()->set_label(kFakePinLabel);
+  authorization_request.mutable_key()
+      ->mutable_data()
+      ->mutable_policy()
+      ->set_low_entropy_credential(true);
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillOnce(Return(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
+        return true;
+      });
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.Authenticate(
+      authorization_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthSessionReply& reply) {
+            called = true;
+            error = reply.error();
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          },
+          std::ref(called), std::ref(error)));
+
+  // Verify.
+  EXPECT_TRUE(called);
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+
+  EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.TakeCredentialVerifier()->Verify(
+      brillo::SecureBlob(kFakePin)));
+
+  // Cleanup.
+  auth_session.timer_.FireNow();
+  EXPECT_THAT(AuthStatus::kAuthStatusTimedOut, auth_session.GetStatus());
+  EXPECT_TRUE(called);
+}
+
+// Test whether PIN is locked out when TpmLockout action is received.
+TEST_F(AuthSessionTest, AuthenticateFailsOnTpmPINLock) {
+  // Setup.
+  bool called_timeout = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called_timeout, const base::UnguessableToken&) {
+        called_timeout = true;
+      },
+      std::ref(called_timeout));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &crypto_, &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+
+  // Test.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+
+  cryptohome::AuthorizationRequest authorization_request;
+  authorization_request.mutable_key()->set_secret(kFakePin);
+  authorization_request.mutable_key()->mutable_data()->set_label(kFakePinLabel);
+  authorization_request.mutable_key()
+      ->mutable_data()
+      ->mutable_policy()
+      ->set_low_entropy_credential(true);
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillOnce(Return(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->Initialize(&platform_, &crypto_);
+  vk->SetAuthLocked(true);
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakePinLabel))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        CryptoStatus status = MakeStatus<CryptohomeCryptoError>(
+            kErrorLocationForTestingAuthSession,
+            error::ErrorActionSet({error::ErrorAction::kTpmLockout}),
+            CryptoError::CE_TPM_DEFEND_LOCK);
+
+        std::move(derive_callback).Run(std::move(status), std::move(key_blobs));
+        return true;
+      });
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.Authenticate(
+      authorization_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthSessionReply& reply) {
+            called = true;
+            error = reply.error();
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK,
+                      reply.error());
+          },
+          std::ref(called), std::ref(error)));
+
+  // Verify.
+  EXPECT_TRUE(called);
+
+  EXPECT_NE(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK);
+}
+
 // AuthSession fails authentication, test for failure reply code
 // and ensure |credential_verifier_| is not set.
 TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {

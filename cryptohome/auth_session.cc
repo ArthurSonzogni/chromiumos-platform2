@@ -27,6 +27,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -36,6 +37,7 @@
 #include "cryptohome/vault_keyset.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
@@ -259,8 +261,6 @@ void AuthSession::AddVaultKeyset(
   // callback_error, key_blobs and auth_state are returned by
   // AuthBlock::CreateCallback.
   if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
-    // TODO(b/229830217): Change the CreateCallback to pass StatusChainOr of
-    // (key_blobs, auth_state) and error instead.
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInAddKeyset),
@@ -591,8 +591,6 @@ void AuthSession::UpdateVaultKeyset(
     std::unique_ptr<AuthBlockState> auth_state) {
   user_data_auth::UpdateCredentialReply reply;
   if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
-    // TODO(b/229830217): Change the CreateCallback to pass StatusOr of
-    // (key_blobs, auth_state) and error instead.
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInUpdateKeyset),
@@ -637,7 +635,6 @@ bool AuthSession::AuthenticateViaVaultKeyset(
   AuthBlockType auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForDerivation(key_data_.label(),
                                                          obfuscated_username_);
-
   if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
     reply.set_authenticated(GetStatus() ==
@@ -670,9 +667,10 @@ bool AuthSession::AuthenticateViaVaultKeyset(
 
   // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
   // as a callback that loads |vault_keyset_| and resaves if needed.
-  AuthBlock::DeriveCallback derive_callback = base::BindOnce(
-      &AuthSession::LoadVaultKeysetAndFsKeys<AuthenticateReply>,
-      weak_factory_.GetWeakPtr(), auth_input.user_input, std::move(on_done));
+  AuthBlock::DeriveCallback derive_callback =
+      base::BindOnce(&AuthSession::LoadVaultKeysetAndFsKeys<AuthenticateReply>,
+                     weak_factory_.GetWeakPtr(), auth_input.user_input,
+                     auth_block_type, std::move(on_done));
 
   return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_state, std::move(derive_callback));
@@ -681,8 +679,9 @@ bool AuthSession::AuthenticateViaVaultKeyset(
 template <typename AuthenticateReply>
 void AuthSession::LoadVaultKeysetAndFsKeys(
     const std::optional<brillo::SecureBlob> passkey,
+    const AuthBlockType& auth_block_type,
     base::OnceCallback<void(const AuthenticateReply&)> on_done,
-    CryptoStatus error,
+    CryptoStatus status,
     std::unique_ptr<KeyBlobs> key_blobs) {
   AuthenticateReply reply;
   // The error should be evaluated the same way as it is done in
@@ -690,14 +689,29 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   // error. So we are doing a similar error handling here as in
   // KeysetManagement::GetValidKeyset() to preserve the behavior. Empty label
   // case is dropped in here since it is not a valid case anymore.
-  if (!key_blobs) {
-    DCHECK(!error.ok());
-    // TODO(b/229830217): Change the CreateCallback to pass StatusChainOr of
-    // (key_blobs, auth_state) and error instead.
-    if (error.ok()) {
+  if (!status.ok() || !key_blobs) {
+    // For LE credentials, if deriving the key blobs failed due to too many
+    // attempts, set auth_locked=true in the corresponding keyset. Then save it
+    // for future callers who can Load it w/o Decrypt'ing to check that flag.
+    // When the pin is entered wrong and AuthBlock fails to derive the KeyBlobs
+    // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
+    // be set here.
+    if (ContainsActionInStack(status, ErrorAction::kTpmLockout) &&
+        auth_block_type == AuthBlockType::kPinWeaver) {
+      // Get the corresponding encrypted vault keyset for the user and the label
+      // to set the auth_locked.
+      std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
+          obfuscated_username_, key_data_.label());
+      if (vk != nullptr) {
+        LOG(INFO) << "PIN is locked out due to too many wrong attempts.";
+        vk->SetAuthLocked(true);
+        vk->Save(vk->GetSourceFile());
+      }
+    }
+    if (status.ok()) {
       // Maps to the default value of MountError which is
       // MOUNT_ERROR_KEY_FAILURE
-      error = MakeStatus<CryptohomeCryptoError>(
+      status = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocAuthSessionNullParamInCallbackInLoadVaultKeyset),
           ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
@@ -705,19 +719,18 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
     }
-    LOG(ERROR) << "Failed to load VaultKeyset since key blobs has not been "
-                  "derived.";
+    LOG(ERROR) << "Failed to load VaultKeyset since authentication has failed";
     reply.set_authenticated(GetStatus() ==
                             AuthStatus::kAuthStatusAuthenticated);
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<error::CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInLoadVaultKeyset))
-            .Wrap(std::move(error)));
+            .Wrap(std::move(status)));
     return;
   }
 
-  DCHECK(error.ok());
+  DCHECK(status.ok());
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
       keyset_management_->GetValidKeysetWithKeyBlobs(

@@ -351,6 +351,7 @@ class AuthSession final {
   template <typename AuthenticateReply>
   void LoadVaultKeysetAndFsKeys(
       const std::optional<brillo::SecureBlob> passkey,
+      const AuthBlockType& auth_block_type,
       base::OnceCallback<void(const AuthenticateReply&)> on_done,
       CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs);
@@ -439,6 +440,7 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AddAuthFactorNewUser);
   FRIEND_TEST(AuthSessionTest, AddMultipleAuthFactor);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
+  FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave);
   FRIEND_TEST(AuthSessionTest,
