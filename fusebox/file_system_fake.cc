@@ -429,8 +429,20 @@ void FileSystemFake::Rename(std::unique_ptr<OkRequest> request,
   if (request->IsInterrupted())
     return;
 
-  LOG(ERROR) << " rename not implemented: ENOTSUP";
-  request->ReplyError(ENOTSUP);
+  Node* node = GetInodeTable().Lookup(parent, name);
+  if (!node) {
+    request->ReplyError(errno);
+    PLOG(ERROR) << "rename";
+    return;
+  }
+
+  if (!GetInodeTable().Move(node, new_parent, new_name)) {
+    request->ReplyError(errno);
+    PLOG(ERROR) << "rename";
+    return;
+  }
+
+  request->ReplyOk();
 }
 
 void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) {
