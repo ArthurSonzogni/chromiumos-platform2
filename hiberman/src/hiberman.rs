@@ -30,12 +30,18 @@ mod suspend;
 mod sysfs;
 mod volume;
 
-pub use hiberutil::{HibernateOptions, ResumeInitOptions, ResumeOptions};
+use crate::dbus::send_abort;
+pub use hiberutil::{AbortResumeOptions, HibernateOptions, ResumeInitOptions, ResumeOptions};
 
 use anyhow::Result;
 use resume::ResumeConductor;
 use resume_init::ResumeInitConductor;
 use suspend::SuspendConductor;
+
+/// Send an abort resume request to the hiberman process driving resume.
+pub fn abort_resume(options: AbortResumeOptions) -> Result<()> {
+    send_abort(&options.reason)
+}
 
 /// Hibernate the system. This returns either upon failure to hibernate, or
 /// after the system has successfully hibernated and resumed.

@@ -31,6 +31,13 @@ const MINIMUM_SEED_SIZE: usize = 32;
 // Define the timeout to connect to the dbus system.
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
+/// Define the name used on dbus.
+const HIBERMAN_DBUS_NAME: &str = "org.chromium.Hibernate";
+/// Define the path used within dbus.
+const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";
+/// Define the name of the resume dbus interface.
+const HIBERMAN_RESUME_DBUS_INTERFACE: &str = "org.chromium.HibernateResumeInterface";
+
 /// Define the message sent by the d-bus thread to the main thread when the
 /// ResumeFromHibernate d-bus method is called.
 struct ResumeRequest {
@@ -56,16 +63,27 @@ impl Drop for ResumeRequest {
     }
 }
 
+/// Define the message sent if the resume is aborted.
+struct ResumeAbort {
+    reason: String,
+}
+
+/// Define the union used to receive either a ResumeRequest or a ResumeAbort.
+enum ResumeVerdict {
+    Requested(ResumeRequest),
+    Aborted(ResumeAbort),
+}
+
 /// Define the context shared between dbus calls. These must all have the Send
 /// trait.
 struct HibernateDbusStateInternal {
     call_count: u32,
-    resume_tx: Sender<ResumeRequest>,
+    resume_tx: Sender<ResumeVerdict>,
     stop: bool,
 }
 
 impl HibernateDbusStateInternal {
-    fn new(resume_tx: Sender<ResumeRequest>) -> Self {
+    fn new(resume_tx: Sender<ResumeVerdict>) -> Self {
         Self {
             call_count: 0,
             resume_tx,
@@ -78,11 +96,13 @@ impl HibernateDbusStateInternal {
     fn resume_from_hibernate(&mut self, account_id: &str, auth_session_id: &[u8]) {
         self.call_count += 1;
         let (completion_tx, completion_rx) = channel();
-        let _ = self.resume_tx.send(ResumeRequest {
+        let request = ResumeRequest {
             account_id: account_id.to_string(),
             auth_session_id: auth_session_id.to_vec(),
             completion_tx,
-        });
+        };
+
+        let _ = self.resume_tx.send(ResumeVerdict::Requested(request));
 
         // Wait on the completion channel for the main thread to send something.
         // It doesn't matter what it is, and on error, just keep going.
@@ -101,6 +121,16 @@ impl HibernateDbusStateInternal {
     fn resume_from_hibernate_auth(&mut self, auth_session_id: &[u8]) {
         self.resume_from_hibernate("", auth_session_id)
     }
+
+    /// D-bus method called by various components in the system to abort a
+    /// resume from hibernation.
+    fn abort_resume(&mut self, reason: String) {
+        self.call_count += 1;
+        info!("Received abort request: {}", &reason);
+        let _ = self
+            .resume_tx
+            .send(ResumeVerdict::Aborted(ResumeAbort { reason }));
+    }
 }
 
 /// Define the d-bus state. Arc and Mutex are needed because crossroads takes
@@ -109,7 +139,7 @@ impl HibernateDbusStateInternal {
 struct HibernateDbusState(Arc<Mutex<HibernateDbusStateInternal>>);
 
 impl HibernateDbusState {
-    fn new(resume_tx: Sender<ResumeRequest>) -> Self {
+    fn new(resume_tx: Sender<ResumeVerdict>) -> Self {
         HibernateDbusState(Arc::new(Mutex::new(HibernateDbusStateInternal::new(
             resume_tx,
         ))))
@@ -125,16 +155,16 @@ struct HiberDbusConnectionInternal {
 
 impl HiberDbusConnectionInternal {
     /// Fire up a new system d-bus server.
-    fn new(resume_tx: Sender<ResumeRequest>) -> Result<Self> {
+    fn new(resume_tx: Sender<ResumeVerdict>) -> Result<Self> {
         info!("Setting up dbus");
         let state = HibernateDbusState::new(resume_tx);
         let conn = Connection::new_system().context("Failed to start local dbus connection")?;
-        conn.request_name("org.chromium.Hibernate", false, false, false)
+        conn.request_name(HIBERMAN_DBUS_NAME, false, false, false)
             .context("Failed to request dbus name")?;
 
         let mut crossroads = Crossroads::new();
         // Build a new HibernateResumeInterface.
-        let iface_token = crossroads.register("org.chromium.HibernateResumeInterface", |b| {
+        let iface_token = crossroads.register(HIBERMAN_RESUME_DBUS_INTERFACE, |b| {
             b.method(
                 "ResumeFromHibernate",
                 ("account_id",),
@@ -145,8 +175,7 @@ impl HiberDbusConnectionInternal {
                     // Here's what happens when the method is called.
                     let mut internal_state = state.0.lock();
                     internal_state.resume_from_hibernate_acct(&account_id);
-                    // This is currently the only thing the dbus thread is alive
-                    // for, so shut it down after this method call.
+                    // Shut down the dbus thread since resume is committed.
                     internal_state.stop = true;
                     info!("ResumeFromHibernate completing");
                     Ok(())
@@ -169,8 +198,22 @@ impl HiberDbusConnectionInternal {
                     Ok(())
                 },
             );
+
+            b.method(
+                "AbortResume",
+                ("reason",),
+                (),
+                move |_ctx: &mut Context, state: &mut HibernateDbusState, (reason,): (String,)| {
+                    // Here's what happens when the method is called.
+                    let mut internal_state = state.0.lock();
+                    internal_state.abort_resume(reason);
+                    info!("AbortResume completing");
+                    Ok(())
+                },
+            );
         });
-        crossroads.insert("/org/chromium/Hibernate", &[iface_token], state.clone());
+
+        crossroads.insert(HIBERMAN_DBUS_PATH, &[iface_token], state.clone());
         conn.start_receive(
             MatchRule::new_method_call(),
             Box::new(move |msg, conn| {
@@ -188,10 +231,10 @@ impl HiberDbusConnectionInternal {
     }
 
     /// Public function used by the dbus thread to process requests until the
-    /// resume method gets called. At that point we drop off since that's all we
-    /// need.
+    /// resume method or abort gets called. At that point we drop off since
+    /// that's all we need.
     fn receive_seed(&mut self) -> Result<()> {
-        info!("Looping to receive ResumeFromHibernate dbus call");
+        info!("Processing dbus requests");
         loop {
             self.conn
                 .process(Duration::from_millis(30000))
@@ -199,10 +242,9 @@ impl HiberDbusConnectionInternal {
             // Break out if ResumefromHibernate was called.
             let state = self.state.0.lock();
             if state.stop {
+                info!("Stopped serving dbus requests");
                 break;
             }
-
-            debug!("Still waiting for ResumeFromHibernate dbus call");
         }
 
         Ok(())
@@ -241,7 +283,7 @@ pub struct PendingResumeCall {
 pub struct HiberDbusConnection {
     internal: Arc<Mutex<HiberDbusConnectionInternal>>,
     thread: Option<thread::JoinHandle<()>>,
-    resume_rx: Receiver<ResumeRequest>,
+    resume_rx: Receiver<ResumeVerdict>,
 }
 
 impl HiberDbusConnection {
@@ -270,41 +312,57 @@ impl HiberDbusConnection {
     }
 
     /// Block waiting for the seed material to become available from cryptohome,
-    /// then return that material.
+    /// then return that material. This errors out upon receiving an abort if
+    /// resume_in_progress is set, or continues waiting otherwise.
     pub fn get_seed_material(&mut self, resume_in_progress: bool) -> Result<PendingResumeCall> {
-        // Block until the dbus thread receives a ResumeFromHibernate call, and
-        // receive that info.
-        info!("Waiting for ResumeFromHibernate call");
-        let mut resume_request = self.resume_rx.recv()?;
+        loop {
+            // Block until the dbus thread receives a ResumeFromHibernate call, and
+            // receive that info.
+            info!("Waiting for ResumeFromHibernate call");
+            let resume_verdict = self.resume_rx.recv()?;
+            match resume_verdict {
+                ResumeVerdict::Aborted(resume_abort) => {
+                    error!("Got resume abort request: {}", &resume_abort.reason);
+                    if !resume_in_progress {
+                        debug!("Ignoring abort request since resume is not in progress");
+                        continue;
+                    }
 
-        // If there's no resume in progress, unblock boot ASAP.
-        if !resume_in_progress {
-            info!("Unblocking ResumeFromHibernate immediately");
-            resume_request.complete();
+                    return Err(HibernateError::ResumeAbortRequested(resume_abort.reason))
+                        .context("Resume aborted");
+                }
+                ResumeVerdict::Requested(mut resume_request) => {
+                    // If there's no resume in progress, unblock boot ASAP.
+                    if !resume_in_progress {
+                        info!("Unblocking ResumeFromHibernate immediately");
+                        resume_request.complete();
+                    }
+
+                    info!("Requesting secret seed");
+                    let mut pending_call = PendingResumeCall {
+                        secret_seed: ResumeSecretSeed::default(),
+                        _resume_request: resume_request,
+                    };
+
+                    get_secret_seed(
+                        &pending_call._resume_request.account_id,
+                        &pending_call._resume_request.auth_session_id,
+                        &mut pending_call.secret_seed.value,
+                    )?;
+                    let length = pending_call.secret_seed.value.len();
+                    if length < MINIMUM_SEED_SIZE {
+                        return Err(HibernateError::DbusError(format!(
+                            "Seed size {} was below minium {}",
+                            length, MINIMUM_SEED_SIZE
+                        )))
+                        .context("Failed to receive seed");
+                    }
+
+                    info!("Got {} bytes of seed material", length);
+                    return Ok(pending_call);
+                }
+            }
         }
-
-        info!("Requesting secret seed");
-        let mut pending_call = PendingResumeCall {
-            secret_seed: ResumeSecretSeed::default(),
-            _resume_request: resume_request,
-        };
-
-        get_secret_seed(
-            &pending_call._resume_request.account_id,
-            &pending_call._resume_request.auth_session_id,
-            &mut pending_call.secret_seed.value,
-        )?;
-        let length = pending_call.secret_seed.value.len();
-        if length < MINIMUM_SEED_SIZE {
-            return Err(HibernateError::DbusError(format!(
-                "Seed size {} was below minium {}",
-                length, MINIMUM_SEED_SIZE
-            )))
-            .context("Failed to receive seed");
-        }
-
-        info!("Got {} bytes of seed material", length);
-        Ok(pending_call)
     }
 }
 
@@ -336,5 +394,23 @@ fn get_secret_seed(account_id: &str, auth_session_id: &[u8], seed: &mut Vec<u8>)
     seed.resize(reply.hibernate_secret.len(), 0);
     seed.copy_from_slice(&reply.hibernate_secret);
     reply.hibernate_secret.fill(0);
+    Ok(())
+}
+
+/// Send an abort request over dbus to cancel a pending resume. The hiberman
+/// process calling this function might not be the same as the hiberman process
+/// serving the dbus requests. For example, a developer may invoke the abort
+/// resume subcommand.
+pub fn send_abort(reason: &str) -> Result<()> {
+    let conn = Connection::new_system().context("Failed to connect to dbus for secret seed")?;
+    let conn_path = conn.with_proxy(HIBERMAN_DBUS_NAME, HIBERMAN_DBUS_PATH, DEFAULT_DBUS_TIMEOUT);
+
+    // Now make the method call. The ListNames method call takes zero input parameters and
+    // one output parameter which is an array of strings.
+    // Therefore the input is a zero tuple "()", and the output is a single tuple "(names,)".
+    conn_path
+        .method_call(HIBERMAN_RESUME_DBUS_INTERFACE, "AbortResume", (reason,))
+        .context("Failed to send abort request")?;
+    info!("Sent AbortResume request");
     Ok(())
 }

@@ -101,6 +101,9 @@ pub enum HibernateError {
     /// Index out of range error
     #[error("Index out of range")]
     IndexOutOfRangeError(),
+    /// Resume abort requested
+    #[error("Resume abort requested: {0}")]
+    ResumeAbortRequested(String),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -126,6 +129,19 @@ pub struct ResumeOptions {
     pub unencrypted: bool,
     pub test_keys: bool,
     pub no_preloader: bool,
+}
+
+/// Options taken from the command line affecting abort-resume
+pub struct AbortResumeOptions {
+    pub reason: String,
+}
+
+impl Default for AbortResumeOptions {
+    fn default() -> Self {
+        Self {
+            reason: "Manually aborted by hiberman abort-resume".to_string(),
+        }
+    }
 }
 
 /// Get the page size on this system.

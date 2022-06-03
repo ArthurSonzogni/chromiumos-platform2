@@ -25,5 +25,16 @@
       <arg name="auth_session_id" direction="in" type="ay" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <!--
+    AbortResume:
+
+    Aborts a pending resume from hibernation, if one is in progress. An aborted
+    resume continues the current world of execution as the official timeline,
+    and commences syncing snapshot storage back to its origin.
+    -->
+    <method name="AbortResume">
+      <arg name="reason" direction="in" type="s" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

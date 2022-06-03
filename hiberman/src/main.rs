@@ -7,7 +7,7 @@
 use getopts::{self, Options};
 use hiberman::cookie::HibernateCookieValue;
 use hiberman::metrics::{log_hibernate_failure, log_resume_failure};
-use hiberman::{self, HibernateOptions, ResumeInitOptions, ResumeOptions};
+use hiberman::{self, AbortResumeOptions, HibernateOptions, ResumeInitOptions, ResumeOptions};
 use log::{error, warn};
 
 fn print_usage(message: &str, error: bool) {
@@ -296,6 +296,55 @@ fn hiberman_resume_init(args: &mut std::env::Args) -> std::result::Result<(), ()
     Ok(())
 }
 
+fn abort_resume_usage(error: bool, options: &Options) {
+    let brief = r#"Usage: hiberman abort-resume [options]
+Send an abort request over dbus to another hiberman process currently executing a resume.
+"#;
+
+    print_usage(&options.usage(brief), error);
+}
+
+fn hiberman_abort_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
+    let mut opts = Options::new();
+    opts.optopt("m", "message", "Supply the reason for the abort", "reason");
+    opts.optflag("h", "help", "Print this help text");
+    opts.optflag("v", "verbose", "Print more logs");
+    let args: Vec<String> = args.collect();
+    let matches = match opts.parse(args) {
+        Ok(m) => m,
+        Err(e) => {
+            error!("Failed to parse arguments: {}", e);
+            abort_resume_usage(true, &opts);
+            return Err(());
+        }
+    };
+
+    if matches.opt_present("h") {
+        abort_resume_usage(false, &opts);
+        return Ok(());
+    }
+
+    let verbosity = if matches.opt_present("v") { 9 } else { 1 };
+
+    // Syslog is not yet available, so just log to stderr.
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(verbosity)
+        .init()
+        .unwrap();
+    let mut options = AbortResumeOptions::default();
+    if let Some(reason) = matches.opt_str("m") {
+        options.reason = reason;
+    }
+
+    if let Err(e) = hiberman::abort_resume(options) {
+        error!("Failed to abort resume: {:#?}", e);
+        return Err(());
+    }
+
+    Ok(())
+}
+
 fn resume_usage(error: bool, options: &Options) {
     let brief = r#"Usage: hiberman resume [options]
 Resume the system now. On success, does not return, but jumps back into the
@@ -360,6 +409,7 @@ Valid subcommands are:
     hibernate -- Suspend the machine to disk now.
     resume-init -- Perform early initialization for resume.
     resume -- Resume the system now.
+    abort-resume -- Send an abort request to an in-progress resume.
     cat -- Write a disk file contents to stdout.
     cookie -- Read or write the hibernate cookie.
 "#;
@@ -386,6 +436,7 @@ fn hiberman_main() -> std::result::Result<(), ()> {
             app_usage(false);
             Ok(())
         }
+        "abort-resume" => hiberman_abort_resume(&mut args),
         "cat" => hiberman_cat(&mut args),
         "cookie" => hiberman_cookie(&mut args),
         "hibernate" => hiberman_hibernate(&mut args),
