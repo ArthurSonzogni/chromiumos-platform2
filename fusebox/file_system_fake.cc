@@ -117,7 +117,7 @@ FileSystemFake::FileSystemFake() = default;
 FileSystemFake::~FileSystemFake() = default;
 
 void FileSystemFake::Init(void* userdata, struct fuse_conn_info*) {
-  LOG(INFO) << "Init";
+  VLOG(2) << "Init";
 
   const auto time_now = std::time(nullptr);
 
@@ -150,22 +150,22 @@ void FileSystemFake::Init(void* userdata, struct fuse_conn_info*) {
 void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
                             ino_t parent,
                             const char* name) {
-  LOG(INFO) << "Lookup parent " << parent << " name " << name;
+  VLOG(2) << "Lookup parent " << parent << " name " << name;
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(parent, name);
   if (!node) {
-    PLOG(ERROR) << " lookup error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "lookup";
     return;
   }
 
   auto it = files_.find(node->ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " lookup files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "lookup";
     return;
   }
 
@@ -183,27 +183,26 @@ void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
   entry.attr_timeout = kEntryTimeoutSeconds;
   entry.entry_timeout = kEntryTimeoutSeconds;
 
-  LOG(INFO) << " found ino " << node->ino;
   request->ReplyEntry(entry);
 }
 
 void FileSystemFake::GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) {
-  LOG(INFO) << "GetAttr ino " << ino;
+  VLOG(2) << "GetAttr ino " << ino;
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(ino);
   if (!node) {
-    PLOG(ERROR) << " getattr error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "getattr";
     return;
   }
 
   auto it = files_.find(node->ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " getattr files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "getattr";
     return;
   }
 
@@ -222,22 +221,22 @@ void FileSystemFake::SetAttr(std::unique_ptr<AttrRequest> request,
                              ino_t ino,
                              struct stat* attr,
                              int to_set) {
-  LOG(INFO) << "SetAttr ino " << ino << " fh " << request->fh();
+  VLOG(2) << "SetAttr ino " << ino << " fh " << request->fh();
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(ino);
   if (!node) {
-    PLOG(ERROR) << " setattr error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "setattr";
     return;
   }
 
   auto it = files_.find(ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " setattr files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "setattr";
     return;
   }
 
@@ -256,10 +255,10 @@ void FileSystemFake::SetAttr(std::unique_ptr<AttrRequest> request,
     return 0;
   };
 
-  LOG(INFO) << " to_set " << ToSetFlagsToString(to_set);
+  VLOG(2) << "to_set " << ToSetFlagsToString(to_set);
   if (errno = allowed_to_set(to_set); errno) {
-    PLOG(ERROR) << " setattr to_set";
     request->ReplyError(errno);
+    PLOG(ERROR) << "setattr";
     return;
   }
 
@@ -271,25 +270,25 @@ void FileSystemFake::SetAttr(std::unique_ptr<AttrRequest> request,
   if (to_set & FUSE_SET_ATTR_SIZE) {
     const auto size = it->second.GetSize();
     stat.st_size = it->second.SetSize(attr->st_size);
-    LOG(INFO) << " set size " << size << " to " << stat.st_size;
+    VLOG(2) << "set size " << size << " to " << stat.st_size;
   }
 
   // Set st_atime || st_mtime.
   if (to_set & (FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME)) {
     if (to_set & FUSE_SET_ATTR_ATIME_NOW) {
       stat.st_atime = std::time(nullptr);
-      LOG(INFO) << " set atime now " << stat.st_atime;
+      VLOG(2) << "set atime now " << stat.st_atime;
     } else if (to_set & FUSE_SET_ATTR_ATIME) {
       stat.st_atime = attr->st_atime;
-      LOG(INFO) << " set atime " << stat.st_atime;
+      VLOG(2) << "set atime " << stat.st_atime;
     }
 
     if (to_set & FUSE_SET_ATTR_MTIME_NOW) {
       stat.st_mtime = std::time(nullptr);
-      LOG(INFO) << " set mtime now " << stat.st_mtime;
+      VLOG(2) << "set mtime now " << stat.st_mtime;
     } else if (to_set & FUSE_SET_ATTR_MTIME) {
       stat.st_mtime = attr->st_mtime;
-      LOG(INFO) << " set mtime " << stat.st_mtime;
+      VLOG(2) << "set mtime " << stat.st_mtime;
     }
   }
 
@@ -304,21 +303,21 @@ void FileSystemFake::MkDir(std::unique_ptr<EntryRequest> request,
                            ino_t parent,
                            const char* name,
                            mode_t mode) {
-  LOG(INFO) << "MkDir parent " << parent << " name " << name;
+  VLOG(2) << "MkDir parent " << parent << " name " << name;
 
   if (request->IsInterrupted())
     return;
 
   if (read_only_) {
-    LOG(ERROR) << " mkdir read-only: EACCES";
-    request->ReplyError(EACCES);
+    errno = request->ReplyError(EROFS);
+    PLOG(ERROR) << "mkdir";
     return;
   }
 
   Node* node = GetInodeTable().Create(parent, name);
   if (!node) {
-    PLOG(ERROR) << " mkdir error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "mkdir";
     return;
   }
 
@@ -334,41 +333,39 @@ void FileSystemFake::MkDir(std::unique_ptr<EntryRequest> request,
   entry.attr_timeout = kEntryTimeoutSeconds;
   entry.entry_timeout = kEntryTimeoutSeconds;
 
-  LOG(INFO) << " mkdir ino " << node->ino;
   request->ReplyEntry(entry);
 }
 
 void FileSystemFake::Unlink(std::unique_ptr<OkRequest> request,
                             ino_t parent,
                             const char* name) {
-  LOG(INFO) << "Unlink parent " << parent << " name " << name;
+  VLOG(2) << "Unlink parent " << parent << " name " << name;
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(parent, name);
   if (!node || node->ino <= FUSE_ROOT_ID) {
-    errno = !node ? errno : EBUSY;
-    PLOG(ERROR) << " unlink error";
-    request->ReplyError(errno);
+    errno = request->ReplyError(!node ? errno : EBUSY);
+    PLOG(ERROR) << "unlink";
     return;
   }
 
   auto it = files_.find(node->ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " unlink files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "unlink";
     return;
   }
 
   if (read_only_) {
-    LOG(ERROR) << " unlink read-only: EACCES";
-    request->ReplyError(EACCES);
+    errno = request->ReplyError(EROFS);
+    PLOG(ERROR) << "unlink";
     return;
   }
 
   bool removed = GetInodeTable().Forget(node->ino, 1);
-  LOG_IF(FATAL, !removed) << " unlink failed";
+  LOG_IF(FATAL, !removed) << "unlink failed";
   files_.erase(it);
 
   request->ReplyOk();
@@ -377,29 +374,28 @@ void FileSystemFake::Unlink(std::unique_ptr<OkRequest> request,
 void FileSystemFake::RmDir(std::unique_ptr<OkRequest> request,
                            ino_t parent,
                            const char* name) {
-  LOG(INFO) << "RmDir parent " << parent << " name " << name;
+  VLOG(2) << "RmDir parent " << parent << " name " << name;
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(parent, name);
   if (!node || node->ino <= FUSE_ROOT_ID) {
-    errno = !node ? errno : EBUSY;
-    PLOG(ERROR) << " rmdir error";
-    request->ReplyError(errno);
+    errno = request->ReplyError(!node ? errno : EBUSY);
+    PLOG(ERROR) << "rmdir";
     return;
   }
 
   auto it = files_.find(node->ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " read files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "rmdir";
     return;
   }
 
   if (read_only_) {
-    LOG(ERROR) << " rmdir read-only: EACCES";
-    request->ReplyError(EACCES);
+    errno = request->ReplyError(EROFS);
+    PLOG(ERROR) << "rmdir";
     return;
   }
 
@@ -407,13 +403,13 @@ void FileSystemFake::RmDir(std::unique_ptr<OkRequest> request,
     Node* child = it.second.node();
     if (!child || child->parent != node->ino)
       continue;  // skip: not a child of the node |ino|.
-    LOG(ERROR) << " rmdir error: ENOTEMPTY";
-    request->ReplyError(ENOTEMPTY);
+    errno = request->ReplyError(ENOTEMPTY);
+    PLOG(ERROR) << "rmdir";
     return;
   }
 
   bool removed = GetInodeTable().Forget(node->ino, 1);
-  LOG_IF(FATAL, !removed) << " rmdir failed";
+  LOG_IF(FATAL, !removed) << "rmdir failed";
   files_.erase(it);
 
   request->ReplyOk();
@@ -424,7 +420,7 @@ void FileSystemFake::Rename(std::unique_ptr<OkRequest> request,
                             const char* name,
                             ino_t new_parent,
                             const char* new_name) {
-  LOG(INFO) << "Rename parent " << parent << " name " << name;
+  VLOG(2) << "Rename parent " << parent << " name " << name;
 
   if (request->IsInterrupted())
     return;
@@ -446,15 +442,15 @@ void FileSystemFake::Rename(std::unique_ptr<OkRequest> request,
 }
 
 void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) {
-  LOG(INFO) << "OpenDir ino " << ino;
+  VLOG(2) << "OpenDir ino " << ino;
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(ino);
   if (!node) {
-    PLOG(ERROR) << " opendir error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "opendir";
     return;
   }
 
@@ -463,37 +459,36 @@ void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) {
   CHECK_EQ(stat.st_ino, node->ino);
 
   if (!S_ISDIR(stat.st_mode)) {
-    LOG(ERROR) << " opendir error: ENOTDIR";
-    request->ReplyError(ENOTDIR);
+    errno = request->ReplyError(ENOTDIR);
+    PLOG(ERROR) << "opendir";
     return;
   }
 
-  LOG(INFO) << " flags " << OpenFlagsToString(request->flags());
+  VLOG(2) << "flags " << OpenFlagsToString(request->flags());
   if ((request->flags() & O_ACCMODE) != O_RDONLY) {
-    LOG(ERROR) << " opendir error: EACCES";
-    request->ReplyError(EACCES);
+    errno = request->ReplyError(EPERM);
+    PLOG(ERROR) << "opendir";
     return;
   }
 
   uint64_t handle = fusebox::OpenFile();
   readdir_[handle].reset(new DirEntryResponse(node->ino, handle));
 
-  LOG(INFO) << " opendir fh " << handle;
   request->ReplyOpen(handle);
 }
 
 void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
                              ino_t ino,
                              off_t off) {
-  LOG(INFO) << "ReadDir ino " << ino << " off " << off;
+  VLOG(2) << "ReadDir ino " << ino << " off " << off;
 
   if (request->IsInterrupted())
     return;
 
   auto it = readdir_.find(request->fh());
   if (it == readdir_.end()) {
-    LOG(ERROR) << " readdir error: EBADF " << request->fh();
-    request->ReplyError(EBADF);
+    errno = request->ReplyError(EBADF);
+    PLOG(ERROR) << "readdir";
     return;
   }
 
@@ -512,7 +507,7 @@ void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
   };
 
   if (off == 0) {
-    LOG(INFO) << " readdir fh " << request->fh();
+    VLOG(2) << "readdir fh " << request->fh();
 
     std::vector<DirEntry> entries;
     entries.push_back(dir_entry(ino, "."));
@@ -527,7 +522,7 @@ void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
     }
 
     for (const auto& entry : entries)
-      LOG(INFO) << " entry [" << entry.name << "]";
+      VLOG(2) << " entry [" << entry.name << "]";
     response->Append(entries, true);
   }
 
@@ -535,18 +530,17 @@ void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
 }
 
 void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) {
-  LOG(INFO) << "ReleaseDir ino " << ino;
+  VLOG(2) << "ReleaseDir ino " << ino;
 
   if (request->IsInterrupted())
     return;
 
   if (!fusebox::GetFile(request->fh())) {
-    LOG(ERROR) << " releasedir error: EBADF " << request->fh();
-    request->ReplyError(EBADF);
+    errno = request->ReplyError(EBADF);
+    PLOG(ERROR) << "releasedir";
     return;
   }
 
-  LOG(INFO) << " releasedir fh " << request->fh();
   fusebox::CloseFile(request->fh());
   readdir_.erase(request->fh());
 
@@ -554,15 +548,15 @@ void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) {
 }
 
 void FileSystemFake::Open(std::unique_ptr<OpenRequest> request, ino_t ino) {
-  LOG(INFO) << "Open ino " << ino;
+  VLOG(2) << "Open ino " << ino;
 
   if (request->IsInterrupted())
     return;
 
   Node* node = GetInodeTable().Lookup(ino);
   if (!node) {
-    PLOG(ERROR) << " open error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "open";
     return;
   }
 
@@ -571,20 +565,19 @@ void FileSystemFake::Open(std::unique_ptr<OpenRequest> request, ino_t ino) {
   CHECK_EQ(stat.st_ino, node->ino);
 
   if (S_ISDIR(stat.st_mode)) {
-    LOG(ERROR) << " open error: EISDIR";
-    request->ReplyError(EISDIR);
+    errno = request->ReplyError(EISDIR);
+    PLOG(ERROR) << "open";
     return;
   }
 
-  LOG(INFO) << " flags " << OpenFlagsToString(request->flags());
+  VLOG(2) << "flags " << OpenFlagsToString(request->flags());
   if (read_only_ && (request->flags() & O_ACCMODE) != O_RDONLY) {
-    LOG(ERROR) << " open error: EACCES";
-    request->ReplyError(EACCES);
+    errno = request->ReplyError(EROFS);
+    PLOG(ERROR) << "open";
     return;
   }
 
   uint64_t handle = fusebox::OpenFile();
-  LOG(INFO) << " opened fh " << handle;
   request->ReplyOpen(handle);
 }
 
@@ -592,14 +585,14 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
                           ino_t ino,
                           size_t size,
                           off_t off) {
-  LOG(INFO) << "Read ino " << ino << " off " << off << " size " << size;
+  VLOG(2) << "Read ino " << ino << " off " << off << " size " << size;
 
   if (request->IsInterrupted())
     return;
 
   if (!fusebox::GetFile(request->fh())) {
-    LOG(ERROR) << " read error: EBADF " << request->fh();
-    request->ReplyError(EBADF);
+    errno = request->ReplyError(EBADF);
+    PLOG(ERROR) << "read";
     return;
   }
 
@@ -608,19 +601,18 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
   CHECK_EQ(stat.st_ino, ino);
 
   if (S_ISDIR(stat.st_mode)) {
-    LOG(ERROR) << " read error: EISDIR";
-    request->ReplyError(EISDIR);
+    errno = request->ReplyError(EISDIR);
+    PLOG(ERROR) << "read";
     return;
   }
 
   auto it = files_.find(ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " read files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "read";
     return;
   }
 
-  LOG(INFO) << " read fh " << request->fh();
   auto slice = it->second.GetDataSlice(off, size);
   request->ReplyBuffer(slice.data(), slice.size());
 }
@@ -630,14 +622,14 @@ void FileSystemFake::Write(std::unique_ptr<WriteRequest> request,
                            const char* buf,
                            size_t size,
                            off_t off) {
-  LOG(INFO) << "Write ino " << ino << " off " << off << " size " << size;
+  VLOG(2) << "Write ino " << ino << " off " << off << " size " << size;
 
   if (request->IsInterrupted())
     return;
 
   if (!fusebox::GetFile(request->fh())) {
-    LOG(ERROR) << " write error: EBADF " << request->fh();
-    request->ReplyError(EBADF);
+    errno = request->ReplyError(EBADF);
+    PLOG(ERROR) << "write";
     return;
   }
 
@@ -646,36 +638,34 @@ void FileSystemFake::Write(std::unique_ptr<WriteRequest> request,
   CHECK_EQ(stat.st_ino, ino);
 
   if (S_ISDIR(stat.st_mode)) {
-    LOG(ERROR) << " write error: EISDIR";
-    request->ReplyError(EISDIR);
+    errno = request->ReplyError(EISDIR);
+    PLOG(ERROR) << "write";
     return;
   }
 
   auto it = files_.find(ino);
   if (it == files_.end()) {
-    LOG(ERROR) << " write files map: ENOENT";
-    request->ReplyError(ENOENT);
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "write";
     return;
   }
 
-  LOG(INFO) << " write fh " << request->fh();
   auto count = it->second.SetData(buf, size, off);
   request->ReplyWrite(count);
 }
 
 void FileSystemFake::Release(std::unique_ptr<OkRequest> request, ino_t ino) {
-  LOG(INFO) << "Release ino " << ino;
+  VLOG(2) << "Release ino " << ino;
 
   if (request->IsInterrupted())
     return;
 
   if (!fusebox::GetFile(request->fh())) {
-    LOG(ERROR) << " release error: EBADF " << request->fh();
-    request->ReplyError(EBADF);
+    errno = request->ReplyError(EBADF);
+    PLOG(ERROR) << "release";
     return;
   }
 
-  LOG(INFO) << " release fh " << request->fh();
   fusebox::CloseFile(request->fh());
   request->ReplyOk();
 }
@@ -684,27 +674,27 @@ void FileSystemFake::Create(std::unique_ptr<CreateRequest> request,
                             ino_t parent,
                             const char* name,
                             mode_t mode) {
-  LOG(INFO) << "Create parent " << parent << " name " << name;
+  VLOG(2) << "Create parent " << parent << " name " << name;
 
   if (request->IsInterrupted())
     return;
 
   if (!S_ISREG(mode)) {
-    LOG(ERROR) << " create mode: EINVAL";
-    request->ReplyError(EINVAL);
+    errno = request->ReplyError(EINVAL);
+    PLOG(ERROR) << "create";
     return;
   }
 
   if (read_only_) {
-    LOG(ERROR) << " create error: EACCES";
-    request->ReplyError(EACCES);
+    errno = request->ReplyError(EROFS);
+    PLOG(ERROR) << "create";
     return;
   }
 
   Node* node = GetInodeTable().Create(parent, name);
   if (!node) {
-    PLOG(ERROR) << " create error";
     request->ReplyError(errno);
+    PLOG(ERROR) << "create";
     return;
   }
 
@@ -720,10 +710,9 @@ void FileSystemFake::Create(std::unique_ptr<CreateRequest> request,
   entry.attr_timeout = kEntryTimeoutSeconds;
   entry.entry_timeout = kEntryTimeoutSeconds;
 
-  LOG(INFO) << " flags " << OpenFlagsToString(request->flags());
+  VLOG(2) << "flags " << OpenFlagsToString(request->flags());
   uint64_t handle = fusebox::OpenFile();
 
-  LOG(INFO) << " create ino " << node->ino << " fh " << handle;
   request->ReplyCreate(entry, handle);
 }
 
