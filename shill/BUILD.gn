@@ -615,7 +615,6 @@ if (use.test) {
 
   executable("shill_unittest") {
     sources = [
-      "arp_client_test_helper.cc",
       "cellular/apn_list_test.cc",
       "cellular/cellular_bearer_test.cc",
       "cellular/cellular_capability_3gpp_test.cc",
@@ -689,7 +688,6 @@ if (use.test) {
       "mobile_operator_db/service_providers_test.cc",
       "mock_adaptors.cc",
       "mock_ares.cc",
-      "mock_arp_client.cc",
       "mock_certificate_file.cc",
       "mock_connection.cc",
       "mock_control.cc",
