@@ -6,8 +6,9 @@
 
 #include <assert.h>
 
-#include "sommelier.h"          // NOLINT(build/include_directory)
-#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"    // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
@@ -227,10 +228,12 @@ static void sl_internal_xdg_toplevel_configure(
     return;
 
   if (width && height) {
-    int32_t width_in_pixels = width * window->ctx->scale;
-    int32_t height_in_pixels = height * window->ctx->scale;
+    int32_t width_in_pixels = width;
+    int32_t height_in_pixels = height;
     int i = 0;
 
+    sl_transform_host_to_guest(window->ctx, &width_in_pixels,
+                               &height_in_pixels);
     window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
                                XCB_CONFIG_WINDOW_HEIGHT |
                                XCB_CONFIG_WINDOW_BORDER_WIDTH;
@@ -492,14 +495,18 @@ void sl_window_update(struct sl_window* window) {
     if (window->name)
       xdg_toplevel_set_title(window->xdg_toplevel, window->name);
     if (window->size_flags & P_MIN_SIZE) {
-      xdg_toplevel_set_min_size(window->xdg_toplevel,
-                                window->min_width / ctx->scale,
-                                window->min_height / ctx->scale);
+      int32_t minw = window->min_width;
+      int32_t minh = window->min_height;
+
+      sl_transform_guest_to_host(window->ctx, &minw, &minh);
+      xdg_toplevel_set_min_size(window->xdg_toplevel, minw, minh);
     }
     if (window->size_flags & P_MAX_SIZE) {
-      xdg_toplevel_set_max_size(window->xdg_toplevel,
-                                window->max_width / ctx->scale,
-                                window->max_height / ctx->scale);
+      int32_t maxw = window->max_width;
+      int32_t maxh = window->max_height;
+
+      sl_transform_guest_to_host(window->ctx, &maxw, &maxh);
+      xdg_toplevel_set_max_size(window->xdg_toplevel, maxw, maxh);
     }
     if (window->maximized) {
       xdg_toplevel_set_maximized(window->xdg_toplevel);
@@ -509,14 +516,16 @@ void sl_window_update(struct sl_window* window) {
     }
   } else if (!window->xdg_popup) {
     struct xdg_positioner* positioner;
+    int32_t diffx = window->x - parent->x;
+    int32_t diffy = window->y - parent->y;
 
     positioner = xdg_wm_base_create_positioner(ctx->xdg_shell->internal);
     assert(positioner);
+
+    sl_transform_guest_to_host(window->ctx, &diffx, &diffy);
     xdg_positioner_set_anchor(positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_gravity(positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    xdg_positioner_set_anchor_rect(positioner,
-                                   (window->x - parent->x) / ctx->scale,
-                                   (window->y - parent->y) / ctx->scale, 1, 1);
+    xdg_positioner_set_anchor_rect(positioner, diffx, diffy, 1, 1);
 
     window->xdg_popup = xdg_surface_get_popup(window->xdg_surface,
                                               parent->xdg_surface, positioner);
@@ -529,9 +538,12 @@ void sl_window_update(struct sl_window* window) {
 
   if ((window->size_flags & (US_POSITION | P_POSITION)) && parent &&
       ctx->aura_shell) {
-    zaura_surface_set_parent(window->aura_surface, parent->aura_surface,
-                             (window->x - parent->x) / ctx->scale,
-                             (window->y - parent->y) / ctx->scale);
+    int32_t diffx = window->x - parent->x;
+    int32_t diffy = window->y - parent->y;
+
+    sl_transform_guest_to_host(window->ctx, &diffx, &diffy);
+    zaura_surface_set_parent(window->aura_surface, parent->aura_surface, diffx,
+                             diffy);
   }
 
 #ifdef COMMIT_LOOP_FIX

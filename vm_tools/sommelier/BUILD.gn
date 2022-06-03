@@ -97,6 +97,7 @@ static_library("libsommelier") {
     "sommelier-text-input.cc",
     "sommelier-timing.cc",
     "sommelier-tracing.cc",
+    "sommelier-transform.cc",
     "sommelier-util.cc",
     "sommelier-viewporter.cc",
     "sommelier-window.cc",

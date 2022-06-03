@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"          // NOLINT(build/include_directory)
-#include "sommelier-timing.h"   // NOLINT(build/include_directory)
-#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-timing.h"     // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"    // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -22,9 +23,6 @@
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
-
-#define MIN_SIZE (INT_MIN / 10)
-#define MAX_SIZE (INT_MAX / 10)
 
 #define DMA_BUF_SYNC_READ (1 << 0)
 #define DMA_BUF_SYNC_WRITE (2 << 0)
@@ -151,7 +149,6 @@ static void sl_host_surface_attach(struct wl_client* client,
                       : NULL;
   struct wl_buffer* buffer_proxy = NULL;
   struct sl_window* window;
-  double scale = host->ctx->scale;
 
   host->current_buffer = NULL;
   if (host->contents_shm_mmap) {
@@ -291,8 +288,7 @@ static void sl_host_surface_attach(struct wl_client* client,
     }
   }
 
-  x /= scale;
-  y /= scale;
+  sl_transform_guest_to_host(host->ctx, &x, &y);
 
   if (host_buffer && host_buffer->sync_point) {
     TRACE_EVENT("surface", "sl_host_surface_attach: sync_point");
@@ -400,7 +396,7 @@ static void sl_host_surface_damage(struct wl_client* client,
               try_wl_resource_get_id(resource));
   const struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  const double scale = host->ctx->scale;
+
   struct sl_output_buffer* buffer;
   int64_t x1, y1, x2, y2;
 
@@ -418,13 +414,7 @@ static void sl_host_surface_damage(struct wl_client* client,
   x2 = x1 + width;
   y2 = y1 + height;
 
-  // Enclosing rect after scaling and outset by one pixel to account for
-  // potential filtering.
-  x1 = MAX(MIN_SIZE, x1 - 1) / scale;
-  y1 = MAX(MIN_SIZE, y1 - 1) / scale;
-  x2 = ceil(MIN(x2 + 1, MAX_SIZE) / scale);
-  y2 = ceil(MIN(y2 + 1, MAX_SIZE) / scale);
-
+  sl_transform_damage_coord(host->ctx, 1.0, 1.0, &x1, &y1, &x2, &y2);
   wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
@@ -462,20 +452,12 @@ static void sl_host_surface_damage_buffer(struct wl_client* client,
   compute_buffer_scale_and_offset(host, viewport, &scale_x, &scale_y, &offset_x,
                                   &offset_y);
 
-  scale_x *= host->ctx->scale;
-  scale_y *= host->ctx->scale;
   int64_t x1 = x - wl_fixed_to_int(offset_x);
   int64_t y1 = y - wl_fixed_to_int(offset_y);
   int64_t x2 = x1 + width;
   int64_t y2 = y1 + height;
 
-  // Enclosing rect after scaling and outset by one pixel to account for
-  // potential filtering.
-  x1 = MAX(MIN_SIZE, x1 - 1) / scale_x;
-  y1 = MAX(MIN_SIZE, y1 - 1) / scale_y;
-  x2 = ceil(MIN(x2 + 1, MAX_SIZE) / scale_x);
-  y2 = ceil(MIN(y2 + 1, MAX_SIZE) / scale_y);
-
+  sl_transform_damage_coord(host->ctx, scale_x, scale_y, &x1, &y1, &x2, &y2);
   wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
@@ -700,8 +682,15 @@ static void sl_host_surface_commit(struct wl_client* client,
         }
       }
 
-      wp_viewport_set_destination(host->viewport, ceil(width / scale),
-                                  ceil(height / scale));
+      int32_t vp_width = width;
+      int32_t vp_height = height;
+
+      // Consult with the transform function to see if the
+      // viewport destination set is necessary
+      if (sl_transform_viewport_scale(host->ctx, host->contents_scale,
+                                      &vp_width, &vp_height)) {
+        wp_viewport_set_destination(host->viewport, vp_width, vp_height);
+      }
     } else {
       wl_surface_set_buffer_scale(host->proxy, scale);
     }
@@ -872,13 +861,13 @@ static void sl_region_add(struct wl_client* client,
                           int32_t height) {
   struct sl_host_region* host =
       static_cast<sl_host_region*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
-  int32_t x1, y1, x2, y2;
+  int32_t x1 = x;
+  int32_t y1 = y;
+  int32_t x2 = x + width;
+  int32_t y2 = y + height;
 
-  x1 = x / scale;
-  y1 = y / scale;
-  x2 = (x + width) / scale;
-  y2 = (y + height) / scale;
+  sl_transform_guest_to_host(host->ctx, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, &x2, &y2);
 
   wl_region_add(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -891,13 +880,13 @@ static void sl_region_subtract(struct wl_client* client,
                                int32_t height) {
   struct sl_host_region* host =
       static_cast<sl_host_region*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
-  int32_t x1, y1, x2, y2;
+  int32_t x1 = x;
+  int32_t y1 = y;
+  int32_t x2 = x + width;
+  int32_t y2 = y + height;
 
-  x1 = x / scale;
-  y1 = y / scale;
-  x2 = (x + width) / scale;
-  y2 = (y + height) / scale;
+  sl_transform_guest_to_host(host->ctx, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, &x2, &y2);
 
   wl_region_subtract(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }

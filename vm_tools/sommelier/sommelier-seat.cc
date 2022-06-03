@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <math.h>
@@ -49,7 +50,9 @@ static void sl_host_pointer_set_cursor(struct wl_client* client,
   struct sl_host_pointer* host =
       static_cast<sl_host_pointer*>(wl_resource_get_user_data(resource));
   struct sl_host_surface* host_surface = NULL;
-  double scale = host->seat->ctx->scale;
+
+  int32_t hsx = hotspot_x;
+  int32_t hsy = hotspot_y;
 
   if (surface_resource) {
     host_surface = static_cast<sl_host_surface*>(
@@ -59,9 +62,10 @@ static void sl_host_pointer_set_cursor(struct wl_client* client,
       wl_surface_commit(host_surface->proxy);
   }
 
+  sl_transform_guest_to_host(host->seat->ctx, &hsx, &hsy);
+
   wl_pointer_set_cursor(host->proxy, serial,
-                        host_surface ? host_surface->proxy : NULL,
-                        hotspot_x / scale, hotspot_y / scale);
+                        host_surface ? host_surface->proxy : NULL, hsx, hsy);
 }  // NOLINT(whitespace/indent)
 
 static void sl_host_pointer_release(struct wl_client* client,
@@ -87,6 +91,8 @@ static void sl_pointer_set_focus(struct sl_host_pointer* host,
                                  wl_fixed_t y) {
   struct wl_resource* surface_resource =
       host_surface ? host_surface->resource : NULL;
+  wl_fixed_t ix = x;
+  wl_fixed_t iy = y;
 
   if (surface_resource == host->focus_resource)
     return;
@@ -100,8 +106,6 @@ static void sl_pointer_set_focus(struct sl_host_pointer* host,
   host->focus_serial = serial;
 
   if (surface_resource) {
-    double scale = host->seat->ctx->scale;
-
     if (host->seat->ctx->xwayland) {
       // Make sure focus surface is on top before sending enter event.
       sl_restack_windows(host->seat->ctx, wl_resource_get_id(surface_resource));
@@ -111,8 +115,8 @@ static void sl_pointer_set_focus(struct sl_host_pointer* host,
     wl_resource_add_destroy_listener(surface_resource,
                                      &host->focus_resource_listener);
 
-    wl_pointer_send_enter(host->resource, serial, surface_resource, x * scale,
-                          y * scale);
+    sl_transform_host_to_guest_fixed(host->seat->ctx, &ix, &iy);
+    wl_pointer_send_enter(host->resource, serial, surface_resource, ix, iy);
   }
 }
 
@@ -155,9 +159,12 @@ static void sl_pointer_motion(void* data,
                               wl_fixed_t y) {
   struct sl_host_pointer* host =
       static_cast<sl_host_pointer*>(wl_pointer_get_user_data(pointer));
-  double scale = host->seat->ctx->scale;
 
-  wl_pointer_send_motion(host->resource, time, x * scale, y * scale);
+  wl_fixed_t mx = x;
+  wl_fixed_t my = y;
+
+  sl_transform_host_to_guest_fixed(host->seat->ctx, &mx, &my);
+  wl_pointer_send_motion(host->resource, time, mx, my);
 }
 
 static void sl_pointer_button(void* data,
@@ -183,10 +190,12 @@ static void sl_pointer_axis(void* data,
                             wl_fixed_t value) {
   struct sl_host_pointer* host =
       static_cast<sl_host_pointer*>(wl_pointer_get_user_data(pointer));
-  double scale = host->seat->ctx->scale;
+  wl_fixed_t svalue = value;
+
+  sl_transform_host_to_guest_fixed(host->seat->ctx, &svalue, axis);
 
   host->time = time;
-  host->axis_delta[axis] += value * scale;
+  host->axis_delta[axis] += svalue;
 }
 
 static void sl_pointer_frame(void* data, struct wl_pointer* pointer) {
@@ -525,7 +534,9 @@ static void sl_host_touch_down(void* data,
   struct sl_host_surface* host_surface =
       surface ? static_cast<sl_host_surface*>(wl_surface_get_user_data(surface))
               : NULL;
-  double scale = host->seat->ctx->scale;
+
+  wl_fixed_t ix = x;
+  wl_fixed_t iy = y;
 
   if (!host_surface)
     return;
@@ -545,8 +556,9 @@ static void sl_host_touch_down(void* data,
     sl_roundtrip(host->seat->ctx);
   }
 
+  sl_transform_host_to_guest_fixed(host->seat->ctx, &ix, &iy);
   wl_touch_send_down(host->resource, serial, time, host_surface->resource, id,
-                     x * scale, y * scale);
+                     ix, iy);
 
   if (host->focus_resource)
     sl_set_last_event_serial(host->focus_resource, serial);
@@ -580,9 +592,11 @@ static void sl_host_touch_motion(void* data,
                                  wl_fixed_t y) {
   struct sl_host_touch* host =
       static_cast<sl_host_touch*>(wl_touch_get_user_data(touch));
-  double scale = host->seat->ctx->scale;
+  wl_fixed_t ix = x;
+  wl_fixed_t iy = y;
 
-  wl_touch_send_motion(host->resource, time, id, x * scale, y * scale);
+  sl_transform_host_to_guest_fixed(host->seat->ctx, &ix, &iy);
+  wl_touch_send_motion(host->resource, time, id, ix, iy);
 }
 
 static void sl_host_touch_frame(void* data, struct wl_touch* touch) {

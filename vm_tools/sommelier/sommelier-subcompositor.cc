@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <stdlib.h>
@@ -31,9 +32,11 @@ static void sl_subsurface_set_position(struct wl_client* client,
                                        int32_t y) {
   struct sl_host_subsurface* host =
       static_cast<sl_host_subsurface*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
+  int32_t ix = x;
+  int32_t iy = y;
 
-  wl_subsurface_set_position(host->proxy, x / scale, y / scale);
+  sl_transform_guest_to_host(host->ctx, &ix, &iy);
+  wl_subsurface_set_position(host->proxy, ix, iy);
 }
 
 static void sl_subsurface_place_above(struct wl_client* client,

@@ -10,10 +10,17 @@
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <xcb/xcb.h>
+#include <limits.h>
 
 #include "sommelier-timing.h"  // NOLINT(build/include_directory)
 #include "sommelier-util.h"    // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+#define MIN_SIZE (INT_MIN / 10)
+#define MAX_SIZE (INT_MAX / 10)
 
 // A list of atoms to intern (create/fetch) when connecting to the X server.
 //

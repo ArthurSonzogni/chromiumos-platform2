@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -446,12 +447,12 @@ static void sl_data_device_enter(void* data,
       static_cast<sl_host_surface*>(wl_surface_get_user_data(surface));
   struct sl_host_data_offer* host_data_offer =
       static_cast<sl_host_data_offer*>(wl_data_offer_get_user_data(data_offer));
-  double scale = host->ctx->scale;
+  wl_fixed_t ix = x, iy = y;
 
-  wl_data_device_send_enter(host->resource, serial, host_surface->resource,
-                            wl_fixed_from_double(wl_fixed_to_double(x) * scale),
-                            wl_fixed_from_double(wl_fixed_to_double(y) * scale),
-                            host_data_offer->resource);
+  sl_transform_host_to_guest_fixed(host->ctx, &ix, &iy);
+
+  wl_data_device_send_enter(host->resource, serial, host_surface->resource, ix,
+                            iy, host_data_offer->resource);
 }  // NOLINT(whitespace/indent)
 
 static void sl_data_device_leave(void* data,
@@ -469,11 +470,11 @@ static void sl_data_device_motion(void* data,
                                   wl_fixed_t y) {
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
-  double scale = host->ctx->scale;
+  wl_fixed_t ix = x, iy = y;
 
-  wl_data_device_send_motion(
-      host->resource, time, wl_fixed_from_double(wl_fixed_to_double(x) * scale),
-      wl_fixed_from_double(wl_fixed_to_double(y) * scale));
+  sl_transform_host_to_guest_fixed(host->ctx, &ix, &iy);
+
+  wl_data_device_send_motion(host->resource, time, ix, iy);
 }
 
 static void sl_data_device_drop(void* data,

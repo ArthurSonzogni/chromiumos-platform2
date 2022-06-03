@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <stdlib.h>
@@ -51,9 +52,12 @@ static void sl_xdg_positioner_set_size(struct wl_client* client,
                                        int32_t height) {
   struct sl_host_xdg_positioner* host =
       static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
 
-  xdg_positioner_set_size(host->proxy, width / scale, height / scale);
+  int32_t iwidth = width;
+  int32_t iheight = height;
+
+  sl_transform_guest_to_host(host->ctx, &iwidth, &iheight);
+  xdg_positioner_set_size(host->proxy, iwidth, iheight);
 }
 
 static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
@@ -64,13 +68,13 @@ static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
                                               int32_t height) {
   struct sl_host_xdg_positioner* host =
       static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
-  int32_t x1, y1, x2, y2;
+  int32_t x1 = x;
+  int32_t y1 = y;
+  int32_t x2 = x + width;
+  int32_t y2 = y + height;
 
-  x1 = x / scale;
-  y1 = y / scale;
-  x2 = (x + width) / scale;
-  y2 = (y + height) / scale;
+  sl_transform_guest_to_host(host->ctx, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, &x2, &y2);
 
   xdg_positioner_set_anchor_rect(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -109,9 +113,10 @@ static void sl_xdg_positioner_set_offset(struct wl_client* client,
                                          int32_t y) {
   struct sl_host_xdg_positioner* host =
       static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
+  int32_t ix = x, iy = y;
 
-  xdg_positioner_set_offset(host->proxy, x / scale, y / scale);
+  sl_transform_guest_to_host(host->ctx, &ix, &iy);
+  xdg_positioner_set_offset(host->proxy, ix, iy);
 }
 
 static const struct xdg_positioner_interface sl_xdg_positioner_implementation =
@@ -160,13 +165,13 @@ static void sl_xdg_popup_configure(void* data,
                                    int32_t height) {
   struct sl_host_xdg_popup* host =
       static_cast<sl_host_xdg_popup*>(xdg_popup_get_user_data(xdg_popup));
-  double scale = host->ctx->scale;
-  int32_t x1, y1, x2, y2;
+  int32_t x1 = x;
+  int32_t y1 = y;
+  int32_t x2 = x + width;
+  int32_t y2 = y + height;
 
-  x1 = x * scale;
-  y1 = y * scale;
-  x2 = (x + width) * scale;
-  y2 = (y + height) * scale;
+  sl_transform_host_to_guest(host->ctx, &x1, &y1);
+  sl_transform_host_to_guest(host->ctx, &x2, &y2);
 
   xdg_popup_send_configure(host->resource, x1, y1, x2 - x1, y2 - y1);
 }
@@ -239,6 +244,8 @@ static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
           ? static_cast<sl_host_seat*>(wl_resource_get_user_data(seat_resource))
           : NULL;
 
+  // TODO(mrisaacb): There was no scaling performed here in the original code.
+  // Figure out why this was.
   xdg_toplevel_show_window_menu(
       host->proxy, host_seat ? host_seat->proxy : NULL, serial, x, y);
 }  // NOLINT(whitespace/indent)
@@ -356,10 +363,13 @@ static void sl_xdg_toplevel_configure(void* data,
                                       struct wl_array* states) {
   struct sl_host_xdg_toplevel* host = static_cast<sl_host_xdg_toplevel*>(
       xdg_toplevel_get_user_data(xdg_toplevel));
-  double scale = host->ctx->scale;
 
-  xdg_toplevel_send_configure(host->resource, width * scale, height * scale,
-                              states);
+  int32_t iwidth = width;
+  int32_t iheight = height;
+
+  sl_transform_host_to_guest(host->ctx, &iwidth, &iheight);
+
+  xdg_toplevel_send_configure(host->resource, iwidth, iheight, states);
 }
 
 static void sl_xdg_toplevel_close(void* data,
@@ -448,13 +458,13 @@ static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
                                                int32_t height) {
   struct sl_host_xdg_surface* host =
       static_cast<sl_host_xdg_surface*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
-  int32_t x1, y1, x2, y2;
+  int32_t x1 = x;
+  int32_t y1 = y;
+  int32_t x2 = x + width;
+  int32_t y2 = y + height;
 
-  x1 = x / scale;
-  y1 = y / scale;
-  x2 = (x + width) / scale;
-  y2 = (y + height) / scale;
+  sl_transform_guest_to_host(host->ctx, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, &x2, &y2);
 
   xdg_surface_set_window_geometry(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }

@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"          // NOLINT(build/include_directory)
-#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"    // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -2058,17 +2059,21 @@ void sl_handle_property_notify(struct sl_context* ctx,
       return;
 
     if (window->size_flags & P_MIN_SIZE) {
-      xdg_toplevel_set_min_size(window->xdg_toplevel,
-                                window->min_width / ctx->scale,
-                                window->min_height / ctx->scale);
+      int32_t minw = window->min_width;
+      int32_t minh = window->min_height;
+
+      sl_transform_guest_to_host(window->ctx, &minw, &minh);
+      xdg_toplevel_set_min_size(window->xdg_toplevel, minw, minh);
     } else {
       xdg_toplevel_set_min_size(window->xdg_toplevel, 0, 0);
     }
 
     if (window->size_flags & P_MAX_SIZE) {
-      xdg_toplevel_set_max_size(window->xdg_toplevel,
-                                window->max_width / ctx->scale,
-                                window->max_height / ctx->scale);
+      int32_t maxw = window->max_width;
+      int32_t maxh = window->max_height;
+
+      sl_transform_guest_to_host(window->ctx, &maxw, &maxh);
+      xdg_toplevel_set_max_size(window->xdg_toplevel, maxw, maxh);
     } else {
       xdg_toplevel_set_max_size(window->xdg_toplevel, 0, 0);
     }

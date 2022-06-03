@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_SOMMELIER_SOMMELIER_H_
 #define VM_TOOLS_SOMMELIER_SOMMELIER_H_
 
+#include <limits.h>
 #include <linux/types.h>
 #include <sys/types.h>
 #include <wayland-server.h>
@@ -19,9 +20,6 @@
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 
 #define SOMMELIER_VERSION "0.20"
-
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
