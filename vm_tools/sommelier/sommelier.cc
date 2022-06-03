@@ -42,6 +42,7 @@
 #include "relative-pointer-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 // Check that required macro definitions exist.
@@ -667,6 +668,18 @@ void sl_registry_handler(void* data,
     assert(!ctx->gaming_input_manager);
     ctx->gaming_input_manager = gaming_input_manager;
 #endif
+  } else if (strcmp(interface, "zxdg_output_manager_v1") == 0) {
+    struct sl_xdg_output_manager* output_manager =
+        static_cast<sl_xdg_output_manager*>(
+            malloc(sizeof(struct sl_xdg_output_manager)));
+    assert(output_manager);
+
+    output_manager->ctx = ctx;
+    output_manager->id = id;
+    output_manager->internal =
+        static_cast<zxdg_output_manager_v1*>(wl_registry_bind(
+            registry, id, &zxdg_output_manager_v1_interface, MIN(3, version)));
+    ctx->xdg_output_manager = output_manager;
   }
 }
 

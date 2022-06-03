@@ -10,6 +10,7 @@
 #include <wayland-client.h>
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 
 #define MAX_OUTPUT_SCALE 2
 
@@ -298,6 +299,42 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   free(host);
 }
 
+static void sl_xdg_output_logical_position(
+    void* data, struct zxdg_output_v1* zxdg_output_v1, int32_t x, int32_t y) {
+  struct sl_host_output* host = static_cast<sl_host_output*>(
+      zxdg_output_v1_get_user_data(zxdg_output_v1));
+  host->logical_y = y;
+  host->logical_x = x;
+}
+
+static void sl_xdg_output_logical_size(void* data,
+                                       struct zxdg_output_v1* zxdg_output_v1,
+                                       int32_t width,
+                                       int32_t height) {
+  struct sl_host_output* host = static_cast<sl_host_output*>(
+      zxdg_output_v1_get_user_data(zxdg_output_v1));
+
+  host->logical_width = width;
+  host->logical_height = height;
+
+  host->expecting_logical_size = false;
+}
+
+static void sl_xdg_output_done(void* data,
+                               struct zxdg_output_v1* zxdg_output_v1) {}
+
+static void sl_xdg_output_name(void* data,
+                               struct zxdg_output_v1* zxdg_output_v1,
+                               const char* name) {}
+
+static void sl_xdg_output_desc(void* data,
+                               struct zxdg_output_v1* zxdg_output_v1,
+                               const char* desc) {}
+
+static const struct zxdg_output_v1_listener sl_xdg_output_listener = {
+    sl_xdg_output_logical_position, sl_xdg_output_logical_size,
+    sl_xdg_output_done, sl_xdg_output_name, sl_xdg_output_desc};
+
 static void sl_bind_host_output(struct wl_client* client,
                                 void* data,
                                 uint32_t version,
@@ -322,6 +359,8 @@ static void sl_bind_host_output(struct wl_client* client,
   host->internal = wl_list_empty(&ctx->host_outputs);
   host->x = 0;
   host->y = 0;
+  host->logical_x = 0;
+  host->logical_y = 0;
   host->physical_width = 0;
   host->physical_height = 0;
   host->subpixel = WL_OUTPUT_SUBPIXEL_UNKNOWN;
@@ -331,12 +370,15 @@ static void sl_bind_host_output(struct wl_client* client,
   host->flags = 0;
   host->width = 1024;
   host->height = 768;
+  host->logical_width = 1024;
+  host->logical_height = 768;
   host->refresh = 60000;
   host->scale_factor = 1;
   host->current_scale = 1000;
   host->preferred_scale = 1000;
   host->device_scale_factor = 1000;
   host->expecting_scale = 0;
+  host->expecting_logical_size = false;
   wl_list_insert(ctx->host_outputs.prev, &host->link);
   if (ctx->aura_shell) {
     host->expecting_scale = 1;
@@ -346,6 +388,15 @@ static void sl_bind_host_output(struct wl_client* client,
     zaura_output_set_user_data(host->aura_output, host);
     zaura_output_add_listener(host->aura_output, &sl_aura_output_listener,
                               host);
+  }
+
+  if (ctx->xdg_output_manager) {
+    host->expecting_logical_size = true;
+    host->zxdg_output = zxdg_output_manager_v1_get_xdg_output(
+        ctx->xdg_output_manager->internal, host->proxy);
+    zxdg_output_v1_set_user_data(host->zxdg_output, host);
+    zxdg_output_v1_add_listener(host->zxdg_output, &sl_xdg_output_listener,
+                                host);
   }
 }
 
