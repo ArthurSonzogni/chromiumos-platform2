@@ -9,7 +9,6 @@ group("all") {
   deps = [ ":libshill-net" ]
   if (use.fuzzer) {
     deps += [
-      ":arp_client_fuzzer",
       ":ip_address_fuzzer",
       ":netlink_attribute_list_fuzzer",
       ":nl80211_message_fuzzer",
@@ -43,8 +42,6 @@ write_deps("libshill-net_deps") {
 net_sources = [
   "../logging.cc",
   "../scope_logger.cc",
-  "arp_client.cc",
-  "arp_packet.cc",
   "attribute_list.cc",
   "byte_string.cc",
   "control_netlink_attribute.cc",
@@ -81,16 +78,6 @@ shared_library("libshill-net") {
 if (use.fuzzer) {
   pkg_config("fuzzed_data_config") {
     pkg_deps = [ "libchrome-test" ]
-  }
-  executable("arp_client_fuzzer") {
-    sources = [ "arp_client_fuzzer.cc" ]
-    configs += [
-      "//common-mk:test",
-      "//common-mk/common_fuzzer",
-      ":fuzzed_data_config",
-      ":target_defaults",
-    ]
-    deps = [ ":libshill-net" ]
   }
   executable("ip_address_fuzzer") {
     sources = [ "ip_address_fuzzer.cc" ]
@@ -137,8 +124,6 @@ if (use.test) {
   executable("shill_net_test") {
     sources = [
       "../mock_log.cc",
-      "arp_client_test.cc",
-      "arp_packet_test.cc",
       "attribute_list_test.cc",
       "byte_string_test.cc",
       "event_history_test.cc",
