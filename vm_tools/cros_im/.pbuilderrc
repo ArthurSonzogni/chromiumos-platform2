@@ -1,0 +1,17 @@
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+HOOKDIR="${HOME}/.pbuilder/hooks/"
+export DEPSBASE="${ARTIFACTS}"
+BINDMOUNTS="${HOME} ${DEPSBASE}"
+
+OS="debian"
+NAME="${OS}-${DIST}-${ARCH}"
+
+BASETGZ="/var/cache/pbuilder/base-${ARCH}.tgz"
+BUILDPLACE="/var/cache/pbuilder/build"
+BUILDRESULT="/var/cache/pbuilder/${NAME}/result/"
+DEBOOTSTRAPOPTS=("${DEBOOTSTRAPOPTS[@]}" "--arch=${ARCH}")

@@ -1,3 +1,2 @@
 #!/usr/bin/dh-exec
-obj-x86_64-linux-gnu/libim_cros_gtk.so => usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules/im-cros.so
-#TODO: update this file for it to work on other architectures too.
+obj-${DEB_BUILD_GNU_TYPE}/libim_cros_gtk.so => usr/lib/${DEB_BUILD_GNU_TYPE}/gtk-3.0/3.0.0/immodules/im-cros.so

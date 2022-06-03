@@ -25,14 +25,14 @@ wl_generators = [
 ]
 
 wl_protocols = [
-  '../sommelier/protocol/text-input-unstable-v1.xml',
+  'text-input-unstable-v1.xml',
 ]
 
 wl_outs = []
 
 foreach p : wl_protocols
   foreach g : wl_generators
-    wl_outs += g.process(p)
+    wl_outs += g.process(get_option('wl_protocol_dir') / p)
   endforeach
 endforeach
 

@@ -1,9 +1,12 @@
+#!/usr/bin/make -f
 # Copyright 2022 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-#!/usr/bin/make -f
 export DH_VERBOSE=1
 
 %:
 	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- -Dwl_protocol_dir=protocols
