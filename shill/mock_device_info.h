@@ -35,10 +35,6 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_METHOD(bool, GetMacAddress, (int, ByteString*), (const, override));
   MOCK_METHOD(ByteString, GetMacAddressFromKernel, (int), (const, override));
   MOCK_METHOD(bool,
-              GetMacAddressOfPeer,
-              (int, const IPAddress&, ByteString*),
-              (const, override));
-  MOCK_METHOD(bool,
               GetByteCounts,
               (int, uint64_t*, uint64_t*),
               (const, override));

@@ -77,13 +77,6 @@ class DeviceInfo {
   // empty ByteString on failure.
   virtual ByteString GetMacAddressFromKernel(int interface_index) const;
 
-  // Queries the kernel for the MAC address of |peer| on |interface_index|.
-  // Returns true and populates |mac_address| on success, otherwise returns
-  // false.
-  virtual bool GetMacAddressOfPeer(int interface_index,
-                                   const IPAddress& peer,
-                                   ByteString* mac_address) const;
-
   // Query IDs that identify the adapter (e.g. PCI IDs). Returns |false| if
   // there was an error. Even if there was an error (say, when probing the
   // |subsystem_id|), the method will still set the IDs it managed to detect,

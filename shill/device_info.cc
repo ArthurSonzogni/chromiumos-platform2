@@ -898,61 +898,6 @@ ByteString DeviceInfo::GetMacAddressFromKernel(int interface_index) const {
   return ByteString(ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
 }
 
-bool DeviceInfo::GetMacAddressOfPeer(int interface_index,
-                                     const IPAddress& peer,
-                                     ByteString* mac_address) const {
-  const Info* info = GetInfo(interface_index);
-  if (!info || !peer.IsValid()) {
-    return false;
-  }
-
-  if (peer.family() != IPAddress::kFamilyIPv4) {
-    NOTIMPLEMENTED() << ": only implemented for IPv4";
-    return false;
-  }
-
-  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-  if (fd < 0) {
-    PLOG(ERROR) << __func__ << ": Unable to open socket";
-    return false;
-  }
-
-  ScopedSocketCloser socket_closer(sockets_.get(), fd);
-  struct arpreq areq;
-  memset(&areq, 0, sizeof(areq));
-
-  strncpy(areq.arp_dev, info->name.c_str(), sizeof(areq.arp_dev) - 1);
-  areq.arp_dev[sizeof(areq.arp_dev) - 1] = '\0';
-
-  struct sockaddr_in* protocol_address =
-      reinterpret_cast<struct sockaddr_in*>(&areq.arp_pa);
-  protocol_address->sin_family = AF_INET;
-  CHECK_EQ(sizeof(protocol_address->sin_addr.s_addr), peer.GetLength());
-  memcpy(&protocol_address->sin_addr.s_addr, peer.address().GetConstData(),
-         sizeof(protocol_address->sin_addr.s_addr));
-
-  struct sockaddr_in* effective_mac_address =
-      reinterpret_cast<struct sockaddr_in*>(&areq.arp_ha);
-  effective_mac_address->sin_family = ARPHRD_ETHER;
-
-  int err = sockets_->Ioctl(fd, SIOCGARP, &areq);
-  if (err < 0) {
-    PLOG(ERROR) << __func__ << ": Unable to perform ARP lookup";
-    return false;
-  }
-
-  ByteString peer_address(areq.arp_ha.sa_data, IFHWADDRLEN);
-
-  if (peer_address.IsZero()) {
-    LOG(INFO) << __func__ << ": ARP lookup is still in progress";
-    return false;
-  }
-
-  CHECK(mac_address);
-  *mac_address = peer_address;
-  return true;
-}
-
 bool DeviceInfo::GetIntegratedWiFiHardwareIds(const std::string& iface_name,
                                               int* vendor_id,
                                               int* product_id,
