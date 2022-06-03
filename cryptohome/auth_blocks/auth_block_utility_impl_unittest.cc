@@ -1680,7 +1680,7 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
         &channel_priv_key_));
     EXPECT_TRUE(SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_));
 
-    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    crypto_.Init();
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_);
   }
