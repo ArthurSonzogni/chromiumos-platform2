@@ -48,81 +48,84 @@ static constexpr uint32_t kLeftShiftKey = 44;
 static constexpr uint32_t kRightShiftKey = 57;
 
 // Rainbow mode constants.
-static constexpr Color kRainbowRed = Color(/*r=*/197, /*g=*/34, /*b=*/31);
-static constexpr Color kRainbowYellow = Color(/*r=*/236, /*g=*/106, /*b=*/8);
+static constexpr Color kRainbowRed = Color(/*r=*/0xc5, /*g=*/0x22, /*b=*/0x1f);
+static constexpr Color kRainbowYellow =
+    Color(/*r=*/0xec, /*g=*/0x6a, /*b=*/0x08);
 static constexpr Color kRainbowGreen = Color(/*r=*/51, /*g=*/128, /*b=*/28);
 static constexpr Color kRainbowLightBlue =
-    Color(/*r=*/32, /*g=*/177, /*b=*/137);
-static constexpr Color kRainbowIndigo = Color(/*r=*/25, /*g=*/55, /*b=*/210);
-static constexpr Color kRainbowPurple = Color(/*r=*/132, /*g=*/32, /*b=*/180);
+    Color(/*r=*/0x1b, /*g=*/0xb3, /*b=*/0x19);
+static constexpr Color kRainbowIndigo =
+    Color(/*r=*/0x19, /*g=*/0x37, /*b=*/0xd2);
+static constexpr Color kRainbowPurple =
+    Color(/*r=*/0x84, /*g=*/0x20, /*b=*/0xb4);
 
 const KeyColor kRainbowModeIndividualKey[] = {
-    {1, kRainbowRed},         // ~
-    {2, kRainbowRed},         // 1
-    {3, kRainbowYellow},      // 2
-    {4, kRainbowYellow},      // 3
-    {5, kRainbowGreen},       // 4
-    {6, kRainbowGreen},       // 5
-    {7, kRainbowGreen},       // 6
-    {8, kRainbowLightBlue},   // 7
-    {9, kRainbowLightBlue},   // 8
-    {10, kRainbowLightBlue},  // 9
-    {11, kRainbowIndigo},     // 0
-    {12, kRainbowIndigo},     // -
-    {13, kRainbowPurple},     // =
+    {1, kRainbowRed},        // ~
+    {2, kRainbowRed},        // 1
+    {3, kRainbowYellow},     // 2
+    {4, kRainbowYellow},     // 3
+    {5, kRainbowYellow},     // 4
+    {6, kRainbowLightBlue},  // 5
+    {7, kRainbowLightBlue},  // 6
+    {8, kRainbowLightBlue},  // 7
+    {9, kRainbowLightBlue},  // 8
+    {10, kRainbowIndigo},    // 9
+    {11, kRainbowIndigo},    // 0
+    {12, kRainbowIndigo},    // -
+    {13, kRainbowPurple},    // =
     // Key 14 not present in this layout.
     {15, kRainbowPurple},     // Backspace
     {16, kRainbowRed},        // Tab
     {17, kRainbowRed},        // Q
     {18, kRainbowYellow},     // W
     {19, kRainbowYellow},     // E
-    {20, kRainbowGreen},      // R
-    {21, kRainbowGreen},      // T
-    {22, kRainbowGreen},      // Y
+    {20, kRainbowYellow},     // R
+    {21, kRainbowLightBlue},  // T
+    {22, kRainbowLightBlue},  // Y
     {23, kRainbowLightBlue},  // U
-    {24, kRainbowLightBlue},  // I
+    {24, kRainbowIndigo},     // I
     {25, kRainbowIndigo},     // O
     {26, kRainbowIndigo},     // P
-    {27, kRainbowIndigo},     // [
+    {27, kRainbowPurple},     // [
     {28, kRainbowPurple},     // ]
-    {29, kRainbowPurple},     // '\'
+    {29, kRainbowPurple},     // Backslash
     {30, kRainbowRed},        // Search/Launcher
-    {31, kRainbowYellow},     // A
+    {31, kRainbowRed},        // A
     {32, kRainbowYellow},     // S
     {33, kRainbowYellow},     // D
-    {34, kRainbowGreen},      // F
-    {35, kRainbowGreen},      // G
+    {34, kRainbowYellow},     // F
+    {35, kRainbowLightBlue},  // G
     {36, kRainbowLightBlue},  // H
-    {37, kRainbowLightBlue},  // J
-    {38, kRainbowLightBlue},  // K
+    {37, kRainbowIndigo},     // J
+    {38, kRainbowIndigo},     // K
     {39, kRainbowIndigo},     // L
-    {40, kRainbowIndigo},     // ;
-    {41, kRainbowIndigo},     // '
+    {40, kRainbowPurple},     // ;
+    {41, kRainbowPurple},     // '
     // Key 42 not present in this layout.
     {43, kRainbowPurple},          // Enter
     {kLeftShiftKey, kRainbowRed},  // Left Shift
     // Key 45 not present in this layout.
-    {46, kRainbowYellow},     // Z
+    {46, kRainbowRed},        // Z
     {47, kRainbowYellow},     // X
-    {48, kRainbowGreen},      // C
-    {49, kRainbowGreen},      // V
-    {50, kRainbowGreen},      // B
-    {51, kRainbowLightBlue},  // N
-    {52, kRainbowLightBlue},  // M
-    {53, kRainbowLightBlue},  // ,
-    {54, kRainbowIndigo},     // .
-    {55, kRainbowIndigo},     // /
+    {48, kRainbowYellow},     // C
+    {49, kRainbowYellow},     // V
+    {50, kRainbowLightBlue},  // B
+    {51, kRainbowIndigo},     // N
+    {52, kRainbowIndigo},     // M
+    {53, kRainbowIndigo},     // ,
+    {54, kRainbowPurple},     // .
+    {55, kRainbowPurple},     // /
     // Key 56 not present in this layout.
     {kRightShiftKey, kRainbowPurple},  // Right Shift
     {58, kRainbowRed},                 // Ctrl
     {59, kRainbowPurple},              // Power
-    {60, kRainbowYellow},              // Left Alt
-    {61, kRainbowGreen},               // Space Bar
-    {62, kRainbowLightBlue},           // Right Alt
+    {60, kRainbowRed},                 // Left Alt
+    {61, kRainbowLightBlue},           // Space Bar
+    {62, kRainbowPurple},              // Right Alt
     // Key 63 not present in this layout.
-    {64, kRainbowIndigo},  // Right Ctrl
+    {64, kRainbowPurple},  // Right Ctrl
     // Keys [65-78] not present in this layout.
-    {79, kRainbowIndigo},  // Left Arrow
+    {79, kRainbowPurple},  // Left Arrow
     // Keys [80-82] not present in this layout.
     {83, kRainbowPurple},  // Top Arrow
     {84, kRainbowPurple},  // Bottom Arrow
@@ -133,16 +136,16 @@ const KeyColor kRainbowModeIndividualKey[] = {
     {111, kRainbowRed},        // T1: Back
     {112, kRainbowYellow},     // T2: Refresh
     {113, kRainbowYellow},     // T3: Full Screen
-    {114, kRainbowGreen},      // T4: Overview
-    {115, kRainbowGreen},      // T5: Snapshot
-    {116, kRainbowGreen},      // T6: Brightness Down
-    {117, kRainbowGreen},      // T7: Brightness Up
+    {114, kRainbowYellow},     // T4: Overview
+    {115, kRainbowLightBlue},  // T5: Snapshot
+    {116, kRainbowLightBlue},  // T6: Brightness Down
+    {117, kRainbowLightBlue},  // T7: Brightness Up
     {118, kRainbowLightBlue},  // T8: RGB Backlight Off
     {119, kRainbowLightBlue},  // T9: Play/Pause
-    {120, kRainbowLightBlue},  // T10: Mic Mute
-    {121, kRainbowIndigo},     // T11: Volume Mute
-    {122, kRainbowIndigo},     // T12: Volume Down
-    {123, kRainbowIndigo},     // T13: Volume Up
+    {120, kRainbowIndigo},     // T10: Mic Mute
+    {121, kRainbowIndigo},     // T1: Volume Mute
+    {122, kRainbowIndigo},     // T9: Play/Pause
+    {123, kRainbowIndigo},     // T10: Mic Mute
 };
 
 const KeyColor kRainbowModeFiveZone[] = {
