@@ -2834,8 +2834,23 @@ int main(int argc, char** argv) {
     if (!BuildAuthorization(
             cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
-            req.mutable_authorization()))
+            req.mutable_authorization())) {
       return 1;
+    }
+
+    if (cl->HasSwitch(switches::kKeyPolicySwitch)) {
+      if (cl->GetSwitchValueASCII(switches::kKeyPolicySwitch) ==
+          switches::kKeyPolicyLECredential) {
+        req.mutable_authorization()
+            ->mutable_key()
+            ->mutable_data()
+            ->mutable_policy()
+            ->set_low_entropy_credential(true);
+      } else {
+        printf("Unknown key policy.\n");
+        return 1;
+      }
+    }
 
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.AddCredentials(req, &reply, &error, timeout_ms) ||
