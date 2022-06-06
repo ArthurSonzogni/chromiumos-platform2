@@ -567,6 +567,9 @@ void Suspender::StartRequest() {
   suspend_request_id_++;
   LOG(INFO) << "Starting request " << suspend_request_id_;
 
+  // Quirks are applied first because they may affect the wakeup count.
+  delegate_->ApplyQuirksBeforeSuspend();
+
   if (suspend_request_supplied_wakeup_count_) {
     wakeup_count_ = suspend_request_wakeup_count_;
     wakeup_count_valid_ = true;
@@ -632,6 +635,7 @@ void Suspender::FinishRequest(bool success,
       success,
       initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
       hibernated);
+  delegate_->UnapplyQuirksAfterSuspend();
 
   // Re-enable device event. If everything ran expectedly, EC should have
   // enabled it by itself (on suspend completion). This is just for assurance.

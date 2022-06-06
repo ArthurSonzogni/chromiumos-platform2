@@ -1,4 +1,5 @@
 ACTION!="remove", ATTR{power/wakeup}=="*", RUN+="/bin/chown power:power $sys/$devpath/power/wakeup"
+ACTION!="remove", ATTR{power/control}=="*", RUN+="/bin/chown power:power $sys/$devpath/power/control"
 ACTION!="remove", ATTR{inhibited}=="*",    RUN+="/bin/chown power:power $sys/$devpath/inhibited"
 
 # Allow powerd to read bluetooth host controller identity
@@ -39,3 +40,4 @@ ACTION=="add", SUBSYSTEM=="iio", \
   RUN+="/bin/chown power:power $sys/$devpath/in_proximity0_hardwaregain \
                                $sys/$devpath/in_proximity1_hardwaregain \
                                $sys/$devpath/sampling_frequency"
+

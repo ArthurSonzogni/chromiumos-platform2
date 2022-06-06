@@ -321,6 +321,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       input_device_controller_(new policy::InputDeviceController),
       shutdown_from_suspend_(std::make_unique<policy::ShutdownFromSuspend>()),
       suspender_(new policy::Suspender),
+      bluetooth_controller_(std::make_unique<policy::BluetoothController>()),
       wifi_controller_(std::make_unique<policy::WifiController>()),
       cellular_controller_(std::make_unique<policy::CellularController>()),
       metrics_collector_(new metrics::MetricsCollector),
@@ -531,6 +532,7 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
+  bluetooth_controller_->Init(udev_.get());
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
   cellular_controller_->Init(this, prefs_.get(), dbus_wrapper_.get());
   peripheral_battery_watcher_ = delegate_->CreatePeripheralBatteryWatcher(
@@ -920,6 +922,14 @@ void Daemon::UndoPrepareToSuspend(bool success,
   else if (num_suspend_attempts > 0)
     metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts,
                                                      hibernated);
+}
+
+void Daemon::ApplyQuirksBeforeSuspend() {
+  bluetooth_controller_->ApplyAutosuspendQuirk();
+}
+
+void Daemon::UnapplyQuirksAfterSuspend() {
+  bluetooth_controller_->UnapplyAutosuspendQuirk();
 }
 
 void Daemon::GenerateDarkResumeMetrics(

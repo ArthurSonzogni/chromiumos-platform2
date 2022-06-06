@@ -170,6 +170,14 @@ class Suspender : public SuspendDelayObserver,
     // Shuts the system down in response to the ShutdownFromSuspend determining
     // the system should shut down.
     virtual void ShutDownFromSuspend() = 0;
+
+    // Apply system quirks before attempting to suspend. Quirks should focus on
+    // workarounds for devices that don't behave correctly because of how they
+    // handle wakeup_events.
+    virtual void ApplyQuirksBeforeSuspend() = 0;
+
+    // Unapply system quirks after suspend.
+    virtual void UnapplyQuirksAfterSuspend() = 0;
   };
 
   // Helper class providing functionality needed by tests.

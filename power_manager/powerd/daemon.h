@@ -28,6 +28,7 @@
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
+#include "power_manager/powerd/policy/bluetooth_controller.h"
 #include "power_manager/powerd/policy/cellular_controller.h"
 #include "power_manager/powerd/policy/charge_controller.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
@@ -61,6 +62,7 @@ class MetricsCollector;
 
 namespace policy {
 class BacklightController;
+class BluetoothController;
 class CellularController;
 class InputDeviceController;
 class UserProximityHandler;
@@ -173,6 +175,8 @@ class Daemon :
   void UndoPrepareToSuspend(bool success,
                             int num_suspend_attempts,
                             bool hibernated) override;
+  void ApplyQuirksBeforeSuspend() override;
+  void UnapplyQuirksAfterSuspend() override;
   void GenerateDarkResumeMetrics(
       const std::vector<policy::Suspender::DarkResumeInfo>&
           dark_resume_wake_durations,
@@ -391,6 +395,7 @@ class Daemon :
   std::unique_ptr<policy::ShutdownFromSuspend> shutdown_from_suspend_;
   std::unique_ptr<policy::Suspender> suspender_;
   std::unique_ptr<system::MachineQuirksInterface> machine_quirks_;
+  std::unique_ptr<policy::BluetoothController> bluetooth_controller_;
   std::unique_ptr<policy::WifiController> wifi_controller_;
   std::unique_ptr<policy::CellularController> cellular_controller_;
   std::unique_ptr<system::SuspendConfiguratorInterface> suspend_configurator_;
