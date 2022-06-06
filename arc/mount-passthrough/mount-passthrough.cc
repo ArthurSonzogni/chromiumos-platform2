@@ -524,16 +524,49 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  const uid_t fuse_uid = FLAGS_fuse_uid + USER_NS_SHIFT;
+  const gid_t fuse_gid = FLAGS_fuse_gid + USER_NS_SHIFT;
+
+  // NOTE: Commas are escaped by "\\" to avoid being processed by lifuse's
+  // option parsing code.
+  std::string security_context;
+  if (daemon_uid != CHRONOS_UID) {
+    // If this process is not running as chronos, that means this file system is
+    // to allow chrome to access Android files, not to be accessed by Android.
+    // In that case, just use kMediaRwDataFileContext as the security context.
+    security_context = kMediaRwDataFileContext;
+  } else if (USE_ARCPP) {
+    // In Android P, the security context of directories under /data/media/0 is
+    // "u:object_r:media_rw_data_file:s0:c512,c768".
+    security_context = std::string(kMediaRwDataFileContext) + ":c512\\,c768";
+  } else {
+    // In Android R, the security context of directories under /data/media/0
+    // looks like "u:object_r:media_rw_data_file:s0:c64,c256,c512,c768".
+    //
+    // Calculate the categories in the same way as set_range_from_level() in
+    // Android's external/selinux/libselinux/src/android/android_platform.c.
+    if (fuse_uid < kAndroidAppUidStart || kAndroidAppUidEnd < fuse_uid) {
+      LOG(ERROR) << "Unexpected FUSE file system UID: " << fuse_uid;
+      return 1;
+    }
+    const uid_t media_provider_app_id = fuse_uid - kAndroidAppUidStart;
+    security_context =
+        std::string(kMediaRwDataFileContext) +
+        base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",
+                           media_provider_app_id & 0xff,
+                           256 + ((media_provider_app_id >> 8) & 0xff));
+  }
+
   struct fuse_operations passthrough_ops;
   setup_passthrough_ops(&passthrough_ops);
 
-  const std::string fuse_uid_opt(
-      "uid=" + std::to_string(FLAGS_fuse_uid + USER_NS_SHIFT));
-  const std::string fuse_gid_opt(
-      "gid=" + std::to_string(FLAGS_fuse_gid + USER_NS_SHIFT));
+  const std::string fuse_uid_opt("uid=" + std::to_string(fuse_uid));
+  const std::string fuse_gid_opt("gid=" + std::to_string(fuse_gid));
   const std::string fuse_umask_opt("umask=" + FLAGS_fuse_umask);
-  const std::string fuse_context_opt(std::string("context=") +
-                                     kMediaRwDataFileContext);
+  // The context string is quoted using "\"" so that the kernel won't split the
+  // mount option string at commas.
+  const std::string fuse_context_opt(std::string("context=\"") +
+                                     security_context + "\"");
   const std::string fuse_fscontext_opt(std::string("fscontext=") +
                                        kCrosMountPassthroughFsContext);
   LOG(INFO) << "uid_opt(" << fuse_uid_opt << ") "

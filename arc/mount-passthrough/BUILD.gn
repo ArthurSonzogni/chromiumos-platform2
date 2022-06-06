@@ -23,6 +23,7 @@ pkg_config("mount-passthrough_config") {
 
 executable("mount-passthrough") {
   sources = [ "mount-passthrough.cc" ]
+  defines = [ "USE_ARCPP=${use.arcpp}" ]
   configs += [ ":mount-passthrough_config" ]
   install_path = "bin"
 }
