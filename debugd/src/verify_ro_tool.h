@@ -35,10 +35,11 @@ class VerifyRoTool : public SubprocessTool {
                               std::string* handle);
 
  private:
-  // Checks and returns if |path| points to a valid cr50 resource location,
-  // i.e., a file or dir under /opt/google/cr50. If |is_dir| is set, returns
-  // false if |path| isn't a dir.
-  bool CheckCr50ResourceLocation(const std::string& path, bool is_dir);
+  // Checks and returns if |absolute_path| points to a valid cr50 resource
+  // location, i.e., a file or dir under /opt/google/cr50. If |is_dir| is set,
+  // returns false if |absolute_path| isn't a dir.
+  bool CheckCr50ResourceLocation(const base::FilePath& absolute_path,
+                                 bool is_dir);
 };
 
 }  // namespace debugd

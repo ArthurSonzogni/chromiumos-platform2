@@ -39,15 +39,20 @@ bool VerifyRoTool::UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
                                           const std::string& image_file,
                                           const std::string& ro_db_dir,
                                           std::string* handle) {
-  if (!CheckCr50ResourceLocation(image_file, false /* is_dir */)) {
+  base::FilePath image_absolute_path =
+      base::MakeAbsoluteFilePath(base::FilePath(image_file));
+  base::FilePath ro_db_absolute_path =
+      base::MakeAbsoluteFilePath(base::FilePath(ro_db_dir));
+
+  if (!CheckCr50ResourceLocation(image_absolute_path, false /* is_dir */)) {
     DEBUGD_ADD_ERROR(error, kVerifyRoToolErrorString,
-                     "Bad FW image file: " + image_file);
+                     "Bad FW image file: " + image_absolute_path.value());
     return false;
   }
 
-  if (!CheckCr50ResourceLocation(ro_db_dir, true /* is_dir */)) {
+  if (!CheckCr50ResourceLocation(ro_db_absolute_path, true /* is_dir */)) {
     DEBUGD_ADD_ERROR(error, kVerifyRoToolErrorString,
-                     "Bad ro descriptor dir: " + ro_db_dir);
+                     "Bad ro descriptor dir: " + ro_db_absolute_path.value());
     return false;
   }
 
@@ -61,8 +66,8 @@ bool VerifyRoTool::UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
   }
 
   p->AddArg(kCr50VerifyRoScript);
-  p->AddArg(image_file);
-  p->AddArg(ro_db_dir);
+  p->AddArg(image_absolute_path.value());
+  p->AddArg(ro_db_absolute_path.value());
 
   p->BindFd(outfd.get(), STDOUT_FILENO);
   p->BindFd(outfd.get(), STDERR_FILENO);
@@ -84,10 +89,8 @@ bool VerifyRoTool::UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
   return true;
 }
 
-bool VerifyRoTool::CheckCr50ResourceLocation(const std::string& path,
-                                             bool is_dir) {
-  base::FilePath absolute_path =
-      base::MakeAbsoluteFilePath(base::FilePath(path));
+bool VerifyRoTool::CheckCr50ResourceLocation(
+    const base::FilePath& absolute_path, bool is_dir) {
   if (absolute_path.empty()) {
     // |path| doesn't exist.
     return false;
