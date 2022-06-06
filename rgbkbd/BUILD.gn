@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":install_dbus_activation",
     ":install_dbus_config",
+    ":install_seccomp_policy",
     ":install_upstart_config",
     ":rgbkbd",
   ]
@@ -77,6 +78,13 @@ install_config("install_dbus_config") {
 install_config("install_dbus_activation") {
   sources = [ "dbus/org.chromium.Rgbkbd.service" ]
   install_path = "/usr/share/dbus-1/system-services"
+}
+
+# Install seccomp policy file.
+install_config("install_seccomp_policy") {
+  sources = [ "seccomp_filters/rgbkbd-seccomp-" + getenv("ARCH") + ".policy" ]
+  install_path = "/usr/share/policy"
+  outputs = [ "rgbkbd-seccomp.policy" ]
 }
 
 if (use.test) {
