@@ -108,6 +108,16 @@ bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
   return res;
 }
 
+bool LoadAllServicePolicyFileFromDirectories(
+    const std::vector<base::FilePath>& dirs, ServicePolicyMap* policy_map) {
+  bool res = true;
+  for (const base::FilePath& dir : dirs) {
+    if (!LoadAllServicePolicyFileFromDirectory(dir, policy_map))
+      res = false;
+  }
+  return res;
+}
+
 std::optional<ServicePolicyMap> LoadServicePolicyFile(
     const base::FilePath& file) {
   std::string str;

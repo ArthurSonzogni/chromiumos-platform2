@@ -40,8 +40,7 @@ class DaemonTest : public ::testing::Test {
 
   void RunDaemonAndExpectTestSubprocessResult(Daemon::Delegate* delegate,
                                               DaemonTestHelperResult result) {
-    Daemon daemon{delegate, GetSocketPath(), Configuration{},
-                  ServicePolicyMap{}};
+    Daemon daemon{delegate, GetSocketPath(), {}, Configuration{}};
     base::CommandLine command_line{
         base::CommandLine::ForCurrentProcess()->GetProgram().DirName().Append(
             kDaemonTestHelperExecName)};
@@ -91,6 +90,8 @@ class FakeDelegate : public Daemon::Delegate {
                  int optname,
                  void* optval,
                  socklen_t* optlen) const override;
+  ServicePolicyMap LoadPolicyFiles(
+      const std::vector<base::FilePath>& policy_dir_paths) const override;
 
  private:
   std::optional<struct ucred> ucred_;
@@ -131,12 +132,16 @@ int FakeDelegate::GetSockOpt(const base::ScopedFD& socket,
   }
 }
 
+ServicePolicyMap FakeDelegate::LoadPolicyFiles(
+    const std::vector<base::FilePath>& policy_dir_paths) const {
+  return ServicePolicyMap{};
+}
+
 TEST_F(DaemonTest, FailToListenSocket) {
   // Create the socket file so the daemon will fail to create it.
   ASSERT_TRUE(base::WriteFile(GetSocketPath(), "test"));
   FakeDelegate delegate{};
-  Daemon daemon{&delegate, GetSocketPath(), Configuration{},
-                ServicePolicyMap{}};
+  Daemon daemon{&delegate, GetSocketPath(), {}, Configuration{}};
   EXPECT_NE(daemon.Run(), EX_OK);
 }
 

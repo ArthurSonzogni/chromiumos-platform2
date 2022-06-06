@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/values.h>
@@ -27,6 +28,10 @@ namespace mojo_service_manager {
 // service), this tries to merge them and return false.
 bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
                                            ServicePolicyMap* policy_map);
+
+// Same as above but load from multiple directories.
+bool LoadAllServicePolicyFileFromDirectories(
+    const std::vector<base::FilePath>& dirs, ServicePolicyMap* policy_map);
 
 // Loads a policy file. Returns |nullopt| on error.
 std::optional<ServicePolicyMap> LoadServicePolicyFile(

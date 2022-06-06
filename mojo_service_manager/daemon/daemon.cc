@@ -24,6 +24,7 @@
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "mojo_service_manager/daemon/service_manager.h"
+#include "mojo_service_manager/daemon/service_policy_loader.h"
 
 namespace chromeos {
 namespace mojo_service_manager {
@@ -108,16 +109,24 @@ int Daemon::Delegate::GetSockOpt(const base::ScopedFD& socket,
   return getsockopt(socket.get(), level, optname, optval, optlen);
 }
 
+ServicePolicyMap Daemon::Delegate::LoadPolicyFiles(
+    const std::vector<base::FilePath>& policy_dir_paths) const {
+  ServicePolicyMap res;
+  LoadAllServicePolicyFileFromDirectories(policy_dir_paths, &res);
+  return res;
+}
+
 Daemon::Daemon(Delegate* delegate,
                const base::FilePath& socket_path,
-               Configuration configuration,
-               ServicePolicyMap policy_map)
+               const std::vector<base::FilePath>& policy_dir_paths,
+               Configuration configuration)
     : ipc_support_(base::ThreadTaskRunnerHandle::Get(),
                    mojo::core::ScopedIPCSupport::ShutdownPolicy::
                        CLEAN /* blocking shutdown */),
       delegate_(delegate),
       socket_path_(socket_path),
-      service_manager_(std::move(configuration), std::move(policy_map)) {}
+      policy_dir_paths_(std::move(policy_dir_paths)),
+      configuration_(std::move(configuration)) {}
 
 Daemon::~Daemon() {}
 
@@ -126,11 +135,17 @@ int Daemon::OnInit() {
   if (ret != EX_OK)
     return ret;
 
+  // Creates the socket as early as possible to reduce the time of clients that
+  // poll and wait for the socket file to be created.
   socket_fd_ = CreateUnixDomainSocket(socket_path_);
   if (!socket_fd_.is_valid()) {
     LOG(ERROR) << "Failed to create socket server at path: " << socket_path_;
     return EX_OSERR;
   }
+
+  service_manager_ = std::make_unique<ServiceManager>(
+      std::move(configuration_), delegate_->LoadPolicyFiles(policy_dir_paths_));
+
   socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       socket_fd_.get(),
       base::BindRepeating(&Daemon::SendMojoInvitationAndBindReceiver,
@@ -162,7 +177,8 @@ void Daemon::SendMojoInvitationAndBindReceiver() {
   }
   // TODO(b/234569073): Remove this log after we fully enable service manager.
   LOG(INFO) << "Receive connection from: " << identity->security_context;
-  service_manager_.AddReceiver(std::move(identity), std::move(receiver));
+  DCHECK(service_manager_);
+  service_manager_->AddReceiver(std::move(identity), std::move(receiver));
 }
 
 mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(

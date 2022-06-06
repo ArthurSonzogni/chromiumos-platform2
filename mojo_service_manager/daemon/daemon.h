@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
@@ -44,12 +46,16 @@ class Daemon : public brillo::Daemon {
                            int optname,
                            void* optval,
                            socklen_t* optlen) const;
+
+    // Loads policy files.
+    virtual ServicePolicyMap LoadPolicyFiles(
+        const std::vector<base::FilePath>& policy_dir_paths) const;
   };
 
   Daemon(Delegate* delegate,
          const base::FilePath& socket_path,
-         Configuration configuration,
-         ServicePolicyMap policy_map);
+         const std::vector<base::FilePath>& policy_dir_paths,
+         Configuration configuration);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() override;
@@ -77,8 +83,13 @@ class Daemon : public brillo::Daemon {
   base::ScopedFD socket_fd_;
   // The fd watcher to monitor the socket server.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
-  // Implements mojom::ServiceManager.
-  ServiceManager service_manager_;
+  // The paths to load policy files.
+  std::vector<base::FilePath> policy_dir_paths_;
+  // The configuration for the service manager.
+  Configuration configuration_;
+  // Implements mojom::ServiceManager. It will be initialized after policy files
+  // are loaded.
+  std::unique_ptr<ServiceManager> service_manager_;
 };
 
 }  // namespace mojo_service_manager

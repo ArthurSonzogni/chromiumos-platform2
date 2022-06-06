@@ -25,8 +25,14 @@ class ServicePolicyLoaderTest : public ::testing::Test {
   const base::FilePath& root_dir() { return temp_dir_.GetPath(); }
 
   base::FilePath CreateTestFile(const std::string& content) {
+    return CreateTestFileInDirectory(root_dir(), content);
+  }
+
+  base::FilePath CreateTestFileInDirectory(const base::FilePath& dir,
+                                           const std::string& content) {
     base::FilePath file;
-    CHECK(CreateTemporaryFileInDir(root_dir(), &file));
+    CHECK(CreateDirectory(dir));
+    CHECK(CreateTemporaryFileInDir(dir, &file));
     CHECK(base::WriteFile(file, content));
     return file;
   }
@@ -215,6 +221,70 @@ TEST_F(ServicePolicyLoaderTest, LoadDirectoryMergeFail) {
 
   ServicePolicyMap policy_map;
   EXPECT_FALSE(LoadAllServicePolicyFileFromDirectory(root_dir(), &policy_map));
+}
+
+TEST_F(ServicePolicyLoaderTest, LoadDirectories) {
+  const auto dir_a = root_dir().Append("a");
+  const auto dir_b = root_dir().Append("b");
+  CreateTestFileInDirectory(dir_a, R"JSON(
+      [
+        {"identity":"user_a","own":["ServiceA"],"request":["ServiceA"]},
+      ]
+    )JSON");
+  CreateTestFileInDirectory(dir_b, R"JSON(
+      [
+        {"identity":"user_b","own":["ServiceB"],"request":["ServiceB"]},
+      ]
+    )JSON");
+  ServicePolicyMap policy_map;
+  EXPECT_TRUE(
+      LoadAllServicePolicyFileFromDirectories({dir_a, dir_b}, &policy_map));
+  EXPECT_EQ(policy_map, CreateServicePolicyMapForTest({
+                            {"ServiceA", {"user_a", {"user_a"}}},
+                            {"ServiceB", {"user_b", {"user_b"}}},
+                        }));
+}
+
+TEST_F(ServicePolicyLoaderTest, LoadDirectoriesMergeFail) {
+  // Load will fail because "ServiceA" is owned twice.
+  const auto dir_a = root_dir().Append("a");
+  const auto dir_b = root_dir().Append("b");
+  CreateTestFileInDirectory(dir_a, R"JSON(
+      [
+        {"identity":"user_a","own":["ServiceA"],"request":["ServiceA"]},
+      ]
+    )JSON");
+  CreateTestFileInDirectory(dir_b, R"JSON(
+      [
+        {"identity":"user_b","own":["ServiceA"],"request":["ServiceA"]},
+      ]
+    )JSON");
+
+  ServicePolicyMap policy_map;
+  EXPECT_FALSE(
+      LoadAllServicePolicyFileFromDirectories({dir_a, dir_b}, &policy_map));
+}
+
+TEST_F(ServicePolicyLoaderTest, LoadDirectoriesKeepLoadingWhenFail) {
+  const auto dir_a = root_dir().Append("a");
+  const auto dir_b = root_dir().Append("b");
+  // Will fail because it is not a list.
+  CreateTestFileInDirectory(dir_a, R"JSON(
+      {}
+    )JSON");
+  // Loads "b" even if fails to load "a".
+  CreateTestFileInDirectory(dir_b, R"JSON(
+      [
+        {"identity":"user_b","own":["ServiceB"],"request":["ServiceB"]},
+      ]
+    )JSON");
+
+  ServicePolicyMap policy_map;
+  EXPECT_FALSE(
+      LoadAllServicePolicyFileFromDirectories({dir_a, dir_b}, &policy_map));
+  EXPECT_EQ(policy_map, CreateServicePolicyMapForTest({
+                            {"ServiceB", {"user_b", {"user_b"}}},
+                        }));
 }
 
 }  // namespace

@@ -58,21 +58,20 @@ int main(int argc, char* argv[]) {
 
   mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
 
-  service_manager::ServicePolicyMap policy_map;
-  bool is_load_success = service_manager::LoadAllServicePolicyFileFromDirectory(
-      base::FilePath{kPolicyDirectoryPath}, &policy_map);
+  std::vector<base::FilePath> policy_dir_paths{
+      base::FilePath{kPolicyDirectoryPath}};
   if (IsDevMode()) {
     LOG(INFO) << "DevMode is enabled, load extra configs from "
               << kExtraPolicyDirectoryPathInDevMode;
-    if (!service_manager::LoadAllServicePolicyFileFromDirectory(
-            base::FilePath{kExtraPolicyDirectoryPathInDevMode}, &policy_map)) {
-      is_load_success = false;
-    }
+    policy_dir_paths.push_back(
+        base::FilePath{kExtraPolicyDirectoryPathInDevMode});
   }
   if (FLAGS_check_policy) {
     LOG(INFO) << "We are in --check-policy mode, will exit after checking the "
                  "policy.";
-    if (is_load_success) {
+    service_manager::ServicePolicyMap policy_map;
+    if (LoadAllServicePolicyFileFromDirectories(policy_dir_paths,
+                                                &policy_map)) {
       LOG(INFO) << "Check policy result: Pass.";
       return 0;
     }
@@ -87,7 +86,6 @@ int main(int argc, char* argv[]) {
 
   service_manager::Daemon::Delegate delegate;
   service_manager::Daemon daemon(&delegate, base::FilePath{kSocketPath},
-                                 std::move(configuration),
-                                 std::move(policy_map));
+                                 policy_dir_paths, std::move(configuration));
   return daemon.Run();
 }
