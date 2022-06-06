@@ -20,7 +20,7 @@ pkg_config("target_defaults") {
     "protobuf",
     "system_api",
   ]
-  if (use.cr50_onboard || use.ti50_onboard) {
+  if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
     pkg_deps += [ "libtrunks" ]
   }
 }
@@ -39,7 +39,7 @@ shared_library("libu2fd-client") {
     "user_state.cc",
     "util.cc",
   ]
-  if (use.cr50_onboard || use.ti50_onboard) {
+  if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
     sources += [
       "tpm_vendor_cmd.cc",
       "u2f_apdu.cc",

@@ -19,7 +19,7 @@ group("all") {
     }
     deps += [ ":u2fd_test_runner" ]
   }
-  if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
+  if (use.fuzzer) {
     deps += [
       ":u2f_apdu_fuzzer",
       ":u2f_msg_handler_fuzzer",
@@ -51,7 +51,7 @@ pkg_config("u2fd_config") {
     "openssl",
     "system_api",
   ]
-  if (use.cr50_onboard || use.ti50_onboard) {
+  if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
     pkg_deps += [ "libtrunks" ]
   }
   if (use.fuzzer) {
@@ -87,7 +87,7 @@ static_library("libu2fd") {
       "tpm_manager",
     ]
   }
-  if (use.cr50_onboard || use.ti50_onboard) {
+  if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
     sources += [
       "u2f_command_processor_gsc.cc",
       "u2f_corp_processor_interface.cc",
@@ -205,7 +205,7 @@ if (use.test) {
   }
 }
 
-if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
+if (use.fuzzer) {
   executable("u2f_apdu_fuzzer") {
     sources = [ "fuzzers/u2f_apdu_fuzzer.cc" ]
     configs += [
