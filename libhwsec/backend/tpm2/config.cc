@@ -225,4 +225,22 @@ StatusOr<std::string> ConfigTpm2::ReadPcr(uint32_t pcr_index) {
   return pcr_digest;
 }
 
+StatusOr<ConfigTpm2::PcrValue> ConfigTpm2::ToPcrValue(
+    const DeviceConfigSettings& settings) {
+  ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToSettingsPcrMap(settings));
+
+  // Zero initialize.
+  ConfigTpm2::PcrValue pcr_value = {};
+  std::string digest;
+
+  for (const PcrMap::value_type& pcr : pcr_map) {
+    pcr_value.bitmask[pcr.first / 8] = 1u << (pcr.first % 8);
+    digest += pcr.second;
+  }
+
+  pcr_value.digest = crypto::SHA256HashString(digest);
+
+  return pcr_value;
+}
+
 }  // namespace hwsec

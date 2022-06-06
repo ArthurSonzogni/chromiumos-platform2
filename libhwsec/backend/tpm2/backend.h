@@ -161,11 +161,23 @@ class BackendTpm2 : public Backend {
       InnerSession session;
       trunks::AuthorizationDelegate* delegate;
     };
+
+    // Defines a set of PCR indexes (in bitmask) and the digest that is valid
+    // after computation of sha256 of concatenation of PCR values included in
+    // bitmask.
+    struct PcrValue {
+      // The set of PCR indexes that have to pass the validation.
+      uint8_t bitmask[2];
+      // The hash digest of the PCR values contained in the bitmask.
+      std::string digest;
+    };
+
     StatusOr<PcrMap> ToPcrMap(const DeviceConfigs& device_config);
     StatusOr<PcrMap> ToSettingsPcrMap(const DeviceConfigSettings& settings);
     StatusOr<TrunksSession> GetTrunksSession(const OperationPolicy& policy,
                                              bool salted = true,
                                              bool enable_encryption = true);
+    StatusOr<PcrValue> ToPcrValue(const DeviceConfigSettings& settings);
 
    private:
     StatusOr<std::string> ReadPcr(uint32_t pcr_index);
@@ -183,7 +195,42 @@ class BackendTpm2 : public Backend {
     using SubClassHelper::SubClassHelper;
     StatusOr<bool> IsEnabled() override;
     StatusOr<uint8_t> GetVersion() override;
-    StatusOr<brillo::Blob> SendCommand(const brillo::Blob& command) override;
+    StatusOr<CredentialTreeResult> Reset(uint32_t bits_per_level,
+                                         uint32_t length_labels) override;
+    StatusOr<CredentialTreeResult> InsertCredential(
+        const std::vector<OperationPolicySetting>& policies,
+        const uint64_t label,
+        const std::vector<brillo::Blob>& h_aux,
+        const brillo::SecureBlob& le_secret,
+        const brillo::SecureBlob& he_secret,
+        const brillo::SecureBlob& reset_secret,
+        const DelaySchedule& delay_schedule) override;
+    StatusOr<CredentialTreeResult> CheckCredential(
+        const uint64_t label,
+        const std::vector<brillo::Blob>& h_aux,
+        const brillo::Blob& orig_cred_metadata,
+        const brillo::SecureBlob& le_secret) override;
+    StatusOr<CredentialTreeResult> RemoveCredential(
+        const uint64_t label,
+        const std::vector<std::vector<uint8_t>>& h_aux,
+        const std::vector<uint8_t>& mac) override;
+    StatusOr<CredentialTreeResult> ResetCredential(
+        const uint64_t label,
+        const std::vector<std::vector<uint8_t>>& h_aux,
+        const std::vector<uint8_t>& orig_cred_metadata,
+        const brillo::SecureBlob& reset_secret) override;
+    StatusOr<GetLogResult> GetLog(
+        const std::vector<uint8_t>& cur_disk_root_hash) override;
+    StatusOr<ReplayLogOperationResult> ReplayLogOperation(
+        const brillo::Blob& log_entry_root,
+        const std::vector<brillo::Blob>& h_aux,
+        const brillo::Blob& orig_cred_metadata) override;
+    StatusOr<int> GetWrongAuthAttempts(
+        const brillo::Blob& cred_metadata) override;
+
+   private:
+    // The protocol version used by pinweaver.
+    std::optional<uint8_t> protocol_version_;
   };
 
   class VendorTpm2 : public Vendor, public SubClassHelper<BackendTpm2> {
