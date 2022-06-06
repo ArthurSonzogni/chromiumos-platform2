@@ -85,7 +85,14 @@ void enter_vfs_namespace() {
     LOG(FATAL) << "minijail_bind(\"/run/dbus\") failed";
 
   // Mount /tmp, /run/cups, and /run/ippusb to be able to communicate with CUPS.
-  minijail_mount_tmp(j.get());
+  // /tmp must be at least 3 * kernel partition size plus a little extra. This
+  // is required by make_dev_ssd.sh, which is called from debugd through
+  // dev_features_rootfs_verification.
+  //
+  // The script reads out the old kernel partition as a blob, repacks it (which
+  // often leads to a smaller blob), then copies the old blob to a new blob and
+  // overwrites the repacked kernel onto the new blob.
+  minijail_mount_tmp_size(j.get(), 100 * 1024 * 1024);
   // In case we start before cups, make sure the path exists.
   mkdir("/run/cups", 0755);
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
