@@ -536,7 +536,7 @@ fn test_power_source_provider_empty_path() -> Result<()> {
 }
 
 /// Tests that the `DirectoryPowerSourceProvider` can parse the charger sysfs
-/// `online` attribute.
+/// `online` and `status` attributes.
 #[test]
 fn test_power_source_provider_disconnected_then_connected() -> Result<()> {
     let root = tempdir()?;
@@ -556,9 +556,16 @@ fn test_power_source_provider_disconnected_then_connected() -> Result<()> {
     let power_source = provider.get_power_source()?;
     assert_eq!(power_source, config::PowerSourceType::DC);
 
+    let status = charger.join("status");
     fs::write(&online, b"1")?;
+    fs::write(&status, b"Charging\n")?;
     let power_source = provider.get_power_source()?;
     assert_eq!(power_source, config::PowerSourceType::AC);
+
+    fs::write(&online, b"1")?;
+    fs::write(&status, b"Not Charging\n")?;
+    let power_source = provider.get_power_source()?;
+    assert_eq!(power_source, config::PowerSourceType::DC);
 
     Ok(())
 }

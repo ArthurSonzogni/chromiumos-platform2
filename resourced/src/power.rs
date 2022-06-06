@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::fs::read_to_string;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use glob::glob;
@@ -14,11 +16,42 @@ use crate::config;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
+const POWER_SUPPLY_STATUS: &str = "status";
 const ONDEMAND_PATH: &str = "sys/devices/system/cpu/cpufreq/ondemand";
 
 pub trait PowerSourceProvider {
     /// Returns the current power source of the system.
     fn get_power_source(&self) -> Result<config::PowerSourceType>;
+}
+
+/// See the `POWER_SUPPLY_STATUS_` enum in the linux kernel.
+/// These values are intended to describe the battery status. They are also used
+/// to describe the charger status, which adds a little bit of confusion. A
+/// charger will only return `Charging` or `NotCharging`.
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum PowerSupplyStatus {
+    Unknown,
+    Charging,
+    Discharging,
+    NotCharging,
+    Full,
+}
+
+impl FromStr for PowerSupplyStatus {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim_end();
+
+        match s {
+            "Unknown" => Ok(PowerSupplyStatus::Unknown),
+            "Charging" => Ok(PowerSupplyStatus::Charging),
+            "Discharging" => Ok(PowerSupplyStatus::Discharging),
+            "Not charging" => Ok(PowerSupplyStatus::NotCharging),
+            "Full" => Ok(PowerSupplyStatus::Full),
+            _ => anyhow::bail!("Unknown Power Supply Status: '{}'", s),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -28,8 +61,11 @@ pub struct DirectoryPowerSourceProvider {
 
 impl PowerSourceProvider for DirectoryPowerSourceProvider {
     /// Iterates through all the power supplies in sysfs and looks for the `online` property.
-    /// If online == 1, then the system is connected to external power (AC), otherwise the
-    /// system is powered via battery (DC).
+    /// This indicates an external power source is connected (AC), but it doesn't necessarily
+    /// mean it's powering the system. Tests will sometimes disable the charger to get power
+    /// measurements. In order to determine if the charger is powering the system we need to
+    /// look at the `status` property. If there is no charger connected and powering the system
+    /// then we assume we are running off a battery (DC).
     fn get_power_source(&self) -> Result<config::PowerSourceType> {
         let path = self.root.join(POWER_SUPPLY_PATH);
 
@@ -54,9 +90,38 @@ impl PowerSourceProvider for DirectoryPowerSourceProvider {
                 .with_context(|| format!("Error reading online from {}", online_path.display()))?
                 as u32;
 
-            if online == 1 {
-                return Ok(config::PowerSourceType::AC);
+            if online != 1 {
+                continue;
             }
+
+            let status_path = charger_path.path().join(POWER_SUPPLY_STATUS);
+
+            if !status_path.exists() {
+                continue;
+            }
+
+            let status_string = read_to_string(&status_path)
+                .with_context(|| format!("Error reading status from {}", status_path.display()))?;
+
+            let status_result = PowerSupplyStatus::from_str(&status_string);
+
+            let status = match status_result {
+                Err(_) => {
+                    info!(
+                        "Failure parsing '{}' from {}",
+                        status_string,
+                        status_path.display()
+                    );
+                    continue;
+                }
+                Ok(status) => status,
+            };
+
+            if status != PowerSupplyStatus::Charging {
+                continue;
+            }
+
+            return Ok(config::PowerSourceType::AC);
         }
 
         Ok(config::PowerSourceType::DC)
@@ -211,6 +276,40 @@ impl<'a, C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesMana
         } else {
             info!("Converting root path failed: {}", self.root.display());
         }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_power_supply_status() -> anyhow::Result<()> {
+        assert_eq!(
+            PowerSupplyStatus::from_str("Unknown\n")?,
+            PowerSupplyStatus::Unknown
+        );
+        assert_eq!(
+            PowerSupplyStatus::from_str("Charging\n")?,
+            PowerSupplyStatus::Charging
+        );
+        assert_eq!(
+            PowerSupplyStatus::from_str("Discharging\n")?,
+            PowerSupplyStatus::Discharging
+        );
+        assert_eq!(
+            PowerSupplyStatus::from_str("Not charging\n")?,
+            PowerSupplyStatus::NotCharging
+        );
+        assert_eq!(
+            PowerSupplyStatus::from_str("Full\n")?,
+            PowerSupplyStatus::Full
+        );
+
+        assert!(PowerSupplyStatus::from_str("").is_err());
+        assert!(PowerSupplyStatus::from_str("abc").is_err());
 
         Ok(())
     }
