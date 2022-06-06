@@ -6,6 +6,9 @@
 
 #include <gtest/gtest.h>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+
 #include "libmems/common_types.h"
 #include "libmems/test_fakes.h"
 
@@ -54,6 +57,27 @@ class IioDeviceTest : public fakes::FakeIioDevice, public ::testing::Test {
   fakes::FakeIioChannel* channel1_;
   fakes::FakeIioChannel* channel2_;
 };
+
+TEST_F(IioDeviceTest, GetAbsoluteSysPath) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath foo_dir = temp_dir.GetPath().Append("foo_dir");
+  base::FilePath bar_dir = temp_dir.GetPath().Append("bar_dir");
+  ASSERT_TRUE(base::CreateDirectory(foo_dir));
+  ASSERT_TRUE(base::CreateDirectory(bar_dir));
+  base::FilePath link_from = foo_dir.Append("from_file"), link_to;
+
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(bar_dir, &link_to));
+  ASSERT_TRUE(base::CreateSymbolicLink(
+      base::FilePath("../bar_dir").Append(link_to.BaseName()), link_from))
+      << "Failed to create file symlink.";
+
+  SetPath(link_from);
+
+  auto sys_path = GetAbsoluteSysPath();
+  EXPECT_TRUE(sys_path.has_value());
+  EXPECT_EQ(sys_path->value().compare(link_to.value()), 0);
+}
 
 TEST_F(IioDeviceTest, GetIdAfterPrefixTest) {
   EXPECT_EQ(GetIdAfterPrefix(kTrigger0Attr, kTriggerIdPrefix), 0);

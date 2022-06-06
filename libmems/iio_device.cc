@@ -8,6 +8,7 @@
 
 #include <optional>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -19,6 +20,24 @@
 namespace libmems {
 
 IioDevice::~IioDevice() = default;
+
+std::optional<base::FilePath> IioDevice::GetAbsoluteSysPath() const {
+  base::FilePath iio_path(GetPath());
+  base::FilePath sys_path;
+  if (base::ReadSymbolicLink(iio_path, &sys_path)) {
+    if (sys_path.IsAbsolute()) {
+      return sys_path;
+
+    } else {
+      base::FilePath result = iio_path.DirName();
+      result = result.Append(sys_path);
+
+      return base::MakeAbsoluteFilePath(result);
+    }
+  }
+
+  return std::nullopt;
+}
 
 bool IioDevice::IsSingleSensor() const {
   return ReadStringAttribute("location").has_value();

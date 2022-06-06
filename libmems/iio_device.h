@@ -53,6 +53,8 @@ class LIBMEMS_EXPORT IioDevice {
   // read/write attribute accessors below.
   virtual base::FilePath GetPath() const = 0;
 
+  std::optional<base::FilePath> GetAbsoluteSysPath() const;
+
   // Reads the |name| attribute of this device and returns the value
   // as a string. It will return std::nullopt if the attribute cannot
   // be read.

@@ -27,9 +27,6 @@ enum Location {
   kCamera = 3,
 };
 
-std::optional<base::FilePath> GetAbsoluteSysPath(
-    libmems::IioDevice* const iio_device);
-
 class DeviceData {
  public:
   DeviceData(libmems::IioDevice* const iio_device = nullptr,

@@ -17,7 +17,7 @@ namespace iioservice {
 namespace {
 
 bool IioDeviceOnDut(libmems::IioDevice* const iio_device) {
-  auto path_opt = GetAbsoluteSysPath(iio_device);
+  auto path_opt = iio_device->GetAbsoluteSysPath();
   if (!path_opt.has_value())
     return false;
 
@@ -36,24 +36,6 @@ bool IioDeviceOnDut(libmems::IioDevice* const iio_device) {
 }
 
 }  // namespace
-
-std::optional<base::FilePath> GetAbsoluteSysPath(
-    libmems::IioDevice* const iio_device) {
-  base::FilePath iio_path(iio_device->GetPath());
-  base::FilePath sys_path;
-  if (base::ReadSymbolicLink(iio_path, &sys_path)) {
-    if (sys_path.IsAbsolute()) {
-      return sys_path;
-    } else {
-      base::FilePath result = iio_path.DirName();
-      result = result.Append(sys_path);
-
-      return base::MakeAbsoluteFilePath(result);
-    }
-  }
-
-  return std::nullopt;
-}
 
 DeviceData::DeviceData(libmems::IioDevice* const iio_device,
                        std::set<cros::mojom::DeviceType> types)

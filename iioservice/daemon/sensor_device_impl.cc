@@ -161,7 +161,7 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   for (const auto& attr_name : attr_names) {
     std::optional<std::string> value_opt;
     if (attr_name == cros::mojom::kSysPath) {
-      auto path_opt = GetAbsoluteSysPath(client.device_data->iio_device);
+      auto path_opt = client.device_data->iio_device->GetAbsoluteSysPath();
       if (path_opt.has_value())
         value_opt = path_opt.value().value();
     } else {
