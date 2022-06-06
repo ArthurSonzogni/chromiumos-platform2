@@ -6,6 +6,8 @@
 
 #include <dlfcn.h>
 
+#include <functional>
+
 #include <base/logging.h>
 #include <trunks/cr50_headers/u2f.h>
 
@@ -54,9 +56,10 @@ U2fCorpProcessorInterface::~U2fCorpProcessorInterface() {
 
 void U2fCorpProcessorInterface::Initialize(
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-    TpmVendorCommandProxy* tpm_proxy) {
+    TpmVendorCommandProxy* tpm_proxy,
+    std::function<void()> request_presence) {
   if (processor_) {
-    processor_->Initialize(sm_proxy, tpm_proxy);
+    processor_->Initialize(sm_proxy, tpm_proxy, request_presence);
   } else {
     VLOG(1) << "Stub initialized.";
   }

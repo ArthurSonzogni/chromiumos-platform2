@@ -5,6 +5,8 @@
 #ifndef U2FD_CLIENT_U2F_CORP_PROCESSOR_H_
 #define U2FD_CLIENT_U2F_CORP_PROCESSOR_H_
 
+#include <functional>
+
 #include <session_manager/dbus-proxies.h>
 
 #include "u2fd/client/tpm_vendor_cmd.h"
@@ -18,7 +20,8 @@ class U2fCorpProcessor {
   virtual ~U2fCorpProcessor() = default;
 
   virtual void Initialize(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-                          TpmVendorCommandProxy* tpm_proxy) = 0;
+                          TpmVendorCommandProxy* tpm_proxy,
+                          std::function<void()> request_presence) = 0;
 
   virtual U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu) = 0;
 };

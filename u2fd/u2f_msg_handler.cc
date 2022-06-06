@@ -75,7 +75,7 @@ U2fMessageHandler::U2fMessageHandler(
       allow_g2f_attestation_(allow_g2f_attestation) {
   if (enable_corp_protocol) {
     u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-    u2f_corp_processor_->Initialize(sm_proxy, proxy);
+    u2f_corp_processor_->Initialize(sm_proxy, proxy, request_user_presence);
   }
 }
 

@@ -5,6 +5,8 @@
 #ifndef U2FD_U2F_CORP_PROCESSOR_INTERFACE_H_
 #define U2FD_U2F_CORP_PROCESSOR_INTERFACE_H_
 
+#include <functional>
+
 #include <session_manager/dbus-proxies.h>
 
 #include "u2fd/client/u2f_apdu.h"
@@ -25,7 +27,8 @@ class U2fCorpProcessorInterface {
   // The corp processor needs to connect to session manager signal, and send
   // commands through the tpm proxy.
   void Initialize(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-                  TpmVendorCommandProxy* tpm_proxy);
+                  TpmVendorCommandProxy* tpm_proxy,
+                  std::function<void()> request_presence);
   U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu);
 
  private:
