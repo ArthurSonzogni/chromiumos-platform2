@@ -21,7 +21,7 @@ namespace {
 
 const char kUsageMessage[] =
     "\n"
-    "Configures sshd and installs SSH test keys, or queries whether sshd has\n"
+    "Configures sshd and SSH test key access, or queries whether sshd has\n"
     "been configured (based on the existence of the required files).\n"
     "\n";
 
@@ -30,7 +30,7 @@ const char kUsageMessage[] =
 // needed. The InstallFile class below is used to simplify combining paths.
 const char kKeySourceDir[] = "/usr/share/chromeos-ssh-config/keys";
 const char kKeyInstallDir[] = "/root/.ssh";
-const char* const kKeyFilenames[] = {"authorized_keys", "id_rsa", "id_rsa.pub"};
+const char* const kKeyFilenames[] = {"authorized_keys"};
 
 const char kInitSourceDir[] = "/usr/share/chromeos-ssh-config/init";
 const char kInitInstallDir[] = "/etc/init";
