@@ -145,6 +145,11 @@ void enter_vfs_namespace() {
     LOG(FATAL) << "minijail_bind(\"/run/chromeos-config/v1\") failed";
   }
 
+  // Mount /run/lock so that lock file for crossystem is shared.
+  if (minijail_bind(j.get(), "/run/lock", "/run/lock", 1)) {
+    LOG(FATAL) << "minijail_bind(\"/run/lock\") failed";
+  }
+
   if (USE_TPM) {
     // For TPM 1.2 only: Enable utilities that communicate with TPM via tcsd -
     // mount directory containing tcsd socket.
