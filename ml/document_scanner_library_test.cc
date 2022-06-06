@@ -20,26 +20,18 @@ DocumentScannerLibraryParams GetTestingParams() {
 
 }  // namespace
 
-TEST(DocumentScannerLibraryTest, CanLoadLibrary) {
+TEST(DocumentScannerLibraryTest, GetScanner) {
   auto* const library = DocumentScannerLibrary::GetInstance();
   if (IsAsan()) {
     EXPECT_FALSE(DocumentScannerLibrary::IsSupported());
     return;
   }
 
-  if (DocumentScannerLibrary::IsSupported()) {
-    EXPECT_EQ(library->Initialize(GetTestingParams()),
-              DocumentScannerLibrary::InitializeResult::kOk);
-  }
-}
-
-TEST(DocumentScannerLibraryTest, GetScanner) {
-  if (!DocumentScannerLibrary::IsSupported()) {
-    // No need to test the behavior on an unsupported device.
+  if (!DocumentScannerLibrary::IsEnabledOnRootfs()) {
+    // No need to test the behavior on an unsupported device or on devices which
+    // will install library through DLC.
     return;
   }
-
-  auto* const library = DocumentScannerLibrary::GetInstance();
   ASSERT_EQ(library->Initialize(GetTestingParams()),
             DocumentScannerLibrary::InitializeResult::kOk);
 

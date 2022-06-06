@@ -779,7 +779,7 @@ void MachineLearningServiceImpl::LoadDocumentScanner(
   // From here below is the worker process.
   std::string path = ml::kLibDocumentScannerDefaultDir;
   if (!config.is_null()) {
-    path = config->library_dlc_path;
+    path = config->library_dlc_path->path;
   }
   LoadDocumentScannerFromPath(std::move(receiver), std::move(callback),
                               std::move(path));

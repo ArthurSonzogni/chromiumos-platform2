@@ -19,6 +19,7 @@
 module chromeos.machine_learning.mojom;
 
 import "ml/mojom/document_scanner_param_types.mojom";
+import "ml/mojom/file_path.mojom";
 import "ml/mojom/geometry.mojom";
 import "ml/mojom/shared_memory.mojom";
 
@@ -30,11 +31,13 @@ enum DocumentScannerResultStatus {
 };
 
 // The configuration for document scanner.
-// Next min field ID: 1
+// Next min field ID: 2
 [Stable]
 struct DocumentScannerConfig {
+  string deprecated_library_dlc_path@0;
+
   // Path to already-installed DocumentScanner library.
-  string library_dlc_path@0;
+  [MinVersion=1] mojo_base.mojom.FilePath? library_dlc_path@1;
 };
 
 // The corner detection response.

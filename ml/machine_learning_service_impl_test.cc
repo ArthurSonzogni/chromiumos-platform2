@@ -1623,7 +1623,9 @@ ReadOnlySharedMemoryRegionPtr ToSharedMemory(const std::vector<uint8_t>& data) {
 class DocumentScannerTest : public ::testing::Test {
  public:
   bool IsDocumentScannerSupported() {
-    return ml::DocumentScannerLibrary::GetInstance()->IsSupported();
+    // Only tested when the library is installed in rootfs.
+    return ml::DocumentScannerLibrary::GetInstance()->IsSupported() &&
+           ml::DocumentScannerLibrary::GetInstance()->IsEnabledOnRootfs();
   }
 
   void ConnectDocumentScanner() {
@@ -1633,7 +1635,8 @@ class DocumentScannerTest : public ::testing::Test {
 
     auto config =
         chromeos::machine_learning::mojom::DocumentScannerConfig::New();
-    config->library_dlc_path = "/usr/share/cros-camera/libfs/";
+    config->library_dlc_path = mojo_base::mojom::FilePath::New();
+    config->library_dlc_path->path = "/usr/share/cros-camera/libfs/";
 
     bool model_callback_done = false;
     ml_service->LoadDocumentScanner(

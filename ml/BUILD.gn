@@ -38,6 +38,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
     "mojom/big_buffer.mojom",
     "mojom/document_scanner.mojom",
     "mojom/document_scanner_param_types.mojom",
+    "mojom/file_path.mojom",
     "mojom/geometry.mojom",
     "mojom/grammar_checker.mojom",
     "mojom/graph_executor.mojom",
@@ -57,6 +58,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
     "--typemap",
     rebase_path("mojom/type_mappings.json"),
   ]
+  enabled_features = [ "file_path_is_string" ]
 }
 
 source_set("ml_mojo_bindings_lib") {
