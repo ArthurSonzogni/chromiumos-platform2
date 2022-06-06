@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <ctime>
 #include <string>
 
 #include <base/logging.h>
@@ -40,8 +41,8 @@ bool ResourceCollectorCpu::SendCpuUsagePercentageToUma(
 
 StatusOr<uint64_t> ResourceCollectorCpu::CpuUsageTallier::Tally()
     VALID_CONTEXT_REQUIRED(sequence_checker_) {
-  ASSIGN_OR_RETURN(uint64_t cpu_time, GetCurrentTime(TimeType::kProcessCpu));
-  ASSIGN_OR_RETURN(uint64_t wall_time, GetCurrentTime(TimeType::kWall));
+  ASSIGN_OR_RETURN(time_t cpu_time, GetCurrentTime(TimeType::kProcessCpu));
+  ASSIGN_OR_RETURN(time_t wall_time, GetCurrentTime(TimeType::kWall));
 
   // We ignore the nanosecond part because we don't need that level of accuracy.
   uint64_t result = static_cast<uint64_t>(cpu_time - last_cpu_time_) * 100U /

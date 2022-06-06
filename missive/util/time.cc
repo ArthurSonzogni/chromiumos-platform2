@@ -29,7 +29,7 @@ std::string GetSystemErrorMessage() {
 }
 }  // namespace
 
-StatusOr<uint64_t> GetCurrentTime(TimeType type) {
+StatusOr<time_t> GetCurrentTime(TimeType type) {
   clockid_t clock_id;
   const char* readable_type;
 
