@@ -160,6 +160,8 @@ void Daemon::SendMojoInvitationAndBindReceiver() {
         "Cannot get identity from peer socket.");
     return;
   }
+  // TODO(b/234569073): Remove this log after we fully enable service manager.
+  LOG(INFO) << "Receive connection from: " << identity->security_context;
   service_manager_.AddReceiver(std::move(identity), std::move(receiver));
 }
 
