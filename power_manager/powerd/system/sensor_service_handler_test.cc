@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/run_loop.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
