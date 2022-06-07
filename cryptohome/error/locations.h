@@ -931,6 +931,60 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockNoUsernameInDerive = 552,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInCheckSecret = 553,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoTPMInInitChalRespAuth = 554,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthTPMNotReadyInInitChalRespAuth = 555,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCantQueryROCAVulnInInitChalRespAuth = 556,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthROCAVulnerableInInitChalRespAuth = 557,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoDBusInInitChalRespAuth = 558,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoDelegateInInitChalRespAuth = 559,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthInitFailedInInitAuthBlockUtilChalResp = 560,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoDelegateInInitAuthBlockUtilChalResp = 561,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNokeyInfoInInitAuthBlockUtilChalResp = 562,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMultipleKeysInInitAuthBlockUtilChalResp = 563,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCreateFailedInInitAuthBlockUtilChalResp = 564,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthInitChalRespAuthFailedInDoChalRespMount = 565,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoChalRespKeyInfoInDoChalRespMount = 566,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMultipleKeysInDoChalRespMount = 567,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoDelegateInDoChalRespMount = 568,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoChalRespServiceInDoChalRespMount = 569,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAccountNotFoundInDoChalRespMount = 570,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoChalRespVKInDoChalRespMount = 571,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAccountNotFoundInContinueMountWithCred = 572,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGuestMountPointBusyInContinueMountWithCred = 573,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCantCreateSessionInContinueMountWithCred = 574,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthPublicMountPointBusyInContinueMountWithCred = 575,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEpheMountPointBusyInContinueMountWithCred = 576,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoCreateForEphemeralInContinueMountWithCred = 577,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCredVerifyFailedInContinueMountWithCred = 578,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountFailedInContinueMountWithCred = 579,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthInitChalRespFailedInAddCredentials = 580,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -871,14 +871,13 @@ class UserDataAuth {
   // Performs the lazy part of the initialization that is required for
   // performing operations with challenge-response keys. Returns whether
   // succeeded.
-  bool InitForChallengeResponseAuth(
-      user_data_auth::CryptohomeErrorCode* error_code);
+  CryptohomeStatus InitForChallengeResponseAuth();
 
   // After lazy initialization through InitForChallengeResponseAuth,
   // it updates the existing auth_block_utility_ to have a valid
   // challenge_credentials_helper and refreshes the key_challenge_service
   // for adding, updating and authenticating with ChallengeCredentials.
-  bool InitAuthBlockUtilityForChallengeResponse(
+  CryptohomeStatus InitAuthBlockUtilityForChallengeResponse(
       const AuthorizationRequest& authorization, const std::string& username);
 
   // This is a utility function used by DoMount(). It is called if the request
