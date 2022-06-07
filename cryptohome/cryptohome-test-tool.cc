@@ -107,6 +107,7 @@ bool WriteHexFileLogged(const FilePath& file_path, const SecureBlob& contents) {
 }
 
 bool DoRecoveryCryptoCreateHsmPayloadAction(
+    const FilePath& mediator_pub_key_in_file_path,
     const FilePath& rsa_priv_key_out_file_path,
     const FilePath& destination_share_out_file_path,
     const FilePath& channel_pub_key_out_file_path,
@@ -120,8 +121,13 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     return false;
   }
   SecureBlob mediator_pub_key;
-  CHECK(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
+  if (mediator_pub_key_in_file_path.empty()) {
+    CHECK(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
+        &mediator_pub_key));
+  } else if (!ReadHexFileToSecureBlobLogged(mediator_pub_key_in_file_path,
+                                            &mediator_pub_key)) {
+    return false;
+  }
 
   // Generates HSM payload that would be persisted on a chromebook.
   HsmPayload hsm_payload;
@@ -370,6 +376,10 @@ int main(int argc, char* argv[]) {
       "recovery_crypto_create_recovery_request, recovery_crypto_mediate, "
       "recovery_crypto_decrypt.");
   DEFINE_string(
+      mediator_pub_key_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "mediator key.");
+  DEFINE_string(
       rsa_priv_key_in_file, "",
       "Path to the file containing the hex-encoded Cryptohome Recovery "
       "encrypted rsa private key.");
@@ -470,6 +480,7 @@ int main(int argc, char* argv[]) {
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file)) {
       success = DoRecoveryCryptoCreateHsmPayloadAction(
+          FilePath(FLAGS_mediator_pub_key_in_file),
           FilePath(FLAGS_rsa_priv_key_out_file),
           FilePath(FLAGS_destination_share_out_file),
           FilePath(FLAGS_channel_pub_key_out_file),
