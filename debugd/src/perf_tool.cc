@@ -14,9 +14,13 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
+#include <base/values.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/helpers/scheduler_configuration_utils.h"
@@ -46,8 +50,14 @@ const char kCpuTopologyLocation[] = "/sys/devices/system/cpu/online";
 // a CPU on the system.
 const char kCpuIdleStatePathPattern[] =
     "/sys/devices/system/cpu/cpu%s/cpuidle/state%d/disable";
-
+// Location of the file debugd uses to write the cpuidle states.
+constexpr char kCpuIdleStateMapLocation[] =
+    "/run/debugd/perf_tool/cpuidle_states";
+// Boundaries for validate cpuidle states file.
+constexpr int kMaxCpuNumber = 1000;
+constexpr int kMaxStateNumber = 10;
 // Location of the default ETM strobbing settings in configfs.
+
 const char kStrobbingSettingPathPattern[] =
     "/sys/kernel/config/cs-syscfg/features/strobing/params/%s/value";
 const int kStrobbingWindow = 512;
@@ -91,6 +101,133 @@ void AddQuipperArguments(brillo::Process* process,
   for (const auto& arg : perf_args) {
     process->AddArg(arg);
   }
+}
+
+// Parse |all_cpu_states| to get a series of CPU numbers and states to
+// construct cpuidle state paths and write the value either in the json
+// object or "1" if |disable|. It also performs validation when
+// not |disable| (restoring).
+//
+// The |all_cpu_states| is in json format and simplified and meant to be read
+// by tools. For example, given the entry
+//
+//  "3": {
+//     "2": "1",
+//  },
+//
+// it will write "1" to /sys/devices/system/cpu/cpu3/cpuidle/state2/disable.
+bool WriteCpuIdleStates(const base::Value& all_cpu_states,
+                        bool disable = false) {
+  if (!disable && (!all_cpu_states.is_dict() ||
+                   all_cpu_states.DictItems().size() > kMaxCpuNumber)) {
+    LOG(ERROR) << "Malformed cpuidle states format";
+    return false;
+  }
+  bool completed = true;
+
+  for (auto all_states : all_cpu_states.DictItems()) {
+    int cpu;
+    if (!disable && !base::StringToInt(all_states.first, &cpu)) {
+      LOG(ERROR) << "Expecting a CPU number, found " << all_states.first;
+      return false;
+    }
+    if (!disable && all_states.second.DictItems().size() > kMaxStateNumber) {
+      LOG(ERROR) << "Too many states for cpuidle";
+      return false;
+    }
+    for (auto state_pair : all_states.second.DictItems()) {
+      int state;
+      if (!base::StringToInt(state_pair.first, &state)) {
+        LOG(ERROR) << "State is not a number: " << state_pair.first;
+        return false;
+      }
+      base::FilePath path(base::StringPrintf(kCpuIdleStatePathPattern,
+                                             all_states.first.c_str(), state));
+      if (base::PathExists(path)) {
+        std::string v = "1";
+        if (!disable)
+          v = state_pair.second.GetString();
+        if (!base::WriteFile(path, v)) {
+          PLOG(ERROR) << "Failed to write to " << path;
+          completed = false;
+        }
+      }
+    }
+  }
+  if (!completed)
+    LOG(ERROR) << "Not all cpuidle states are written";
+  return completed;
+}
+
+// Disable the cpuidle states for all online CPUs and save the previous
+// disable status in a temporary state file. It returns false when any error
+// occurs or it finds a prior dirty state file that is not cleaned up.
+bool DisableCpuIdleStates() {
+  base::FilePath cpuidle_states_path(kCpuIdleStateMapLocation);
+  if (base::PathExists(cpuidle_states_path)) {
+    LOG(ERROR) << "The cpuidle states are disabled already.";
+    return false;
+  }
+  std::string cpu_range;
+  if (!base::ReadFileToString(base::FilePath(kCpuTopologyLocation),
+                              &cpu_range)) {
+    PLOG(ERROR) << "File listing online CPU range missing.";
+    return false;
+  }
+
+  std::vector<std::string> cpu_nums;
+  if (!SchedulerConfigurationUtils::ParseCPUNumbers(cpu_range, &cpu_nums)) {
+    PLOG(ERROR) << "Failed to parse CPU range: " << cpu_range << ".";
+    return false;
+  }
+
+  base::Value all_cpu_states(base::Value::Type::DICTIONARY);
+  for (const auto& cpu : cpu_nums) {
+    base::Value all_states(base::Value::Type::DICTIONARY);
+    for (int state = 0;; ++state) {
+      const auto disable_file = base::FilePath(
+          base::StringPrintf(kCpuIdleStatePathPattern, cpu.c_str(), state));
+      if (!base::PathExists(disable_file))
+        break;
+
+      std::string disable_state;
+      base::ReadFileToString(disable_file, &disable_state);
+      all_states.SetKey(
+          base::NumberToString(state),
+          base::Value(base::CollapseWhitespaceASCII(disable_state, true)));
+    }
+    all_cpu_states.SetKey(cpu, std::move(all_states));
+  }
+  std::string json;
+  base::JSONWriter::Write(all_cpu_states, &json);
+  if (!base::WriteFile(cpuidle_states_path, json.c_str())) {
+    PLOG(ERROR) << "Failed to save all cpuidle states";
+    return false;
+  }
+  if (!WriteCpuIdleStates(all_cpu_states, true)) {
+    PLOG(ERROR) << "Failed to write cpuidle states";
+    return false;
+  }
+  return true;
+}
+
+// Restore the cpuidle states based on the previously saved log file.
+// It will try to validate the file's content and also delete the file
+// before returning.
+void RestoreCpuIdleStates() {
+  base::FilePath cpuidle_states_map(kCpuIdleStateMapLocation);
+  std::string json;
+  if (!base::PathExists(cpuidle_states_map))
+    return;
+  if (!base::ReadFileToString(cpuidle_states_map, &json)) {
+    PLOG(ERROR) << "Failed to read cpuidle states from: "
+                << kCpuIdleStateMapLocation;
+    return;
+  }
+  std::optional<base::Value> all_cpu_states = base::JSONReader::Read(json);
+  if (all_cpu_states.has_value())
+    WriteCpuIdleStates(*all_cpu_states);
+  base::DeleteFile(cpuidle_states_map);
 }
 
 }  // namespace
@@ -140,49 +277,8 @@ bool ValidateQuipperArguments(const std::vector<std::string>& qp_args,
 PerfTool::PerfTool() {
   signal_handler_.Init();
   process_reaper_.Register(&signal_handler_);
+  RestoreCpuIdleStates();
   EtmStrobbingSettings();
-}
-
-bool PerfTool::DisableCpuIdleStates() {
-  if (!cpuidle_states_.empty()) {
-    LOG(ERROR) << "The cpuidle states are disabled already.";
-    return false;
-  }
-  std::string cpu_range;
-  if (!base::ReadFileToString(base::FilePath(kCpuTopologyLocation),
-                              &cpu_range)) {
-    PLOG(ERROR) << "File listing online CPU range missing.";
-    return false;
-  }
-
-  std::vector<std::string> cpu_nums;
-  if (!SchedulerConfigurationUtils::ParseCPUNumbers(cpu_range, &cpu_nums)) {
-    PLOG(ERROR) << "Failed to parse CPU range: " << cpu_range << ".";
-    return false;
-  }
-
-  for (const auto& cpu : cpu_nums) {
-    for (int state = 0;; ++state) {
-      const auto disable_file = base::FilePath(
-          base::StringPrintf(kCpuIdleStatePathPattern, cpu.c_str(), state));
-      if (!base::PathExists(disable_file))
-        break;
-
-      std::string disable_state;
-      base::ReadFileToString(disable_file, &disable_state);
-      cpuidle_states_.emplace(disable_file, disable_state);
-      base::WriteFile(disable_file, "1");
-    }
-  }
-  return true;
-}
-
-void PerfTool::RestoreCpuIdleStates() {
-  for (const auto& [path, disable_state] : cpuidle_states_) {
-    if (base::PathExists(path))
-      base::WriteFile(path, disable_state);
-  }
-  cpuidle_states_.clear();
 }
 
 bool PerfTool::GetPerfOutputV2(const std::vector<std::string>& quipper_args,
@@ -325,8 +421,7 @@ void PerfTool::OnQuipperProcessExited(const siginfo_t& siginfo) {
 
   profiler_session_id_.reset();
 
-  if (!cpuidle_states_.empty())
-    RestoreCpuIdleStates();
+  RestoreCpuIdleStates();
 }
 
 bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
@@ -438,8 +533,20 @@ void PerfTool::EtmStrobbingSettings() {
   if (!base::PathExists(window_path) || !base::PathExists(period_path))
     return;
 
-  base::WriteFile(window_path, std::to_string(kStrobbingWindow));
-  base::WriteFile(period_path, std::to_string(kStrobbingPeriod));
+  std::string ws, ps;
+  base::ReadFileToString(window_path, &ws);
+  base::ReadFileToString(period_path, &ps);
+  int window, period;
+  base::HexStringToInt(ws, &window);
+  base::HexStringToInt(ps, &period);
+  if (window != kStrobbingWindow) {
+    base::WriteFile(window_path, std::to_string(kStrobbingWindow));
+    VLOG(1) << "ETM Strobbing window set to " << kStrobbingWindow;
+  }
+  if (period != kStrobbingPeriod) {
+    base::WriteFile(period_path, std::to_string(kStrobbingPeriod));
+    VLOG(1) << "ETM Strobbing period set to " << kStrobbingPeriod;
+  }
   etm_available = true;
 }
 

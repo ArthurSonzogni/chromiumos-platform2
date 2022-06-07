@@ -23,6 +23,7 @@
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "debugd/src/log_provider.h"
+#include "debugd/src/perf_tool.h"
 #include "debugd/src/sandboxed_process.h"
 
 namespace debugd {
@@ -108,7 +109,8 @@ class LogTool : public debugd::LogProvider {
   LogMap GetAllLogs();
   LogMap GetAllDebugLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd,
-                          const std::string& username);
+                          const std::string& username,
+                          PerfTool* perf_tool);
   void BackupArcBugReport(const std::string& username);
   void DeleteArcBugReportBackup(const std::string& username);
 

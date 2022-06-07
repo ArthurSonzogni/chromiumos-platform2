@@ -41,7 +41,6 @@
 #include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
 #include "debugd/src/metrics.h"
-#include "debugd/src/perf_tool.h"
 #include "debugd/src/process_with_output.h"
 
 #include <brillo/files/safe_fd.h>
@@ -644,7 +643,7 @@ bool CompressXzBuffer(const std::vector<uint8_t>& in_buffer,
   return true;
 }
 
-void GetPerfData(LogTool::LogMap* map) {
+void GetPerfData(LogTool::LogMap* map, debugd::PerfTool* perf_tool) {
   // Run perf to collect system-wide performance profile when user triggers
   // feedback report. Perf runs at sampling frequency of ~500 hz (499 is used
   // to avoid sampling periodic system activities), with callstack in each
@@ -655,9 +654,8 @@ void GetPerfData(LogTool::LogMap* map) {
   std::vector<uint8_t> perf_data;
   int32_t status;
 
-  debugd::PerfTool perf_tool;
-  if (!perf_tool.GetPerfOutput(kPerfDurationSecs, perf_args, &perf_data,
-                               nullptr, &status, nullptr))
+  if (!perf_tool->GetPerfOutput(kPerfDurationSecs, perf_args, &perf_data,
+                                nullptr, &status, nullptr))
     return;
 
   // XZ compress the profile data.
@@ -992,7 +990,8 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
 }
 
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
-                                 const std::string& username) {
+                                 const std::string& username,
+                                 PerfTool* perf_tool) {
   LogMap results;
   base::Value dictionary(base::Value::Type::DICTIONARY);
   // Maps each subtask to a callable, which performs that task when invoked.
@@ -1029,8 +1028,8 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
       std::make_pair("GetBluetoothBqr", base::BindOnce(&GetBluetoothBqr)));
   subtasks.emplace(std::make_pair(
       "GetLsbReleaseInfo", base::BindOnce(&GetLsbReleaseInfo, &results)));
-  subtasks.emplace(
-      std::make_pair("GetPerfData", base::BindOnce(&GetPerfData, &results)));
+  subtasks.emplace(std::make_pair(
+      "GetPerfData", base::BindOnce(&GetPerfData, &results, perf_tool)));
   subtasks.emplace(std::make_pair("GetOsReleaseInfo",
                                   base::BindOnce(&GetOsReleaseInfo, &results)));
 

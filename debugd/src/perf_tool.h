@@ -89,21 +89,12 @@ class PerfTool {
   // strobbing.
   void EtmStrobbingSettings();
 
-  // Disable the cpuidle states for all online CPUs and sets cpuidle_states_
-  // with filepath to prior state pairs. It returns false when any error
-  // occurs or cpuidle_states_ is not empty.
-  bool DisableCpuIdleStates();
-
-  // Restore the cpuidle states based on cpuidle_states_.
-  void RestoreCpuIdleStates();
-
   std::optional<uint64_t> profiler_session_id_;
   std::unique_ptr<SandboxedProcess> quipper_process_;
   base::ScopedFD quipper_process_output_fd_;
   brillo::AsynchronousSignalHandler signal_handler_;
   brillo::ProcessReaper process_reaper_;
   bool etm_available;
-  std::map<base::FilePath, std::string> cpuidle_states_;
 };
 
 }  // namespace debugd

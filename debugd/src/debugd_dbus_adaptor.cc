@@ -214,7 +214,7 @@ std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs() {
 
 void DebugdDBusAdaptor::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                            const std::string& username) {
-  log_tool_->GetBigFeedbackLogs(fd, username);
+  log_tool_->GetBigFeedbackLogs(fd, username, perf_tool_.get());
 }
 
 void DebugdDBusAdaptor::BackupArcBugReport(const std::string& username) {

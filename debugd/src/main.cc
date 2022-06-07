@@ -80,6 +80,10 @@ void enter_vfs_namespace() {
     LOG(FATAL) << "minijail_mount(\"/run/daemon-store/debugd\") failed";
   }
 
+  // Mount /run/debugd for a shared place for runtime data.
+  if (minijail_bind(j.get(), "/run/debugd", "/run/debugd", 1))
+    LOG(FATAL) << "minijail_bind(\"/run/debugd\") failed";
+
   // Mount /run/dbus to be able to communicate with D-Bus.
   if (minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0))
     LOG(FATAL) << "minijail_bind(\"/run/dbus\") failed";
