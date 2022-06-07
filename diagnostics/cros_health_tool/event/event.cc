@@ -5,6 +5,7 @@
 #include "diagnostics/cros_health_tool/event/event.h"
 
 #include <cstdlib>
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -121,6 +122,9 @@ int event_main(int argc, char** argv) {
     LOG(ERROR) << "Unable to subscribe to events";
     return EXIT_FAILURE;
   }
+
+  std::cout << "Subscribe to " << FLAGS_category << " events successfully."
+            << std::endl;
 
   // Schedule an exit after |FLAGS_length_seconds|.
   message_loop.PostDelayedTask(
