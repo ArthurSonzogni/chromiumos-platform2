@@ -14,6 +14,8 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -61,7 +63,8 @@ constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 class RealUserSessionTest : public ::testing::Test {
  public:
-  RealUserSessionTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
+  RealUserSessionTest()
+      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
   ~RealUserSessionTest() override {}
 
   // Not copyable or movable
@@ -117,7 +120,8 @@ class RealUserSessionTest : public ::testing::Test {
 
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;

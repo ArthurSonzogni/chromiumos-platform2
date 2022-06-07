@@ -99,7 +99,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const cryptorecovery::RequestMetadata& request_metadata,
                const brillo::Blob& epoch_response,
                const CryptohomeRecoveryAuthBlockState& state,
-               Tpm* tpm,
+               cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend,
                brillo::SecureBlob* out_recovery_request,
                brillo::SecureBlob* out_ephemeral_pub_key),
               (const, override));

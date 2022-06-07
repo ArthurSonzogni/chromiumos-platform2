@@ -274,7 +274,8 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     return AuthBlockType::kChallengeCredential;
   }
 
-  bool use_tpm = crypto_->tpm() && crypto_->tpm()->IsOwned();
+  hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
+  bool use_tpm = is_ready.ok() && is_ready.value();
   bool with_user_auth = crypto_->CanUnsealWithUserAuth();
   bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
                      crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
@@ -336,27 +337,27 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 
     case AuthBlockType::kDoubleWrappedCompat:
       return std::make_unique<DoubleWrappedCompatAuthBlock>(
-          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kTpmEcc:
       return std::make_unique<TpmEccAuthBlock>(
-          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kTpmBoundToPcr:
       return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kTpmNotBoundToPcr:
       return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
 
     case AuthBlockType::kLibScryptCompat:
       return std::make_unique<LibScryptCompatAuthBlock>();
 
     case AuthBlockType::kCryptohomeRecovery:
       return std::make_unique<CryptohomeRecoveryAuthBlock>(
-          crypto_->tpm()->GetHwsec(),
-          crypto_->tpm()->GetRecoveryCryptoBackend(), crypto_->le_manager());
+          crypto_->GetHwsec(), crypto_->GetRecoveryCryptoBackend(),
+          crypto_->le_manager());
 
     case AuthBlockType::kScrypt:
       return std::make_unique<ScryptAuthBlock>();
@@ -406,22 +407,22 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     case AuthBlockType::kDoubleWrappedCompat:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<DoubleWrappedCompatAuthBlock>(
-              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
+              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kTpmEcc:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmEccAuthBlock>(
-              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
+              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kTpmBoundToPcr:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmBoundToPcrAuthBlock>(
-              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
+              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kTpmNotBoundToPcr:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmNotBoundToPcrAuthBlock>(
-              crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager()));
+              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kLibScryptCompat:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
@@ -618,7 +619,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     const cryptorecovery::RequestMetadata& request_metadata,
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,
-    Tpm* tpm,
+    cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend,
     brillo::SecureBlob* out_recovery_request,
     brillo::SecureBlob* out_ephemeral_pub_key) const {
   // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.
@@ -655,7 +656,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  if (!tpm->GetRecoveryCryptoBackend()) {
+  if (!recovery_backend) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest),
@@ -664,8 +665,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
   }
 
   std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
-      cryptorecovery::RecoveryCryptoImpl::Create(
-          tpm->GetRecoveryCryptoBackend());
+      cryptorecovery::RecoveryCryptoImpl::Create(recovery_backend);
 
   // Generate recovery request proto which will be sent back to Chrome, and then
   // to the recovery server.

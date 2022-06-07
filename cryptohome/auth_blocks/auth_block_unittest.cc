@@ -35,7 +35,6 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/vault_keyset.h"
@@ -401,7 +400,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   NiceMock<MockLECredentialManager> le_cred_manager;
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
       .WillOnce(
-          DoAll(SaveArg<0>(&le_secret), ReturnError<CryptohomeLECredError>()));
+          DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -1330,8 +1329,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
   auth_input.obfuscated_username = kObfuscatedUsername;
 
-  // Tpm::GetLECredentialBackend() returns `nullptr` -> revocation is not
-  // supported.
+  // IsPinWeaverEnabled()) returns `false` -> revocation is not supported.
   cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
       recovery_crypto_fake_tpm_backend;
 
@@ -1394,15 +1392,14 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
   auth_input.obfuscated_username = kObfuscatedUsername;
 
-  // Tpm::GetLECredentialBackend()::IsSupported() returns `true` -> revocation
-  // is supported.
+  // IsPinWeaverEnabled() returns `true` -> revocation is supported.
   cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
       recovery_crypto_fake_tpm_backend;
   NiceMock<MockLECredentialManager> le_cred_manager;
   brillo::SecureBlob le_secret, he_secret;
   uint64_t le_label = 1;
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&le_secret), SaveArg<1>(&he_secret),
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<2>(&he_secret),
                       SetArgPointee<5>(le_label),
                       ReturnError<CryptohomeLECredError>()));
 

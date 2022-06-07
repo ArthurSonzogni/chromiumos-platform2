@@ -20,6 +20,8 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -161,7 +163,8 @@ class LibScryptCompatVaultKeyset : public VaultKeyset {
 
 class VaultKeysetTest : public ::testing::Test {
  public:
-  VaultKeysetTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
+  VaultKeysetTest()
+      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
   VaultKeysetTest(const VaultKeysetTest&) = delete;
   VaultKeysetTest& operator=(const VaultKeysetTest&) = delete;
 
@@ -183,7 +186,8 @@ class VaultKeysetTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
 };
@@ -647,19 +651,20 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
 TEST_F(VaultKeysetTest, DecryptTPMReboot) {
   // Test to have Decrypt() fail because of CE_TPM_REBOOT.
   // Setup
-  crypto_.Init();
-
-  EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
-
-  EXPECT_CALL(*tpm_.get_mock_hwsec(), GetManufacturer())
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GetManufacturer())
       .WillRepeatedly(ReturnValue(0x43524f53));
-  EXPECT_CALL(*tpm_.get_mock_hwsec(), GetAuthValue(_, _))
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
       .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
-  EXPECT_CALL(*tpm_.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+  EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
       .WillRepeatedly(ReturnValue(brillo::Blob()));
-  EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
+  EXPECT_CALL(hwsec_, GetPubkeyHash(_))
       .WillRepeatedly(ReturnValue(brillo::Blob()));
+  EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+
+  crypto_.Init();
 
   SecureBlob bytes;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
@@ -852,12 +857,16 @@ TEST_F(VaultKeysetTest, KeyData) {
 
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
-  LeCredentialsManagerTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {
+  LeCredentialsManagerTest()
+      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {
     EXPECT_CALL(cryptohome_keys_manager_, Init())
         .WillOnce(Return());  // because HasCryptohomeKey returned false once.
 
-    EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
-    EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsDAMitigationReady())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
 
     // Raw pointer as crypto_ expects unique_ptr, which we will wrap this
     // allocation into.
@@ -886,7 +895,8 @@ class LeCredentialsManagerTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   MockLECredentialManager* le_cred_manager_;

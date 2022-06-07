@@ -19,6 +19,7 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/frontend/pinweaver/frontend.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
@@ -35,7 +36,10 @@ class VaultKeyset;
 class Crypto {
  public:
   // Default constructor
-  explicit Crypto(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager);
+  explicit Crypto(hwsec::CryptohomeFrontend* hwsec,
+                  hwsec::PinWeaverFrontend* pinweaver,
+                  CryptohomeKeysManager* cryptohome_keys_manager,
+                  cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend);
   Crypto(const Crypto&) = delete;
   Crypto& operator=(const Crypto&) = delete;
 
@@ -86,12 +90,17 @@ class Crypto {
   // Returns the number of wrong authentication attempts for the LE keyset.
   int GetWrongAuthAttempts(uint64_t le_label) const;
 
-  // Gets the TPM implementation
-  Tpm* tpm() { return tpm_; }
+  // Gets the HWSec implementation
+  hwsec::CryptohomeFrontend* GetHwsec() { return hwsec_; }
 
   // Gets the CryptohomeKeysManager object.
   CryptohomeKeysManager* cryptohome_keys_manager() {
     return cryptohome_keys_manager_;
+  }
+
+  // Gets the RecoveryCryptoTpmBackend object.
+  cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() {
+    return recovery_backend_;
   }
 
   // Gets an instance of the LECredentialManagerImpl object.
@@ -106,11 +115,17 @@ class Crypto {
   }
 
  private:
-  // The TPM implementation
-  Tpm* const tpm_;
+  // The HWSec implementation.
+  hwsec::CryptohomeFrontend* const hwsec_;
 
-  // The CryptohomeKeysManager object used to reload Cryptohome keys
+  // The pinweaver implementation.
+  hwsec::PinWeaverFrontend* const pinweaver_;
+
+  // The CryptohomeKeysManager object used to reload Cryptohome keys.
   CryptohomeKeysManager* const cryptohome_keys_manager_;
+
+  // The cryptohome recovery backend.
+  cryptorecovery::RecoveryCryptoTpmBackend* const recovery_backend_;
 
   // Handler for Low Entropy credentials.
   std::unique_ptr<LECredentialManager> le_manager_;

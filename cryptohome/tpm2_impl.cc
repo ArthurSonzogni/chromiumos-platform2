@@ -182,7 +182,8 @@ std::map<uint32_t, std::string> ToStrPcrMap(
 
 Tpm2Impl::Tpm2Impl()
     : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
-      hwsec_(hwsec_factory_->GetCryptohomeFrontend()) {}
+      hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
+      pinweaver_(hwsec_factory_->GetPinWeaverFrontend()) {}
 
 Tpm2Impl::Tpm2Impl(std::unique_ptr<hwsec::CryptohomeFrontend> hwsec,
                    trunks::TrunksFactory* factory,
@@ -1343,14 +1344,6 @@ bool Tpm2Impl::GetRsuDeviceId(std::string* device_id) {
   return trunks->tpm_utility->GetRsuDeviceId(device_id) == TPM_RC_SUCCESS;
 }
 
-LECredentialBackend* Tpm2Impl::GetLECredentialBackend() {
-#if USE_PINWEAVER
-  return &le_credential_backend_;
-#else
-  return nullptr;
-#endif
-}
-
 SignatureSealingBackend* Tpm2Impl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
 }
@@ -1393,6 +1386,10 @@ std::map<uint32_t, brillo::Blob> Tpm2Impl::GetPcrMap(
 
 hwsec::CryptohomeFrontend* Tpm2Impl::GetHwsec() {
   return hwsec_.get();
+}
+
+hwsec::PinWeaverFrontend* Tpm2Impl::GetPinWeaver() {
+  return pinweaver_.get();
 }
 
 }  // namespace cryptohome

@@ -213,7 +213,6 @@ proto_library("cryptohome-proto") {
     "${proto_in_dir}/attestation.proto",
     "${proto_in_dir}/boot_lockbox_key.proto",
     "${proto_in_dir}/cryptorecovery/cryptorecovery.proto",
-    "${proto_in_dir}/fake_le_credential_metadata.proto",
     "${proto_in_dir}/hash_tree_leaf_data.proto",
     "${proto_in_dir}/signature_sealed_data.proto",
     "${proto_in_dir}/timestamp.proto",
@@ -336,7 +335,6 @@ static_library("libcrostpm") {
   if (use.tpm2) {
     sources += [
       "../cryptorecovery/recovery_crypto_tpm2_backend_impl.cc",
-      "../pinweaver_le_credential_backend.cc",
       "../signature_sealing_backend_tpm2_impl.cc",
       "../tpm2_impl.cc",
     ]

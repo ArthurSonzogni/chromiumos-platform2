@@ -28,7 +28,8 @@ class StubTpm : public Tpm {
 
   StubTpm()
       : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
-        hwsec_(hwsec_factory_->GetCryptohomeFrontend()) {}
+        hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
+        pinweaver_(hwsec_factory_->GetPinWeaverFrontend()) {}
   ~StubTpm() override {}
 
   // See tpm.h for comments
@@ -60,6 +61,7 @@ class StubTpm : public Tpm {
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   hwsec::CryptohomeFrontend* GetHwsec() override { return hwsec_.get(); }
+  hwsec::PinWeaverFrontend* GetPinWeaver() override { return pinweaver_.get(); }
 
   hwsec::Status SealToPcrWithAuthorization(
       const SecureBlob& plaintext,
@@ -168,7 +170,6 @@ class StubTpm : public Tpm {
     return false;
   }
   bool GetRsuDeviceId(std::string* device_id) override { return false; }
-  LECredentialBackend* GetLECredentialBackend() override { return nullptr; }
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
@@ -205,6 +206,7 @@ class StubTpm : public Tpm {
  private:
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
+  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver_;
 };
 
 }  // namespace cryptohome

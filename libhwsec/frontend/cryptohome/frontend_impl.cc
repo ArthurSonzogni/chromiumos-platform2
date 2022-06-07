@@ -24,6 +24,10 @@ StatusOr<bool> CryptohomeFrontendImpl::IsReady() {
   return middleware_.CallSync<&Backend::State::IsReady>();
 }
 
+StatusOr<bool> CryptohomeFrontendImpl::IsDAMitigationReady() {
+  return middleware_.CallSync<&Backend::DAMitigation::IsReady>();
+}
+
 StatusOr<absl::flat_hash_set<KeyAlgoType>>
 CryptohomeFrontendImpl::GetSupportedAlgo() {
   return middleware_.CallSync<&Backend::KeyManagerment::GetSupportedAlgo>();
@@ -183,6 +187,10 @@ Status CryptohomeFrontendImpl::DestroySpace(Space space) {
 
 StatusOr<bool> CryptohomeFrontendImpl::IsSpaceWriteLocked(Space space) {
   return middleware_.CallSync<&Backend::Storage::IsWriteLocked>(space);
+}
+
+Status CryptohomeFrontendImpl::DeclareTpmFirmwareStable() {
+  return middleware_.CallSync<&Backend::Vendor::DeclareTpmFirmwareStable>();
 }
 
 }  // namespace hwsec

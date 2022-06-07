@@ -18,6 +18,8 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -59,7 +61,7 @@ namespace cryptohome {
 class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
  public:
   AuthFactorVaultKeysetConverterTest()
-      : crypto_(&tpm_, &cryptohome_keys_manager_) {}
+      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
 
   ~AuthFactorVaultKeysetConverterTest() override {}
 
@@ -74,22 +76,19 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
       AuthFactorVaultKeysetConverterTest&&) = delete;
 
   void SetUp() override {
-    // Setup salt for brillo functions.
-    EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
-    EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
-
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsEnabled())
+    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsDAMitigationReady())
         .WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsReady())
-        .WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetManufacturer())
+    EXPECT_CALL(hwsec_, GetManufacturer())
         .WillRepeatedly(ReturnValue(0x43524f53));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetAuthValue(_, _))
+    EXPECT_CALL(hwsec_, GetAuthValue(_, _))
         .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
+    EXPECT_CALL(hwsec_, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
+    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
 
     crypto_.Init();
     keyset_management_ = std::make_unique<KeysetManagement>(
@@ -104,7 +103,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   }
 
  protected:
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;

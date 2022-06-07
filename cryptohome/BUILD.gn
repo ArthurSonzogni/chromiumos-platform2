@@ -391,7 +391,6 @@ if (use.test) {
       "error/cryptohome_mount_error_test.cc",
       "error/cryptohome_tpm_error_test.cc",
       "error/reporting_test.cc",
-      "fake_le_credential_backend.cc",
       "fido/make_credential_response_test.cc",
       "filesystem_layout_unittest.cc",
       "fingerprint_manager_unittest.cc",
@@ -443,6 +442,7 @@ if (use.test) {
     ]
     libs = [
       "chaps",
+      "hwsec_test",
       "keyutils",
       "policy",
       "pthread",
@@ -479,7 +479,6 @@ if (use.test) {
         "cryptorecovery/recovery_crypto_tpm2_backend_impl_unittest.cc",
         "error/cryptohome_tpm2_error_test.cc",
         "error/reporting_tpm2_test.cc",
-        "pinweaver_le_credential_backend_unittest.cc",
         "tpm2_test.cc",
       ]
       libs += [ "trunks_test" ]
@@ -492,7 +491,6 @@ if (use.test) {
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
       ]
-      libs += [ "hwsec_test" ]
     }
 
     if (use.cert_provision) {

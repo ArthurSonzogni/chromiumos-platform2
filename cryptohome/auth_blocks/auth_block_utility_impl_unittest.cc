@@ -40,7 +40,6 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
-#include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
@@ -78,7 +77,11 @@ constexpr char kUser[] = "Test User";
 
 class AuthBlockUtilityImplTest : public ::testing::Test {
  public:
-  AuthBlockUtilityImplTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
+  AuthBlockUtilityImplTest()
+      : crypto_(&hwsec_,
+                &pinweaver_,
+                &cryptohome_keys_manager_,
+                &recovery_crypto_fake_tpm_backend_) {}
   AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
   AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
   virtual ~AuthBlockUtilityImplTest() {}
@@ -91,17 +94,21 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
         brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsDAMitigationReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, GetPubkeyHash(_))
         .WillByDefault(ReturnValue(brillo::BlobFromString("public key hash")));
+    ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
   }
 
  protected:
   MockPlatform platform_;
   brillo::SecureBlob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend_;
   Crypto crypto_;
-  hwsec::MockCryptohomeFrontend& hwsec_ = *tpm_.get_mock_hwsec();
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -120,7 +127,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
 
   EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _))
       .WillOnce(
-          DoAll(SaveArg<0>(&le_secret), ReturnError<CryptohomeLECredError>()));
+          DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
   crypto_.Init();
@@ -1367,6 +1374,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       keyset_management_.get(), &crypto_, &platform_);
 
   // Test for kLibScryptCompat
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
   EXPECT_EQ(USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kLibScryptCompat
                                       : AuthBlockType::kMaxValue,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
@@ -1375,6 +1384,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                 AuthFactorStorageType::kVaultKeyset));
 
   // Test for kScrypt
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
   EXPECT_EQ(USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kScrypt
                                       : AuthBlockType::kMaxValue,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
@@ -1403,7 +1414,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                 AuthFactorStorageType::kVaultKeyset));
 
   // Test for Tpm backed AuthBlock types.
-  ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
   // credentials.key_data type shouldn't be challenge credential any more.
   KeyData key_data3;
   credentials.set_key_data(key_data3);
@@ -1416,7 +1428,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                 AuthFactorStorageType::kVaultKeyset));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
-  EXPECT_CALL(tpm_, GetVersion()).WillOnce(Return(Tpm::TPM_1_2));
+  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillOnce(ReturnValue(false));
   EXPECT_EQ(AuthBlockType::kTpmNotBoundToPcr,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
@@ -1424,7 +1436,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                 AuthFactorStorageType::kVaultKeyset));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
-  EXPECT_CALL(tpm_, GetVersion()).WillOnce(Return(Tpm::TPM_2_0));
+  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
       .WillOnce(Return(nullptr));
   EXPECT_EQ(AuthBlockType::kTpmBoundToPcr,
@@ -1654,9 +1666,6 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
 
   void SetUp() override {
     AuthBlockUtilityImplTest::SetUp();
-    EXPECT_CALL(tpm_, GetRecoveryCryptoBackend())
-        .WillRepeatedly(Return(&recovery_crypto_fake_tpm_backend_));
-
     brillo::SecureBlob mediator_pub_key;
     ASSERT_TRUE(
         cryptorecovery::FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
@@ -1703,18 +1712,15 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
   brillo::SecureBlob channel_priv_key_;
   brillo::SecureBlob destination_share_;
   brillo::Blob epoch_response_blob_;
-
- private:
-  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend_;
 };
 
 TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestSuccess) {
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, GetAuthBlockState(), crypto_.tpm(),
-      &recovery_request, &ephemeral_pub_key);
+      epoch_response_blob_, GetAuthBlockState(),
+      crypto_.GetRecoveryCryptoBackend(), &recovery_request,
+      &ephemeral_pub_key);
   EXPECT_TRUE(status.ok());
   EXPECT_FALSE(ephemeral_pub_key.empty());
   EXPECT_FALSE(recovery_request.empty());
@@ -1726,8 +1732,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestNoHsmPayload) {
   state.hsm_payload = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.tpm(), &recovery_request,
-      &ephemeral_pub_key);
+      epoch_response_blob_, state, crypto_.GetRecoveryCryptoBackend(),
+      &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 
@@ -1738,8 +1744,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   state.channel_pub_key = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.tpm(), &recovery_request,
-      &ephemeral_pub_key);
+      epoch_response_blob_, state, crypto_.GetRecoveryCryptoBackend(),
+      &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 
@@ -1750,8 +1756,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   state.encrypted_channel_priv_key = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.tpm(), &recovery_request,
-      &ephemeral_pub_key);
+      epoch_response_blob_, state, crypto_.GetRecoveryCryptoBackend(),
+      &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 
@@ -1760,8 +1766,9 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      /*epoch_response=*/brillo::Blob(), GetAuthBlockState(), crypto_.tpm(),
-      &recovery_request, &ephemeral_pub_key);
+      /*epoch_response=*/brillo::Blob(), GetAuthBlockState(),
+      crypto_.GetRecoveryCryptoBackend(), &recovery_request,
+      &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 

@@ -38,7 +38,6 @@ MockTpm::MockTpm() {
   ON_CALL(*this, ReadPCR(_, _))
       .WillByDefault(Invoke(this, &MockTpm::FakeReadPCR));
   ON_CALL(*this, GetRsuDeviceId(_)).WillByDefault(Return(true));
-  ON_CALL(*this, GetLECredentialBackend()).WillByDefault(Return(nullptr));
   ON_CALL(*this, GetDelegate(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, PreloadSealedData(_, _))
       .WillByDefault(ReturnError<TPMErrorBase>());

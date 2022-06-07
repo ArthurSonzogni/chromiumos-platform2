@@ -118,7 +118,6 @@ class TpmImpl : public Tpm {
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool GetRsuDeviceId(std::string* device_id) override;
-  LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
   cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() override;
   bool GetDelegate(brillo::Blob* blob,
@@ -183,6 +182,7 @@ class TpmImpl : public Tpm {
                                 brillo::SecureBlob* auth_value) override;
 
   hwsec::CryptohomeFrontend* GetHwsec() override;
+  hwsec::PinWeaverFrontend* GetPinWeaver() override;
 
  private:
   // Returns the owner password if this instance was used to take ownership.
@@ -328,6 +328,7 @@ class TpmImpl : public Tpm {
 
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
+  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver_;
 };
 
 }  // namespace cryptohome

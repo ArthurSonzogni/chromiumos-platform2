@@ -32,6 +32,9 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
   // Is the security module ready to use or not.
   virtual StatusOr<bool> IsReady() = 0;
 
+  // Is DA counter can be mitigated or not.
+  virtual StatusOr<bool> IsDAMitigationReady() = 0;
+
   // Gets the supported algorithm.
   virtual StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() = 0;
 
@@ -115,6 +118,9 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
 
   // Is the |space| write locked or not.
   virtual StatusOr<bool> IsSpaceWriteLocked(Space space) = 0;
+
+  // Declares the TPM firmware is stable.
+  virtual Status DeclareTpmFirmwareStable() = 0;
 };
 
 }  // namespace hwsec

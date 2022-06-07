@@ -6,10 +6,11 @@
 #define CRYPTOHOME_LE_CREDENTIAL_MANAGER_H_
 
 #include <map>
+#include <vector>
+
+#include <libhwsec/structures/operation_policy.h>
 
 #include "cryptohome/error/cryptohome_le_cred_error.h"
-#include "cryptohome/le_credential_backend.h"
-#include "cryptohome/le_credential_error.h"
 
 namespace cryptohome {
 
@@ -37,11 +38,11 @@ class LECredentialManager {
   // later.
 
   virtual LECredStatus InsertCredential(
+      const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob& le_secret,
       const brillo::SecureBlob& he_secret,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_sched,
-      const ValidPcrCriteria& valid_pcr_criteria,
       uint64_t* ret_label) = 0;
 
   // Attempts authentication for a LE Credential.
@@ -84,9 +85,6 @@ class LECredentialManager {
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_HASH_TREE for hash tree error.
   virtual LECredStatus RemoveCredential(const uint64_t& label) = 0;
-
-  // Returns whether the provided label needs valid PCR criteria attached.
-  virtual bool NeedsPcrBinding(const uint64_t& label) = 0;
 
   // Returns the number of wrong authentication attempts done since the label
   // was reset or created. Returns -1 if |label| is not present in the tree or

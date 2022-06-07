@@ -8,6 +8,7 @@
 #include "cryptohome/le_credential_manager.h"
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
@@ -18,11 +19,11 @@ class MockLECredentialManager : public LECredentialManager {
  public:
   MOCK_METHOD(LECredStatus,
               InsertCredential,
-              (const brillo::SecureBlob&,
+              (const std::vector<hwsec::OperationPolicySetting>& policies,
+               const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                const DelaySchedule&,
-               const ValidPcrCriteria&,
                uint64_t*),
               (override));
 
@@ -40,8 +41,6 @@ class MockLECredentialManager : public LECredentialManager {
               (override));
 
   MOCK_METHOD(LECredStatus, RemoveCredential, (const uint64_t&), (override));
-
-  MOCK_METHOD(bool, NeedsPcrBinding, (const uint64_t&), (override));
 
   MOCK_METHOD(int, GetWrongAuthAttempts, (const uint64_t& label), (override));
 };

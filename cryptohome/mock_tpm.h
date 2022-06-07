@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/status.h>
 #include <gmock/gmock.h>
 
@@ -147,7 +148,6 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, GetVersionInfo, (TpmVersionInfo*), (override));
   MOCK_METHOD(bool, GetIFXFieldUpgradeInfo, (IFXFieldUpgradeInfo*), (override));
   MOCK_METHOD(bool, GetRsuDeviceId, (std::string*), (override));
-  MOCK_METHOD(LECredentialBackend*, GetLECredentialBackend, (), (override));
   MOCK_METHOD(SignatureSealingBackend*,
               GetSignatureSealingBackend,
               (),
@@ -180,9 +180,14 @@ class MockTpm : public Tpm {
                brillo::SecureBlob* auth_value),
               (override));
   MOCK_METHOD(hwsec::CryptohomeFrontend*, GetHwsec, (), (override));
+  MOCK_METHOD(hwsec::PinWeaverFrontend*, GetPinWeaver, (), (override));
 
   testing::NiceMock<hwsec::MockCryptohomeFrontend>* get_mock_hwsec() {
     return &hwsec_;
+  }
+
+  testing::NiceMock<hwsec::MockPinWeaverFrontend>* get_mock_pinweaver() {
+    return &pinweaver_;
   }
 
  private:
@@ -226,6 +231,7 @@ class MockTpm : public Tpm {
   }
 
   testing::NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  testing::NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   std::set<uint32_t> extended_pcrs_;
 };
 }  // namespace cryptohome

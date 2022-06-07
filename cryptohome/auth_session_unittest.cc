@@ -20,6 +20,8 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -81,32 +83,30 @@ class AuthSessionTest : public ::testing::Test {
   ~AuthSessionTest() override = default;
 
   void SetUp() override {
-    EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
-    EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
-
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsEnabled())
+    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsDAMitigationReady())
         .WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), IsReady())
-        .WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetManufacturer())
+    EXPECT_CALL(hwsec_, GetManufacturer())
         .WillRepeatedly(ReturnValue(0x43524f53));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetAuthValue(_, _))
+    EXPECT_CALL(hwsec_, GetAuthValue(_, _))
         .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), SealWithCurrentUser(_, _, _))
+    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetPubkeyHash(_))
+    EXPECT_CALL(hwsec_, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
-
+    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     crypto_.Init();
   }
 
  protected:
   base::test::SingleThreadTaskEnvironment task_environment_;
   // Mock and fake objects, will be passed to AuthSession for its internal use.
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  Crypto crypto_{&tpm_, &cryptohome_keys_manager_};
+  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};
@@ -1910,7 +1910,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
       .WillOnce([&](const std::string& obfuscated_username,
                     const cryptorecovery::RequestMetadata& request_metadata,
                     const brillo::Blob& epoch_response,
-                    const CryptohomeRecoveryAuthBlockState& state, Tpm* tpm,
+                    const CryptohomeRecoveryAuthBlockState& state,
+                    cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend,
                     brillo::SecureBlob* out_recovery_request,
                     brillo::SecureBlob* out_ephemeral_pub_key) {
         *out_ephemeral_pub_key = brillo::SecureBlob("test");

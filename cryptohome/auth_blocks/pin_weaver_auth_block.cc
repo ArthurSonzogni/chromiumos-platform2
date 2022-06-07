@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -55,57 +56,6 @@ void LogLERetCode(int le_error) {
       LOG(ERROR) << "Hash tree error.";
       break;
   }
-}
-
-bool GetValidPCRValues(const std::string& obfuscated_username,
-                       ValidPcrCriteria* valid_pcr_criteria) {
-  brillo::Blob default_pcr_str(std::begin(kDefaultPcrValue),
-                               std::end(kDefaultPcrValue));
-
-  // The digest used for validation of PCR values by pinweaver is sha256 of
-  // the current PCR value of index 4.
-  // Step 1 - calculate expected values of PCR4 initially
-  // (kDefaultPcrValue = 0) and after user logins
-  // (sha256(initial_value | user_specific_digest)).
-  // Step 2 - calculate digest of those values, to support multi-PCR case,
-  // where all those expected values for all PCRs are sha256'ed togetheri
-  brillo::Blob default_digest = Sha256(default_pcr_str);
-
-  // The second valid digest is the one obtained from the future value of
-  // PCR4, after it's extended by |obfuscated_username|. Compute the value of
-  // PCR4 after it will be extended first, which is
-  // sha256(default_value + sha256(extend_text)).
-  brillo::Blob obfuscated_username_digest = Sha256(
-      brillo::Blob(obfuscated_username.begin(), obfuscated_username.end()));
-  brillo::Blob combined_pcr_and_username(default_pcr_str);
-  combined_pcr_and_username.insert(
-      combined_pcr_and_username.end(),
-      std::make_move_iterator(obfuscated_username_digest.begin()),
-      std::make_move_iterator(obfuscated_username_digest.end()));
-
-  brillo::Blob extended_arc_pcr_value = Sha256(combined_pcr_and_username);
-
-  // The second valid digest used by pinweaver for validation will be
-  // sha256 of the extended value of pcr4.
-  brillo::Blob extended_digest = Sha256(extended_arc_pcr_value);
-
-  ValidPcrValue default_pcr_value;
-  memset(default_pcr_value.bitmask, 0, 2);
-  default_pcr_value.bitmask[kTpmSingleUserPCR / 8] = 1u
-                                                     << (kTpmSingleUserPCR % 8);
-  default_pcr_value.digest =
-      std::string(default_digest.begin(), default_digest.end());
-  valid_pcr_criteria->push_back(default_pcr_value);
-
-  ValidPcrValue extended_pcr_value;
-  memset(extended_pcr_value.bitmask, 0, 2);
-  extended_pcr_value.bitmask[kTpmSingleUserPCR / 8] =
-      1u << (kTpmSingleUserPCR % 8);
-  extended_pcr_value.digest =
-      std::string(extended_digest.begin(), extended_digest.end());
-  valid_pcr_criteria->push_back(extended_pcr_value);
-
-  return true;
 }
 
 // String used as vector in HMAC operation to derive vkk_seed from High Entropy
@@ -230,19 +180,30 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     delay_sched[entry.attempts] = entry.delay;
   }
 
-  ValidPcrCriteria valid_pcr_criteria;
-  if (!GetValidPCRValues(auth_input.obfuscated_username.value(),
-                         &valid_pcr_criteria)) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockPCRComputationFailedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
+  std::vector<hwsec::OperationPolicySetting> policies = {
+      hwsec::OperationPolicySetting{
+          .device_config_settings =
+              hwsec::DeviceConfigSettings{
+                  .current_user =
+                      hwsec::DeviceConfigSettings::CurrentUserSetting{
+                          .username = std::nullopt,
+                      },
+              },
+      },
+      hwsec::OperationPolicySetting{
+          .device_config_settings =
+              hwsec::DeviceConfigSettings{
+                  .current_user =
+                      hwsec::DeviceConfigSettings::CurrentUserSetting{
+                          .username = auth_input.obfuscated_username.value(),
+                      },
+              },
+      },
+  };
 
   uint64_t label;
-  LECredStatus ret =
-      le_manager_->InsertCredential(le_secret, he_secret, reset_secret,
-                                    delay_sched, valid_pcr_criteria, &label);
+  LECredStatus ret = le_manager_->InsertCredential(
+      policies, le_secret, he_secret, reset_secret, delay_sched, &label);
   if (!ret.ok()) {
     LogLERetCode(ret->local_lecred_error());
     return MakeStatus<CryptohomeCryptoError>(

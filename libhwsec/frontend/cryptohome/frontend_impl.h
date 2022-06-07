@@ -25,6 +25,7 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
 
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
+  StatusOr<bool> IsDAMitigationReady() override;
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
   StatusOr<CreateKeyResult> CreateCryptohomeKey(KeyAlgoType key_algo) override;
   StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob) override;
@@ -58,6 +59,7 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
   Status StoreSpace(Space space, const brillo::Blob& blob) override;
   Status DestroySpace(Space space) override;
   StatusOr<bool> IsSpaceWriteLocked(Space space) override;
+  Status DeclareTpmFirmwareStable() override;
 };
 
 }  // namespace hwsec

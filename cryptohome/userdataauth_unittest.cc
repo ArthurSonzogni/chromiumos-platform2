@@ -20,6 +20,8 @@
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
 #include <dbus/mock_bus.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -47,7 +49,6 @@
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -145,6 +146,14 @@ class UserDataAuthTestBase : public ::testing::Test {
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+
+    ON_CALL(*tpm_.get_mock_hwsec(), IsEnabled())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(*tpm_.get_mock_hwsec(), IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(*tpm_.get_mock_hwsec(), IsDAMitigationReady())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(*tpm_.get_mock_pinweaver(), IsEnabled())
+        .WillByDefault(ReturnValue(true));
 
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
@@ -259,7 +268,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
 
   // Fake Crypto object, will be passed to UserDataAuth for its internal use.
-  Crypto crypto_{&tpm_, &cryptohome_keys_manager_};
+  Crypto crypto_{tpm_.get_mock_hwsec(), tpm_.get_mock_pinweaver(),
+                 &cryptohome_keys_manager_, nullptr};
 
   // Mock TPM Manager utility object, will be passed to UserDataAuth for its
   // internal use.
@@ -2501,19 +2511,12 @@ TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
 
 TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  // Test when there's no Low Entropy Credential Backend.
-  EXPECT_CALL(tpm_, GetLECredentialBackend()).WillOnce(Return(nullptr));
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(false));
   EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
 
-  NiceMock<MockLECredentialBackend> backend;
-  EXPECT_CALL(tpm_, GetLECredentialBackend()).WillRepeatedly(Return(&backend));
-
-  // Test when the backend says it's not supported.
-  EXPECT_CALL(backend, IsSupported()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
-
-  // Test when it's supported.
-  EXPECT_CALL(backend, IsSupported()).WillOnce(Return(true));
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
   EXPECT_TRUE(userdataauth_->IsLowEntropyCredentialSupported());
 }
 

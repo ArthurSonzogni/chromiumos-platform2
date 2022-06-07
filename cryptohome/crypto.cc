@@ -57,20 +57,35 @@ const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
 
 }  // namespace
 
-Crypto::Crypto(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager)
-    : tpm_(tpm), cryptohome_keys_manager_(cryptohome_keys_manager) {
-  CHECK(tpm);
+Crypto::Crypto(hwsec::CryptohomeFrontend* hwsec,
+               hwsec::PinWeaverFrontend* pinweaver,
+               CryptohomeKeysManager* cryptohome_keys_manager,
+               cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend)
+    : hwsec_(hwsec),
+      pinweaver_(pinweaver),
+      cryptohome_keys_manager_(cryptohome_keys_manager),
+      recovery_backend_(recovery_backend) {
+  CHECK(hwsec);
+  CHECK(pinweaver);
   CHECK(cryptohome_keys_manager);
+  // recovery_backend_ may be nullptr.
 }
 
 Crypto::~Crypto() {}
 
 bool Crypto::Init() {
   cryptohome_keys_manager_->Init();
-  if (tpm_->GetLECredentialBackend() &&
-      tpm_->GetLECredentialBackend()->IsSupported()) {
-    le_manager_ = std::make_unique<LECredentialManagerImpl>(
-        tpm_->GetLECredentialBackend(), base::FilePath(kSignInHashTreeDir));
+  if (!le_manager_) {
+    hwsec::StatusOr<bool> is_enabled = pinweaver_->IsEnabled();
+    if (!is_enabled.ok()) {
+      LOG(ERROR) << "Failed to get pinweaver status: " << is_enabled.status();
+      return false;
+    }
+
+    if (is_enabled.value()) {
+      le_manager_ = std::make_unique<LECredentialManagerImpl>(
+          pinweaver_, base::FilePath(kSignInHashTreeDir));
+    }
   }
   return true;
 }
@@ -170,27 +185,13 @@ bool Crypto::is_cryptohome_key_loaded() const {
 }
 
 bool Crypto::CanUnsealWithUserAuth() const {
-  if (tpm_->GetVersion() != Tpm::TPM_1_2)
-    return true;
-  if (!tpm_->DelegateCanResetDACounter())
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsDAMitigationReady();
+  if (!is_ready.ok()) {
+    LOG(ERROR) << "Failed to get da mitigation status: " << is_ready.status();
     return false;
-
-  bool is_pcr_bound;
-  if (hwsec::Status err = tpm_->IsDelegateBoundToPcr(&is_pcr_bound);
-      !err.ok()) {
-    LOG(ERROR) << "Failed to check the status of delegate bound to pcr: "
-               << err;
-  } else {
-    if (!is_pcr_bound) {
-      return true;
-    }
   }
 
-#if USE_DOUBLE_EXTEND_PCR_ISSUE
-  return false;
-#else
-  return true;
-#endif
+  return is_ready.value();
 }
 
 }  // namespace cryptohome

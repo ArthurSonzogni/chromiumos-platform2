@@ -24,7 +24,6 @@
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_tpm.h"
 

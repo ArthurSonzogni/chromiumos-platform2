@@ -124,14 +124,14 @@ CryptoError Create(LECredentialManager* le_manager,
   // - We send an empty blob as reset_secret because resetting the delay counter
   // will not compromise security (we send MAX_UINT32 attempts for the delay
   // schedule). The size should still be kDefaultSecretSize.
-  // - We don't set valid_pcr_criteria because PCR binding is expected to be
+  // - We don't set policies because PCR binding is expected to be
   // already done by the AuthBlock.
   LECredStatus ret = le_manager->InsertCredential(
+      /*policy=*/std::vector<hwsec::OperationPolicySetting>(),
       /*le_secret=*/le_secret,
       /*he_secret=*/he_secret,
       /*reset_secret=*/brillo::SecureBlob(kDefaultSecretSize),
-      /*delay_sched=*/GetDelaySchedule(),
-      /*valid_pcr_criteria=*/ValidPcrCriteria(), &label);
+      /*delay_sched=*/GetDelaySchedule(), &label);
 
   if (!ret.ok())
     return ret->local_crypto_error();

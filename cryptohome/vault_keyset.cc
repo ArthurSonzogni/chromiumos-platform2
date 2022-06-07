@@ -719,8 +719,13 @@ CryptoStatus VaultKeyset::UnwrapVaultKeyset(
     const bool tpm_backed =
         (serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED) ||
         (serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
-    if (tpm_backed && crypto_->tpm() != nullptr) {
-      crypto_->tpm()->DeclareTpmFirmwareStable();
+    if (tpm_backed) {
+      if (hwsec::Status status =
+              crypto_->GetHwsec()->DeclareTpmFirmwareStable();
+          !status.ok()) {
+        LOG(WARNING) << "Failed to declare TPM firmware stable: "
+                     << std::move(status);
+      }
     }
   }
   return return_status;
@@ -1134,7 +1139,8 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
     ReportCreateAuthBlock(AuthBlockType::kChallengeCredential);
     return std::make_unique<ChallengeCredentialAuthBlock>();
   }
-  bool use_tpm = crypto_->tpm() && crypto_->tpm()->IsOwned();
+  hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
+  bool use_tpm = is_ready.ok() && is_ready.value();
   bool with_user_auth = crypto_->CanUnsealWithUserAuth();
   bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
                      crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
@@ -1143,19 +1149,19 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
   if (use_tpm && with_user_auth && has_ecc_key) {
     ReportCreateAuthBlock(AuthBlockType::kTpmEcc);
     return std::make_unique<TpmEccAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   }
 
   if (use_tpm && with_user_auth && !has_ecc_key) {
     ReportCreateAuthBlock(AuthBlockType::kTpmBoundToPcr);
     return std::make_unique<TpmBoundToPcrAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   }
 
   if (use_tpm && !with_user_auth) {
     ReportCreateAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
     return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   }
 
   if (USE_TPM_INSECURE_FALLBACK) {
@@ -1182,16 +1188,16 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
     return std::make_unique<ChallengeCredentialAuthBlock>();
   } else if (auth_block_type == AuthBlockType::kDoubleWrappedCompat) {
     return std::make_unique<DoubleWrappedCompatAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   } else if (auth_block_type == AuthBlockType::kTpmEcc) {
     return std::make_unique<TpmEccAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   } else if (auth_block_type == AuthBlockType::kTpmBoundToPcr) {
     return std::make_unique<TpmBoundToPcrAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   } else if (auth_block_type == AuthBlockType::kTpmNotBoundToPcr) {
     return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-        crypto_->tpm()->GetHwsec(), crypto_->cryptohome_keys_manager());
+        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   } else if (auth_block_type == AuthBlockType::kLibScryptCompat) {
     return std::make_unique<LibScryptCompatAuthBlock>();
   }

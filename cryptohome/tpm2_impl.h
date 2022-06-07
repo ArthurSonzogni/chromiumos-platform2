@@ -28,8 +28,6 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm2_backend_impl.h"
-#include "cryptohome/le_credential_backend.h"
-#include "cryptohome/pinweaver_le_credential_backend.h"
 #include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 #include "cryptohome/tpm.h"
 
@@ -144,7 +142,6 @@ class Tpm2Impl : public Tpm {
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool GetRsuDeviceId(std::string* device_id) override;
-  LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
   cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() override;
   bool GetDelegate(brillo::Blob* blob,
@@ -187,6 +184,7 @@ class Tpm2Impl : public Tpm {
                                 brillo::SecureBlob* auth_value) override;
 
   hwsec::CryptohomeFrontend* GetHwsec() override;
+  hwsec::PinWeaverFrontend* GetPinWeaver() override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
@@ -241,14 +239,12 @@ class Tpm2Impl : public Tpm {
   // explicitly requesting the update or from dbus signal.
   tpm_manager::LocalData last_tpm_manager_data_;
 
-#if USE_PINWEAVER
-  PinweaverLECredentialBackend le_credential_backend_{this};
-#endif
   SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
   cryptorecovery::RecoveryCryptoTpm2BackendImpl recovery_crypto_backend_{this};
 
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
+  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver_;
 };
 
 }  // namespace cryptohome

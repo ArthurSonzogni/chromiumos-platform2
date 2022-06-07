@@ -1018,8 +1018,9 @@ bool AuthSession::GetRecoveryRequest(
   // the `AuthenticateAuthFactor` call.
   CryptoStatus status = auth_block_utility_->GenerateRecoveryRequest(
       obfuscated_username_, RequestMetadataFromProto(request),
-      brillo::BlobFromString(request.epoch_response()), *state, crypto_->tpm(),
-      &recovery_request, &ephemeral_pub_key);
+      brillo::BlobFromString(request.epoch_response()), *state,
+      crypto_->GetRecoveryCryptoBackend(), &recovery_request,
+      &ephemeral_pub_key);
   if (!status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,

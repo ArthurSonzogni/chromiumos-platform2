@@ -11,7 +11,8 @@
 #include <memory>
 #include <vector>
 
-#include "cryptohome/le_credential_backend.h"
+#include <libhwsec/frontend/pinweaver/frontend.h>
+
 #include "cryptohome/sign_in_hash_tree.h"
 
 namespace cryptohome {
@@ -29,17 +30,18 @@ namespace cryptohome {
 // necessary commands on the TPM side, for verification.
 class LECredentialManagerImpl : public LECredentialManager {
  public:
-  explicit LECredentialManagerImpl(LECredentialBackend* le_backend,
+  explicit LECredentialManagerImpl(hwsec::PinWeaverFrontend* pinweaver,
                                    const base::FilePath& le_basedir);
 
   virtual ~LECredentialManagerImpl() {}
 
-  LECredStatus InsertCredential(const brillo::SecureBlob& le_secret,
-                                const brillo::SecureBlob& he_secret,
-                                const brillo::SecureBlob& reset_secret,
-                                const DelaySchedule& delay_sched,
-                                const ValidPcrCriteria& valid_pcr_criteria,
-                                uint64_t* ret_label) override;
+  LECredStatus InsertCredential(
+      const std::vector<hwsec::OperationPolicySetting>& policies,
+      const brillo::SecureBlob& le_secret,
+      const brillo::SecureBlob& he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_sched,
+      uint64_t* ret_label) override;
 
   LECredStatus CheckCredential(const uint64_t& label,
                                const brillo::SecureBlob& le_secret,
@@ -50,8 +52,6 @@ class LECredentialManagerImpl : public LECredentialManager {
                                const brillo::SecureBlob& reset_secret) override;
 
   LECredStatus RemoveCredential(const uint64_t& label) override;
-
-  bool NeedsPcrBinding(const uint64_t& label) override;
 
   // Returns the number of wrong authentication attempts done since the label
   // was reset or created. Returns -1 if |label| is not present in the tree or
@@ -96,22 +96,23 @@ class LECredentialManagerImpl : public LECredentialManager {
   // - LE_CRED_ERROR_HASH_TREE if there was hash tree error (possibly out of
   // sync).
   LECredStatus RetrieveLabelInfo(const SignInHashTree::Label& label,
-                                 std::vector<uint8_t>* cred_metadata,
-                                 std::vector<uint8_t>* mac,
-                                 std::vector<std::vector<uint8_t>>* h_aux,
+                                 brillo::Blob* cred_metadata,
+                                 brillo::Blob* mac,
+                                 std::vector<brillo::Blob>* h_aux,
                                  bool* metadata_lost);
 
   // Given a label, gets the list of auxiliary hashes for that label.
   // On failure, returns an empty vector.
-  std::vector<std::vector<uint8_t>> GetAuxHashes(
-      const SignInHashTree::Label& label);
+  std::vector<brillo::Blob> GetAuxHashes(const SignInHashTree::Label& label);
 
   // Converts the error returned from LECredentialBackend to the equivalent
   // LECredError.
-  LECredError BackendErrorToCredError(LECredBackendError err);
+  LECredError BackendErrorToCredError(
+      hwsec::PinWeaverFrontend::CredentialTreeResult::ErrorCode err);
 
   // Converts the error returned from LECredentialBackend to a LECredStatus.
-  LECredStatus ConvertTpmError(LECredBackendError err);
+  LECredStatus ConvertTpmError(
+      hwsec::PinWeaverFrontend::CredentialTreeResult::ErrorCode err);
 
   // Performs checks to ensure the SignInHashTree is in sync with the tree
   // state in the LECredentialBackend. If there is an out-of-sync situation,
@@ -134,8 +135,8 @@ class LECredentialManagerImpl : public LECredentialManager {
   // NOTE: A replayed insert is unusable and should be deleted after the replay
   // is complete.
   bool ReplayInsert(uint64_t label,
-                    const std::vector<uint8_t>& log_root,
-                    const std::vector<uint8_t>& mac);
+                    const brillo::Blob& log_root,
+                    const brillo::Blob& mac);
 
   // Replays the CheckCredential / ResetCredential operation using the
   // information provided from the log entry from the LE credential
@@ -145,7 +146,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   // completed. It should directly be used from the log entry.
   //
   // Returns true on success, false on failure.
-  bool ReplayCheck(uint64_t label, const std::vector<uint8_t>& log_root);
+  bool ReplayCheck(uint64_t label, const brillo::Blob& log_root);
 
   // Resets the HashTree.
   bool ReplayResetTree();
@@ -158,8 +159,9 @@ class LECredentialManagerImpl : public LECredentialManager {
 
   // Replays all the log operations provided in |log|, and makes the
   // corresponding updates to the HashTree.
-  bool ReplayLogEntries(const std::vector<LELogEntry>& log,
-                        const std::vector<uint8_t>& disk_root_hash);
+  bool ReplayLogEntries(
+      const std::vector<hwsec::PinWeaverFrontend::GetLogResult::LogEntry>& log,
+      const brillo::Blob& disk_root_hash);
 
   // Last resort flag which prevents any further Low Entropy operations from
   // occurring, till the next time the class is instantiated.
@@ -175,10 +177,10 @@ class LECredentialManagerImpl : public LECredentialManager {
   // We will collect UMA stats from the field and refine this strategy
   // as required.
   bool is_locked_;
-  // Pointer to an implementation of the LE Credential operations in TPM.
-  LECredentialBackend* le_tpm_backend_;
+  // Pointer to an implementation of the pinweaver operations.
+  hwsec::PinWeaverFrontend* pinweaver_;
   // In-memory copy of LEBackend's root hash value.
-  std::vector<uint8_t> root_hash_;
+  brillo::Blob root_hash_;
   // Directory where all LE Credential related data is stored.
   base::FilePath basedir_;
   std::unique_ptr<SignInHashTree> hash_tree_;

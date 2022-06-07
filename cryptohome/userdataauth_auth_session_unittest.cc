@@ -13,6 +13,8 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
@@ -72,7 +74,8 @@ constexpr char kPassword3[] = "password3";
 
 class AuthSessionInterfaceTest : public ::testing::Test {
  public:
-  AuthSessionInterfaceTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {}
+  AuthSessionInterfaceTest()
+      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
   ~AuthSessionInterfaceTest() override = default;
   AuthSessionInterfaceTest(const AuthSessionInterfaceTest&) = delete;
   AuthSessionInterfaceTest& operator=(const AuthSessionInterfaceTest&) = delete;
@@ -112,7 +115,8 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   Crypto crypto_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_;

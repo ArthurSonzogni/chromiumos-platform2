@@ -23,6 +23,7 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
 
   MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsReady, (), (override));
+  MOCK_METHOD(StatusOr<bool>, IsDAMitigationReady, (), (override));
   MOCK_METHOD(StatusOr<absl::flat_hash_set<KeyAlgoType>>,
               GetSupportedAlgo,
               (),
@@ -77,6 +78,7 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
   MOCK_METHOD(Status, StoreSpace, (Space, const brillo::Blob&), (override));
   MOCK_METHOD(Status, DestroySpace, (Space), (override));
   MOCK_METHOD(StatusOr<bool>, IsSpaceWriteLocked, (Space), (override));
+  MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
 };
 
 }  // namespace hwsec

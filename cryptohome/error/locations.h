@@ -119,7 +119,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmNotBoundToPcrAuthBlockVKKConversionFailedInDecrypt = 146,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockScryptDeriveFailedInCreate = 147,
-  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  /* =Obsolete= */
   kLocPinWeaverAuthBlockPCRComputationFailedInCreate = 148,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockInsertCredentialFailedInCreate = 149,
@@ -777,7 +777,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthGuestAlreadyMountedInGetMountableUS = 475,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionAlreadyMountedInGetMountableUS = 476,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthPrepareVaultFailedInPrepareForMigration = 477,
   /* ./userdataauth.cc */
   kLocUserDataAuthOtherSessionActiveInPrepareGuestVault = 478,
@@ -929,6 +929,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockNoUsernameInCreate = 551,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockNoUsernameInDerive = 552,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManPinWeaverFailedInCheckSecret = 553,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

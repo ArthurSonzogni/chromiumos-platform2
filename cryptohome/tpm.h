@@ -33,7 +33,6 @@ class RecoveryCryptoTpmBackend;
 
 using TpmKeyHandle = uint32_t;
 
-class LECredentialBackend;
 class SignatureSealingBackend;
 class Tpm;
 
@@ -488,14 +487,6 @@ class Tpm {
   // than verifying RMA unlock eligibility.
   virtual bool GetRsuDeviceId(std::string* device_id) = 0;
 
-  // Get a pointer to the LECredentialBackend object, which is used to call the
-  // relevant TPM commands necessary to implement Low Entropy (LE) credential
-  // protection.
-  //
-  // If the Tpm implementation does not support LE credential handling,
-  // this function will return a nullptr.
-  virtual LECredentialBackend* GetLECredentialBackend() = 0;
-
   // Get a pointer to the SignatureSealingBackend object, which is used for
   // performing signature-sealing operations. Returns nullptr if the
   // implementation does not support signature-sealing operations.
@@ -553,6 +544,9 @@ class Tpm {
 
   // Get the hwsec abstraction frontend.
   virtual hwsec::CryptohomeFrontend* GetHwsec() = 0;
+
+  // Get the pinweaver abstraction frontend.
+  virtual hwsec::PinWeaverFrontend* GetPinWeaver() = 0;
 
  private:
   static Tpm* singleton_;

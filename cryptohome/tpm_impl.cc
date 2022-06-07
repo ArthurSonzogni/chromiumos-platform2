@@ -164,7 +164,8 @@ TpmImpl::TpmImpl()
     : srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
       owner_password_(),
       hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
-      hwsec_(hwsec_factory_->GetCryptohomeFrontend()) {
+      hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
+      pinweaver_(hwsec_factory_->GetPinWeaverFrontend()) {
   TSS_HCONTEXT context_handle = ConnectContext();
   if (context_handle) {
     tpm_context_.reset(0, context_handle);
@@ -1878,11 +1879,6 @@ bool TpmImpl::GetRsuDeviceId(std::string* device_id) {
   return false;
 }
 
-LECredentialBackend* TpmImpl::GetLECredentialBackend() {
-  // Not implemented in TPM 1.2.
-  return nullptr;
-}
-
 SignatureSealingBackend* TpmImpl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
 }
@@ -2009,6 +2005,10 @@ hwsec::Status TpmImpl::GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
 
 hwsec::CryptohomeFrontend* TpmImpl::GetHwsec() {
   return hwsec_.get();
+}
+
+hwsec::PinWeaverFrontend* TpmImpl::GetPinWeaver() {
+  return pinweaver_.get();
 }
 
 }  // namespace cryptohome
