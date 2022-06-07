@@ -36,6 +36,7 @@ config("target_defaults") {
     # For libchrome header compatibility.
     "-Wno-cast-qual",
     "-Wno-deprecated",
+    "-Wno-float-equal",
     "-Wno-gnu-zero-variadic-macro-arguments",
     "-Wno-old-style-cast",
     "-Wno-padded",
