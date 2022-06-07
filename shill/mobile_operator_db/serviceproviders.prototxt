@@ -12939,20 +12939,6 @@ mno {
 
 mno {
   data {
-    uuid : "f548af08-9a3c-4322-9f8a-b33a48f985be"
-    country : "us"
-    localized_name {
-      name : "Sprint Curiosity IoT"
-    }
-    mccmnc : "311882"
-    mobile_apn {
-      apn : "internet.curiosity.sprint.com"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "2951dc13-6c90-4200-b450-666efc95fa01"
     country : "us"
     localized_name {
@@ -12973,6 +12959,7 @@ mno {
     mccmnc : "310580"
     mccmnc : "310660"
     mccmnc : "310800"
+    mccmnc : "311882"
     mccmnc : "312250"
     mobile_apn {
       apn : "fast.t-mobile.com"
@@ -13003,6 +12990,12 @@ mno {
       apn : "internet3.voicestream.com"
       localized_name {
         name : "Internet with VPN (old)"
+      }
+    }
+    mobile_apn {
+      apn : "iot.tmowholesale"
+      localized_name {
+        name : "IOT"
       }
     }
   }
