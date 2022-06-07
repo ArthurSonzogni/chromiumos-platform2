@@ -53,6 +53,23 @@ RemovableAttr GetRemovableSysattr(udev_device* device) {
   return ParseRemovableSysattr(removable);
 }
 
+bool HasRemovableParent(udev_device* device) {
+  const char* removable;
+  device = udev_device_get_parent(device);
+
+  while (device != nullptr) {
+    removable = udev_device_get_sysattr_value(device, "removable");
+    if (!removable)
+      break;
+
+    if (ParseRemovableSysattr(removable) == RemovableAttr::kRemovable)
+      return true;
+
+    device = udev_device_get_parent(device);
+  }
+  return false;
+}
+
 bool GetUIntSysattr(udev_device* device, const char* key, uint32_t* val) {
   CHECK(val);
 
@@ -324,7 +341,8 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
     // Don't allow detaching the driver from fixed (internal) USB devices
     // unless it is in the allow list.
     if (GetRemovableSysattr(device) == RemovableAttr::kFixed &&
-        !IsInternallyConnectedUsbDevice(device)) {
+        !IsInternallyConnectedUsbDevice(device) &&
+        !HasRemovableParent(device)) {
       LOG(INFO) << "Denying fixed USB device with driver.";
       return DENY;
     }
