@@ -123,8 +123,8 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
     }
   }
 
-  LOG(INFO) << "Done writing record with id " << credential_id_hex
-            << " to file successfully. ";
+  VLOG(1) << "Done writing record with id " << credential_id_hex
+          << " to file successfully. ";
 
   records_.emplace_back(record);
   return true;
@@ -271,7 +271,7 @@ bool WebAuthnStorage::LoadRecords() {
         .timestamp = *timestamp,
         .is_resident_key = *is_resident_key});
   }
-  LOG(INFO) << "Loaded " << records_.size() << " WebAuthn records to memory.";
+  VLOG(1) << "Loaded " << records_.size() << " WebAuthn records to memory.";
   return read_all_records_successfully;
 }
 
@@ -380,8 +380,8 @@ bool WebAuthnStorage::DeleteRecordWithCredentialId(
                << ".";
     return false;
   }
-  LOG(INFO) << "Successfully deleted file: " << record_storage_filename.value()
-            << ".";
+  VLOG(1) << "Successfully deleted file: " << record_storage_filename.value()
+          << ".";
   return true;
 }
 

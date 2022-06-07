@@ -152,8 +152,8 @@ void UserState::UpdatePrimarySessionSanitizedUser() {
 
   if (!sm_proxy_->RetrievePrimarySession(&user, &sanitized_user, &error) ||
       sanitized_user.empty()) {
-    LOG(ERROR) << "Failed to retreive current user. This is expected on "
-                  "startup if no user is logged in.";
+    VLOG(1) << "Failed to retreive current user. This is expected on "
+               "startup if no user is logged in.";
     user_.reset();
     sanitized_user_.reset();
   } else {
@@ -244,7 +244,7 @@ void UserState::CreateUserSecret(const base::FilePath& path) {
   brillo::SecureBlob secret_proto_wrapped;
   if (!WrapUserData(secret_proto, &secret_proto_wrapped) ||
       !brillo::WriteBlobToFileAtomic(path, secret_proto_wrapped, 0600)) {
-    LOG(INFO) << "Failed to persist new user secret to disk.";
+    LOG(ERROR) << "Failed to persist new user secret to disk.";
     user_secret_.reset();
   }
 }
@@ -255,8 +255,8 @@ void UserState::LoadCounter() {
 
   if (!base::PathExists(path)) {
     counter_ = counter_min_;
-    LOG(INFO) << "U2F counter missing, initializing counter with value of "
-              << *counter_;
+    VLOG(1) << "U2F counter missing, initializing counter with value of "
+            << *counter_;
     return;
   }
 
@@ -266,9 +266,8 @@ void UserState::LoadCounter() {
       UnwrapUserData<U2fCounter>(counter, &counter_pb)) {
     uint32_t persistent_counter = counter_pb.counter();
     if (persistent_counter < counter_min_) {
-      LOG(INFO) << "Overriding persisted counter value of "
-                << counter_pb.counter() << " with minimum value "
-                << counter_min_;
+      VLOG(1) << "Overriding persisted counter value of "
+              << counter_pb.counter() << " with minimum value " << counter_min_;
       counter_ = counter_min_;
     } else {
       counter_ = persistent_counter;

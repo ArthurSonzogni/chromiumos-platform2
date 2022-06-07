@@ -123,7 +123,7 @@ void WebAuthnHandler::Initialize(
     std::unique_ptr<AllowlistingUtil> allowlisting_util,
     MetricsLibraryInterface* metrics) {
   if (Initialized()) {
-    LOG(INFO) << "WebAuthn handler already initialized, doing nothing.";
+    VLOG(1) << "WebAuthn handler already initialized, doing nothing.";
     return;
   }
 
@@ -371,7 +371,7 @@ void WebAuthnHandler::HandleUVFlowResultMakeCredential(
 
   if (!success) {
     if (pending_uv_make_credential_session_->canceled) {
-      LOG(INFO) << "WebAuthn MakeCredential operation canceled.";
+      VLOG(1) << "WebAuthn MakeCredential operation canceled.";
       response.set_status(MakeCredentialResponse::CANCELED);
     } else {
       LOG(ERROR) << "User auth flow failed. Aborting MakeCredential.";
@@ -413,7 +413,7 @@ void WebAuthnHandler::HandleUVFlowResultGetAssertion(
 
   if (!success) {
     if (pending_uv_get_assertion_session_->canceled) {
-      LOG(INFO) << "WebAuthn GetAssertion operation canceled.";
+      VLOG(1) << "WebAuthn GetAssertion operation canceled.";
       response.set_status(GetAssertionResponse::CANCELED);
     } else {
       LOG(ERROR) << "User auth flow failed. Aborting GetAssertion.";
@@ -730,7 +730,7 @@ void WebAuthnHandler::GetAssertion(
 
   if (request.rp_id().empty() ||
       request.client_data_hash().size() != SHA256_DIGEST_LENGTH) {
-    LOG(ERROR) << "GetAssertion: Invalid request format: no rp_id or incoreect "
+    LOG(ERROR) << "GetAssertion: Invalid request format: no rp_id or incorrect "
                   "hash length.";
     response.set_status(GetAssertionResponse::INVALID_REQUEST);
     method_response->Return(response);
@@ -991,15 +991,13 @@ HasCredentialsResponse WebAuthnHandler::HasCredentials(
   HasCredentialsResponse response;
 
   if (!Initialized()) {
-    LOG(ERROR) << "Failed to process HasCredentials request because "
-                  "WebAuthnHandler isn't initialized.";
+    LOG(WARNING) << "HasCredentials: WebAuthnHandler not initialized.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
 
   if (request.rp_id().empty() || request.credential_id().empty()) {
-    LOG(ERROR) << "Failed to process HasCredentials request because rp_id or "
-                  "credential_id is empty.";
+    LOG(ERROR) << "HasCredentials: empty rp_id or credential_id.";
     response.set_status(HasCredentialsResponse::INVALID_REQUEST);
     return response;
   }
@@ -1007,8 +1005,8 @@ HasCredentialsResponse WebAuthnHandler::HasCredentials(
   MatchedCredentials matched = FindMatchedCredentials(
       request.credential_id(), request.rp_id(), request.app_id());
   if (matched.has_internal_error) {
-    LOG(ERROR) << "Failed to process HasCredentials request because "
-                  "FindMatchedCredentials failed with an internal error.";
+    LOG(ERROR) << "HasCredentials: FindMatchedCredentials failed with an "
+                  "internal error.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
@@ -1034,15 +1032,14 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
   HasCredentialsResponse response;
 
   if (!Initialized()) {
-    LOG(ERROR) << "Failed to process HasLegacyCredentials request because "
-                  "WebAuthnHandler isn't initialized.";
+    LOG(WARNING) << "HasCredentHasLegacyCredentialsials: WebAuthnHandler not "
+                    "initialized.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
 
   if (request.credential_id().empty()) {
-    LOG(ERROR) << "Failed to process HasLegacyCredentials request because "
-                  "credential_id is empty.";
+    LOG(ERROR) << "HasLegacyCredentials: credential_id is empty.";
     response.set_status(HasCredentialsResponse::INVALID_REQUEST);
     return response;
   }
@@ -1050,8 +1047,8 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
   MatchedCredentials matched = FindMatchedCredentials(
       request.credential_id(), request.rp_id(), request.app_id());
   if (matched.has_internal_error) {
-    LOG(ERROR) << "Failed to process HasLegacyCredentials request because "
-                  "FindMatchedCredentials failed with an internal error.";
+    LOG(ERROR) << "HasLegacyCredentials: FindMatchedCredentials failed with an "
+                  "internal error.";
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
@@ -1089,8 +1086,8 @@ void WebAuthnHandler::IsUvpaa(
   IsUvpaaResponse response;
 
   if (!Initialized()) {
-    LOG(INFO) << "IsUvpaa called but WebAuthnHandler not initialized. Maybe "
-                 "U2F is on.";
+    LOG(WARNING) << "IsUvpaa called but WebAuthnHandler not initialized. Maybe "
+                    "U2F is on.";
     response.set_available(false);
     method_response->Return(response);
     return;

@@ -145,9 +145,9 @@ int U2fDaemon::OnInit() {
   }
 
   if (policy_ready) {
-    LOG(INFO) << "U2F currently disabled, waiting for policy updates...";
+    VLOG(1) << "U2F currently disabled, waiting for policy updates...";
   } else {
-    LOG(INFO) << "Policy not available, waiting...";
+    VLOG(1) << "Policy not available, waiting...";
   }
 
   return EX_OK;
@@ -175,7 +175,7 @@ int U2fDaemon::StartService() {
   int status = StartU2fHidService();
 
   U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
-  LOG(INFO) << "Initializing WebAuthn handler.";
+  VLOG(1) << "Initializing WebAuthn handler.";
   InitializeWebAuthnHandler(u2f_mode);
 
   return status;
@@ -198,7 +198,7 @@ int U2fDaemon::StartU2fHidService() {
     return EX_CONFIG;
   }
 
-  LOG(INFO) << "Starting U2fHid service.";
+  VLOG(1) << "Starting U2fHid service.";
 
   // If g2f is enabled by policy, we always include allowlisting data.
   bool include_g2f_allowlist_data =

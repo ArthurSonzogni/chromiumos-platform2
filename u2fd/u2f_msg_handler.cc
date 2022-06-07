@@ -195,7 +195,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
 
     if (allowlisting_util_ != nullptr &&
         !allowlisting_util_->AppendDataToCert(&attestation_cert)) {
-      LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request";
+      LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request.";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
   } else if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert,

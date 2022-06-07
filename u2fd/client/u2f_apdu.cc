@@ -251,8 +251,8 @@ std::optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
   U2fRegisterRequestApdu reg_apdu;
   if (!ParseApduBody(apdu.Body(), {{{0, 32}, &reg_apdu.challenge_},
                                    {{32, 32}, &reg_apdu.app_id_}})) {
-    LOG(INFO) << "Received invalid U2F_REGISTER APDU: "
-              << base::HexEncode(apdu.Body().data(), apdu.Body().size());
+    LOG(WARNING) << "Received invalid U2F_REGISTER APDU: "
+                 << base::HexEncode(apdu.Body().data(), apdu.Body().size());
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
@@ -263,8 +263,8 @@ std::optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
   // G2F_ATTEST bit set), implying a test of user presence, and that presence
   // should be consumed.
   if ((apdu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
-    LOG(INFO) << "Received register APDU with invalid P1 value: " << std::hex
-              << apdu.P1();
+    LOG(WARNING) << "Received register APDU with invalid P1 value: " << std::hex
+                 << apdu.P1();
     return std::nullopt;
   }
 
@@ -296,8 +296,8 @@ U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
   // device, in which case no user presence is required and authentication
   // should not be performed.
   if (apdu.P1() != U2F_AUTH_ENFORCE && apdu.P1() != U2F_AUTH_CHECK_ONLY) {
-    LOG(INFO) << "Received authenticate APDU with invalid P1 value: "
-              << std::hex << apdu.P1();
+    LOG(WARNING) << "Received authenticate APDU with invalid P1 value: "
+                 << std::hex << apdu.P1();
     return std::nullopt;
   }
 
@@ -320,8 +320,8 @@ U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
                      {{{0, 32}, &auth_apdu.challenge_},
                       {{32, 32}, &auth_apdu.app_id_},
                       {{65, kh_length}, &auth_apdu.key_handle_}})) {
-    LOG(INFO) << "Received invalid U2F_AUTHENTICATE APDU: "
-              << base::HexEncode(apdu.Body().data(), apdu.Body().size());
+    LOG(WARNING) << "Received invalid U2F_AUTHENTICATE APDU: "
+                 << base::HexEncode(apdu.Body().data(), apdu.Body().size());
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
