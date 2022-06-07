@@ -190,6 +190,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/mimo-monitor          u:object_r:cros_mimo_monitor_exec:s0
 /usr/sbin/mtpd                  u:object_r:cros_mtpd_exec:s0
 /usr/sbin/oobe_config_restore   u:object_r:cros_oobe_config_restore_exec:s0
+/usr/sbin/oobe_config_save      u:object_r:cros_oobe_config_save_exec:s0
 /usr/sbin/os_install_service    u:object_r:cros_os_install_service_exec:s0
 /usr/sbin/p2p-http-server       u:object_r:cros_p2p_http_server_exec:s0
 /usr/sbin/p2p-server            u:object_r:cros_p2p_server_exec:s0
@@ -198,6 +199,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/pciguard              u:object_r:cros_pciguard_exec:s0
 /usr/sbin/rgbkbd                u:object_r:cros_rgbkbd_exec:s0
 /usr/sbin/rmad                  u:object_r:cros_rmad_exec:s0
+/usr/sbin/rollback_prepare_save u:object_r:rollback_prepare_save_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/secanomalyd           u:object_r:cros_secanomalyd_exec:s0
 /usr/sbin/smbproviderd          u:object_r:cros_smbproviderd_exec:s0
@@ -285,6 +287,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
+/var/lib/oobe_config_save(/.*)? u:object_r:cros_var_lib_oobe_config_save:s0
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
 /var/lib/preload-network-drivers.* u:object_r:cros_var_lib_preload_network_drivers:s0
 /var/lib/rmad(/.*)?             u:object_r:cros_var_lib_rmad:s0

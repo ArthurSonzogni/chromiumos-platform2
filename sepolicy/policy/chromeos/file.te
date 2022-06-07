@@ -140,6 +140,7 @@ type cros_mountpoint_exec, exec_type, file_type, cros_file_type, cros_system_fil
 type cros_mtpd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_newblued_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_oobe_config_restore_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_oobe_config_save_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_os_install_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_patchpaneld_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_p2p_http_server_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -157,6 +158,7 @@ type cros_resourced_exec, exec_type, file_type, cros_file_type, cros_system_file
 type cros_rgbkbd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rmad_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rmtfs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_rollback_prepare_save_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rootdev_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_run_oci_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -394,6 +396,7 @@ type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_modemfwd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_oobe_config_save, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_portage, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;
