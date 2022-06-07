@@ -9,7 +9,6 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
