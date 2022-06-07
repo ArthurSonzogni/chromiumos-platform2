@@ -1224,6 +1224,10 @@ bool Service::Init() {
     return false;
   }
 
+  // TODO(b/193806814): This log line helps us detect when there is a race
+  // during signal setup. When we eventually fix that bug we won't need it.
+  LOG(INFO) << "Finished setting up signal handlers";
+
   if (!dbus_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
     LOG(ERROR) << "Failed to start dbus thread";
