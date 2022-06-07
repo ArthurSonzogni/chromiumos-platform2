@@ -325,3 +325,15 @@ Then re-apply the changes by re-running the tools:
     git rebase -i "${common_ancestor}"; \
 done;
 ```
+
+Note that this technique should not be applied when cherry-picking across
+branches. See the section on cherry-picking across branches.
+
+## Other considerations
+
+### Cherry-picking across branches
+
+In order to ensure that the error location ID reported in all branches are the
+same, when cherry-picking across branches, one should not run the location_db.py
+tool, and instead should manually resolve any merge conflict, keeping the error
+ID defined in locations.h consistent across branches.
