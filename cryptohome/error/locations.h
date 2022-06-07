@@ -764,7 +764,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoUsernameInCreate = 469,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
-  kLocPinWeaverAuthBlockNoResetSecretInCreate = 470,
+  kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate = 470,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoUserInputInDerive = 471,
   /* ./userdataauth.cc */

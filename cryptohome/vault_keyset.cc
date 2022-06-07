@@ -799,6 +799,9 @@ void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
   if (auth_state.salt.has_value()) {
     auth_salt_ = auth_state.salt.value();
   }
+  if (auth_state.reset_salt.has_value()) {
+    reset_salt_ = auth_state.reset_salt.value();
+  }
 }
 
 void VaultKeyset::SetLibScryptCompatState(
@@ -1058,9 +1061,6 @@ CryptohomeStatus VaultKeyset::Encrypt(const SecureBlob& key,
           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
     }
 
-    reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
-    reset_secret_ = HmacSha256(reset_salt_.value(), reset_seed_);
-
     // crbug.com/1224150: When an LE credential is resaved, that means the user
     // authenticated successfully. In this case, auth_locked policy must always
     // be set to false. Otherwise when a user enters their password, and
@@ -1098,13 +1098,12 @@ CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  std::optional<SecureBlob> reset_secret;
-  if (!GetResetSecret().empty()) {
-    reset_secret = GetResetSecret();
-  }
-
   AuthInput user_input = {vault_key, /*locked_to_single_user*=*/std::nullopt,
-                          obfuscated_username, reset_secret};
+                          obfuscated_username, /*reset_secret=*/std::nullopt,
+                          /*reset_seed=*/std::nullopt};
+  if (!reset_seed_.empty()) {
+    user_input.reset_seed = reset_seed_;
+  }
 
   KeyBlobs key_blobs;
   CryptoStatus error = auth_block->Create(user_input, auth_state, &key_blobs);

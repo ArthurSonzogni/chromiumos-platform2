@@ -383,12 +383,6 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
       return;
     }
-    // For the AddInitialKeyset operation, credential type is never le
-    // credentials. So |reset_secret| is given to be std::nullopt.
-  } else {  // AddKeyset operation
-    if (auth_block_type == AuthBlockType::kPinWeaver) {
-      auth_input.reset_secret = vault_keyset_->GetOrGenerateResetSecret();
-    }
   }
 
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
@@ -475,7 +469,11 @@ void AuthSession::AddCredentials(
   // is LE credentials.
   AuthInput auth_input = {credentials->passkey(),
                           /*locked_to_single_user=*/std::nullopt,
-                          obfuscated_username_, std::nullopt /*reset_secret*/};
+                          obfuscated_username_, std::nullopt /*reset_secret*/,
+                          /*reset_seed*/ std::nullopt};
+  if (user_has_configured_credential_) {
+    auth_input.reset_seed = vault_keyset_->GetResetSeed();
+  }
 
   bool is_initial_keyset = !user_has_configured_credential_;
 
@@ -567,15 +565,15 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
     return;
   }
 
-  std::optional<brillo::SecureBlob> reset_secret;
-  if (auth_block_type == AuthBlockType::kPinWeaver) {
-    reset_secret = vault_keyset_->GetOrGenerateResetSecret();
-  }
-
   // Create and initialize fields for auth_input.
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt,
-                          obfuscated_username_, reset_secret};
+                          obfuscated_username_, /*reset_secret*/ std::nullopt,
+                          /*reset_seed*/ std::nullopt};
+
+  if (vault_keyset_) {
+    auth_input.reset_seed = vault_keyset_->GetResetSeed();
+  }
 
   AuthBlock::CreateCallback create_callback = base::BindOnce(
       &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
@@ -1051,19 +1049,17 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
           vault_keyset_->IsLECredential(), /*is_recovery=*/false,
           /*is_challenge_credential*/ false,
           AuthFactorStorageType::kVaultKeyset);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
+  if (auth_block_type == AuthBlockType::kMaxValue ||
+      auth_block_type == AuthBlockType::kPinWeaver) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset.";
     return;
   }
-  std::optional<brillo::SecureBlob> reset_secret;
-  if (auth_block_type == AuthBlockType::kPinWeaver) {
-    reset_secret = vault_keyset_->GetOrGenerateResetSecret();
-  }
   // Create and initialize fields for AuthInput.
   AuthInput auth_input = {user_input,
                           /*locked_to_single_user=*/std::nullopt,
-                          obfuscated_username_, reset_secret};
+                          obfuscated_username_, /*reset_secret=*/std::nullopt,
+                          /*reset_seed=*/std::nullopt};
   AuthBlock::CreateCallback create_callback =
       base::BindOnce(&AuthSession::ResaveKeysetOnKeyBlobsGenerated,
                      base::Unretained(this), std::move(updated_vault_keyset));

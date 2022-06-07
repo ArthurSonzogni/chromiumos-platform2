@@ -59,6 +59,9 @@ table PinWeaverAuthBlockState (secure) {
   // The IV used to derive the file encryption key.
   // TODO(b/204202689): rename fek_iv to vkk_iv.
   fek_iv:[ubyte] (id: 3, optional);
+  // The reset_salt used to derive the reset_secret.
+  // This will only be used for legacy vk. USS does not use reset_(seed/salt).
+  reset_salt:[ubyte] (id: 4, optional);
 }
 
 // This is a unique AuthBlockState for backwards compatibility. libscrypt puts

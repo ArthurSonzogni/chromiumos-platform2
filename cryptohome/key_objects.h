@@ -56,8 +56,13 @@ struct AuthInput {
   std::optional<bool> locked_to_single_user;
   // The obfuscated username.
   std::optional<std::string> obfuscated_username;
-  // A generated reset secret to unlock a rate limited credential.
+  // A generated reset secret to unlock a rate limited credential. This will be
+  // used for USS.
   std::optional<brillo::SecureBlob> reset_secret;
+  // reset_seed used to generate a reset secret.
+  // If reset_secret is set along with this field, the reset_secret would be
+  // ignored. This will be used for legacy VK.
+  std::optional<brillo::SecureBlob> reset_seed;
   // Data required for Cryptohome Recovery flow.
   std::optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
   // Data required for Challenge Credential flow.

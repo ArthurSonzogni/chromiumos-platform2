@@ -158,16 +158,32 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
-  if (!auth_input.reset_secret.has_value()) {
-    LOG(ERROR) << "Missing reset_secret";
+  if (!auth_input.reset_secret.has_value() &&
+      !auth_input.reset_seed.has_value()) {
+    LOG(ERROR) << "Missing reset_secret or reset_seed";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoResetSecretInCreate),
+        CRYPTOHOME_ERR_LOC(
+            kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
+  PinWeaverAuthBlockState pin_auth_state;
+  brillo::SecureBlob reset_secret;
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  if (auth_input.reset_secret.has_value()) {
+    // This case be used for USS as we do not have the concept of reset seed and
+    // salt there.
+    reset_secret = auth_input.reset_secret.value();
+  } else {
+    // At this point we know auth_input reset_seed is set. The expectation is
+    // that this branch of code would be deprecated once we move fully to USS
+    // world.
+    pin_auth_state.reset_salt = CreateSecureRandomBlob(kAesBlockSize);
+    reset_secret = HmacSha256(pin_auth_state.reset_salt.value(),
+                              auth_input.reset_seed.value());
+  }
 
   // This may not be needed, but is retained to maintain the original logic.
   if (!cryptohome_key_loader_->HasCryptohomeKey())
@@ -214,7 +230,6 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     delay_sched[entry.attempts] = entry.delay;
   }
 
-  brillo::SecureBlob reset_secret = auth_input.reset_secret.value();
   ValidPcrCriteria valid_pcr_criteria;
   if (!GetValidPCRValues(auth_input.obfuscated_username.value(),
                          &valid_pcr_criteria)) {
@@ -236,7 +251,6 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
         .Wrap(std::move(ret));
   }
 
-  PinWeaverAuthBlockState pin_auth_state;
   pin_auth_state.le_label = label;
   pin_auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(pin_auth_state)};
