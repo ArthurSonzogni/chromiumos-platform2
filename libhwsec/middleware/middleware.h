@@ -170,13 +170,16 @@ class Middleware {
   using SubClassCallback = typename SubClassHelper<Func>::Callback;
 
   template <typename Arg>
-  static void ReloadKeyHandler(hwsec::Backend* backend, const Arg& key) {
+  static bool ReloadKeyHandler(hwsec::Backend* backend, const Arg& key) {
     if constexpr (std::is_same_v<Arg, Key>) {
       auto* key_mgr = backend->Get<Backend::KeyManagerment>();
       if (Status status = key_mgr->ReloadIfPossible(key); !status.ok()) {
         LOG(WARNING) << "Failed to reload key parameter: " << status.status();
+        return false;
       }
+      return true;
     }
+    return false;
   }
 
   template <auto Func, typename... Args>
@@ -208,8 +211,11 @@ class Middleware {
           RetryDelayHandler(&retry_data);
           break;
         case TPMRetryAction::kLater:
-          // fold expression with comma operator.
-          (ReloadKeyHandler(middleware->backend_.get(), args), ...);
+          // fold expression with || operator.
+          if (!(ReloadKeyHandler(middleware->backend_.get(), args) || ...)) {
+            // Don't continue retry if all reload operations failed.
+            return result;
+          }
           RetryDelayHandler(&retry_data);
           break;
         default:
@@ -219,6 +225,8 @@ class Middleware {
         return MakeStatus<TPMError>("Retry Failed", TPMRetryAction::kReboot)
             .Wrap(std::move(result).status());
       }
+
+      LOG(WARNING) << "Retry libhwsec error: " << std::move(result).status();
     }
   }
 

@@ -31,7 +31,7 @@ EllipticCurveError::EllipticCurveError(EllipticCurveErrorCode error_code)
 TPMRetryAction EllipticCurveError::ToTPMRetryAction() const {
   switch (error_code_) {
     case EllipticCurveErrorCode::kScalarOutOfRange:
-      return TPMRetryAction::kLater;
+      return TPMRetryAction::kNoRetry;
   }
   NOTREACHED() << "Unknown elliptic curve error";
   return TPMRetryAction::kNoRetry;
