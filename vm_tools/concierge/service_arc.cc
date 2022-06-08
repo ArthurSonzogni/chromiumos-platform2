@@ -93,14 +93,23 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
 
 // Returns true if the path is a valid data image path.
 bool IsValidDataImagePath(const base::FilePath& path) {
-  // A valid data image path looks like:
-  // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
   std::vector<std::string> components = path.GetComponents();
-  return components.size() == 6 && components[0] == "/" &&
-         components[1] == "run" && components[2] == "daemon-store" &&
-         components[3] == "crosvm" &&
-         base::ContainsOnlyChars(components[4], "0123456789abcdef") &&
-         components[5] == "YXJjdm0=.img";
+  // A disk image created by concierge:
+  // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
+  if (components.size() == 6 && components[0] == "/" &&
+      components[1] == "run" && components[2] == "daemon-store" &&
+      components[3] == "crosvm" &&
+      base::ContainsOnlyChars(components[4], "0123456789abcdef") &&
+      components[5] == vm_tools::GetEncodedName(kArcVmName) + ".img")
+    return true;
+  // An LVM block device:
+  // /dev/mapper/vm/dmcrypt-<hash>-arcvm
+  if (components.size() == 5 && components[0] == "/" &&
+      components[1] == "dev" && components[2] == "mapper" &&
+      components[3] == "vm" && base::StartsWith(components[4], "dmcrypt-") &&
+      base::EndsWith(components[4], "-arcvm"))
+    return true;
+  return false;
 }
 
 // TODO(hashimoto): Move VM configuration logic from chrome to concierge and
