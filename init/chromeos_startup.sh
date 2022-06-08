@@ -233,19 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Create daemon store folders.
-# See https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders.
-for etc_daemon_store in /etc/daemon-store/*; do
-  # If /etc/daemon-store is empty, $etc_daemon_store is /etc/daemon-store/*.
-  # This if statement filters that out.
-  if [ -d "$etc_daemon_store" ]; then
-    daemon_name="${etc_daemon_store##*/}"
-    run_daemon_store="/run/daemon-store/${daemon_name}"
-    mkdir -p -m 0755 "${run_daemon_store}"
-    mount -o bind --make-shared "${run_daemon_store}" "${run_daemon_store}"
-  fi
-done
-
 # Remove /var/empty if it exists. Use /mnt/empty instead.
 if [ -e /var/empty ]; then
   chattr -i /var/empty || :

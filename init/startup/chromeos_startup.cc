@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -86,6 +87,9 @@ constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
 constexpr char kEncryptedStatefulMnt[] = "encrypted";
 // This file is written to when /var is too full and the logs are deleted.
 constexpr char kReclaimFullVar[] = ".reclaim_full_var";
+
+constexpr char kDaemonStore[] = "daemon-store";
+constexpr char kEtc[] = "etc";
 
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
@@ -528,6 +532,30 @@ void ChromeosStartup::MaybeMountEfivarfs() {
   }
 }
 
+// Create daemon store folders.
+// See
+// https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-daemon-store-folders.
+void ChromeosStartup::CreateDaemonStore() {
+  base::FilePath run_ds = root_.Append(kRun).Append(kDaemonStore);
+  base::FilePath etc_ds = root_.Append(kEtc).Append(kDaemonStore);
+  base::FileEnumerator iter(etc_ds, false,
+                            base::FileEnumerator::FileType::DIRECTORIES);
+  for (base::FilePath store = iter.Next(); !store.empty();
+       store = iter.Next()) {
+    base::FilePath rds = run_ds.Append(store.BaseName());
+    if (!base::CreateDirectory(rds)) {
+      PLOG(WARNING) << "mkdir failed for " << rds.value();
+      continue;
+    }
+    if (!base::SetPosixFilePermissions(rds, 0755)) {
+      PLOG(WARNING) << "chmod failed for " << rds.value();
+      continue;
+    }
+    platform_->Mount(rds, rds, "", MS_BIND, "");
+    platform_->Mount(base::FilePath("none"), rds, "", MS_SHARED, "");
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -650,6 +678,8 @@ int ChromeosStartup::Run() {
   const base::FilePath root_run_lock = root_run.Append(kLock);
   platform_->Mount(root_run_lock, var.Append(kLock), "", MS_BIND, "");
   mount_helper_->RememberMount(root_run_lock);
+
+  CreateDaemonStore();
 
   int ret = RunChromeosStartupScript();
   if (ret) {

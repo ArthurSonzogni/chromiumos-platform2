@@ -74,6 +74,13 @@ void CreateBaseAndSetNames(base::FilePath* base_dir,
 
 }  // namespace
 
+class CrosSystemFakeTest : public ::testing::Test {
+ protected:
+  CrosSystemFakeTest() : cros_system_(new CrosSystemFake()) {}
+
+  CrosSystemFake* cros_system_;
+};
+
 class EarlySetupTest : public ::testing::Test {
  protected:
   EarlySetupTest() : cros_system_(new CrosSystemFake()) {}
@@ -920,6 +927,56 @@ TEST_F(DeviceSettingsTest, NeitherPathEmpty) {
   EXPECT_EQ(base::DirectoryExists(whitelist_), true);
   EXPECT_EQ(base::PathExists(whitelist_test), true);
   EXPECT_EQ(base::PathExists(devicesettings_test), true);
+}
+
+class DaemonStoreTest : public CrosSystemFakeTest {
+ protected:
+  DaemonStoreTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    platform_ = new startup::FakePlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, true));
+  }
+
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(DaemonStoreTest, NonEmptyEtc) {
+  base::FilePath run = base_dir.Append("run");
+  base::FilePath etc = base_dir.Append("etc");
+  base::FilePath run_daemon = run.Append("daemon-store");
+  base::FilePath etc_daemon = etc.Append("daemon-store");
+  base::FilePath etc_file = etc_daemon.Append("test_file");
+  base::FilePath etc_file_not_ds = etc.Append("test/not_incl");
+  ASSERT_TRUE(CreateDirAndWriteFile(etc_file, "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(etc_file_not_ds, "exclude"));
+  base::FilePath subdir = etc_daemon.Append("subdir");
+  base::FilePath sub_file = subdir.Append("test_file");
+  ASSERT_TRUE(CreateDirAndWriteFile(sub_file, "1"));
+
+  base::FilePath run_subdir = run_daemon.Append("subdir");
+  base::FilePath run_test_exclude = run.Append("test/not_incl");
+  base::FilePath run_ds_exclude = run_daemon.Append("test/not_incl");
+  platform_->SetMountResultForPath(run_subdir, run_subdir.value());
+  struct stat st_dir;
+  st_dir.st_mode = S_IFDIR;
+  platform_->SetStatResultForPath(subdir, st_dir);
+
+  startup_->CreateDaemonStore();
+  EXPECT_TRUE(base::DirectoryExists(run_subdir));
+  EXPECT_FALSE(base::PathExists(run_test_exclude));
+  EXPECT_FALSE(base::PathExists(run_ds_exclude));
 }
 
 }  // namespace startup
