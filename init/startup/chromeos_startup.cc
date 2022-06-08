@@ -49,6 +49,9 @@ constexpr char kHomeChronos[] = "home/chronos";
 constexpr char kSysKernelDebugTracingDir[] = "sys/kernel/debug/tracing/.";
 
 constexpr char kRunNamespaces[] = "run/namespaces";
+constexpr char kRun[] = "run";
+constexpr char kLock[] = "lock";
+
 constexpr char kSysKernelConfig[] = "sys/kernel/config";
 constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
@@ -632,6 +635,20 @@ int ChromeosStartup::Run() {
   MoveToLibDeviceSettings();
 
   MaybeMountEfivarfs();
+
+  // /run is tmpfs used for runtime data. Make sure /var/run and /var/lock
+  // are bind-mounted to /run and /run/lock respectively for backwards
+  // compatibility.
+  // Bind mount /run to /var/run.
+  const base::FilePath var = root_.Append(kVar);
+  const base::FilePath root_run = root_.Append(kRun);
+  platform_->Mount(root_run, var.Append(kRun), "", MS_BIND, "");
+  mount_helper_->RememberMount(root_run);
+
+  // Bind mount /run/lock to /var/lock.
+  const base::FilePath root_run_lock = root_run.Append(kLock);
+  platform_->Mount(root_run_lock, var.Append(kLock), "", MS_BIND, "");
+  mount_helper_->RememberMount(root_run_lock);
 
   int ret = RunChromeosStartupScript();
   if (ret) {

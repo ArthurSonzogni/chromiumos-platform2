@@ -233,15 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
-# bind-mounted to /run and /run/lock respectively for backwards compatibility.
-# tmpfiles.d recreates these each boot in case they were corrupted to point
-# somewhere other than what we want.
-mount -o bind /run /var/run
-remember_mount /var/run
-mount -o bind /run/lock /var/lock
-remember_mount /var/lock
-
 # Create daemon store folders.
 # See https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders.
 for etc_daemon_store in /etc/daemon-store/*; do
