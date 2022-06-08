@@ -48,6 +48,8 @@ constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 
 constexpr char kTPMOwnedPath[] = "sys/class/tpm/tmp0/device/owned";
+constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
+
 // This file is created by clobber-state after the transition to dev mode.
 constexpr char kDevModeFile[] = ".developer_mode";
 // Flag file indicating that encrypted stateful should be preserved across
@@ -417,6 +419,21 @@ void ChromeosStartup::MountHome() {
   }
 }
 
+// Start tpm2-simulator if it exists.
+// TODO(b:261148112): Replace initctl call with logic to directly communicate
+// with upstart.
+void ChromeosStartup::StartTpm2Simulator() {
+  base::FilePath tpm_simulator = root_.Append(kTpmSimulator);
+  if (base::PathExists(tpm_simulator)) {
+    brillo::ProcessImpl ictl;
+    ictl.AddArg("/sbin/initctl");
+    ictl.AddArg("start");
+    ictl.AddArg("tpm2-simulator");
+    // Failure is fine, we just continue.
+    ictl.Run();
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -455,6 +472,8 @@ int ChromeosStartup::Run() {
   TmpfilesConfiguration();
 
   MountHome();
+
+  StartTpm2Simulator();
 
   int ret = RunChromeosStartupScript();
   if (ret) {

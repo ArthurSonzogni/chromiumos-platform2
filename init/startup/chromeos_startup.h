@@ -94,6 +94,9 @@ class ChromeosStartup {
   // Mount /home.
   void MountHome();
 
+  // Start tpm2-simulator if it exists.
+  void StartTpm2Simulator();
+
   // Runs the bash version of chromeos startup to allow for incremental
   // migration.
   int RunChromeosStartupScript();

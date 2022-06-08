@@ -269,10 +269,6 @@ force_clean_file_attrs() {
   fi
 }
 
-if [ -f "/etc/init/tpm2-simulator.conf" ]; then
-  initctl start tpm2-simulator || true
-fi
-
 # Clean up after a TPM firmware update. This must happen before mounting
 # stateful, which will initialize the TPM again.
 if [ -x "/usr/sbin/tpm-firmware-update-cleanup" ]; then
