@@ -39,6 +39,8 @@ namespace {
 constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
 constexpr char kHome[] = "home";
 constexpr char kUnencrypted[] = "unencrypted";
+constexpr char kVar[] = "var";
+constexpr char kHomeChronos[] = "home/chronos";
 
 // The "/." ensures we trigger the automount, instead of just examining the
 // mount point.
@@ -530,6 +532,9 @@ int ChromeosStartup::Run() {
       utils::CreateEncryptedRebootVault();
     }
   }
+
+  ForceCleanFileAttrs(root_.Append(kVar));
+  ForceCleanFileAttrs(root_.Append(kHomeChronos));
 
   int ret = RunChromeosStartupScript();
   if (ret) {

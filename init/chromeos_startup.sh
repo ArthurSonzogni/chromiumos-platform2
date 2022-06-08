@@ -246,31 +246,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Walk the specified path and reset any file attributes (like immutable bit).
-force_clean_file_attrs() {
-  local path="$1"
-
-  # In case the dir doesn't yet exist.
-  if [ ! -d "${path}" ]; then
-    return
-  fi
-
-  # No physical stateful partition available, usually due to initramfs
-  # (recovery image, factory install shim or netboot).  Do not check.
-  if [ -z "${STATE_DEV}" ]; then
-    return
-  fi
-
-  if ! file_attrs_cleaner_tool "${path}"; then
-    chromeos-boot-alert self_repair
-    clobber-log -- "Bad file attrs under ${path}"
-    exec clobber-state "keepimg"
-  fi
-}
-
-force_clean_file_attrs /var
-force_clean_file_attrs /home/chronos
-
 # If /var is too full, delete the logs so the device can boot successfully.
 # It is possible that the fullness of /var was not due to logs, but that
 # is very unlikely. If such a thing happens, we have a serious problem
