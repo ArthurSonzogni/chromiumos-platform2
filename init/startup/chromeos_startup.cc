@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -53,6 +54,7 @@ constexpr char kSysKernelDebugTracingDir[] = "sys/kernel/debug/tracing/.";
 constexpr char kRunNamespaces[] = "run/namespaces";
 constexpr char kRun[] = "run";
 constexpr char kLock[] = "lock";
+constexpr char kEmpty[] = "empty";
 
 constexpr char kSysKernelConfig[] = "sys/kernel/config";
 constexpr char kSysKernelDebug[] = "sys/kernel/debug";
@@ -556,6 +558,27 @@ void ChromeosStartup::CreateDaemonStore() {
   }
 }
 
+// Remove /var/empty if it exists. Use /mnt/empty instead.
+void ChromeosStartup::RemoveVarEmpty() {
+  base::FilePath var_empty = root_.Append(kVar).Append(kEmpty);
+  base::ScopedFD dfd(open(var_empty.value().c_str(), O_DIRECTORY | O_CLOEXEC));
+  if (!dfd.is_valid()) {
+    if (errno != ENOENT) {
+      PLOG(WARNING) << "Unable to open directory " << var_empty.value();
+    }
+    return;
+  }
+  file_attrs_cleaner::AttributeCheckStatus status =
+      file_attrs_cleaner::CheckFileAttributes(var_empty, true, dfd.get());
+  if (status != file_attrs_cleaner::AttributeCheckStatus::CLEARED) {
+    PLOG(WARNING) << "Unexpected CheckFileAttributes status for "
+                  << var_empty.value();
+  }
+  if (!base::DeletePathRecursively(var_empty)) {
+    PLOG(WARNING) << "Failed to delete path " << var_empty.value();
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -680,6 +703,8 @@ int ChromeosStartup::Run() {
   mount_helper_->RememberMount(root_run_lock);
 
   CreateDaemonStore();
+
+  RemoveVarEmpty();
 
   int ret = RunChromeosStartupScript();
   if (ret) {

@@ -233,12 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Remove /var/empty if it exists. Use /mnt/empty instead.
-if [ -e /var/empty ]; then
-  chattr -i /var/empty || :
-  rm -rf /var/empty
-fi
-
 # Make sure that what gets written to /var/log stays in /var/log. Some notes on
 # subtleties in the command below:
 #  1. find's -exec with the '+' argument passes multiple found paths per shell

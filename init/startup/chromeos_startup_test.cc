@@ -979,4 +979,39 @@ TEST_F(DaemonStoreTest, NonEmptyEtc) {
   EXPECT_FALSE(base::PathExists(run_ds_exclude));
 }
 
+class RemoveVarEmptyTest : public ::testing::Test {
+ protected:
+  RemoveVarEmptyTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::make_unique<startup::FakePlatform>(),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, true));
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(RemoveVarEmptyTest, NonEmpty) {
+  base::FilePath var_empty = base_dir.Append("var/empty");
+  base::FilePath file1 = var_empty.Append("test_file");
+  ASSERT_TRUE(CreateDirAndWriteFile(file1, "1"));
+  base::FilePath file2 = var_empty.Append("test_file_2");
+  ASSERT_TRUE(CreateDirAndWriteFile(file2, "1"));
+
+  startup_->RemoveVarEmpty();
+  EXPECT_TRUE(!base::PathExists(file1));
+  EXPECT_TRUE(!base::PathExists(file2));
+  EXPECT_TRUE(!base::PathExists(var_empty));
+}
+
 }  // namespace startup
