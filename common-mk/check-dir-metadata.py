@@ -52,7 +52,6 @@ LEGACYLIST = {
     'camera',
     'cfm-dfu-notification',
     'chromeos-common-script',
-    'chromeos-config',
     'chromeos-dbus-bindings',
     'chromeos-nvt-tcon-updater',
     'client_id',
