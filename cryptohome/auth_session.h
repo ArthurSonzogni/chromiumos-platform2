@@ -280,6 +280,7 @@ class AuthSession final {
   // |on_done| callback.
   template <typename AddKeyReply>
   void AddVaultKeyset(const KeyData& key_data,
+                      AuthInput auth_input,
                       base::OnceCallback<void(const AddKeyReply&)> on_done,
                       CryptoStatus callback_error,
                       std::unique_ptr<KeyBlobs> key_blobs,
@@ -292,6 +293,7 @@ class AuthSession final {
   // asynchronous manner through |on_done| callback.
   void UpdateVaultKeyset(
       const KeyData& key_data,
+      AuthInput auth_input,
       base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
           on_done,
       CryptoStatus callback_error,

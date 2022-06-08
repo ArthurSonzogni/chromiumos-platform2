@@ -3865,8 +3865,87 @@ void UserDataAuth::AddCredentials(
   } else {
     // Add credentials using data in AuthorizationRequest and
     // auth_session_token.
-    auth_session->AddCredentials(request, std::move(on_done));
+    auto on_add_credential = base::BindOnce(
+        &UserDataAuth::OnAddCredentialFinished<
+            user_data_auth::AddCredentialsReply>,
+        base::Unretained(this), auth_session, std::move(on_done));
+    auth_session->AddCredentials(request, std::move(on_add_credential));
   }
+}
+
+void UserDataAuth::SetCredentialVerifierForUserSession(
+    AuthSession* auth_session, bool override_existing_credential_verifier) {
+  scoped_refptr<UserSession> session = GetUserSession(auth_session->username());
+  // Check the user is already mounted and the session is ephemeral.
+  if (!session) {
+    LOG(WARNING) << "SetCredential failed as user session does not exist";
+    return;
+  }
+  // Check the user is already mounted and the session is ephemeral.
+  if (!session->IsActive()) {
+    LOG(WARNING) << "SetCredential failed as user session is not active.";
+    return;
+  }
+
+  if (!auth_session) {
+    LOG(WARNING) << "SetCredential failed as auth_session does not exist";
+    return;
+  }
+
+  if (session->IsEphemeral() != auth_session->ephemeral_user()) {
+    LOG(WARNING) << "SetCredential failed as user session does not match "
+                    "auth_session ephemeral status user: "
+                 << auth_session->obfuscated_username();
+    return;
+  }
+
+  if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
+    LOG(WARNING) << "SetCredential failed as auth session is not authenticated "
+                    "for user: "
+                 << auth_session->obfuscated_username();
+    return;
+  }
+
+  if (!session->HasCredentialVerifier() ||
+      override_existing_credential_verifier) {
+    session->SetCredentials(auth_session);
+  }
+}
+
+template <typename AddKeyReply>
+void UserDataAuth::OnAddCredentialFinished(
+    AuthSession* auth_session,
+    base::OnceCallback<void(const AddKeyReply&)> on_done,
+    const AddKeyReply& reply) {
+  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    SetCredentialVerifierForUserSession(
+        auth_session, /*override_existing_credential_verifier=*/false);
+  }
+  std::move(on_done).Run(reply);
+}
+
+template <typename AuthenticateReply>
+void UserDataAuth::OnAuthenticateFinished(
+    AuthSession* auth_session,
+    base::OnceCallback<void(const AuthenticateReply&)> on_done,
+    const AuthenticateReply& reply) {
+  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    SetCredentialVerifierForUserSession(
+        auth_session, /*override_existing_credential_verifier=*/false);
+  }
+  std::move(on_done).Run(reply);
+}
+
+void UserDataAuth::OnUpdateCredentialFinished(
+    AuthSession* auth_session,
+    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+        on_done,
+    const user_data_auth::UpdateCredentialReply& reply) {
+  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    SetCredentialVerifierForUserSession(
+        auth_session, /*override_existing_credential_verifier=*/true);
+  }
+  std::move(on_done).Run(reply);
 }
 
 void UserDataAuth::UpdateCredential(
@@ -3888,7 +3967,12 @@ void UserDataAuth::UpdateCredential(
   }
   // Update credentials using data in AuthorizationRequest and
   // auth_session_token.
-  auth_session_status.value()->UpdateCredential(request, std::move(on_done));
+  auto on_update_credential = base::BindOnce(
+      &UserDataAuth::OnUpdateCredentialFinished, base::Unretained(this),
+      auth_session_status.value(), std::move(on_done));
+
+  auth_session_status.value()->UpdateCredential(
+      request, std::move(on_update_credential));
   return;
 }
 
@@ -3933,7 +4017,12 @@ void UserDataAuth::AuthenticateAuthSession(
 
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
-  auth_session->Authenticate(request.authorization(), std::move(on_done));
+  auto on_authenticate =
+      base::BindOnce(&UserDataAuth::OnAuthenticateFinished<
+                         user_data_auth::AuthenticateAuthSessionReply>,
+                     base::Unretained(this), auth_session, std::move(on_done));
+  auth_session->Authenticate(request.authorization(),
+                             std::move(on_authenticate));
 }
 
 void UserDataAuth::InvalidateAuthSession(

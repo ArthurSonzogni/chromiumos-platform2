@@ -91,6 +91,9 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Sets credentials current session can be re-authenticated with.
   virtual void SetCredentials(AuthSession* auth_session) = 0;
 
+  // Returns if a |credential_verifier_| is set for this session.
+  virtual bool HasCredentialVerifier() const = 0;
+
   // Checks that the session belongs to the obfuscated_user.
   virtual bool VerifyUser(const std::string& obfuscated_username) const = 0;
 

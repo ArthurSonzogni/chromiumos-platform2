@@ -1123,6 +1123,38 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode HandleAddCredentialForEphemeralVault(
       AuthorizationRequest request, const AuthSession* auth_session);
 
+  // OnAddCredentialFinished when AuthSession::AddCredential is finished. The
+  // function will set credential in user_session for user to do unlock. The
+  // credential verifier will not be overridden if it is already set once.
+  template <typename AddKeyReply>
+  void OnAddCredentialFinished(
+      AuthSession* auth_session,
+      base::OnceCallback<void(const AddKeyReply&)> on_done,
+      const AddKeyReply& reply);
+
+  // OnAuthenticateFinished when AuthSession::Authenticate is finished. The
+  // function will set credential in user_session for user to do unlock. The
+  // credential verifier will not be overridden if it is already set once.
+  template <typename AuthenticateReply>
+  void OnAuthenticateFinished(
+      AuthSession* auth_session,
+      base::OnceCallback<void(const AuthenticateReply&)> on_done,
+      const AuthenticateReply& reply);
+
+  // OnUpdateCredentialFinished when AuthSession::UpdateCredentials is finished.
+  // The function will set credential in user_session for user to do unlock. The
+  // credential verifier will be overridden if it is already set once.
+  void OnUpdateCredentialFinished(
+      AuthSession* auth_session,
+      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+          on_done,
+      const user_data_auth::UpdateCredentialReply& reply);
+
+  // SetCredentialVerifierForUserSession sets credential_verifier derived from
+  // AuthSession.
+  void SetCredentialVerifierForUserSession(
+      AuthSession* auth_session, bool override_existing_credential_verifier);
+
   // =============== WebAuthn Related Helpers ===============
 
   bool PrepareWebAuthnSecret(const std::string& account_id,
