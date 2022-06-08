@@ -828,13 +828,6 @@ int ChromeosStartup::Run() {
   DevMountPackages(dev_image_);
   RestorePreservedPaths();
 
-  int ret = RunChromeosStartupScript();
-  if (ret) {
-    // TODO(b/232901639): Improve failure reporting.
-    PLOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
-    mount_helper_->CleanupMounts("cleanup triggered in bash");
-  }
-
   // Unmount securityfs so that further modifications to inode security
   // policies are not possible
   const base::FilePath kernel_sec =
@@ -845,7 +838,7 @@ int ChromeosStartup::Run() {
 
   bootstat_.LogEvent("post-startup");
 
-  return ret;
+  return 0;
 }
 
 // Temporary function during the migration of the code. Run the bash
