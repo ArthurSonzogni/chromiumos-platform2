@@ -738,6 +738,9 @@ int ChromeosStartup::Run() {
                    MS_NOSUID | MS_NODEV | MS_NOEXEC, "");
   platform_->Mount(base::FilePath(), root_.Append(kMedia), "", MS_SHARED, "");
 
+  std::vector<std::string> t_args = {root_.Append(kMedia).value()};
+  TmpfilesConfiguration(t_args);
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.

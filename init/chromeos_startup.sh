@@ -233,9 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-/usr/bin/systemd-tmpfiles --create --remove --boot --prefix /media \
-  2>>"${TMPFILES_LOG}" || :
-
 # Restore file contexts for /var.
 # TODO(fqj): use type_transition to correctly label directories at creation so
 # relabel need only be started if SELinux policy updates.
