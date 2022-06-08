@@ -16,6 +16,7 @@
 #include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
+#include <brillo/strings/string_utils.h>
 #include <brillo/userdb_utils.h>
 
 #include "init/crossystem.h"
@@ -310,17 +311,21 @@ void ChromeosStartup::EarlySetup() {
 }
 
 // Apply /mnt/stateful_partition specific tmpfiles.d configurations
-void ChromeosStartup::TmpfilesConfiguration() {
+void ChromeosStartup::TmpfilesConfiguration(
+    const std::vector<std::string>& dirs) {
   brillo::ProcessImpl tmpfiles;
   tmpfiles.AddArg("/usr/bin/systemd-tmpfiles");
   tmpfiles.AddArg("--create");
   tmpfiles.AddArg("--remove");
   tmpfiles.AddArg("--boot");
-  tmpfiles.AddArg("--prefix");
-  tmpfiles.AddArg("/mnt/stateful_partition");
+  for (std::string path : dirs) {
+    tmpfiles.AddArg("--prefix");
+    tmpfiles.AddArg(path);
+  }
   if (tmpfiles.Run() != 0) {
-    mount_helper_->CleanupMounts(
-        "tmpfiles.d for /mnt/stateful_partition failed");
+    std::string msg =
+        "tmpfiles.d failed for " + brillo::string_utils::Join(",", dirs);
+    mount_helper_->CleanupMounts(msg);
   }
 }
 
@@ -499,7 +504,8 @@ int ChromeosStartup::Run() {
   base::FilePath unencrypted = stateful_.Append(kUnencrypted);
   ForceCleanFileAttrs(unencrypted);
 
-  TmpfilesConfiguration();
+  std::vector<std::string> tmpfiles = {stateful_.value()};
+  TmpfilesConfiguration(tmpfiles);
 
   MountHome();
 
@@ -563,6 +569,10 @@ int ChromeosStartup::Run() {
   if (enable_stateful_security_hardening_) {
     ConfigureFilesystemExceptions(root_);
   }
+
+  std::vector<std::string> tmpfile_args = {root_.Append(kHome).value(),
+                                           root_.Append(kVar).value()};
+  TmpfilesConfiguration(tmpfile_args);
 
   int ret = RunChromeosStartupScript();
   if (ret) {

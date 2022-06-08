@@ -65,7 +65,7 @@ class ChromeosStartup {
   // function exists to help break up the Run function into smaller functions.
   void EarlySetup();
 
-  void TmpfilesConfiguration();
+  void TmpfilesConfiguration(const std::vector<std::string>& dirs);
 
   // Run the chromeos startup routine.
   int Run();

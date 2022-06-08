@@ -233,12 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Apply /var and /home specific tmpfiles.d configurations.
-/usr/bin/systemd-tmpfiles --create --remove --boot \
-  --prefix /home \
-  --prefix /var 2>>"${TMPFILES_LOG}" ||
-    cleanup_mounts "tmpfiles.d for /home and /var failed"
-
 # Move from /var/lib/whitelist to /var/lib/devicesettings.
 # Check whether folders are empty using rmdir, this will delete the respective
 # folder only if it's empty.
