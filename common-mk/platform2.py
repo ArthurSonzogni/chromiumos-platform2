@@ -144,7 +144,6 @@ _IUSE = [
     'v4l2_codec',
     'vaapi',
     'video_cards_msm',
-    'virtgpu_native_context',
     'vm_borealis',
     'vpn',
     'vtpm_proxy',

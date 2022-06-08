@@ -82,7 +82,6 @@ class VmBuilder {
 
   VmBuilder& EnableGpu(bool enable);
   VmBuilder& EnableVulkan(bool enable);
-  VmBuilder& EnableVirtgpuNativeContext(bool enable);
   // Make virglrenderer use Big GL instead of the default GLES.
   VmBuilder& EnableBigGl(bool enable);
   // Offload Vulkan use to isolated virglrenderer render server
@@ -130,7 +129,6 @@ class VmBuilder {
 
   bool enable_gpu_ = false;
   bool enable_vulkan_ = false;
-  bool enable_virtgpu_native_context_ = false;
   bool enable_big_gl_ = false;
   bool enable_render_server_ = false;
   base::FilePath gpu_cache_path_;
