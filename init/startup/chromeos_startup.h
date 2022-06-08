@@ -54,6 +54,8 @@ class ChromeosStartup {
   // Updated stateful partition if an update is pending.
   bool DevUpdateStatefulPartition();
   void DevMountPackages(const base::FilePath& device);
+  // Restores the paths to preserve from protected path.
+  void RestorePreservedPaths();
 
   // Returns if the TPM is owned or couldn't be determined.
   bool IsTPMOwned();
@@ -114,6 +116,9 @@ class ChromeosStartup {
   FRIEND_TEST(DeviceSettingsTest, OldPathEmpty);
   FRIEND_TEST(DeviceSettingsTest, NewPathEmpty);
   FRIEND_TEST(DeviceSettingsTest, NeitherPathEmpty);
+
+  friend class RestorePreservedPathsTest;
+  FRIEND_TEST(RestorePreservedPathsTest, PopPaths);
 
   void CheckClock();
   // Returns if the device is transitioning between verified boot and

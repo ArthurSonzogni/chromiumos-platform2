@@ -70,13 +70,3 @@ dev_push_paths_to_preserve() {
     copy_path "${path}" "${PRESERVE_DIR}/${path}"
   done
 }
-
-# Pops the array of paths to preserve from protected path.
-dev_pop_paths_to_preserve() {
-  local path
-  for path in ${PATHS_TO_PRESERVE}; do
-    local src_path="${PRESERVE_DIR}/${path}"
-    copy_path "${src_path}" "${path}"
-    rm -rf "${src_path}"
-  done
-}

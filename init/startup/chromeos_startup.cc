@@ -116,6 +116,14 @@ constexpr char kTpmFirmwareUpdateRequestFlagFile[] =
 constexpr char kLibWhitelist[] = "lib/whitelist";
 constexpr char kLibDevicesettings[] = "lib/devicesettings";
 
+constexpr char kPreserve[] = "preserve";
+const std::array<const char*, 4> kPreserveDirs = {
+    "var/lib/servod",
+    "usr/local/servod",
+    "var/lib/device_health_profile",
+    "usr/local/etc/wifi_creds",
+};
+
 }  // namespace
 
 namespace startup {
@@ -818,6 +826,7 @@ int ChromeosStartup::Run() {
 
   // Mount dev packages.
   DevMountPackages(dev_image_);
+  RestorePreservedPaths();
 
   int ret = RunChromeosStartupScript();
   if (ret) {
@@ -945,6 +954,25 @@ void ChromeosStartup::DevMountPackages(const base::FilePath& device) {
     return;
   }
   stateful_mount_->DevMountPackages(device);
+}
+
+void ChromeosStartup::RestorePreservedPaths() {
+  if (!dev_mode_) {
+    return;
+  }
+  base::FilePath preserve_dir =
+      stateful_.Append(kUnencrypted).Append(kPreserve);
+  for (const auto& path : kPreserveDirs) {
+    base::FilePath fpath(path);
+    base::FilePath src = preserve_dir.Append(fpath);
+    if (base::DirectoryExists(src)) {
+      const base::FilePath dst = root_.Append(fpath);
+      base::CreateDirectory(dst);
+      if (!base::Move(src, dst)) {
+        PLOG(WARNING) << "Failed to move " << src.value();
+      }
+    }
+  }
 }
 
 }  // namespace startup

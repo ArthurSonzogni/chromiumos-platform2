@@ -192,7 +192,5 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-dev_pop_paths_to_preserve
-
 # Always return success to avoid killing init
 exit 0

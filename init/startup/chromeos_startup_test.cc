@@ -1263,4 +1263,49 @@ TEST_F(RestoreContextsForVarTest, Restorecon) {
   EXPECT_TRUE(base::PathExists(debug.Append("exclude")));
 }
 
+class RestorePreservedPathsTest : public ::testing::Test {
+ protected:
+  RestorePreservedPathsTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    stateful_ = base_dir.Append("stateful_test");
+    base::CreateDirectory(stateful_);
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::make_unique<CrosSystemFake>(), flags_, base_dir, stateful_,
+        base_dir, base_dir, std::make_unique<startup::FakePlatform>(),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, true));
+    startup_->SetDevMode(true);
+  }
+
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  base::FilePath stateful_;
+
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(RestorePreservedPathsTest, PopPaths) {
+  std::string libservo("var/lib/servod");
+  std::string wifi_cred("usr/local/etc/wifi_creds");
+  base::FilePath preserve_dir = stateful_.Append("unencrypted/preserve");
+  base::FilePath libservo_path = base_dir.Append(libservo);
+  base::FilePath wifi_cred_path = base_dir.Append(wifi_cred);
+  base::FilePath libservo_preserve = preserve_dir.Append(libservo);
+  base::FilePath wifi_cred_preserve = preserve_dir.Append(wifi_cred);
+
+  ASSERT_TRUE(CreateDirAndWriteFile(libservo_preserve.Append("file1"), "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(wifi_cred_preserve.Append("file2"), "1"));
+
+  startup_->RestorePreservedPaths();
+  EXPECT_EQ(PathExists(libservo_path.Append("file1")), true);
+  EXPECT_EQ(PathExists(wifi_cred_path.Append("file2")), true);
+  EXPECT_EQ(PathExists(libservo_preserve.Append("file1")), false);
+  EXPECT_EQ(PathExists(wifi_cred_preserve.Append("file2")), false);
+}
+
 }  // namespace startup
