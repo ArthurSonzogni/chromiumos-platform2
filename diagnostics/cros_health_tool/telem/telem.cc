@@ -215,6 +215,8 @@ std::string EnumToString(mojom::BusDeviceClass device_class) {
       return "bluetooth controller";
     case mojom::BusDeviceClass::kThunderboltController:
       return "thunderbolt controller";
+    case mojom::BusDeviceClass::kAudioCard:
+      return "audio card";
   }
 }
 
