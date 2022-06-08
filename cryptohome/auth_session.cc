@@ -369,20 +369,16 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
     return;
   }
 
-  // Update reset_secret for auth_input. |auth_state| will be the input to
-  // AuthSession::AddVaultKeyset(), which calls VaultKeyset::Encrypt().
-  AuthBlock::CreateCallback create_callback;
-  if (initial_keyset) {  // AddInitialKeyset operation
-    if (auth_block_type == AuthBlockType::kPinWeaver) {
-      ReplyWithError(
-          std::move(on_done), reply,
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(
-                  kLocAuthSessionPinweaverUnsupportedInAddKeyset),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
+  // |auth_state| will be the input to AuthSession::AddVaultKeyset(),
+  // which calls VaultKeyset::Encrypt().
+  if (initial_keyset && auth_block_type == AuthBlockType::kPinWeaver) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionPinweaverUnsupportedInAddKeyset),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+    return;
   }
 
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
@@ -397,7 +393,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
     }
   }
 
-  create_callback =
+  AuthBlock::CreateCallback create_callback =
       base::BindOnce(&AuthSession::AddVaultKeyset<AddKeyReply>,
                      weak_factory_.GetWeakPtr(), key_data, std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
@@ -1062,12 +1058,17 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
           vault_keyset_->IsLECredential(), /*is_recovery=*/false,
           /*is_challenge_credential*/ false,
           AuthFactorStorageType::kVaultKeyset);
-  if (auth_block_type == AuthBlockType::kMaxValue ||
-      auth_block_type == AuthBlockType::kPinWeaver) {
+  if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset.";
     return;
   }
+  if (auth_block_type == AuthBlockType::kPinWeaver) {
+    LOG(ERROR) << "Pinweaver AuthBlock is not supported for resave operation, "
+                  "can't resave keyset.";
+    return;
+  }
+
   // Create and initialize fields for AuthInput.
   AuthInput auth_input = {user_input,
                           /*locked_to_single_user=*/std::nullopt,

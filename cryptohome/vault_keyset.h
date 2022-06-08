@@ -236,9 +236,6 @@ class VaultKeyset {
       const ChallengeCredentialAuthBlockState& auth_state);
   void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
 
-  // Generates a random blob to be used as reset secret for LE Credentials.
-  std::optional<brillo::SecureBlob> GetOrGenerateResetSecret();
-
   // The protected functions that can be override for the testing purpose.
  protected:
   // This function serves as a factory method to return the authblock used in

@@ -226,23 +226,6 @@ bool VaultKeyset::Load(const FilePath& filename) {
   return loaded_;
 }
 
-std::optional<brillo::SecureBlob> VaultKeyset::GetOrGenerateResetSecret() {
-  if (!reset_secret_.empty()) {
-    return reset_secret_;
-  }
-
-  if (reset_seed_.empty()) {
-    return std::nullopt;
-  }
-
-  if (!reset_salt_.has_value()) {
-    SetResetSalt(CreateSecureRandomBlob(kAesBlockSize));
-  }
-
-  // We don't set reset secret here, but in Encrypt().
-  return HmacSha256(reset_salt_.value(), reset_seed_);
-}
-
 CryptohomeStatus VaultKeyset::EncryptEx(const KeyBlobs& key_blobs,
                                         const AuthBlockState& auth_state) {
   CHECK(crypto_);

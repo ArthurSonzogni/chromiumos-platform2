@@ -1008,16 +1008,14 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  std::optional<brillo::SecureBlob> reset_secret =
-      pin_vault_keyset_.GetOrGenerateResetSecret();
-  EXPECT_TRUE(reset_secret.has_value());
+  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
 
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false,
-                          "unused", reset_secret.value()};
+                          "unused", std::nullopt,
+                          pin_vault_keyset_.reset_seed_};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
   CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
@@ -1026,6 +1024,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   EXPECT_TRUE(
       std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
   EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state).ok());
+  EXPECT_TRUE(pin_vault_keyset_.HasResetSalt());
   EXPECT_FALSE(pin_vault_keyset_.HasWrappedResetSeed());
 }
 
@@ -1039,14 +1038,13 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
-  brillo::SecureBlob reset_secret =
-      pin_vault_keyset_.GetOrGenerateResetSecret().value();
+  brillo::SecureBlob reset_seed = CreateSecureRandomBlob(kAesBlockSize);
 
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'), false, "unused",
-                          reset_secret};
+                          std::nullopt, reset_seed};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
   CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
