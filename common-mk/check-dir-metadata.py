@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 from typing import Generator, List, Optional
 
+
 TOP_DIR = Path(__file__).resolve().parent.parent
 
 # Find chromite!
@@ -20,6 +21,8 @@ sys.path.insert(0, str(TOP_DIR.parent.parent))
 # pylint: disable=wrong-import-position
 from chromite.lib import commandline
 from chromite.lib import git
+
+
 # pylint: enable=wrong-import-position
 
 
