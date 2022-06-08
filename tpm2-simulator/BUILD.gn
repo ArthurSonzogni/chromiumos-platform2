@@ -26,8 +26,8 @@ pkg_config("target_default_deps") {
 config("target_defaults") {
   configs = [ ":target_default_deps" ]
   defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
+    "USE_TPM1=${use.tpm}&&!${use.test}",
+    "USE_TPM2=${use.tpm2}||${use.test}",
   ]
   include_dirs = [ "${sysroot}/usr/include/pinweaver" ]
 }
@@ -40,26 +40,24 @@ source_set("tpm_executor_version_library") {
   ]
 }
 
-executable("tpm2-simulator") {
+static_library("libtpm2_simulator_executor") {
   sources = [
-    "main.cc",
-    "simulator.cc",
     "tpm_command_utils.cc",
-    "tpm_nvchip_utils.cc",
     "tpm_vendor_cmd_locality.cc",
   ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:nouse_thin_archive",
+    "//common-mk:pic",
+  ]
+  configs -= [ "//common-mk:use_thin_archive" ]
   libs = []
-  configs += [ ":target_defaults" ]
-  install_path = "bin"
-  pkg_deps = [ "libminijail" ]
-  deps = [ ":tpm_executor_version_library" ]
-
-  if (use.tpm) {
+  install_path = "lib"
+  if (use.tpm && !use.test) {
     sources += [ "tpm_executor_tpm1_impl.cc" ]
     libs += [ "tpms" ]
   }
-
-  if (use.tpm2) {
+  if (use.tpm2 || use.test) {
     sources += [
       "pinweaver_eal.cc",
       "tpm_executor_tpm2_impl.cc",
@@ -70,6 +68,22 @@ executable("tpm2-simulator") {
       "tpm2",
     ]
   }
+}
+
+executable("tpm2-simulator") {
+  sources = [
+    "main.cc",
+    "simulator.cc",
+    "tpm_nvchip_utils.cc",
+  ]
+  libs = []
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  pkg_deps = [ "libminijail" ]
+  deps = [
+    ":libtpm2_simulator_executor",
+    ":tpm_executor_version_library",
+  ]
 }
 
 executable("tpm2-simulator-init") {

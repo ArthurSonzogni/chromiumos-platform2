@@ -9,12 +9,13 @@
 #include <string>
 #include <vector>
 
+#include "tpm2-simulator/export.h"
 #include "tpm2-simulator/tpm_executor.h"
 #include "tpm2-simulator/tpm_vendor_cmd.h"
 
 namespace tpm2_simulator {
 
-class TpmExecutorTpm2Impl : public TpmExecutor {
+class TPM2_SIMULATOR_EXPORT TpmExecutorTpm2Impl : public TpmExecutor {
  public:
   TpmExecutorTpm2Impl();
   TpmExecutorTpm2Impl(const TpmExecutorTpm2Impl&) = delete;

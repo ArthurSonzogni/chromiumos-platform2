@@ -11,9 +11,11 @@ group("all") {
     ":install_headers_overalls",
     ":libhwsec",
   ]
-  deps += [ ":libhwsec_test" ]
   if (use.test) {
-    deps += [ ":hwsec_testrunner" ]
+    deps += [
+      ":hwsec_testrunner",
+      ":libhwsec_test",
+    ]
   }
 }
 
@@ -40,7 +42,7 @@ pkg_config("target_defaults") {
   defines = [
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
+    "USE_TPM2=${use.tpm2}||${use.test}",
   ]
 }
 
@@ -64,7 +66,7 @@ source_set("error_library") {
     "error/tpm_retry_handler.cc",
   ]
   deps = []
-  if (use.tpm2 || use.fuzzer) {
+  if (use.tpm2 || use.fuzzer || use.test) {
     sources += [ "error/tpm2_error.cc" ]
     deps += [ ":install_tpm2_error_h" ]
   }
@@ -93,17 +95,25 @@ install_config("install_tpm2_error_h") {
   install_path = "/usr/include/chromeos/libhwsec/error"
 }
 
-static_library("libhwsec_test") {
-  sources = []
+shared_library("libhwsec_test") {
+  sources = [
+    "factory/tpm2_simulator_factory_for_test.cc",
+    "proxy/tpm2_simulator_proxy_for_test.cc",
+  ]
   if (use.tpm) {
     sources += [ "test_utils/tpm1/test_fixture.cc" ]
   }
-  configs += [
-    ":target_defaults",
-    "//common-mk:nouse_thin_archive",
+  configs += [ ":target_defaults" ]
+  libs = [
+    "tpm2",
+    "tpm2_simulator_executor",
+    "trunks",
+    "trunks_test",
+    "trunksd_lib",
+    "pinweaver",
   ]
-  configs -= [ "//common-mk:use_thin_archive" ]
   install_path = "lib"
+  deps = [ ":hardware_abstraction_internal_library" ]
 }
 
 config("libhwsec_tpm1_config") {
@@ -114,15 +124,31 @@ config("libhwsec_tpm2_config") {
   libs = [ "trunks" ]
 }
 
-source_set("hardware_abstraction_library") {
+# The sources that contain HWSEC_EXPORT.
+# The exported symbols should only be linked to one shared library.
+source_set("hardware_abstraction_external_library") {
   sources = [
     "factory/factory_impl.cc",
     "frontend/cryptohome/frontend_impl.cc",
     "frontend/pinweaver/frontend_impl.cc",
     "middleware/middleware.cc",
+    "structures/key.cc",
+  ]
+
+  libs = []
+
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+}
+
+# The sources that don't contain HWSEC_EXPORT.
+# This can be linked to multiple shared library.
+source_set("hardware_abstraction_internal_library") {
+  sources = [
     "proxy/proxy.cc",
     "proxy/proxy_impl.cc",
-    "structures/key.cc",
   ]
 
   libs = []
@@ -150,7 +176,7 @@ source_set("hardware_abstraction_library") {
     libs += [ "tspi" ]
   }
 
-  if (use.tpm2) {
+  if (use.tpm2 || use.test) {
     sources += [
       "backend/tpm2/backend.cc",
       "backend/tpm2/config.cc",
@@ -175,7 +201,8 @@ shared_library("libhwsec") {
   install_path = "lib"
   deps = [
     ":error_library",
-    ":hardware_abstraction_library",
+    ":hardware_abstraction_external_library",
+    ":hardware_abstraction_internal_library",
   ]
   if (use.tpm2 || use.fuzzer) {
     all_dependent_configs += [ ":libhwsec_tpm2_config" ]
@@ -225,8 +252,8 @@ if (use.test) {
     ]
     run_test = true
     deps = [
-      ":error_library",
-      ":hardware_abstraction_library",
+      ":hardware_abstraction_internal_library",
+      ":libhwsec",
       ":libhwsec_test",
       "//common-mk/testrunner",
     ]
@@ -250,7 +277,7 @@ if (use.test) {
       ]
       deps += [ ":overalls_library" ]
     }
-    if (use.tpm2) {
+    if (use.tpm2 || use.test) {
       sources += [
         "backend/tpm2/config_test.cc",
         "backend/tpm2/da_mitigation_test.cc",
