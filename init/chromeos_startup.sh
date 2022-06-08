@@ -233,31 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Make sure that what gets written to /var/log stays in /var/log. Some notes on
-# subtleties in the command below:
-#  1. find's -exec with the '+' argument passes multiple found paths per shell
-#     script invocation.
-#  2. sh -c expects a command name before parameters, so we pass a dummy name.
-#     Failure to do so would omit the first symlink since "$0" is not in "$@".
-#  3. set -e causes the shell to bail out on rm failure, so we can err on the
-#     safe side and do a stateful wipe instead of leaving symlinks around.
-#  4. If readlink fails (e.g. due to dangling symlinks) grep will still return
-#     false and so will the pipeline, so dangling symlinks get removed.
-#  5. Find doesn't follow symlinks and we pass -xdev to make sure to only
-#     examine symlinks in the /var/log subtree.
-find /var/log -xdev -type l -exec sh -e -c '
-  for path; do
-    if ! readlink -f "${path}" | grep -q "^/var/log/"; then
-      rm "${path}"
-    fi
-  done
-' 'nuke_symlinks' '{}' '+'
-
-# Bail and wipe on failure to remove a symlink.
-if [ "$?" -ne 0 ]; then
-  cleanup_mounts "Failed to remove symlinks under /var/log"
-fi
-
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 /usr/bin/systemd-tmpfiles --create --remove --boot --prefix /media \

@@ -1014,4 +1014,78 @@ TEST_F(RemoveVarEmptyTest, NonEmpty) {
   EXPECT_TRUE(!base::PathExists(var_empty));
 }
 
+class CheckVarLogTest : public ::testing::Test {
+ protected:
+  CheckVarLogTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::make_unique<CrosSystemFake>(), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::make_unique<startup::FakePlatform>(),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, true));
+    var_log_ = base_dir.Append("var/log");
+    base::CreateDirectory(var_log_);
+  }
+
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+  base::FilePath var_log_;
+};
+
+TEST_F(CheckVarLogTest, NoSymLinks) {
+  base::FilePath test_file = var_log_.Append("test_file");
+  base::FilePath test_dir = var_log_.Append("test_dir");
+  base::FilePath test_test = test_dir.Append("test");
+  ASSERT_TRUE(CreateDirAndWriteFile(test_file, "test1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(test_test, "test2"));
+
+  startup_->CheckVarLog();
+  EXPECT_TRUE(base::PathExists(test_file));
+  EXPECT_TRUE(base::PathExists(test_test));
+}
+
+TEST_F(CheckVarLogTest, SymLinkInsideVarLog) {
+  base::FilePath test_file = var_log_.Append("test_file");
+  base::FilePath test_dir = var_log_.Append("test_dir");
+  base::FilePath test_test = test_dir.Append("test");
+  base::FilePath test_link = var_log_.Append("test_link");
+  base::FilePath test_sub_link = test_dir.Append("link");
+  ASSERT_TRUE(CreateDirAndWriteFile(test_file, "test1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(test_test, "test2"));
+  ASSERT_TRUE(base::CreateSymbolicLink(test_file, test_link));
+  ASSERT_TRUE(base::CreateSymbolicLink(test_test, test_sub_link));
+
+  startup_->CheckVarLog();
+  EXPECT_TRUE(base::PathExists(test_file));
+  EXPECT_TRUE(base::PathExists(test_test));
+  EXPECT_TRUE(base::PathExists(test_link));
+  EXPECT_TRUE(base::PathExists(test_sub_link));
+}
+
+TEST_F(CheckVarLogTest, SymLinkOutsideVarLog) {
+  base::FilePath test_file = var_log_.Append("test_file");
+  base::FilePath test_dir = var_log_.Append("test_dir");
+  base::FilePath test_test = test_dir.Append("test");
+  base::FilePath test_link = var_log_.Append("test_link");
+  base::FilePath test_sub_link = test_dir.Append("link");
+  base::FilePath outside = base_dir.Append("outside");
+  ASSERT_TRUE(CreateDirAndWriteFile(outside, "out"));
+  ASSERT_TRUE(CreateDirAndWriteFile(test_file, "test1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(test_test, "test2"));
+  ASSERT_TRUE(base::CreateSymbolicLink(outside, test_link));
+  ASSERT_TRUE(base::CreateSymbolicLink(outside, test_sub_link));
+
+  startup_->CheckVarLog();
+  EXPECT_TRUE(base::PathExists(test_file));
+  EXPECT_TRUE(base::PathExists(test_test));
+  EXPECT_FALSE(base::PathExists(test_link));
+  EXPECT_FALSE(base::PathExists(test_sub_link));
+}
+
 }  // namespace startup

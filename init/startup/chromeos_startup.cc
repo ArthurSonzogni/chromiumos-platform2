@@ -579,6 +579,30 @@ void ChromeosStartup::RemoveVarEmpty() {
   }
 }
 
+// Make sure that what gets written to /var/log stays in /var/log.
+void ChromeosStartup::CheckVarLog() {
+  base::FilePath varLog = root_.Append(kVarLog);
+  base::FileEnumerator var_iter(
+      root_.Append(kVarLog), true,
+      base::FileEnumerator::FileType::FILES |
+          base::FileEnumerator::FileType::DIRECTORIES |
+          base::FileEnumerator::FileType::SHOW_SYM_LINKS);
+  for (base::FilePath path = var_iter.Next(); !path.empty();
+       path = var_iter.Next()) {
+    if (base::IsLink(path)) {
+      base::FilePath realpath;
+      if (!base::NormalizeFilePath(path, &realpath) ||
+          !varLog.IsParent(realpath)) {
+        if (!brillo::DeleteFile(path)) {
+          // Bail out and wipe on failure to remove a symlink.
+          mount_helper_->CleanupMounts(
+              "Failed to remove symlinks under /var/log");
+        }
+      }
+    }
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -705,6 +729,8 @@ int ChromeosStartup::Run() {
   CreateDaemonStore();
 
   RemoveVarEmpty();
+
+  CheckVarLog();
 
   int ret = RunChromeosStartupScript();
   if (ret) {
