@@ -193,8 +193,8 @@ bool FakeStream::PopReadPacket() {
   input_ptr_ = 0;
   input_buffer_ = std::move(packet.data);
   delay_input_until_ = clock_->Now() + packet.delay_before;
-  incoming_queue_.pop();
   report_read_error_ = packet.read_error;
+  incoming_queue_.pop();
   return true;
 }
 
