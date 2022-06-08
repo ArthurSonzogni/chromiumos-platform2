@@ -1399,7 +1399,8 @@ bool Manager::RedirectDns(
 
   DnsRedirectionRule rule{.type = request.type(),
                           .input_ifname = request.input_ifname(),
-                          .proxy_address = request.proxy_address()};
+                          .proxy_address = request.proxy_address(),
+                          .host_ifname = request.host_ifname()};
 
   for (const auto& nameserver : request.nameservers()) {
     rule.nameservers.emplace_back(nameserver);

@@ -479,6 +479,9 @@ message SetDnsRedirectionRuleRequest {
 
   // Nameservers are only necessary for Chrome redirect (USER type).
   repeated string nameservers = 4;
+
+  // Name of the "local" veth interface visible in the host namespace.
+  string host_ifname = 5;
 }
 
 // Response to a SetDnsRedirectionRuleRequest.

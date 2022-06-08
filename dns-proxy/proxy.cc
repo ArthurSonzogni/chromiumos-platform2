@@ -275,7 +275,8 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
       sa_family == AF_INET6
           ? ns_peer_ipv6_address_
           : patchpanel::IPv4AddressToString(ns_.peer_ipv4_address());
-  auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers);
+  auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers,
+                                     ns_.host_ifname());
   // Restart the proxy if DNS redirection rules are failed to be set up. This
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
   // replaced by the IP address of system proxy. This causes non-system traffic

@@ -1018,6 +1018,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
         return false;
       }
+      // IPv6 route to the namespace is added through USER rule.
       return true;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
@@ -1025,6 +1026,13 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
                               kRedirectArcDnsChain)) {
         LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
         return false;
+      }
+
+      // Add IPv6 route to the namespace so that the address is reachable.
+      if (family == IpFamily::IPv6 &&
+          !AddIPv6HostRoute(rule.host_ifname, rule.proxy_address, 128)) {
+        LOG(WARNING) << "Failed to setup the IPv6 route for interface "
+                     << rule.host_ifname << ", addr " << rule.proxy_address;
       }
       return true;
     }
@@ -1054,6 +1062,13 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         LOG(ERROR) << "Failed to add user DNS MASQUERADE rule";
         return false;
       }
+
+      // Add IPv6 route to the namespace so that the address is reachable.
+      if (family == IpFamily::IPv6 &&
+          !AddIPv6HostRoute(rule.host_ifname, rule.proxy_address, 128)) {
+        LOG(WARNING) << "Failed to setup the IPv6 route for interface "
+                     << rule.host_ifname << ", addr " << rule.proxy_address;
+      }
       return true;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
@@ -1066,6 +1081,12 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
                                            kRedirectUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS exclude rule";
         return false;
+      }
+      // Add IPv6 route to the namespace so that the address is reachable.
+      if (family == IpFamily::IPv6 &&
+          !AddIPv6HostRoute(rule.host_ifname, rule.proxy_address, 128)) {
+        LOG(WARNING) << "Failed to setup the IPv6 route for interface "
+                     << rule.host_ifname << ", addr " << rule.proxy_address;
       }
       return true;
     }

@@ -81,6 +81,7 @@ struct DnsRedirectionRule {
   std::string input_ifname;
   std::string proxy_address;
   std::vector<std::string> nameservers;
+  std::string host_ifname;
 };
 
 std::ostream& operator<<(std::ostream& stream,

@@ -106,7 +106,8 @@ base::ScopedFD FakeClient::RedirectDns(
     patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
     const std::string& input_ifname,
     const std::string& proxy_address,
-    const std::vector<std::string>& nameservers) {
+    const std::vector<std::string>& nameservers,
+    const std::string& host_ifname) {
   return {};
 }
 

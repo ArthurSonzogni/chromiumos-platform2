@@ -75,7 +75,8 @@ class BRILLO_EXPORT FakeClient : public Client {
       patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
       const std::string& input_ifname,
       const std::string& proxy_address,
-      const std::vector<std::string>& nameservers) override;
+      const std::vector<std::string>& nameservers,
+      const std::string& host_ifname) override;
 
   std::vector<NetworkDevice> GetDevices() override;
 

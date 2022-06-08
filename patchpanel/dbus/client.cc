@@ -186,7 +186,8 @@ class ClientImpl : public Client {
       patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
       const std::string& input_ifname,
       const std::string& proxy_address,
-      const std::vector<std::string>& nameservers) override;
+      const std::vector<std::string>& nameservers,
+      const std::string& host_ifname) override;
 
   std::vector<NetworkDevice> GetDevices() override;
 
@@ -735,7 +736,8 @@ base::ScopedFD ClientImpl::RedirectDns(
     patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
     const std::string& input_ifname,
     const std::string& proxy_address,
-    const std::vector<std::string>& nameservers) {
+    const std::vector<std::string>& nameservers,
+    const std::string& host_ifname) {
   dbus::MethodCall method_call(kPatchPanelInterface,
                                kSetDnsRedirectionRuleMethod);
   dbus::MessageWriter writer(&method_call);
@@ -746,6 +748,7 @@ base::ScopedFD ClientImpl::RedirectDns(
   request.set_type(type);
   request.set_input_ifname(input_ifname);
   request.set_proxy_address(proxy_address);
+  request.set_host_ifname(host_ifname);
   for (const auto& nameserver : nameservers) {
     request.add_nameservers(nameserver);
   }

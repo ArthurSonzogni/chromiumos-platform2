@@ -126,7 +126,8 @@ class BRILLO_EXPORT Client {
       patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
       const std::string& input_ifname,
       const std::string& proxy_address,
-      const std::vector<std::string>& nameservers) = 0;
+      const std::vector<std::string>& nameservers,
+      const std::string& host_ifname) = 0;
 
   // Obtains a list of NetworkDevices currently managed by patchpanel.
   virtual std::vector<NetworkDevice> GetDevices() = 0;
