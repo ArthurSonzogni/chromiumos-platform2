@@ -49,6 +49,8 @@ class ChromeosStartup {
   bool DevIsDebugBuild() const;
   // Updated stateful partition if an update is pending.
   bool DevUpdateStatefulPartition(const std::string& args);
+  // Gather logs.
+  void DevGatherLogs();
 
   // Returns if the TPM is owned or couldn't be determined.
   bool IsTPMOwned();

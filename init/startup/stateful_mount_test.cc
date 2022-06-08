@@ -416,3 +416,92 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
   EXPECT_EQ(res, message);
 }
+
+class DevGatherLogsTest : public ::testing::Test {
+ protected:
+  DevGatherLogsTest() {}
+
+  void SetUp() override {
+    cros_system_ = std::make_unique<CrosSystemFake>();
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    stateful = base_dir.Append(kStatefulPartition);
+    platform_ = std::make_unique<startup::FakePlatform>();
+    stateful_mount_ = std::make_unique<startup::StatefulMount>(
+        flags_, base_dir, stateful, platform_.get(),
+        std::unique_ptr<brillo::MockLogicalVolumeManager>());
+    lab_preserve_logs_ = stateful.Append(".gatherme");
+    prior_log_dir_ = stateful.Append("unencrypted/prior_logs");
+    var_dir_ = base_dir.Append("var");
+    home_chronos_ = base_dir.Append("home/chronos");
+    ASSERT_TRUE(base::CreateDirectory(prior_log_dir_));
+    ASSERT_TRUE(base::CreateDirectory(var_dir_));
+    ASSERT_TRUE(base::CreateDirectory(home_chronos_));
+  }
+
+  std::unique_ptr<CrosSystemFake> cros_system_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  base::FilePath stateful;
+  base::FilePath lab_preserve_logs_;
+  base::FilePath prior_log_dir_;
+  base::FilePath var_dir_;
+  base::FilePath home_chronos_;
+  std::unique_ptr<startup::FakePlatform> platform_;
+  startup::Flags flags_;
+  std::unique_ptr<startup::StatefulMount> stateful_mount_;
+};
+
+TEST_F(DevGatherLogsTest, NoPreserveLogs) {
+  ASSERT_TRUE(CreateDirAndWriteFile(lab_preserve_logs_, "#"));
+  struct stat st;
+  st.st_mode = S_IFDIR;
+  platform_->SetStatResultForPath(lab_preserve_logs_, st);
+
+  stateful_mount_->DevGatherLogs(base_dir);
+}
+
+TEST_F(DevGatherLogsTest, PreserveLogs) {
+  base::FilePath test = base_dir.Append("test");
+  base::FilePath test1 = test.Append("test1");
+  base::FilePath test2 = test.Append("test2");
+  base::FilePath standalone = base_dir.Append("parent/standalone");
+  base::FilePath var_logs = base_dir.Append("var/logs");
+  base::FilePath log1 = var_logs.Append("log1");
+  base::FilePath home_chronos = base_dir.Append("home/chronos/test");
+
+  base::FilePath prior_test = prior_log_dir_.Append("test");
+  base::FilePath prior_test1 = prior_test.Append("test1");
+  base::FilePath prior_test2 = prior_test.Append("test2");
+  base::FilePath prior_standalone = prior_log_dir_.Append("standalone");
+  base::FilePath prior_log1 = prior_log_dir_.Append("logs/log1");
+
+  std::string preserve_str("#\n");
+  preserve_str.append(test.value());
+  preserve_str.append("\n");
+  preserve_str.append(standalone.value());
+  preserve_str.append("\n#ignore\n\n");
+  preserve_str.append(var_logs.value());
+
+  ASSERT_TRUE(CreateDirAndWriteFile(lab_preserve_logs_, preserve_str));
+  ASSERT_TRUE(CreateDirAndWriteFile(test1, "#"));
+  ASSERT_TRUE(CreateDirAndWriteFile(test2, "#"));
+  ASSERT_TRUE(CreateDirAndWriteFile(standalone, "#"));
+  ASSERT_TRUE(CreateDirAndWriteFile(log1, "#"));
+  ASSERT_TRUE(CreateDirAndWriteFile(home_chronos, "#"));
+
+  struct stat st;
+  st.st_mode = S_IFREG;
+  platform_->SetStatResultForPath(lab_preserve_logs_, st);
+
+  EXPECT_EQ(PathExists(home_chronos), true);
+
+  stateful_mount_->DevGatherLogs(base_dir);
+
+  EXPECT_EQ(PathExists(prior_test1), true);
+  EXPECT_EQ(PathExists(prior_test2), true);
+  EXPECT_EQ(PathExists(prior_standalone), true);
+  EXPECT_EQ(PathExists(prior_log1), true);
+  EXPECT_EQ(PathExists(standalone), true);
+  EXPECT_EQ(PathExists(lab_preserve_logs_), false);
+}

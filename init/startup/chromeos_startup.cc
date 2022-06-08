@@ -548,6 +548,10 @@ int ChromeosStartup::Run() {
     base::WriteFile(reclaim_full_var, "Startup.ReclaimFullVar");
   }
 
+  // Gather logs if needed. This might clear /var, so all init has to be after
+  // this.
+  DevGatherLogs();
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.
@@ -660,6 +664,12 @@ bool ChromeosStartup::DevUpdateStatefulPartition(const std::string& args) {
     return true;
   }
   return stateful_mount_->DevUpdateStatefulPartition(args);
+}
+
+void ChromeosStartup::DevGatherLogs() {
+  if (dev_mode_) {
+    stateful_mount_->DevGatherLogs(root_);
+  }
 }
 
 }  // namespace startup

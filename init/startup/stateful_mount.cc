@@ -560,4 +560,41 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   return true;
 }
 
+// Gather logs.
+void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
+  // For dev/test images, if .gatherme presents, copy files listed in .gatherme
+  // to /mnt/stateful_partition/unencrypted/prior_logs.
+  base::FilePath lab_preserve_logs = stateful_.Append(".gatherme");
+  base::FilePath prior_log_dir = stateful_.Append("unencrypted/prior_logs");
+  std::string log_path;
+
+  if (!base::PathExists(lab_preserve_logs)) {
+    return;
+  }
+
+  std::string files;
+  base::ReadFileToString(lab_preserve_logs, &files);
+  std::vector<std::string> split_files = base::SplitString(
+      files, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (std::string log_path : split_files) {
+    if (log_path.find("#") != std::string::npos) {
+      continue;
+    }
+    base::FilePath log(log_path);
+    if (base::DirectoryExists(log)) {
+      if (!base::CopyDirectory(log, prior_log_dir, true)) {
+        PLOG(WARNING) << "Failed to copy directory " << log_path;
+      }
+    } else {
+      if (!base::CopyFile(log, prior_log_dir.Append(log.BaseName()))) {
+        PLOG(WARNING) << "Failed to copy file " << log_path;
+      }
+    }
+  }
+
+  if (!base::DeleteFile(lab_preserve_logs)) {
+    PLOG(WARNING) << "Failed to delete file: " << lab_preserve_logs;
+  }
+}
+
 }  // namespace startup

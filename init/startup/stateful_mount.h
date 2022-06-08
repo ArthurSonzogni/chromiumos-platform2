@@ -50,6 +50,7 @@ class StatefulMount {
   void MountStateful();
 
   bool DevUpdateStatefulPartition(const std::string& args);
+  void DevGatherLogs(const base::FilePath& base_dir);
 
  private:
   bool IsQuotaEnabled();

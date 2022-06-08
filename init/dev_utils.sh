@@ -86,32 +86,6 @@ dev_update_stateful_partition() {
   rm -rf "${stateful_update_file}"
 }
 
-# Gather logs.
-dev_gather_logs() {
-  # For dev/test images, if .gatherme presents, copy files listed in .gatherme
-  # to ${STATEFUL_PARTITION}/unencrypted/prior_logs.
-  local lab_preserve_logs="${STATEFUL_PARTITION}/.gatherme"
-  local prior_log_dir="${STATEFUL_PARTITION}/unencrypted/prior_logs"
-  local log_path
-
-  if [ ! -f "${lab_preserve_logs}" ]; then
-    return
-  fi
-
-  sed -e '/^#/ d' -e '/^$/ d' "${lab_preserve_logs}" | \
-      while read -r log_path; do
-    if [ -d "${log_path}" ]; then
-      cp -a -r --parents "${log_path}" "${prior_log_dir}" || true
-    elif [ -f "${log_path}" ]; then
-      cp -a "${log_path}" "${prior_log_dir}" || true
-    fi
-  done
-  # shellcheck disable=SC2115
-  rm -rf /var/*
-  rm -rf /home/chronos/*
-  rm "${lab_preserve_logs}"
-}
-
 # Keep this list in sync with the var_overlay elements in the DIRLIST
 # found in chromeos-install from chromeos-base/chromeos-installer.
 MOUNTDIRS="
@@ -237,8 +211,3 @@ dev_pop_paths_to_preserve() {
     rm -rf "${src_path}"
   done
 }
-
-# Load more utilities on test image.
-if [ -f /usr/share/cros/test_utils.sh ]; then
-  . /usr/share/cros/test_utils.sh
-fi

@@ -105,7 +105,6 @@ CROS_DEBUG="$((! $?))"
 
 # Developer mode functions (defined in dev_utils.sh and will be loaded
 # only when CROS_DEBUG=1).
-dev_gather_logs() { true; }
 dev_mount_packages() { true; }
 dev_is_debug_build() { false; }
 dev_pop_paths_to_preserve() { true; }
@@ -233,10 +232,6 @@ needs_clobber_without_devmode_file() {
   ! is_tpm_owned && [ ! -O "${PRESERVATION_REQUEST_FILE}" ] &&
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
-
-# Gather logs if needed.  This might clear /var, so all init has to be after
-# this.
-dev_gather_logs
 
 # Collect crash reports from early boot/mount failures.
 crash_reporter --ephemeral_collect
