@@ -552,6 +552,14 @@ int ChromeosStartup::Run() {
   // this.
   DevGatherLogs();
 
+  // Collect crash reports from early boot/mount failures.
+  brillo::ProcessImpl crash_reporter;
+  crash_reporter.AddArg("/sbin/crash_reporter");
+  crash_reporter.AddArg("--ephemeral_collect");
+  if (crash_reporter.Run() != 0) {
+    PLOG(WARNING) << "Unable to collect early logs and crashes.";
+  }
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.

@@ -233,9 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Collect crash reports from early boot/mount failures.
-crash_reporter --ephemeral_collect
-
 if [ ! -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
   # Set up symlink traversal and FIFO blocking policy for /var, which may reside
   # on a separate file system than /mnt/stateful_partition. Block symlink
