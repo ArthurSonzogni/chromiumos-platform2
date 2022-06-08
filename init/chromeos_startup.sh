@@ -268,15 +268,6 @@ force_clean_file_attrs() {
   fi
 }
 
-# Setup the encrypted reboot vault once the encrypted stateful partition
-# is available. If unlocking the encrypted reboot vault failed (due to power
-# loss/reboot/invalid vault), attempt to recreate the encrypted reboot vault.
-if [ "${USE_ENCRYPTED_REBOOT_VAULT}" -eq "1" ]; then
-  if ! encrypted-reboot-vault --action=unlock; then
-    encrypted-reboot-vault --action=create
-  fi
-fi
-
 force_clean_file_attrs /var
 force_clean_file_attrs /home/chronos
 
