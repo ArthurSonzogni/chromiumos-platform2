@@ -286,6 +286,19 @@ class MountStackTest : public ::testing::Test {
   startup::MountHelper mount_helper_;
 };
 
+TEST_F(MountStackTest, RememberMount) {
+  std::stack<base::FilePath> mount_stack = {};
+  std::deque<base::FilePath> end = {base::FilePath("/home"),
+                                    base::FilePath("/root")};
+  std::stack<base::FilePath> end_stack(end);
+  base::FilePath mount("/home");
+  mount_helper_.RememberMount(mount);
+  base::FilePath mnt("/root");
+  mount_helper_.RememberMount(mnt);
+  std::stack<base::FilePath> res_stack = mount_helper_.GetMountStackForTest();
+  EXPECT_EQ(res_stack, end_stack);
+}
+
 TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
   std::stack<base::FilePath> end_stack = {};
   std::deque<base::FilePath> mount = {base::FilePath("/home"),

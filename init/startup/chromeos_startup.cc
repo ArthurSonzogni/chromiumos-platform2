@@ -33,6 +33,7 @@
 namespace {
 
 constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
+constexpr char kHome[] = "home";
 constexpr char kUnencrypted[] = "unencrypted";
 
 // The "/." ensures we trigger the automount, instead of just examining the
@@ -403,6 +404,19 @@ void ChromeosStartup::CheckForStatefulWipe() {
   }
 }
 
+// Mount /home.
+void ChromeosStartup::MountHome() {
+  const base::FilePath home = stateful_.Append(kHome);
+  const base::FilePath home_root = root_.Append(kHome);
+  mount_helper_->MountOrFail(home, home_root, "", MS_BIND, "");
+  // Remount /home with nosymfollow: bind mounts do not accept the option
+  // within the same command.
+  if (!platform_->Mount(base::FilePath(), home_root, "",
+                        MS_REMOUNT | kCommonMountFlags | MS_NOSYMFOLLOW, "")) {
+    PLOG(WARNING) << "Unable to remount " << home_root.value();
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -439,6 +453,8 @@ int ChromeosStartup::Run() {
   ForceCleanFileAttrs(unencrypted);
 
   TmpfilesConfiguration();
+
+  MountHome();
 
   int ret = RunChromeosStartupScript();
   if (ret) {

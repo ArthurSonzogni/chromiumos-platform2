@@ -28,10 +28,18 @@ class MountHelper {
               const base::FilePath& stateful);
   virtual ~MountHelper() = default;
 
+  // Add mount to mount stack.
+  void RememberMount(const base::FilePath& mount);
   // On failure unmount all saved mount points and repair stateful.
   void CleanupMountsStack(std::vector<base::FilePath>* mnts);
   // Unmounts the incomplete mount setup during the failure path.
   void CleanupMounts(const std::string& msg);
+  // Tries to mount, clobbers the stateful partition on failure.
+  void MountOrFail(const base::FilePath& source,
+                   const base::FilePath& target,
+                   const std::string& type,
+                   const int32_t& flags,
+                   const std::string& data);
   // Sets up a mount stack for testing.
   void SetMountStackForTest(const std::stack<base::FilePath>& mount_stack);
   // Gets the mount stack for testing.

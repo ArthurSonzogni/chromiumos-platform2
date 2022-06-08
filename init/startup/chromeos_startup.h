@@ -91,6 +91,9 @@ class ChromeosStartup {
   // necessary.
   void CheckForStatefulWipe();
 
+  // Mount /home.
+  void MountHome();
+
   // Runs the bash version of chromeos startup to allow for incremental
   // migration.
   int RunChromeosStartupScript();

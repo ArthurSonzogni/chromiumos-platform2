@@ -40,6 +40,11 @@ MountHelper::MountHelper(std::unique_ptr<Platform> platform,
       root_(root),
       stateful_(stateful) {}
 
+// Adds mounts to undo_mount stack.
+void MountHelper::RememberMount(const base::FilePath& mount) {
+  mount_stack_.push(mount);
+}
+
 void MountHelper::CleanupMountsStack(std::vector<base::FilePath>* mnts) {
   // On failure unmount all saved mount points and repair stateful.
   base::FilePath encrypted = stateful_.Append("encrypted");
@@ -90,6 +95,27 @@ void MountHelper::CleanupMounts(const std::string& msg) {
 
   std::vector<std::string> argv{"fast", "keepimg"};
   platform_->Clobber(argv);
+}
+
+// Used to mount essential mount points for the system from the stateful
+// or encrypted stateful partition.
+// On failure, clobbers the stateful partition.
+void MountHelper::MountOrFail(const base::FilePath& source,
+                              const base::FilePath& target,
+                              const std::string& type,
+                              const int32_t& flags,
+                              const std::string& data) {
+  if (base::DirectoryExists(source) && base::DirectoryExists(target)) {
+    if (platform_->Mount(source, target, type.c_str(), flags, data)) {
+      // Push it on the undo stack if we fail later.
+      RememberMount(target);
+      return;
+    }
+  }
+  std::string msg = "Failed to mount " + source.value() + ", " +
+                    target.value() + ", " + type + ", " +
+                    std::to_string(flags) + ", " + data;
+  CleanupMounts(msg);
 }
 
 // Give mount-encrypted umount 10 times to retry, otherwise

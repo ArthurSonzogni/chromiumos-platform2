@@ -269,13 +269,6 @@ force_clean_file_attrs() {
   fi
 }
 
-# Mount /home.  This mount inherits nodev,noexec,nosuid from
-# /mnt/stateful_partition above.
-mount_or_fail --bind /mnt/stateful_partition/home /home
-# Remount /home with nosymfollow: bind mounts do not accept the option
-# within the same command.
-mount -o remount,nosymfollow /home
-
 if [ -f "/etc/init/tpm2-simulator.conf" ]; then
   initctl start tpm2-simulator || true
 fi
