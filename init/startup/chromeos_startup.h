@@ -51,7 +51,21 @@ class ChromeosStartup {
   // Run the chromeos startup routine.
   int Run();
 
+ protected:
+  // Check whether the device is allowed to boot in dev mode.
+  void DevCheckBlockDevMode(const base::FilePath& dev_mode_file) const;
+
+  // Set dev_mode_ for tests.
+  void SetDevMode(bool dev_mode);
+
  private:
+  friend class DevCheckBlockTest;
+  FRIEND_TEST(DevCheckBlockTest, DevSWBoot);
+  FRIEND_TEST(DevCheckBlockTest, SysFsVpdSlow);
+  FRIEND_TEST(DevCheckBlockTest, CrosSysBlockDev);
+  FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowFail);
+  FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowPass);
+
   void CheckClock();
 
   // Runs the bash version of chromeos startup to allow for incremental
@@ -68,6 +82,7 @@ class ChromeosStartup {
   std::unique_ptr<Platform> platform_;
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;
+  bool dev_mode_;
 };
 
 }  // namespace startup

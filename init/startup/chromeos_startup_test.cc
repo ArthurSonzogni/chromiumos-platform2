@@ -24,6 +24,20 @@
 #include "init/startup/fake_platform_impl.h"
 #include "init/startup/platform_impl.h"
 
+namespace startup {
+
+namespace {
+
+// Helper function to create directory and write to file.
+bool CreateDirAndWriteFile(const base::FilePath& path,
+                           const std::string& contents) {
+  return base::CreateDirectory(path.DirName()) &&
+         base::WriteFile(path, contents.c_str(), contents.length()) ==
+             contents.length();
+}
+
+}  // namespace
+
 class EarlySetupTest : public ::testing::Test {
  protected:
   EarlySetupTest() : cros_system_(new CrosSystemFake()) {}
@@ -72,3 +86,102 @@ TEST_F(EarlySetupTest, NoTracing) {
 
   startup_->EarlySetup();
 }
+
+class DevCheckBlockTest : public ::testing::Test {
+ protected:
+  DevCheckBlockTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    vpd_dir = base_dir.Append("sys/firmware/vpd/rw");
+    vpd_file = vpd_dir.Append("block_devmode");
+    dev_mode_file = base_dir.Append(".developer_mode");
+    platform_ = new startup::FakePlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_));
+    ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
+    base::CreateDirectory(dev_mode_file.DirName());
+    startup_->SetDevMode(true);
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  base::FilePath vpd_dir;
+  base::FilePath vpd_file;
+  base::FilePath dev_mode_file;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(DevCheckBlockTest, DevSWBoot) {
+  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 0));
+  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(CreateDirAndWriteFile(vpd_file, "1"));
+  struct stat st;
+  st.st_mode = S_IFREG;
+  platform_->SetStatResultForPath(vpd_file, st);
+
+  startup_->DevCheckBlockDevMode(dev_mode_file);
+  EXPECT_EQ(PathExists(dev_mode_file), false);
+}
+
+TEST_F(DevCheckBlockTest, SysFsVpdSlow) {
+  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(CreateDirAndWriteFile(vpd_file, "1"));
+  struct stat st;
+  st.st_mode = S_IFREG;
+  platform_->SetStatResultForPath(vpd_file, st);
+
+  startup_->DevCheckBlockDevMode(dev_mode_file);
+  EXPECT_EQ(PathExists(dev_mode_file), true);
+}
+
+TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
+  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->SetInt("block_devmode", 1));
+
+  startup_->DevCheckBlockDevMode(dev_mode_file);
+  EXPECT_EQ(PathExists(dev_mode_file), true);
+}
+
+TEST_F(DevCheckBlockTest, ReadVpdSlowFail) {
+  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->SetInt("block_devmode", 0));
+  ASSERT_TRUE(cros_system_->SetInt("nvram_cleared", 1));
+
+  platform_->SetVpdResult(-1);
+
+  startup_->DevCheckBlockDevMode(dev_mode_file);
+  EXPECT_EQ(PathExists(dev_mode_file), false);
+}
+
+TEST_F(DevCheckBlockTest, ReadVpdSlowPass) {
+  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->SetInt("block_devmode", 0));
+  ASSERT_TRUE(cros_system_->SetInt("nvram_cleared", 1));
+
+  platform_->SetVpdResult(1);
+  std::string res;
+  std::vector<std::string> args = {"args"};
+  platform_->VpdSlow(args, &res);
+  EXPECT_EQ(res, "1");
+
+  startup_->DevCheckBlockDevMode(dev_mode_file);
+  EXPECT_EQ(PathExists(dev_mode_file), true);
+  EXPECT_EQ(platform_->GetBootAlertForArg("block_devmode"), 1);
+}
+
+}  // namespace startup

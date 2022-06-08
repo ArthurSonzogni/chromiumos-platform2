@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include <base/logging.h>
 #include <brillo/process/process.h>
 
+#include "init/crossystem.h"
 #include "init/startup/platform_impl.h"
 #include "init/utils.h"
 
@@ -79,6 +81,22 @@ void Platform::BootAlert(const std::string& arg) {
   exit(1);
 }
 
+bool Platform::VpdSlow(const std::vector<std::string>& args,
+                       std::string* output) {
+  brillo::ProcessImpl vpd;
+  vpd.AddArg("/usr/sbin/vpd");
+  for (const std::string& arg : args) {
+    vpd.AddArg(arg);
+  }
+  vpd.RedirectUsingMemory(STDOUT_FILENO);
+
+  if (vpd.Run() == 0) {
+    *output = vpd.GetOutputString(STDOUT_FILENO);
+    return true;
+  }
+  return false;
+}
+
 bool Platform::RunHiberman(const base::FilePath& output_file) {
   brillo::ProcessImpl hiberman;
   hiberman.AddArg("/usr/sbin/hiberman");
@@ -134,6 +152,14 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
   if (status != 0) {
     PLOG(WARNING) << "Repairing clobber.log failed with code " << status;
   }
+}
+
+// Determine if the device is in dev mode.
+bool Platform::InDevMode(CrosSystem* cros_system) {
+  // cros_debug equals one if we've booted in developer mode or we've booted
+  // a developer image.
+  int debug;
+  return (cros_system->GetInt("cros_debug", &debug) && debug == 1);
 }
 
 }  // namespace startup

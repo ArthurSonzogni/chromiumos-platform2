@@ -11,6 +11,8 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 
+#include "init/crossystem.h"
+
 namespace startup {
 
 // Platform defines functions that interface with the filesystem and
@@ -56,6 +58,10 @@ class Platform {
   // Runs hiberman resume-init with the given output file.
   virtual bool RunHiberman(const base::FilePath& output_file);
 
+  // Run vpd with the given args.
+  virtual bool VpdSlow(const std::vector<std::string>& args,
+                       std::string* output);
+
   // Runs crash_reporter with the given dev as the mount device.
   void AddClobberCrashReport(const std::string& dev);
 
@@ -64,6 +70,9 @@ class Platform {
 
   // Runs clobber-log --repair for the given device with the given message.
   void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
+
+  // Determine if the device is in dev mode.
+  bool InDevMode(CrosSystem* cros_system);
 };
 
 }  // namespace startup

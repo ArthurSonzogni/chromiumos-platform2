@@ -123,7 +123,6 @@ CROS_DEBUG="$((! $?))"
 
 # Developer mode functions (defined in dev_utils.sh and will be loaded
 # only when CROS_DEBUG=1).
-dev_check_block_dev_mode() { true; }
 dev_gather_logs() { true; }
 dev_mount_packages() { true; }
 dev_is_debug_build() { false; }
@@ -240,9 +239,6 @@ PRESERVATION_REQUEST_FILE="/mnt/stateful_partition/preservation_request"
 # This file is created after the TPM is initialized and the device is owned.
 INSTALL_ATTRIBUTES_FILE=\
 "/mnt/stateful_partition/home/.shadow/install_attributes.pb"
-
-# Checks if developer mode is blocked.
-dev_check_block_dev_mode "${DEV_MODE_FILE}"
 
 # File used to trigger a stateful reset.  Contains arguments for
 # the "clobber-state" call.  This file may exist at boot time, as

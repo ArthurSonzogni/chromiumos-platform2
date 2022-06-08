@@ -34,6 +34,10 @@ int FakePlatform::GetBootAlertForArg(const std::string& arg) {
   return alert_result_map_[arg];
 }
 
+void FakePlatform::SetVpdResult(const int result) {
+  vpd_result_ = result;
+}
+
 bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
   std::unordered_map<std::string, struct stat>::iterator it;
   it = result_map_.find(path.value());
@@ -89,6 +93,15 @@ int FakePlatform::Ioctl(int fd, unsigned long request, int* arg1) {
 
 void FakePlatform::BootAlert(const std::string& arg) {
   alert_result_map_[arg] = 1;
+}
+
+bool FakePlatform::VpdSlow(const std::vector<std::string>& args,
+                           std::string* output) {
+  if (vpd_result_ == -1) {
+    return false;
+  }
+  *output = std::to_string(vpd_result_);
+  return true;
 }
 
 }  // namespace startup

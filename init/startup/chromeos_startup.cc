@@ -25,6 +25,7 @@
 #include "init/startup/platform_impl.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/stateful_mount.h"
+#include "init/utils.h"
 
 namespace {
 
@@ -41,6 +42,8 @@ constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 
+// This file is created by clobber-state after the transition to dev mode.
+constexpr char kDevModeFile[] = ".developer_mode";
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kDebugfsAccessGrp[] = "debugfs-access";
@@ -207,6 +210,8 @@ void ChromeosStartup::EarlySetup() {
 
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
+  dev_mode_ = platform_->InDevMode(cros_system_.get());
+
   // Make sure our clock is somewhat up-to-date. We don't need any resources
   // mounted below, so do this early on.
   CheckClock();
@@ -226,6 +231,10 @@ int ChromeosStartup::Run() {
     // set up exceptions for developer mode later on.
     BlockSymlinkAndFifo(root_, stateful_.value());
   }
+
+  // Checks if developer mode is blocked.
+  base::FilePath dev_mode_allowed_file = stateful_.Append(kDevModeFile);
+  DevCheckBlockDevMode(dev_mode_allowed_file);
 
   int ret = RunChromeosStartupScript();
   if (ret) {
@@ -253,6 +262,77 @@ int ChromeosStartup::RunChromeosStartupScript() {
   brillo::ProcessImpl proc;
   proc.AddArg("/sbin/chromeos_startup.sh");
   return proc.Run();
+}
+
+// Check whether the device is allowed to boot in dev mode.
+// 1. If a debug build is already installed on the system, ignore block_devmode.
+//    It is pointless in this case, as the device is already in a state where
+//    the local user has full control.
+// 2. According to recovery mode only boot with signed images, the block_devmode
+//    could be ignored here -- otherwise factory shim will be blocked especially
+//    that RMA center can't reset this device.
+void ChromeosStartup::DevCheckBlockDevMode(
+    const base::FilePath& dev_mode_file) const {
+  if (!dev_mode_) {
+    return;
+  }
+  int devsw;
+  int debug;
+  int rec_reason;
+  if (!cros_system_->GetInt("devsw_boot", &devsw) ||
+      !cros_system_->GetInt("debug_build", &debug) ||
+      !cros_system_->GetInt("recovery_reason", &rec_reason)) {
+    LOG(WARNING) << "Failed to get boot information from crossystem";
+    return;
+  }
+  if (!(devsw == 1 && debug == 0 && rec_reason == 0)) {
+    DLOG(INFO) << "Debug build is already installed, ignore block_devmode";
+    return;
+  }
+
+  // The file indicates the system has booted in developer mode and must
+  // initiate a wiping process in the next (normal mode) boot.
+  base::FilePath vpd_block_dir = root_.Append("sys/firmware/vpd/rw");
+  base::FilePath vpd_block_file = vpd_block_dir.Append("block_devmode");
+  bool block_devmode = false;
+
+  // Checks ordered by run time.
+  // 1. Try reading VPD through /sys.
+  // 2. Try crossystem.
+  // 3. Re-read VPD directly from SPI flash (slow!) but only for systems
+  //    that don't have VPD in sysplatform and only when NVRAM indicates that it
+  //    has been cleared.
+  int crossys_block;
+  int nvram;
+  int val;
+  if (utils::ReadFileToInt(vpd_block_file, &val) && val == 1) {
+    block_devmode = true;
+  } else if (cros_system_->GetInt("block_devmode", &crossys_block) &&
+             crossys_block == 1) {
+    block_devmode = true;
+  } else if (!base::DirectoryExists(vpd_block_dir) &&
+             cros_system_->GetInt("nvram_cleared", &nvram) && nvram == 1) {
+    std::string output;
+    std::vector<std::string> args = {"-i", "RW_VPD", "-g", "block_devmode"};
+    if (platform_->VpdSlow(args, &output) && output == "1") {
+      block_devmode = true;
+    }
+  }
+
+  if (block_devmode) {
+    // Put a flag file into place that will trigger a stateful partition wipe
+    // after reboot in verified mode.
+    if (!PathExists(dev_mode_file)) {
+      base::WriteFile(dev_mode_file, "");
+    }
+
+    platform_->BootAlert("block_devmode");
+  }
+}
+
+// Set dev_mode_ for tests.
+void ChromeosStartup::SetDevMode(bool dev_mode) {
+  dev_mode_ = dev_mode;
 }
 
 }  // namespace startup

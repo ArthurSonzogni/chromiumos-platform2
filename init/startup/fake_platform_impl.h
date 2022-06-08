@@ -32,6 +32,8 @@ class FakePlatform : public Platform {
 
   int GetBootAlertForArg(const std::string& arg);
 
+  void SetVpdResult(const int result);
+
   void SetClobberLogFile(const base::FilePath& path);
 
   void SetIoctlReturnValue(int ret);
@@ -55,6 +57,9 @@ class FakePlatform : public Platform {
 
   void BootAlert(const std::string& arg) override;
 
+  bool VpdSlow(const std::vector<std::string>& args,
+               std::string* output) override;
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
   std::unordered_map<std::string, std::string> mount_result_map_;
@@ -62,6 +67,7 @@ class FakePlatform : public Platform {
   int open_ret_ = -1;
   int ioctl_ret_ = 0;
   std::unordered_map<std::string, int> alert_result_map_;
+  int vpd_result_;
 };
 
 }  // namespace startup

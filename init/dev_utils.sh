@@ -21,50 +21,6 @@ dev_is_debug_build() {
   crossystem 'debug_build?1'
 }
 
-# Check whether the device is allowed to boot in dev mode.
-# 1. If a debug build is already installed on the system, ignore block_devmode.
-#    It is pointless in this case, as the device is already in a state where the
-#    local user has full control.
-# 2. According to recovery mode only boot with signed images, the block_devmode
-#    could be ignored here -- otherwise factory shim will be blocked expecially
-#    that RMA center can't reset this device.
-#
-# Usage: dev_check_block_dev_mode DEV_MODE_FILE
-dev_check_block_dev_mode() {
-  if ! crossystem "devsw_boot?1" "debug_build?0" "recovery_reason?0"; then
-    return
-  fi
-
-  # The file indicates the system has booted in developer mode and must initiate
-  # a wiping process in next (normal mode) boot.
-  local dev_mode_file="$1"
-  local vpd_block_devmode_file=/sys/firmware/vpd/rw/block_devmode
-  local block_devmode=
-
-  # Checks ordered by run time: First try reading VPD through sysfs.
-  if [ -f "${vpd_block_devmode_file}" ] &&
-     [ "$(cat "${vpd_block_devmode_file}")" = "1" ]; then
-    block_devmode=1
-  # Second try crossystem.
-  elif crossystem "block_devmode?1"; then
-    block_devmode=1
-  # Third re-read VPD directly from SPI flash (slow!) but only for systems
-  # that don't have VPD in sysfs and only when NVRAM indicates that it has
-  # been cleared.
-  elif [ ! -d /sys/firmware/vpd/rw ] &&
-     crossystem "nvram_cleared?1" &&
-     [ "$(vpd -i RW_VPD -g block_devmode)" = "1" ]; then
-    block_devmode=1
-  fi
-
-  if [ -n "${block_devmode}" ]; then
-    # Put a flag file into place that will trigger a stateful partition wipe
-    # after reboot in verified mode.
-    touch "${dev_mode_file}"
-    chromeos-boot-alert block_devmode
-  fi
-}
-
 # Updates stateful partition if pending update is available.
 # shellcheck disable=SC2120
 dev_update_stateful_partition() {
