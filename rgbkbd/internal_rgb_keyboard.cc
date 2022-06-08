@@ -32,10 +32,10 @@ std::string CreateRgbLogString(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() {
-  // TODO(michaelcheco): Replace 0x18d1/0x5022 with constants.
   auto endpoint = std::make_unique<ec::EcUsbEndpoint>();
-  return endpoint->Init(0x18d1, 0x5022) ? std::move(endpoint)
-                                        : std::unique_ptr<ec::EcUsbEndpoint>();
+  return endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)
+             ? std::move(endpoint)
+             : std::unique_ptr<ec::EcUsbEndpoint>();
 }
 
 base::ScopedFD CreateFileDescriptorForEc() {
