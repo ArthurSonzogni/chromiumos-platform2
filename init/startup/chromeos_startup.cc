@@ -67,6 +67,11 @@ constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kDebugfsAccessGrp[] = "debugfs-access";
 
+constexpr char kTpmFirmwareUpdateCleanup[] =
+    "usr/sbin/tpm-firmware-update-cleanup";
+constexpr char kTpmFirmwareUpdateRequestFlagFile[] =
+    "unencrypted/preserve/tpm_firmware_update_request";
+
 }  // namespace
 
 namespace startup {
@@ -434,6 +439,19 @@ void ChromeosStartup::StartTpm2Simulator() {
   }
 }
 
+// Clean up after a TPM firmware update. This must happen before mounting
+// stateful, which will initialize the TPM again.
+void ChromeosStartup::CleanupTpm() {
+  base::FilePath tpm_update_req =
+      stateful_.Append(kTpmFirmwareUpdateRequestFlagFile);
+  if (base::PathExists(tpm_update_req)) {
+    base::FilePath tpm_cleanup = root_.Append(kTpmFirmwareUpdateCleanup);
+    if (base::PathExists(tpm_cleanup)) {
+      platform_->RunProcess(tpm_cleanup);
+    }
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -474,6 +492,8 @@ int ChromeosStartup::Run() {
   MountHome();
 
   StartTpm2Simulator();
+
+  CleanupTpm();
 
   int ret = RunChromeosStartupScript();
   if (ret) {

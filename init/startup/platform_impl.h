@@ -73,6 +73,9 @@ class Platform {
 
   virtual void RemoveInBackground(const std::vector<base::FilePath>& paths);
 
+  // Run cmd_path as a brillo process.
+  virtual void RunProcess(const base::FilePath& cmd_path);
+
   // Runs crash_reporter with the given args.
   void AddClobberCrashReport(const std::vector<std::string> args);
 

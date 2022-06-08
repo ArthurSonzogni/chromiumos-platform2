@@ -54,6 +54,7 @@ class MockPlatform : public Platform {
               RunHiberman,
               (const base::FilePath& output_file),
               (override));
+  MOCK_METHOD(void, RunProcess, (const base::FilePath& cmd_path), (override));
 };
 
 }  // namespace startup

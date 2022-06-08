@@ -74,6 +74,9 @@ class ChromeosStartup {
   // Set dev_mode_ for tests.
   void SetDevMode(bool dev_mode);
 
+  // Clean up after a TPM firmware update.
+  void CleanupTpm();
+
  private:
   friend class DevCheckBlockTest;
   FRIEND_TEST(DevCheckBlockTest, DevSWBoot);
@@ -81,6 +84,11 @@ class ChromeosStartup {
   FRIEND_TEST(DevCheckBlockTest, CrosSysBlockDev);
   FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowFail);
   FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowPass);
+
+  friend class TpmCleanupTest;
+  FRIEND_TEST(TpmCleanupTest, TpmCleanupNoFlagFile);
+  FRIEND_TEST(TpmCleanupTest, TpmCleanupNoCmdPath);
+  FRIEND_TEST(TpmCleanupTest, TpmCleanupSuccess);
 
   void CheckClock();
   // Returns if the device is transitioning between verified boot and

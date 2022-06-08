@@ -23,12 +23,23 @@
 #include "init/crossystem_fake.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/fake_platform_impl.h"
+#include "init/startup/mock_platform_impl.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
+
+using testing::_;
+using testing::AnyNumber;
+using testing::ByMove;
+using testing::Return;
 
 namespace startup {
 
 namespace {
+
+constexpr char kTpmFirmwareUpdateCleanup[] =
+    "usr/sbin/tpm-firmware-update-cleanup";
+constexpr char kTpmFirmwareUpdateRequestFlagFile[] =
+    "unencrypted/preserve/tpm_firmware_update_request";
 
 // Helper function to create directory and write to file.
 bool CreateDirAndWriteFile(const base::FilePath& path,
@@ -262,6 +273,53 @@ TEST_F(TPMTest, NeedsClobberInstallFile) {
   st.st_uid = getuid();
   platform_->SetStatResultForPath(install_file, st);
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+}
+
+class TpmCleanupTest : public ::testing::Test {
+ protected:
+  TpmCleanupTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    mock_platform_ = new startup::MockPlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir,
+        std::unique_ptr<startup::MockPlatform>(mock_platform_),
+        std::make_unique<startup::MountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir));
+    flag_file_ = base_dir.Append(kTpmFirmwareUpdateRequestFlagFile);
+    tpm_cleanup_ = base_dir.Append(kTpmFirmwareUpdateCleanup);
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  startup::MockPlatform* mock_platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+  base::FilePath flag_file_;
+  base::FilePath tpm_cleanup_;
+};
+
+TEST_F(TpmCleanupTest, TpmCleanupNoFlagFile) {
+  EXPECT_CALL(*mock_platform_, RunProcess(tpm_cleanup_)).Times(0);
+  startup_->CleanupTpm();
+}
+
+TEST_F(TpmCleanupTest, TpmCleanupNoCmdPath) {
+  CreateDirAndWriteFile(flag_file_, "exists");
+  EXPECT_CALL(*mock_platform_, RunProcess(tpm_cleanup_)).Times(0);
+  startup_->CleanupTpm();
+}
+
+TEST_F(TpmCleanupTest, TpmCleanupSuccess) {
+  CreateDirAndWriteFile(flag_file_, "exists");
+  CreateDirAndWriteFile(tpm_cleanup_, "exists");
+  EXPECT_CALL(*mock_platform_, RunProcess(tpm_cleanup_)).Times(1);
+  startup_->CleanupTpm();
 }
 
 class MountStackTest : public ::testing::Test {

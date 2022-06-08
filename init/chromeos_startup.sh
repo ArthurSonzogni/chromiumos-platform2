@@ -269,12 +269,6 @@ force_clean_file_attrs() {
   fi
 }
 
-# Clean up after a TPM firmware update. This must happen before mounting
-# stateful, which will initialize the TPM again.
-if [ -x "/usr/sbin/tpm-firmware-update-cleanup" ]; then
-  /usr/sbin/tpm-firmware-update-cleanup
-fi
-
 if ! do_mount_var_and_home_chronos; then
   if [ ! -O "${MOUNT_ENCRYPTED_FAILED_FILE}" ]; then
     touch "${MOUNT_ENCRYPTED_FAILED_FILE}"

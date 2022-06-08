@@ -135,6 +135,15 @@ void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
   }
 }
 
+// Run command, cmd_path.
+void Platform::RunProcess(const base::FilePath& cmd_path) {
+  brillo::ProcessImpl proc;
+  proc.AddArg(cmd_path.value());
+  if (proc.Run() != 0) {
+    PLOG(WARNING) << "Failed to run " << cmd_path.value();
+  }
+}
+
 bool Platform::RunHiberman(const base::FilePath& output_file) {
   brillo::ProcessImpl hiberman;
   hiberman.AddArg("/usr/sbin/hiberman");
