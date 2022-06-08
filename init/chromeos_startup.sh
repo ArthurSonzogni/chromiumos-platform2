@@ -275,8 +275,6 @@ force_clean_file_attrs() {
   fi
 }
 
-force_clean_file_attrs /mnt/stateful_partition/unencrypted
-
 # Apply /mnt/stateful_partition specific tmpfiles.d configurations.
 /bin/systemd-tmpfiles --create --remove --boot \
   --prefix /mnt/stateful_partition 2>>"${TMPFILES_LOG}" ||

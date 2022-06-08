@@ -20,6 +20,7 @@
 
 #include "init/crossystem.h"
 #include "init/crossystem_impl.h"
+#include "init/file_attrs_cleaner.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
@@ -31,6 +32,7 @@
 namespace {
 
 constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
+constexpr char kUnencrypted[] = "unencrypted";
 
 // The "/." ensures we trigger the automount, instead of just examining the
 // mount point.
@@ -153,6 +155,27 @@ bool ChromeosStartup::IsDevToVerifiedModeTransition(int devsw_boot) {
   std::string dstr;
   return (cros_system_->GetInt("devsw_boot", &boot) && boot == devsw_boot) &&
          (cros_system_->GetString("mainfw_type", &dstr) && dstr != "recovery");
+}
+
+// Walk the specified path and reset any file attributes (like immutable bit).
+void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
+  // No physical stateful partition available, usually due to initramfs
+  // (recovery image, factory install shim or netboot. Do not check.
+  if (state_dev_.empty()) {
+    return;
+  }
+
+  std::vector<std::string> skip;
+  int url_xattrs_count;
+  bool status =
+      file_attrs_cleaner::ScanDir(path.value(), skip, &url_xattrs_count);
+
+  if (!status) {
+    std::vector<std::string> args = {"keepimg"};
+    platform_->Clobber(
+        "self-repair", args,
+        std::string("Bad file attrs under ").append(path.value()));
+  }
 }
 
 ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
@@ -392,6 +415,10 @@ int ChromeosStartup::Run() {
   DevCheckBlockDevMode(dev_mode_allowed_file_);
 
   CheckForStatefulWipe();
+
+  // Cleanup the file attributes in the unencrypted stateful directory.
+  base::FilePath unencrypted = stateful_.Append(kUnencrypted);
+  ForceCleanFileAttrs(unencrypted);
 
   int ret = RunChromeosStartupScript();
   if (ret) {
