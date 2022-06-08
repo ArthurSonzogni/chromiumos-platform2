@@ -216,7 +216,8 @@ namespace {
 TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   scoped_refptr<MockUserSession> user_session =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(user_session));
   EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountGuest()).WillOnce(Invoke([]() {
     return OkStatus<CryptohomeMountError>();
@@ -286,7 +287,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // User authed and exists.
   scoped_refptr<MockUserSession> user_session =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(user_session));
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -320,7 +322,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // But ephemeral succeeds ...
   scoped_refptr<MockUserSession> user_session2 =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session2));
+  EXPECT_CALL(user_session_factory_, New(kUsername2, _, _))
+      .WillOnce(Return(user_session2));
   EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -348,7 +351,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // ... and so regular.
   scoped_refptr<MockUserSession> user_session3 =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session3));
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(user_session3));
   EXPECT_CALL(*user_session3, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -395,7 +399,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // Auth and prepare.
   scoped_refptr<MockUserSession> user_session =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(user_session));
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -445,7 +450,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // But ephemeral succeeds ...
   scoped_refptr<MockUserSession> user_session2 =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session2));
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(user_session2));
   EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -472,7 +478,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // ... and so regular.
   scoped_refptr<MockUserSession> user_session3 =
       base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session3));
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(user_session3));
   EXPECT_CALL(*user_session3, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));

@@ -1296,8 +1296,8 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
   if (sessions_.count(username) == 0U) {
     // We don't have a mount associated with |username|, let's create one.
     EnsureBootLockboxFinalized();
-    sessions_[username] =
-        user_session_factory_->New(legacy_mount_, bind_mount_downloads_);
+    sessions_[username] = user_session_factory_->New(username, legacy_mount_,
+                                                     bind_mount_downloads_);
   }
   return sessions_[username];
 }

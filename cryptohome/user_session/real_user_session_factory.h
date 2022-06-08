@@ -6,6 +6,7 @@
 #define CRYPTOHOME_USER_SESSION_REAL_USER_SESSION_FACTORY_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/memory/ref_counted.h>
@@ -39,11 +40,12 @@ class RealUserSessionFactory : public UserSessionFactory {
 
   ~RealUserSessionFactory() override = default;
 
-  scoped_refptr<UserSession> New(bool legacy_mount,
+  scoped_refptr<UserSession> New(const std::string& username,
+                                 bool legacy_mount,
                                  bool bind_mount_downloads) override {
     return base::MakeRefCounted<RealUserSession>(
-        homedirs_, keyset_management_, user_activity_timestamp_manager_,
-        pkcs11_token_factory_,
+        username, homedirs_, keyset_management_,
+        user_activity_timestamp_manager_, pkcs11_token_factory_,
         mount_factory_->New(platform_, homedirs_, legacy_mount,
                             bind_mount_downloads, /*use_local_mounter=*/false));
   }

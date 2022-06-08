@@ -2165,6 +2165,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
+  constexpr char kUser[] = "foo@bar.net";
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
@@ -2177,7 +2178,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   InitializeUserDataAuth();
 
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
+  EXPECT_CALL(user_session_factory_, New(kUser, _, _))
+      .WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
@@ -2201,7 +2203,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
 
   user_data_auth::MountRequest mount_req;
-  mount_req.mutable_account()->set_account_id("foo@bar.net");
+  mount_req.mutable_account()->set_account_id(kUser);
   mount_req.mutable_authorization()->mutable_key()->set_secret("key");
   mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
       "password");
@@ -2276,6 +2278,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
 TEST_F(UserDataAuthTest,
        CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly_FirstBoot) {
+  constexpr char kUser[] = "foo@bar.net";
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
@@ -2287,7 +2290,8 @@ TEST_F(UserDataAuthTest,
   InitializeUserDataAuth();
 
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
+  EXPECT_CALL(user_session_factory_, New(kUser, _, _))
+      .WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
@@ -2311,7 +2315,7 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
 
   user_data_auth::MountRequest mount_req;
-  mount_req.mutable_account()->set_account_id("foo@bar.net");
+  mount_req.mutable_account()->set_account_id(kUser);
   mount_req.mutable_authorization()->mutable_key()->set_secret("key");
   mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
       "password");
@@ -2638,8 +2642,8 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(user_session_factory_, New(_, _))
-      .WillOnce(Invoke([this](bool, bool) {
+  EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
+      .WillOnce(Invoke([this](const std::string&, bool, bool) {
         SetupMount(kGuestUserName);
         EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([]() {
           return OkStatus<CryptohomeMountError>();
@@ -2703,8 +2707,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(user_session_factory_, New(_, _))
-      .WillOnce(Invoke([this](bool, bool) {
+  EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
+      .WillOnce(Invoke([this](const std::string& username, bool, bool) {
         SetupMount(kGuestUserName);
         EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([this]() {
           // |this| is captured for kErrorLocationPlaceholder.
@@ -2917,7 +2921,8 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
   mount_req_->set_public_mount(true);
 
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
+  EXPECT_CALL(user_session_factory_, New(kUser, _, _))
+      .WillOnce(Return(session_));
 
   bool called = false;
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));

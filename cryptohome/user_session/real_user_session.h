@@ -32,6 +32,7 @@ class RealUserSession : public UserSession {
  public:
   RealUserSession();
   RealUserSession(
+      const std::string& username,
       HomeDirs* homedirs,
       KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
@@ -147,13 +148,14 @@ class RealUserSession : public UserSession {
   // Clears the WebAuthn secret if it's not read yet.
   void ClearHibernateSecret();
 
+  const std::string username_;
+  const std::string obfuscated_username_;
+
   HomeDirs* homedirs_;
   KeysetManagement* keyset_management_;
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
   Pkcs11TokenFactory* pkcs11_token_factory_;
 
-  std::string obfuscated_username_;
-  std::string username_;
   std::unique_ptr<CredentialVerifier> credential_verifier_;
   KeyData key_data_;
 
