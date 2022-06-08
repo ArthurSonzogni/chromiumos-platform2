@@ -502,8 +502,9 @@ def main(argv=None):
                 file=sys.stderr,
             )
             return
-        # There are multiple configs per model. Not sure how correct it is to pick
-        # just the first one.
+        # There are multiple configs per model.
+        # TODO(b/235382291): It's not correct to just pick the first one, since
+        # different SKUs have different configs.
         model = config.GetDeviceConfigs()[0]
         GetProperty(model, opts.path, opts.prop)
     elif opts.subcommand == "get-touch-firmware-files":
