@@ -56,6 +56,12 @@ bool CreateDirAndWriteFile(const base::FilePath& path,
              contents.length();
 }
 
+bool ExceptionsTestFunc(const base::FilePath& root, const std::string& path) {
+  base::FilePath allow = root.Append("allow_file");
+  base::AppendToFile(allow, path);
+  return base::AppendToFile(allow, "\n");
+}
+
 }  // namespace
 
 class SecurityManagerTest : public ::testing::Test {
@@ -455,4 +461,83 @@ TEST_F(SysKeyTest, NeedSysKeySuccessful) {
   expected.append("MountEncrypted set output.\n");
   expected.append("Successfully created a system key.");
   EXPECT_EQ(res, expected);
+}
+
+class ExceptionsTest : public ::testing::Test {
+ protected:
+  ExceptionsTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    allow_file_ = base_dir.Append("allow_file");
+    ASSERT_TRUE(CreateDirAndWriteFile(allow_file_, ""));
+    excepts_dir_ = base_dir.Append("excepts_dir");
+  }
+
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  base::FilePath allow_file_;
+  base::FilePath excepts_dir_;
+};
+
+TEST_F(ExceptionsTest, ExceptionsDirNoExist) {
+  startup::ExceptionsProjectSpecific(base_dir, excepts_dir_,
+                                     &ExceptionsTestFunc);
+  std::string allow_contents;
+  base::ReadFileToString(allow_file_, &allow_contents);
+  EXPECT_EQ(allow_contents, "");
+}
+
+TEST_F(ExceptionsTest, ExceptionsDirEmpty) {
+  base::CreateDirectory(excepts_dir_);
+  startup::ExceptionsProjectSpecific(base_dir, excepts_dir_,
+                                     &ExceptionsTestFunc);
+  std::string allow_contents;
+  base::ReadFileToString(allow_file_, &allow_contents);
+  EXPECT_EQ(allow_contents, "");
+}
+
+TEST_F(ExceptionsTest, ExceptionsDirMultiplePaths) {
+  base::FilePath test_path_1_1 = base_dir.Append("test_1_1");
+  base::FilePath test_path_1_2 = base_dir.Append("test_1_2");
+  base::FilePath test_path_1_ignore = base_dir.Append("should_ignore");
+  std::string test_str_1 = std::string("\n")
+                               .append(test_path_1_1.value())
+                               .append("\n#ignore\n\n#")
+                               .append(test_path_1_ignore.value())
+                               .append("\n")
+                               .append(test_path_1_2.value())
+                               .append("\n");
+  base::FilePath test_path_2_1 = base_dir.Append("test_2_1");
+  base::FilePath test_path_2_2 = base_dir.Append("test_2_2");
+  base::FilePath test_path_2_ignore = base_dir.Append("should_ignore");
+  std::string test_str_2 = std::string("#")
+                               .append(test_path_2_ignore.value())
+                               .append("\n")
+                               .append(test_path_2_1.value())
+                               .append("\n\n#\n")
+                               .append(test_path_2_2.value());
+  base::FilePath test_1 = excepts_dir_.Append("test_1");
+  base::FilePath test_2 = excepts_dir_.Append("test_2");
+  ASSERT_TRUE(CreateDirAndWriteFile(test_1, test_str_1));
+  ASSERT_TRUE(CreateDirAndWriteFile(test_2, test_str_2));
+
+  startup::ExceptionsProjectSpecific(base_dir, excepts_dir_,
+                                     &ExceptionsTestFunc);
+
+  std::string allow_contents;
+  base::ReadFileToString(allow_file_, &allow_contents);
+  EXPECT_NE(allow_contents.find(test_path_1_1.value()), std::string::npos);
+  EXPECT_NE(allow_contents.find(test_path_1_2.value()), std::string::npos);
+  EXPECT_EQ(allow_contents.find(test_path_1_ignore.value()), std::string::npos);
+  EXPECT_NE(allow_contents.find(test_path_2_1.value()), std::string::npos);
+  EXPECT_NE(allow_contents.find(test_path_2_2.value()), std::string::npos);
+  EXPECT_EQ(allow_contents.find(test_path_1_ignore.value()), std::string::npos);
+  EXPECT_EQ(base::DirectoryExists(test_path_1_1), true);
+  EXPECT_EQ(base::DirectoryExists(test_path_1_2), true);
+  EXPECT_EQ(base::DirectoryExists(test_path_1_ignore), false);
+  EXPECT_EQ(base::DirectoryExists(test_path_2_1), true);
+  EXPECT_EQ(base::DirectoryExists(test_path_2_2), true);
+  EXPECT_EQ(base::DirectoryExists(test_path_2_ignore), false);
 }

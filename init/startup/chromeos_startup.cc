@@ -560,6 +560,10 @@ int ChromeosStartup::Run() {
     PLOG(WARNING) << "Unable to collect early logs and crashes.";
   }
 
+  if (enable_stateful_security_hardening_) {
+    ConfigureFilesystemExceptions(root_);
+  }
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.

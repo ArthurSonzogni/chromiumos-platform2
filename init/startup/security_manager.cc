@@ -56,6 +56,14 @@ constexpr char kNoEarlyKeyFile[] = ".no_early_system_key";
 constexpr char kSysKeyBackupFile[] = "unencrypted/preserve/system.key";
 constexpr int kKeySize = SHA256_DIGEST_LENGTH;
 
+const std::array<const char*, 5> kSymlinkExceptions = {
+    "var/cache/echo", "var/cache/vpd", "var/lib/timezone", "var/log", "home",
+};
+constexpr char kSymlinkExceptionsDir[] =
+    "usr/share/cros/startup/symlink_exceptions";
+constexpr char kFifoExceptionsDir[] = "usr/share/cros/startup/fifo_exceptions";
+constexpr char kVar[] = "var";
+
 }  // namespace
 
 namespace startup {
@@ -289,6 +297,99 @@ void CreateSystemKey(const base::FilePath& root,
     base::AppendToFile(log_file, output);
     base::AppendToFile(log_file, "Successfully created a system key.");
   }
+}
+
+bool AllowSymlink(const base::FilePath& root, const std::string& path) {
+  base::FilePath sym = root.Append(kLsmInodePolicies).Append("allow_symlink");
+  return base::WriteFile(sym, path);
+}
+
+bool AllowFifo(const base::FilePath& root, const std::string& path) {
+  base::FilePath fifo = root.Append(kLsmInodePolicies).Append("allow_fifo");
+  return base::WriteFile(fifo, path);
+}
+
+void SymlinkExceptions(const base::FilePath& root) {
+  // Generic symlink exceptions.
+  for (auto d_it = kSymlinkExceptions.begin(); d_it != kSymlinkExceptions.end();
+       d_it++) {
+    base::FilePath d = root.Append(*d_it);
+    if (!base::CreateDirectory(d)) {
+      PLOG(WARNING) << "mkdir failed for " << d.value();
+    }
+    if (!base::SetPosixFilePermissions(d, 0755)) {
+      PLOG(WARNING) << "Failed to set permissions for " << d.value();
+    }
+    AllowSymlink(root, d.value());
+  }
+}
+
+// Project-specific exceptions. Projects may add exceptions by
+// adding a file under excepts_dir whose contents contains a list
+// of paths (one per line) for which an exception should be made.
+// File name should use the following format:
+// <project-name>-{symlink|fifo}-exceptions.txt
+void ExceptionsProjectSpecific(const base::FilePath& root,
+                               const base::FilePath& config_dir,
+                               bool (*callback)(const base::FilePath& root,
+                                                const std::string& path)) {
+  if (base::DirectoryExists(config_dir)) {
+    base::FileEnumerator iter(config_dir, false,
+                              base::FileEnumerator::FileType::FILES);
+    for (base::FilePath path_file = iter.Next(); !path_file.empty();
+         path_file = iter.Next()) {
+      if (!base::PathExists(path_file)) {
+        continue;
+      }
+      std::string contents;
+      if (!base::ReadFileToString(path_file, &contents)) {
+        PLOG(WARNING) << "Can't open exceptions file " << path_file.value();
+        continue;
+      }
+      std::vector<std::string> files = base::SplitString(
+          contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      for (const auto& path : files) {
+        if (path.find("#") == 0) {
+          continue;
+        } else {
+          base::FilePath p(path);
+          if (!base::CreateDirectory(p)) {
+            PLOG(WARNING) << "mkdir failed for " << path;
+          }
+          if (!base::SetPosixFilePermissions(p, 0755)) {
+            PLOG(WARNING) << "Failed to set permissions for " << path;
+          }
+          callback(root, path);
+        }
+      }
+    }
+  }
+}
+
+// Set up symlink traversal and FIFO blocking policy, and project
+// specific symlink and FIFO exceptions.
+void ConfigureFilesystemExceptions(const base::FilePath& root) {
+  // Set up symlink traversal and FIFO blocking policy for /var, which may
+  // reside on a separate file system than /mnt/stateful_partition. Block
+  // symlink traversal and opening of FIFOs by default, but allow exceptions
+  // in the few instances where they are used intentionally.
+  BlockSymlinkAndFifo(root, root.Append(kVar).value());
+  SymlinkExceptions(root);
+  // Project-specific symlink exceptions. Projects may add exceptions by
+  // adding a file under /usr/share/cros/startup/symlink_exceptions/ whose
+  // contents contains a list of paths (one per line) for which an exception
+  // should be made. File name should use the following format:
+  // <project-name>-symlink-exceptions.txt
+  base::FilePath sym_excepts = root.Append(kSymlinkExceptionsDir);
+  ExceptionsProjectSpecific(root, sym_excepts, &AllowSymlink);
+
+  // Project-specific FIFO exceptions. Projects may add exceptions by adding
+  // a file under /usr/share/cros/startup/fifo_exceptions/ whose contents
+  // contains a list of paths (one per line) for which an exception should be
+  // made. File name should use the following format:
+  // <project-name>-fifo-exceptions.txt
+  base::FilePath fifo_excepts = root.Append(kFifoExceptionsDir);
+  ExceptionsProjectSpecific(root, fifo_excepts, &AllowFifo);
 }
 
 }  // namespace startup

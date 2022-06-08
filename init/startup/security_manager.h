@@ -35,6 +35,19 @@ void CreateSystemKey(const base::FilePath& root,
                      const base::FilePath& stateful,
                      Platform* platform);
 
+bool AllowSymlink(const base::FilePath& root, const std::string& path);
+bool AllowFifo(const base::FilePath& root, const std::string& path);
+
+void SymlinkExceptions(const base::FilePath& root);
+void ExceptionsProjectSpecific(const base::FilePath& root,
+                               const base::FilePath& config_dir,
+                               bool (*callback)(const base::FilePath& root,
+                                                const std::string& path));
+
+// Set up symlink traversal, FIFO blocking policy, and project specific
+// symlink and FIFO exceptions.
+void ConfigureFilesystemExceptions(const base::FilePath& root);
+
 }  // namespace startup
 
 #endif  // INIT_STARTUP_SECURITY_MANAGER_H_
