@@ -720,4 +720,69 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
   EXPECT_EQ(res, true);
 }
 
+class IsVarFullTest : public ::testing::Test {
+ protected:
+  IsVarFullTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    platform_ = new startup::FakePlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, false));
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(IsVarFullTest, StatvfsFailure) {
+  bool res = startup_->IsVarFull();
+  EXPECT_EQ(res, false);
+}
+
+TEST_F(IsVarFullTest, Failure) {
+  base::FilePath var = base_dir.Append("var");
+
+  struct statvfs st;
+  st.f_bavail = 11000;
+  st.f_favail = 110;
+  platform_->SetStatvfsResultForPath(var, st);
+
+  bool res = startup_->IsVarFull();
+  EXPECT_EQ(res, false);
+}
+
+TEST_F(IsVarFullTest, TrueBavail) {
+  base::FilePath var = base_dir.Append("var");
+
+  struct statvfs st;
+  st.f_bavail = 9000;
+  st.f_favail = 110;
+  platform_->SetStatvfsResultForPath(var, st);
+
+  bool res = startup_->IsVarFull();
+  EXPECT_EQ(res, true);
+}
+
+TEST_F(IsVarFullTest, TrueFavail) {
+  base::FilePath var = base_dir.Append("var");
+
+  struct statvfs st;
+  st.f_bavail = 11000;
+  st.f_favail = 90;
+  platform_->SetStatvfsResultForPath(var, st);
+
+  bool res = startup_->IsVarFull();
+  EXPECT_EQ(res, true);
+}
+
 }  // namespace startup

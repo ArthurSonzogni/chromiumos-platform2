@@ -6,6 +6,7 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -40,6 +41,10 @@ namespace startup {
 
 bool Platform::Stat(const base::FilePath& path, struct stat* st) {
   return stat(path.value().c_str(), st) == 0;
+}
+
+bool Platform::Statvfs(const base::FilePath& path, struct statvfs* st) {
+  return statvfs(path.value().c_str(), st) == 0;
 }
 
 bool Platform::Mount(const base::FilePath& src,

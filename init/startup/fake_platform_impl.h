@@ -27,6 +27,9 @@ class FakePlatform : public Platform {
 
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st);
 
+  void SetStatvfsResultForPath(const base::FilePath& path,
+                               const struct statvfs& st);
+
   void SetMountEncOutputForArg(const std::string& arg,
                                const std::string& output);
 
@@ -43,6 +46,7 @@ class FakePlatform : public Platform {
 
   // `startup::Platform` overrides.
   bool Stat(const base::FilePath& path, struct stat* st) override;
+  bool Statvfs(const base::FilePath& path, struct statvfs* st) override;
   bool Mount(const base::FilePath& src,
              const base::FilePath& dst,
              const std::string& type,
@@ -72,6 +76,7 @@ class FakePlatform : public Platform {
 
  private:
   std::unordered_map<std::string, struct stat> result_map_;
+  std::unordered_map<std::string, struct statvfs> result_statvfs_map_;
   std::unordered_map<std::string, std::string> mount_result_map_;
   std::vector<std::string> umount_vector_;
   int open_ret_ = -1;

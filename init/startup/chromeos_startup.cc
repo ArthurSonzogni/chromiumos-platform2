@@ -39,6 +39,7 @@ namespace {
 constexpr char kHome[] = "home";
 constexpr char kUnencrypted[] = "unencrypted";
 constexpr char kVar[] = "var";
+constexpr char kVarLog[] = "var/log";
 constexpr char kHomeChronos[] = "home/chronos";
 
 // The "/." ensures we trigger the automount, instead of just examining the
@@ -73,6 +74,8 @@ constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
 // kEncryptedStatefulMnt stores the path to the initial mount point for
 // the encrypted stateful partition
 constexpr char kEncryptedStatefulMnt[] = "encrypted";
+// This file is written to when /var is too full and the logs are deleted.
+constexpr char kReclaimFullVar[] = ".reclaim_full_var";
 
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
@@ -194,6 +197,20 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
         "self-repair", args,
         std::string("Bad file attrs under ").append(path.value()));
   }
+}
+
+// Checks if /var is close to being full.
+// Returns true if there is less than 10MB of free space left in /var or if
+// there are less than 100 inodes available on the underlying filesystem.
+bool ChromeosStartup::IsVarFull() {
+  struct statvfs st;
+  base::FilePath var = root_.Append(kVar);
+  if (!platform_->Statvfs(var, &st)) {
+    PLOG(WARNING) << "Failed statvfs " << var.value();
+    return false;
+  }
+
+  return (st.f_bavail < 10000 || st.f_favail < 100);
 }
 
 ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
@@ -520,6 +537,16 @@ int ChromeosStartup::Run() {
 
   ForceCleanFileAttrs(root_.Append(kVar));
   ForceCleanFileAttrs(root_.Append(kHomeChronos));
+
+  // If /var is too full, delete the logs so the device can boot successfully.
+  // It is possible that the fullness of /var was not due to logs, but that
+  // is very unlikely. If such a thing happens, we have a serious problem
+  // which should not be covered up here.
+  if (IsVarFull()) {
+    base::DeletePathRecursively(root_.Append(kVarLog));
+    base::FilePath reclaim_full_var = stateful_.Append(kReclaimFullVar);
+    base::WriteFile(reclaim_full_var, "Startup.ReclaimFullVar");
+  }
 
   int ret = RunChromeosStartupScript();
   if (ret) {

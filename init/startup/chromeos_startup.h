@@ -57,6 +57,7 @@ class ChromeosStartup {
   bool NeedsClobberWithoutDevModeFile();
   void Sysctl();
   void ForceCleanFileAttrs(const base::FilePath& path);
+  bool IsVarFull();
 
   // EarlySetup contains the early mount calls of chromeos_startup. This
   // function exists to help break up the Run function into smaller functions.

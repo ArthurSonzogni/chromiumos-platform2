@@ -5,6 +5,8 @@
 #ifndef INIT_STARTUP_PLATFORM_IMPL_H_
 #define INIT_STARTUP_PLATFORM_IMPL_H_
 
+#include <sys/statvfs.h>
+
 #include <string>
 #include <vector>
 
@@ -38,6 +40,9 @@ class Platform {
 
   // Wrapper around stat(2).
   virtual bool Stat(const base::FilePath& path, struct stat* st);
+
+  // Wrapper around statvfs.
+  virtual bool Statvfs(const base::FilePath& path, struct statvfs* st);
 
   // Wrapper around mount(2).
   virtual bool Mount(const base::FilePath& src,

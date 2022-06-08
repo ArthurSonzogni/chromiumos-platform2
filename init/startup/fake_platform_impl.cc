@@ -22,6 +22,11 @@ void FakePlatform::SetStatResultForPath(const base::FilePath& path,
   result_map_[path.value()] = st;
 }
 
+void FakePlatform::SetStatvfsResultForPath(const base::FilePath& path,
+                                           const struct statvfs& st) {
+  result_statvfs_map_[path.value()] = st;
+}
+
 void FakePlatform::SetMountResultForPath(const base::FilePath& path,
                                          const std::string& output) {
   mount_result_map_[path.value()] = output;
@@ -52,6 +57,17 @@ bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
   std::unordered_map<std::string, struct stat>::iterator it;
   it = result_map_.find(path.value());
   if (st == nullptr || it == result_map_.end()) {
+    return false;
+  }
+
+  *st = it->second;
+  return true;
+}
+
+bool FakePlatform::Statvfs(const base::FilePath& path, struct statvfs* st) {
+  std::unordered_map<std::string, struct statvfs>::iterator it;
+  it = result_statvfs_map_.find(path.value());
+  if (st == nullptr || it == result_statvfs_map_.end()) {
     return false;
   }
 

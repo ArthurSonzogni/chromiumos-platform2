@@ -79,18 +79,6 @@ check_directory() {
   fi
 }
 
-# Checks if /var is close to being full.
-# Returns exit code of 0 (boolean true) if there is less than 10MB of
-# free space left in /var or if there are less than 100 inodes available on
-# the underlying filesystem.
-is_var_full() {
-  local avail_space
-  local avail_inodes
-  avail_space="$(df -k --output=avail /var | grep -E -o '[0-9]+')"
-  avail_inodes="$(df -k --output=iavail /var | grep -E -o '[0-9]+')"
-  [ "${avail_space}" -lt 10000 ] || [ "${avail_inodes}" -lt 100 ]
-}
-
 # Returns if the TPM is owned or couldn't determine.
 is_tpm_owned() {
   local tpm_owned
@@ -245,15 +233,6 @@ needs_clobber_without_devmode_file() {
   ! is_tpm_owned && [ ! -O "${PRESERVATION_REQUEST_FILE}" ] &&
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
-
-# If /var is too full, delete the logs so the device can boot successfully.
-# It is possible that the fullness of /var was not due to logs, but that
-# is very unlikely. If such a thing happens, we have a serious problem
-# which should not be covered up here.
-if is_var_full; then
-  rm -r -f /var/log
-  echo "Startup.ReclaimFullVar" > /mnt/stateful_partition/.reclaim_full_var
-fi
 
 # Gather logs if needed.  This might clear /var, so all init has to be after
 # this.
