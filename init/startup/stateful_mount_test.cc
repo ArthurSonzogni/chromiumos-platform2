@@ -30,6 +30,7 @@
 #include "init/startup/fake_platform_impl.h"
 #include "init/startup/mock_platform_impl.h"
 #include "init/startup/platform_impl.h"
+#include "init/startup/standard_mount_helper.h"
 
 using testing::_;
 using testing::ByMove;
@@ -103,6 +104,9 @@ class Ext4FeaturesTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<startup::FakePlatform>();
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
+        true);
   }
 
   startup::Flags flags_;
@@ -110,6 +114,7 @@ class Ext4FeaturesTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   std::unique_ptr<startup::FakePlatform> platform_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
 };
 
 TEST_F(Ext4FeaturesTest, Encrypt) {
@@ -126,7 +131,7 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -146,7 +151,7 @@ TEST_F(Ext4FeaturesTest, Verity) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -160,7 +165,7 @@ TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -181,7 +186,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -202,7 +207,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -216,7 +221,7 @@ TEST_F(Ext4FeaturesTest, DisableQuota) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -229,7 +234,7 @@ TEST_F(Ext4FeaturesTest, MissingFeatures) {
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>());
+      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -245,9 +250,13 @@ class HibernateResumeBootTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
     mock_platform_ = std::make_unique<StrictMock<startup::MockPlatform>>();
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        std::make_unique<startup::FakePlatform>(), flags_, base_dir_, base_dir_,
+        true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir_, base_dir_, mock_platform_.get(),
-        std::unique_ptr<brillo::MockLogicalVolumeManager>());
+        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+        mount_helper_.get());
     state_dev_ = base::FilePath("test");
     hiber_init_log_ = base_dir_.Append(kHiberResumeInitLog);
   }
@@ -255,6 +264,7 @@ class HibernateResumeBootTest : public ::testing::Test {
   std::unique_ptr<CrosSystemFake> cros_system_;
   startup::Flags flags_;
   std::unique_ptr<startup::MockPlatform> mock_platform_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_;
@@ -306,9 +316,13 @@ class DevUpdateStatefulTest : public ::testing::Test {
     developer_target = stateful.Append("dev_image");
     developer_new = stateful.Append("dev_image_new");
     preserve_dir = stateful.Append("unencrypted/preserve");
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
+        true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(),
-        std::unique_ptr<brillo::MockLogicalVolumeManager>());
+        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+        mount_helper_.get());
   }
 
   std::unique_ptr<CrosSystemFake> cros_system_;
@@ -317,6 +331,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
   base::FilePath stateful;
   std::unique_ptr<startup::FakePlatform> platform_;
   startup::Flags flags_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::FilePath clobber_log_;
   base::FilePath stateful_update_file;
@@ -427,9 +442,13 @@ class DevGatherLogsTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<startup::FakePlatform>();
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
+        true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(),
-        std::unique_ptr<brillo::MockLogicalVolumeManager>());
+        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+        mount_helper_.get());
     lab_preserve_logs_ = stateful.Append(".gatherme");
     prior_log_dir_ = stateful.Append("unencrypted/prior_logs");
     var_dir_ = base_dir.Append("var");
@@ -449,6 +468,7 @@ class DevGatherLogsTest : public ::testing::Test {
   base::FilePath home_chronos_;
   std::unique_ptr<startup::FakePlatform> platform_;
   startup::Flags flags_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
 };
 

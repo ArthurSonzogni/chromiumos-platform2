@@ -18,6 +18,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/blkdev_utils/lvm.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
 #include <gtest/gtest.h>
 
 #include "init/crossystem.h"
@@ -54,6 +56,8 @@ constexpr char kProcCmdLine[] = "proc/cmdline";
 constexpr char kSysKeyLog[] = "run/create_system_key.log";
 constexpr char kMntOptionsFile[] =
     "dev_image/factory/init/encstateful_mount_option";
+constexpr char kLSMDir[] =
+    "sys/kernel/security/chromiumos/inode_security_policies";
 
 // Helper function to create directory and write to file.
 bool CreateDirAndWriteFile(const base::FilePath& path,
@@ -1102,6 +1106,117 @@ TEST_F(CheckVarLogTest, SymLinkOutsideVarLog) {
   EXPECT_TRUE(base::PathExists(test_test));
   EXPECT_FALSE(base::PathExists(test_link));
   EXPECT_FALSE(base::PathExists(test_sub_link));
+}
+
+class DevMountPackagesTest : public ::testing::Test {
+ protected:
+  DevMountPackagesTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir_ = temp_dir_.GetPath();
+    platform_ = new startup::FakePlatform();
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        std::unique_ptr<startup::FakePlatform>(platform_), flags_, base_dir_,
+        base_dir_, true);
+    stateful_mount_ = std::make_unique<startup::StatefulMount>(
+        flags_, base_dir_, base_dir_, platform_,
+        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+        mount_helper_.get());
+    proc_mounts_ = base_dir_.Append("proc/mounts");
+    mount_log_ = base_dir_.Append("var/log/mount_options.log");
+    stateful_dev_ = base_dir_.Append("mnt/stateful_partition/dev_image");
+    usrlocal_ = base_dir_.Append("usr/local");
+    asan_dir_ = base_dir_.Append("var/log/asan");
+    lsm_dir_ = base_dir_.Append(kLSMDir);
+    allow_sym_ = lsm_dir_.Append("allow_symlink");
+    disable_ssh_ = base_dir_.Append(
+        "usr/share/cros/startup/disable_stateful_security_hardening");
+    var_overlay_ = base_dir_.Append("var_overlay");
+    ASSERT_TRUE(CreateDirAndWriteFile(allow_sym_, ""));
+    ASSERT_TRUE(base::CreateDirectory(stateful_dev_));
+    ASSERT_TRUE(base::CreateDirectory(usrlocal_));
+    ASSERT_TRUE(base::CreateDirectory(var_overlay_));
+  }
+
+  startup::Flags flags_;
+  base::FilePath base_dir_;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
+  std::unique_ptr<startup::StatefulMount> stateful_mount_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath proc_mounts_;
+  base::FilePath mount_log_;
+  base::FilePath stateful_dev_;
+  base::FilePath usrlocal_;
+  base::FilePath asan_dir_;
+  base::FilePath lsm_dir_;
+  base::FilePath allow_sym_;
+  base::FilePath disable_ssh_;
+  base::FilePath var_overlay_;
+};
+
+TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
+  base::CreateDirectory(disable_ssh_);
+
+  std::string mount_contents =
+      R"(/dev/root / ext2 ro,seclabel,relatime 0 0 )"
+      R"(devtmpfs /dev devtmpfs rw,seclabel,nosuid,noexec,relatime,)"
+      R"(size=4010836k,nr_inodes=1002709,mode=755 0 0)"
+      R"(proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0)"
+      R"(sysfs /sys sysfs rw,seclabel,nosuid,nodev,noexec,relatime 0 0)";
+
+  ASSERT_TRUE(CreateDirAndWriteFile(proc_mounts_, mount_contents));
+
+  platform_->SetMountResultForPath(usrlocal_, stateful_dev_.value());
+
+  stateful_mount_->DevMountPackages(base::FilePath());
+
+  EXPECT_TRUE(base::PathExists(asan_dir_));
+
+  std::string mount_log_contents;
+  base::ReadFileToString(mount_log_, &mount_log_contents);
+  EXPECT_EQ(mount_contents, mount_log_contents);
+
+  EXPECT_TRUE(base::PathExists(stateful_dev_));
+
+  std::string allow_sym_contents;
+  base::ReadFileToString(allow_sym_, &allow_sym_contents);
+  EXPECT_EQ("", allow_sym_contents);
+}
+
+TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
+  std::string mount_contents =
+      R"(/dev/root / ext2 ro,seclabel,relatime 0 0 )"
+      R"(devtmpfs /dev devtmpfs rw,seclabel,nosuid,noexec,relatime,)"
+      R"(size=4010836k,nr_inodes=1002709,mode=755 0 0)"
+      R"(proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0)"
+      R"(sysfs /sys sysfs rw,seclabel,nosuid,nodev,noexec,relatime 0 0)";
+
+  ASSERT_TRUE(CreateDirAndWriteFile(proc_mounts_, mount_contents));
+
+  platform_->SetMountResultForPath(usrlocal_, stateful_dev_.value());
+
+  base::FilePath portage = var_overlay_.Append("lib/portage");
+  ASSERT_TRUE(base::CreateDirectory(portage));
+  base::FilePath var_portage = base_dir_.Append("var/lib/portage");
+  platform_->SetMountResultForPath(var_portage, portage.value());
+
+  stateful_mount_->DevMountPackages(base::FilePath());
+
+  EXPECT_TRUE(base::PathExists(asan_dir_));
+
+  std::string mount_log_contents;
+  base::ReadFileToString(mount_log_, &mount_log_contents);
+  EXPECT_EQ(mount_contents, mount_log_contents);
+
+  EXPECT_TRUE(base::PathExists(stateful_dev_));
+
+  base::FilePath tmp_portage = base_dir_.Append("var/tmp/portage");
+  std::string expected_allow = tmp_portage.value();
+  std::string allow_sym_contents;
+  base::ReadFileToString(allow_sym_, &allow_sym_contents);
+  EXPECT_EQ(expected_allow, allow_sym_contents);
 }
 
 class RestoreContextsForVarTest : public ::testing::Test {

@@ -167,47 +167,6 @@ string_contains() {
   esac
 }
 
-# Check if we are booted on physical media. rootdev will fail if we are in
-# an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
-# image also uses initramfs but it never reach here). When using initrd+tftpboot
-# (some old netboot factory installer), ROOTDEV_TYPE will be /dev/ram.
-STATE_DEV=""
-DEV_IMAGE=""
-if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
-  # Find our stateful partition mount point.
-  # To support multiple volumes on a single UBI device, if the stateful
-  # partition is not found on ubi${PARTITION_NUM_STATE}_0, check
-  # ubi0_${PARTITION_NUM_STATE}.
-  if [ "${FORMAT_STATE}" = "ubi" ]; then
-    STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
-    if [ ! -e "${STATE_DEV}" ]; then
-      STATE_DEV="/dev/ubi0_${PARTITION_NUM_STATE}"
-    fi
-  else
-    STATE_DEV="${ROOTDEV_TYPE}${PARTITION_NUM_STATE}"
-  fi
-
-  if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
-    # Attempt to get a valid volume group name.
-    vg_name="$(get_volume_group "${STATE_DEV}")"
-    if [ -n "${vg_name}" ]; then
-      STATE_DEV="/dev/${vg_name}/unencrypted"
-      DEV_IMAGE="/dev/${vg_name}/dev-image"
-      # Check to see if this is a hibernate resume boot. If so, the image that
-      # will be resumed has active mounts on the stateful LVs that must not be
-      # modified out from underneath the hibernated kernel.
-      if command -v hiberman >/dev/null 2>&1; then
-        HIBER_STATE_DEV="/dev/mapper/unencrypted-rw"
-        HIBER_DEV_IMAGE="/dev/mapper/dev-image-rw"
-        if [ -e "${HIBER_STATE_DEV}" ] && [ -e "${HIBER_DEV_IMAGE}" ]; then
-          STATE_DEV="${HIBER_STATE_DEV}"
-          DEV_IMAGE="${HIBER_DEV_IMAGE}"
-        fi
-      fi
-    fi
-  fi
-fi
-
 # This file is created by clobber-state after the transition
 # to dev mode.
 DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
@@ -233,8 +192,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Mount dev packages.
-dev_mount_packages "${DEV_IMAGE}"
 dev_pop_paths_to_preserve
 
 # Always return success to avoid killing init

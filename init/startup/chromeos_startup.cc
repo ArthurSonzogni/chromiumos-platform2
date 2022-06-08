@@ -691,9 +691,10 @@ int ChromeosStartup::Run() {
 
   stateful_mount_ = std::make_unique<StatefulMount>(
       flags_, root_, stateful_, platform_.get(),
-      std::make_unique<brillo::LogicalVolumeManager>());
+      std::make_unique<brillo::LogicalVolumeManager>(), mount_helper_.get());
   stateful_mount_->MountStateful();
   state_dev_ = stateful_mount_->GetStateDev();
+  dev_image_ = stateful_mount_->GetDevImage();
 
   if (enable_stateful_security_hardening_) {
     // Block symlink traversal and opening of FIFOs on stateful. Note that we
@@ -815,6 +816,9 @@ int ChromeosStartup::Run() {
 
   RestoreContextsForVar(&utils::Restorecon);
 
+  // Mount dev packages.
+  DevMountPackages(dev_image_);
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.
@@ -934,6 +938,13 @@ void ChromeosStartup::DevGatherLogs() {
   if (dev_mode_) {
     stateful_mount_->DevGatherLogs(root_);
   }
+}
+
+void ChromeosStartup::DevMountPackages(const base::FilePath& device) {
+  if (!dev_mode_) {
+    return;
+  }
+  stateful_mount_->DevMountPackages(device);
 }
 
 }  // namespace startup

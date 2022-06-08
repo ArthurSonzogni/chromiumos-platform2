@@ -36,7 +36,9 @@
 
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
+#include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
+#include "init/startup/security_manager.h"
 #include "init/utils.h"
 
 namespace {
@@ -62,6 +64,18 @@ constexpr char kVar[] = "var";
 constexpr char kNew[] = "_new";
 constexpr char kOverlay[] = "_overlay";
 constexpr char kDevImage[] = "dev_image";
+
+constexpr char kVarLogAsan[] = "var/log/asan";
+constexpr char kStatefulDevImage[] = "mnt/stateful_partition/dev_image";
+constexpr char kUsrLocal[] = "usr/local";
+constexpr char kDisableStatefulSecurityHardening[] =
+    "usr/share/cros/startup/disable_stateful_security_hardening";
+constexpr char kTmpPortage[] = "var/tmp/portage";
+constexpr char kProcMounts[] = "proc/mounts";
+constexpr char kMountOptionsLog[] = "var/log/mount_options.log";
+const std::vector<const char*> kMountDirs = {"db/pkg", "lib/portage",
+                                             "cache/dlc-images"};
+const std::vector kDisableSecHardDirs = {kStatefulDevImage, kTmpPortage};
 
 // TODO(asavery): update the check for removable devices to be
 // more advanced, b/209476959
@@ -158,12 +172,14 @@ StatefulMount::StatefulMount(const Flags& flags,
                              const base::FilePath& root,
                              const base::FilePath& stateful,
                              Platform* platform,
-                             std::unique_ptr<brillo::LogicalVolumeManager> lvm)
+                             std::unique_ptr<brillo::LogicalVolumeManager> lvm,
+                             MountHelper* mount_helper)
     : flags_(flags),
       root_(root),
       stateful_(stateful),
       platform_(platform),
-      lvm_(std::move(lvm)) {}
+      lvm_(std::move(lvm)),
+      mount_helper_(mount_helper) {}
 
 bool StatefulMount::GetImageVars(base::FilePath json_file,
                                  std::string key,
@@ -374,8 +390,8 @@ void StatefulMount::MountStateful() {
       bootstat_.LogEvent("pre-lvm-activation");
       auto pv = lvm_->GetPhysicalVolume(state_dev_);
       if (pv && pv->IsValid()) {
-        auto vg = lvm_->GetVolumeGroup(*pv);
-        if (vg && vg->IsValid()) {
+        volume_group_ = lvm_->GetVolumeGroup(*pv);
+        if (volume_group_ && volume_group_->IsValid()) {
           // Check to see if this a hibernate resume boot. If so,
           // the image that will soon be resumed has active mounts
           // on the stateful LVs that must not be modified out from underneath
@@ -387,12 +403,15 @@ void StatefulMount::MountStateful() {
             state_dev_ = dev_mapper.Append(kUnencryptedRW);
             dev_image_ = dev_mapper.Append(kDevImageRW);
           } else {
-            auto lg = lvm_->GetLogicalVolume(vg.value(), "unencrypted");
+            auto lg =
+                lvm_->GetLogicalVolume(volume_group_.value(), "unencrypted");
             lg->Activate();
-            state_dev_ =
-                root_.Append("dev").Append(vg->GetName()).Append("unencrypted");
-            dev_image_ =
-                root_.Append("dev").Append(vg->GetName()).Append("dev-image");
+            state_dev_ = root_.Append("dev")
+                             .Append(volume_group_->GetName())
+                             .Append("unencrypted");
+            dev_image_ = root_.Append("dev")
+                             .Append(volume_group_->GetName())
+                             .Append("dev-image");
           }
         }
       }
@@ -608,6 +627,104 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
 
   if (!brillo::DeleteFile(lab_preserve_logs)) {
     PLOG(WARNING) << "Failed to delete file: " << lab_preserve_logs;
+  }
+}
+
+void StatefulMount::DevMountPackages(const base::FilePath& device) {
+  // Set up the logging dir that ASAN compiled programs will write to. We want
+  // any privileged account to be able to write here so unittests need not worry
+  // about setting things up ahead of time. See crbug.com/453579 for details.
+  base::FilePath asan_dir = root_.Append(kVarLogAsan);
+  base::File::Error error;
+  if (!base::CreateDirectoryAndGetError(asan_dir, &error)) {
+    PLOG(WARNING) << "Unable to create /var/log/asan directory, error code: "
+                  << error;
+  }
+  if (chmod(asan_dir.value().c_str(), 01777) != 0) {
+    PLOG(WARNING) << "Set permissions failed for /var/log/asan";
+  }
+
+  // Capture a snapshot of "normal" mount state here, for auditability,
+  // before we start applying devmode-specific changes.
+  std::string mount_contents;
+  base::FilePath proc_mounts = root_.Append(kProcMounts);
+  if (!base::ReadFileToString(proc_mounts, &mount_contents)) {
+    PLOG(ERROR) << "Reading from " << proc_mounts.value() << " failed.";
+  }
+
+  base::FilePath mount_options = root_.Append(kMountOptionsLog);
+  if (!base::WriteFile(mount_options, mount_contents)) {
+    PLOG(ERROR) << "Writing " << proc_mounts.value()
+                << "to mount_options.log failed.";
+  }
+
+  // Create dev_image directory in base images in developer mode.
+  base::FilePath stateful_dev = root_.Append(kStatefulDevImage);
+  if (!base::DirectoryExists(stateful_dev)) {
+    if (!base::CreateDirectory(stateful_dev)) {
+      PLOG(ERROR) << "Failed to create " << stateful_dev.value();
+    }
+    if (!base::SetPosixFilePermissions(stateful_dev, 0755)) {
+      PLOG(ERROR) << "Failed to set permissions for " << stateful_dev.value();
+    }
+  }
+
+  // Mount the dev image if there is a separate device available.
+  if (!device.empty()) {
+    if (volume_group_ && volume_group_->IsValid()) {
+      auto lg = lvm_->GetLogicalVolume(volume_group_.value(), "unencrypted");
+      lg->Activate();
+      platform_->Mount(device, stateful_dev, "",
+                       MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
+                       "discard");
+    }
+  }
+
+  // Checks and updates stateful partition.
+  DevUpdateStatefulPartition("");
+
+  // Mount and then remount to enable exec/suid.
+  base::FilePath usrlocal = root_.Append(kUsrLocal);
+  mount_helper_->MountOrFail(stateful_dev, usrlocal, "", MS_BIND, "");
+  if (!platform_->Mount(base::FilePath(""), usrlocal, "", MS_REMOUNT, "")) {
+    PLOG(WARNING) << "Failed to remount " << usrlocal.value();
+  }
+
+  base::FilePath disable_state_sec_hard =
+      root_.Append(kDisableStatefulSecurityHardening);
+  if (!base::PathExists(disable_state_sec_hard)) {
+    // Add exceptions to allow symlink traversal and opening of FIFOs in the
+    // dev_image subtree.
+    for (const auto dir : kDisableSecHardDirs) {
+      base::FilePath path = root_.Append(dir);
+      if (!base::DirectoryExists(path)) {
+        if (!base::CreateDirectory(path)) {
+          PLOG(ERROR) << "Failed to create " << path.value();
+        }
+        if (!base::SetPosixFilePermissions(path, 0755)) {
+          PLOG(ERROR) << "Failed to set permissions for " << path.value();
+        }
+      }
+      AllowSymlink(root_, path.value());
+      AllowFifo(root_, path.value());
+    }
+  }
+
+  // Set up /var elements needed for deploying packages.
+  base::FilePath base = stateful_.Append("var_overlay");
+  if (base::DirectoryExists(base)) {
+    for (const auto dir : kMountDirs) {
+      base::FilePath full = base.Append(dir);
+      if (!base::DirectoryExists(full)) {
+        continue;
+      }
+      base::FilePath dest = root_.Append(kVar).Append(dir);
+      if (!base::PathExists(dest)) {
+        LOG(WARNING) << "Path does not exists, can not mount: " << dest.value();
+        continue;
+      }
+      mount_helper_->MountOrFail(full, dest, "", MS_BIND, "");
+    }
   }
 }
 

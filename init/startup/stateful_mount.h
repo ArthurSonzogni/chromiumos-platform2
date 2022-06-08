@@ -16,6 +16,7 @@
 #include <metrics/bootstat.h>
 
 #include "init/startup/flags.h"
+#include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
 
 namespace startup {
@@ -32,7 +33,8 @@ class StatefulMount {
                 const base::FilePath& root,
                 const base::FilePath& stateful,
                 Platform* platform,
-                std::unique_ptr<brillo::LogicalVolumeManager> lvm);
+                std::unique_ptr<brillo::LogicalVolumeManager> lvm,
+                MountHelper* mount_helper);
 
   virtual ~StatefulMount() = default;
 
@@ -50,6 +52,7 @@ class StatefulMount {
 
   bool DevUpdateStatefulPartition(const std::string& args);
   void DevGatherLogs(const base::FilePath& base_dir);
+  void DevMountPackages(const base::FilePath& device);
 
  private:
   bool IsQuotaEnabled();
@@ -65,11 +68,13 @@ class StatefulMount {
   const base::FilePath stateful_;
   Platform* platform_;
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
+  MountHelper* mount_helper_;
   bootstat::BootStat bootstat_;
 
   base::FilePath root_dev_type_;
   base::FilePath state_dev_;
   base::FilePath dev_image_;
+  std::optional<brillo::VolumeGroup> volume_group_;
 };
 
 }  // namespace startup
