@@ -55,6 +55,7 @@ constexpr char kRunNamespaces[] = "run/namespaces";
 constexpr char kRun[] = "run";
 constexpr char kLock[] = "lock";
 constexpr char kEmpty[] = "empty";
+constexpr char kMedia[] = "media";
 
 constexpr char kSysKernelConfig[] = "sys/kernel/config";
 constexpr char kSysKernelDebug[] = "sys/kernel/debug";
@@ -731,6 +732,11 @@ int ChromeosStartup::Run() {
   RemoveVarEmpty();
 
   CheckVarLog();
+
+  // MS_SHARED to give other namespaces access to mount points under /media.
+  platform_->Mount(base::FilePath(kMedia), root_.Append(kMedia), "tmpfs",
+                   MS_NOSUID | MS_NODEV | MS_NOEXEC, "");
+  platform_->Mount(base::FilePath(), root_.Append(kMedia), "", MS_SHARED, "");
 
   int ret = RunChromeosStartupScript();
   if (ret) {

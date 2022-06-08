@@ -233,8 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# "--make-shared" to let ARC container access mount points under /media.
-mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 /usr/bin/systemd-tmpfiles --create --remove --boot --prefix /media \
   2>>"${TMPFILES_LOG}" || :
 
