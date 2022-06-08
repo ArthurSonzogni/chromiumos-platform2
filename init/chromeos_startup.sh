@@ -233,18 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Move from /var/lib/whitelist to /var/lib/devicesettings.
-# Check whether folders are empty using rmdir, this will delete the respective
-# folder only if it's empty.
-# TODO(b/219506748): Remove the following lines by 2030 the latest. If there
-# was a stepping stone for all boards in between, or the number of devices
-# using a version that did not have this code is less than the number of
-# devices suffering from disk corruption, code can be removed earlier.
-if [ -d "/var/lib/whitelist" ] && ! rmdir /var/lib/whitelist && \
-   rmdir /var/lib/devicesettings; then
-  mv /var/lib/whitelist /var/lib/devicesettings
-fi
-
 # If we support efivarfs, mount the efivarfs interface for accessing
 # EFI variables.
 if grep -q efivarfs /proc/filesystems; then

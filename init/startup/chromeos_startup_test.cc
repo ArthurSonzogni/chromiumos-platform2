@@ -785,4 +785,70 @@ TEST_F(IsVarFullTest, TrueFavail) {
   EXPECT_EQ(res, true);
 }
 
+class DeviceSettingsTest : public ::testing::Test {
+ protected:
+  DeviceSettingsTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    platform_ = new startup::FakePlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, false));
+    base::FilePath var_lib = base_dir.Append("var/lib");
+    whitelist_ = var_lib.Append("whitelist");
+    devicesettings_ = var_lib.Append("devicesettings");
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+  base::FilePath whitelist_;
+  base::FilePath devicesettings_;
+};
+
+TEST_F(DeviceSettingsTest, OldPathEmpty) {
+  ASSERT_TRUE(base::CreateDirectory(whitelist_));
+  base::FilePath devicesettings_test = devicesettings_.Append("test");
+  ASSERT_TRUE(CreateDirAndWriteFile(devicesettings_test, "test"));
+
+  startup_->MoveToLibDeviceSettings();
+  EXPECT_EQ(base::DirectoryExists(whitelist_), false);
+  EXPECT_EQ(base::PathExists(devicesettings_test), true);
+}
+
+TEST_F(DeviceSettingsTest, NewPathEmpty) {
+  ASSERT_TRUE(base::CreateDirectory(whitelist_));
+  ASSERT_TRUE(base::CreateDirectory(devicesettings_));
+  base::FilePath whitelist_test = whitelist_.Append("test");
+  ASSERT_TRUE(CreateDirAndWriteFile(whitelist_test, "test"));
+  base::FilePath devicesettings_test = devicesettings_.Append("test");
+
+  startup_->MoveToLibDeviceSettings();
+  EXPECT_EQ(base::DirectoryExists(whitelist_), false);
+  EXPECT_EQ(base::PathExists(whitelist_test), false);
+  EXPECT_EQ(base::PathExists(devicesettings_test), true);
+}
+
+TEST_F(DeviceSettingsTest, NeitherPathEmpty) {
+  ASSERT_TRUE(base::CreateDirectory(whitelist_));
+  ASSERT_TRUE(base::CreateDirectory(devicesettings_));
+  base::FilePath whitelist_test = whitelist_.Append("test_w");
+  ASSERT_TRUE(CreateDirAndWriteFile(whitelist_test, "test_w"));
+  base::FilePath devicesettings_test = devicesettings_.Append("test_d");
+  ASSERT_TRUE(CreateDirAndWriteFile(devicesettings_test, "test_d"));
+
+  startup_->MoveToLibDeviceSettings();
+  EXPECT_EQ(base::DirectoryExists(whitelist_), true);
+  EXPECT_EQ(base::PathExists(whitelist_test), true);
+  EXPECT_EQ(base::PathExists(devicesettings_test), true);
+}
+
 }  // namespace startup

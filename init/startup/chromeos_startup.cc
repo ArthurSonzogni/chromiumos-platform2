@@ -87,6 +87,9 @@ constexpr char kTpmFirmwareUpdateCleanup[] =
 constexpr char kTpmFirmwareUpdateRequestFlagFile[] =
     "unencrypted/preserve/tpm_firmware_update_request";
 
+constexpr char kLibWhitelist[] = "lib/whitelist";
+constexpr char kLibDevicesettings[] = "lib/devicesettings";
+
 }  // namespace
 
 namespace startup {
@@ -469,6 +472,39 @@ void ChromeosStartup::CleanupTpm() {
   }
 }
 
+// Move from /var/lib/whitelist to /var/lib/devicesettings if it is empty or
+// non-existing. If /var/lib/devicesettings already exists, just remove
+// /var/lib/whitelist.
+// TODO(b/219506748): Remove the following lines by 2030 the latest. If there
+// was a stepping stone to R99+ for all boards in between, or the number of
+// devices using a version that did not have this code is less than the number
+// of devices suffering from disk corruption, code can be removed earlier.
+void ChromeosStartup::MoveToLibDeviceSettings() {
+  base::FilePath whitelist = root_.Append(kVar).Append(kLibWhitelist);
+  base::FilePath devicesettings = root_.Append(kVar).Append(kLibDevicesettings);
+  // If the old whitelist dir still exists, try to migrate it.
+  if (base::DirectoryExists(whitelist)) {
+    if (base::IsDirectoryEmpty(whitelist)) {
+      // If it is empty, delete it.
+      if (!base::DeleteFile(whitelist)) {
+        PLOG(WARNING) << "Failed to delete path " << whitelist.value();
+      }
+    } else if (base::DeleteFile(devicesettings)) {
+      // If devicesettings didn't exist, or was empty, DeleteFile passed.
+      // Rename the old path.
+      if (!base::Move(whitelist, devicesettings)) {
+        PLOG(WARNING) << "Failed to move " << whitelist.value() << " to "
+                      << devicesettings.value();
+      }
+    } else {
+      // Both directories exist and are not empty. Do nothing.
+      LOG(WARNING) << "Unable to move " << whitelist.value() << " to "
+                   << devicesettings.value()
+                   << ", both directories are not empty";
+    }
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -573,6 +609,8 @@ int ChromeosStartup::Run() {
   std::vector<std::string> tmpfile_args = {root_.Append(kHome).value(),
                                            root_.Append(kVar).value()};
   TmpfilesConfiguration(tmpfile_args);
+
+  MoveToLibDeviceSettings();
 
   int ret = RunChromeosStartupScript();
   if (ret) {

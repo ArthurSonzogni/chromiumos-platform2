@@ -80,6 +80,9 @@ class ChromeosStartup {
   // Clean up after a TPM firmware update.
   void CleanupTpm();
 
+  // Move from /var/lib/whitelist to /var/lib/devicesettings.
+  void MoveToLibDeviceSettings();
+
  private:
   friend class DevCheckBlockTest;
   FRIEND_TEST(DevCheckBlockTest, DevSWBoot);
@@ -92,6 +95,11 @@ class ChromeosStartup {
   FRIEND_TEST(TpmCleanupTest, TpmCleanupNoFlagFile);
   FRIEND_TEST(TpmCleanupTest, TpmCleanupNoCmdPath);
   FRIEND_TEST(TpmCleanupTest, TpmCleanupSuccess);
+
+  friend class DeviceSettingsTest;
+  FRIEND_TEST(DeviceSettingsTest, OldPathEmpty);
+  FRIEND_TEST(DeviceSettingsTest, NewPathEmpty);
+  FRIEND_TEST(DeviceSettingsTest, NeitherPathEmpty);
 
   void CheckClock();
   // Returns if the device is transitioning between verified boot and
