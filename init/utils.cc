@@ -3,9 +3,11 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
@@ -53,6 +55,20 @@ bool UnlockEncryptedRebootVault() {
     return false;
   }
   return true;
+}
+
+void Reboot() {
+  brillo::ProcessImpl proc;
+  proc.AddArg("/sbin/shutdown");
+  proc.AddArg("-r");
+  proc.AddArg("now");
+  int ret = proc.Run();
+  if (ret == 0) {
+    // Wait for reboot to finish (it's an async call).
+    sleep(60 * 60 * 24);
+  }
+  // If we've reached here, reboot (probably) failed.
+  LOG(ERROR) << "Requesting reboot failed with failure code " << ret;
 }
 
 }  // namespace utils

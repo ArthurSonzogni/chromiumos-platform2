@@ -42,8 +42,20 @@ constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 
+constexpr char kTPMOwnedPath[] = "sys/class/tpm/tmp0/device/owned";
 // This file is created by clobber-state after the transition to dev mode.
 constexpr char kDevModeFile[] = ".developer_mode";
+// Flag file indicating that encrypted stateful should be preserved across
+// TPM clear. If the file is present, it's expected that TPM is not owned.
+constexpr char kPreservationRequestFile[] = "preservation_request";
+// This file is created after the TPM is initialized and the device is owned.
+constexpr char kInstallAttributesFile[] = "home/.shadow/install_attributes.pb";
+// File used to trigger a stateful reset. Contains arguments for the
+// clobber-state" call. This file may exist at boot time, as some use cases
+// operate by creating this file with the necessary arguments and then
+// rebooting.
+constexpr char kResetFile[] = "factory_install_reset";
+
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kDebugfsAccessGrp[] = "debugfs-access";
@@ -98,6 +110,48 @@ void ChromeosStartup::Sysctl() {
   if (status != 0) {
     LOG(WARNING) << "Failed to initialize kernel sysctl settings.";
   }
+}
+
+// Returns if the TPM is owned or couldn't determine.
+bool ChromeosStartup::IsTPMOwned() {
+  int output = 0;
+  base::FilePath owned = root_.Append(kTPMOwnedPath);
+  // Check file contents
+  if (!utils::ReadFileToInt(owned, &output)) {
+    PLOG(WARNING) << "Could not determine TPM owned, failed to read "
+                  << kTPMOwnedPath;
+    return true;
+  }
+  if (output == 0) {
+    return false;
+  }
+  return true;
+}
+
+// Returns if device needs to clobber even though there's no devmode file
+// present and boot is in verified mode.
+bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
+  base::FilePath preservation_request =
+      stateful_.Append(kPreservationRequestFile);
+  base::FilePath install_attrs = stateful_.Append(kInstallAttributesFile);
+  struct stat statbuf;
+  if (!IsTPMOwned() &&
+      (!platform_->Stat(preservation_request, &statbuf) ||
+       statbuf.st_uid != getuid()) &&
+      (platform_->Stat(install_attrs, &statbuf) &&
+       statbuf.st_uid == getuid())) {
+    return true;
+  }
+  return false;
+}
+
+// Returns if the device is in transitioning between verified boot and dev mode.
+// devsw_boot is the expected value of devsw_boot.
+bool ChromeosStartup::IsDevToVerifiedModeTransition(int devsw_boot) {
+  int boot;
+  std::string dstr;
+  return (cros_system_->GetInt("devsw_boot", &boot) && boot == devsw_boot) &&
+         (cros_system_->GetString("mainfw_type", &dstr) && dstr != "recovery");
 }
 
 ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
@@ -208,6 +262,108 @@ void ChromeosStartup::EarlySetup() {
   }
 }
 
+// Check for whether we need a stateful wipe, and alert the user as
+// necessary.
+void ChromeosStartup::CheckForStatefulWipe() {
+  // We can wipe for several different reasons:
+  //  + User requested "power wash" which will create kResetFile.
+  //  + Switch from verified mode to dev mode. We do this if we're in
+  //    dev mode, and kDevModeFile doesn't exist. clobber-state
+  //    in this case will create the file, to prevent re-wipe.
+  //  + Switch from dev mode to verified mode. We do this if we're in
+  //    verified mode, and kDevModeFile still exists. (This check
+  //    isn't necessarily reliable.)
+  //
+  // Stateful wipe for dev mode switching is skipped if the build is a debug
+  // build or if we've booted a non-recovery image in recovery mode (for
+  // example, doing Esc-F3-Power on a Chromebook with DEV-signed firmware);
+  // this protects various development use cases, most especially prototype
+  // units or booting Chromium OS on non-Chrome hardware. And because crossystem
+  // is slow on some platforms, we want to do the additional checks only after
+  // verified kDevModeFile existence.
+  std::vector<const char*> clobber_args;
+  struct stat stbuf;
+  std::string boot_alert_msg;
+  std::string clobber_log_msg;
+  base::FilePath reset_file(kResetFile);
+  if ((lstat(reset_file.value().c_str(), &stbuf) == 0 &&
+       S_ISLNK(stbuf.st_mode)) ||
+      base::PathExists(reset_file)) {
+    boot_alert_msg = "power_wash";
+    // If it's not a plain file owned by us, force a powerwash.
+    if (stbuf.st_uid != getuid() || !S_ISREG(stbuf.st_mode)) {
+      clobber_args.push_back("keepimg");
+    } else {
+      std::string str;
+      if (!base::ReadFileToString(reset_file, &str)) {
+        PLOG(WARNING) << "Failed to read reset file";
+      } else {
+        clobber_args.push_back(str.c_str());
+      }
+    }
+    if (clobber_args.empty()) {
+      clobber_args.push_back("keepimg");
+    }
+  } else if (state_dev_.empty()) {
+    // No physical stateful partition available, usually due to initramfs
+    // (recovery image, factory install shim or netboot). Do not wipe.
+  } else if (IsDevToVerifiedModeTransition(0)) {
+    bool res = platform_->Stat(dev_mode_allowed_file_, &stbuf);
+    if ((res && stbuf.st_uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
+      // We're transitioning from dev mode to verified boot.
+      // When coming back from developer mode, we don't need to
+      // clobber as aggressively. Fast will do the trick.
+      boot_alert_msg = "leave_dev";
+      clobber_args.push_back("fast");
+      clobber_args.push_back("keepimg");
+      std::string msg;
+      if (res && stbuf.st_uid == getuid()) {
+        msg = "'Leave developer mode, dev_mode file present'";
+      } else {
+        msg = "'Leave developer mode, no dev_mode file'";
+      }
+      clobber_log_msg = msg;
+      if (!clobber_args.empty()) {
+        platform_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
+      }
+
+      // Only fast clobber the non-protected paths in debug build to preserve
+      // the testing tools.
+      if (DevIsDebugBuild()) {
+        DevUpdateStatefulPartition("clobber");
+        utils::Reboot();
+        exit(0);
+      }
+    }
+  } else if (IsDevToVerifiedModeTransition(1)) {
+    if (!platform_->Stat(dev_mode_allowed_file_, &stbuf) ||
+        stbuf.st_uid != getuid()) {
+      // We're transitioning from verified boot to dev mode.
+      boot_alert_msg = "enter_dev";
+      clobber_args.push_back("keepimg");
+      clobber_log_msg = "Enter developer mode";
+
+      // Only fast clobber the non-protected paths in debug build to preserve
+      // the testing tools.
+      if (DevIsDebugBuild()) {
+        DevUpdateStatefulPartition("clobber");
+        if (!PathExists(dev_mode_allowed_file_)) {
+          if (!base::WriteFile(dev_mode_allowed_file_, "")) {
+            PLOG(WARNING) << "Failed to create file: "
+                          << dev_mode_allowed_file_.value();
+          }
+        }
+        utils::Reboot();
+        exit(0);
+      }
+    }
+  }
+
+  if (!clobber_args.empty()) {
+    platform_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -225,6 +381,7 @@ int ChromeosStartup::Run() {
       flags_, root_, stateful_, platform_.get(),
       std::make_unique<brillo::LogicalVolumeManager>());
   stateful_mount_->MountStateful();
+  state_dev_ = stateful_mount_->GetStateDev();
 
   if (enable_stateful_security_hardening_) {
     // Block symlink traversal and opening of FIFOs on stateful. Note that we
@@ -233,8 +390,10 @@ int ChromeosStartup::Run() {
   }
 
   // Checks if developer mode is blocked.
-  base::FilePath dev_mode_allowed_file = stateful_.Append(kDevModeFile);
-  DevCheckBlockDevMode(dev_mode_allowed_file);
+  dev_mode_allowed_file_ = stateful_.Append(kDevModeFile);
+  DevCheckBlockDevMode(dev_mode_allowed_file_);
+
+  CheckForStatefulWipe();
 
   int ret = RunChromeosStartupScript();
   if (ret) {
@@ -333,6 +492,20 @@ void ChromeosStartup::DevCheckBlockDevMode(
 // Set dev_mode_ for tests.
 void ChromeosStartup::SetDevMode(bool dev_mode) {
   dev_mode_ = dev_mode;
+}
+
+bool ChromeosStartup::DevIsDebugBuild() const {
+  if (!dev_mode_) {
+    return false;
+  }
+  return platform_->IsDebugBuild(cros_system_.get());
+}
+
+bool ChromeosStartup::DevUpdateStatefulPartition(const std::string& args) {
+  if (!dev_mode_) {
+    return true;
+  }
+  return stateful_mount_->DevUpdateStatefulPartition(args);
 }
 
 }  // namespace startup

@@ -18,7 +18,9 @@
 #include <base/logging.h>
 #include <brillo/process/process.h>
 
+#include "init/clobber_state.h"
 #include "init/crossystem.h"
+#include "init/crossystem_impl.h"
 #include "init/startup/platform_impl.h"
 #include "init/utils.h"
 
@@ -97,6 +99,39 @@ bool Platform::VpdSlow(const std::vector<std::string>& args,
   return false;
 }
 
+void Platform::ClobberLog(const std::string& msg) {
+  brillo::ProcessImpl log;
+  log.AddArg("/sbin/clobber-log");
+  log.AddArg("--");
+  log.AddArg(msg);
+  if (log.Run() != 0) {
+    LOG(WARNING) << "clobber-log failed for message: " << msg;
+  }
+}
+
+void Platform::Clobber(const std::string& boot_alert_msg,
+                       std::vector<const char*>& args,
+                       const std::string& clobber_log_msg) {
+  BootAlert(boot_alert_msg);
+  ClobberLog(clobber_log_msg);
+  std::vector<const char*> args_cstr;
+  for (const std::string arg : args) {
+    args_cstr.push_back(arg.c_str());
+  }
+  execve("/sbin/clobber-state", const_cast<char**>(&args_cstr[0]), nullptr);
+  exit(-1);
+}
+
+void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
+  pid_t pid = fork();
+  if (pid == 0) {
+    for (auto path : paths) {
+      base::DeletePathRecursively(path);
+    }
+    exit(0);
+  }
+}
+
 bool Platform::RunHiberman(const base::FilePath& output_file) {
   brillo::ProcessImpl hiberman;
   hiberman.AddArg("/usr/sbin/hiberman");
@@ -151,6 +186,16 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
   int status = log_repair.Run();
   if (status != 0) {
     PLOG(WARNING) << "Repairing clobber.log failed with code " << status;
+  }
+}
+
+// Returns if we are running on a debug build.
+bool Platform::IsDebugBuild(CrosSystem* const cros_system) {
+  int debug;
+  if (cros_system->GetInt("debug_build", &debug) && debug == 1) {
+    return true;
+  } else {
+    return false;
   }
 }
 

@@ -50,6 +50,7 @@ constexpr char kDumpe2fsStr[] =
     "android-reserved-disk)\nFilesystem features:      %s\n";
 
 constexpr char kReservedBlocksGID[] = "Reserved blocks gid:      20119";
+constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 
 constexpr char kHiberResumeInitLog[] = "run/hibernate/hiber-resume-init.log";
 
@@ -286,4 +287,132 @@ TEST_F(HibernateResumeBootTest, HibermanSuccess) {
       .WillOnce(Return(true));
 
   EXPECT_TRUE(stateful_mount_->HibernateResumeBoot());
+}
+
+class DevUpdateStatefulTest : public ::testing::Test {
+ protected:
+  DevUpdateStatefulTest() {}
+
+  void SetUp() override {
+    cros_system_ = std::make_unique<CrosSystemFake>();
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    stateful = base_dir.Append(kStatefulPartition);
+    platform_ = std::make_unique<startup::FakePlatform>();
+    stateful_update_file = stateful.Append(".update_available");
+    clobber_log_ = base_dir.Append("clobber_log");
+    var_new = stateful.Append("var_new");
+    var_target = stateful.Append("var_overlay");
+    developer_target = stateful.Append("dev_image");
+    developer_new = stateful.Append("dev_image_new");
+    preserve_dir = stateful.Append("unencrypted/preserve");
+    stateful_mount_ = std::make_unique<startup::StatefulMount>(
+        flags_, base_dir, stateful, platform_.get(),
+        std::unique_ptr<brillo::MockLogicalVolumeManager>());
+  }
+
+  std::unique_ptr<CrosSystemFake> cros_system_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  base::FilePath stateful;
+  std::unique_ptr<startup::FakePlatform> platform_;
+  startup::Flags flags_;
+  std::unique_ptr<startup::StatefulMount> stateful_mount_;
+  base::FilePath clobber_log_;
+  base::FilePath stateful_update_file;
+  base::FilePath var_new;
+  base::FilePath var_target;
+  base::FilePath developer_target;
+  base::FilePath developer_new;
+  base::FilePath preserve_dir;
+};
+
+TEST_F(DevUpdateStatefulTest, NoUpdateAvailable) {
+  EXPECT_EQ(stateful_mount_->DevUpdateStatefulPartition(""), true);
+}
+
+TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
+  ASSERT_TRUE(CreateDirectory(developer_new));
+  ASSERT_TRUE(CreateDirectory(var_new));
+  struct stat st;
+  st.st_mode = S_IFDIR;
+  platform_->SetStatResultForPath(developer_new, st);
+  platform_->SetStatResultForPath(var_new, st);
+  platform_->SetClobberLogFile(clobber_log_);
+
+  ASSERT_TRUE(CreateDirAndWriteFile(stateful_update_file, "1"));
+  st.st_mode = S_IFREG;
+  platform_->SetStatResultForPath(stateful_update_file, st);
+
+  LOG(INFO) << "var new test: " << var_new.value();
+  LOG(INFO) << "developer_new test: " << developer_new.value();
+
+  ASSERT_TRUE(CreateDirAndWriteFile(developer_new.Append("dev_new_file"), "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(var_new.Append("var_new_file"), "1"));
+  ASSERT_TRUE(
+      CreateDirAndWriteFile(developer_target.Append("dev_target_file"), "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(var_target.Append("var_target_file"), "1"));
+
+  EXPECT_EQ(stateful_mount_->DevUpdateStatefulPartition(""), true);
+
+  EXPECT_EQ(PathExists(developer_new.Append("dev_new_file")), false);
+  EXPECT_EQ(PathExists(var_new.Append("var_new_file")), false);
+  EXPECT_EQ(PathExists(developer_target.Append("dev_target_file")), false);
+  EXPECT_EQ(PathExists(var_target.Append("var_target_file")), false);
+
+  EXPECT_EQ(PathExists(stateful_update_file), false);
+  EXPECT_EQ(PathExists(var_target.Append("var_new_file")), true);
+  EXPECT_EQ(PathExists(developer_target.Append("dev_new_file")), true);
+
+  std::string message = "'Updating from " + developer_new.value() + " && " +
+                        var_new.value() + ".'";
+  std::string res;
+  ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
+  EXPECT_EQ(res, message);
+}
+
+TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
+  platform_->SetClobberLogFile(clobber_log_);
+
+  ASSERT_TRUE(CreateDirAndWriteFile(stateful_update_file, "clobber"));
+  base::FilePath labmachine = stateful.Append(".labmachine");
+  base::FilePath test_dir = stateful.Append("test");
+  base::FilePath test = test_dir.Append("test");
+  base::FilePath preserve_test = preserve_dir.Append("test");
+  base::FilePath empty = stateful.Append("empty");
+
+  struct stat st;
+  st.st_mode = S_IFREG;
+  platform_->SetStatResultForPath(stateful_update_file, st);
+  platform_->SetStatResultForPath(labmachine, st);
+  platform_->SetStatResultForPath(test, st);
+
+  st.st_mode = S_IFDIR;
+  platform_->SetStatResultForPath(test_dir, st);
+  platform_->SetStatResultForPath(empty, st);
+  platform_->SetStatResultForPath(preserve_dir, st);
+
+  ASSERT_TRUE(base::CreateDirectory(empty));
+  ASSERT_TRUE(base::CreateDirectory(test_dir));
+  ASSERT_TRUE(
+      CreateDirAndWriteFile(developer_target.Append("dev_target_file"), "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(var_target.Append("var_target_file"), "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(labmachine, "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(test, "1"));
+  ASSERT_TRUE(CreateDirAndWriteFile(preserve_test, "1"));
+
+  EXPECT_EQ(stateful_mount_->DevUpdateStatefulPartition(""), true);
+  EXPECT_EQ(PathExists(developer_target.Append("dev_target_file")), true);
+  EXPECT_EQ(PathExists(var_target.Append("var_target_file")), true);
+  EXPECT_EQ(PathExists(labmachine), true);
+  EXPECT_EQ(PathExists(test_dir), false);
+  EXPECT_EQ(PathExists(preserve_test), true);
+  EXPECT_EQ(PathExists(empty), false);
+
+  std::string message = "'Stateful update did not find " +
+                        developer_new.value() + " & " + var_new.value() +
+                        ".'\n'Keeping old development tools.'";
+  std::string res;
+  ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
+  EXPECT_EQ(res, message);
 }

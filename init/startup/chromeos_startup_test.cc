@@ -184,4 +184,74 @@ TEST_F(DevCheckBlockTest, ReadVpdSlowPass) {
   EXPECT_EQ(platform_->GetBootAlertForArg("block_devmode"), 1);
 }
 
+class TPMTest : public ::testing::Test {
+ protected:
+  TPMTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    platform_ = new startup::FakePlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_));
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(TPMTest, OwnedFileTrue) {
+  base::FilePath tpm_file = base_dir.Append("sys/class/tpm/tmp0/device/owned");
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "1"));
+  EXPECT_EQ(startup_->IsTPMOwned(), true);
+}
+
+TEST_F(TPMTest, OwnedFileFalse) {
+  base::FilePath tpm_file = base_dir.Append("sys/class/tpm/tmp0/device/owned");
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_EQ(startup_->IsTPMOwned(), false);
+}
+
+TEST_F(TPMTest, NeedsClobberTPMOwned) {
+  base::FilePath tpm_file = base_dir.Append("sys/class/tpm/tmp0/device/owned");
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "1"));
+  EXPECT_EQ(startup_->IsTPMOwned(), true);
+  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
+}
+
+TEST_F(TPMTest, NeedsClobberPreservationFile) {
+  base::FilePath tpm_file = base_dir.Append("sys/class/tpm/tmp0/device/owned");
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  base::FilePath preservation_file = base_dir.Append("preservation_request");
+  ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
+  struct stat st;
+  st.st_uid = -1;
+  platform_->SetStatResultForPath(preservation_file, st);
+  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
+}
+
+TEST_F(TPMTest, NeedsClobberInstallFile) {
+  base::FilePath tpm_file = base_dir.Append("sys/class/tpm/tmp0/device/owned");
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  base::FilePath preservation_file = base_dir.Append("preservation_request");
+  ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
+  struct stat st;
+  st.st_uid = -1;
+  platform_->SetStatResultForPath(preservation_file, st);
+  base::FilePath install_file =
+      base_dir.Append("home/.shadow/install_attributes.pb");
+  ASSERT_TRUE(CreateDirAndWriteFile(install_file, "0"));
+  LOG(INFO) << "test getuid " << getuid();
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(install_file, st);
+  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+}
+
 }  // namespace startup

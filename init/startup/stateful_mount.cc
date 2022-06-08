@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -52,6 +53,14 @@ constexpr char kHiberResumeInitLog[] = "run/hibernate/hiber-resume-init.log";
 constexpr char kDevMapper[] = "dev/mapper";
 constexpr char kUnencryptedRW[] = "unencrypted-rw";
 constexpr char kDevImageRW[] = "dev-image-rw";
+
+constexpr char kUpdateAvailable[] = ".update_available";
+constexpr char kLabMachine[] = ".labmachine";
+
+constexpr char kVar[] = "var";
+constexpr char kNew[] = "_new";
+constexpr char kOverlay[] = "_overlay";
+constexpr char kDevImage[] = "dev_image";
 
 // TODO(asavery): update the check for removable devices to be
 // more advanced, b/209476959
@@ -431,6 +440,130 @@ void StatefulMount::SetStateDevForTest(const base::FilePath& dev) {
 
 base::FilePath StatefulMount::GetStateDev() {
   return state_dev_;
+}
+
+base::FilePath StatefulMount::GetDevImage() {
+  return dev_image_;
+}
+
+// Updates stateful partition if pending
+// update is available.
+// Returns true if there is no need to update or successful update.
+bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
+  base::FilePath stateful_update_file = stateful_.Append(kUpdateAvailable);
+  std::string stateful_update_args = args;
+  if (stateful_update_args.empty()) {
+    if (!base::ReadFileToString(stateful_update_file, &stateful_update_args)) {
+      PLOG(WARNING) << "Failed to read from " << stateful_update_file.value();
+      return true;
+    }
+  }
+
+  // To remain compatible with the prior update_stateful tarballs, expect
+  // the "var_new" unpack location, but move it into the new "var_overlay"
+  // target location.
+  std::string var(kVar);
+  std::string dev_image(kDevImage);
+  base::FilePath var_new = stateful_.Append(var + kNew);
+  base::FilePath developer_new = stateful_.Append(dev_image + kNew);
+  base::FilePath developer_target = stateful_.Append(dev_image);
+  base::FilePath var_target = stateful_.Append(var + kOverlay);
+  std::vector<base::FilePath> paths_to_rm;
+
+  // Only replace the developer and var_overlay directories if new replacements
+  // are available.
+  if (base::DirectoryExists(developer_new) && base::DirectoryExists(var_new)) {
+    std::string update = "'Updating from " + developer_new.value() + " && " +
+                         var_new.value() + ".'";
+    platform_->ClobberLog(update);
+
+    for (const std::string& path : {var, dev_image}) {
+      base::FilePath path_new = stateful_.Append(path + kNew);
+      base::FilePath path_target;
+      if (path == "var") {
+        path_target = stateful_.Append(path + kOverlay);
+      } else {
+        path_target = stateful_.Append(path);
+      }
+      if (!base::DeletePathRecursively(path_target)) {
+        PLOG(WARNING) << "Failed to delete " << path_target.value();
+      }
+
+      if (!base::CreateDirectory(path_target)) {
+        PLOG(WARNING) << "Failed to create " << path_target.value();
+      }
+
+      base::FileEnumerator enumerator(path_new, false /* recursive */,
+                                      base::FileEnumerator::FILES |
+                                          base::FileEnumerator::DIRECTORIES |
+                                          base::FileEnumerator::SHOW_SYM_LINKS);
+
+      for (base::FilePath fd = enumerator.Next(); !fd.empty();
+           fd = enumerator.Next()) {
+        if (base::DirectoryExists(fd)) {
+          if (!base::CopyDirectory(fd, path_target.Append(fd.BaseName()),
+                                   true)) {
+            PLOG(WARNING) << "Failed to copy directory " << fd.value() << " to "
+                          << path_target.value();
+          }
+        } else {
+          if (!base::CopyFile(fd, path_target.Append(fd.BaseName()))) {
+            PLOG(WARNING) << "Failed to copy " << path_new.value() << " to "
+                          << path_target.value();
+          }
+        }
+      }
+      paths_to_rm.push_back(path_new);
+    }
+    platform_->RemoveInBackground(paths_to_rm);
+  } else {
+    std::string update = "'Stateful update did not find " +
+                         developer_new.value() + " & " + var_new.value() +
+                         ".'\n'Keeping old development tools.'";
+    platform_->ClobberLog(update);
+  }
+
+  // Check for clobber.
+  if (stateful_update_args.compare("clobber") == 0) {
+    base::FilePath preserve_dir = stateful_.Append("unencrypted/preserve");
+
+    // Find everything in stateful and delete it, except for protected paths,
+    // and non-empty directories. The non-empty directories contain protected
+    // content or they would already be empty from depth first traversal.
+    std::vector<base::FilePath> preserved_paths = {
+        stateful_.Append(kLabMachine), developer_target, var_target,
+        preserve_dir};
+    base::FileEnumerator enumerator(stateful_, true,
+                                    base::FileEnumerator::FILES |
+                                        base::FileEnumerator::DIRECTORIES |
+                                        base::FileEnumerator::SHOW_SYM_LINKS);
+    for (auto path = enumerator.Next(); !path.empty();
+         path = enumerator.Next()) {
+      bool preserve = false;
+      for (auto& preserved_path : preserved_paths) {
+        if (path == preserved_path || preserved_path.IsParent(path) ||
+            path.IsParent(preserved_path)) {
+          preserve = true;
+          break;
+        }
+      }
+
+      if (!preserve) {
+        if (base::DirectoryExists(path)) {
+          base::DeletePathRecursively(path);
+        } else {
+          base::DeleteFile(path);
+        }
+      }
+    }
+    // Let's really be done before coming back.
+    sync();
+  }
+
+  std::vector<base::FilePath> rm_paths{stateful_update_file};
+  platform_->RemoveInBackground(rm_paths);
+
+  return true;
 }
 
 }  // namespace startup

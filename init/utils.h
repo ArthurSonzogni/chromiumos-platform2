@@ -6,6 +6,7 @@
 #define INIT_UTILS_H_
 
 #include <string>
+#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -24,6 +25,9 @@ bool CreateEncryptedRebootVault();
 
 // Run encrypted-reboot-vault --action=unlock
 bool UnlockEncryptedRebootVault();
+
+// Run shutdown.
+void Reboot();
 
 }  // namespace utils
 

@@ -38,6 +38,10 @@ void FakePlatform::SetVpdResult(const int result) {
   vpd_result_ = result;
 }
 
+void FakePlatform::SetClobberLogFile(const base::FilePath& path) {
+  clobber_log_ = path;
+}
+
 bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
   std::unordered_map<std::string, struct stat>::iterator it;
   it = result_map_.find(path.value());
@@ -102,6 +106,17 @@ bool FakePlatform::VpdSlow(const std::vector<std::string>& args,
   }
   *output = std::to_string(vpd_result_);
   return true;
+}
+
+void FakePlatform::RemoveInBackground(
+    const std::vector<base::FilePath>& paths) {
+  for (auto path : paths) {
+    base::DeletePathRecursively(path);
+  }
+}
+
+void FakePlatform::ClobberLog(const std::string& msg) {
+  WriteFile(clobber_log_, msg);
 }
 
 }  // namespace startup

@@ -62,6 +62,17 @@ class Platform {
   virtual bool VpdSlow(const std::vector<std::string>& args,
                        std::string* output);
 
+  // Run clobber-log with the given message.
+  virtual void ClobberLog(const std::string& msg);
+
+  // Execute a clobber by first calling BootAlert and then
+  // ClobberLog with the given messages, then exec clobber-state.
+  virtual void Clobber(const std::string& boot_alert_msg,
+                       std::vector<const char*>& args,
+                       const std::string& clobber_log_msg);
+
+  virtual void RemoveInBackground(const std::vector<base::FilePath>& paths);
+
   // Runs crash_reporter with the given dev as the mount device.
   void AddClobberCrashReport(const std::string& dev);
 
@@ -73,6 +84,7 @@ class Platform {
 
   // Determine if the device is in dev mode.
   bool InDevMode(CrosSystem* cros_system);
+  bool IsDebugBuild(CrosSystem* const cros_system);
 };
 
 }  // namespace startup

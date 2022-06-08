@@ -42,6 +42,17 @@ class ChromeosStartup {
 
   virtual ~ChromeosStartup() = default;
 
+  // Utility functions that are defined and run when in dev mode.
+  // Returns if we are running on a debug build.
+  bool DevIsDebugBuild() const;
+  // Updated stateful partition if an update is pending.
+  bool DevUpdateStatefulPartition(const std::string& args);
+
+  // Returns if the TPM is owned or couldn't be determined.
+  bool IsTPMOwned();
+  // Returns if device needs to clobber even though there's no devmode file
+  // present and boot is in verified mode.
+  bool NeedsClobberWithoutDevModeFile();
   void Sysctl();
 
   // EarlySetup contains the early mount calls of chromeos_startup. This
@@ -67,6 +78,13 @@ class ChromeosStartup {
   FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowPass);
 
   void CheckClock();
+  // Returns if the device is transitioning between verified boot and
+  // dev mode.
+  bool IsDevToVerifiedModeTransition(int devsw_boot);
+
+  // Check for whether we need a stateful wipe, and alert the use as
+  // necessary.
+  void CheckForStatefulWipe();
 
   // Runs the bash version of chromeos startup to allow for incremental
   // migration.
@@ -83,6 +101,8 @@ class ChromeosStartup {
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;
   bool dev_mode_;
+  base::FilePath state_dev_;
+  base::FilePath dev_mode_allowed_file_;
 };
 
 }  // namespace startup

@@ -60,6 +60,10 @@ class FakePlatform : public Platform {
   bool VpdSlow(const std::vector<std::string>& args,
                std::string* output) override;
 
+  void ClobberLog(const std::string& msg) override;
+
+  void RemoveInBackground(const std::vector<base::FilePath>& paths) override;
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
   std::unordered_map<std::string, std::string> mount_result_map_;
@@ -68,6 +72,7 @@ class FakePlatform : public Platform {
   int ioctl_ret_ = 0;
   std::unordered_map<std::string, int> alert_result_map_;
   int vpd_result_;
+  base::FilePath clobber_log_;
 };
 
 }  // namespace startup
