@@ -62,6 +62,7 @@ void DBusAdaptor::SetTestingMode(bool enable_testing, uint32_t capability) {
     rgb_keyboard_controller_.SetKeyboardClient(logger_keyboard_.get());
     rgb_keyboard_controller_.SetKeyboardCapabilityForTesting(
         static_cast<RgbKeyboardCapabilities>(capability));
+    SendCapabilityUpdatedForTestingSignal(capability);
   } else {
     DCHECK(internal_keyboard_);
     rgb_keyboard_controller_.SetKeyboardClient(internal_keyboard_.get());

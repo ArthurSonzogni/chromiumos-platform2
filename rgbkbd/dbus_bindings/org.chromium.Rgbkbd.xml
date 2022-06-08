@@ -67,5 +67,13 @@
       <arg name="mode" type="u" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <signal name="CapabilityUpdatedForTesting">
+      <tp:docstring>
+        Signals that the RGB keyboard capability has been updated. This is only
+        used for tests.
+      </tp:docstring>
+      <arg name="capability" type="u" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </signal>
   </interface>
 </node>
