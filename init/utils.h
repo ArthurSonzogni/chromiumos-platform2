@@ -29,6 +29,10 @@ bool UnlockEncryptedRebootVault();
 // Run shutdown.
 void Reboot();
 
+void Restorecon(const base::FilePath& path,
+                const std::vector<base::FilePath>& exclude,
+                bool is_recursive,
+                bool set_digests);
 }  // namespace utils
 
 #endif  // INIT_UTILS_H_

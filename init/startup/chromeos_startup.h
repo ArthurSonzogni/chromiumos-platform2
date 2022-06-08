@@ -69,6 +69,11 @@ class ChromeosStartup {
   void CreateDaemonStore();
   void RemoveVarEmpty();
   void CheckVarLog();
+  void RestoreContextsForVar(
+      void (*restorecon_func)(const base::FilePath& path,
+                              const std::vector<base::FilePath>& exclude,
+                              bool is_recursive,
+                              bool set_digests));
 
   // Mount efivarfs if it's supported.
   void MaybeMountEfivarfs();

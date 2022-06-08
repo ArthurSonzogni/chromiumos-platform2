@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
@@ -70,6 +71,18 @@ void CreateBaseAndSetNames(base::FilePath* base_dir,
   *base_dir = temp_dir.GetPath();
   *lsb_file = base_dir->Append(kLsbRelease);
   *stateful = base_dir->Append(kStatefulPartition);
+}
+
+void RestoreconTestFunc(const base::FilePath& path,
+                        const std::vector<base::FilePath>& exclude,
+                        bool is_recursive,
+                        bool set_digests) {
+  for (auto excl : exclude) {
+    base::FilePath ex_file = excl.Append("exclude");
+    CreateDirAndWriteFile(ex_file, "exclude");
+  }
+  base::FilePath restore = path.Append("restore");
+  CreateDirAndWriteFile(restore, "restore");
 }
 
 }  // namespace
@@ -1089,6 +1102,50 @@ TEST_F(CheckVarLogTest, SymLinkOutsideVarLog) {
   EXPECT_TRUE(base::PathExists(test_test));
   EXPECT_FALSE(base::PathExists(test_link));
   EXPECT_FALSE(base::PathExists(test_sub_link));
+}
+
+class RestoreContextsForVarTest : public ::testing::Test {
+ protected:
+  RestoreContextsForVarTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    platform_ = std::make_unique<startup::FakePlatform>();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
+        base_dir, base_dir,
+        std::make_unique<startup::FakePlatform>(*platform_.get()),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir, true));
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+
+  std::unique_ptr<startup::FakePlatform> platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(RestoreContextsForVarTest, Restorecon) {
+  base::FilePath var = base_dir.Append("var");
+  ASSERT_TRUE(base::CreateDirectory(var));
+  base::FilePath debug = base_dir.Append("sys/kernel/debug");
+  ASSERT_TRUE(base::CreateDirectory(debug));
+  base::FilePath shadow = base_dir.Append("home/.shadow");
+  ASSERT_TRUE(base::CreateDirectory(shadow));
+
+  base::FilePath selinux = base_dir.Append("sys/fs/selinux/enforce");
+  ASSERT_TRUE(CreateDirAndWriteFile(selinux, "1"));
+
+  startup_->RestoreContextsForVar(&RestoreconTestFunc);
+
+  EXPECT_TRUE(base::PathExists(var.Append("restore")));
+  EXPECT_TRUE(base::PathExists(shadow.Append("restore")));
+  EXPECT_TRUE(base::PathExists(debug.Append("exclude")));
 }
 
 }  // namespace startup

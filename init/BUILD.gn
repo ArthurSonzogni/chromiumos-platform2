@@ -45,6 +45,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcrypto",
     "libmetrics",
+    "libselinux",
     "re2",
     "vboot_host",
   ]

@@ -7,9 +7,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
+#include <filesystem>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -44,23 +47,26 @@ constexpr char kHome[] = "home";
 constexpr char kUnencrypted[] = "unencrypted";
 constexpr char kVar[] = "var";
 constexpr char kVarLog[] = "var/log";
-constexpr char kHomeChronos[] = "home/chronos";
+constexpr char kChronos[] = "chronos";
+constexpr char kUser[] = "user";
+constexpr char kRoot[] = "root";
 
 // The "/." ensures we trigger the automount, instead of just examining the
 // mount point.
 // TODO(b/244186883): remove this.
-constexpr char kSysKernelDebugTracingDir[] = "sys/kernel/debug/tracing/.";
+constexpr char kKernelDebugTracingDir[] = "kernel/debug/tracing/.";
 
 constexpr char kRunNamespaces[] = "run/namespaces";
 constexpr char kRun[] = "run";
 constexpr char kLock[] = "lock";
 constexpr char kEmpty[] = "empty";
 constexpr char kMedia[] = "media";
+constexpr char kSysfs[] = "sys";
 
-constexpr char kSysKernelConfig[] = "sys/kernel/config";
-constexpr char kSysKernelDebug[] = "sys/kernel/debug";
-constexpr char kSysKernelSecurity[] = "sys/kernel/security";
-constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
+constexpr char kKernelConfig[] = "kernel/config";
+constexpr char kKernelDebug[] = "kernel/debug";
+constexpr char kKernelSecurity[] = "kernel/security";
+constexpr char kKernelTracing[] = "kernel/tracing";
 
 // The name of the filesystem for accessing UEFI variables.
 constexpr char kEfivarfs[] = "efivarfs";
@@ -68,6 +74,8 @@ constexpr char kEfivarfs[] = "efivarfs";
 constexpr char kSysFirmwareEfiEfivars[] = "sys/firmware/efi/efivars";
 
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
+
+constexpr char kSELinuxEnforce[] = "fs/selinux/enforce";
 
 // This file is created by clobber-state after the transition to dev mode.
 constexpr char kDevModeFile[] = ".developer_mode";
@@ -253,13 +261,14 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
       mount_helper_(std::move(mount_helper)) {}
 
 void ChromeosStartup::EarlySetup() {
+  const base::FilePath sysfs = root_.Append(kSysfs);
   gid_t debugfs_grp;
   if (!brillo::userdb::GetGroupInfo(kDebugfsAccessGrp, &debugfs_grp)) {
     PLOG(WARNING) << "Can't get gid for " << kDebugfsAccessGrp;
   } else {
     char data[25];
     snprintf(data, sizeof(data), "mode=0750,uid=0,gid=%d", debugfs_grp);
-    const base::FilePath debug = root_.Append(kSysKernelDebug);
+    const base::FilePath debug = sysfs.Append(kKernelDebug);
     if (!platform_->Mount("debugfs", debug, "debugfs", kCommonMountFlags,
                           data)) {
       // TODO(b/232901639): Improve failure reporting.
@@ -272,7 +281,7 @@ void ChromeosStartup::EarlySetup() {
   // change its permissions whenever it eventually does get automounted.
   // TODO(b/244186883): remove this.
   struct stat st;
-  const base::FilePath debug_tracing = root_.Append(kSysKernelDebugTracingDir);
+  const base::FilePath debug_tracing = sysfs.Append(kKernelDebugTracingDir);
   // Ignore errors.
   platform_->Stat(debug_tracing, &st);
 
@@ -281,7 +290,7 @@ void ChromeosStartup::EarlySetup() {
   // continue to automount it there when accessed via
   // /sys/kernel/debug/tracing/, but we avoid that where possible, to limit our
   // dependence on debugfs.
-  const base::FilePath tracefs = root_.Append(kSysKernelTracing);
+  const base::FilePath tracefs = sysfs.Append(kKernelTracing);
   // All users may need to access the tracing directory.
   if (!platform_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags,
                         "mode=0755")) {
@@ -290,21 +299,21 @@ void ChromeosStartup::EarlySetup() {
   }
 
   // Mount configfs, if present.
-  const base::FilePath sys_config = root_.Append(kSysKernelConfig);
-  if (base::DirectoryExists(sys_config)) {
-    if (!platform_->Mount("configfs", sys_config, "configfs", kCommonMountFlags,
+  const base::FilePath configfs = sysfs.Append(kKernelConfig);
+  if (base::DirectoryExists(configfs)) {
+    if (!platform_->Mount("configfs", configfs, "configfs", kCommonMountFlags,
                           "")) {
       // TODO(b/232901639): Improve failure reporting.
-      PLOG(WARNING) << "Unable to mount " << sys_config.value();
+      PLOG(WARNING) << "Unable to mount " << configfs.value();
     }
   }
 
   // Mount securityfs as it is used to configure inode security policies below.
-  const base::FilePath sys_security = root_.Append(kSysKernelSecurity);
-  if (!platform_->Mount("securityfs", sys_security, "securityfs",
+  const base::FilePath securityfs = sysfs.Append(kKernelSecurity);
+  if (!platform_->Mount("securityfs", securityfs, "securityfs",
                         kCommonMountFlags, "")) {
     // TODO(b/232901639): Improve failure reporting.
-    PLOG(WARNING) << "Unable to mount " << sys_security.value();
+    PLOG(WARNING) << "Unable to mount " << securityfs.value();
   }
 
   if (!SetupLoadPinVerityDigests(root_, platform_.get())) {
@@ -606,6 +615,67 @@ void ChromeosStartup::CheckVarLog() {
   }
 }
 
+// Restore file contexts for /var.
+void ChromeosStartup::RestoreContextsForVar(
+    void (*restorecon_func)(const base::FilePath& path,
+                            const std::vector<base::FilePath>& exclude,
+                            bool is_recursive,
+                            bool set_digests)) {
+  // Restore file contexts for /var.
+  base::FilePath sysfs = root_.Append(kSysfs);
+  base::FilePath selinux = sysfs.Append(kSELinuxEnforce);
+  if (!base::PathExists(selinux)) {
+    LOG(INFO) << selinux.value()
+              << " does not exist, can not restore file contexts";
+    return;
+  }
+  base::FilePath var = root_.Append(kVar);
+  std::vector<base::FilePath> exc_empty;
+  restorecon_func(var, exc_empty, true, true);
+
+  // Restoring file contexts for sysfs. tracefs is excluded from this
+  // invocation and delayed in a separate job to improve boot time.
+  std::vector<base::FilePath> exclude = {sysfs.Append(kKernelDebug),
+                                         sysfs.Append(kKernelTracing)};
+  restorecon_func(sysfs, exclude, true, false);
+
+  // We cannot do recursive for .shadow since userdata is encrypted (including
+  // file names) before user logs-in. Restoring context for it may mislabel
+  // files if encrypted filename happens to match something.
+  base::FilePath home = root_.Append(kHome);
+  base::FilePath shadow = home.Append(".shadow");
+  std::vector<base::FilePath> shadow_paths = {home, shadow};
+  base::FileEnumerator shadow_files(shadow, false,
+                                    base::FileEnumerator::FileType::FILES, "*");
+  for (base::FilePath path = shadow_files.Next(); !path.empty();
+       path = shadow_files.Next()) {
+    shadow_paths.push_back(path);
+  }
+  base::FileEnumerator shadow_dot(shadow, false,
+                                  base::FileEnumerator::FileType::FILES, ".*");
+  for (base::FilePath path = shadow_dot.Next(); !path.empty();
+       path = shadow_dot.Next()) {
+    shadow_paths.push_back(path);
+  }
+  base::FileEnumerator shadow_subdir(
+      shadow, false, base::FileEnumerator::FileType::FILES, "*/*");
+  for (base::FilePath path = shadow_subdir.Next(); !path.empty();
+       path = shadow_subdir.Next()) {
+    shadow_paths.push_back(path);
+  }
+  for (auto path : shadow_paths) {
+    restorecon_func(path, exc_empty, false, false);
+  }
+
+  // It's safe to recursively restorecon /home/{user,root,chronos} since
+  // userdir is not bind-mounted here before logging in.
+  std::array<base::FilePath, 3> h_paths = {
+      home.Append(kUser), home.Append(kRoot), home.Append(kChronos)};
+  for (auto h_path : h_paths) {
+    restorecon_func(h_path, exc_empty, true, true);
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -679,7 +749,7 @@ int ChromeosStartup::Run() {
   }
 
   ForceCleanFileAttrs(root_.Append(kVar));
-  ForceCleanFileAttrs(root_.Append(kHomeChronos));
+  ForceCleanFileAttrs(root_.Append(kHome).Append(kChronos));
 
   // If /var is too full, delete the logs so the device can boot successfully.
   // It is possible that the fullness of /var was not due to logs, but that
@@ -743,6 +813,8 @@ int ChromeosStartup::Run() {
   std::vector<std::string> t_args = {root_.Append(kMedia).value()};
   TmpfilesConfiguration(t_args);
 
+  RestoreContextsForVar(&utils::Restorecon);
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.
@@ -752,7 +824,8 @@ int ChromeosStartup::Run() {
 
   // Unmount securityfs so that further modifications to inode security
   // policies are not possible
-  const base::FilePath kernel_sec = root_.Append(kSysKernelSecurity);
+  const base::FilePath kernel_sec =
+      root_.Append(kSysfs).Append(kKernelSecurity);
   if (!platform_->Umount(kernel_sec)) {
     PLOG(WARNING) << "Failed to umount: " << kernel_sec;
   }

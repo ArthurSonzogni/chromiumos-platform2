@@ -233,23 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# Restore file contexts for /var.
-# TODO(fqj): use type_transition to correctly label directories at creation so
-# relabel need only be started if SELinux policy updates.
-if [ -f /sys/fs/selinux/enforce ]; then
-  restorecon -R -D /var
-  # Restoring file contexts for sysfs. debugfs and tracefs are excluded from
-  # this invocation and delayed in separate jobs to improve boot time.
-  restorecon -R /sys -e /sys/kernel/debug -e /sys/kernel/tracing
-  # We cannot do recursive for .shadow since userdata is encrypted (including
-  # file names) before user logs-in. Restoring context for it may mislabel files
-  # if encrypted filename happens to match something.
-  restorecon /home /home/.shadow /home/.shadow/* /home/.shadow/.* /home/.shadow/*/*
-  # It's safe to recursvely restorecon /home/{user,root,chronos} since userdir
-  # is not bind-mounted here before logging in.
-  restorecon -R -D /home/user /home/root /home/chronos
-fi
-
 # Mount dev packages.
 dev_mount_packages "${DEV_IMAGE}"
 dev_pop_paths_to_preserve
