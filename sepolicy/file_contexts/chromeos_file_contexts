@@ -200,6 +200,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/rmad                  u:object_r:cros_rmad_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/secanomalyd           u:object_r:cros_secanomalyd_exec:s0
+/usr/sbin/smbproviderd          u:object_r:cros_smbproviderd_exec:s0
 /usr/sbin/spaced                u:object_r:cros_spaced_exec:s0
 /usr/sbin/spaced_cli            u:object_r:cros_spaced_cli_exec:s0
 /usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0

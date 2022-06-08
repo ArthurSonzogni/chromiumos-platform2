@@ -165,6 +165,7 @@ type cros_sed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_seneschal_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_session_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_shill_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_smbproviderd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sound_card_init_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_spaced_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_spaced_cli_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
