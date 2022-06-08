@@ -1082,6 +1082,7 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricAp80211vBSSTransitionSupport[] =
       "Network.Shill.WiFi.Ap80211vBSSTransitionSupport";
 
+#if !defined(DISABLE_WIFI)
   static constexpr EnumMetric<FixedName> kMetricLinkApDisconnectReason = {
       .n = FixedName{"Network.Shill.WiFi.ApDisconnectReason"},
       .max = IEEE_80211::kReasonCodeMax,
@@ -1090,6 +1091,7 @@ class Metrics : public DefaultServiceObserver {
       .n = FixedName{"Network.Shill.WiFi.ClientDisconnectReason"},
       .max = IEEE_80211::kReasonCodeMax,
   };
+#endif  // DISABLE_WIFI
 
   // 802.11 Status Codes for auth/assoc failures
   static constexpr char kMetricWiFiAssocFailureType[] =
