@@ -565,6 +565,7 @@ void UserDataAuth::CreateMountThreadDBus() {
 }
 
 void UserDataAuth::ShutdownTask() {
+  default_challenge_credentials_helper_.reset();
   if (mount_thread_bus_) {
     mount_thread_bus_->ShutdownAndBlock();
     mount_thread_bus_.reset();
