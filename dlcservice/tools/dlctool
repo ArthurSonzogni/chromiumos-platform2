@@ -4,6 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO(b/235407459): Fix all lints/migrate over to C++.
 . /usr/share/misc/chromeos-common.sh || exit 1
 . /usr/sbin/write_gpt.sh || exit 1
 . /usr/share/misc/shflags || exit 1
@@ -240,6 +241,11 @@ write_dlc_image() {
   echo "${cache_path_A}" "${cache_path_B}" | xargs -n 1 cp "${DLC_IMG_FILE}"
 }
 
+# Changes ownership for paths/files in dlcservice cache.
+update_cache() {
+  chown -R dlcservice:dlcservice "${DLC_CACHE_PATH}/${FLAGS_id}"
+}
+
 deploy_dlc() {
   # Check if valid DLC image.
   check_dlc_requirements
@@ -259,6 +265,9 @@ deploy_dlc() {
   # Copy metadata + DLC image.
   write_metadata_to_rootfs
   write_dlc_image
+
+  # Update cache ownership.
+  update_cache
 }
 
 # Main function.
