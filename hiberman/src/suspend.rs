@@ -78,6 +78,7 @@ impl SuspendConductor {
         }
 
         self.volume_manager.setup_hibernate_lv(true)?;
+        self.volume_manager.create_lv_snapshot_files()?;
         let is_lvm = is_lvm_system()?;
         let files_exist = does_hiberfile_exist();
         let should_zero = is_lvm && !files_exist;

@@ -11,7 +11,8 @@ use libc::{self, c_ulong, c_void};
 use log::{debug, error, info, warn};
 
 use std::ffi::{CString, OsStr};
-use std::fs::{read_link, remove_file, OpenOptions};
+use std::fs::{create_dir, read_dir, read_link, remove_file, OpenOptions};
+use std::io::Write;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ use crate::hiberutil::{
     HibernateError,
 };
 use crate::lvm::{
-    create_thin_volume, get_vg_name, lv_exists, lv_path, thicken_thin_volume,
+    create_thin_volume, get_active_lvs, get_vg_name, lv_exists, lv_path, thicken_thin_volume,
     ActivatedLogicalVolume,
 };
 
@@ -48,6 +49,15 @@ const HIBER_VOLUME_FUDGE_BYTES: i64 = 1024 * 1024 * 1024;
 
 /// Define the number of sectors per dm-snapshot chunk.
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
+
+/// Define the list of logical volumes known to not need a snapshot.
+const NO_SNAPSHOT_LVS: [&str; 3] = ["thinpool", HIBER_VOLUME_NAME, "cryptohome-"];
+
+/// Define the size of a volume snapshot.
+const SNAPSHOT_SIZE: u64 = 512 * 1024 * 1024;
+
+/// Define the size of the unencrypted snapshot, which is a little bit bigger.
+const UNENCRYPTED_SNAPSHOT_SIZE: u64 = 1024 * 1024 * 1024;
 
 /// The pending stateful merge is simply a token object that when dropped will
 /// ask the volume manager to merge the stateful snapshots.
@@ -149,28 +159,99 @@ impl VolumeManager {
         size_bytes / (1024 * 1024)
     }
 
+    /// Create snapshot storage files for all active LVs.
+    pub fn create_lv_snapshot_files(&self) -> Result<()> {
+        let snapshot_dir = snapshot_dir();
+        if !snapshot_dir.exists() {
+            debug!("Creating snapshot directory");
+            create_dir(&snapshot_dir).context("Failed to create snapshot directory")?;
+        }
+
+        let active_lvs = get_active_lvs()?;
+        let zeroes = [0u8; 4096];
+        for lv_name in &active_lvs {
+            // Skip certain LVs.
+            let mut skip_lv = false;
+            for skipped in NO_SNAPSHOT_LVS {
+                if lv_name.starts_with(skipped) {
+                    skip_lv = true;
+                    break;
+                }
+            }
+
+            if skip_lv {
+                continue;
+            }
+
+            let snapshot_size = if lv_name == "unencrypted" {
+                UNENCRYPTED_SNAPSHOT_SIZE
+            } else {
+                SNAPSHOT_SIZE
+            };
+
+            let path = snapshot_file_path(lv_name);
+            if path.exists() {
+                info!("Reinitializing snapshot for LV: {}", lv_name);
+            } else {
+                info!("Creating snapshot for LV: {}", lv_name);
+            }
+
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&path)
+                .context(format!("Failed to open snapshot file: {}", path.display()))?;
+
+            // Clear out the snapshot if it exists for some reason so we don't
+            // accidentally attach stale data.
+            file.write_all(&zeroes)?;
+            file.set_len(snapshot_size)?;
+        }
+
+        for snap_entry in
+            read_dir(&snapshot_dir).context("Failed to enumerate snapshot directory")?
+        {
+            let snap_name_entry = snap_entry?.file_name();
+            let snap_name = snap_name_entry.to_string_lossy();
+            if !active_lvs.contains(&snap_name.to_string()) {
+                info!("Removing old snapshot: {}", &snap_name);
+                delete_snapshot(&snap_name).context("Failed to delete old snapshot")?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Set up dm-snapshots for the stateful LVs.
     pub fn setup_stateful_snapshots(&mut self) -> Result<()> {
-        self.setup_snapshot("unencrypted", 1024)?;
-        self.setup_snapshot("dev-image", 256)?;
-        self.setup_snapshot("encstateful", 512)
+        let snapshot_files =
+            read_dir(snapshot_dir()).context("Failed to enumerate snapshot directory")?;
+        for snapshot_name in snapshot_files {
+            let lv_name_path = snapshot_name?.file_name();
+            let lv_name = lv_name_path.to_string_lossy();
+            self.setup_snapshot(&lv_name)?;
+        }
+
+        Ok(())
     }
 
     /// Set up a dm-snapshot for a single named LV.
-    fn setup_snapshot(&mut self, name: &str, size_mb: u64) -> Result<()> {
+    fn setup_snapshot(&mut self, name: &str) -> Result<()> {
+        info!("Setting up snapshot for LV: {}", name);
         let path = snapshot_file_path(name);
-        let file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&path)
-            .context(format!("Failed to open snapshot file: {}", path.display()))?;
-
-        file.set_len(size_mb * 1024 * 1024)?;
-        drop(file);
         let loop_path = Self::setup_loop_device(&path)?;
+        let activated_lv = ActivatedLogicalVolume::new(&self.vg_name, name)
+            .context(format!("Failed to activate LV: {}", name))?;
         let origin_lv = read_link(lv_path(&self.vg_name, name))?;
         Self::setup_dm_snapshot(origin_lv, loop_path, name, DM_SNAPSHOT_CHUNK_SIZE)
-            .context(format!("Failed to setup dm-snapshot for {}", name))
+            .context(format!("Failed to setup dm-snapshot for {}", name))?;
+
+        // The snapshot is set up, don't try to deactivate the LV underneath it.
+        if let Some(mut lv) = activated_lv {
+            lv.dont_deactivate();
+        }
+
+        Ok(())
     }
 
     /// Set up a loop device for the given file and return the path to it.
@@ -242,10 +323,18 @@ impl VolumeManager {
     }
 
     pub fn merge_stateful_snapshots(&mut self) -> Result<()> {
+        if !snapshot_dir().exists() {
+            info!("No snapshot directory, skipping merges");
+            return Ok(());
+        }
+
         let mut snapshots = vec![];
         let mut result = Ok(());
-        for name in ["unencrypted", "dev-image", "encstateful"] {
-            let snapshot = match DmSnapshotMerge::new(name) {
+        let snapshot_files = read_dir(snapshot_dir())?;
+        for snap_entry in snapshot_files {
+            let snap_name_entry = snap_entry?.file_name();
+            let name = snap_name_entry.to_string_lossy();
+            let snapshot = match DmSnapshotMerge::new(&name) {
                 Ok(o) => match o {
                     Some(s) => s,
                     None => {
@@ -259,7 +348,7 @@ impl VolumeManager {
                     // the snapshot to avoid infinite loops. Since we're already
                     // in a failure path, all we can do upon failure to delete
                     // the snapshot is just log and report the original failure.
-                    if let Err(e) = delete_snapshot(name) {
+                    if let Err(e) = delete_snapshot(&name) {
                         error!("Failed to delete snapshot {}: {:?}", name, e);
                     }
 
@@ -653,7 +742,7 @@ fn snapshot_file_path(name: &str) -> PathBuf {
 
 /// Return the snapshot directory.
 fn snapshot_dir() -> PathBuf {
-    Path::new(HIBERNATE_DIR).to_path_buf()
+    Path::new(HIBERNATE_DIR).join("snapshots")
 }
 
 /// Separate a string by whitespace, and return the nth element, or an error

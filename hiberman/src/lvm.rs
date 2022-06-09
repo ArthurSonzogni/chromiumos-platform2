@@ -70,6 +70,23 @@ pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
     Ok(output.status.success())
 }
 
+/// Enumerate all activated logical volumes in the system.
+pub fn get_active_lvs() -> Result<Vec<String>> {
+    let output = checked_command_output(Command::new("/sbin/lvdisplay").args([
+        "-C",
+        "--options=name",
+        "--noheadings",
+    ]))
+    .context("Failed to get active LVs")?;
+    let output_string = String::from_utf8_lossy(&output.stdout);
+    let mut elements: Vec<String> = vec![];
+    output_string.split_whitespace().for_each(|e| {
+        elements.push(e.trim().to_string());
+    });
+
+    Ok(elements)
+}
+
 /// Create a new thinpool volume under the given volume group, with the
 /// specified name and size.
 pub fn create_thin_volume(volume_group: &str, size_mb: i64, name: &str) -> Result<()> {
