@@ -12,7 +12,6 @@
 # We can't allow any of the target UIDs to switch to other UIDs, or
 # else a compromised shill could switch to one of them and then switch
 # to any UID on the system.
-217:217
 224:224
 202:202
 20174:20174
