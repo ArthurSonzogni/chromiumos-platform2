@@ -20,7 +20,7 @@ use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
     does_hiberfile_exist, open_metrics_file, preallocate_header_file, preallocate_hiberfile,
     preallocate_kernel_key_file, preallocate_log_file, preallocate_metadata_file,
-    preallocate_metrics_file, HIBERNATE_DIR,
+    preallocate_metrics_file, STATEFUL_DIR,
 };
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
@@ -410,7 +410,7 @@ impl SuspendConductor {
 
     /// Utility function to get the current stateful file system usage.
     fn get_fs_stats() -> Result<libc::statvfs> {
-        let path = CString::new(HIBERNATE_DIR).unwrap();
+        let path = CString::new(STATEFUL_DIR).unwrap();
         let mut stats: MaybeUninit<libc::statvfs> = MaybeUninit::zeroed();
 
         // This is safe because only stats is modified.

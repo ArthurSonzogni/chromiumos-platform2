@@ -23,6 +23,8 @@ use crate::splitter::HIBER_HEADER_MAX_SIZE;
 
 /// Define the directory where hibernate state files are kept.
 pub const HIBERNATE_DIR: &str = "/mnt/hibernate";
+/// Define the root of the stateful partition mount.
+pub const STATEFUL_DIR: &str = "/mnt/stateful_partition";
 /// Define the name of the hibernate metadata.
 const HIBER_META_NAME: &str = "metadata";
 /// Define the preallocated size of the hibernate metadata file.
