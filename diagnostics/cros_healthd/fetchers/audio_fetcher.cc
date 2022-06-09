@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,23 +15,18 @@
 namespace diagnostics {
 
 mojom::AudioResultPtr AudioFetcher::FetchAudioInfo() {
-  mojom::AudioInfo info;
+  auto res = mojom::AudioResult::NewAudioInfo(mojom::AudioInfo::New());
 
-  auto error = PopulateMuteInfo(&info);
-  if (error.has_value()) {
-    return mojom::AudioResult::NewError(std::move(error.value()));
-  }
+  PopulateMuteInfo(res);
+  if (res->is_error())
+    return res;
 
-  error = PopulateActiveNodeInfo(&info);
-  if (error.has_value()) {
-    return mojom::AudioResult::NewError(std::move(error.value()));
-  }
-
-  return mojom::AudioResult::NewAudioInfo(info.Clone());
+  PopulateActiveNodeInfo(res);
+  return res;
 }
 
-std::optional<mojom::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
-    mojom::AudioInfo* info) {
+void AudioFetcher::PopulateMuteInfo(mojom::AudioResultPtr& res) {
+  mojom::AudioInfoPtr& info = res->get_audio_info();
   int32_t unused_output_volume;
   bool output_mute = false;  // Mute by other system daemons.
   bool input_mute = false;
@@ -41,25 +35,25 @@ std::optional<mojom::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
   if (!context_->cras_proxy()->GetVolumeState(&unused_output_volume,
                                               &output_mute, &input_mute,
                                               &output_user_mute, &error)) {
-    return CreateAndLogProbeError(
+    res->set_error(CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
-        "Failed retrieving mute info from cras: " + error->GetMessage());
+        "Failed retrieving mute info from cras: " + error->GetMessage()));
+    return;
   }
 
   info->output_mute = output_mute | output_user_mute;
   info->input_mute = input_mute;
-
-  return std::nullopt;
 }
 
-std::optional<mojom::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
-    mojom::AudioInfo* info) {
+void AudioFetcher::PopulateActiveNodeInfo(mojom::AudioResultPtr& res) {
+  mojom::AudioInfoPtr& info = res->get_audio_info();
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
   if (!context_->cras_proxy()->GetNodeInfos(&nodes, &error)) {
-    return CreateAndLogProbeError(
+    res->set_error(CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
-        "Failed retrieving node info from cras: " + error->GetMessage());
+        "Failed retrieving node info from cras: " + error->GetMessage()));
+    return;
   }
 
   // There might be no active output / input device such as Chromebox.
@@ -99,8 +93,6 @@ std::optional<mojom::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
           node, cras::kInputNodeGainProperty);
     }
   }
-
-  return std::nullopt;
 }
 
 }  // namespace diagnostics

@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_AUDIO_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_AUDIO_FETCHER_H_
 
-#include <optional>
-
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -25,10 +23,8 @@ class AudioFetcher final : public BaseFetcher {
   mojom::AudioResultPtr FetchAudioInfo();
 
  private:
-  using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
-
-  OptionalProbeErrorPtr PopulateMuteInfo(mojom::AudioInfo* info);
-  OptionalProbeErrorPtr PopulateActiveNodeInfo(mojom::AudioInfo* info);
+  void PopulateMuteInfo(mojom::AudioResultPtr& res);
+  void PopulateActiveNodeInfo(mojom::AudioResultPtr& res);
 };
 
 }  // namespace diagnostics
