@@ -49,9 +49,12 @@ class TRUNKS_EXPORT ScopedKeyHandle {
   // might be stale.
   virtual TPM_HANDLE get() const;
 
+  virtual void set_synchronized(bool sync);
+
  private:
   const TrunksFactory& factory_;
   TPM_HANDLE handle_;
+  bool sync_ = false;
   void FlushHandleContext(TPM_HANDLE handle);
 };
 

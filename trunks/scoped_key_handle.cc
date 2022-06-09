@@ -55,17 +55,29 @@ TPM_HANDLE ScopedKeyHandle::get() const {
   return handle_;
 }
 
+void ScopedKeyHandle::set_synchronized(bool sync) {
+  sync_ = sync;
+}
+
 void ScopedKeyHandle::FlushHandleContext(TPM_HANDLE handle) {
-  factory_.GetTpm()->FlushContext(
-      handle, nullptr,
-      base::BindRepeating(
-          [](TPM_HANDLE handle, TPM_RC result) {
-            if (result) {
-              LOG(WARNING) << "Error closing handle: " << handle << " : "
-                           << GetErrorString(result);
-            }
-          },
-          handle));
+  if (sync_) {
+    TPM_RC result = factory_.GetTpm()->FlushContextSync(handle, nullptr);
+    if (result) {
+      LOG(WARNING) << "Error closing handle: " << handle << " : "
+                   << GetErrorString(result);
+    }
+  } else {
+    factory_.GetTpm()->FlushContext(
+        handle, nullptr,
+        base::BindRepeating(
+            [](TPM_HANDLE handle, TPM_RC result) {
+              if (result) {
+                LOG(WARNING) << "Error closing handle: " << handle << " : "
+                             << GetErrorString(result);
+              }
+            },
+            handle));
+  }
 }
 
 }  // namespace trunks
