@@ -277,36 +277,6 @@ pub fn prealloc_mem(metrics_logger: &mut MetricsLogger) -> Result<()> {
     Ok(())
 }
 
-/// Returns the block device that the unencrypted stateful file system resides
-/// on. This function always returns the true RW block device, even if stateful
-/// is actually mounted on a dm-snapshot device where writes are being diverted.
-/// This is needed so that hibernate logs and data can be persisted across a
-/// successful resume.
-pub fn path_to_stateful_part() -> Result<String> {
-    let mounted_stateful = path_to_mounted_stateful_part()?;
-
-    // If the snapshot is not active, just use the stateful mount block device
-    // directly.
-    if !is_snapshot_active() {
-        return Ok(mounted_stateful);
-    }
-
-    // Ok, so there is a snapshot active. Try to get the volume group name for
-    // the stateful partition (by going directly up from the physical block
-    // device, rather than down from the mount). This is also a test of whether
-    // or not we're on an LVM-enabled system. If we fail to get the VG name,
-    // this must not be an LVM-enabled system, so just return partition one.
-    let partition1 = stateful_block_partition_one()?;
-    let vg_name = match get_vg_name(&partition1) {
-        Ok(vg) => vg,
-        Err(_) => {
-            return Ok(partition1);
-        }
-    };
-
-    Ok(format!("/dev/{}/unencrypted", vg_name))
-}
-
 /// Helper function to determine if this is a system where the stateful
 /// partition is running on top of LVM.
 pub fn is_lvm_system() -> Result<bool> {
@@ -346,12 +316,6 @@ pub fn get_device_mounted_at_dir(mount_path: &str) -> Result<String> {
 
     Err(HibernateError::MountNotFoundError())
         .context(format!("Failed to find mount at {}", mount_path))
-}
-
-/// Look through /proc/mounts to find the block device supporting the
-/// unencrypted stateful partition.
-fn path_to_mounted_stateful_part() -> Result<String> {
-    get_device_mounted_at_dir("/mnt/stateful_partition")
 }
 
 /// Return the path to partition one (stateful) on the root block device.

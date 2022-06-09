@@ -12,7 +12,8 @@ use anyhow::{Context, Result};
 use log::{debug, error};
 
 use crate::fiemap::{Fiemap, FiemapExtent};
-use crate::hiberutil::{get_page_size, path_to_stateful_part};
+use crate::files::HIBERNATE_DIR;
+use crate::hiberutil::{get_device_mounted_at_dir, get_page_size};
 use crate::mmapbuf::MmapBuffer;
 
 /// The BouncedDiskFile is a convencience wrapper around the DiskFile structure.
@@ -139,7 +140,7 @@ impl DiskFile {
         let fiemap = Fiemap::new(fs_file)?;
         let blockdev = match block_file {
             None => {
-                let blockdev_path = path_to_stateful_part()?;
+                let blockdev_path = get_device_mounted_at_dir(HIBERNATE_DIR)?;
                 OpenOptions::new()
                     .read(true)
                     .write(true)
