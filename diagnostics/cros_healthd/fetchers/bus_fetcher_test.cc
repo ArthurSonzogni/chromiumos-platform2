@@ -28,10 +28,6 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-using mojo_ipc::ThunderboltSecurityLevel;
-
 constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
 constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
 constexpr char kFakePathUsbDevices[] =
@@ -54,8 +50,8 @@ constexpr uint16_t kFakeVendor = 0x12ab;
 constexpr uint16_t kFakeDevice = 0x34cd;
 constexpr char kFakeDriver[] = "driver";
 constexpr char kFakeUsbFWVer[] = "3.14";
-constexpr mojo_ipc::FwupdVersionFormat kFakeUsbFwVerFmtMojoEnum =
-    mojo_ipc::FwupdVersionFormat::kBcd;
+constexpr mojom::FwupdVersionFormat kFakeUsbFwVerFmtMojoEnum =
+    mojom::FwupdVersionFormat::kBcd;
 constexpr FwupdVersionFormat kFakeUsbFwVerFmtLibEnum = FWUPD_VERSION_FORMAT_BCD;
 
 constexpr char kFakeThunderboltDeviceVendorName[] =
@@ -142,13 +138,13 @@ class BusFetcherTest : public BaseFileTest {
     return udevice;
   }
 
-  mojo_ipc::BusDevicePtr& AddExpectedPciDevice() {
-    auto device = mojo_ipc::BusDevice::New();
-    auto pci_info = mojo_ipc::PciBusInfo::New();
+  mojom::BusDevicePtr& AddExpectedPciDevice() {
+    auto device = mojom::BusDevice::New();
+    auto pci_info = mojom::PciBusInfo::New();
 
     device->vendor_name = kFakePciVendorName;
     device->product_name = kFakePciProductName;
-    device->device_class = mojo_ipc::BusDeviceClass::kOthers;
+    device->device_class = mojom::BusDeviceClass::kOthers;
     pci_info->class_id = kFakeClass;
     pci_info->subclass_id = kFakeSubclass;
     pci_info->prog_if_id = kFakeProg;
@@ -156,32 +152,32 @@ class BusFetcherTest : public BaseFileTest {
     pci_info->device_id = kFakeDevice;
     pci_info->driver = kFakeDriver;
 
-    device->bus_info = mojo_ipc::BusInfo::NewPciBusInfo(std::move(pci_info));
+    device->bus_info = mojom::BusInfo::NewPciBusInfo(std::move(pci_info));
     expected_bus_devices_.push_back(std::move(device));
     return expected_bus_devices_.back();
   }
 
-  mojo_ipc::BusDevicePtr& AddExpectedUsbDevice(size_t interface_count) {
+  mojom::BusDevicePtr& AddExpectedUsbDevice(size_t interface_count) {
     CHECK_GE(interface_count, 1);
-    auto device = mojo_ipc::BusDevice::New();
-    auto usb_info = mojo_ipc::UsbBusInfo::New();
+    auto device = mojom::BusDevice::New();
+    auto usb_info = mojom::UsbBusInfo::New();
 
     device->vendor_name = kFakeUsbVendorName;
     device->product_name = kFakeUsbProductName;
-    device->device_class = mojo_ipc::BusDeviceClass::kOthers;
+    device->device_class = mojom::BusDeviceClass::kOthers;
     usb_info->class_id = kFakeClass;
     usb_info->subclass_id = kFakeSubclass;
     usb_info->protocol_id = kFakeProtocol;
     usb_info->vendor_id = kFakeVendor;
     usb_info->product_id = kFakeDevice;
 
-    auto usb_fw_info = mojo_ipc::FwupdFirmwareVersionInfo::New();
+    auto usb_fw_info = mojom::FwupdFirmwareVersionInfo::New();
     usb_fw_info->version = kFakeUsbFWVer;
     usb_fw_info->version_format = kFakeUsbFwVerFmtMojoEnum;
     usb_info->fwupd_firmware_version_info = std::move(usb_fw_info);
 
     for (size_t i = 0; i < interface_count; ++i) {
-      auto usb_if_info = mojo_ipc::UsbBusInterfaceInfo::New();
+      auto usb_if_info = mojom::UsbBusInterfaceInfo::New();
       usb_if_info->interface_number = static_cast<uint8_t>(i);
       usb_if_info->class_id = kFakeClass;
       usb_if_info->subclass_id = kFakeSubclass;
@@ -190,20 +186,20 @@ class BusFetcherTest : public BaseFileTest {
       usb_info->interfaces.push_back(std::move(usb_if_info));
     }
 
-    device->bus_info = mojo_ipc::BusInfo::NewUsbBusInfo(std::move(usb_info));
+    device->bus_info = mojom::BusInfo::NewUsbBusInfo(std::move(usb_info));
     expected_bus_devices_.push_back(std::move(device));
     return expected_bus_devices_.back();
   }
 
-  mojo_ipc::BusDevicePtr& AddExpectedThunderboltDevice(size_t interface_count) {
+  mojom::BusDevicePtr& AddExpectedThunderboltDevice(size_t interface_count) {
     CHECK_GE(interface_count, 1);
-    auto device = mojo_ipc::BusDevice::New();
-    auto tbt_info = mojo_ipc::ThunderboltBusInfo::New();
+    auto device = mojom::BusDevice::New();
+    auto tbt_info = mojom::ThunderboltBusInfo::New();
 
-    device->device_class = mojo_ipc::BusDeviceClass::kThunderboltController;
-    tbt_info->security_level = mojo_ipc::ThunderboltSecurityLevel::kNone;
+    device->device_class = mojom::BusDeviceClass::kThunderboltController;
+    tbt_info->security_level = mojom::ThunderboltSecurityLevel::kNone;
     for (size_t i = 0; i < interface_count; ++i) {
-      auto tbt_if_info = mojo_ipc::ThunderboltBusInterfaceInfo::New();
+      auto tbt_if_info = mojom::ThunderboltBusInterfaceInfo::New();
       tbt_if_info->authorized = kFakeThunderboltDeviceAuthorized;
       tbt_if_info->rx_speed_gbs = kFakeThunderboltDeviceSpeed;
       tbt_if_info->tx_speed_gbs = kFakeThunderboltDeviceSpeed;
@@ -215,7 +211,7 @@ class BusFetcherTest : public BaseFileTest {
       tbt_info->thunderbolt_interfaces.push_back(std::move(tbt_if_info));
     }
     device->bus_info =
-        mojo_ipc::BusInfo::NewThunderboltBusInfo(std::move(tbt_info));
+        mojom::BusInfo::NewThunderboltBusInfo(std::move(tbt_info));
     expected_bus_devices_.push_back(std::move(device));
     return expected_bus_devices_.back();
   }
@@ -224,20 +220,20 @@ class BusFetcherTest : public BaseFileTest {
     for (size_t i = 0; i < expected_bus_devices_.size(); ++i) {
       const auto& bus_info = expected_bus_devices_[i]->bus_info;
       switch (bus_info->which()) {
-        case mojo_ipc::BusInfo::Tag::PCI_BUS_INFO:
+        case mojom::BusInfo::Tag::PCI_BUS_INFO:
           SetPciBusInfo(bus_info->get_pci_bus_info(), i);
           break;
-        case mojo_ipc::BusInfo::Tag::USB_BUS_INFO:
+        case mojom::BusInfo::Tag::USB_BUS_INFO:
           SetUsbBusInfo(bus_info->get_usb_bus_info(), i);
           break;
-        case mojo_ipc::BusInfo::Tag::THUNDERBOLT_BUS_INFO:
+        case mojom::BusInfo::Tag::THUNDERBOLT_BUS_INFO:
           SetThunderboltBusInfo(bus_info->get_thunderbolt_bus_info(), i);
           break;
       }
     }
   }
 
-  void SetPciBusInfo(const mojo_ipc::PciBusInfoPtr& pci_info, size_t id) {
+  void SetPciBusInfo(const mojom::PciBusInfoPtr& pci_info, size_t id) {
     const auto dir = kFakePathPciDevices;
     const auto dev = base::StringPrintf("0000:00:%02zx.0", id);
     SetSymbolicLink({kLinkPciDevices, dev}, {kPathSysPci, dev});
@@ -256,7 +252,7 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  void SetUsbBusInfo(const mojo_ipc::UsbBusInfoPtr& usb_info, size_t id) {
+  void SetUsbBusInfo(const mojom::UsbBusInfoPtr& usb_info, size_t id) {
     const auto dir = kFakePathUsbDevices;
     const auto dev = base::StringPrintf("1-%zu", id);
     SetSymbolicLink({kLinkUsbDevices, dev}, {kPathSysUsb, dev});
@@ -282,7 +278,7 @@ class BusFetcherTest : public BaseFileTest {
 
     for (size_t i = 0; i < usb_info->interfaces.size(); ++i) {
       const auto dev_if = base::StringPrintf("1-%zu:1.%zu", id, i);
-      const mojo_ipc::UsbBusInterfaceInfoPtr& usb_if_info =
+      const mojom::UsbBusInterfaceInfoPtr& usb_if_info =
           usb_info->interfaces[i];
 
       ASSERT_EQ(usb_if_info->interface_number, static_cast<uint8_t>(i));
@@ -301,24 +297,24 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  std::string EnumToString(ThunderboltSecurityLevel level) {
+  std::string EnumToString(mojom::ThunderboltSecurityLevel level) {
     switch (level) {
-      case ThunderboltSecurityLevel::kNone:
+      case mojom::ThunderboltSecurityLevel::kNone:
         return "None";
-      case ThunderboltSecurityLevel::kUserLevel:
+      case mojom::ThunderboltSecurityLevel::kUserLevel:
         return "User";
-      case ThunderboltSecurityLevel::kSecureLevel:
+      case mojom::ThunderboltSecurityLevel::kSecureLevel:
         return "Secure";
-      case ThunderboltSecurityLevel::kDpOnlyLevel:
+      case mojom::ThunderboltSecurityLevel::kDpOnlyLevel:
         return "DpOnly";
-      case ThunderboltSecurityLevel::kUsbOnlyLevel:
+      case mojom::ThunderboltSecurityLevel::kUsbOnlyLevel:
         return "UsbOnly";
-      case ThunderboltSecurityLevel::kNoPcieLevel:
+      case mojom::ThunderboltSecurityLevel::kNoPcieLevel:
         return "NoPcie";
     }
   }
 
-  void SetThunderboltBusInfo(const mojo_ipc::ThunderboltBusInfoPtr& tbt_info,
+  void SetThunderboltBusInfo(const mojom::ThunderboltBusInfoPtr& tbt_info,
                              size_t id) {
     const auto dir = kFakeThunderboltDevices;
     const auto dev = base::StringPrintf("domain%zu/", id);
@@ -327,7 +323,7 @@ class BusFetcherTest : public BaseFileTest {
 
     for (size_t i = 0; i < tbt_info->thunderbolt_interfaces.size(); ++i) {
       const auto dev_if = base::StringPrintf("%zu-%zu:%zu.%zu", id, id, id, i);
-      const mojo_ipc::ThunderboltBusInterfaceInfoPtr& tbt_if_info =
+      const mojom::ThunderboltBusInterfaceInfoPtr& tbt_if_info =
           tbt_info->thunderbolt_interfaces[i];
       SetFile({dir, dev_if, kFileThunderboltAuthorized},
               tbt_if_info->authorized ? "1" : "0");
@@ -347,11 +343,11 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  mojo_ipc::BusResultPtr FetchBusDevices() {
+  mojom::BusResultPtr FetchBusDevices() {
     base::RunLoop run_loop;
-    mojo_ipc::BusResultPtr result;
+    mojom::BusResultPtr result;
     bus_fetcher_.FetchBusDevices(
-        base::BindLambdaForTesting([&](mojo_ipc::BusResultPtr response) {
+        base::BindLambdaForTesting([&](mojom::BusResultPtr response) {
           result = std::move(response);
           run_loop.Quit();
         }));
@@ -371,7 +367,7 @@ class BusFetcherTest : public BaseFileTest {
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
-  std::vector<mojo_ipc::BusDevicePtr> expected_bus_devices_;
+  std::vector<mojom::BusDevicePtr> expected_bus_devices_;
   fwupd_utils::DeviceList fwupd_device_list_;
   MockContext mock_context_;
   BusFetcher bus_fetcher_{&mock_context_};

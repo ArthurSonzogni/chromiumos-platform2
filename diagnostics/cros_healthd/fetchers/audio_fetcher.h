@@ -12,6 +12,8 @@
 
 namespace diagnostics {
 
+namespace mojom = chromeos::cros_healthd::mojom;
+
 // The AudioFetcher class is responsible for gathering audio info reported
 // by cros_healthd. Info is fetched via cras.
 class AudioFetcher final : public BaseFetcher {
@@ -20,16 +22,13 @@ class AudioFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's audio info or the error that
   // occurred fetching the information.
-  chromeos::cros_healthd::mojom::AudioResultPtr FetchAudioInfo();
+  mojom::AudioResultPtr FetchAudioInfo();
 
  private:
-  using OptionalProbeErrorPtr =
-      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+  using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
 
-  OptionalProbeErrorPtr PopulateMuteInfo(
-      chromeos::cros_healthd::mojom::AudioInfo* info);
-  OptionalProbeErrorPtr PopulateActiveNodeInfo(
-      chromeos::cros_healthd::mojom::AudioInfo* info);
+  OptionalProbeErrorPtr PopulateMuteInfo(mojom::AudioInfo* info);
+  OptionalProbeErrorPtr PopulateActiveNodeInfo(mojom::AudioInfo* info);
 };
 
 }  // namespace diagnostics

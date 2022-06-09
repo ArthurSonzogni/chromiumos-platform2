@@ -15,30 +15,24 @@
 
 namespace diagnostics {
 
-namespace {
-
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-}  // namespace
-
-mojo_ipc::AudioResultPtr AudioFetcher::FetchAudioInfo() {
-  mojo_ipc::AudioInfo info;
+mojom::AudioResultPtr AudioFetcher::FetchAudioInfo() {
+  mojom::AudioInfo info;
 
   auto error = PopulateMuteInfo(&info);
   if (error.has_value()) {
-    return mojo_ipc::AudioResult::NewError(std::move(error.value()));
+    return mojom::AudioResult::NewError(std::move(error.value()));
   }
 
   error = PopulateActiveNodeInfo(&info);
   if (error.has_value()) {
-    return mojo_ipc::AudioResult::NewError(std::move(error.value()));
+    return mojom::AudioResult::NewError(std::move(error.value()));
   }
 
-  return mojo_ipc::AudioResult::NewAudioInfo(info.Clone());
+  return mojom::AudioResult::NewAudioInfo(info.Clone());
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
-    mojo_ipc::AudioInfo* info) {
+std::optional<mojom::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
+    mojom::AudioInfo* info) {
   int32_t unused_output_volume;
   bool output_mute = false;  // Mute by other system daemons.
   bool input_mute = false;
@@ -48,7 +42,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
                                               &output_mute, &input_mute,
                                               &output_user_mute, &error)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kSystemUtilityError,
+        mojom::ErrorType::kSystemUtilityError,
         "Failed retrieving mute info from cras: " + error->GetMessage());
   }
 
@@ -58,13 +52,13 @@ std::optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
-    mojo_ipc::AudioInfo* info) {
+std::optional<mojom::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
+    mojom::AudioInfo* info) {
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
   if (!context_->cras_proxy()->GetNodeInfos(&nodes, &error)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kSystemUtilityError,
+        mojom::ErrorType::kSystemUtilityError,
         "Failed retrieving node info from cras: " + error->GetMessage());
   }
 

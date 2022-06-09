@@ -13,14 +13,15 @@
 
 namespace diagnostics {
 
+namespace mojom = chromeos::cros_healthd::mojom;
+
 // The BusFetcher class is responsible for gathering Bus info reported by
 // cros_healthd.
 class BusFetcher final : public BaseFetcher {
  public:
   using BaseFetcher::BaseFetcher;
 
-  using FetchBusDevicesCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::BusResultPtr)>;
+  using FetchBusDevicesCallback = base::OnceCallback<void(mojom::BusResultPtr)>;
 
   // Returns a structure with a list of data fields for each of the bus device
   // or the error that occurred fetching the information.
