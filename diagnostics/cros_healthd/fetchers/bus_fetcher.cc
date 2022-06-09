@@ -82,10 +82,10 @@ mojom::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
 // Some devices cannot be identified by their class id. Try to identify them by
 // checking the sysfs structure.
 mojom::BusDeviceClass GetDeviceClassBySysfs(const base::FilePath& path) {
-  if (PathExists(path.Append("bluetooth")))
+  if (base::PathExists(path.Append("bluetooth")))
     return mojom::BusDeviceClass::kBluetoothAdapter;
   const auto net = path.Append("net");
-  if (PathExists(net)) {
+  if (base::PathExists(net)) {
     for (const auto& nic_path : ListDirectory(net)) {
       const auto name = nic_path.BaseName().value();
       if (name.find("eth") == 0)
@@ -194,7 +194,7 @@ mojom::BusDeviceClass GetUsbDeviceClass(const base::FilePath& path,
   // Try to get the type by checking the type of each interface.
   for (const auto& if_path : ListDirectory(path)) {
     // |if_path| is an interface if and only if |kFileUsbIFNumber| exist.
-    if (!PathExists(if_path.Append(kFileUsbIFNumber)))
+    if (!base::PathExists(if_path.Append(kFileUsbIFNumber)))
       continue;
     auto type = GetDeviceClassBySysfs(if_path);
     if (type != mojom::BusDeviceClass::kOthers)
@@ -321,11 +321,11 @@ mojom::BusDevicePtr FetchThunderboltDevice(
   device->bus_info =
       mojom::BusInfo::NewThunderboltBusInfo(std::move(thunderbolt_bus_info));
   for (const auto& path : ListDirectory(dev_path)) {
-    if (PathExists(path.Append(kFileThunderboltDeviceName))) {
+    if (base::PathExists(path.Append(kFileThunderboltDeviceName))) {
       ReadAndTrimString(path.Append(kFileThunderboltDeviceName),
                         &device->product_name);
     }
-    if (PathExists(path.Append(kFileThunderboltVendorName))) {
+    if (base::PathExists(path.Append(kFileThunderboltVendorName))) {
       ReadAndTrimString(path.Append(kFileThunderboltVendorName),
                         &device->vendor_name);
     }
