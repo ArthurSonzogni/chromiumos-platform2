@@ -94,6 +94,8 @@ mojom::BusDeviceClass GetDeviceClassBySysfs(const base::FilePath& path) {
         return mojom::BusDeviceClass::kWirelessController;
     }
   }
+  if (base::PathExists(path.Append("sound")))
+    return mojom::BusDeviceClass::kAudioCard;
   return mojom::BusDeviceClass::kOthers;
 }
 
