@@ -1418,7 +1418,8 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
     DisplayTpmInfo(tpm_result);
 
   const auto& system_result_v2 = info->system_result_v2;
-  if (system_result_v2)
+  // TODO(b/190459636): Remove |!system_result| after migration.
+  if (!system_result && system_result_v2)
     DisplaySystemInfoV2(system_result_v2);
 
   const auto& graphics_result = info->graphics_result;

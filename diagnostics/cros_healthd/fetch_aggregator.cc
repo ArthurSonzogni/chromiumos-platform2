@@ -123,8 +123,12 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem: {
-        system_fetcher_.FetchSystemInfo(
-            CreateFetchCallback(&barrier, &info->system_result));
+        system_fetcher_.FetchSystemInfoV2(
+            CreateFetchCallback(&barrier, &info->system_result_v2));
+        auto system_info = system_fetcher_.ConvertToSystemInfo(
+            info->system_result_v2->get_system_info_v2());
+        info->system_result =
+            mojom::SystemResult::NewSystemInfo(std::move(system_info));
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem2: {
