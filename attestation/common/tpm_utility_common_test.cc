@@ -4,15 +4,6 @@
 
 #include "attestation/common/tpm_utility_common.h"
 
-#if USE_TPM2
-#include "attestation/common/tpm_utility_v2.h"
-#include "trunks/trunks_factory_for_test.h"
-#endif
-
-#if USE_TPM1
-#include "attestation/common/tpm_utility_v1.h"
-#endif
-
 #include <utility>
 #include <vector>
 
@@ -22,6 +13,16 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
+
+#if USE_TPM2
+#include <trunks/trunks_factory_for_test.h>
+
+#include "attestation/common/tpm_utility_v2.h"
+#endif
+
+#if USE_TPM1
+#include "attestation/common/tpm_utility_v1.h"
+#endif
 
 namespace {
 

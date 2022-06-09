@@ -18,10 +18,9 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
-
-#include "trunks/authorization_delegate.h"
-#include "trunks/error_codes.h"
-#include "trunks/tpm_generated.h"
+#include <trunks/authorization_delegate.h>
+#include <trunks/error_codes.h>
+#include <trunks/tpm_generated.h>
 
 namespace {
 

@@ -14,8 +14,7 @@
 #include <string>
 
 #include <base/threading/thread.h>
-
-#include "trunks/trunks_factory_impl.h"
+#include <trunks/trunks_factory_impl.h>
 
 namespace attestation {
 
