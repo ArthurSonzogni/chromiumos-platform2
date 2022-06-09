@@ -887,13 +887,21 @@ std::string Ethernet::GetPermanentMacAddressFromKernel() {
     return std::string();
   }
 
-  std::string mac_address =
-      base::ToLowerASCII(ByteString(perm_addr->data, ETH_ALEN).HexEncode());
-  if (!IsValidMac(mac_address)) {
-    LOG(ERROR) << "Invalid permanent MAC address: " << mac_address;
+  ByteString mac_address(perm_addr->data, ETH_ALEN);
+  if (mac_address.IsZero()) {
+    // All-zero permanent MAC address ("00:00:00:00:00:00") is not meaningful,
+    // no matter if it is expected (e.g., for veths) or not.
+    LOG(WARNING) << "Permanent MAC address on " << link_name()
+                 << " is all zeros. Perhaps veth interface?";
     return std::string();
   }
-  return mac_address;
+
+  std::string mac_address_str = base::ToLowerASCII(mac_address.HexEncode());
+  if (!IsValidMac(mac_address_str)) {
+    LOG(ERROR) << "Invalid permanent MAC address: " << mac_address_str;
+    return std::string();
+  }
+  return mac_address_str;
 }
 
 std::string Ethernet::GetDeviceBusType() const {
