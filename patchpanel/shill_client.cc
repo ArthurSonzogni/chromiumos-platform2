@@ -389,49 +389,55 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     // Gets the value of address, prefix_length, gateway, and dns_servers.
     it = ipconfig_props.find(shill::kAddressProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "IPConfig properties is missing Address";
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig properties is missing Address";
       continue;
     }
     const std::string& address = it->second.TryGet<std::string>();
+    if (address.empty()) {
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig Address property was empty.";
+      continue;
+    }
 
     it = ipconfig_props.find(shill::kPrefixlenProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "IPConfig properties is missing Prefixlen";
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig properties is missing Prefixlen";
       continue;
     }
     int prefix_length = it->second.TryGet<int>();
+    if (prefix_length < 1 || (is_ipv4_type && prefix_length > 32) ||
+        prefix_length > 128) {
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig Prefixlen property was invalid: "
+                   << prefix_length;
+      continue;
+    }
 
     it = ipconfig_props.find(shill::kGatewayProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "IPConfig properties is missing Gateway";
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig properties is missing Gateway";
       continue;
     }
     const std::string& gateway = it->second.TryGet<std::string>();
+    if (gateway.empty()) {
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig Gateway property was empty.";
+      continue;
+    }
 
     it = ipconfig_props.find(shill::kNameServersProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "IPConfig properties is missing NameServers";
+      LOG(WARNING) << "[" << device << "]: " << method
+                   << " IPConfig properties is missing NameServers";
       // Shill will emit this property with empty value if it has no dns for
       // this device, so missing this property indicates an error.
       continue;
     }
     const std::vector<std::string>& dns_addresses =
         it->second.TryGet<std::vector<std::string>>();
-
-    // Checks if this ipconfig is valid: address, gateway, and prefix_length
-    // should not be empty.
-    if (address.empty() || gateway.empty() || prefix_length == 0) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "Skipped invalid ipconfig: "
-                   << "address.length()=" << address.length()
-                   << ", gateway.length()=" << gateway.length()
-                   << ", prefix_length=" << prefix_length;
-      continue;
-    }
 
     // Fills the IPConfig struct according to the type.
     if (is_ipv4_type) {
