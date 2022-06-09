@@ -1,0 +1,38 @@
+// Copyright 2022 The ChromiumOS Authors.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "rmad/executor/executor_daemon.h"
+
+#include <memory>
+#include <utility>
+
+#include <base/check.h>
+#include <base/threading/thread_task_runner_handle.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/system/invitation.h>
+#include <mojo/public/cpp/system/message_pipe.h>
+
+#include "rmad/executor/mojom/executor.mojom.h"
+
+namespace rmad {
+
+ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint) {
+  DCHECK(endpoint.is_valid());
+
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+
+  // Accept invitation from rmad.
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(std::move(endpoint));
+  // Always use 0 as the default pipe name.
+  mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
+
+  mojo_service_ = std::make_unique<Executor>(
+      mojo::PendingReceiver<::chromeos::rmad::mojom::Executor>(
+          std::move(pipe)));
+}
+
+}  // namespace rmad
