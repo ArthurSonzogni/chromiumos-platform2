@@ -26,10 +26,10 @@ shared_library("libcros_ml_core") {
   configs += [ ":target_defaults" ]
 }
 
-# TODO(jmpollock): Add tests
+# TODO(b/235425245): Add tests
 if (use.test) {
 }
 
-# TODO(jmpollock): Add fuzzers
+# TODO(b/235425140): Add fuzzers
 if (use.fuzzer) {
 }

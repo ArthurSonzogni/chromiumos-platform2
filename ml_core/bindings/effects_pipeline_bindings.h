@@ -7,7 +7,7 @@
 // and SHOULD NOT BE MODIFIED HERE. It will get delivered with the
 // libcros_ml_core_internal.so bundle once that is set up.
 //
-// TODO(jmpollock): Make sure this file comes across with the lib.
+// TODO(b/232703203): Make sure this file comes across with the lib.
 
 #ifndef ML_CORE_BINDINGS_EFFECTS_PIPELINE_BINDINGS_H_
 #define ML_CORE_BINDINGS_EFFECTS_PIPELINE_BINDINGS_H_
