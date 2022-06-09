@@ -6,7 +6,7 @@
 
 use std::convert::TryInto;
 use std::fs;
-use std::fs::{create_dir, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
@@ -22,7 +22,7 @@ use crate::mmapbuf::MmapBuffer;
 use crate::splitter::HIBER_HEADER_MAX_SIZE;
 
 /// Define the directory where hibernate state files are kept.
-pub const HIBERNATE_DIR: &str = "/mnt/stateful_partition/unencrypted/hibernate";
+pub const HIBERNATE_DIR: &str = "/mnt/hibernate";
 /// Define the name of the hibernate metadata.
 const HIBER_META_NAME: &str = "metadata";
 /// Define the preallocated size of the hibernate metadata file.
@@ -53,16 +53,6 @@ const RESUME_METRICS_FILE_NAME: &str = "resume_metrics";
 const SUSPEND_METRICS_FILE_NAME: &str = "suspend_metrics";
 /// Define the size of the preallocated metrics file.
 const HIBER_METRICS_SIZE: i64 = 1024 * 1024 * 4;
-
-/// Create the hibernate directory if it does not exist.
-pub fn create_hibernate_dir() -> Result<()> {
-    if !Path::new(HIBERNATE_DIR).exists() {
-        debug!("Creating hibernate directory");
-        create_dir(HIBERNATE_DIR).context("Failed to create hibernate directory")?;
-    }
-
-    Ok(())
-}
 
 /// Preallocates the metadata file and opens it for I/O.
 pub fn preallocate_metadata_file(zero_out: bool) -> Result<BouncedDiskFile> {

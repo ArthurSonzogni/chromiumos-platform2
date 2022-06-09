@@ -18,9 +18,9 @@ use crate::cookie::set_hibernate_cookie;
 use crate::crypto::{CryptoMode, CryptoWriter};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
-    create_hibernate_dir, does_hiberfile_exist, open_metrics_file, preallocate_header_file,
-    preallocate_hiberfile, preallocate_kernel_key_file, preallocate_log_file,
-    preallocate_metadata_file, preallocate_metrics_file, HIBERNATE_DIR,
+    does_hiberfile_exist, open_metrics_file, preallocate_header_file, preallocate_hiberfile,
+    preallocate_kernel_key_file, preallocate_log_file, preallocate_metadata_file,
+    preallocate_metrics_file, HIBERNATE_DIR,
 };
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
@@ -72,7 +72,6 @@ impl SuspendConductor {
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
         info!("Beginning hibernate");
         let start = Instant::now();
-        create_hibernate_dir()?;
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
