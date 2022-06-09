@@ -79,6 +79,9 @@ base::FilePath GetDmcryptDataVolume(
     const ObfuscatedUsername& obfuscated_username);
 base::FilePath GetDmcryptCacheVolume(
     const ObfuscatedUsername& obfuscated_username);
+base::FilePath LogicalVolumeSnapshotPath(
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& container_name);
 
 // Gets existing system salt, or creates one if it doesn't exist.
 bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt);
