@@ -201,10 +201,12 @@ struct U2fHid::Transaction {
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                U2fCorpFirmwareVersion fw_version,
+               std::string dev_id,
                U2fMessageHandlerInterface* msg_handler,
                U2fCorpProcessorInterface* u2f_corp_processor)
     : hid_(std::move(hid)),
       fw_version_(fw_version),
+      dev_id_(std::move(dev_id)),
       free_cid_(1),
       locked_cid_(0),
       msg_handler_(msg_handler),
@@ -340,6 +342,18 @@ int U2fHid::CmdSysInfo(std::string* resp) {
   return -EINVAL;
 }
 
+int U2fHid::CmdMetrics(std::string* resp) {
+  if (u2f_corp_processor_) {
+    VLOG(1) << "Received Metrics command";
+    *resp = std::string("built-in") + dev_id_;
+    return 0;
+  }
+
+  LOG(WARNING) << "Received unsupported Metrics command";
+  ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
+  return -EINVAL;
+}
+
 int U2fHid::CmdMsg(std::string* resp) {
   U2fResponseApdu r = msg_handler_->ProcessMsg(transaction_->payload);
 
@@ -380,6 +394,9 @@ void U2fHid::ExecuteCmd() {
       break;
     case U2fHidCommand::kVendorSysInfo:
       rc = CmdSysInfo(&resp);
+      break;
+    case U2fHidCommand::kMetrics:
+      rc = CmdMetrics(&resp);
       break;
     default:
       LOG(WARNING) << "Unknown command " << std::hex

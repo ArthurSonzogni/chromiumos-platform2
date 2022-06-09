@@ -306,6 +306,8 @@ std::string U2FHid::Command::CommandName() const {
       return "Wink";
     case CommandCode::kError:
       return "Error";
+    case CommandCode::kMetrics:
+      return "Metrics";
   }
   return "?";
 }

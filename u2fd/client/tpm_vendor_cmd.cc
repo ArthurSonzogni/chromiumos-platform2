@@ -42,6 +42,13 @@ struct first_response_pdu {
   uint32_t keyid[2];
 };
 
+struct sysinfo_s {
+  uint32_t ro_keyid;
+  uint32_t rw_keyid;
+  uint32_t dev_id0;
+  uint32_t dev_id1;
+} __attribute__((packed));
+
 // TPMv2 Spec mandates that vendor-specific command codes have bit 29 set,
 // while bits 15-0 indicate the command. All other bits should be zero. We
 // define one of those 16-bit command values for Cr50 purposes, and use the
@@ -341,6 +348,54 @@ uint32_t TpmVendorCommandProxy::GetRwVersion(TpmRwVersion* version) {
       .minor = base::NetToHost32(pdu.shv[kRwVersionIndex].minor),
   };
 
+  return 0;
+}
+
+uint32_t TpmVendorCommandProxy::GetDeviceId(std::string* dev_id) {
+  constexpr std::array<uint8_t, 12> kSysInfoRequest{
+      0x80, 0x01,              // tag: TPM_ST_NO_SESSIONS
+      0x00, 0x00, 0x00, 0x0c,  // length
+      0x20, 0x00, 0x00, 0x00,  // command: TPM_CC_VENDOR_BIT
+      0x00, 0x12,              // subcmd: VENDOR_CC_SYSINFO
+  };
+
+  constexpr std::array<uint8_t, 12> kExpectedSysInfoResponseHeader{
+      0x80, 0x01,              // TPM_ST_NO_SESSIONS
+      0x00, 0x00, 0x00, 0x1c,  // length
+      0x00, 0x00, 0x00, 0x00,  // return_value: TPM_RC_SUCCESS
+      0x00, 0x12,              // subcmd: VENDOR_CC_SYSINFO
+  };
+
+  constexpr int kTpmResponseHeaderSize = 12;
+  constexpr int kExpectedResponseSize =
+      kTpmResponseHeaderSize + sizeof(sysinfo_s);
+
+  std::string req(kSysInfoRequest.begin(), kSysInfoRequest.end());
+
+  VLOG(2) << "Out(" << req.size()
+          << "): " << base::HexEncode(req.data(), req.size());
+
+  std::string resp = transceiver_->SendCommandAndWait(req);
+
+  VLOG(2) << "In(" << resp.size()
+          << "):  " << base::HexEncode(resp.data(), resp.size());
+
+  if (resp.size() < kTpmResponseHeaderSize) {
+    return kVendorRcInvalidResponse;
+  }
+
+  if (resp.size() != kExpectedResponseSize ||
+      resp.compare(0, 12,
+                   std::string(kExpectedSysInfoResponseHeader.begin(),
+                               kExpectedSysInfoResponseHeader.end())) != 0) {
+    uint32_t resp_code;
+    memcpy(&resp_code, resp.c_str() + 6, sizeof(uint32_t));
+    return base::NetToHost32(resp_code);
+  }
+
+  struct sysinfo_s sysinfo;
+  memcpy(&sysinfo, resp.c_str() + kTpmResponseHeaderSize, sizeof(sysinfo_s));
+  *dev_id = std::string(reinterpret_cast<char*>(&sysinfo.dev_id0), 8);
   return 0;
 }
 

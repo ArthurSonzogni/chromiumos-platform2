@@ -95,6 +95,9 @@ class U2F_CLIENT_EXPORT TpmVendorCommandProxy {
   // Retrieves the epoch.major.minor RW version of cr50.
   virtual uint32_t GetRwVersion(TpmRwVersion* version);
 
+  // Retrieves the device id of cr50.
+  virtual uint32_t GetDeviceId(std::string* dev_id);
+
  private:
   // Sends the TPM command with vendor-specific command code |cc| and the
   // payload in |input|, get the reply in |output|. Returns the TPM response

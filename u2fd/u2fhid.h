@@ -58,6 +58,7 @@ class U2fHid {
     kInit = 6,
     kWink = 8,
     kError = 0x3f,
+    kMetrics = 0x41,
   };
 
   // U2FHID error codes
@@ -78,6 +79,7 @@ class U2fHid {
   // msg_handler, which must outlive this instance.
   U2fHid(std::unique_ptr<HidInterface> hid,
          U2fCorpFirmwareVersion fw_version,
+         std::string dev_id,
          U2fMessageHandlerInterface* msg_handler,
          U2fCorpProcessorInterface* u2f_corp_processor);
   U2fHid(const U2fHid&) = delete;
@@ -94,6 +96,7 @@ class U2fHid {
   int CmdMsg(std::string* resp);
   int CmdPing(std::string* resp);
   int CmdSysInfo(std::string* resp);
+  int CmdMetrics(std::string* resp);
 
   // Fully resets the state of the possibly on-going U2FHID transaction.
   void ClearTransaction();
@@ -123,6 +126,7 @@ class U2fHid {
 
   std::unique_ptr<HidInterface> hid_;
   const U2fCorpFirmwareVersion fw_version_;
+  const std::string dev_id_;
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;

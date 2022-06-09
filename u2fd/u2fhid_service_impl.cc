@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <attestation-client/attestation/dbus-constants.h>
@@ -65,6 +66,8 @@ bool U2fHidServiceImpl::CreateU2fHid(
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics) {
   U2fCorpFirmwareVersion fw_version;
+  std::string dev_id(8, '\x00');
+
   if (enable_corp_protocol) {
     TpmRwVersion rw_version;
     uint32_t status = tpm_proxy_.GetRwVersion(&rw_version);
@@ -73,9 +76,15 @@ bool U2fHidServiceImpl::CreateU2fHid(
                  << ".";
     } else {
       fw_version = U2fCorpFirmwareVersion::FromTpmRwVersion(rw_version);
-      u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-      u2f_corp_processor_->Initialize(fw_version, sm_proxy, &tpm_proxy_,
-                                      metrics, request_user_presence);
+      status = tpm_proxy_.GetDeviceId(&dev_id);
+      if (status != 0) {
+        LOG(ERROR) << "GetDeviceId failed with status " << std::hex << status
+                   << ".";
+      } else {
+        u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
+        u2f_corp_processor_->Initialize(fw_version, sm_proxy, &tpm_proxy_,
+                                        metrics, request_user_presence);
+      }
     }
   }
 
@@ -98,7 +107,8 @@ bool U2fHidServiceImpl::CreateU2fHid(
   u2fhid_ = std::make_unique<u2f::U2fHid>(
       std::make_unique<u2f::UHidDevice>(vendor_id, product_id, kDeviceName,
                                         "u2fd-tpm-cr50"),
-      fw_version, u2f_msg_handler_.get(), u2f_corp_processor_.get());
+      fw_version, std::move(dev_id), u2f_msg_handler_.get(),
+      u2f_corp_processor_.get());
 
   return u2fhid_->Init();
 }
