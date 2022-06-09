@@ -629,6 +629,12 @@ Client::IPConfig Client::ParseIPConfigsProperty(
                    << device_path << "]";
       continue;
     }
+    if ((ip_addr.family() == IPAddress::kFamilyIPv4 && len > 32) || len > 128) {
+      LOG(WARNING) << "Invalid property [" << kPrefixlenProperty
+                   << "] in IPConfig [" << path.value() << "] on device ["
+                   << device_path << "]";
+      continue;
+    }
 
     // While multiple IPv6 addresses are valid, we expect shill to provide at
     // most one for now.

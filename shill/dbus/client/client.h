@@ -50,12 +50,12 @@ class BRILLO_EXPORT Client {
              this->ipv6_dns_addresses == that.ipv6_dns_addresses;
     }
 
-    int ipv4_prefix_length;
+    int ipv4_prefix_length{0};
     std::string ipv4_address;
     std::string ipv4_gateway;
     std::vector<std::string> ipv4_dns_addresses;
 
-    int ipv6_prefix_length;
+    int ipv6_prefix_length{0};
     // Note due to the limitation of shill, we will only get one IPv6 address
     // from it. This address should be the privacy address for device with type
     // of ethernet or wifi.
