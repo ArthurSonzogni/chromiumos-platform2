@@ -143,6 +143,10 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->needs_set_input_focus = 0;
   ctx->desired_scale = 1.0;
   ctx->scale = 1.0;
+  ctx->virt_scale_x = 1.0;
+  ctx->virt_scale_y = 1.0;
+  ctx->xdg_scale_x = 1.0;
+  ctx->xdg_scale_y = 1.0;
   ctx->application_id = NULL;
   ctx->application_id_property_name = NULL;
   ctx->exit_with_child = 1;
@@ -177,6 +181,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->timing = NULL;
   ctx->trace_filename = NULL;
   ctx->trace_system = false;
+  ctx->use_direct_scale = false;
 
   wl_list_init(&ctx->accelerators);
   wl_list_init(&ctx->registries);

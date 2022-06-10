@@ -222,6 +222,23 @@ struct sl_host_output {
   int device_scale_factor;
   int expecting_scale;
   bool expecting_logical_size;
+
+  // The scaling factors for direct mode
+  // virt_scale: Used to translate from physical space to virtual space
+  // xdg_scale: Used to translate from virtual space to logical space
+  //
+  // The logical space is defined by the host. It will be retrieved through
+  // the xdg_output_manager interface.
+  //
+  // All spaces, and by consequence all scale factors, will be unique to each
+  // particular output.
+  //
+  // For more details, see sommelier-transform.h
+
+  double virt_scale_x;
+  double virt_scale_y;
+  double xdg_scale_x;
+  double xdg_scale_y;
   int32_t logical_width;
   int32_t logical_height;
   int32_t logical_x;
