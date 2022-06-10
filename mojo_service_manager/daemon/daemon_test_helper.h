@@ -16,8 +16,7 @@ enum class DaemonTestHelperResult {
   kConnectSuccessfully,
 };
 
-// The fake socket name for testing.
-inline constexpr char kTestSocketName[] = "test_socket";
+inline constexpr char kSocketPathSwitch[] = "test-socket-path";
 
 }  // namespace mojo_service_manager
 }  // namespace chromeos

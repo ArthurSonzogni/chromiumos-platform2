@@ -11,13 +11,16 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/process/launch.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/test_timeouts.h>
+#include <base/threading/thread.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <base/timer/elapsed_timer.h>
+#include <brillo/process/process.h>
+#include <brillo/process/process_reaper.h>
 #include <gtest/gtest.h>
 
 #include "mojo_service_manager/daemon/daemon.h"
@@ -29,6 +32,7 @@ namespace {
 
 constexpr char kFakeSecurityContext[] = "u:r:cros_fake:s0";
 constexpr char kDaemonTestHelperExecName[] = "daemon_test_helper";
+constexpr char kTestSocketName[] = "test_socket";
 
 class DaemonTest : public ::testing::Test {
  public:
@@ -41,31 +45,27 @@ class DaemonTest : public ::testing::Test {
   void RunDaemonAndExpectTestSubprocessResult(Daemon::Delegate* delegate,
                                               DaemonTestHelperResult result) {
     Daemon daemon{delegate, GetSocketPath(), {}, Configuration{}};
-    base::CommandLine command_line{
-        base::CommandLine::ForCurrentProcess()->GetProgram().DirName().Append(
-            kDaemonTestHelperExecName)};
-    base::LaunchOptions option;
-    // Set the current directory to the test root for child to find it.
-    option.current_directory = temp_dir_.GetPath();
-    base::Process process = base::LaunchProcess(command_line, option);
-    base::ElapsedTimer t;
-    // Wait async so the main thread won't be block.
-    base::RepeatingClosure wait_exit_async = base::BindLambdaForTesting([&]() {
-      int exit_code = 1;
-      if (process.WaitForExitWithTimeout(base::Milliseconds(1), &exit_code)) {
-        EXPECT_EQ(exit_code, static_cast<int>(result));
-        daemon.Quit();
-        return;
-      }
-      if (t.Elapsed() < TestTimeouts::action_timeout()) {
-        base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                      wait_exit_async);
-        return;
-      }
-      EXPECT_TRUE(false) << "Timeout is reached";
-      daemon.Quit();
-    });
-    wait_exit_async.Run();
+    brillo::ProcessImpl process;
+    process.AddArg(base::CommandLine::ForCurrentProcess()
+                       ->GetProgram()
+                       .DirName()
+                       .Append(kDaemonTestHelperExecName)
+                       .value());
+    process.AddArg(base::StringPrintf("--%s=%s", kSocketPathSwitch,
+                                      GetSocketPath().value().c_str()));
+    process.Start();
+    brillo::ProcessReaper reaper;
+    reaper.Register(&daemon);
+    reaper.WatchForChild(FROM_HERE, process.pid(),
+                         base::BindLambdaForTesting([&](const siginfo_t& info) {
+                           EXPECT_EQ(info.si_pid, process.pid());
+                           // Now child process has stopped so we should release
+                           // it to prevent it being killed again.
+                           process.Release();
+                           EXPECT_EQ(info.si_code, CLD_EXITED);
+                           EXPECT_EQ(info.si_status, static_cast<int>(result));
+                           daemon.Quit();
+                         }));
     EXPECT_EQ(daemon.Run(), EX_OK);
   }
 

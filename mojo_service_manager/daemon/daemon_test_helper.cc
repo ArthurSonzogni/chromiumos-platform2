@@ -87,9 +87,12 @@ int main(int argc, char** argv) {
   TestTimeouts::Initialize();
   mojo::core::Init();
   mojo_service_manager::MojoTaskEnvironment env;
+
+  base::FilePath socket_path =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValuePath(
+          mojo_service_manager::kSocketPathSwitch);
   mojo::Remote<mojom::ServiceManager> mojo_service_manager =
-      ConnectToMojoServiceManager(ConnectToSocket(
-          base::FilePath{mojo_service_manager::kTestSocketName}));
+      ConnectToMojoServiceManager(ConnectToSocket(socket_path));
   CHECK(mojo_service_manager.is_connected());
 
   mojo_service_manager::DaemonTestHelperResult result =
