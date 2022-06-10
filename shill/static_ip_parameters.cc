@@ -233,6 +233,11 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
     // TODO(pstew): Guess from the address values.
     props->address_family = IPAddress::kFamilyIPv4;
   }
+  if (props->method.empty()) {
+    // When it's empty, it means there is no other IPConfig provider now (e.g.,
+    // DHCP). A StaticIPParameters object is only for IPv4.
+    props->method = kTypeIPv4;
+  }
   ClearSavedParameters();
   ApplyString(kAddressProperty, &props->address);
   ApplyString(kGatewayProperty, &props->gateway);
