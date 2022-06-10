@@ -60,6 +60,16 @@ pub fn get_vg_name(blockdev: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+/// Determine if the given logical volume exists.
+pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
+    let volume = format!("{}/{}", volume_group, name);
+    let output = Command::new("/sbin/lvdisplay")
+        .arg(&volume)
+        .output()
+        .context("Failed to get output for child process")?;
+    Ok(output.status.success())
+}
+
 /// Create a new thinpool volume under the given volume group, with the
 /// specified name and size.
 pub fn create_thin_volume(volume_group: &str, size_mb: i64, name: &str) -> Result<()> {
@@ -104,11 +114,11 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size_mb: i64) -> Result<()> 
 }
 
 pub struct ActivatedLogicalVolume {
-    lv_arg: String,
+    lv_arg: Option<String>,
 }
 
 impl ActivatedLogicalVolume {
-    fn new(vg_name: &str, lv_name: &str) -> Result<Option<Self>> {
+    pub fn new(vg_name: &str, lv_name: &str) -> Result<Option<Self>> {
         // If it already exists, don't reactivate it.
         if fs::metadata(format!("/dev/{}/{}", vg_name, lv_name)).is_ok() {
             return Ok(None);
@@ -118,20 +128,29 @@ impl ActivatedLogicalVolume {
         checked_command(Command::new("/sbin/lvchange").args(["-ay", &lv_arg]))
             .context("Cannot activate logical volume")?;
 
-        Ok(Some(Self { lv_arg }))
+        Ok(Some(Self {
+            lv_arg: Some(lv_arg),
+        }))
+    }
+
+    /// Don't deactivate the logical volume on drop.
+    pub fn dont_deactivate(&mut self) {
+        self.lv_arg = None;
     }
 }
 
 impl Drop for ActivatedLogicalVolume {
     fn drop(&mut self) {
-        let r = checked_command(Command::new("/sbin/lvchange").args(["-an", &self.lv_arg]));
+        if let Some(lv_arg) = self.lv_arg.take() {
+            let r = checked_command(Command::new("/sbin/lvchange").args(["-an", &lv_arg]));
 
-        match r {
-            Ok(_) => {
-                info!("Deactivated LV {}", self.lv_arg);
-            }
-            Err(e) => {
-                warn!("Failed to deactivate LV {}: {}", self.lv_arg, e);
+            match r {
+                Ok(_) => {
+                    info!("Deactivated LV {}", lv_arg);
+                }
+                Err(e) => {
+                    warn!("Failed to deactivate LV {}: {}", lv_arg, e);
+                }
             }
         }
     }

@@ -24,7 +24,10 @@ use crate::hiberutil::{
     get_total_memory_pages, log_io_duration, reboot_system, stateful_block_partition_one,
     HibernateError,
 };
-use crate::lvm::{create_thin_volume, get_vg_name, lv_path, thicken_thin_volume};
+use crate::lvm::{
+    create_thin_volume, get_vg_name, lv_exists, lv_path, thicken_thin_volume,
+    ActivatedLogicalVolume,
+};
 
 /// Define the name of the hibernate logical volume.
 const HIBER_VOLUME_NAME: &str = "hibervol";
@@ -87,19 +90,24 @@ impl VolumeManager {
 
     /// Set up the hibernate logical volume.
     pub fn setup_hibernate_lv(&mut self, create: bool) -> Result<()> {
-        let path = lv_path(&self.vg_name, HIBER_VOLUME_NAME);
-        if !path.exists() {
-            if create {
-                self.create_hibernate_lv()?;
-            } else {
-                return Err(HibernateError::HibernateVolumeError())
-                    .context("Missing hibernate volume");
+        if lv_exists(&self.vg_name, HIBER_VOLUME_NAME)? {
+            info!("Activating hibervol");
+            let activated_lv = ActivatedLogicalVolume::new(&self.vg_name, HIBER_VOLUME_NAME)
+                .context("Failed to activate hibervol")?;
+            if let Some(mut activated_lv) = activated_lv {
+                activated_lv.dont_deactivate();
             }
+        } else if create {
+            self.create_hibernate_lv()?;
+        } else {
+            return Err(HibernateError::HibernateVolumeError()).context("Missing hibernate volume");
         }
 
         // Mount the LV to the hibernate directory unless it's already mounted.
         if get_device_mounted_at_dir(HIBERNATE_DIR).is_err() {
             let hibernate_dir = Path::new(HIBERNATE_DIR);
+            let path = lv_path(&self.vg_name, HIBER_VOLUME_NAME);
+            info!("Mounting hibervol");
             self.hibervol = Some(ActiveMount::new(
                 path.as_path(),
                 hibernate_dir,
