@@ -366,10 +366,6 @@ bool SetPgid() {
 }
 
 bool WaitForChild(pid_t child, base::TimeDelta timeout) {
-  sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGCHLD);
-
   const base::Time deadline = base::Time::Now() + timeout;
   while (true) {
     pid_t ret = waitpid(child, nullptr, WNOHANG);
@@ -389,12 +385,7 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout) {
       // Timed out.
       return false;
     }
-
-    const struct timespec ts = (deadline - now).ToTimeSpec();
-    if (sigtimedwait(&set, nullptr, &ts) < 0 && errno == EAGAIN) {
-      // Timed out.
-      return false;
-    }
+    usleep(100);
   }
 }
 
