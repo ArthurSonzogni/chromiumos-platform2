@@ -60,6 +60,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         "cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml",
         BindingsType::Client(OPTS),
     ),
+    (
+        "org_chromium_vtpm",
+        "vtpm/dbus_bindings/org.chromium.Vtpm.xml",
+        BindingsType::Client(OPTS),
+    ),
 ];
 
 // (<module name>, <relative path to .proto file>)
@@ -77,6 +82,7 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "UserDataAuth",
         "system_api/dbus/cryptohome/UserDataAuth.proto",
     ),
+    ("vtpm_interface", "vtpm/vtpm_interface.proto"),
 ];
 
 fn generate_protos(source_dir: &Path, protos: &[(&str, &str)]) -> Result<()> {
