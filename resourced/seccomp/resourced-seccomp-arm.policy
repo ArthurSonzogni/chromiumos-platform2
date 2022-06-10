@@ -31,6 +31,7 @@ getresuid32: 1
 getsockname: 1
 gettid: 1
 lseek: 1
+_llseek: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
