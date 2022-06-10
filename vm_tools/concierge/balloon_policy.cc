@@ -3,10 +3,9 @@
 // found in the LICENSE file.
 #include "vm_tools/concierge/balloon_policy.h"
 
+#include <algorithm>
 #include <assert.h>
 #include <inttypes.h>
-
-#include <algorithm>
 #include <optional>
 
 #include <base/check.h>
@@ -48,9 +47,7 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
     const BalloonStats& stats,
     uint64_t host_available,
     bool game_mode,
-    const std::string& vm,
-    int64_t total_available_memory,
-    ComponentMemoryMargins component_margins) {
+    const std::string& vm) {
   // returns delta size of balloon
   constexpr int64_t MAX_CRITICAL_DELTA = 10 * MIB;
 
@@ -126,14 +123,6 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
   return 0;
 }
 
-bool BalanceAvailableBalloonPolicy::DeflateBalloonToSaveProcess(
-    int proc_size,
-    int proc_oom_score,
-    uint64_t& new_balloon_size,
-    uint64_t& freed_space) {
-  return false;
-}
-
 LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
                                                  int64_t host_lwm,
                                                  ZoneInfoStats guest_zoneinfo,
@@ -158,18 +147,13 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
             << "\"critical_target_cache\": " << params.critical_target_cache
             << ","
             << "\"moderate_target_cache\": " << params.moderate_target_cache
-            << ","
-            << "\"responsive_max_deflate_bytes\": "
-            << params.responsive_max_deflate_bytes << " }";
+            << " }";
 }
 
-int64_t LimitCacheBalloonPolicy::ComputeBalloonDelta(
-    const BalloonStats& stats,
-    uint64_t uhost_available,
-    bool game_mode,
-    const std::string& vm,
-    int64_t total_available_memory,
-    ComponentMemoryMargins component_margins) {
+int64_t LimitCacheBalloonPolicy::ComputeBalloonDelta(const BalloonStats& stats,
+                                                     uint64_t uhost_available,
+                                                     bool game_mode,
+                                                     const std::string& vm) {
   base::SystemMemoryInfoKB meminfo;
   if (!base::GetSystemMemoryInfo(&meminfo)) {
     LOG(ERROR) << "Failed to get system memory info";
@@ -177,7 +161,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDelta(
   }
   const int64_t host_free = static_cast<int64_t>(meminfo.free) * KIB;
   return ComputeBalloonDeltaImpl(host_free, stats, uhost_available, game_mode,
-                                 vm, total_available_memory, component_margins);
+                                 vm);
 }
 
 int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
@@ -185,9 +169,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
     const BalloonStats& stats,
     int64_t host_available,
     bool game_mode,
-    const std::string& vm,
-    int64_t total_avaialble_memory,
-    ComponentMemoryMargins component_margins) {
+    const std::string& vm) {
   const int64_t max_free = MaxFree();
   const int64_t min_free = MinFree();
   const int64_t guest_free = stats.free_memory;
@@ -264,10 +246,6 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
     return 0;
   }
 
-  UpdateBalloonDeflationLimits(
-      component_margins, total_avaialble_memory,
-      std::max(INT64_C(0), stats.balloon_actual + delta));
-
   LOG(INFO) << "BalloonTrace: { "
             << "\"vm\": \"" << vm << "\", "
             << "\"game_mode\": " << (game_mode ? "true" : "false") << ", "
@@ -278,90 +256,23 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
             << "\"target_free\": " << target_free << ", "
             << "\"host_available\": " << host_available << ", "
             << "\"host_free\": " << host_free << ", "
-            << "\"deflation_limit_1\": ["
-            << balloon_deflation_limits_[0].oom_score_adj << ", "
-            << balloon_deflation_limits_[0].min_balloon_size << "], "
-            << "\"deflation_limit_2\": ["
-            << balloon_deflation_limits_[1].oom_score_adj << ", "
-            << balloon_deflation_limits_[1].min_balloon_size << "], "
-            << "\"deflation_limit_3\": ["
-            << balloon_deflation_limits_[2].oom_score_adj << ", "
-            << balloon_deflation_limits_[2].min_balloon_size << "], "
             << "\"delta\": " << delta << " }";
 
   return delta;
 }
 
-uint64_t LimitCacheBalloonPolicy::GetBalloonSizeLimitForMargin(
-    int64_t total_available_mem, int64_t balloon_size, int64_t margin) {
-  return std::max(static_cast<int64_t>(0),
-                  balloon_size - (total_available_mem - margin));
-}
-
-void LimitCacheBalloonPolicy::UpdateBalloonDeflationLimits(
-    ComponentMemoryMargins component_margins,
-    int64_t total_available_mem,
-    int64_t balloon_size) {
-  current_balloon_size_ = balloon_size;
-
-  balloon_deflation_limits_[0].oom_score_adj = kAppAdjForegroundMax;
-  balloon_deflation_limits_[0].min_balloon_size = GetBalloonSizeLimitForMargin(
-      total_available_mem, balloon_size, component_margins.arcvm_foreground);
-  balloon_deflation_limits_[1].oom_score_adj = kAppAdjPerceptibleMax;
-  balloon_deflation_limits_[1].min_balloon_size = GetBalloonSizeLimitForMargin(
-      total_available_mem, balloon_size, component_margins.arcvm_perceptible);
-  balloon_deflation_limits_[2].oom_score_adj = kAppAdjCachedMax;
-  balloon_deflation_limits_[2].min_balloon_size = GetBalloonSizeLimitForMargin(
-      total_available_mem, balloon_size, component_margins.arcvm_cached);
-}
-
-bool LimitCacheBalloonPolicy::DeflateBalloonToSaveProcess(
-    int proc_size,
-    int proc_oom_score,
-    uint64_t& new_balloon_size,
-    uint64_t& freed_space) {
-  // Determine if the kill request is within the limits
-
-  uint64_t balloon_limit_for_priority = current_balloon_size_;
-  for (size_t i = 0; i < kDeflationLimitCount; i++) {
-    if (proc_oom_score <= balloon_deflation_limits_[i].oom_score_adj) {
-      balloon_limit_for_priority =
-          std::min(balloon_limit_for_priority,
-                   balloon_deflation_limits_[i].min_balloon_size);
-    }
-  }
-
-  uint64_t necessary_deflation_amount = std::min(
-      static_cast<int64_t>(proc_size), params_.responsive_max_deflate_bytes);
-
-  uint64_t balloon_target =
-      necessary_deflation_amount > current_balloon_size_
-          ? 0
-          : current_balloon_size_ - necessary_deflation_amount;
-
-  freed_space = 0;
-
-  if (balloon_target >= balloon_limit_for_priority) {
-    freed_space = current_balloon_size_ - balloon_target;
-    new_balloon_size = balloon_target;
-    LOG(INFO) << "Deflated VirtIO balloon to save process (OOM Score: "
-              << proc_oom_score << ", Size: " << proc_size << ") Balloon: ("
-              << current_balloon_size_ << ") -> (" << balloon_target << ")";
-    // Update current balloon size
-    current_balloon_size_ = balloon_target;
-    return true;
-  } else {
-    LOG(INFO) << "Unable to deflate VirtIO balloon to save process (OOM Score: "
-              << proc_oom_score << ", Size: " << proc_size
-              << ") Balloon Limit: " << balloon_limit_for_priority
-              << " Balloon deflation necessary to save: ("
-              << current_balloon_size_ << ") -> (" << balloon_target << ")";
-    return false;
-  }
-}
-
 int64_t LimitCacheBalloonPolicy::MaxFree() {
-  return guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE;
+  // TODO(b:225085765): Once we properly respond to LMKD telling us to deflate
+  // the balloon, remove the `margins_.critical` term here, as we won't need the
+  // buffer to avoid killing fast allocating Apps.
+  // margins_.critical is used because it is a reasonable size and scales
+  // linearly with RAM size (unlike zone watermarks), and it's conveniently
+  // accessible from this scope. Otherwise, using a host specific counter inside
+  // the guest doesn't make much sense.
+
+  // guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE is the amount of memory
+  // LMKD needs to not kill even the lowest priority App.
+  return guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE + margins_.critical;
 }
 
 std::optional<uint64_t> HostZoneLowSum(bool log_on_error) {

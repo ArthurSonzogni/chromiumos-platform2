@@ -356,31 +356,11 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   features.use_dev_conf = !request.ignore_dev_conf();
 
   if (request.has_balloon_policy()) {
-    const auto& policy_params = request.balloon_policy();
-    int64_t responsive_max_deflate_bytes =
-        policy_params.responsive()
-            ? policy_params.responsive_max_deflate_bytes()
-            : 0;
-    int responsive_timeout_ms =
-        policy_params.responsive() ? policy_params.responsive_timeout_ms() : 0;
-
-    if (responsive_max_deflate_bytes <= 0 || responsive_timeout_ms <= 0) {
-      // Responsive is enabled, but one of the parameters is not valid.
-      // Log a warning and don't enable the responsive balloon policy.
-      LOG(WARNING) << "LimitCacheBalloonPolicy is set as responsive, but not "
-                   << "all responsive paramters are set.";
-      responsive_max_deflate_bytes = 0;
-      responsive_timeout_ms = 0;
-    }
+    const auto& params = request.balloon_policy();
     features.balloon_policy_params = (LimitCacheBalloonPolicy::Params){
-        .reclaim_target_cache = policy_params.reclaim_target_cache(),
-        .critical_target_cache = policy_params.critical_target_cache(),
-        .moderate_target_cache = policy_params.moderate_target_cache(),
-        .responsive_max_deflate_bytes = responsive_max_deflate_bytes};
-    if (responsive_timeout_ms > 0) {
-      params.emplace_back(base::StringPrintf(
-          "androidboot.lmkd.vsock_timeout=%d", responsive_timeout_ms));
-    }
+        .reclaim_target_cache = params.reclaim_target_cache(),
+        .critical_target_cache = params.critical_target_cache(),
+        .moderate_target_cache = params.moderate_target_cache()};
   }
 
   const auto pstore_path = GetPstoreDest(request.owner_id());

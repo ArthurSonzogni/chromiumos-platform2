@@ -36,10 +36,9 @@ TEST(BalloonPolocyTest, Unreclaimable) {
     BalloonStats stats = {.disk_caches = 300 * MIB,
                           .free_memory = policy.MaxFree(),
                           .unevictable_memory = 101 * MIB};
-    EXPECT_EQ(
-        0, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                          margins.moderate /* host_available */,
-                                          false, "test", 0, {}));
+    EXPECT_EQ(0, policy.ComputeBalloonDeltaImpl(
+                     0 /* host_free */, stats,
+                     margins.moderate /* host_available */, false, "test"));
   }
 
   // Test that when, because of shared memory, there is less cache left than the
@@ -48,10 +47,9 @@ TEST(BalloonPolocyTest, Unreclaimable) {
     BalloonStats stats = {.disk_caches = 300 * MIB,
                           .free_memory = policy.MaxFree(),
                           .shared_memory = 101 * MIB};
-    EXPECT_EQ(
-        0, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                          margins.moderate /* host_available */,
-                                          false, "test", 0, {}));
+    EXPECT_EQ(0, policy.ComputeBalloonDeltaImpl(
+                     0 /* host_free */, stats,
+                     margins.moderate /* host_available */, false, "test"));
   }
 }
 
@@ -75,27 +73,26 @@ TEST(BalloonPolicyTest, LimitCacheNoLimit) {
                                 .free_memory = policy.MaxFree() + MIB};
     EXPECT_EQ(0, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
                                                 0 /* host_available */, false,
-                                                "test", 0, {}));
+                                                "test"));
   }
 
   // Test that we do inflate the balloon if it's a lot (twice MaxFree()).
   {
     const BalloonStats stats = {.disk_caches = 0,
                                 .free_memory = policy.MaxFree() * 2};
-    EXPECT_EQ(policy.MaxFree(),
-              policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                             0 /* host_available */, false,
-                                             "test", 0, {}));
+    EXPECT_EQ(policy.MaxFree(), policy.ComputeBalloonDeltaImpl(
+                                    0 /* host_free */, stats,
+                                    0 /* host_available */, false, "test"));
   }
 
   // Test that we deflate the balloon even if we just need a small piece.
   {
     const BalloonStats stats = {.disk_caches = 0,
                                 .free_memory = policy.MaxFree() * 3 / 4};
-    EXPECT_EQ(-(policy.MaxFree() / 4),
-              policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                             0 /* host_available */, false,
-                                             "test", 0, {}));
+    EXPECT_EQ(
+        -(policy.MaxFree() / 4),
+        policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
+                                       0 /* host_available */, false, "test"));
   }
 }
 
@@ -122,10 +119,9 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
   {
     BalloonStats stats = {.disk_caches = 1000 * MIB,
                           .free_memory = policy.MaxFree()};
-    EXPECT_EQ(
-        MIB, policy.ComputeBalloonDeltaImpl(
-                 0 /* host_free */, stats,
-                 limit_start - MIB /* host_available */, false, "test", 0, {}));
+    EXPECT_EQ(MIB, policy.ComputeBalloonDeltaImpl(
+                       0 /* host_free */, stats,
+                       limit_start - MIB /* host_available */, false, "test"));
   }
 
   // Test that when there is less cache left than the distance to target free,
@@ -138,19 +134,18 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
     EXPECT_EQ(cache_above_limit,
               policy.ComputeBalloonDeltaImpl(
                   0 /* host_free */, stats,
-                  margins.moderate /* host_available */, false, "test", 0, {}));
+                  margins.moderate /* host_available */, false, "test"));
   }
 
   // Test that when we are way below the moderate margin, we still give the
   // guest MinFree() memory.
   {
-    BalloonStats stats = {.disk_caches = 1000 * MIB,
+    BalloonStats stats = {.disk_caches = 2000 * MIB,
                           .free_memory = policy.MaxFree()};
     const int64_t free_above_min = stats.free_memory - policy.MinFree();
-    EXPECT_EQ(free_above_min,
-              policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                             0 /* host_available */, false,
-                                             "test", 0, {}));
+    EXPECT_EQ(free_above_min, policy.ComputeBalloonDeltaImpl(
+                                  0 /* host_free */, stats,
+                                  0 /* host_available */, false, "test"));
   }
 }
 
@@ -177,10 +172,9 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
   {
     BalloonStats stats = {.disk_caches = 1000 * MIB,
                           .free_memory = policy.MaxFree()};
-    EXPECT_EQ(
-        MIB, policy.ComputeBalloonDeltaImpl(
-                 0 /* host_free */, stats,
-                 limit_start - MIB /* host_available */, false, "test", 0, {}));
+    EXPECT_EQ(MIB, policy.ComputeBalloonDeltaImpl(
+                       0 /* host_free */, stats,
+                       limit_start - MIB /* host_available */, false, "test"));
   }
 
   // Test that when there is less cache left than the distance to target free,
@@ -193,7 +187,7 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
     EXPECT_EQ(cache_above_limit,
               policy.ComputeBalloonDeltaImpl(
                   0 /* host_free */, stats,
-                  margins.critical /* host_available */, false, "test", 0, {}));
+                  margins.critical /* host_available */, false, "test"));
   }
 
   // Test that when we are way below the critical margin, we still give the
@@ -202,10 +196,9 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
     BalloonStats stats = {.disk_caches = 1000 * MIB,
                           .free_memory = policy.MaxFree()};
     const int64_t free_above_min = stats.free_memory - policy.MinFree();
-    EXPECT_EQ(free_above_min,
-              policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                             0 /* host_available */, false,
-                                             "test", 0, {}));
+    EXPECT_EQ(free_above_min, policy.ComputeBalloonDeltaImpl(
+                                  0 /* host_free */, stats,
+                                  0 /* host_available */, false, "test"));
   }
 }
 
@@ -234,7 +227,7 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
                           .free_memory = policy.MaxFree()};
     EXPECT_EQ(MIB, policy.ComputeBalloonDeltaImpl(
                        limit_start - MIB /* host_free */, stats,
-                       0 /* host_available */, false, "test", 0, {}));
+                       0 /* host_available */, false, "test"));
   }
 
   // Test that when there is less cache left than the distance to target free,
@@ -244,10 +237,9 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
                           .free_memory = policy.MaxFree()};
     const int64_t cache_above_limit =
         stats.disk_caches - params.reclaim_target_cache;
-    EXPECT_EQ(cache_above_limit,
-              policy.ComputeBalloonDeltaImpl(host_lwm /* host_free */, stats,
-                                             0 /* host_available */, false,
-                                             "test", 0, {}));
+    EXPECT_EQ(cache_above_limit, policy.ComputeBalloonDeltaImpl(
+                                     host_lwm /* host_free */, stats,
+                                     0 /* host_available */, false, "test"));
   }
 
   // Test that when we are way past reclaiming in the host, we still give the
@@ -256,10 +248,9 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
     BalloonStats stats = {.disk_caches = 1000 * MIB,
                           .free_memory = policy.MaxFree()};
     const int64_t free_above_min = stats.free_memory - policy.MinFree();
-    EXPECT_EQ(free_above_min,
-              policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                             0 /* host_available */, false,
-                                             "test", 0, {}));
+    EXPECT_EQ(free_above_min, policy.ComputeBalloonDeltaImpl(
+                                  0 /* host_free */, stats,
+                                  0 /* host_available */, false, "test"));
   }
 }
 
@@ -286,7 +277,7 @@ TEST(BalloonPolicyTest, LimitCacheModerateAndCritical) {
   EXPECT_EQ(cache_above_limit,
             policy.ComputeBalloonDeltaImpl(
                 0 /* host_free */, stats, margins.critical /* host_available */,
-                false, "test", 0, {}));
+                false, "test"));
 }
 
 // Tests that the guest gets MinFree memory even if the host is very low.
@@ -303,10 +294,9 @@ TEST(BalloonPolicyTest, LimitCacheGuestFreeLow) {
                                  "test");
 
   BalloonStats stats = {.disk_caches = 150 * MIB, .free_memory = 0};
-  EXPECT_EQ(-policy.MinFree(),
-            policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                           0 /* host_available */, false,
-                                           "test", 0, {}));
+  EXPECT_EQ(-policy.MinFree(), policy.ComputeBalloonDeltaImpl(
+                                   0 /* host_free */, stats,
+                                   0 /* host_available */, false, "test"));
 }
 
 // Tests that ParseZoneInfoStats works on real input.
@@ -530,79 +520,6 @@ TEST(BalloonPolicyTest, ParseZoneInfoStatsFailures) {
 
   // No protection line between two high lines.
   EXPECT_FALSE(ParseZoneInfoStats("low 1\nhigh 1\nhigh: 1"));
-}
-
-TEST(BalloonPolicyTest, LimitCacheBalloonDeflationLimits) {
-  LimitCacheBalloonPolicy policy(
-      {}, 0, {}, {.responsive_max_deflate_bytes = 200 * 4096}, "test");
-  ComponentMemoryMargins margins{
-      .chrome_critical = 0,
-      .chrome_moderate = 0,
-      .arcvm_foreground = 300 * 4096,
-      .arcvm_perceptible = 600 * 4096,
-      .arcvm_cached = 800 * 4096,
-  };
-  policy.UpdateBalloonDeflationLimits(margins,
-                                      /* total_available */ 1000 * 4096,
-                                      /* balloon_size */ 800 * 4096);
-
-  // Should result in limits of:
-  // foreground, 100 * 4096
-  // perceptible, 400 * 4096
-  // cached, 600 * 4096
-
-  uint64_t new_balloon_size = 0;
-  uint64_t freed_space = 0;
-
-  ASSERT_TRUE(policy.DeflateBalloonToSaveProcess(
-      700 * 4096, kAppAdjForegroundMax, new_balloon_size, freed_space));
-  // Should be deflated by max_deflate_bytes
-  ASSERT_EQ(new_balloon_size, 600 * 4096);
-  ASSERT_EQ(freed_space, 200 * 4096);
-
-  // Should not be deflated for oom score of cached since the
-  // new size is already at the limit for cached
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      1, kAppAdjPerceptibleMax + 1, new_balloon_size, freed_space));
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      1, kAppAdjCachedMax, new_balloon_size, freed_space));
-
-  // Should be deflated for perceptible by max_deflate down to the limit for
-  // perceptible
-  ASSERT_TRUE(policy.DeflateBalloonToSaveProcess(
-      500 * 4096, kAppAdjPerceptibleMax, new_balloon_size, freed_space));
-  ASSERT_EQ(new_balloon_size, 400 * 4096);
-  ASSERT_EQ(freed_space, 200 * 4096);
-
-  // Should no longer be deflated for perceptible since the limit has been
-  // reached
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      1, kAppAdjPerceptibleMax, new_balloon_size, freed_space));
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      1, kAppAdjForegroundMax + 1, new_balloon_size, freed_space));
-
-  // Should still be deflated for foreground
-  ASSERT_TRUE(policy.DeflateBalloonToSaveProcess(
-      150 * 4096, kAppAdjForegroundMax, new_balloon_size, freed_space));
-  ASSERT_EQ(new_balloon_size, 250 * 4096);
-  ASSERT_EQ(freed_space, 150 * 4096);
-
-  // Should not be deflated for foreground if the app and max deflate are both
-  // too large
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      300 * 4096, kAppAdjForegroundMax - 1, new_balloon_size, freed_space));
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      151 * 4096, kAppAdjForegroundMax - 1, new_balloon_size, freed_space));
-
-  // Should still be deflated for foreground if the app is small enough
-  ASSERT_TRUE(policy.DeflateBalloonToSaveProcess(
-      150 * 4096, kAppAdjForegroundMax, new_balloon_size, freed_space));
-  ASSERT_EQ(new_balloon_size, 100 * 4096);
-  ASSERT_EQ(freed_space, 150 * 4096);
-
-  // At the lowest limit, should not be deflated for anything
-  ASSERT_FALSE(policy.DeflateBalloonToSaveProcess(
-      1, kAppAdjForegroundMax - 1, new_balloon_size, freed_space));
 }
 
 }  // namespace concierge

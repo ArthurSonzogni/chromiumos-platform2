@@ -804,62 +804,6 @@ std::optional<MemoryMargins> Service::GetMemoryMargins() {
   return margins;
 }
 
-std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
-  static constexpr char kChromeCriticalKey[] = "ChromeCritical";
-  static constexpr char kChromeModerateKey[] = "ChromeModerate";
-  static constexpr char kArcvmForegroundKey[] = "ArcvmForeground";
-  static constexpr char kArcvmPerceptibleKey[] = "ArcvmPerceptible";
-  static constexpr char kArcvmCachedKey[] = "ArcvmCached";
-
-  dbus::MethodCall method_call(
-      resource_manager::kResourceManagerInterface,
-      resource_manager::kGetComponentMemoryMarginsKBMethod);
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, resource_manager_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get component margin sizes from resourced.";
-    return std::nullopt;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  dbus::MessageReader array_reader(nullptr);
-  if (!reader.PopArray(&array_reader)) {
-    LOG(ERROR) << "Failed parsing component memory margins";
-    return std::nullopt;
-  }
-
-  ComponentMemoryMargins margins;
-
-  while (array_reader.HasMoreData()) {
-    dbus::MessageReader dict_entry_reader(nullptr);
-    if (array_reader.PopDictEntry(&dict_entry_reader)) {
-      std::string key;
-      uint64_t value;
-      if (!dict_entry_reader.PopString(&key) ||
-          !dict_entry_reader.PopUint64(&value)) {
-        LOG(ERROR) << "Error popping dictionary entry from D-Bus message";
-        return std::nullopt;
-      }
-      value *= KIB;
-      if (key == kChromeCriticalKey) {
-        margins.chrome_critical = value;
-      } else if (key == kChromeModerateKey) {
-        margins.chrome_moderate = value;
-      } else if (key == kArcvmForegroundKey) {
-        margins.arcvm_foreground = value;
-      } else if (key == kArcvmPerceptibleKey) {
-        margins.arcvm_perceptible = value;
-      } else if (key == kArcvmCachedKey) {
-        margins.arcvm_cached = value;
-      } else {
-        LOG(ERROR) << "Unrecognized dict entry for component memory margins";
-      }
-    }
-  }
-  return margins;
-}
-
 std::optional<resource_manager::GameMode> Service::GetGameMode() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetGameModeMethod);
@@ -954,13 +898,6 @@ void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
     }
   }
 
-  std::optional<ComponentMemoryMargins> component_margins =
-      GetComponentMemoryMargins();
-  if (!component_margins) {
-    LOG(ERROR) << "Failed to get component memory margins";
-    return;
-  }
-
   TaggedMemoryMiBDeltas deltas;
   const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
@@ -987,8 +924,7 @@ void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
         is_in_game_mode ? *foreground_available_memory : *available_memory;
 
     int64_t delta = policy->ComputeBalloonDelta(
-        stats, available_memory_for_vm, is_in_game_mode, vm_entry.first.name(),
-        *available_memory, *component_margins);
+        stats, available_memory_for_vm, is_in_game_mode, vm_entry.first.name());
 
     if (!USE_CROSVM_SIBLINGS) {
       int64_t target = std::max(INT64_C(0), stats.balloon_actual + delta);
