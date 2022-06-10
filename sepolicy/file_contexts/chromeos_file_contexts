@@ -406,6 +406,7 @@ has_arc(`
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
 /run/dhcpcd                     u:object_r:cros_run_dhcpcd:s0
 /run/fuse                       u:object_r:cros_run_fuse:s0
+/run/hibernate                  u:object_r:cros_run_hibernate:s0
 /run/ippusb(/.*)?               u:object_r:cros_run_ippusb:s0
 /run/ipsec                      u:object_r:cros_run_ipsec:s0
 /run/l2tpipsec_vpn              u:object_r:cros_run_l2tpipsec_vpn:s0

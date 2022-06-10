@@ -224,43 +224,28 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     fi
   fi
 
-  # Check to see if this is a hibernate resume boot. If so,
-  # the image that will soon be resumed has active RW mounts
-  # on stateful that must not be disturbed. Instead, create a
-  # dm-snapshot, presenting the illusion of an RW stateful world.
-  if command -v hiberman >/dev/null 2>&1 && \
-     hiberman cookie "${ROOT_DEV_DISK}"; then
-
-    # As of 2021, a normal warm boot to the login screen writes about 32MB.
-    STATE_COW_SIZE="512M"
-    mkdir -p /run/hibernate
-    truncate -s "${STATE_COW_SIZE}" /run/hibernate/stateful_cow
-    COW_LOOP="$(losetup --show -f /run/hibernate/stateful_cow)"
-    STATE_SIZE="$(blockdev --getsz ${STATE_DEV})"
-    dmsetup create stateful-origin --table \
-      "0 ${STATE_SIZE} snapshot-origin ${STATE_DEV}"
-
-    dmsetup create stateful-rw --table \
-      "0 ${STATE_SIZE} snapshot ${STATE_DEV} ${COW_LOOP} P 8"
-
-    STATE_DEV="/dev/mapper/stateful-rw"
-    if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
-      # The LVs won't add if duplicate devices are detected (such as this
-      # stateful-rw device and the physical disk). Rename the VG in the snapshot
-      # to avoid duplicates. This would also fail without modification if there
-      # were a non-LVM disk.
-      vgimportclone -n "$(generate_random_label)" -i "${STATE_DEV}"
-    fi
-  fi
-
   if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
     # Attempt to get a valid volume group name.
     bootstat pre-lvm-activation
     vg_name="$(get_volume_group "${STATE_DEV}")"
     if [ -n "${vg_name}" ]; then
-      lvchange -ay "${vg_name}/unencrypted"
-      STATE_DEV="/dev/${vg_name}/unencrypted"
-      DEV_IMAGE="/dev/${vg_name}/dev-image"
+      # Check to see if this is a hibernate resume boot. If so, the image that
+      # will be resumed has active mounts on the stateful LVs that must not be
+      # modified out from underneath the hibernated kernel. Ask hiberman to
+      # activate the necessary logical volumes and set up dm-snapshots on top of
+      # them to make an RW system while leaving those LVs physically intact.
+      if command -v hiberman >/dev/null 2>&1 && \
+        hiberman resume-init -v \
+          >/run/hibernate/hiber-resume-init.log 2>&1; then
+
+        STATE_DEV="/dev/mapper/unencrypted-rw"
+        DEV_IMAGE="/dev/mapper/dev-image-rw"
+
+      else
+        lvchange -ay "${vg_name}/unencrypted"
+        STATE_DEV="/dev/${vg_name}/unencrypted"
+        DEV_IMAGE="/dev/${vg_name}/dev-image"
+      fi
     fi
     bootstat lvm-activation-complete
   fi
