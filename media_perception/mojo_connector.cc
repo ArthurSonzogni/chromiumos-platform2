@@ -275,7 +275,7 @@ void MojoConnector::OpenDeviceOnIpcThread(
   device_it = device_id_to_active_device_map_.find(device_id);
 
   video_source_provider_->GetVideoSource(
-      it->second, mojo::MakeRequest(&device_it->second.video_source));
+      it->second, device_it->second.video_source.BindNewPipeAndPassReceiver());
 
   auto requested_settings = media::mojom::VideoCaptureParams::New();
   requested_settings->requested_format =

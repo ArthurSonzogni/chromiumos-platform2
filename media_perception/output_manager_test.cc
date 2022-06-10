@@ -194,7 +194,7 @@ TEST_F(OutputManagerTest, FramePerceptionOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
   // Verify that the mojo interface was created correctly.
-  EXPECT_TRUE(interfaces_ptr->frame_perception_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->frame_perception_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 
@@ -226,7 +226,7 @@ TEST_F(OutputManagerTest, HotwordDetectionOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
   // Verify that the mojo interface was created correctly.
-  EXPECT_TRUE(interfaces_ptr->hotword_detection_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->hotword_detection_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 
@@ -260,7 +260,7 @@ TEST_F(OutputManagerTest, PresencePerceptionOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
   // Verify that the mojo interface was created correctly.
-  EXPECT_TRUE(interfaces_ptr->presence_perception_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->presence_perception_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 
@@ -293,7 +293,7 @@ TEST_F(OutputManagerTest, OccupancyTriggerOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
   // Verify that the mojo interface was created correctly.
-  EXPECT_TRUE(interfaces_ptr->occupancy_trigger_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->occupancy_trigger_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 
@@ -325,7 +325,7 @@ TEST_F(OutputManagerTest, AppearancesOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
 
-  EXPECT_TRUE(interfaces_ptr->appearances_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->appearances_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 
@@ -363,7 +363,7 @@ TEST_F(OutputManagerTest, OneTouchAutozoomOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
 
-  EXPECT_TRUE(interfaces_ptr->one_touch_autozoom_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->one_touch_autozoom_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 
@@ -401,7 +401,7 @@ TEST_F(OutputManagerTest, SoftwareAutozoomOutputManagerTest) {
                                rtanalytics_, perception_interfaces,
                                &interfaces_ptr);
 
-  EXPECT_TRUE(interfaces_ptr->software_autozoom_handler_request.is_pending());
+  EXPECT_TRUE(interfaces_ptr->software_autozoom_handler_request.is_valid());
   EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
             "fake_stream_name");
 

@@ -63,7 +63,7 @@ class ProducerImpl : public video_capture::mojom::Producer {
   mojo::Receiver<video_capture::mojom::Producer> receiver_;
 
   // Provides an interface to a created virtual device.
-  video_capture::mojom::SharedMemoryVirtualDevicePtr virtual_device_;
+  mojo::Remote<video_capture::mojom::SharedMemoryVirtualDevice> virtual_device_;
 
   std::map<int32_t /*buffer_id*/, base::WritableSharedMemoryMapping>
       outgoing_buffer_id_to_buffer_map_;

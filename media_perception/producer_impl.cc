@@ -34,7 +34,7 @@ void ProducerImpl::RegisterVirtualDevice(
     media::mojom::VideoCaptureDeviceInfoPtr info) {
   (*provider)->AddSharedMemoryVirtualDevice(
       std::move(info), CreateInterfacePendingRemote(), true,
-      mojo::MakeRequest(&virtual_device_));
+      virtual_device_.BindNewPipeAndPassReceiver());
 }
 
 void ProducerImpl::OnNewBuffer(int32_t buffer_id,

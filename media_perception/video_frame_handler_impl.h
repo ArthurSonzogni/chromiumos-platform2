@@ -12,6 +12,7 @@
 #include <base/memory/unsafe_shared_memory_region.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "media_perception/device_management.pb.h"
 #include "media_perception/mojom/device_factory.mojom.h"
@@ -79,7 +80,8 @@ class VideoFrameHandlerImpl : public video_capture::mojom::VideoFrameHandler {
 
   // Stores the frame access handler to let the producer of frames know when we
   // are done with a frame.
-  video_capture::mojom::VideoFrameAccessHandlerPtr frame_access_handler_;
+  mojo::Remote<video_capture::mojom::VideoFrameAccessHandler>
+      frame_access_handler_;
 
   // Stores the capture format requested from the open device.
   VideoStreamParams capture_format_;

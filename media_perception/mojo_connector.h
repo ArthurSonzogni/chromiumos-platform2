@@ -158,7 +158,7 @@ class MojoConnector {
       video_source_provider_;
 
   struct VideoSourceAndPushSubscription {
-    video_capture::mojom::VideoSourcePtr video_source;
+    mojo::Remote<video_capture::mojom::VideoSource> video_source;
     mojo::Remote<video_capture::mojom::PushVideoStreamSubscription>
         push_video_stream_subscription;
   };

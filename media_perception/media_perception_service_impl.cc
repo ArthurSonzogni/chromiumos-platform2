@@ -4,9 +4,11 @@
 
 #include "media_perception/media_perception_service_impl.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/logging.h>
-#include <utility>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "media_perception/media_perception_controller_impl.h"
 
@@ -29,7 +31,7 @@ MediaPerceptionServiceImpl::MediaPerceptionServiceImpl(
     std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client,
     std::shared_ptr<Rtanalytics> rtanalytics)
     : receiver_(this,
-                mojo::InterfaceRequest<
+                mojo::PendingReceiver<
                     chromeos::media_perception::mojom::MediaPerceptionService>(
                     std::move(pipe))),
       video_capture_service_client_(video_capture_service_client),
