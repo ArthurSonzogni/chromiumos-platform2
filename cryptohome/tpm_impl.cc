@@ -653,11 +653,20 @@ hwsec::Status TpmImpl::SealToPcrWithAuthorization(
                   tpm_handle, pcr_index, &pcr_len, pcr_value.ptr())))) {
         return WrapError<TPMError>(std::move(err), "Could not read PCR value");
       }
-      Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, pcr_len,
-                                    pcr_value.value());
+      if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
+              CreateError<TPM1Error>(Tspi_PcrComposite_SetPcrValue(
+                  pcrs_handle, pcr_index, pcr_len, pcr_value.value())))) {
+        return WrapError<TPMError>(std::move(err),
+                                   "Could not set PCR value from pcr value");
+      }
     } else {
-      Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, digest.size(),
-                                    const_cast<BYTE*>(digest.data()));
+      if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
+              CreateError<TPM1Error>(Tspi_PcrComposite_SetPcrValue(
+                  pcrs_handle, pcr_index, digest.size(),
+                  const_cast<BYTE*>(digest.data()))))) {
+        return WrapError<TPMError>(std::move(err),
+                                   "Could not set PCR value from digest");
+      }
     }
   }
 
@@ -1168,8 +1177,12 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
     }
 
     BYTE* pcr_value_buffer = const_cast<BYTE*>(pcr_value.data());
-    Tspi_PcrComposite_SetPcrValue(pcrs, pcr_index, pcr_value.size(),
-                                  pcr_value_buffer);
+    if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
+            CreateError<TPM1Error>(Tspi_PcrComposite_SetPcrValue(
+                pcrs, pcr_index, pcr_value.size(), pcr_value_buffer)))) {
+      LOG(ERROR) << __func__ << ": Could not set PCR value: " << err;
+      return false;
+    }
   }
 
   // Create a non-migratable key restricted to |pcrs|.
