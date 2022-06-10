@@ -292,6 +292,8 @@ std::string U2FHid::Command::CommandName() const {
   switch (static_cast<CommandCode>(cmd)) {
     case CommandCode::kPing:
       return "Ping";
+    case CommandCode::kAtr:
+      return "Atr";
     case CommandCode::kMsg:
       return "Msg";
     case CommandCode::kLock:

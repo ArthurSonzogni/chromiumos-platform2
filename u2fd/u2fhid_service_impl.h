@@ -17,6 +17,7 @@
 #include <session_manager/dbus-proxies.h>
 
 #include "u2fd/client/user_state.h"
+#include "u2fd/u2f_corp_processor_interface.h"
 #include "u2fd/u2f_msg_handler.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/uhid_device.h"
@@ -53,7 +54,6 @@ class U2fHidServiceImpl : public U2fHidService {
   TpmVendorCommandProxy* tpm_proxy() override { return &tpm_proxy_; }
 
  private:
-  const bool enable_corp_protocol_;
   const bool legacy_kh_fallback_;
 
   // Virtual USB Device ID
@@ -66,6 +66,7 @@ class U2fHidServiceImpl : public U2fHidService {
   // Virtual USB Device
   std::unique_ptr<U2fHid> u2fhid_;
   std::unique_ptr<U2fMessageHandler> u2f_msg_handler_;
+  std::unique_ptr<U2fCorpProcessorInterface> u2f_corp_processor_;
 };
 
 }  // namespace u2f

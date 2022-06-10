@@ -65,19 +65,15 @@ U2fMessageHandler::U2fMessageHandler(
     MetricsLibraryInterface* metrics,
     bool allow_legacy_kh_sign,
     bool allow_g2f_attestation,
-    bool enable_corp_protocol)
+    U2fCorpProcessorInterface* u2f_corp_processor)
     : allowlisting_util_(std::move(allowlisting_util)),
       request_user_presence_(request_user_presence),
       user_state_(user_state),
       proxy_(proxy),
       metrics_(metrics),
       allow_legacy_kh_sign_(allow_legacy_kh_sign),
-      allow_g2f_attestation_(allow_g2f_attestation) {
-  if (enable_corp_protocol) {
-    u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-    u2f_corp_processor_->Initialize(sm_proxy, proxy, request_user_presence);
-  }
-}
+      allow_g2f_attestation_(allow_g2f_attestation),
+      u2f_corp_processor_(u2f_corp_processor) {}
 
 U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
   uint16_t u2f_status = 0;

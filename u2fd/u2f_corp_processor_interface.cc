@@ -76,4 +76,12 @@ U2fResponseApdu U2fCorpProcessorInterface::ProcessApdu(
   return resp_apdu;
 }
 
+void U2fCorpProcessorInterface::Reset() {
+  if (processor_) {
+    processor_->Reset();
+    return;
+  }
+  VLOG(1) << "Stub received Reset, doing nothing.";
+}
+
 }  // namespace u2f

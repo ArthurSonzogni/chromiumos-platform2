@@ -30,6 +30,7 @@ class U2fCorpProcessorInterface {
                   TpmVendorCommandProxy* tpm_proxy,
                   std::function<void()> request_presence);
   U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu);
+  void Reset();
 
  private:
   void* handle_;

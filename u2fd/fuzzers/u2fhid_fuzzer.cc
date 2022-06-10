@@ -41,7 +41,7 @@ class FuzzerLoop : public brillo::Daemon {
 
     u2fhid_ = std::make_unique<u2f::U2fHid>(std::move(fake_uhid_device),
                                             fake_u2f_msg_handler_.get(),
-                                            /*enable_corp_protocol=*/false);
+                                            /*u2f_corp_processor=*/nullptr);
 
     ScheduleSendOutputReport();
     return EX_OK;

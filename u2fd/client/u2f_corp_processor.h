@@ -24,6 +24,7 @@ class U2fCorpProcessor {
                           std::function<void()> request_presence) = 0;
 
   virtual U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu) = 0;
+  virtual void Reset() = 0;
 };
 
 }  // namespace u2f

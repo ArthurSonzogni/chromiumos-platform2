@@ -18,6 +18,7 @@
 #include "u2fd/client/u2f_apdu.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/hid_interface.h"
+#include "u2fd/u2f_corp_processor_interface.h"
 #include "u2fd/u2f_msg_handler_interface.h"
 
 namespace u2f {
@@ -49,6 +50,7 @@ class U2fHid {
   // U2FHID Command codes
   enum class U2fHidCommand : uint8_t {
     kPing = 1,
+    kAtr = 2,
     kMsg = 3,
     kLock = 4,
     kVendorSysInfo = 5,
@@ -75,7 +77,7 @@ class U2fHid {
   // msg_handler, which must outlive this instance.
   U2fHid(std::unique_ptr<HidInterface> hid,
          U2fMessageHandlerInterface* msg_handler,
-         bool enable_corp_protocol);
+         U2fCorpProcessorInterface* u2f_corp_processor);
   U2fHid(const U2fHid&) = delete;
   U2fHid& operator=(const U2fHid&) = delete;
 
@@ -84,6 +86,7 @@ class U2fHid {
 
  private:
   // U2FHID protocol commands implementation.
+  int CmdAtr(std::string* resp);
   void CmdInit(uint32_t cid, const std::string& payload);
   int CmdLock(std::string* resp);
   int CmdMsg(std::string* resp);
@@ -121,7 +124,7 @@ class U2fHid {
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;
   U2fMessageHandlerInterface* msg_handler_;
-  bool enable_corp_protocol_;
+  U2fCorpProcessorInterface* u2f_corp_processor_;
 
   class HidPacket;
   class HidMessage;

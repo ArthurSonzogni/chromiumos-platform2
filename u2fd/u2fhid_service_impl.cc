@@ -17,6 +17,7 @@
 #include <trunks/cr50_headers/virtual_nvmem.h>
 
 #include "u2fd/client/user_state.h"
+#include "u2fd/u2f_corp_processor_interface.h"
 
 namespace u2f {
 
@@ -31,10 +32,13 @@ U2fHidServiceImpl::U2fHidServiceImpl(bool enable_corp_protocol,
                                      bool legacy_kh_fallback,
                                      uint32_t vendor_id,
                                      uint32_t product_id)
-    : enable_corp_protocol_(enable_corp_protocol),
-      legacy_kh_fallback_(legacy_kh_fallback),
+    : legacy_kh_fallback_(legacy_kh_fallback),
       vendor_id_(vendor_id),
-      product_id_(product_id) {}
+      product_id_(product_id) {
+  if (enable_corp_protocol) {
+    u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
+  }
+}
 
 bool U2fHidServiceImpl::InitializeDBusProxies(dbus::Bus* bus) {
   if (!tpm_proxy_.Init()) {
@@ -61,6 +65,11 @@ bool U2fHidServiceImpl::CreateU2fHid(
     UserState* user_state,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics) {
+  if (u2f_corp_processor_) {
+    u2f_corp_processor_->Initialize(sm_proxy, &tpm_proxy_,
+                                    request_user_presence);
+  }
+
   std::unique_ptr<u2f::AllowlistingUtil> allowlisting_util;
 
   if (include_g2f_allowlisting_data) {
@@ -71,12 +80,12 @@ bool U2fHidServiceImpl::CreateU2fHid(
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
       std::move(allowlisting_util), request_user_presence, user_state,
       &tpm_proxy_, sm_proxy, metrics, legacy_kh_fallback_,
-      allow_g2f_attestation, enable_corp_protocol_);
+      allow_g2f_attestation, u2f_corp_processor_.get());
 
   u2fhid_ = std::make_unique<u2f::U2fHid>(
       std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                         "u2fd-tpm-cr50"),
-      u2f_msg_handler_.get(), enable_corp_protocol_);
+      u2f_msg_handler_.get(), u2f_corp_processor_.get());
 
   return u2fhid_->Init();
 }

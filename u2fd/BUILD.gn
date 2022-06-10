@@ -224,6 +224,7 @@ if (use.fuzzer) {
       "fuzzers/fake_u2f_msg_handler.cc",
       "fuzzers/fake_uhid_device.cc",
       "fuzzers/u2fhid_fuzzer.cc",
+      "u2f_corp_processor_interface.cc",
       "u2fhid.cc",
     ]
     configs += [

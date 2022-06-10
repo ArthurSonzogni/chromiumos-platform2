@@ -35,7 +35,7 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
                     MetricsLibraryInterface* metrics,
                     bool allow_legacy_kh_sign,
                     bool allow_g2f_attestation,
-                    bool enable_corp_protocol);
+                    U2fCorpProcessorInterface* u2f_corp_processor);
 
   // Processes the APDU and builds a response locally, making using of cr50
   // vendor commands where necessary.
@@ -93,10 +93,11 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
   UserState* user_state_;
   TpmVendorCommandProxy* proxy_;
   MetricsLibraryInterface* metrics_;
-  std::unique_ptr<U2fCorpProcessorInterface> u2f_corp_processor_;
 
   const bool allow_legacy_kh_sign_;
   const bool allow_g2f_attestation_;
+
+  U2fCorpProcessorInterface* u2f_corp_processor_;
 };
 
 }  // namespace u2f

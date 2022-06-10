@@ -20,6 +20,7 @@
 #include "u2fd/client/u2f_apdu.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/client/util.h"
+#include "u2fd/u2f_corp_processor_interface.h"
 #include "u2fd/u2fhid.h"
 
 namespace {
@@ -199,12 +200,12 @@ struct U2fHid::Transaction {
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                U2fMessageHandlerInterface* msg_handler,
-               bool enable_corp_protocol)
+               U2fCorpProcessorInterface* u2f_corp_processor)
     : hid_(std::move(hid)),
       free_cid_(1),
       locked_cid_(0),
       msg_handler_(msg_handler),
-      enable_corp_protocol_(enable_corp_protocol) {
+      u2f_corp_processor_(u2f_corp_processor) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
       base::BindRepeating(&U2fHid::ProcessReport, base::Unretained(this)));
@@ -324,10 +325,13 @@ int U2fHid::CmdLock(std::string* resp) {
 }
 
 int U2fHid::CmdSysInfo(std::string* resp) {
-  if (enable_corp_protocol_) {
+  if (u2f_corp_processor_) {
     VLOG(1) << "Received SysInfo command";
     // 8 bytes name + 3 bytes firmware version + 3 bytes applet version.
-    *resp = std::string("built-in") + std::string(6, '\x01');
+    // TODO(b/232715968): Return some version value from CR50 here instead of
+    // returning placeholder.
+    *resp =
+        std::string("cr50") + std::string(4, '\x00') + std::string(6, '\x01');
     return 0;
   }
 
@@ -344,17 +348,32 @@ int U2fHid::CmdMsg(std::string* resp) {
   return 0;
 }
 
+int U2fHid::CmdAtr(std::string* resp) {
+  if (u2f_corp_processor_) {
+    VLOG(1) << "Received Atr command";
+    u2f_corp_processor_->Reset();
+    return 0;
+  }
+
+  LOG(WARNING) << "Received unsupported Atr command";
+  ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
+  return -EINVAL;
+}
+
 void U2fHid::ExecuteCmd() {
   int rc;
   std::string resp;
 
   transaction_->timeout.Stop();
   switch (transaction_->cmd) {
-    case U2fHidCommand::kMsg:
-      rc = CmdMsg(&resp);
-      break;
     case U2fHidCommand::kPing:
       rc = CmdPing(&resp);
+      break;
+    case U2fHidCommand::kAtr:
+      rc = CmdAtr(&resp);
+      break;
+    case U2fHidCommand::kMsg:
+      rc = CmdMsg(&resp);
       break;
     case U2fHidCommand::kLock:
       rc = CmdLock(&resp);
