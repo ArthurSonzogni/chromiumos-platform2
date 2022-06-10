@@ -7,6 +7,11 @@ include(sepolicy/file_contexts/coreutils)
 
 include(sepolicy/file_contexts/sysfs_contexts)
 
+
+# Please add ARC++ engineers as code reviewers when changing file contexts under
+# android-data.
+
+
 # Chrome OS file contexts.
 /([^/]+)?                       u:object_r:rootfs:s0
 /sys                            u:object_r:sysfs:s0
@@ -331,6 +336,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/tmp                        u:object_r:cros_var_tmp:s0
 
 # /opt
+# Please add ARC++ engineers as code reviewers when changing file contexts under
+# android-data.
 /opt(/.*)          u:object_r:cros_system_file:s0
 /opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
 /opt/google/containers/android/rootfs/root u:object_r:cros_arc_rootfs_mountpoint:s0
@@ -355,6 +362,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 # All the following files are created dynamically and need to be labeled at
 # runtime.
+# Please add ARC++ engineers as code reviewers when changing file contexts under
+# android-data.
 /run                                           u:object_r:cros_run:s0
 /run/arc/debugfs                               u:object_r:debugfs:s0
 /run/arc/oem(/.*)?                             u:object_r:oem_fs:s0
@@ -477,6 +486,8 @@ has_arc(`
 /mnt/stateful_partition/var_overlay/lib/portage(/.*)? u:object_r:cros_var_lib_portage:s0
 
 # /home
+# Please add ARC++ engineers as code reviewers when changing file contexts under
+# android-data.
 /home                            u:object_r:cros_home:s0
 /home/root(/[0-9a-z]{40})?       u:object_r:cros_home_root:s0
 /home/user(/[0-9a-z]{40})?       u:object_r:cros_home_user:s0
