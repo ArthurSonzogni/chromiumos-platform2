@@ -219,6 +219,9 @@ message StartVmRequest {
   // inside the VM.
   repeated TerminaFeature features = 21;
 
+  // If true, connects the virtio-tpm device to the vtpm daemon.
+  bool vtpm_proxy = 22;
+
   reserved 13, 14, 6;
 }
 

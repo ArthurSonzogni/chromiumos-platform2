@@ -1899,6 +1899,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       .big_gl = request.enable_big_gl(),
       .render_server = enable_render_server,
       .software_tpm = request.software_tpm(),
+      .vtpm_proxy = request.vtpm_proxy(),
       .audio_capture = request.enable_audio_capture(),
   };
 

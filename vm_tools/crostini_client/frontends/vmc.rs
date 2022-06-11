@@ -96,7 +96,8 @@ fn parse_disk_size(s: &str) -> Result<u64, VmcError> {
             .parse::<u64>()
             .map(|x| x * 1024 * 1024 * 1024),
         _ => s.parse(),
-    }.map_err(|_| ExpectedUIntSize)
+    }
+    .map_err(|_| ExpectedUIntSize)
 }
 
 impl fmt::Display for VmcError {
@@ -139,7 +140,9 @@ impl fmt::Display for VmcError {
             ExpectedU8Port => write!(f, "expected <port> to fit into an 8-bit integer"),
             ExpectedUUID => write!(f, "expected <command UUID>"),
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
-            UnexpectedSizeWithPluginVm => write!(f, "unexpected --size parameter; -p doesn't support --size"),
+            UnexpectedSizeWithPluginVm => {
+                write!(f, "unexpected --size parameter; -p doesn't support --size")
+            }
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
             MissingActiveSession => write!(
@@ -212,6 +215,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "software-tpm",
             "provide software-based virtual Trusted Platform Module",
         );
+        opts.optflag("", "vtpm-proxy", "connect the virtio-tpm to vtpm daemon");
         opts.optflag(
             "",
             "enable-audio-capture",
@@ -301,6 +305,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             vulkan,
             big_gl,
             software_tpm: matches.opt_present("software-tpm"),
+            vtpm_proxy: matches.opt_present("vtpm-proxy"),
             audio_capture: matches.opt_present("enable-audio-capture"),
             run_as_untrusted: matches.opt_present("untrusted"),
             dlc: matches.opt_str("dlc-id"),
@@ -384,7 +389,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let (vm_name, file_name, removable_media) = match args.len() {
             1 => (args[0].as_str(), None, None),
             2 => (args[0].as_str(), Some(args[1].as_str()), None),
-            3 => (args[0].as_str(), Some(args[1].as_str()), Some(args[2].as_str())),
+            3 => (
+                args[0].as_str(),
+                Some(args[1].as_str()),
+                Some(args[2].as_str()),
+            ),
             _ => return Err(ExpectedVmAndMaybeFileName.into()),
         };
 
@@ -1047,6 +1056,7 @@ mod tests {
             ],
             &["vmc", "start", "termina", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
+            &["vmc", "start", "termina", "--vtpm-proxy"],
             &["vmc", "start", "termina", "--enable-audio-capture"],
             &["vmc", "start", "termina", "--untrusted"],
             &[

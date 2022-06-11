@@ -52,6 +52,9 @@ struct VmFeatures {
   // Provide software-based virtual Trusted Platform Module to the VM.
   bool software_tpm;
 
+  // Provide vtpm connection to the VM.
+  bool vtpm_proxy;
+
   // Enable audio capture function in the started VM.
   bool audio_capture;
 

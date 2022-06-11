@@ -225,6 +225,7 @@ pub struct VmFeatures {
     pub vulkan: bool,
     pub big_gl: bool,
     pub software_tpm: bool,
+    pub vtpm_proxy: bool,
     pub audio_capture: bool,
     pub run_as_untrusted: bool,
     pub dlc: Option<String>,
@@ -1261,6 +1262,7 @@ impl Methods {
         request.enable_vulkan = features.vulkan;
         request.enable_big_gl = features.big_gl;
         request.software_tpm = features.software_tpm;
+        request.vtpm_proxy = features.vtpm_proxy;
         request.enable_audio_capture = features.audio_capture;
         request.run_as_untrusted = features.run_as_untrusted;
         request.name = vm_name.to_owned();
@@ -2025,6 +2027,10 @@ impl Methods {
 
             let is_stable_channel = is_stable_channel();
             if features.software_tpm && is_stable_channel {
+                return Err(TpmOnStable.into());
+            }
+
+            if features.vtpm_proxy && is_stable_channel {
                 return Err(TpmOnStable.into());
             }
 

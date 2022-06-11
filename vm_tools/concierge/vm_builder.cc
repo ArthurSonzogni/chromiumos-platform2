@@ -240,6 +240,11 @@ VmBuilder& VmBuilder::EnableSoftwareTpm(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableVtpmProxy(bool enable) {
+  enable_vtpm_proxy_ = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableVideoDecoder(bool enable) {
   enable_video_decoder_ = enable;
   return *this;
@@ -400,6 +405,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   if (enable_software_tpm_)
     args.emplace_back("--software-tpm", "");
+
+  if (enable_vtpm_proxy_)
+    args.emplace_back("--vtpm-proxy", "");
 
   if (enable_video_decoder_)
     args.emplace_back("--video-decoder", "");
