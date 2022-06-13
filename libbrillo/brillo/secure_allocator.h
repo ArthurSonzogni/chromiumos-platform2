@@ -80,8 +80,15 @@ class BRILLO_PRIVATE SecureAllocator {
     typedef SecureAllocator<U> other;
   };
 
-  // Returns cached max_size.
-  size_type max_size() const { return max_size_; }
+  // Max theoretical count for type on system.
+  size_type max_size() const {
+    // Calculate the page size the first time we are called, and
+    // afterwards use the precalculated results.
+    static size_type result = GetMaxSizeForType(SystemPageSize());
+    static_assert(std::is_trivially_destructible_v<decltype(result)>);
+
+    return result;
+  }
 
   // Allocation: allocates ceil(size/pagesize) for holding the data.
   pointer allocate(size_type n, pointer hint = nullptr) {
@@ -190,21 +197,30 @@ class BRILLO_PRIVATE SecureAllocator {
   }
 
  private:
-  // Calculates the page-aligned buffer size.
-  size_t CalculatePageAlignedBufferSize(size_type n) {
-    size_type real_size = n * sizeof(value_type);
-    size_type page_aligned_remainder = real_size % page_size_;
-    size_type padding =
-        page_aligned_remainder != 0 ? page_size_ - page_aligned_remainder : 0;
-    return real_size + padding;
-  }
-
-  static size_t CalculatePageSize() {
+  // Return the system page size.
+  static size_t CalculateSystemPageSize() {
     long ret = sysconf(_SC_PAGESIZE);  // NOLINT [runtime/int]
-
-    // Initialize page size.
     CHECK_GT(ret, 0L);
     return ret;
+  }
+
+  // Return a cached system page size.
+  static size_t SystemPageSize() {
+    // Calculate the page size the first time we are called, and afterwards
+    // use the precalculated results.
+    static size_t result = CalculateSystemPageSize();
+    static_assert(std::is_trivially_destructible_v<decltype(result)>);
+    return result;
+  }
+
+  // Calculates the page-aligned buffer size.
+  size_t CalculatePageAlignedBufferSize(size_type n) {
+    size_type page_size = SystemPageSize();
+    size_type real_size = n * sizeof(value_type);
+    size_type page_aligned_remainder = real_size % page_size;
+    size_type padding =
+        page_aligned_remainder != 0 ? page_size - page_aligned_remainder : 0;
+    return real_size + padding;
   }
 
   // Since the allocator reuses page size and max size consistently,
@@ -218,11 +234,6 @@ class BRILLO_PRIVATE SecureAllocator {
 
     return max_page_aligned_size / sizeof(value_type);
   }
-
-  // Page size on system.
-  static inline const size_type page_size_ = CalculatePageSize();
-  // Max theoretical count for type on system.
-  static inline const size_type max_size_ = GetMaxSizeForType(page_size_);
 };
 
 // Allocators are equal if they are stateless. i.e., one allocator can
