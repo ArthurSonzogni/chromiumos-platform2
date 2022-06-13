@@ -89,5 +89,15 @@ TEST(ArcVmTest, PanelOrientation) {
       params, "androidboot.arc.primary_display_rotation=ORIENTATION_180"));
 }
 
+TEST(ArcVmTest, EnableConsumerAutoUpdateToggle) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_enable_consumer_auto_update_toggle(true);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  EXPECT_TRUE(base::Contains(
+      params, "androidboot.enable_consumer_auto_update_toggle=1"));
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

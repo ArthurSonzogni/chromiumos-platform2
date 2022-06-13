@@ -694,6 +694,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "androidboot.arc.primary_display_rotation=" +
           StartArcVmRequest::DisplayOrientation_Name(
               request.panel_orientation()),
+      "androidboot.enable_consumer_auto_update_toggle=" +
+          std::to_string(request.enable_consumer_auto_update_toggle()),
   };
   // We run vshd under a restricted domain on non-test images.
   // (go/arcvm-android-sh-restricted)

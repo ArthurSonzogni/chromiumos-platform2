@@ -414,10 +414,6 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
                       std::to_string(kArcVmRamoopsPmsgSize));
   params.emplace_back("ramoops.dump_oops=1");
 
-  params.emplace_back(
-      "androidboot.enable_consumer_auto_update_toggle=" +
-      std::to_string(request.enable_consumer_auto_update_toggle()));
-
   VmBuilder vm_builder;
   vm_builder.AppendDisks(std::move(disks))
       .SetCpus(topology.NumCPUs())
