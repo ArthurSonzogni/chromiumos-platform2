@@ -194,7 +194,7 @@ class Device : public base::RefCounted<Device> {
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   mockable Technology technology() const { return technology_; }
-  std::string GetTechnologyString(Error* error);
+  std::string GetTechnologyName() const;
 
   // Currently, Network object has the same lifetime as Device, and thus this
   // getter should never return nullptr.
@@ -673,6 +673,9 @@ class Device : public base::RefCounted<Device> {
   // and new selected_service_ respectively.
   void FetchTrafficCounters(const ServiceRefPtr& old_service,
                             const ServiceRefPtr& new_service);
+
+  // Necessary getter signature for kTypeProperty. Cannot be const.
+  std::string GetTechnologyString(Error* error);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it

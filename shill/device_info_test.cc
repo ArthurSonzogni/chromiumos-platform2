@@ -424,13 +424,13 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
 
   device_info_.infos_[1].technology = Technology::kCellular;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.insert(Technology(Technology::kCellular).GetName());
+  expected_technologies.insert(TechnologyName(Technology::kCellular));
   EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[2].technology = Technology::kWiFi;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.insert(Technology(Technology::kWiFi).GetName());
+  expected_technologies.insert(TechnologyName(Technology::kWiFi));
   EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
@@ -438,7 +438,7 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
       new MockDevice(&manager_, "null0", "addr0", 1));
   device_info_.infos_[1].device = device;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.erase(Technology(Technology::kCellular).GetName());
+  expected_technologies.erase(TechnologyName(Technology::kCellular));
   EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 

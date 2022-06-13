@@ -307,12 +307,12 @@ std::vector<std::string> DeviceInfo::GetUninitializedTechnologies() const {
       // one of them has been initialized, make sure that it doesn't get
       // listed as uninitialized.
       initialized_technologies.insert(technology);
-      unique_technologies.erase(technology.GetName());
+      unique_technologies.erase(TechnologyName(technology));
       continue;
     }
-    if (technology.IsPrimaryConnectivityTechnology() &&
+    if (IsPrimaryConnectivityTechnology(technology) &&
         !base::Contains(initialized_technologies, technology))
-      unique_technologies.insert(technology.GetName());
+      unique_technologies.insert(TechnologyName(technology));
   }
   return std::vector<std::string>(unique_technologies.begin(),
                                   unique_technologies.end());
@@ -336,7 +336,7 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
     routing_table_->RegisterDevice(device->interface_index(),
                                    device->link_name());
   }
-  if (device->technology().IsPrimaryConnectivityTechnology()) {
+  if (IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
   }
 
@@ -827,7 +827,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     } else if (technology == Technology::kWiFi ||
                technology == Technology::kEthernet) {
       LOG(ERROR) << "Add link message does not have IFLA_ADDRESS, link: "
-                 << link_name << ", Technology: " << technology.GetName();
+                 << link_name << ", Technology: " << technology;
       return;
     }
     metrics_->RegisterDevice(dev_index, technology);
@@ -1136,7 +1136,7 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
   }
   if (info->technology != Technology::kWiFi) {
     LOG(ERROR) << info->name << " adapter reports for technology "
-               << info->technology.GetName() << " not supported.";
+               << info->technology << " not supported.";
     return false;
   }
   SLOG(this, 2) << info->name << " detecting adapter information";

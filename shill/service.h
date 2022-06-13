@@ -494,7 +494,7 @@ class Service : public base::RefCounted<Service> {
   uint16_t strength() const { return strength_; }
 
   mockable Technology technology() const { return technology_; }
-  std::string GetTechnologyString() const;
+  std::string GetTechnologyName() const;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   mockable const EapCredentials* eap() const { return eap_.get(); }

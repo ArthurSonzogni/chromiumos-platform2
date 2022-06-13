@@ -176,7 +176,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
   allowed_dsts_ = properties.included_dsts;
   use_if_addrs_ =
-      properties.use_if_addrs || technology_.IsPrimaryConnectivityTechnology();
+      properties.use_if_addrs || IsPrimaryConnectivityTechnology(technology_);
 
   IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&

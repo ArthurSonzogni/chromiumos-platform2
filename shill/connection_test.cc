@@ -159,7 +159,7 @@ class ConnectionTest : public Test {
 
   scoped_refptr<MockDevice> CreateDevice(Technology technology) {
     scoped_refptr<MockDevice> device = new StrictMock<MockDevice>(
-        &manager_, "test_" + technology.GetName(), std::string(),
+        &manager_, "test_" + TechnologyName(technology), std::string(),
         kDeviceInterfaceIndexBase + static_cast<int>(technology));
     EXPECT_CALL(*device, technology()).WillRepeatedly(Return(technology));
     EXPECT_CALL(*device_info_, GetDevice(device->interface_index()))

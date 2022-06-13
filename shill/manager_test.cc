@@ -168,6 +168,13 @@ class ManagerTest : public PropertyStoreTest {
     mock_devices_.clear();
   }
 
+  void SetMockDevices(const std::vector<Technology> technologies) {
+    for (size_t i = 0; i < technologies.size(); i++) {
+      ON_CALL(*mock_devices_[i], technology())
+          .WillByDefault(Return(technologies[i]));
+    }
+  }
+
   bool IsDeviceRegistered(const DeviceRefPtr& device, Technology tech) {
     auto devices = manager()->FilterByTechnology(tech);
     return (devices.size() == 1 && devices[0].get() == device.get());
@@ -574,13 +581,8 @@ TEST_F(ManagerTest, PassiveModeDeviceRegistration) {
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
-
+  SetMockDevices(
+      {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
@@ -592,12 +594,8 @@ TEST_F(ManagerTest, DeviceRegistration) {
 
 TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
   manager()->network_throttling_enabled_ = true;
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
+  SetMockDevices(
+      {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
 
   EXPECT_CALL(*throttler_, ThrottleInterfaces(_, _, _)).Times(1);
   EXPECT_CALL(*throttler_, ApplyThrottleToNewInterface(_)).Times(2);
@@ -608,13 +606,8 @@ TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
 }
 
 TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
-
+  SetMockDevices(
+      {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
@@ -650,11 +643,7 @@ TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-
+  SetMockDevices({Technology::kEthernet, Technology::kWiFi});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
 
@@ -2173,25 +2162,20 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
 }
 
 TEST_F(ManagerTest, DevicePresenceStatusCheck) {
+  SetMockDevices(
+      {Technology::kEthernet, Technology::kWiFi, Technology::kEthernet});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
 
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
-                                        Technology(Technology::kEthernet),
+                                        Technology::kEthernet,
                                         Metrics::kDevicePresenceStatusYes));
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
-                                        Technology(Technology::kWiFi),
+                                        Technology::kWiFi,
                                         Metrics::kDevicePresenceStatusYes));
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDevicePresenceStatus,
-                                        Technology(Technology::kCellular),
+                                        Technology::kCellular,
                                         Metrics::kDevicePresenceStatusNo));
   manager()->DevicePresenceStatusCheck();
 }
@@ -2492,24 +2476,17 @@ TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
 TEST_F(ManagerTest, AvailableTechnologies) {
   mock_devices_.push_back(
       new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
+  SetMockDevices({Technology::kEthernet, Technology::kWiFi,
+                  Technology::kCellular, Technology::kWiFi});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
   manager()->RegisterDevice(mock_devices_[3]);
 
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[3], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-
   std::set<std::string> expected_technologies;
-  expected_technologies.insert(Technology(Technology::kEthernet).GetName());
-  expected_technologies.insert(Technology(Technology::kWiFi).GetName());
-  expected_technologies.insert(Technology(Technology::kCellular).GetName());
+  expected_technologies.insert(TechnologyName(Technology::kEthernet));
+  expected_technologies.insert(TechnologyName(Technology::kWiFi));
+  expected_technologies.insert(TechnologyName(Technology::kCellular));
   Error error;
   std::vector<std::string> technologies =
       manager()->AvailableTechnologies(&error);
@@ -2534,19 +2511,12 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   manager()->RegisterService(disconnected_service1);
   manager()->RegisterService(disconnected_service2);
 
+  SetMockDevices({Technology::kEthernet, Technology::kWiFi,
+                  Technology::kCellular, Technology::kWiFi});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
   manager()->RegisterDevice(mock_devices_[3]);
-
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiFi));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[3], technology())
-      .WillByDefault(Return(Technology::kWiFi));
 
   mock_devices_[0]->SelectService(connected_service1);
   mock_devices_[1]->SelectService(disconnected_service1);
@@ -2554,8 +2524,8 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   mock_devices_[3]->SelectService(connected_service2);
 
   std::set<std::string> expected_technologies;
-  expected_technologies.insert(Technology(Technology::kEthernet).GetName());
-  expected_technologies.insert(Technology(Technology::kWiFi).GetName());
+  expected_technologies.insert(TechnologyName(Technology::kEthernet));
+  expected_technologies.insert(TechnologyName(Technology::kWiFi));
   Error error;
 
   std::vector<std::string> technologies =
@@ -2587,7 +2557,7 @@ TEST_F(ManagerTest, DefaultTechnology) {
   manager()->RegisterService(connected_service);
   CompleteServiceSort();
   // Connected service should be brought to the front now.
-  std::string expected_technology = Technology(Technology::kWiFi).GetName();
+  std::string expected_technology = TechnologyName(Technology::kWiFi);
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(expected_technology));
 }
 
@@ -3206,21 +3176,17 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
       base::Bind(&DisableTechnologyReplyHandler::ReportResult,
                  disable_technology_reply_handler.AsWeakPtr()));
 
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kWiFi));
+  SetMockDevices(
+      {Technology::kEthernet, Technology::kCellular, Technology::kWiFi});
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
 
   auto setup_expectations =
       [](std::vector<scoped_refptr<MockDevice>>& mock_devices,
-         Technology::Type type, bool enable, bool persistent) {
+         Technology technology, bool enable, bool persistent) {
         for (int i = 0; i < 3; i++) {
-          if (mock_devices[i]->technology() == type) {
+          if (mock_devices[i]->technology() == technology) {
             if (persistent) {
               EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
                   .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
@@ -3253,15 +3219,15 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   // precluded by ManagerTest being a subclass of PropertyStoreTest, which
   // is a TestWithParam.
   std::vector<bool> bool_vals = {true, false};
-  std::vector<Technology::Type> techs = {
-      Technology::kEthernet, Technology::kCellular, Technology::kWiFi};
-  for (Technology::Type type : techs) {
+  std::vector<Technology> techs = {Technology::kEthernet, Technology::kCellular,
+                                   Technology::kWiFi};
+  for (Technology technology : techs) {
     for (bool enable : bool_vals) {
       for (bool persistent : bool_vals) {
         EXPECT_CALL(disable_technology_reply_handler,
                     ReportResult(IsSuccess()));
-        setup_expectations(mock_devices_, type, enable, persistent);
-        manager()->SetEnabledStateForTechnology(Technology(type).GetName(),
+        setup_expectations(mock_devices_, technology, enable, persistent);
+        manager()->SetEnabledStateForTechnology(TechnologyName(technology),
                                                 enable, persistent,
                                                 disable_technology_callback);
         Mock::VerifyAndClearExpectations(&disable_technology_reply_handler);

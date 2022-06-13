@@ -5,7 +5,6 @@
 #include "shill/ethernet/ethernet_eap_service.h"
 
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 
 #include "shill/eap_credentials.h"
 #include "shill/ethernet/ethernet_eap_provider.h"
@@ -24,7 +23,7 @@ EthernetEapService::EthernetEapService(Manager* manager)
 EthernetEapService::~EthernetEapService() = default;
 
 std::string EthernetEapService::GetStorageIdentifier() const {
-  return base::StringPrintf("%s_all", technology().GetName().c_str());
+  return GetTechnologyName() + "_all";
 }
 
 RpcIdentifier EthernetEapService::GetDeviceRpcId(Error* /*error*/) const {

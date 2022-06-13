@@ -24,8 +24,8 @@ class ShillTechnologyFuzz {
     std::vector<shill::Technology> technologies;
     shill::Error error;
     shill::GetTechnologyVectorFromString(fuzzed_str, &technologies, &error);
-    Technology::CreateFromName(fuzzed_str);
-    Technology::CreateFromStorageGroup(fuzzed_str);
+    TechnologyFromName(fuzzed_str);
+    TechnologyFromStorageGroup(fuzzed_str);
   }
 };
 

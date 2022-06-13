@@ -71,7 +71,7 @@ class BRILLO_EXPORT Client {
   // - the connection state of the Service, if possible by translating back to
   //   the enum shill::Service::ConnectState
   struct Device {
-    // A subset of shill::Technology::Type.
+    // A subset of shill::Technology.
     enum class Type {
       kUnknown,
       kCellular,

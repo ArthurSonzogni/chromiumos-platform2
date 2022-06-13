@@ -551,8 +551,7 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
     SendServiceFailure(service);
 
   bootstat::BootStat().LogEvent(
-      base::StringPrintf("network-%s-%s",
-                         service.technology().GetName().c_str(),
+      base::StringPrintf("network-%s-%s", service.GetTechnologyName().c_str(),
                          service.GetStateString().c_str())
           .c_str());
 
@@ -568,7 +567,7 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
 // static
 std::string Metrics::GetFullMetricName(const char* metric_suffix,
                                        Technology technology_id) {
-  std::string technology = technology_id.GetName();
+  std::string technology = TechnologyName(technology_id);
   technology[0] = base::ToUpperASCII(technology[0]);
   return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
                             metric_suffix);
@@ -728,10 +727,10 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
 void Metrics::RegisterDevice(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
 
-  if (technology.IsPrimaryConnectivityTechnology()) {
+  if (IsPrimaryConnectivityTechnology(technology)) {
     bootstat::BootStat().LogEvent(
         base::StringPrintf("network-%s-registered",
-                           technology.GetName().c_str())
+                           TechnologyName(technology).c_str())
             .c_str());
   }
 

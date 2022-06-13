@@ -196,7 +196,7 @@ std::string VPNService::GetPhysicalTechnologyProperty(Error* error) {
     return "";
   }
 
-  return underlying_service->technology().GetName();
+  return underlying_service->GetTechnologyName();
 }
 
 RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {

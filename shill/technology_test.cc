@@ -13,44 +13,41 @@ using testing::ElementsAre;
 
 namespace shill {
 
-TEST(TechnologyTest, CreateFromName) {
-  EXPECT_EQ(Technology::kEthernet, Technology::CreateFromName("ethernet"));
-  EXPECT_EQ(Technology::kEthernetEap,
-            Technology::CreateFromName("etherneteap"));
-  EXPECT_EQ(Technology::kWiFi, Technology::CreateFromName("wifi"));
-  EXPECT_EQ(Technology::kCellular, Technology::CreateFromName("cellular"));
-  EXPECT_EQ(Technology::kTunnel, Technology::CreateFromName("tunnel"));
-  EXPECT_EQ(Technology::kLoopback, Technology::CreateFromName("loopback"));
-  EXPECT_EQ(Technology::kVPN, Technology::CreateFromName("vpn"));
-  EXPECT_EQ(Technology::kPPP, Technology::CreateFromName("ppp"));
-  EXPECT_EQ(Technology::kGuestInterface,
-            Technology::CreateFromName("guest_interface"));
-  EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName("foo"));
-  EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName(""));
+TEST(TechnologyTest, TechnologyFromName) {
+  EXPECT_EQ(Technology::kEthernet, TechnologyFromName("ethernet"));
+  EXPECT_EQ(Technology::kEthernetEap, TechnologyFromName("etherneteap"));
+  EXPECT_EQ(Technology::kWiFi, TechnologyFromName("wifi"));
+  EXPECT_EQ(Technology::kCellular, TechnologyFromName("cellular"));
+  EXPECT_EQ(Technology::kTunnel, TechnologyFromName("tunnel"));
+  EXPECT_EQ(Technology::kLoopback, TechnologyFromName("loopback"));
+  EXPECT_EQ(Technology::kVPN, TechnologyFromName("vpn"));
+  EXPECT_EQ(Technology::kPPP, TechnologyFromName("ppp"));
+  EXPECT_EQ(Technology::kGuestInterface, TechnologyFromName("guest_interface"));
+  EXPECT_EQ(Technology::kUnknown, TechnologyFromName("foo"));
+  EXPECT_EQ(Technology::kUnknown, TechnologyFromName(""));
 }
 
-TEST(TechnologyTest, GetName) {
-  EXPECT_EQ("ethernet", Technology(Technology::kEthernet).GetName());
-  EXPECT_EQ("etherneteap", Technology(Technology::kEthernetEap).GetName());
-  EXPECT_EQ("wifi", Technology(Technology::kWiFi).GetName());
-  EXPECT_EQ("cellular", Technology(Technology::kCellular).GetName());
-  EXPECT_EQ("tunnel", Technology(Technology::kTunnel).GetName());
-  EXPECT_EQ("loopback", Technology(Technology::kLoopback).GetName());
-  EXPECT_EQ("vpn", Technology(Technology::kVPN).GetName());
-  EXPECT_EQ("ppp", Technology(Technology::kPPP).GetName());
-  EXPECT_EQ("guest_interface",
-            Technology(Technology::kGuestInterface).GetName());
-  EXPECT_EQ("unknown", Technology(Technology::kUnknown).GetName());
+TEST(TechnologyTest, TechnologyName) {
+  EXPECT_EQ("ethernet", TechnologyName(Technology::kEthernet));
+  EXPECT_EQ("etherneteap", TechnologyName(Technology::kEthernetEap));
+  EXPECT_EQ("wifi", TechnologyName(Technology::kWiFi));
+  EXPECT_EQ("cellular", TechnologyName(Technology::kCellular));
+  EXPECT_EQ("tunnel", TechnologyName(Technology::kTunnel));
+  EXPECT_EQ("loopback", TechnologyName(Technology::kLoopback));
+  EXPECT_EQ("vpn", TechnologyName(Technology::kVPN));
+  EXPECT_EQ("ppp", TechnologyName(Technology::kPPP));
+  EXPECT_EQ("guest_interface", TechnologyName(Technology::kGuestInterface));
+  EXPECT_EQ("unknown", TechnologyName(Technology::kUnknown));
 }
 
-TEST(TechnologyTest, CreateFromStorageGroup) {
-  EXPECT_EQ(Technology::kVPN, Technology::CreateFromStorageGroup("vpn"));
-  EXPECT_EQ(Technology::kVPN, Technology::CreateFromStorageGroup("vpn_a"));
-  EXPECT_EQ(Technology::kVPN, Technology::CreateFromStorageGroup("vpn__a"));
-  EXPECT_EQ(Technology::kVPN, Technology::CreateFromStorageGroup("vpn_a_1"));
-  EXPECT_EQ(Technology::kUnknown, Technology::CreateFromStorageGroup("_vpn"));
-  EXPECT_EQ(Technology::kUnknown, Technology::CreateFromStorageGroup("_"));
-  EXPECT_EQ(Technology::kUnknown, Technology::CreateFromStorageGroup(""));
+TEST(TechnologyTest, TechnologyFromStorageGroup) {
+  EXPECT_EQ(Technology::kVPN, TechnologyFromStorageGroup("vpn"));
+  EXPECT_EQ(Technology::kVPN, TechnologyFromStorageGroup("vpn_a"));
+  EXPECT_EQ(Technology::kVPN, TechnologyFromStorageGroup("vpn__a"));
+  EXPECT_EQ(Technology::kVPN, TechnologyFromStorageGroup("vpn_a_1"));
+  EXPECT_EQ(Technology::kUnknown, TechnologyFromStorageGroup("_vpn"));
+  EXPECT_EQ(Technology::kUnknown, TechnologyFromStorageGroup("_"));
+  EXPECT_EQ(Technology::kUnknown, TechnologyFromStorageGroup(""));
 }
 
 TEST(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {

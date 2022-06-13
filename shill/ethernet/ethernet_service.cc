@@ -82,7 +82,7 @@ std::string EthernetService::GetStorageIdentifier() const {
   if (mac_address->empty()) {
     mac_address = &props_.ethernet_->mac_address();
   }
-  return base::StringPrintf("%s_%s", technology().GetName().c_str(),
+  return base::StringPrintf("%s_%s", GetTechnologyName().c_str(),
                             mac_address->c_str());
 }
 

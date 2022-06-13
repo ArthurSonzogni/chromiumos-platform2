@@ -345,7 +345,7 @@ void Service::Connect(Error* error, const char* reason) {
         FROM_HERE, error, Error::kOperationFailed,
         base::StringPrintf(
             "Connect attempted but %s Service %s is not connectable: %s",
-            technology().GetName().c_str(), log_name().c_str(), reason));
+            GetTechnologyName().c_str(), log_name().c_str(), reason));
     return;
   }
 
@@ -354,7 +354,7 @@ void Service::Connect(Error* error, const char* reason) {
         FROM_HERE, error, Error::kAlreadyConnected,
         base::StringPrintf(
             "Connect attempted but %s Service %s is already connected: %s",
-            technology().GetName().c_str(), log_name().c_str(), reason));
+            GetTechnologyName().c_str(), log_name().c_str(), reason));
     return;
   }
   if (IsConnecting()) {
@@ -362,7 +362,7 @@ void Service::Connect(Error* error, const char* reason) {
         FROM_HERE, error, Error::kInProgress,
         base::StringPrintf(
             "Connect attempted but %s Service %s already connecting: %s",
-            technology().GetName().c_str(), log_name().c_str(), reason));
+            GetTechnologyName().c_str(), log_name().c_str(), reason));
     return;
   }
   if (IsDisconnecting()) {
@@ -454,14 +454,14 @@ void Service::CompleteCellularActivation(Error* error) {
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
                         "Service doesn't support cellular activation "
                         "completion for technology: " +
-                            GetTechnologyString());
+                            GetTechnologyName());
 }
 
 std::string Service::GetWiFiPassphrase(Error* error) {
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
                         "Service doesn't support WiFi passphrase retrieval for "
                         "technology: " +
-                            GetTechnologyString());
+                            GetTechnologyName());
   return std::string();
 }
 
@@ -840,7 +840,7 @@ void Service::Remove(Error* /*error*/) {
 bool Service::Save(StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
 
-  storage->SetString(id, kStorageType, GetTechnologyString());
+  storage->SetString(id, kStorageType, GetTechnologyName());
 
   // IMPORTANT: Changes to kStorageAutoConnect must be backwards compatible, see
   // WiFiService::Save for details.
@@ -1255,8 +1255,8 @@ const char* Service::ConnectStateToString(const ConnectState& state) {
   return "Invalid";
 }
 
-std::string Service::GetTechnologyString() const {
-  return technology().GetName();
+std::string Service::GetTechnologyName() const {
+  return TechnologyName(technology());
 }
 
 bool Service::ShouldIgnoreFailure() const {
@@ -1726,7 +1726,7 @@ bool Service::IsAutoConnectable(const char** reason) const {
     return false;
   }
 
-  if (!technology_.IsPrimaryConnectivityTechnology() &&
+  if (!IsPrimaryConnectivityTechnology(technology_) &&
       !manager_->IsConnected()) {
     *reason = kAutoConnOffline;
     return false;
@@ -1868,7 +1868,7 @@ std::string Service::CalculateState(Error* /*error*/) {
 }
 
 std::string Service::CalculateTechnology(Error* /*error*/) {
-  return GetTechnologyString();
+  return GetTechnologyName();
 }
 
 Service::TetheringState Service::GetTethering() const {

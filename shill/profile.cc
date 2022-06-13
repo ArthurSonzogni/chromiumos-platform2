@@ -451,7 +451,7 @@ std::vector<std::string> Profile::EnumerateEntries(Error* /*error*/) {
   // Filter this list down to only entries that correspond
   // to a technology.  (wifi_*, etc)
   for (const auto& group : storage_->GetGroups()) {
-    if (Technology::CreateFromStorageGroup(group) != Technology::kUnknown)
+    if (TechnologyFromStorageGroup(group) != Technology::kUnknown)
       service_groups.push_back(group);
   }
 

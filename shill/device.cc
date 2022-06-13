@@ -171,9 +171,8 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
 void Device::Scan(Error* error, const std::string& reason) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
                 << reason;
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement Scan");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+                        GetTechnologyName() + " device doesn't implement Scan");
 }
 
 void Device::RegisterOnNetwork(const std::string& /*network_id*/,
@@ -181,7 +180,7 @@ void Device::RegisterOnNetwork(const std::string& /*network_id*/,
                                const ResultCallback& /*callback*/) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement RegisterOnNetwork");
+      GetTechnologyName() + " device doesn't implement RegisterOnNetwork");
 }
 
 void Device::RequirePin(const std::string& /*pin*/,
@@ -191,7 +190,7 @@ void Device::RequirePin(const std::string& /*pin*/,
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement RequirePin");
+      GetTechnologyName() + " device doesn't implement RequirePin");
 }
 
 void Device::EnterPin(const std::string& /*pin*/,
@@ -200,7 +199,7 @@ void Device::EnterPin(const std::string& /*pin*/,
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement EnterPin");
+      GetTechnologyName() + " device doesn't implement EnterPin");
 }
 
 void Device::UnblockPin(const std::string& /*unblock_code*/,
@@ -210,7 +209,7 @@ void Device::UnblockPin(const std::string& /*unblock_code*/,
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement UnblockPin");
+      GetTechnologyName() + " device doesn't implement UnblockPin");
 }
 
 void Device::ChangePin(const std::string& /*old_pin*/,
@@ -220,14 +219,14 @@ void Device::ChangePin(const std::string& /*old_pin*/,
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement ChangePin");
+      GetTechnologyName() + " device doesn't implement ChangePin");
 }
 
 void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
-      technology().GetName() + " device doesn't implement Reset");
+      GetTechnologyName() + " device doesn't implement Reset");
 }
 
 void Device::StopIPv6() {
@@ -324,8 +323,12 @@ std::vector<GeolocationInfo> Device::GetGeolocationObjects() const {
   return std::vector<GeolocationInfo>();
 }
 
+std::string Device::GetTechnologyName() const {
+  return TechnologyName(technology());
+}
+
 std::string Device::GetTechnologyString(Error* /*error*/) {
-  return technology().GetName();
+  return GetTechnologyName();
 }
 
 const std::string& Device::UniqueName() const {
@@ -543,9 +546,8 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
                                             const ResultCallback& callback) {
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
                         "SetUsbEthernetMacAddressSource from source " + source +
-                            " is not implemented for " +
-                            technology().GetName() + " device on " +
-                            link_name_ + ".");
+                            " is not implemented for " + GetTechnologyName() +
+                            " device on " + link_name_ + ".");
   return;
 }
 
@@ -1377,8 +1379,8 @@ void Device::SetEnabledChecked(bool enable,
   SLOG(this, 1) << __func__ << ": Device " << link_name_ << " "
                 << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
-    error->Populate(Error::kPermissionDenied, "The " + technology().GetName() +
-                                                  " technology is prohibited");
+    error->Populate(Error::kPermissionDenied,
+                    "The " + GetTechnologyName() + " technology is prohibited");
     return;
   }
 

@@ -18,7 +18,6 @@
 
 namespace shill {
 
-// static
 bool GetTechnologyVectorFromString(const std::string& technologies_string,
                                    std::vector<Technology>* technologies_vector,
                                    Error* error) {
@@ -38,7 +37,7 @@ bool GetTechnologyVectorFromString(const std::string& technologies_string,
   const auto technology_parts = base::SplitString(
       technologies_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const auto& name : technology_parts) {
-    Technology technology = Technology::CreateFromName(name);
+    auto technology = TechnologyFromName(name);
 
     if (technology == Technology::kUnknown) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -58,71 +57,72 @@ bool GetTechnologyVectorFromString(const std::string& technologies_string,
   return true;
 }
 
-// static
-Technology Technology::CreateFromName(const std::string& name) {
+Technology TechnologyFromName(const std::string& name) {
   if (name == kTypeEthernet) {
-    return kEthernet;
+    return Technology::kEthernet;
   } else if (name == kTypeEthernetEap) {
-    return kEthernetEap;
+    return Technology::kEthernetEap;
   } else if (name == kTypeWifi) {
-    return kWiFi;
+    return Technology::kWiFi;
   } else if (name == kTypeCellular) {
-    return kCellular;
+    return Technology::kCellular;
   } else if (name == kTypeVPN) {
-    return kVPN;
+    return Technology::kVPN;
   } else if (name == kTypeTunnel) {
-    return kTunnel;
+    return Technology::kTunnel;
   } else if (name == kTypeLoopback) {
-    return kLoopback;
+    return Technology::kLoopback;
   } else if (name == kTypePPP) {
-    return kPPP;
+    return Technology::kPPP;
   } else if (name == kTypeGuestInterface) {
-    return kGuestInterface;
+    return Technology::kGuestInterface;
   } else {
-    return kUnknown;
+    return Technology::kUnknown;
   }
 }
 
-// static
-Technology Technology::CreateFromStorageGroup(const std::string& group) {
+Technology TechnologyFromStorageGroup(const std::string& group) {
   const auto group_parts = base::SplitString(group, "_", base::TRIM_WHITESPACE,
                                              base::SPLIT_WANT_ALL);
   if (group_parts.empty()) {
-    return kUnknown;
+    return Technology::kUnknown;
   }
-  return CreateFromName(group_parts[0]);
+  return TechnologyFromName(group_parts[0]);
 }
 
-std::string Technology::GetName() const {
-  if (type_ == kEthernet) {
-    return kTypeEthernet;
-  } else if (type_ == kEthernetEap) {
-    return kTypeEthernetEap;
-  } else if (type_ == kWiFi) {
-    return kTypeWifi;
-  } else if (type_ == kCellular) {
-    return kTypeCellular;
-  } else if (type_ == kVPN) {
-    return kTypeVPN;
-  } else if (type_ == kTunnel) {
-    return kTypeTunnel;
-  } else if (type_ == kLoopback) {
-    return kTypeLoopback;
-  } else if (type_ == kPPP) {
-    return kTypePPP;
-  } else if (type_ == kGuestInterface) {
-    return kTypeGuestInterface;
-  } else {
-    return kTypeUnknown;
+std::string TechnologyName(Technology technology) {
+  switch (technology) {
+    case Technology::kEthernet:
+      return kTypeEthernet;
+    case Technology::kEthernetEap:
+      return kTypeEthernetEap;
+    case Technology::kWiFi:
+      return kTypeWifi;
+    case Technology::kCellular:
+      return kTypeCellular;
+    case Technology::kVPN:
+      return kTypeVPN;
+    case Technology::kTunnel:
+      return kTypeTunnel;
+    case Technology::kLoopback:
+      return kTypeLoopback;
+    case Technology::kPPP:
+      return kTypePPP;
+    case Technology::kGuestInterface:
+      return kTypeGuestInterface;
+    case Technology::kUnknown:
+    default:
+      return kTypeUnknown;
   }
 }
 
-bool Technology::IsPrimaryConnectivityTechnology() const {
-  return (type_ == kCellular || type_ == kEthernet || type_ == kWiFi);
+bool IsPrimaryConnectivityTechnology(Technology technology) {
+  return technology == Technology::kCellular ||
+         technology == Technology::kEthernet || technology == Technology::kWiFi;
 }
 
 std::ostream& operator<<(std::ostream& os, const Technology& technology) {
-  os << technology.GetName();
+  os << TechnologyName(technology);
   return os;
 }
 

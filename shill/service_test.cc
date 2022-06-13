@@ -648,7 +648,7 @@ TEST_F(ServiceTest, Save) {
 
   std::string type;
   EXPECT_TRUE(storage.GetString(storage_id_, Service::kStorageType, &type));
-  EXPECT_EQ(type, service_->GetTechnologyString());
+  EXPECT_EQ(type, service_->GetTechnologyName());
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
