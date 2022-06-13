@@ -216,7 +216,7 @@ mount --make-private /run/namespaces
 # Prepare to mount stateful partition
 ROOT_DEV="$(rootdev -s)"
 ROOTDEV_RET_CODE=$?
-ROOT_DEV_DISK="$(rootdev -d)"
+ROOT_DEV_DISK="$(rootdev -d -s)"
 # Example root dev types we need to handle: /dev/sda2 -> /dev/sda,
 # /dev/mmcblk0p0 -> /dev/mmcblk0p, /dev/ubi2_1 -> /dev/ubi
 ROOTDEV_TYPE="$(echo "${ROOT_DEV}" | sed 's/[0-9_]*$//')"
