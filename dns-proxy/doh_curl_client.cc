@@ -218,7 +218,11 @@ int DoHCurlClient::TimerCallback(CURLM* multi, long timeout_ms, void* userp) {
                             client->GetWeakPtr()),
         base::Milliseconds(timeout_ms));
   } else if (timeout_ms == 0) {
-    client->TimeoutCallback();
+    // Libcurl explicitly disallow calling its API directly from it's callback.
+    // Post the call such that is run outside the callback.
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, base::BindRepeating(&DoHCurlClient::TimeoutCallback,
+                                       client->GetWeakPtr()));
   }
   return 0;
 }
