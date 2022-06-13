@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -579,8 +580,14 @@ bool RunPostInstall(const string& install_dev,
     return false;
   }
 
-  if (RunCommand({"/bin/mount", install_config.boot.device(),
-                  install_config.boot.mount()}) != 0) {
+  // Mount the EFI system partition.
+  LOG(INFO) << "mount " << install_config.boot.device() << " to "
+            << install_config.boot.mount();
+  if (mount(install_config.boot.device().c_str(),
+            install_config.boot.mount().c_str(), "vfat",
+            MS_NODEV | MS_NOEXEC | MS_NOSUID, nullptr) != 0) {
+    PLOG(ERROR) << "Failed to mount " << install_config.boot.device() << " to "
+                << install_config.boot.mount();
     return false;
   }
 
@@ -641,8 +648,12 @@ bool RunPostInstall(const string& install_dev,
       break;
   }
 
-  if (RunCommand({"/bin/umount", install_config.boot.device()}) != 0)
+  // Unmount the EFI system partition.
+  LOG(INFO) << "umount " << install_config.boot.mount();
+  if (umount(install_config.boot.mount().c_str()) != 0) {
+    PLOG(ERROR) << "Failed to unmount " << install_config.boot.mount();
     success = false;
+  }
 
   return success;
 }
