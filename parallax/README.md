@@ -1,7 +1,5 @@
 # Parallax: Visual Analysis Framework
 
-## Summary:
-
 Parallax provides a set of utilities to help engineers visualize and process
 datasets created by our assortment of tools and logs. The goal of this
 framework is simplify processes involved in diagnosing defects by providing
@@ -12,6 +10,26 @@ an interface that allows users to:
 * Save or parse data from an assortment of formats
 * Perform automatic checks against a report
 * Stream and view measurements in real-time
+
+## Developer Guide for Chroot
+
+### TypeScript Commands
+
+The user interface is requires a Node Toolchain to compile the Typescript and
+run tests. This toolchain is not required when using generated report files.
+You'll need to ensure `node` and `npm` is available and it can be installed
+by running the following command.
+`sudo emerge net-libs/nodejs`
+Once this is setup the node modules need to be installed:
+`npm install`
+Individual reports can generated with webpack by passing 1 or more {$NAMES}
+`npm run build -- {$NAME1} {$NAME2}`
+The all reports can be generated with:
+`npm run build_all`
+Compile without building the html page which may give more useful errors:
+`npm run compile`
+Run the code formatter:
+`npm run format`
 
 ## Components and Initial Roadmap:
 
