@@ -35,6 +35,8 @@ AresClient::AresClient(base::TimeDelta timeout,
 }
 
 AresClient::~AresClient() {
+  read_watchers_.clear();
+  write_watchers_.clear();
   // Whenever ares_destroy is called, AresCallback will be called with status
   // equal to ARES_EDESTRUCTION. This callback ensures that the states of the
   // queries are cleared properly.
