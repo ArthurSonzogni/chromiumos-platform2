@@ -7,9 +7,9 @@
 """Create tarballs with modem FW, and upload them to OS Archive Mirrors."""
 
 import argparse
-import logging
 from distutils.dir_util import copy_tree
 from enum import Enum
+import logging
 import os
 import shutil
 import subprocess
@@ -25,7 +25,13 @@ class PackageType(Enum):
     L850_OEM_DIR_ONLY = 'l850-oem-dir'
     NL668_MAIN_FW = 'nl668-main-fw'
     FM101_MAIN_FW = 'fm101-main-fw'
-    FM350_MAIN_FW = 'fm350-main-fw'
+
+    # FM350 firmware payloads
+    FM350_MAIN_FW = 'fm350-main-fw'         # 81600... directory
+    FM350_AP_FW = 'fm350-ap-fw'             # FM350... directory
+    FM350_DEV_FW = 'fm350-dev-fw'           # DEV_OTA file
+    FM350_OEM_FW = 'fm350-oem-fw'           # OEM_OTA file
+    FM350_CARRIER_FW = 'fm350-carrier-fw'   # OP_OTA file
 
     def __str__(self):
         return str(self.value)
@@ -37,6 +43,8 @@ L850_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'l850-'
 NL668_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'nl668-'
 FM101_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'fm101-'
 FM350_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + 'fm350-'
+
+FM350_MISC_PREFIXES = ['OEM_OTA_', 'DEV_OTA_', 'OP_OTA_']
 
 OEM_FW_PREFIX = 'OEM_cust.'
 OEM_FW_POSTFIX = '_signed.fls3.xz'
@@ -70,13 +78,18 @@ class FwUploader(object):
                        stderr=subprocess.DEVNULL, check=False)
         tarball_path = os.path.join(tempdir, tarball_name)
         logging.info('Tarball created: %s', tarball_path)
+
+        gs_bucket_path = os.path.join(MIRROR_PATH, tarball_name)
         if self.upload:
-            gs_bucket_path = os.path.join(MIRROR_PATH, tarball_name)
             logging.info('Uploading file %s to %s', tarball_path,
                          gs_bucket_path)
             subprocess.run(['gsutil', 'cp', '-n', '-a', 'public-read',
                             f'{tarball_path}', f'{gs_bucket_path}'],
                            stderr=subprocess.DEVNULL, check=False)
+        else:
+            logging.info('Use --upload flag to upload file %s to %s',
+                         tarball_path, gs_bucket_path)
+
         if not keep_tmp_files:
             logging.info('Removing temporary files')
             shutil.rmtree(tempdir)
@@ -201,7 +214,10 @@ class FM101MainFw(FwUploader):
         return True
 
 class FM350MainFw(FwUploader):
-    """Uploader class for FM350 main FW."""
+    """Uploader class for FM350 main FW.
+
+    This should be used for both main and AP firmware payloads.
+    """
 
     def __init__(self, path, upload):
         super().__init__(path, upload, None)
@@ -217,6 +233,34 @@ class FM350MainFw(FwUploader):
         logging.info('Copying %s into %s', dir_path, target_path)
         os.mkdir(os.path.join(target_path, self.basename))
         copy_tree(dir_path, os.path.join(target_path, self.basename))
+        return True
+
+class FM350MiscFw(FwUploader):
+    """Uploader class for FM350 non-main payloads.
+
+    This should be used for OEM_OTA, DEV_OTA, and OP_OTA payloads.
+    """
+
+    def __init__(self, path, upload):
+        super().__init__(path, upload, None)
+        self.tarball_dir_name = FM350_TARBALL_PREFIX + self.basename
+
+    def validate(self):
+        if os.path.isdir(self.path):
+            logging.error('Misc FM350 FW should not be a directory')
+            return False
+        if not any(self.basename.startswith(prefix)
+                   for prefix in FM350_MISC_PREFIXES):
+            logging.error('Expected non-main payload to begin with one of %s',
+                          FM350_MISC_PREFIXES)
+            return False
+
+        return True
+
+    @staticmethod
+    def prepare_files(fw_path, target_path):
+        logging.info('Copying %s into %s', fw_path, target_path)
+        shutil.copy(fw_path, target_path)
         return True
 
 def parse_arguments(argv):
@@ -287,8 +331,11 @@ def main(argv):
         fw_uploader = NL668MainFw(opts.path, opts.upload)
     elif opts.type == PackageType.FM101_MAIN_FW:
         fw_uploader = FM101MainFw(opts.path, opts.upload)
-    elif opts.type == PackageType.FM350_MAIN_FW:
+    elif opts.type in [PackageType.FM350_MAIN_FW, PackageType.FM350_AP_FW]:
         fw_uploader = FM350MainFw(opts.path, opts.upload)
+    elif opts.type in [PackageType.FM350_DEV_FW, PackageType.FM350_OEM_FW,
+                       PackageType.FM350_CARRIER_FW]:
+        fw_uploader = FM350MiscFw(opts.path, opts.upload)
 
     return fw_uploader.process_fw_and_upload(opts.keep_files)
 
