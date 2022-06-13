@@ -141,6 +141,8 @@ enum TimerType {
   kCreatePersistentUserTimer = 27,
   kAuthSessionTotalLifetimeTimer = 28,
   kAuthSessionAuthenticatedLifetimeTimer = 29,
+  kUSSPersistTimer = 30,
+  kUSSLoadPersistedTimer = 31,
   kNumTimerTypes  // For the number of timer types.
 };
 

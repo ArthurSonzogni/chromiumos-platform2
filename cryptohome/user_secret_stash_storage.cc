@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
@@ -41,8 +42,13 @@ CryptohomeStatus UserSecretStashStorage::Persist(
   // when necessary.
   const base::FilePath path =
       UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);
-  if (!platform_->WriteFileAtomicDurable(path, uss_container_flatbuffer,
-                                         kUserSecretStashFilePermissions)) {
+
+  ReportTimerStart(kUSSPersistTimer);
+  bool file_write_failure = !platform_->WriteFileAtomicDurable(
+      path, uss_container_flatbuffer, kUserSecretStashFilePermissions);
+  ReportTimerStop(kUSSPersistTimer);
+
+  if (file_write_failure) {
     LOG(ERROR) << "Failed to store the UserSecretStash file for "
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(
@@ -60,7 +66,13 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
   const base::FilePath path =
       UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);
   brillo::Blob uss_container_flatbuffer;
-  if (!platform_->ReadFile(path, &uss_container_flatbuffer)) {
+
+  ReportTimerStart(kUSSLoadPersistedTimer);
+  bool file_read_failure =
+      !platform_->ReadFile(path, &uss_container_flatbuffer);
+  ReportTimerStop(kUSSLoadPersistedTimer);
+
+  if (file_read_failure) {
     LOG(ERROR) << "Failed to load the UserSecretStash file for "
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(
