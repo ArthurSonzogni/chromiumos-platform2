@@ -374,7 +374,13 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                                  "CHROMEOS_RELEASE_TRACK", &channel_string) &&
                              base::StartsWith(channel_string, "test");
   if (is_test_image) {
-    vm_builder.AppendSharedDir(shared_usr_local_bin);
+    if (base::PathExists(usr_local_bin_dir)) {
+      vm_builder.AppendSharedDir(shared_usr_local_bin);
+    } else {
+      // Powerwashing etc can delete the directory from test image device.
+      // We shouldn't abort ARCVM boot even under such an environment.
+      LOG(WARNING) << kUsrLocalBinSharedDir << " is missing on test image.";
+    }
   }
 
   if (custom_parameters.ObtainSpecialParameter(kKeyToOverrideODirect)
