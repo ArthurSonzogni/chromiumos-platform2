@@ -81,10 +81,14 @@ bool FindProperty(const std::string& line_prefix_to_find,
 
 bool TruncateAndroidProperty(const std::string& line, std::string* truncated) {
   // If line looks like key=value, cut value down to the max length of an
-  // Android property.  Build fingerprint needs special handling to preserve the
-  // trailing dev-keys indicator, but other properties can just be truncated.
+  // Android property.  Since Android P or above, only non ro.* properties
+  // have the explicit limit.
   size_t eq_pos = line.find('=');
   if (eq_pos == std::string::npos) {
+    *truncated = line;
+    return true;
+  }
+  if (base::StartsWith(line, "ro.")) {
     *truncated = line;
     return true;
   }
@@ -98,32 +102,8 @@ bool TruncateAndroidProperty(const std::string& line, std::string* truncated) {
 
   const std::string key = line.substr(0, eq_pos);
   LOG(WARNING) << "Truncating property " << key << " value: " << val;
-  if (key == "ro.bootimage.build.fingerprint" &&
-      base::EndsWith(val, "/dev-keys", base::CompareCase::SENSITIVE)) {
-    // Typical format is brand/product/device/.../dev-keys.  We want to remove
-    // characters from product and device to get below the length limit.
-    // Assume device has the format {product}_cheets.
-    std::vector<std::string> fields =
-        base::SplitString(val, "/", base::WhitespaceHandling::KEEP_WHITESPACE,
-                          base::SplitResult::SPLIT_WANT_ALL);
-    if (fields.size() < 5) {
-      LOG(ERROR) << "Invalid build fingerprint: " << val;
-      return false;
-    }
 
-    size_t remove_chars = (val.length() - kAndroidMaxPropertyLength + 1) / 2;
-    if (fields[1].length() <= remove_chars) {
-      LOG(ERROR) << "Unable to remove " << remove_chars << " characters from "
-                 << fields[1];
-      return false;
-    }
-    fields[1] = fields[1].substr(0, fields[1].length() - remove_chars);
-    fields[2] = fields[1] + "_cheets";
-    val = base::JoinString(fields, "/");
-  } else {
-    val = val.substr(0, kAndroidMaxPropertyLength);
-  }
-
+  val = val.substr(0, kAndroidMaxPropertyLength);
   *truncated = key + "=" + val;
   return true;
 }

@@ -132,8 +132,8 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansionDebuggable) {
   EXPECT_EQ("ro.debuggable=1\n", expanded);
 }
 
-// Non-fingerprint property should do simple truncation.
-TEST_F(ArcPropertyUtilTest, TestPropertyTruncation) {
+// Non-ro property should do simple truncation.
+TEST_F(ArcPropertyUtilTest, TestNonRoPropertyTruncation) {
   std::string truncated;
   EXPECT_TRUE(TruncateAndroidPropertyForTesting(
       "property.name="
@@ -146,50 +146,19 @@ TEST_F(ArcPropertyUtilTest, TestPropertyTruncation) {
       truncated);
 }
 
-// Fingerprint truncation with /release-keys should do simple truncation.
-TEST_F(ArcPropertyUtilTest, TestPropertyTruncationFingerprintRelease) {
+// ro property should not do any truncation.
+TEST_F(ArcPropertyUtilTest, TestRoPropertyTruncation) {
   std::string truncated;
   EXPECT_TRUE(TruncateAndroidPropertyForTesting(
-      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
-      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/"
-      "release-keys",
+      "ro.property.name="
+      "012345678901234567890123456789012345678901234567890123456789"
+      "01234567890123456789012345678901",
       &truncated));
   EXPECT_EQ(
-      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
-      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/relea",
+      "ro.property.name="
+      "012345678901234567890123456789012345678901234567890123456789"
+      "01234567890123456789012345678901",
       truncated);
-}
-
-// Fingerprint truncation with /dev-keys needs to preserve the /dev-keys.
-TEST_F(ArcPropertyUtilTest, TestPropertyTruncationFingerprintDev) {
-  std::string truncated;
-  EXPECT_TRUE(TruncateAndroidPropertyForTesting(
-      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
-      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/dev-keys",
-      &truncated));
-  EXPECT_EQ(
-      "ro.bootimage.build.fingerprint=google/toolongdevicena/"
-      "toolongdevicena_cheets/R65-10299.0.9999/4538390:user/dev-keys",
-      truncated);
-}
-
-// Fingerprint truncation with the wrong format should fail.
-TEST_F(ArcPropertyUtilTest, TestPropertyTruncationBadFingerprint) {
-  std::string truncated;
-  EXPECT_FALSE(TruncateAndroidPropertyForTesting(
-      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
-      "toolongdevicename_cheets:7.1.1:123456789012345678901234567890/dev-keys",
-      &truncated));
-}
-
-// Fingerprint truncation without enough room should fail.
-TEST_F(ArcPropertyUtilTest, TestPropertyTruncationFingerprintShortDevice) {
-  std::string truncated;
-  EXPECT_FALSE(TruncateAndroidPropertyForTesting(
-      "ro.bootimage.build.fingerprint=google/dev/"
-      "dev_cheets:7.1.1/R65-10299.0.9999/453839012345678901234567890"
-      "12345678901234567890:user/dev-keys",
-      &truncated));
 }
 
 // Tests that ExpandPropertyFile works as intended when no property expantion
