@@ -152,6 +152,7 @@ class BackendTpm2 : public Backend {
     StatusOr<OperationPolicy> ToOperationPolicy(
         const OperationPolicySetting& policy) override;
     Status SetCurrentUser(const std::string& current_user) override;
+    StatusOr<bool> IsCurrentUserSet() override;
     StatusOr<QuoteResult> Quote(DeviceConfigs device_config, Key key) override;
 
     using PcrMap = std::map<uint32_t, std::string>;
@@ -248,6 +249,7 @@ class BackendTpm2 : public Backend {
     StatusOr<brillo::Blob> GetVendorSpecific() override;
     StatusOr<int32_t> GetFingerprint() override;
     StatusOr<bool> IsSrkRocaVulnerable() override;
+    StatusOr<brillo::Blob> GetRsuDeviceId() override;
     StatusOr<brillo::Blob> GetIFXFieldUpgradeInfo() override;
     Status DeclareTpmFirmwareStable() override;
     StatusOr<brillo::Blob> SendRawCommand(const brillo::Blob& command) override;

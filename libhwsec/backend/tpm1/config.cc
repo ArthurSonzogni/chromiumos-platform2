@@ -94,6 +94,13 @@ Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
   return OkStatus();
 }
 
+StatusOr<bool> ConfigTpm1::IsCurrentUserSet() {
+  ASSIGN_OR_RETURN(brillo::Blob && value, ReadPcr(kCurrentUserPcr),
+                   _.WithStatus<TPMError>("Failed to read boot mode PCR"));
+
+  return value != brillo::Blob(SHA_DIGEST_LENGTH, 0);
+}
+
 StatusOr<ConfigTpm1::QuoteResult> ConfigTpm1::Quote(DeviceConfigs device_config,
                                                     Key key) {
   return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);

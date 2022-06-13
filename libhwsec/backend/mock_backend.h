@@ -209,6 +209,7 @@ class MockBackend : public Backend {
                 SetCurrentUser,
                 (const std::string& current_user),
                 (override));
+    MOCK_METHOD(StatusOr<bool>, IsCurrentUserSet, (), (override));
     MOCK_METHOD(StatusOr<QuoteResult>,
                 Quote,
                 (DeviceConfigs device_config, Key key),
@@ -296,6 +297,7 @@ class MockBackend : public Backend {
     MOCK_METHOD(StatusOr<brillo::Blob>, GetVendorSpecific, (), (override));
     MOCK_METHOD(StatusOr<int32_t>, GetFingerprint, (), (override));
     MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
+    MOCK_METHOD(StatusOr<brillo::Blob>, GetRsuDeviceId, (), (override));
     MOCK_METHOD(StatusOr<brillo::Blob>, GetIFXFieldUpgradeInfo, (), (override));
     MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
     MOCK_METHOD(StatusOr<brillo::Blob>,

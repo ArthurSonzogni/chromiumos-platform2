@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <openssl/sha.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
@@ -76,6 +77,35 @@ TEST_F(BackendConfigTpm1Test, SetCurrentUser) {
       middleware_->CallSync<&Backend::Config::SetCurrentUser>(kFakeUser);
 
   EXPECT_TRUE(result.ok());
+}
+
+TEST_F(BackendConfigTpm1Test, IsCurrentUserSet) {
+  const brillo::Blob kNonZeroPcr(SHA_DIGEST_LENGTH, 'X');
+
+  brillo::Blob non_zero_pcr = kNonZeroPcr;
+  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_TPM_PcrRead(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(non_zero_pcr.size()),
+                      SetArgPointee<3>(non_zero_pcr.data()),
+                      Return(TPM_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_TRUE(result.value());
+}
+
+TEST_F(BackendConfigTpm1Test, IsCurrentUserSetZero) {
+  const brillo::Blob kZeroPcr(SHA_DIGEST_LENGTH, 0);
+
+  brillo::Blob zero_pcr = kZeroPcr;
+  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_TPM_PcrRead(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(zero_pcr.size()),
+                      SetArgPointee<3>(zero_pcr.data()), Return(TPM_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_FALSE(result.value());
 }
 
 }  // namespace hwsec

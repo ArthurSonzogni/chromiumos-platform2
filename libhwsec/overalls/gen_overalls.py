@@ -72,7 +72,7 @@ def build_filter(wd):
   """
   cmd = [
       'git', 'grep', '-oh', '-E',
-      r'\b(T|O)r?spi_([a-zA-Z0-9]+_)?[a-zA-Z0-9]+(_s)?\b',
+      r'\b(T|O)r?spi_([a-zA-Z0-9]+_)?[a-zA-Z0-9_]+\b',
       ':(exclude)libhwsec/overalls/*'
   ]
   all_usages = subprocess.check_output(cmd, cwd=wd).decode('utf-8')

@@ -111,4 +111,17 @@ TEST_F(BackendVendorTpm2Test, SendRawCommand) {
   EXPECT_EQ(*result, kFakeResponse);
 }
 
+TEST_F(BackendVendorTpm2Test, GetRsuDeviceId) {
+  const std::string kFakeRsuDeviceId = "fake_rsu_device_id";
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, GetRsuDeviceId(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeRsuDeviceId),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::Vendor::GetRsuDeviceId>();
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(*result, brillo::BlobFromString(kFakeRsuDeviceId));
+}
+
 }  // namespace hwsec

@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <openssl/sha.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 
@@ -78,6 +79,32 @@ TEST_F(BackendConfigTpm2Test, SetCurrentUser) {
       middleware_->CallSync<&Backend::Config::SetCurrentUser>(kFakeUser);
 
   EXPECT_TRUE(result.ok());
+}
+
+TEST_F(BackendConfigTpm2Test, IsCurrentUserSet) {
+  const std::string kNonZeroPcr(SHA256_DIGEST_LENGTH, 'X');
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, ReadPCR(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kNonZeroPcr), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_TRUE(result.value());
+}
+
+TEST_F(BackendConfigTpm2Test, IsCurrentUserSetZero) {
+  const std::string kZeroPcr(SHA256_DIGEST_LENGTH, 0);
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, ReadPCR(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kZeroPcr), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_FALSE(result.value());
 }
 
 }  // namespace hwsec

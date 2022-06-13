@@ -28,6 +28,18 @@ StatusOr<bool> CryptohomeFrontendImpl::IsDAMitigationReady() {
   return middleware_.CallSync<&Backend::DAMitigation::IsReady>();
 }
 
+StatusOr<bool> CryptohomeFrontendImpl::IsSrkRocaVulnerable() {
+  return middleware_.CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
+}
+
+Status CryptohomeFrontendImpl::MitigateDACounter() {
+  return middleware_.CallSync<&Backend::DAMitigation::Mitigate>();
+}
+
+StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetRsuDeviceId() {
+  return middleware_.CallSync<&Backend::Vendor::GetRsuDeviceId>();
+}
+
 StatusOr<absl::flat_hash_set<KeyAlgoType>>
 CryptohomeFrontendImpl::GetSupportedAlgo() {
   return middleware_.CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
@@ -64,6 +76,10 @@ StatusOr<uint32_t> CryptohomeFrontendImpl::GetKeyHandle(Key key) {
 
 Status CryptohomeFrontendImpl::SetCurrentUser(const std::string& current_user) {
   return middleware_.CallSync<&Backend::Config::SetCurrentUser>(current_user);
+}
+
+StatusOr<bool> CryptohomeFrontendImpl::IsCurrentUserSet() {
+  return middleware_.CallSync<&Backend::Config::IsCurrentUserSet>();
 }
 
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::SealWithCurrentUser(

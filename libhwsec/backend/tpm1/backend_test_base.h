@@ -112,12 +112,12 @@ class BackendTpm1TestBase : public ::testing::Test {
 
     EXPECT_CALL(proxy_->GetMock().overalls,
                 Ospi_Key_GetPubKey(kDefaultSrkHandle, _, _))
-        .WillOnce(DoAll(SetArgPointee<1>(default_srk_pubkey.size()),
-                        SetArgPointee<2>(default_srk_pubkey.data()),
+        .WillOnce(DoAll(SetArgPointee<1>(kDefaultSrkPubkey.size()),
+                        SetArgPointee<2>(kDefaultSrkPubkey.data()),
                         Return(TPM_SUCCESS)));
   }
 
-  brillo::Blob default_srk_pubkey = brillo::BlobFromString("default_srk");
+  brillo::Blob kDefaultSrkPubkey = brillo::BlobFromString("default_srk");
   std::unique_ptr<ProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
   std::unique_ptr<Middleware> middleware_;

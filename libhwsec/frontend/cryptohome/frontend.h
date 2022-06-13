@@ -35,6 +35,15 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
   // Is DA counter can be mitigated or not.
   virtual StatusOr<bool> IsDAMitigationReady() = 0;
 
+  // Is the SRK ROCA vulnerable or not.
+  virtual StatusOr<bool> IsSrkRocaVulnerable() = 0;
+
+  // Tries to mitigate the DA counter.
+  virtual Status MitigateDACounter() = 0;
+
+  // Gets the lookup key for Remote Server Unlock.
+  virtual StatusOr<brillo::Blob> GetRsuDeviceId() = 0;
+
   // Gets the supported algorithm.
   virtual StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() = 0;
 
@@ -58,6 +67,9 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
 
   // Sets the |current_user| config.
   virtual Status SetCurrentUser(const std::string& current_user) = 0;
+
+  // Is the current user had been set or not.
+  virtual StatusOr<bool> IsCurrentUserSet() = 0;
 
   // Seals the |unsealed_data| with |auth_value| and binds to |current_user|.
   // If the |current_user| is std::nullopt, it would bind to the prior login

@@ -396,6 +396,9 @@ class Backend {
     // Sets the |current_user| config.
     virtual Status SetCurrentUser(const std::string& current_user) = 0;
 
+    // Is the current user had been set or not.
+    virtual StatusOr<bool> IsCurrentUserSet() = 0;
+
     // Quotes the |device_config| with |key|.
     virtual StatusOr<QuoteResult> Quote(DeviceConfigs device_config,
                                         Key key) = 0;
@@ -657,6 +660,9 @@ class Backend {
 
     // Is the SRK ROCA vulnerable or not.
     virtual StatusOr<bool> IsSrkRocaVulnerable() = 0;
+
+    // Gets the lookup key for Remote Server Unlock.
+    virtual StatusOr<brillo::Blob> GetRsuDeviceId() = 0;
 
     // Gets the IFX upgrade information.
     virtual StatusOr<brillo::Blob> GetIFXFieldUpgradeInfo() = 0;

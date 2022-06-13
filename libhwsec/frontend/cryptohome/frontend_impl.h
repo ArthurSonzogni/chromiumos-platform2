@@ -26,6 +26,9 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
   StatusOr<bool> IsDAMitigationReady() override;
+  StatusOr<bool> IsSrkRocaVulnerable() override;
+  Status MitigateDACounter() override;
+  StatusOr<brillo::Blob> GetRsuDeviceId() override;
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
   StatusOr<CreateKeyResult> CreateCryptohomeKey(KeyAlgoType key_algo) override;
   StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob) override;
@@ -33,6 +36,7 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
   StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) override;
   StatusOr<uint32_t> GetKeyHandle(Key key) override;
   Status SetCurrentUser(const std::string& current_user) override;
+  StatusOr<bool> IsCurrentUserSet() override;
   StatusOr<brillo::Blob> SealWithCurrentUser(
       const std::optional<std::string>& current_user,
       const brillo::SecureBlob& auth_value,

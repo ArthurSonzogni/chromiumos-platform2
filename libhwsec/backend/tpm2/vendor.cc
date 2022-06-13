@@ -142,6 +142,17 @@ StatusOr<bool> VendorTpm2::IsSrkRocaVulnerable() {
   return false;
 }
 
+StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
+  TrunksClientContext& context = backend_.trunks_context_;
+  std::string device_id;
+
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context.tpm_utility->GetRsuDeviceId(&device_id)))
+      .WithStatus<TPMError>("Failed to get the RSU device ID");
+
+  return BlobFromString(device_id);
+}
+
 StatusOr<brillo::Blob> VendorTpm2::GetIFXFieldUpgradeInfo() {
   return MakeStatus<TPMError>("Unsupported command", TPMRetryAction::kNoRetry);
 }
