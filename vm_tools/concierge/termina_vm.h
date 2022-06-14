@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
 #include <base/threading/thread.h>
@@ -50,6 +51,19 @@ struct VmFeatures {
 
   // Extra kernel cmdline params passed to the VM.
   std::vector<std::string> kernel_params;
+};
+
+// Auxiliary state associated if Termina is started as a sibling VM.
+struct SiblingState {
+  // Input fd for the sibling VM.
+  base::ScopedFD fd_in;
+
+  // Output fd for the sibling VM.
+  base::ScopedFD fd_out;
+
+  // Watches if there is a read event on |fd_in|. Used as a proxy for if the
+  // sibling has shutdown.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_in_watcher;
 };
 
 // Represents a single instance of a running termina VM.
@@ -175,6 +189,9 @@ class TerminaVm final : public VmBaseImpl {
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
 
+  // Fired when a sibling VM's input descriptor is written.
+  void OnFdToSiblingReadable();
+
   // VmInterface overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
   // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
@@ -278,6 +295,12 @@ class TerminaVm final : public VmBaseImpl {
   bool StartSiblingVvuDevices(std::vector<base::StringPairs> cmds);
   // Starts Termina as a sibling VM on ManaTEE.
   bool StartSiblingVm(std::vector<std::string> args);
+  // Sends message to sibling VM to shutdown and waits for it to shutdown.
+  // Returns true if a successful VM shutdown was detected and false otherwise.
+  bool ShutdownSiblingVm();
+
+  // Sends a gRPC message to the VM to shutdown.
+  grpc::Status SendVMShutdownMessage();
 
   void set_kernel_version_for_testing(std::string kernel_version);
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
@@ -353,6 +376,10 @@ class TerminaVm final : public VmBaseImpl {
 
   // Processes for virtio-vhost-user device backend processes.
   std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes_;
+
+  // Auxiliary state associated with a Termina VM if it's started as a sibling
+  // VM.
+  std::optional<SiblingState> sibling_state_;
 };
 
 }  // namespace concierge

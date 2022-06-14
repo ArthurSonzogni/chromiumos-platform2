@@ -32,6 +32,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
 #include <chromeos/constants/vm_tools.h>
+#include <sys/epoll.h>
 
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/sibling_vms.h"
@@ -389,8 +390,107 @@ bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
               &error))
           .Get()
           .val;
+
+  // The |fd_in| is for writing from us. Watching it as readable will trigger an
+  // event if the sibling is shutdown from under us and |fd_in|'s socket connect
+  // is closed.
+  auto fd_in_watcher = base::FileDescriptorWatcher::WatchReadable(
+      fd_in.get(), base::BindRepeating(&TerminaVm::OnFdToSiblingReadable,
+                                       base::Unretained(this)));
+  sibling_state_ = std::make_optional(
+      SiblingState{.fd_in = std::move(fd_in),
+                   .fd_out = std::move(fd_out),
+                   .fd_in_watcher = std::move(fd_in_watcher)});
   LOG(INFO) << "Sibling Vm Started: " << vm_started;
   return vm_started;
+}
+
+bool TerminaVm::ShutdownSiblingVm() {
+  if (!sibling_state_.has_value()) {
+    LOG(INFO) << "No sibling VM exists to shutdown";
+    return true;
+  }
+
+  // Shutting down involves two parts -
+  // - Sending a Shutdown gRPC to the VM.
+  // - epoll the sibling's output fd for a peer closed connection
+  // event i.e. EPOLLRDHUP. If we detect this then we can safely
+  // say the VM has shutdown.
+
+  // For epoll detection add the sibling FD to the epoll set before the
+  // shutdown gRPC is sent to the VM.
+  base::ScopedFD sibling_vm_alive_epoll_fd(epoll_create1(0));
+  if (!sibling_vm_alive_epoll_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create epoll fd for the sibling "
+                   "VM alive check";
+    return false;
+  }
+
+  struct epoll_event ep_event {
+    .events = EPOLLRDHUP, .data.u32 = 0,
+  };
+  if (epoll_ctl(sibling_vm_alive_epoll_fd.get(), EPOLL_CTL_ADD,
+                sibling_state_->fd_out.get(), &ep_event) < 0) {
+    PLOG(ERROR) << "Failed to epoll add sibling VM alive check fd";
+    return false;
+  }
+
+  grpc::Status status = SendVMShutdownMessage();
+  if (!status.ok()) {
+    LOG(WARNING) << "Shutdown RPC failed for VM " << vsock_cid_
+                 << " with error "
+                 << "code " << status.error_code() << ": "
+                 << status.error_message();
+    return false;
+  }
+
+  // TODO(b/236747571): If guest shutdown fails or is not detected with in the
+  // given timeout, ask Dugong to kill the crosvm process as a fail safe.
+  if (epoll_wait(sibling_vm_alive_epoll_fd.get(), &ep_event, 1,
+                 (kShutdownTimeoutSeconds *
+                  base::Time::kMillisecondsPerSecond)) <= 0) {
+    PLOG(ERROR) << "Failed to wait for sibling VM shutdown";
+    return false;
+  }
+
+  // Ensure that the stream socket peer connection closed and no
+  // other implicit event caused the epoll_wait call to return.
+  if ((ep_event.events & EPOLLRDHUP) == 0) {
+    LOG(ERROR) << "Failed to detect sibling VM fd closure. event: "
+               << ep_event.events;
+    return false;
+  }
+
+  // At this point the VM has shutdown, delete its state.
+  sibling_state_.reset();
+  LOG(INFO) << "Sibling VM shutdown complete";
+  return true;
+}
+
+grpc::Status TerminaVm::SendVMShutdownMessage() {
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kShutdownTimeoutSeconds, GPR_TIMESPAN)));
+
+  vm_tools::EmptyMessage empty;
+  return stub_->Shutdown(&ctx, empty, &empty);
+}
+
+void TerminaVm::OnFdToSiblingReadable() {
+  // Peek the sibling's socket to detect a disconnection. We never write to
+  // |fd_in| so this event means the sibling has died. However, we peek and make
+  // sure that that is the case. EAGAIN means that the socket is alive, so don't
+  // treat it as a disconnect event.
+  //
+  // A disconnection means that the sibling has died. Reset the sibling's state
+  // in this case.
+  uint8_t buf;
+  int ret = recv(sibling_state_->fd_in.get(), &buf, sizeof(buf),
+                 MSG_PEEK | MSG_DONTWAIT);
+  if ((ret == 0) || ((ret < 0) && (errno != EAGAIN))) {
+    sibling_state_.reset();
+  }
 }
 
 bool TerminaVm::Shutdown() {
@@ -408,6 +508,11 @@ bool TerminaVm::Shutdown() {
     vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
   }
 
+  // All parts above this are common to a regular VM as well as a sibling VM.
+  if (USE_CROSVM_SIBLINGS) {
+    return ShutdownSiblingVm();
+  }
+
   // Do a check here to make sure the process is still around.  It may have
   // crashed and we don't want to be waiting around for an RPC response that's
   // never going to come.  kill with a signal value of 0 is explicitly
@@ -418,14 +523,7 @@ bool TerminaVm::Shutdown() {
     return true;
   }
 
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kShutdownTimeoutSeconds, GPR_TIMESPAN)));
-
-  vm_tools::EmptyMessage empty;
-  grpc::Status status = stub_->Shutdown(&ctx, empty, &empty);
-
+  grpc::Status status = SendVMShutdownMessage();
   // brillo::ProcessImpl doesn't provide a timed wait function and while the
   // Shutdown RPC may have been successful we can't really trust crosvm to
   // actually exit.  This may result in an untimed wait() blocking indefinitely.
