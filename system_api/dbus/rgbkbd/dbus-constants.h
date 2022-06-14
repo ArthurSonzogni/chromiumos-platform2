@@ -18,6 +18,9 @@ const char kSetRainbowMode[] = "SetRainbowMode";
 const char kSetTestingMode[] = "SetTestingMode";
 const char kSetAnimationMode[] = "SetAnimationMode";
 
+// Signals
+const char kCapabilityUpdatedForTesting[] = "CapabilityUpdatedForTesting";
+
 enum class RgbKeyboardCapabilities {
   kNone = 0,
   kIndividualKey = 1,
