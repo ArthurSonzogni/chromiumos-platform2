@@ -380,7 +380,8 @@ class Suspender : public SuspendDelayObserver,
   // Emits D-Bus signal announcing the end of a suspend request.
   void EmitSuspendDoneSignal(int suspend_request_id,
                              const base::TimeDelta& suspend_duration,
-                             SuspendDone::WakeupType wakeup_type);
+                             SuspendDone::WakeupType wakeup_type,
+                             bool hibernated);
 
   // Emits a D-Bus signal announcing that the system will soon resuspend from
   // dark resume. |dark_resume_id_| is used as the request ID.

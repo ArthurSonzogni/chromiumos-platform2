@@ -117,7 +117,7 @@ void Suspender::Init(
   if (delegate_->GetSuspendAnnounced()) {
     LOG(INFO) << "Previous run exited mid-suspend; emitting SuspendDone";
     EmitSuspendDoneSignal(0, base::TimeDelta(),
-                          SuspendDone_WakeupType_NOT_APPLICABLE);
+                          SuspendDone_WakeupType_NOT_APPLICABLE, false);
     delegate_->SetSuspendAnnounced(false);
   }
 }
@@ -624,7 +624,8 @@ void Suspender::FinishRequest(bool success,
   shutdown_from_suspend_->HandleFullResume();
   if (adaptive_charging_controller_)
     adaptive_charging_controller_->HandleFullResume();
-  EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type);
+  EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type,
+                        hibernated);
   delegate_->SetSuspendAnnounced(false);
   dark_resume_->ExitDarkResume();
   delegate_->UndoPrepareToSuspend(
@@ -847,11 +848,14 @@ void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
 
 void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
                                       const base::TimeDelta& suspend_duration,
-                                      SuspendDone::WakeupType wakeup_type) {
+                                      SuspendDone::WakeupType wakeup_type,
+                                      bool hibernated) {
   SuspendDone proto;
   proto.set_suspend_id(suspend_request_id);
   proto.set_suspend_duration(suspend_duration.ToInternalValue());
   proto.set_wakeup_type(wakeup_type);
+  proto.set_deepest_state(hibernated ? SuspendDone_SuspendState_TO_DISK
+                                     : SuspendDone_SuspendState_TO_RAM);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
 }
 

@@ -22,7 +22,9 @@ All of the documentation for suspend/resume applies to going down for
 hibernation as well. From the application perspective, to first order there is
 no detectable difference between the two. Like suspend/resume, powerd emits a
 `SuspendImminent` signal when the system is going to transition to hibernate,
-and a SuspendDone signal when the resume transition is complete.
+and a `SuspendDone` signal when the resume transition is complete. Users of the
+`SuspendDone` signal can look at the deepest_state member to determine whether
+or not a hibernation occurred.
 
 The actual mechanics of hibernate are handled by a separate service, [hiberman].
 See the hiberman documentation for the gritty details of how the system goes
