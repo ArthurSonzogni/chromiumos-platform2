@@ -43,7 +43,10 @@ constexpr char kPeripheralBatterySerialNumber2[] = "DG-0123456789ABCDEF";
 constexpr char kBluetoothBatterySysname[] = "hid-11:22:33:aa:bb:cc-battery";
 constexpr char kWacomBatterySysname[] = "wacom_battery_1";
 constexpr char kNonPeripheralBatterySysname[] = "AC";
-constexpr char kPeripheralChargerBatterySysname[] = "PCHG0";
+constexpr char kPeripheralChargerBatterySysname[] = "peripheral0";
+// TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral' name
+// till upstream kernel driver is merged.
+constexpr char kPeripheralChargerBatteryPCHGSysname[] = "PCHG0";
 
 class TestWrapper : public DBusWrapperStub {
  public:
@@ -135,8 +138,21 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
     non_peripheral_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
-    // Create a fake peripheral-charger directory (it is named PCHG.)
-    device_dir = temp_dir_.GetPath().Append(kPeripheralChargerBatterySysname);
+    battery_.set_battery_path_for_testing(temp_dir_.GetPath());
+  }
+
+ protected:
+  void WriteFile(const base::FilePath& path, const string& str) {
+    ASSERT_EQ(str.size(), base::WriteFile(path, str.data(), str.size()));
+  }
+
+  // TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral'
+  // name till upstream kernel driver is merged.
+  void SetupPeripheralChargerDirectory(bool use_pchg = false) {
+    // Create a fake peripheral-charger directory (it is named peripheral.)
+    base::FilePath device_dir = temp_dir_.GetPath().Append(
+        use_pchg ? kPeripheralChargerBatteryPCHGSysname
+                 : kPeripheralChargerBatterySysname);
     CHECK(base::CreateDirectory(device_dir));
     scope_file_ = device_dir.Append(PeripheralBatteryWatcher::kScopeFile);
     WriteFile(scope_file_, PeripheralBatteryWatcher::kScopeValueDevice);
@@ -147,13 +163,6 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
         device_dir.Append(PeripheralBatteryWatcher::kStatusFile);
     peripheral_charger_health_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kHealthFile);
-
-    battery_.set_battery_path_for_testing(temp_dir_.GetPath());
-  }
-
- protected:
-  void WriteFile(const base::FilePath& path, const string& str) {
-    ASSERT_EQ(str.size(), base::WriteFile(path, str.data(), str.size()));
   }
 
   // Temporary directory mimicking a /sys directory containing a set of sensor
@@ -443,6 +452,7 @@ TEST_F(PeripheralBatteryWatcherTest, RefreshAllBatteries) {
 }
 
 TEST_F(PeripheralBatteryWatcherTest, Charger) {
+  SetupPeripheralChargerDirectory();
   // Chargers should be reported.
   WriteFile(peripheral_charger_capacity_file_, base::NumberToString(60));
   WriteFile(peripheral_charger_status_file_,
@@ -462,6 +472,7 @@ TEST_F(PeripheralBatteryWatcherTest, Charger) {
 }
 
 TEST_F(PeripheralBatteryWatcherTest, ChargerFull) {
+  SetupPeripheralChargerDirectory();
   // Chargers should be reported.
   WriteFile(peripheral_charger_capacity_file_, base::NumberToString(100));
   WriteFile(peripheral_charger_status_file_,
@@ -482,6 +493,7 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerFull) {
 }
 
 TEST_F(PeripheralBatteryWatcherTest, ChargerDetached) {
+  SetupPeripheralChargerDirectory();
   // Chargers should be reported.
   WriteFile(peripheral_charger_capacity_file_, base::NumberToString(0));
   WriteFile(peripheral_charger_status_file_,
@@ -501,6 +513,7 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerDetached) {
 }
 
 TEST_F(PeripheralBatteryWatcherTest, ChargerError) {
+  SetupPeripheralChargerDirectory();
   // Chargers health error should be reported.
   WriteFile(peripheral_charger_capacity_file_, base::NumberToString(50));
   WriteFile(peripheral_charger_status_file_,
@@ -516,6 +529,55 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerError) {
   EXPECT_EQ(50, proto.level());
   EXPECT_TRUE(proto.has_charge_status());
   EXPECT_EQ(PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_ERROR,
+            proto.charge_status());
+}
+
+// TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral' name
+// till upstream kernel driver is merged. Remove test case when upstream kernel
+// driver is merged.
+TEST_F(PeripheralBatteryWatcherTest, Charger_PCHG) {
+  SetupPeripheralChargerDirectory(/*use_pchg=*/true);
+
+  // Chargers should be reported.
+  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(60));
+  WriteFile(peripheral_charger_status_file_,
+            PeripheralBatteryWatcher::kStatusValueCharging);
+  WriteFile(peripheral_charger_health_file_,
+            PeripheralBatteryWatcher::kHealthValueGood);
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
+  PeripheralBatteryStatus proto;
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(60, proto.level());
+  EXPECT_EQ(PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_CHARGING,
+            proto.charge_status());
+}
+
+// TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral' name
+// till upstream kernel driver is merged.Remove test case when upstream kernel
+// driver is merged.
+TEST_F(PeripheralBatteryWatcherTest, ChargerFull_PCHG) {
+  SetupPeripheralChargerDirectory(/*use_pchg=*/true);
+
+  // Chargers should be reported.
+  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(100));
+  WriteFile(peripheral_charger_status_file_,
+            PeripheralBatteryWatcher::kStatusValueFull);
+  WriteFile(peripheral_charger_health_file_,
+            PeripheralBatteryWatcher::kHealthValueGood);
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
+  PeripheralBatteryStatus proto;
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(100, proto.level());
+  EXPECT_TRUE(proto.has_charge_status());
+  EXPECT_EQ(PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_FULL,
             proto.charge_status());
 }
 

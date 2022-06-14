@@ -40,7 +40,9 @@ constexpr base::TimeDelta kDefaultPollInterval = base::Minutes(10);
 constexpr char kBluetoothAddressRegex[] =
     "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$";
 
-constexpr char kPeripheralChargerRegex[] = ".*/PCHG([0-9]+)$";
+// TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral' name
+// till upstream kernel driver is merged.
+constexpr char kPeripheralChargerRegex[] = ".*/(peripheral|PCHG)([0-9]+)$";
 
 // Reads |path| to |value_out| and trims trailing whitespace. False is returned
 // if the file doesn't exist or can't be read.
