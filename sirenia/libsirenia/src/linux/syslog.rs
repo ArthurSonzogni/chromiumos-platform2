@@ -17,11 +17,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use sys_util;
-use sys_util::getpid;
-use sys_util::gettid;
-use sys_util::handle_eintr;
-use sys_util::scoped_path::get_temp_path;
+use crosvm_base::getpid;
+use crosvm_base::gettid;
+use crosvm_base::handle_eintr;
+use libchromeos::scoped_path::get_temp_path;
 
 use super::events::EventSource;
 use super::events::Mutator;
@@ -31,6 +30,44 @@ pub const SYSLOG_PATH: &str = "/dev/log";
 
 /// The maximum buffer size for a partial message.
 pub const MAX_MESSAGE: usize = 4096;
+
+/// The priority (i.e. severity) of a syslog message.
+///
+/// See syslog man pages for information on their semantics.
+pub enum Priority {
+    Emergency = 0,
+    Alert = 1,
+    Critical = 2,
+    Error = 3,
+    Warning = 4,
+    Notice = 5,
+    Info = 6,
+    Debug = 7,
+}
+
+/// The facility of a syslog message.
+///
+/// See syslog man pages for information on their semantics.
+#[derive(Copy, Clone)]
+pub enum Facility {
+    Kernel = 0,
+    User = 1 << 3,
+    Mail = 2 << 3,
+    Daemon = 3 << 3,
+    Auth = 4 << 3,
+    Syslog = 5 << 3,
+    Lpr = 6 << 3,
+    News = 7 << 3,
+    Uucp = 8 << 3,
+    Local0 = 16 << 3,
+    Local1 = 17 << 3,
+    Local2 = 18 << 3,
+    Local3 = 19 << 3,
+    Local4 = 20 << 3,
+    Local5 = 21 << 3,
+    Local6 = 22 << 3,
+    Local7 = 23 << 3,
+}
 
 /// A receiver of syslog messages. Note that one or more messages may be received together.
 pub trait SyslogReceiver {
@@ -131,7 +168,7 @@ pub(crate) mod tests {
     use std::thread::spawn;
 
     use assert_matches::assert_matches;
-    use sys_util::scoped_path::ScopedPath;
+    use libchromeos::scoped_path::ScopedPath;
 
     use super::*;
     use crate::linux::events::EventMultiplexer;

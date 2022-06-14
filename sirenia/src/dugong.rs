@@ -31,6 +31,7 @@ use dbus::message::MatchRule;
 use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
 use getopts::Options;
+use libchromeos::syslog;
 use libsirenia::app_info::ExecutableInfo;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
@@ -43,13 +44,13 @@ use libsirenia::transport::Transport;
 use libsirenia::transport::TransportType;
 use libsirenia::transport::DEFAULT_CLIENT_PORT;
 use libsirenia::transport::DEFAULT_SERVER_PORT;
+use log::error;
+use log::info;
 use sirenia::server::register_org_chromium_mana_teeinterface;
 use sirenia::server::OrgChromiumManaTEEInterface;
-use sys_util::error;
-use sys_util::info;
-use sys_util::syslog;
 
 const GET_LOGS_SHORT_NAME: &str = "l";
+const IDENT: &str = "dugong";
 
 // Arc and Mutex are used because dbus-crossroads requires the Send trait since it is designed to
 // be thread safe. At the time of writing Dugong is single threaded so Arc and Mutex aren't strictly
@@ -331,12 +332,12 @@ fn main() -> Result<()> {
     let get_logs = matches.opt_present(GET_LOGS_SHORT_NAME);
     let transport_type = config.connection_type;
 
-    if let Err(e) = syslog::init() {
+    if let Err(e) = syslog::init(IDENT.to_string(), true /*log_to_stderr*/) {
         eprintln!("failed to initialize syslog: {}", e);
         bail!("failed to start up the syslog: {}", e);
     }
 
-    info!("Starting dugong: {}", BUILD_TIMESTAMP);
+    info!("Starting {}: {}", IDENT, BUILD_TIMESTAMP);
     info!("Opening connection to trichechus");
     // Adjust the source port when connecting to a non-standard port to facilitate testing.
     let bind_port = match transport_type.get_port().context("failed to get port")? {

@@ -36,6 +36,11 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
+use crosvm_base::handle_eintr;
+use crosvm_base::unix::vsock::SocketAddr as VsockAddr;
+use crosvm_base::unix::vsock::VsockCid;
+use crosvm_base::unix::wait_for_interrupt;
+use crosvm_base::unix::KillOnDrop;
 use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
 use dbus::blocking::Proxy;
@@ -63,11 +68,6 @@ use log::debug;
 use log::error;
 use log::info;
 use manatee_client::client::OrgChromiumManaTEEInterface;
-use sys_util::handle_eintr;
-use sys_util::vsock::SocketAddr as VsockAddr;
-use sys_util::vsock::VsockCid;
-use sys_util::wait_for_interrupt;
-use sys_util::KillOnDrop;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
@@ -605,12 +605,6 @@ fn main() -> Result<()> {
     } else {
         None
     };
-
-    // libsirenia uses sys_util::syslog which isn't integrated with the log crate.
-    if let Err(e) = sys_util::syslog::init() {
-        eprintln!("Failed to initialize syslog: {}", e);
-        bail!("failed to initialize the syslog: {}", e);
-    }
 
     if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
         return run_test_environment();

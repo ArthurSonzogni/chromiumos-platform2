@@ -24,7 +24,7 @@ applications.
 
 **Storage:** Abstractions used to back the TEE app storage API.
 
-**Sys:** Low-level libc functionality that does not belong in the sys_util
+**Sys:** Low-level libc functionality that does not belong in the crosvm-base
 crate.
 
 **Transport:** Abstractions over a combination of Rust traits needed to

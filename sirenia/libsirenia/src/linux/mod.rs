@@ -6,4 +6,5 @@
 
 pub mod events;
 pub mod kmsg;
+pub mod poll;
 pub mod syslog;

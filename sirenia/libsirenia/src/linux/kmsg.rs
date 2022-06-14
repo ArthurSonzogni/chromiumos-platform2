@@ -21,13 +21,13 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use chrono::Local;
-use sys_util::handle_eintr;
-use sys_util::syslog::Facility;
-use sys_util::syslog::Priority;
+use crosvm_base::handle_eintr;
 
 use crate::linux::events::EventSource;
 use crate::linux::events::Mutator;
 use crate::linux::events::RemoveFdMutator;
+use crate::linux::syslog::Facility;
+use crate::linux::syslog::Priority;
 
 pub const KMSG_PATH: &str = "/dev/kmsg";
 const MAX_KMSG_RECORD: usize = 4096;
@@ -85,7 +85,6 @@ impl KmsgReader {
 
         // This format seems totally undocumented. It is subtly different from
         // the RFC 5424 format used for logging over TCP/UDP.
-        // TODO(b/229788845): use message formatting code in sys_util::syslog
         self.fwd.forward(
             format!("<{}>{} hypervisor[0]: {}", prifac, ts, rec)
                 .as_bytes()

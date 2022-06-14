@@ -28,14 +28,14 @@ use std::os::unix::io::AsRawFd;
 use std::os::unix::io::RawFd;
 use std::result::Result as StdResult;
 
-use sys_util::error;
-use sys_util::warn;
-use sys_util::Error as SysError;
-use sys_util::PollContext;
-use sys_util::PollToken;
-use sys_util::WatchingEvents;
+use crosvm_base::Error as SysError;
+use log::error;
+use log::warn;
 use thiserror::Error as ThisError;
 
+use crate::linux::poll::PollContext;
+use crate::linux::poll::PollToken;
+use crate::linux::poll::WatchingEvents;
 use crate::sys::eagain_is_ok;
 use crate::sys::set_nonblocking;
 use crate::sys::write_all_blocking;
@@ -467,8 +467,8 @@ mod tests {
     use std::io::Write;
     use std::rc::Rc;
 
-    use sys_util::pipe;
-    use sys_util::EventFd;
+    use crosvm_base::unix::pipe;
+    use crosvm_base::unix::EventFd;
 
     use super::*;
 

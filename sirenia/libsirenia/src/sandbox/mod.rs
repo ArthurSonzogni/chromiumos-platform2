@@ -14,9 +14,9 @@ use std::process::Stdio;
 
 use libc;
 use libc::pid_t;
+use log::info;
 use minijail;
 use minijail::Minijail;
-use sys_util::info;
 
 use crate::sys::dup;
 
@@ -244,7 +244,7 @@ mod tests {
     use std::io::Write;
     use std::os::unix::io::AsRawFd;
 
-    use sys_util::pipe;
+    use crosvm_base::unix::pipe;
 
     use super::*;
     use crate::transport::CROS_CONNECTION_ERR_FD;

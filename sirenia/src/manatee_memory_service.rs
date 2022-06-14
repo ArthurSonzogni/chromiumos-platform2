@@ -37,10 +37,15 @@ use anyhow::Result;
 use balloon_control::BalloonStats;
 use balloon_control::BalloonTubeCommand;
 use balloon_control::BalloonTubeResult;
+use crosvm_base::handle_eintr_errno;
+use crosvm_base::unix::net::UnixSeqpacket;
+use crosvm_base::unix::pagesize;
+use crosvm_base::unix::round_up_to_page_size;
 use data_model::DataInit;
 use libc::recvfrom;
 use libc::MSG_PEEK;
 use libc::MSG_TRUNC;
+use libchromeos::syslog;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::linux::events::AddEventSourceMutator;
 use libsirenia::linux::events::EventMultiplexer;
@@ -50,18 +55,14 @@ use libsirenia::sys;
 use libsirenia::transport::Error as TransportError;
 use libsirenia::transport::Transport;
 use libsirenia::transport::UnixServerTransport;
+use log::error;
+use log::info;
+use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
-use sys_util::error;
-use sys_util::handle_eintr_errno;
-use sys_util::info;
-use sys_util::net::UnixSeqpacket;
-use sys_util::pagesize;
-use sys_util::round_up_to_page_size;
-use sys_util::syslog;
-use sys_util::warn;
 
 const CROS_GUEST_ID: u32 = 0;
+const IDENT: &str = "manatee_memory_service";
 
 #[repr(u32)]
 enum MessageId {
@@ -934,7 +935,7 @@ impl Debug for MmsBridge {
 }
 
 fn main() {
-    if let Err(e) = syslog::init() {
+    if let Err(e) = syslog::init(IDENT.to_string(), true /* log_to_stderr */) {
         eprintln!("Failed to initialize syslog: {}", e);
         return;
     }

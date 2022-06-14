@@ -21,12 +21,12 @@ chromeos-dbus-bindings = { path = "../../chromeos-dbus-bindings"} # provided by 
 
 [dependencies]
 anyhow = "1.0.0"
+crosvm-base = "0.1.0"
 dbus = "0.9"
 getopts = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "../libsirenia" } # provided by ebuild
 log = "0.4.0"
 stderrlog = "0.5.0"
-sys_util = "0.1.0"
 thiserror = "1.0.20"
 which = "4.0"

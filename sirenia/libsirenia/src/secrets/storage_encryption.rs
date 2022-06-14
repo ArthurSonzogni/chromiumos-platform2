@@ -8,6 +8,8 @@ use std::convert::TryFrom;
 
 use base64;
 use base64::encode_config;
+use crosvm_base::unix::rand::rand_vec;
+use crosvm_base::unix::rand::Source;
 use flexbuffers::from_slice;
 use flexbuffers::to_vec;
 use flexbuffers::DeserializationError;
@@ -19,9 +21,6 @@ use openssl::symm::Crypter;
 use openssl::symm::Mode;
 use serde::Deserialize;
 use serde::Serialize;
-use sys_util;
-use sys_util::rand::rand_vec;
-use sys_util::rand::Source;
 use thiserror::Error as ThisError;
 
 use crate::app_info::AppManifestEntry;
@@ -61,7 +60,7 @@ enum Error {
     #[error("failed to hash identifier: {0:?}")]
     HashIdentifier(#[source] secrets::Error),
     #[error("failed to get random bytes: {0:?}")]
-    RandVec(sys_util::Error),
+    RandVec(crosvm_base::Error),
     #[error("failed to get storage secret version: {0:?}")]
     StorageSecretVersion(#[source] secrets::Error),
     #[error("failed to derive storage secret: {0:?}")]
@@ -400,9 +399,9 @@ mod tests {
 
     use assert_matches::assert_matches;
     use base64::decode_config;
+    use libchromeos::scoped_path::get_temp_path;
+    use libchromeos::scoped_path::ScopedPath;
     use libchromeos::secure_blob::SecureBlob;
-    use sys_util::scoped_path::get_temp_path;
-    use sys_util::scoped_path::ScopedPath;
 
     use super::*;
     use crate::app_info::AppManifest;

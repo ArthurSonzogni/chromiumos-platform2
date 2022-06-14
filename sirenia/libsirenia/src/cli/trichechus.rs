@@ -7,11 +7,11 @@
 
 use std::env::current_exe;
 
+use crosvm_base::unix::vsock::SocketAddr as VSocketAddr;
+use crosvm_base::unix::vsock::VsockCid;
 use getopts;
 use getopts::Matches;
 use getopts::Options;
-use sys_util::vsock::SocketAddr as VSocketAddr;
-use sys_util::vsock::VsockCid;
 use thiserror::Error as ThisError;
 
 use crate::build_info::BUILD_TIMESTAMP;

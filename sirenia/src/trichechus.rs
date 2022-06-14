@@ -12,6 +12,7 @@ use std::collections::BTreeMap as Map;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::env;
+use std::ffi::CString;
 use std::fs::remove_file;
 use std::fs::File;
 use std::io::BufWriter;
@@ -36,9 +37,23 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
+use crosvm_base::net::UnixSeqpacket;
+use crosvm_base::net::UnixSeqpacketListener;
+use crosvm_base::unix::getpid;
+use crosvm_base::unix::getsid;
+use crosvm_base::unix::pipe;
+use crosvm_base::unix::reap_child;
+use crosvm_base::unix::setsid;
+use crosvm_base::unix::vsock::SocketAddr as VSocketAddr;
+use crosvm_base::unix::MemfdSeals;
+use crosvm_base::unix::Pid;
+use crosvm_base::unix::ScmSocket;
+use crosvm_base::unix::SharedMemory;
+use crosvm_base::AsRawDescriptor;
 use getopts::Options;
 use libchromeos::chromeos::is_dev_mode;
 use libchromeos::secure_blob::SecureBlob;
+use libchromeos::syslog;
 use libsirenia::app_info;
 use libsirenia::app_info::AppManifest;
 use libsirenia::app_info::AppManifestEntry;
@@ -106,25 +121,13 @@ use libsirenia::transport::DEFAULT_CONNECTION_R_FD;
 use libsirenia::transport::DEFAULT_CONNECTION_W_FD;
 use libsirenia::transport::DEFAULT_CRONISTA_PORT;
 use libsirenia::transport::DEFAULT_SERVER_PORT;
+use log::error;
+use log::info;
+use log::warn;
 use sirenia::log_error;
 use sirenia::pstore;
-use sys_util::error;
-use sys_util::getpid;
-use sys_util::getsid;
-use sys_util::info;
-use sys_util::net::UnixSeqpacket;
-use sys_util::net::UnixSeqpacketListener;
-use sys_util::pipe;
-use sys_util::reap_child;
-use sys_util::setsid;
-use sys_util::syslog;
-use sys_util::vsock::SocketAddr as VSocketAddr;
-use sys_util::warn;
-use sys_util::MemfdSeals;
-use sys_util::Pid;
-use sys_util::ScmSocket;
-use sys_util::SharedMemory;
 
+const IDENT: &str = "trichechus";
 const CRONISTA_URI_SHORT_NAME: &str = "C";
 const CRONISTA_URI_LONG_NAME: &str = "cronista";
 const SYSLOG_PATH_SHORT_NAME: &str = "L";
@@ -606,7 +609,8 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), 
     }
 
     // Create and write memfd.
-    let mut executable = SharedMemory::new(None)
+    // unwrap used because it should always be possible to represent app_id as a CString.
+    let mut executable = SharedMemory::new(&CString::new(app_id).unwrap(), elf.len() as u64)
         .map_err(|err| trichechus::Error::from(format!("Failed to open memfd: {:?}", err)))?;
     executable
         .write_all(elf)
@@ -754,13 +758,13 @@ fn spawn_tee_app(
         ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, Some(digest)) => {
             match state.loaded_apps.borrow().get(digest) {
                 Some(shared_mem) => {
-                    let fd_path = fd_to_path(shared_mem.as_raw_fd());
+                    let fd_path = fd_to_path(shared_mem.as_raw_descriptor());
                     let mut args = Vec::with_capacity(1 + exe_args.len() + app.args.len());
                     args.push(fd_path.as_str());
                     args.extend(exe_args);
                     args.extend(app.args.iter().map(AsRef::<str>::as_ref));
                     app.sandbox
-                        .run_raw(shared_mem.as_raw_fd(), args.as_slice(), &keep_fds)
+                        .run_raw(shared_mem.as_raw_descriptor(), args.as_slice(), &keep_fds)
                         .context("failed to start up sandbox")?
                 }
                 None => bail!(
@@ -807,22 +811,6 @@ fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {
                 }
             }
         }
-    }
-}
-
-// Before logging is initialized eprintln(...) and println(...) should be used.
-// Afterward, info!(...), and error!(...) should be used instead.
-fn init_logging(log_to_stderr: bool) -> Result<()> {
-    match syslog::init() {
-        Ok(()) => {
-            // Don't log to stderr, since we forward syslog to /dev/kmsg
-            // which causes messages to be printed on the console.
-            if !log_to_stderr {
-                syslog::echo_stderr(false);
-            }
-            Ok(())
-        }
-        Err(e) => bail!("failed to initialize the syslog: {}", e),
     }
 }
 
@@ -881,7 +869,8 @@ fn main() -> Result<()> {
     let log_to_stderr = matches.opt_present(LOG_TO_STDERR_LONG_NAME);
 
     if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
-        init_logging(log_to_stderr)?;
+        syslog::init(IDENT.to_string(), log_to_stderr)
+            .map_err(|e| anyhow!("failed to setup logging: {}", e))?;
         if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
             return pstore::save_pstore(&pstore_path, matches.opt_present(SAVE_HYPERVISOR_DMESG));
         } else if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
@@ -934,8 +923,9 @@ fn main() -> Result<()> {
         None
     };
 
-    init_logging(log_to_stderr)?;
-    info!("starting trichechus: {}", BUILD_TIMESTAMP);
+    syslog::init(IDENT.to_string(), log_to_stderr)
+        .map_err(|e| anyhow!("failed to setup logging: {}", e))?;
+    info!("starting {}: {}", IDENT, BUILD_TIMESTAMP);
 
     if let Some(path) = matches.opt_str(MMS_BRIDGE_SHORT_NAME) {
         let path = PathBuf::from(path);

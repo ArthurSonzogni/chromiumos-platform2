@@ -16,10 +16,9 @@ use std::thread::sleep;
 use std::thread::yield_now;
 use std::time::Duration;
 
+use log::error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use sys_util;
-use sys_util::error;
 use thiserror::Error as ThisError;
 
 use crate::communication;
@@ -50,7 +49,7 @@ pub enum Error {
     #[error("got the wrong response")]
     ResponseMismatch,
     #[error("failed to set non-blocking: {0}")]
-    SetNonBlocking(#[source] sys_util::Error),
+    SetNonBlocking(#[source] crosvm_base::Error),
     #[error("partial read.")]
     PartialRead,
     #[error("read failed: {0}")]

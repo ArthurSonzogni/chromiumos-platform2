@@ -107,8 +107,8 @@ mod test {
     use std::time::UNIX_EPOCH;
 
     use assert_matches::assert_matches;
-    use sys_util::scoped_path::get_temp_path;
-    use sys_util::scoped_path::ScopedPath;
+    use libchromeos::scoped_path::get_temp_path;
+    use libchromeos::scoped_path::ScopedPath;
 
     use super::*;
 

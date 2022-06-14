@@ -37,21 +37,21 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use sys_util::getpid;
-use sys_util::handle_eintr;
-use sys_util::net::InetVersion;
-use sys_util::net::TcpSocket;
-use sys_util::net::UnixSeqpacket;
-use sys_util::net::UnixSeqpacketListener;
-use sys_util::pipe;
-use sys_util::vsock::AddrParseError;
-use sys_util::vsock::SocketAddr as VSocketAddr;
-use sys_util::vsock::ToSocketAddr;
-use sys_util::vsock::VsockCid;
-use sys_util::vsock::VsockListener;
-use sys_util::vsock::VsockSocket;
-use sys_util::vsock::VsockStream;
-use sys_util::vsock::VMADDR_PORT_ANY;
+use crosvm_base::getpid;
+use crosvm_base::handle_eintr;
+use crosvm_base::net::InetVersion;
+use crosvm_base::net::TcpSocket;
+use crosvm_base::net::UnixSeqpacket;
+use crosvm_base::net::UnixSeqpacketListener;
+use crosvm_base::pipe;
+use crosvm_base::unix::vsock::AddrParseError;
+use crosvm_base::unix::vsock::SocketAddr as VSocketAddr;
+use crosvm_base::unix::vsock::ToSocketAddr;
+use crosvm_base::unix::vsock::VsockCid;
+use crosvm_base::unix::vsock::VsockListener;
+use crosvm_base::unix::vsock::VsockSocket;
+use crosvm_base::unix::vsock::VsockStream;
+use crosvm_base::unix::vsock::VMADDR_PORT_ANY;
 use thiserror::Error as ThisError;
 
 pub const CROS_CID: VsockCid = VsockCid::Cid(3);
@@ -91,7 +91,7 @@ pub enum Error {
     #[error("failed to get port: {0}")]
     LocalAddr(#[source] io::Error),
     #[error("failed to construct the pipe: {0}")]
-    Pipe(#[source] sys_util::Error),
+    Pipe(#[source] crosvm_base::Error),
     #[error("pipe transport was in the wrong state")]
     InvalidState,
 }
@@ -728,10 +728,10 @@ pub mod tests {
     use std::thread::spawn;
 
     use assert_matches::assert_matches;
-    use sys_util::scoped_path::get_temp_path;
-    use sys_util::scoped_path::ScopedPath;
-    use sys_util::vsock::VsockCid;
-    use sys_util::vsock::VMADDR_PORT_ANY;
+    use crosvm_base::unix::vsock::VsockCid;
+    use crosvm_base::unix::vsock::VMADDR_PORT_ANY;
+    use libchromeos::scoped_path::get_temp_path;
+    use libchromeos::scoped_path::ScopedPath;
 
     use super::*;
 

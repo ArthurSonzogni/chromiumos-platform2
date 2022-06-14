@@ -18,13 +18,13 @@ use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use crosvm_base::unix::MappedRegion;
+use crosvm_base::unix::MemoryMapping;
 use data_model::volatile_memory::VolatileMemory;
 use data_model::DataInit;
 use libsirenia::linux::kmsg;
-use sys_util::error;
-use sys_util::info;
-use sys_util::MappedRegion;
-use sys_util::MemoryMapping;
+use log::error;
+use log::info;
 
 const RAMOOPS_UNBIND: &str = "/sys/devices/platform/ramoops.0/driver/unbind";
 const RAMOOPS_BUS_ID: &[u8] = b"ramoops.0";

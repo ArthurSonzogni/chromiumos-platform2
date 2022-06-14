@@ -248,8 +248,8 @@ pub fn entries_from_path<A: AsRef<Path>>(name: A) -> Result<Vec<AppManifestEntry
 pub mod tests {
     use std::io::Write;
 
-    use sys_util::scoped_path::get_temp_path;
-    use sys_util::scoped_path::ScopedPath;
+    use libchromeos::scoped_path::get_temp_path;
+    use libchromeos::scoped_path::ScopedPath;
 
     use super::*;
 

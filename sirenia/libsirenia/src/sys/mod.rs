@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 //! Provides abstraction for needed libc functionality that isn't included in
-//! sys_util. Generally Sirenia code outside of this module shouldn't directly
+//! crosvm-base. Generally Sirenia code outside of this module shouldn't directly
 //! interact with the libc package.
 
 use std::fs::File;
@@ -17,7 +17,9 @@ use std::os::unix::io::RawFd;
 use std::ptr::null_mut;
 
 use anyhow::Context;
-use libc;
+use crosvm_base::add_fd_flags;
+use crosvm_base::handle_eintr;
+use crosvm_base::Terminal;
 use libc::c_int;
 use libc::isatty;
 use libc::sigfillset;
@@ -27,18 +29,15 @@ use libc::wait;
 use libc::ECHILD;
 use libc::SIG_BLOCK;
 use libc::SIG_UNBLOCK;
-use sys_util;
-use sys_util::add_fd_flags;
-use sys_util::error;
-use sys_util::handle_eintr;
-use sys_util::PollContext;
-use sys_util::Terminal;
-use sys_util::WatchingEvents;
+use log::error;
+
+use crate::linux::poll::PollContext;
+use crate::linux::poll::WatchingEvents;
 
 pub struct ScopedRaw {}
 
 impl ScopedRaw {
-    pub fn new() -> Result<Self, sys_util::Error> {
+    pub fn new() -> Result<Self, crosvm_base::Error> {
         stdin().set_raw_mode().map(|_| ScopedRaw {})
     }
 }
@@ -198,7 +197,7 @@ pub fn reboot() -> Result<(), io::Error> {
     }
 }
 
-pub fn set_nonblocking(fd: RawFd) -> Result<(), sys_util::Error> {
+pub fn set_nonblocking(fd: RawFd) -> Result<(), crosvm_base::Error> {
     add_fd_flags(fd, libc::O_NONBLOCK)
 }
 
