@@ -925,39 +925,42 @@ bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
   return true;
 }
 
-void KeysetManagement::ResetLECredentials(
-    const std::optional<Credentials>& creds,
-    const std::optional<VaultKeyset>& validated_vk,
-    const std::string& obfuscated) {
-  if (!creds.has_value() && !validated_vk.has_value()) {
-    LOG(WARNING) << "Neither credentials nor validated keyset is provided "
-                    "for LE credential reset, reset skipped.";
-    return;
-  }
-
+void KeysetManagement::ResetLECredentials(const Credentials& creds,
+                                          const std::string& obfuscated) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
     return;
   }
 
-  std::unique_ptr<VaultKeyset> vk;
-  if (validated_vk.has_value()) {
-    vk = std::make_unique<VaultKeyset>(validated_vk.value());
-  }
-  if (!validated_vk.has_value()) {
-    // Make sure the credential can actually be used for sign-in.
-    // It is also the easiest way to get a valid keyset.
-    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        GetValidKeyset(creds.value());
-    if (!vk_status.ok()) {
-      LOG(WARNING) << "The provided credentials are incorrect or invalid"
-                      " for LE credential reset, reset skipped.";
-      return;
-    }
-    vk = std::move(vk_status).value();
+  // Make sure the credential can actually be used for sign-in.
+  // It is also the easiest way to get a valid keyset.
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status = GetValidKeyset(creds);
+  if (!vk_status.ok()) {
+    LOG(WARNING) << "The provided credentials are incorrect or invalid"
+                    " for LE credential reset, reset skipped.";
+    return;
   }
 
+  return ResetLECredentialsInternal(*vk_status.value(), obfuscated,
+                                    key_indices);
+}
+
+void KeysetManagement::ResetLECredentialsWithValidatedVK(
+    const VaultKeyset& validated_vk, const std::string& obfuscated) {
+  std::vector<int> key_indices;
+  if (!GetVaultKeysets(obfuscated, &key_indices)) {
+    LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
+    return;
+  }
+
+  return ResetLECredentialsInternal(validated_vk, obfuscated, key_indices);
+}
+
+void KeysetManagement::ResetLECredentialsInternal(
+    const VaultKeyset& validated_vk,
+    const std::string& obfuscated,
+    const std::vector<int>& key_indices) {
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk_reset =
         LoadVaultKeysetForUser(obfuscated, index);
@@ -967,7 +970,7 @@ void KeysetManagement::ResetLECredentials(
     }
 
     CryptoError err;
-    if (!crypto_->ResetLECredential(*vk_reset, *vk, &err)) {
+    if (!crypto_->ResetLECredential(*vk_reset, validated_vk, &err)) {
       LOG(WARNING) << "Failed to reset an LE credential: " << err;
       continue;
     }

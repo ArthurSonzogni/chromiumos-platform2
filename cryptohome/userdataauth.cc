@@ -2134,8 +2134,7 @@ void UserDataAuth::ContinueMountWithCredentials(
     // Attempt a short-circuited credential test.
     if (user_session->VerifyCredentials(*credentials)) {
       ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-      keyset_management_->ResetLECredentials(*credentials, std::nullopt,
-                                             obfuscated_username);
+      keyset_management_->ResetLECredentials(*credentials, obfuscated_username);
       return;
     }
     // If the Mount has invalid credentials (repopulated from system state)
@@ -2153,8 +2152,7 @@ void UserDataAuth::ContinueMountWithCredentials(
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
     } else {
-      keyset_management_->ResetLECredentials(*credentials, std::nullopt,
-                                             obfuscated_username);
+      keyset_management_->ResetLECredentials(*credentials, obfuscated_username);
       ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
     }
     return;
@@ -2216,8 +2214,7 @@ void UserDataAuth::ContinueMountWithCredentials(
     return;
   }
 
-  keyset_management_->ResetLECredentials(*credentials, std::nullopt,
-                                         obfuscated_username);
+  keyset_management_->ResetLECredentials(*credentials, obfuscated_username);
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 
   InitializePkcs11(user_session.get());
@@ -2683,19 +2680,30 @@ void UserDataAuth::CheckKey(
   }
 
   if (found_valid_credentials) {
-    // Entered the right creds, so reset LE credentials.
-    keyset_management_->ResetLECredentials(credentials, std::nullopt,
-                                           obfuscated_username);
+    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->GetValidKeyset(credentials);
+    std::unique_ptr<VaultKeyset> vk;
+    if (!vk_status.ok()) {
+      // The operation may fail for ephemeral user.
+      LOG(WARNING) << "Failed to get valid keyset in CheckKey: << "
+                   << std::move(vk_status).status();
+    } else {
+      vk = std::move(vk_status).value();
+    }
+
+    if (vk) {
+      // Entered the right creds, so reset LE credentials.
+      keyset_management_->ResetLECredentialsWithValidatedVK(
+          *vk, obfuscated_username);
+    }
 
     if (request.unlock_webauthn_secret()) {
-      MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-          keyset_management_->GetValidKeyset(credentials);
-      if (!vk_status.ok()) {
+      if (vk == nullptr) {
         std::move(on_done).Run(
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
         return;
       }
-      if (!PrepareWebAuthnSecret(account_id, *vk_status.value().get())) {
+      if (!PrepareWebAuthnSecret(account_id, *vk)) {
         // Failed to prepare WebAuthn secret means there's no active user
         // session for the account id.
         std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
@@ -2723,8 +2731,8 @@ void UserDataAuth::CheckKey(
     return;
   }
 
-  keyset_management_->ResetLECredentials(credentials, std::nullopt,
-                                         obfuscated_username);
+  keyset_management_->ResetLECredentialsWithValidatedVK(*vk_status.value(),
+                                                        obfuscated_username);
 
   if (request.unlock_webauthn_secret()) {
     if (!PrepareWebAuthnSecret(account_id, *vk_status.value().get())) {
@@ -3003,7 +3011,7 @@ void UserDataAuth::OnFullChallengeResponseCheckKeyDone(
   credentials->set_key_data(authorization.key().data());
 
   // Entered the right creds, so reset LE credentials.
-  keyset_management_->ResetLECredentials(*credentials, std::nullopt,
+  keyset_management_->ResetLECredentials(*credentials,
                                          credentials->GetObfuscatedUsername());
 
   std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);

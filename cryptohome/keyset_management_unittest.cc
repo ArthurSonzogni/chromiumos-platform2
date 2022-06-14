@@ -1607,7 +1607,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   EXPECT_TRUE(le_vk_status.value()->GetAuthLocked());
 
   // Have a correct attempt that will reset the credentials.
-  keyset_management_->ResetLECredentials(users_[0].credentials, std::nullopt,
+  keyset_management_->ResetLECredentials(users_[0].credentials,
                                          users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
             0);
@@ -1664,7 +1664,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   EXPECT_FALSE(le_vk_status.value()->GetAuthLocked());
 
   // Have a correct attempt that will reset the credentials.
-  keyset_management_->ResetLECredentials(users_[0].credentials, std::nullopt,
+  keyset_management_->ResetLECredentials(users_[0].credentials,
                                          users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
             0);
@@ -1722,7 +1722,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
 
   // Have an attempt that will fail to reset the credentials.
   Credentials wrong_credentials(users_[0].name, wrong_key);
-  keyset_management_->ResetLECredentials(wrong_credentials, std::nullopt,
+  keyset_management_->ResetLECredentials(wrong_credentials,
                                          users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
             (kWrongAuthAttempts - 1));
@@ -1780,8 +1780,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWithPreValidatedKeyset) {
   EXPECT_FALSE(le_vk_status.value()->GetAuthLocked());
 
   // Have a correct attempt that will reset the credentials.
-  keyset_management_->ResetLECredentials(std::nullopt, *vk_status.value().get(),
-                                         users_[0].obfuscated);
+  keyset_management_->ResetLECredentialsWithValidatedVK(*vk_status.value(),
+                                                        users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
             0);
   le_vk_status =
@@ -1839,8 +1839,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
 
   // Have an attempt that will fail to reset the credentials.
   VaultKeyset wrong_vk;
-  keyset_management_->ResetLECredentials(std::nullopt, wrong_vk,
-                                         users_[0].obfuscated);
+  keyset_management_->ResetLECredentialsWithValidatedVK(wrong_vk,
+                                                        users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
             (kWrongAuthAttempts - 1));
   le_vk_status =

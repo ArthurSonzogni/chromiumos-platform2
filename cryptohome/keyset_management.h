@@ -154,9 +154,13 @@ class KeysetManagement {
 
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred|.
-  void ResetLECredentials(const std::optional<Credentials>& creds,
-                          const std::optional<VaultKeyset>& validated_vk,
+  void ResetLECredentials(const Credentials& creds,
                           const std::string& obfuscated);
+
+  // Attempts to reset all LE credentials associated with a username, given
+  // validated VK |validated_vk|.
+  void ResetLECredentialsWithValidatedVK(const VaultKeyset& validated_vk,
+                                         const std::string& obfuscated);
 
   // Removes all LE credentials for a user with |obfuscated_username|.
   virtual void RemoveLECredentials(const std::string& obfuscated_username);
@@ -301,6 +305,12 @@ class KeysetManagement {
   // struct.
   void RecordVaultKeysetMetrics(const VaultKeyset& vk,
                                 VaultKeysetMetrics& keyset_metrics) const;
+
+  // Attempts to reset all LE credentials associated with a username, given
+  // a credential |cred| and |key_indices|.
+  void ResetLECredentialsInternal(const VaultKeyset& vk,
+                                  const std::string& obfuscated,
+                                  const std::vector<int>& key_indices);
 
   Platform* platform_;
   Crypto* crypto_;

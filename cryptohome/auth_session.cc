@@ -762,8 +762,8 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   // Authentication is successfully completed. Reset LE Credential counter if
   // the current AutFactor is not an LECredential.
   if (!vault_keyset_->IsLECredential()) {
-    keyset_management_->ResetLECredentials(std::nullopt, *vault_keyset_,
-                                           obfuscated_username_);
+    keyset_management_->ResetLECredentialsWithValidatedVK(*vault_keyset_,
+                                                          obfuscated_username_);
   }
   ResaveVaultKeysetIfNeeded(passkey);
   file_system_keyset_ = FileSystemKeyset(*vault_keyset_);

@@ -3464,6 +3464,8 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   Credentials credentials(kUser, brillo::SecureBlob(kKey));
   EXPECT_CALL(*session_, VerifyCredentials(CredentialsMatcher(credentials)))
       .WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   // The `unlock_webauthn_secret` is false by default, WebAuthn secret shouldn't
   // be prepared.
