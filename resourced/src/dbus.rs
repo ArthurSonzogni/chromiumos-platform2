@@ -67,7 +67,11 @@ type MethodInfo<'a> = dbus_tree::MethodInfo<'a, MTFn<CustomData>, CustomData>;
 type Signal = dbus_tree::Signal<CustomData>;
 
 fn get_available_memory_kb(m: &MethodInfo) -> MethodResult {
-    match memory::get_background_available_memory_kb() {
+    let game_mode = match common::get_game_mode() {
+        Ok(available) => Ok(available),
+        Err(_) => Err(MethodErr::failed("Couldn't get game mode state")),
+    }?;
+    match memory::get_background_available_memory_kb(game_mode) {
         // One message will be returned - the method return (and should always be there).
         Ok(available) => Ok(vec![m.msg.method_return().append1(available)]),
         Err(_) => Err(MethodErr::failed("Couldn't get available memory")),

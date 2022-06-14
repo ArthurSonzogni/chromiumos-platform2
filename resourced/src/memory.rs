@@ -256,9 +256,12 @@ pub fn get_foreground_available_memory_kb() -> Result<u64> {
     get_available_memory_kb()
 }
 
-pub fn get_background_available_memory_kb() -> Result<u64> {
+// |game_mode| is passed rather than implicitly queried. This saves us a query
+// (hence a lock) in the case where the caller needs the game mode state for a
+// separate purpose (see |get_memory_pressure_status|).
+pub fn get_background_available_memory_kb(game_mode: common::GameMode) -> Result<u64> {
     let available = get_available_memory_kb()?;
-    if common::get_game_mode()? != common::GameMode::Off {
+    if game_mode != common::GameMode::Off {
         if available > GAME_MODE_OFFSET_KB {
             Ok(available - GAME_MODE_OFFSET_KB)
         } else {
@@ -398,7 +401,7 @@ pub enum PressureLevelChrome {
     Critical = 2,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum PressureLevelArcvm {
     // There is enough memory to use.
     None = 0,
@@ -418,7 +421,8 @@ pub struct PressureStatus {
 }
 
 pub fn get_memory_pressure_status() -> Result<PressureStatus> {
-    let available = get_background_available_memory_kb()?;
+    let game_mode = common::get_game_mode()?;
+    let available = get_background_available_memory_kb(game_mode)?;
     let margins = get_component_margins_kb();
 
     let (chrome_level, chrome_reclaim_target_kb) = if available < margins.chrome_critical {
@@ -435,7 +439,7 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         (PressureLevelChrome::None, 0)
     };
 
-    let (arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_foreground {
+    let (raw_arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_foreground {
         (
             PressureLevelArcvm::Foreground,
             margins.arcvm_foreground - available,
@@ -449,6 +453,17 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         (PressureLevelArcvm::Cached, margins.arcvm_cached - available)
     } else {
         (PressureLevelArcvm::None, 0)
+    };
+
+    let arcvm_level = if game_mode == common::GameMode::Arc
+        && raw_arcvm_level > PressureLevelArcvm::Cached
+    {
+        // Do not kill Android apps that are perceptible or foreground, only
+        // those that are cached. Otherwise, the fullscreen Android app or a
+        // service it needs may be killed.
+        PressureLevelArcvm::Cached
+    } else {
+        raw_arcvm_level
     };
 
     Ok(PressureStatus {

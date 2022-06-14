@@ -34,6 +34,9 @@ pub enum GameMode {
     Off = 0,
     // Game mode is on, borealis is the foreground subsystem.
     Borealis = 1,
+    // Game mode for ARC is on, which means we shouldn't evict Android apps that
+    // are foreground or perceptible.
+    Arc = 2,
 }
 
 impl TryFrom<u8> for GameMode {
@@ -43,6 +46,7 @@ impl TryFrom<u8> for GameMode {
         Ok(match mode_raw {
             0 => GameMode::Off,
             1 => GameMode::Borealis,
+            2 => GameMode::Arc,
             _ => bail!("Unsupported game mode value"),
         })
     }
