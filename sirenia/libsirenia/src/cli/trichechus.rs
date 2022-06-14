@@ -7,13 +7,19 @@
 
 use std::env::current_exe;
 
-use getopts::{self, Matches, Options};
-use sys_util::vsock::{SocketAddr as VSocketAddr, VsockCid};
+use getopts;
+use getopts::Matches;
+use getopts::Options;
+use sys_util::vsock::SocketAddr as VSocketAddr;
+use sys_util::vsock::VsockCid;
 use thiserror::Error as ThisError;
 
 use crate::build_info::BUILD_TIMESTAMP;
-use crate::cli::{self, HelpOption, TransportTypeOption};
-use crate::transport::{TransportType, DEFAULT_SERVER_PORT};
+use crate::cli;
+use crate::cli::HelpOption;
+use crate::cli::TransportTypeOption;
+use crate::transport::TransportType;
+use crate::transport::DEFAULT_SERVER_PORT;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -81,11 +87,13 @@ pub fn initialize_common_arguments(
 
 #[cfg(test)]
 mod tests {
+    use std::net::IpAddr;
+    use std::net::Ipv4Addr;
+    use std::net::SocketAddr;
+
     use super::*;
-
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-    use crate::transport::{get_test_ip_uri, get_test_vsock_uri};
+    use crate::transport::get_test_ip_uri;
+    use crate::transport::get_test_vsock_uri;
 
     #[test]
     fn initialize_common_arguments_ip_valid() {

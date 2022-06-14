@@ -6,14 +6,17 @@
 
 extern crate sirenia_rpc_macros;
 
-use std::fmt::{self, Display, Formatter};
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::thread::spawn;
 
 use anyhow::anyhow;
 use assert_matches::assert_matches;
 use libsirenia::rpc::RpcDispatcher;
 use libsirenia::transport::create_transport_from_pipes;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use sirenia_rpc_macros::sirenia_rpc;
 
 const MAGIC_NUMBER: i32 = 42;

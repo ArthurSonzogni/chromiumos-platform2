@@ -7,21 +7,27 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fmt;
-use std::fmt::{Debug, Formatter};
-use std::fs::{File, OpenOptions};
-use std::io::{self, Read};
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io;
+use std::io::Read;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::RawFd;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use crate::linux::events::{EventSource, Mutator, RemoveFdMutator};
 use anyhow::Result;
 use chrono::Local;
-use sys_util::{
-    handle_eintr,
-    syslog::{Facility, Priority},
-};
+use sys_util::handle_eintr;
+use sys_util::syslog::Facility;
+use sys_util::syslog::Priority;
+
+use crate::linux::events::EventSource;
+use crate::linux::events::Mutator;
+use crate::linux::events::RemoveFdMutator;
 
 pub const KMSG_PATH: &str = "/dev/kmsg";
 const MAX_KMSG_RECORD: usize = 4096;

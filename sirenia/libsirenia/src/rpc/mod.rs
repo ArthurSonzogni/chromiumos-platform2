@@ -7,24 +7,36 @@
 
 use std::any::Any;
 use std::convert::TryInto;
-use std::fmt::{Debug, Formatter};
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::RawFd;
 use std::result::Result as StdResult;
-use std::thread::{sleep, yield_now};
+use std::thread::sleep;
+use std::thread::yield_now;
 use std::time::Duration;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use sys_util::{self, error};
+use sys_util;
+use sys_util::error;
 use thiserror::Error as ThisError;
 
-use crate::communication::{self, read_message, write_message, NonBlockingMessageReader};
-use crate::linux::events::{
-    AddEventSourceMutator, Error as EventsError, EventMultiplexer, EventSource, Mutator,
-    RemoveFdMutator,
-};
+use crate::communication;
+use crate::communication::read_message;
+use crate::communication::write_message;
+use crate::communication::NonBlockingMessageReader;
+use crate::linux::events::AddEventSourceMutator;
+use crate::linux::events::Error as EventsError;
+use crate::linux::events::EventMultiplexer;
+use crate::linux::events::EventSource;
+use crate::linux::events::Mutator;
+use crate::linux::events::RemoveFdMutator;
 use crate::sys::set_nonblocking;
-use crate::transport::{self, ServerTransport, Transport, TransportType};
+use crate::transport;
+use crate::transport::ServerTransport;
+use crate::transport::Transport;
+use crate::transport::TransportType;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -287,8 +299,6 @@ impl<H: ConnectionHandler> EventSource for TransportServer<H> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use std::i32;
     use std::str::FromStr;
     use std::thread::spawn;
@@ -296,7 +306,9 @@ mod test {
     use assert_matches::assert_matches;
     use serde::Deserialize;
 
-    use crate::transport::{ClientTransport, IpClientTransport};
+    use super::*;
+    use crate::transport::ClientTransport;
+    use crate::transport::IpClientTransport;
 
     #[derive(Debug, Serialize, Deserialize)]
     enum Request {

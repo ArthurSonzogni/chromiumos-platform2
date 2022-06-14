@@ -10,17 +10,26 @@ use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
 use std::env::args;
 use std::fs::File;
-use std::io::{stdout, BufWriter, Read, Stdout, Write};
-use std::path::{Path, PathBuf};
+use std::io::stdout;
+use std::io::BufWriter;
+use std::io::Read;
+use std::io::Stdout;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 use getopts::Options;
-use libsirenia::cli::{HelpOption, VerbosityOption};
-use libsirenia::{
-    app_info::{entries_from_path, AppManifestEntry, ExecutableInfo},
-    communication::{Digest, SHA256_SIZE},
-    secrets::compute_sha256,
-};
+use libsirenia::app_info::entries_from_path;
+use libsirenia::app_info::AppManifestEntry;
+use libsirenia::app_info::ExecutableInfo;
+use libsirenia::cli::HelpOption;
+use libsirenia::cli::VerbosityOption;
+use libsirenia::communication::Digest;
+use libsirenia::communication::SHA256_SIZE;
+use libsirenia::secrets::compute_sha256;
 
 const CHECK_ONLY: &str = "c";
 const OUTPUT_JSON: &str = "j";

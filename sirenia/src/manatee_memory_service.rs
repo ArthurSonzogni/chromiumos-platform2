@@ -8,35 +8,58 @@
 
 use std::cell::RefCell;
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::convert::{TryFrom, TryInto};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::VecDeque;
+use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::env;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::fs::File;
-use std::io::{ErrorKind, Read, Write};
+use std::io::ErrorKind;
+use std::io::Read;
+use std::io::Write;
 use std::mem;
-use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::FromRawFd;
+use std::os::unix::io::RawFd;
 use std::path::PathBuf;
 use std::ptr::null_mut;
 use std::rc::Rc;
 use std::result::Result as StdResult;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
-use balloon_control::{BalloonStats, BalloonTubeCommand, BalloonTubeResult};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
+use balloon_control::BalloonStats;
+use balloon_control::BalloonTubeCommand;
+use balloon_control::BalloonTubeResult;
 use data_model::DataInit;
-use libc::{recvfrom, MSG_PEEK, MSG_TRUNC};
-use libsirenia::{
-    build_info::BUILD_TIMESTAMP,
-    linux::events::{AddEventSourceMutator, EventMultiplexer, EventSource, Mutator},
-    sys,
-    transport::{Error as TransportError, Transport, UnixServerTransport},
-};
-use serde::{Deserialize, Serialize};
-use sys_util::{
-    net::UnixSeqpacket,
-    {error, handle_eintr_errno, info, pagesize, round_up_to_page_size, syslog, warn},
-};
+use libc::recvfrom;
+use libc::MSG_PEEK;
+use libc::MSG_TRUNC;
+use libsirenia::build_info::BUILD_TIMESTAMP;
+use libsirenia::linux::events::AddEventSourceMutator;
+use libsirenia::linux::events::EventMultiplexer;
+use libsirenia::linux::events::EventSource;
+use libsirenia::linux::events::Mutator;
+use libsirenia::sys;
+use libsirenia::transport::Error as TransportError;
+use libsirenia::transport::Transport;
+use libsirenia::transport::UnixServerTransport;
+use serde::Deserialize;
+use serde::Serialize;
+use sys_util::error;
+use sys_util::handle_eintr_errno;
+use sys_util::info;
+use sys_util::net::UnixSeqpacket;
+use sys_util::pagesize;
+use sys_util::round_up_to_page_size;
+use sys_util::syslog;
+use sys_util::warn;
 
 const CROS_GUEST_ID: u32 = 0;
 
@@ -161,7 +184,8 @@ struct SimpleResp {
 macro_rules! from_double {
     ( $name:ident, $dest_type:ty ) => {
         mod $name {
-            use serde::{Deserialize, Deserializer};
+            use serde::Deserialize;
+            use serde::Deserializer;
 
             pub fn deserialize<'de, D>(deserializer: D) -> Result<$dest_type, D::Error>
             where

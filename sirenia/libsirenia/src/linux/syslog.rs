@@ -6,17 +6,26 @@
 
 use std::boxed::Box;
 use std::cell::RefCell;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::fs::remove_file;
 use std::io;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::RawFd;
 use std::os::unix::net::UnixDatagram;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::rc::Rc;
 
-use sys_util::{self, getpid, gettid, handle_eintr, scoped_path::get_temp_path};
+use sys_util;
+use sys_util::getpid;
+use sys_util::gettid;
+use sys_util::handle_eintr;
+use sys_util::scoped_path::get_temp_path;
 
-use super::events::{EventSource, Mutator, RemoveFdMutator};
+use super::events::EventSource;
+use super::events::Mutator;
+use super::events::RemoveFdMutator;
 
 pub const SYSLOG_PATH: &str = "/dev/log";
 
@@ -117,14 +126,14 @@ impl EventSource for Syslog {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::*;
-
-    use std::sync::{Arc, Barrier};
+    use std::sync::Arc;
+    use std::sync::Barrier;
     use std::thread::spawn;
 
     use assert_matches::assert_matches;
     use sys_util::scoped_path::ScopedPath;
 
+    use super::*;
     use crate::linux::events::EventMultiplexer;
 
     struct TestReciever(Vec<Vec<u8>>);

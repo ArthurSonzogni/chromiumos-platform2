@@ -8,32 +8,46 @@
 
 use std::collections::BTreeMap as Map;
 use std::env;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::net::UnixDatagram;
 use std::path::PathBuf;
 use std::result::Result as StdResult;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
-use dbus::{
-    arg::OwnedFd, blocking::LocalConnection, channel::MatchingReceiver, message::MatchRule,
-    MethodErr,
-};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
+use dbus::arg::OwnedFd;
+use dbus::blocking::LocalConnection;
+use dbus::channel::MatchingReceiver;
+use dbus::message::MatchRule;
+use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
 use getopts::Options;
-use libsirenia::{
-    app_info::ExecutableInfo,
-    build_info::BUILD_TIMESTAMP,
-    cli::trichechus::initialize_common_arguments,
-    communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
-    rpc,
-    transport::{Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT},
-};
-use sirenia::server::{register_org_chromium_mana_teeinterface, OrgChromiumManaTEEInterface};
-use sys_util::{error, info, syslog};
+use libsirenia::app_info::ExecutableInfo;
+use libsirenia::build_info::BUILD_TIMESTAMP;
+use libsirenia::cli::trichechus::initialize_common_arguments;
+use libsirenia::communication::trichechus;
+use libsirenia::communication::trichechus::AppInfo;
+use libsirenia::communication::trichechus::Trichechus;
+use libsirenia::communication::trichechus::TrichechusClient;
+use libsirenia::rpc;
+use libsirenia::transport::Transport;
+use libsirenia::transport::TransportType;
+use libsirenia::transport::DEFAULT_CLIENT_PORT;
+use libsirenia::transport::DEFAULT_SERVER_PORT;
+use sirenia::server::register_org_chromium_mana_teeinterface;
+use sirenia::server::OrgChromiumManaTEEInterface;
+use sys_util::error;
+use sys_util::info;
+use sys_util::syslog;
 
 const GET_LOGS_SHORT_NAME: &str = "l";
 

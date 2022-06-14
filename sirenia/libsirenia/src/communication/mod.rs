@@ -11,16 +11,21 @@ pub mod tee_api;
 pub mod trichechus;
 
 use std::array::TryFromSliceError;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Debug;
-use std::io::{self, BufWriter, Read, Write};
+use std::io;
+use std::io::BufWriter;
+use std::io::Read;
+use std::io::Write;
 use std::ops::Deref;
 use std::result::Result as StdResult;
 
 use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error as ThisError;
 
 use crate::sys::eagain_is_ok;
@@ -225,12 +230,13 @@ pub enum ExecutableInfo {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
-    use std::io::{Cursor, Seek};
+    use std::io::Cursor;
+    use std::io::Seek;
     use std::mem::size_of;
 
     use assert_matches::assert_matches;
+
+    use super::*;
 
     const TEST_VALUE: u32 = 77;
 

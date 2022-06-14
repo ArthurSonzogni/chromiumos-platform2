@@ -6,28 +6,33 @@
 
 use std::convert::TryFrom;
 
-use base64::{self, encode_config};
-use flexbuffers::{from_slice, to_vec, DeserializationError, SerializationError};
+use base64;
+use base64::encode_config;
+use flexbuffers::from_slice;
+use flexbuffers::to_vec;
+use flexbuffers::DeserializationError;
+use flexbuffers::SerializationError;
 use libchromeos::secure_blob::SecureBlob;
-use openssl::{
-    error::ErrorStack,
-    symm::{Cipher, Crypter, Mode},
-};
-use serde::{Deserialize, Serialize};
-use sys_util::{
-    self,
-    rand::{rand_vec, Source},
-};
+use openssl::error::ErrorStack;
+use openssl::symm::Cipher;
+use openssl::symm::Crypter;
+use openssl::symm::Mode;
+use serde::Deserialize;
+use serde::Serialize;
+use sys_util;
+use sys_util::rand::rand_vec;
+use sys_util::rand::Source;
 use thiserror::Error as ThisError;
 
-use crate::{
-    app_info::AppManifestEntry,
-    communication::{
-        persistence::{Cronista, Scope, Status},
-        Digest,
-    },
-    secrets::{self, compute_sha256, SecretManager, SecretVersion},
-};
+use crate::app_info::AppManifestEntry;
+use crate::communication::persistence::Cronista;
+use crate::communication::persistence::Scope;
+use crate::communication::persistence::Status;
+use crate::communication::Digest;
+use crate::secrets;
+use crate::secrets::compute_sha256;
+use crate::secrets::SecretManager;
+use crate::secrets::SecretVersion;
 
 const DEFAULT_STORAGE_MAJOR_VERSION: usize = 0;
 const DEFAULT_STORAGE_MINOR_VERSION: usize = 0;
@@ -389,8 +394,6 @@ impl<'a> Cronista<anyhow::Error> for StorageEncryption<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
@@ -398,13 +401,21 @@ mod tests {
     use assert_matches::assert_matches;
     use base64::decode_config;
     use libchromeos::secure_blob::SecureBlob;
-    use sys_util::scoped_path::{get_temp_path, ScopedPath};
+    use sys_util::scoped_path::get_temp_path;
+    use sys_util::scoped_path::ScopedPath;
 
-    use crate::{
-        app_info::{AppManifest, ExecutableInfo, SandboxType, StdErrBehavior, StorageParameters},
-        communication::persistence::{MockCronista, Scope},
-        secrets::{GscSecret, PlatformSecret, VersionedSecret, MAX_VERSION},
-    };
+    use super::*;
+    use crate::app_info::AppManifest;
+    use crate::app_info::ExecutableInfo;
+    use crate::app_info::SandboxType;
+    use crate::app_info::StdErrBehavior;
+    use crate::app_info::StorageParameters;
+    use crate::communication::persistence::MockCronista;
+    use crate::communication::persistence::Scope;
+    use crate::secrets::GscSecret;
+    use crate::secrets::PlatformSecret;
+    use crate::secrets::VersionedSecret;
+    use crate::secrets::MAX_VERSION;
 
     const TEST_MAIN_SECRET_VERSION: usize = 1;
     const TEST_APP_ID: &str = "demo_app";

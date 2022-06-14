@@ -8,10 +8,14 @@
 use std::sync::Arc;
 
 use libsirenia::communication::persistence::Status;
-use libsirenia::communication::tee_api::{TeeApi, TeeApiClient};
-use libsirenia::storage::{
-    to_read_data_error, to_remove_error, to_write_data_error, Error, Result, Storage,
-};
+use libsirenia::communication::tee_api::TeeApi;
+use libsirenia::communication::tee_api::TeeApiClient;
+use libsirenia::storage::to_read_data_error;
+use libsirenia::storage::to_remove_error;
+use libsirenia::storage::to_write_data_error;
+use libsirenia::storage::Error;
+use libsirenia::storage::Result;
+use libsirenia::storage::Storage;
 use libsirenia::transport::Transport;
 use sync::Mutex;
 
@@ -79,20 +83,23 @@ impl Storage for TrichechusStorage {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
-
     use std::cell::RefCell;
     use std::collections::BTreeMap as Map;
     use std::rc::Rc;
     use std::thread::spawn;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
-    use anyhow::{anyhow, Error, Result};
+    use anyhow::anyhow;
+    use anyhow::Error;
+    use anyhow::Result;
     use assert_matches::assert_matches;
-    use libsirenia::{
-        communication::tee_api::TeeApiServer, rpc::RpcDispatcher, storage::Error as StorageError,
-        transport::create_transport_from_pipes,
-    };
+    use libsirenia::communication::tee_api::TeeApiServer;
+    use libsirenia::rpc::RpcDispatcher;
+    use libsirenia::storage::Error as StorageError;
+    use libsirenia::transport::create_transport_from_pipes;
+
+    use super::*;
 
     const TEST_ID: &str = "id";
 

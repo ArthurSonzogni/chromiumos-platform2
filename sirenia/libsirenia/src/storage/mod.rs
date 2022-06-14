@@ -5,16 +5,23 @@
 //! Defines the messages and abstracts out communication for storage.
 
 mod file_storage;
-pub use file_storage::FileStorage;
-
-use std::any::{type_name, Any};
+use std::any::type_name;
+use std::any::Any;
 use std::borrow::Borrow;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::result::Result as StdResult;
 
-use flexbuffers::{from_slice, to_vec};
-use serde::de::{Deserialize, DeserializeOwned, Visitor};
-use serde::{Deserializer, Serialize, Serializer};
+pub use file_storage::FileStorage;
+use flexbuffers::from_slice;
+use flexbuffers::to_vec;
+use serde::de::Deserialize;
+use serde::de::DeserializeOwned;
+use serde::de::Visitor;
+use serde::Deserializer;
+use serde::Serialize;
+use serde::Serializer;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]

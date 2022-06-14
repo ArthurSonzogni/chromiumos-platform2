@@ -4,21 +4,25 @@
 
 //! The module that defines the app_manifest.
 
-pub use crate::communication::Digest;
-pub use crate::communication::ExecutableInfo;
-
 use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
-use std::fs::{read_dir, File};
-use std::io::{self, BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::fs::read_dir;
+use std::fs::File;
+use std::io;
+use std::io::BufReader;
+use std::io::Read;
+use std::path::Path;
+use std::path::PathBuf;
 use std::result::Result as StdResult;
 
 use libchromeos::chromeos::is_dev_mode;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error as ThisError;
 
 use crate::communication::persistence::Scope;
+pub use crate::communication::Digest;
+pub use crate::communication::ExecutableInfo;
 
 pub const DEFAULT_APP_CONFIG_PATH: &str = "/usr/share/manatee";
 pub const JSON_EXTENSION: &str = ".json";
@@ -242,10 +246,12 @@ pub fn entries_from_path<A: AsRef<Path>>(name: A) -> Result<Vec<AppManifestEntry
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use std::io::Write;
 
-    use sys_util::scoped_path::{get_temp_path, ScopedPath};
+    use sys_util::scoped_path::get_temp_path;
+    use sys_util::scoped_path::ScopedPath;
+
+    use super::*;
 
     const TEST_MANIFEST_ENTRY_JSON: &str = r#"{
   "app_name": "demo_app",

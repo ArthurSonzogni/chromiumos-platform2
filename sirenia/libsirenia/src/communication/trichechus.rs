@@ -9,7 +9,8 @@ use std::fmt::Debug;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
 

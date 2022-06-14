@@ -8,43 +8,66 @@
 
 use std::env;
 use std::fs::File;
-use std::io::{copy, stdin, stdout, BufRead, BufReader, Read};
+use std::io::copy;
+use std::io::stdin;
+use std::io::stdout;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Read;
 use std::mem::replace;
-use std::os::unix::io::{AsRawFd, FromRawFd};
-use std::path::{Path, PathBuf};
-use std::process::{exit, ChildStderr, Command, Stdio};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::FromRawFd;
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::exit;
+use std::process::ChildStderr;
+use std::process::Command;
+use std::process::Stdio;
 use std::str::FromStr;
 use std::sync::Mutex;
-use std::thread::{sleep, spawn, JoinHandle};
-use std::time::{Duration, Instant};
+use std::thread::sleep;
+use std::thread::spawn;
+use std::thread::JoinHandle;
+use std::time::Duration;
+use std::time::Instant;
 
-use anyhow::{anyhow, bail, Context, Error, Result};
-use dbus::{
-    arg::OwnedFd,
-    blocking::{Connection, Proxy},
-};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Error;
+use anyhow::Result;
+use dbus::arg::OwnedFd;
+use dbus::blocking::Connection;
+use dbus::blocking::Proxy;
 use getopts::Options;
+use libsirenia::build_info::BUILD_TIMESTAMP;
+use libsirenia::cli::TransportTypeOption;
+use libsirenia::cli::VerbosityOption;
+use libsirenia::cli::DEFAULT_TRANSPORT_TYPE_LONG_NAME;
+use libsirenia::cli::DEFAULT_TRANSPORT_TYPE_SHORT_NAME;
+use libsirenia::communication::trichechus;
+use libsirenia::communication::trichechus::AppInfo;
+use libsirenia::communication::trichechus::Trichechus;
+use libsirenia::communication::trichechus::TrichechusClient;
 use libsirenia::linux::events::CopyFdEventSource;
-use libsirenia::{
-    build_info::BUILD_TIMESTAMP,
-    cli::{
-        TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
-        DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
-    },
-    communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
-    linux::events::EventMultiplexer,
-    sys::{self, dup, is_a_tty},
-    transport::{
-        Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
-    },
-};
-use log::{self, debug, error, info};
+use libsirenia::linux::events::EventMultiplexer;
+use libsirenia::sys;
+use libsirenia::sys::dup;
+use libsirenia::sys::is_a_tty;
+use libsirenia::transport::Transport;
+use libsirenia::transport::TransportType;
+use libsirenia::transport::DEFAULT_CLIENT_PORT;
+use libsirenia::transport::DEFAULT_SERVER_PORT;
+use libsirenia::transport::LOOPBACK_DEFAULT;
+use log::debug;
+use log::error;
+use log::info;
 use manatee_client::client::OrgChromiumManaTEEInterface;
-use sys_util::{
-    handle_eintr,
-    vsock::{SocketAddr as VsockAddr, VsockCid},
-    wait_for_interrupt, KillOnDrop,
-};
+use sys_util::handle_eintr;
+use sys_util::vsock::SocketAddr as VsockAddr;
+use sys_util::vsock::VsockCid;
+use sys_util::wait_for_interrupt;
+use sys_util::KillOnDrop;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 

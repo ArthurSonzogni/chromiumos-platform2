@@ -7,12 +7,14 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 // Needed for borrowing scoped data to use.
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::Borrow;
+use std::borrow::BorrowMut;
 use std::io;
 
 use log::info;
-// manatee_runtime specific objects that need to be included.
-use manatee_runtime::{storage::TrichechusStorage, ExclusiveScopedData, ScopedData};
+use manatee_runtime::storage::TrichechusStorage;
+use manatee_runtime::ExclusiveScopedData;
+use manatee_runtime::ScopedData;
 use stderrlog::StdErrLog;
 
 // Any creation of a scoped data requires that a callback is given which will

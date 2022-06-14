@@ -4,14 +4,23 @@
 
 //! Implements file based implementation of the Storage trait.
 
-use crate::storage::to_remove_error;
-use std::fs::{remove_file, File};
+use std::fs::remove_file;
+use std::fs::File;
 use std::io;
-use std::io::{Error as IoError, ErrorKind, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::Error as IoError;
+use std::io::ErrorKind;
+use std::io::Read;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::result::Result as StdResult;
 
-use super::{to_read_data_error, to_write_data_error, Error, Result, Storage};
+use super::to_read_data_error;
+use super::to_write_data_error;
+use super::Error;
+use super::Result;
+use super::Storage;
+use crate::storage::to_remove_error;
 
 pub struct FileStorage {
     root: PathBuf,
@@ -93,13 +102,15 @@ impl Storage for FileStorage {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use std::fs::create_dir;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
     use assert_matches::assert_matches;
-    use sys_util::scoped_path::{get_temp_path, ScopedPath};
+    use sys_util::scoped_path::get_temp_path;
+    use sys_util::scoped_path::ScopedPath;
+
+    use super::*;
 
     const VALID_TEST_ID: &str = "Test Data";
 

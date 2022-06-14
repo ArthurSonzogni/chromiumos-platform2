@@ -8,65 +8,122 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap as Map, VecDeque};
+use std::collections::BTreeMap as Map;
+use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::env;
-use std::fs::{remove_file, File};
-use std::io::{BufWriter, IoSlice, Seek, SeekFrom, Write};
-use std::mem::{replace, swap};
-use std::ops::{Deref, DerefMut};
-use std::os::unix::io::{AsRawFd, RawFd};
-use std::path::{Path, PathBuf};
+use std::fs::remove_file;
+use std::fs::File;
+use std::io::BufWriter;
+use std::io::IoSlice;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
+use std::mem::replace;
+use std::mem::swap;
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::RawFd;
+use std::path::Path;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Error;
+use anyhow::Result;
 use getopts::Options;
-use libchromeos::{chromeos::is_dev_mode, secure_blob::SecureBlob};
+use libchromeos::chromeos::is_dev_mode;
+use libchromeos::secure_blob::SecureBlob;
+use libsirenia::app_info;
+use libsirenia::app_info::AppManifest;
+use libsirenia::app_info::AppManifestEntry;
+use libsirenia::app_info::Digest;
+use libsirenia::app_info::ExecutableInfo;
+use libsirenia::app_info::SandboxType;
 use libsirenia::app_info::StdErrBehavior;
+use libsirenia::app_info::StorageParameters;
+use libsirenia::build_info::BUILD_TIMESTAMP;
+use libsirenia::cli::trichechus::initialize_common_arguments;
+use libsirenia::cli::TransportTypeOption;
+use libsirenia::communication::persistence::Cronista;
+use libsirenia::communication::persistence::CronistaClient;
+use libsirenia::communication::persistence::Status;
+use libsirenia::communication::tee_api::TeeApi;
+use libsirenia::communication::tee_api::TeeApiServer;
+use libsirenia::communication::trichechus;
+use libsirenia::communication::trichechus::AppInfo;
+use libsirenia::communication::trichechus::SystemEvent;
+use libsirenia::communication::trichechus::Trichechus;
+use libsirenia::communication::trichechus::TrichechusServer;
+use libsirenia::linux::events::AddEventSourceMutator;
+use libsirenia::linux::events::ComboMutator;
+use libsirenia::linux::events::CopyFdEventSource;
+use libsirenia::linux::events::EventMultiplexer;
 use libsirenia::linux::events::LogFromFdEventSource;
-use libsirenia::{
-    app_info::{
-        self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
-    },
-    build_info::BUILD_TIMESTAMP,
-    cli::{trichechus::initialize_common_arguments, TransportTypeOption},
-    communication::{
-        persistence::{Cronista, CronistaClient, Status},
-        tee_api::{TeeApi, TeeApiServer},
-        trichechus::{self, AppInfo, SystemEvent, Trichechus, TrichechusServer},
-    },
-    linux::{
-        events::{
-            AddEventSourceMutator, ComboMutator, CopyFdEventSource, EventMultiplexer, Mutator,
-        },
-        kmsg::{self, SyslogForwarderMut, KMSG_PATH},
-        syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
-    },
-    rpc::{ConnectionHandler, RpcDispatcher, TransportServer},
-    sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
-    secrets::{
-        self, compute_sha256, storage_encryption::StorageEncryption, GscSecret, PlatformSecret,
-        SecretManager, VersionedSecret,
-    },
-    sys::{self, dup, get_a_pty, halt, power_off, reboot},
-    transport::{
-        create_transport_from_pipes, Transport, TransportRead, TransportType, TransportWrite,
-        CROS_CID, CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD,
-        DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD,
-        DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
-    },
-};
+use libsirenia::linux::events::Mutator;
+use libsirenia::linux::kmsg;
+use libsirenia::linux::kmsg::SyslogForwarderMut;
+use libsirenia::linux::kmsg::KMSG_PATH;
+use libsirenia::linux::syslog::Syslog;
+use libsirenia::linux::syslog::SyslogReceiverMut;
+use libsirenia::linux::syslog::SYSLOG_PATH;
+use libsirenia::rpc::ConnectionHandler;
+use libsirenia::rpc::RpcDispatcher;
+use libsirenia::rpc::TransportServer;
+use libsirenia::sandbox::MinijailSandbox;
+use libsirenia::sandbox::Sandbox;
+use libsirenia::sandbox::VmConfig;
+use libsirenia::sandbox::VmSandbox;
+use libsirenia::secrets;
+use libsirenia::secrets::compute_sha256;
+use libsirenia::secrets::storage_encryption::StorageEncryption;
+use libsirenia::secrets::GscSecret;
+use libsirenia::secrets::PlatformSecret;
+use libsirenia::secrets::SecretManager;
+use libsirenia::secrets::VersionedSecret;
+use libsirenia::sys;
+use libsirenia::sys::dup;
+use libsirenia::sys::get_a_pty;
+use libsirenia::sys::halt;
+use libsirenia::sys::power_off;
+use libsirenia::sys::reboot;
+use libsirenia::transport::create_transport_from_pipes;
+use libsirenia::transport::Transport;
+use libsirenia::transport::TransportRead;
+use libsirenia::transport::TransportType;
+use libsirenia::transport::TransportWrite;
+use libsirenia::transport::CROS_CID;
+use libsirenia::transport::CROS_CONNECTION_ERR_FD;
+use libsirenia::transport::CROS_CONNECTION_R_FD;
+use libsirenia::transport::CROS_CONNECTION_W_FD;
+use libsirenia::transport::DEFAULT_CLIENT_PORT;
+use libsirenia::transport::DEFAULT_CONNECTION_R_FD;
+use libsirenia::transport::DEFAULT_CONNECTION_W_FD;
+use libsirenia::transport::DEFAULT_CRONISTA_PORT;
+use libsirenia::transport::DEFAULT_SERVER_PORT;
 use sirenia::log_error;
 use sirenia::pstore;
-use sys_util::{
-    self, error, getpid, getsid, info,
-    net::{UnixSeqpacket, UnixSeqpacketListener},
-    pipe, reap_child, setsid, syslog,
-    vsock::SocketAddr as VSocketAddr,
-    warn, MemfdSeals, Pid, ScmSocket, SharedMemory,
-};
+use sys_util::error;
+use sys_util::getpid;
+use sys_util::getsid;
+use sys_util::info;
+use sys_util::net::UnixSeqpacket;
+use sys_util::net::UnixSeqpacketListener;
+use sys_util::pipe;
+use sys_util::reap_child;
+use sys_util::setsid;
+use sys_util::syslog;
+use sys_util::vsock::SocketAddr as VSocketAddr;
+use sys_util::warn;
+use sys_util::MemfdSeals;
+use sys_util::Pid;
+use sys_util::ScmSocket;
+use sys_util::SharedMemory;
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
 const CRONISTA_URI_LONG_NAME: &str = "cronista";

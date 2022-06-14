@@ -5,16 +5,26 @@
 //! Creates the emulated pstore and copies it back to RAMOOPS memory on reboot.
 
 use std::cmp;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader};
+use std::fs;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use anyhow::{anyhow, bail, Context, Result};
-use data_model::{volatile_memory::VolatileMemory, DataInit};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
+use data_model::volatile_memory::VolatileMemory;
+use data_model::DataInit;
 use libsirenia::linux::kmsg;
-use sys_util::{error, info, MappedRegion, MemoryMapping};
+use sys_util::error;
+use sys_util::info;
+use sys_util::MappedRegion;
+use sys_util::MemoryMapping;
 
 const RAMOOPS_UNBIND: &str = "/sys/devices/platform/ramoops.0/driver/unbind";
 const RAMOOPS_BUS_ID: &[u8] = b"ramoops.0";

@@ -6,7 +6,9 @@
 
 use std::path::Path;
 
-use chromeos_dbus_bindings::{self, generate_module, BindingsType, CROSSROADS_SERVER_OPTS};
+use chromeos_dbus_bindings::generate_module;
+use chromeos_dbus_bindings::BindingsType;
+use chromeos_dbus_bindings::CROSSROADS_SERVER_OPTS;
 
 // The parent path of sirenia.
 const SOURCE_DIR: &str = ".";

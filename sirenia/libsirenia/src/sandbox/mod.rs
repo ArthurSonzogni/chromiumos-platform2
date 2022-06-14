@@ -6,11 +6,16 @@
 
 use std::io;
 use std::os::unix::io::RawFd;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::Child;
+use std::process::Command;
+use std::process::Stdio;
 
-use libc::{self, pid_t};
-use minijail::{self, Minijail};
+use libc;
+use libc::pid_t;
+use minijail;
+use minijail::Minijail;
 use sys_util::info;
 
 use crate::sys::dup;
@@ -235,14 +240,16 @@ impl Sandbox for VmSandbox {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use std::io::{Read, Write};
+    use std::io::Read;
+    use std::io::Write;
     use std::os::unix::io::AsRawFd;
 
     use sys_util::pipe;
 
-    use crate::transport::{CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD};
+    use super::*;
+    use crate::transport::CROS_CONNECTION_ERR_FD;
+    use crate::transport::CROS_CONNECTION_R_FD;
+    use crate::transport::CROS_CONNECTION_W_FD;
 
     fn do_test(s: &mut dyn Sandbox) {
         const STDOUT_TEST: &str = "stdout test";

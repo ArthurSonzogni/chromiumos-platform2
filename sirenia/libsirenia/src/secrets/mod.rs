@@ -12,17 +12,19 @@ use std::fmt::Debug;
 use std::iter;
 use std::mem::size_of;
 use std::ops::Deref;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
+use std::rc::Weak;
 
 use libchromeos::secure_blob::SecureBlob;
-use openssl::{
-    error::ErrorStack,
-    hash::{DigestBytes, Hasher, MessageDigest},
-    pkcs5::hkdf,
-};
+use openssl::error::ErrorStack;
+use openssl::hash::DigestBytes;
+use openssl::hash::Hasher;
+use openssl::hash::MessageDigest;
+use openssl::pkcs5::hkdf;
 use thiserror::Error as ThisError;
 
-use crate::app_info::{AppManifest, AppManifestEntry};
+use crate::app_info::AppManifest;
+use crate::app_info::AppManifestEntry;
 
 /// Salt used when mixing two secrets with HKDF.
 const DEFAULT_SALT: &[u8] = &[7u8; 64];
@@ -663,11 +665,11 @@ impl SecretManager {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-
-    use crate::{
-        app_info::{ExecutableInfo, SandboxType, StdErrBehavior, StorageParameters},
-        communication::persistence::Scope,
-    };
+    use crate::app_info::ExecutableInfo;
+    use crate::app_info::SandboxType;
+    use crate::app_info::StdErrBehavior;
+    use crate::app_info::StorageParameters;
+    use crate::communication::persistence::Scope;
 
     const TEST_APP_ID: &str = "demo_app";
     const TEST_MAIN_SECRET_VERSION: usize = 1usize;

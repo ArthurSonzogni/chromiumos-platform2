@@ -5,11 +5,14 @@
 //! Defines messages used for communication between Trichechus and Cronista for storing and
 //! retrieving persistent data.
 
-use std::collections::{BTreeMap as Map, VecDeque};
-use std::ops::{Deref, DerefMut};
+use std::collections::BTreeMap as Map;
+use std::collections::VecDeque;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::sync::Mutex;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use sirenia_rpc_macros::sirenia_rpc;
 
 /// Represents the possible status codes from an RPC.

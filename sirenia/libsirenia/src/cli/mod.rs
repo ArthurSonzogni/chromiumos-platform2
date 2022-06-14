@@ -7,10 +7,14 @@ pub mod trichechus;
 use std::marker::PhantomData;
 use std::process::exit;
 
-use getopts::{self, Matches, Options};
+use getopts;
+use getopts::Matches;
+use getopts::Options;
 use thiserror::Error as ThisError;
 
-use crate::transport::{self, TransportType, LOOPBACK_DEFAULT};
+use crate::transport;
+use crate::transport::TransportType;
+use crate::transport::LOOPBACK_DEFAULT;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -174,12 +178,12 @@ impl HelpOption {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use std::cell::RefCell;
     use std::rc::Rc;
 
     use assert_matches::assert_matches;
+
+    use super::*;
 
     fn test_usage() -> String {
         "test usage string".to_string()

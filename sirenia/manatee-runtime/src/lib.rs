@@ -8,22 +8,24 @@
 
 pub mod storage;
 
-pub use libsirenia::storage::{Error, Result};
-pub use sync::Mutex;
-
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::Borrow;
+use std::borrow::BorrowMut;
 use std::collections::BTreeMap as Map;
 use std::fs::File;
 use std::marker::PhantomData;
 use std::os::unix::io::FromRawFd;
 use std::sync::Arc;
 
-use libsirenia::{
-    communication::tee_api::TeeApiClient,
-    storage::{Storable, Storage},
-    transport::{Transport, DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD},
-};
+use libsirenia::communication::tee_api::TeeApiClient;
+pub use libsirenia::storage::Error;
+pub use libsirenia::storage::Result;
+use libsirenia::storage::Storable;
+use libsirenia::storage::Storage;
+use libsirenia::transport::Transport;
+use libsirenia::transport::DEFAULT_CONNECTION_R_FD;
+use libsirenia::transport::DEFAULT_CONNECTION_W_FD;
 use once_cell::sync::OnceCell;
+pub use sync::Mutex;
 
 /// Return a client RPC handle for the TEE API.
 ///
@@ -145,10 +147,12 @@ pub type ExclusiveScopedKeyValueStore<'a, S, T> = ScopedKeyValueStore<S, T, &'a 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
     use libsirenia::storage::StorableMember;
-    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::*;
 
     const TEST_ID: &str = "id";
 

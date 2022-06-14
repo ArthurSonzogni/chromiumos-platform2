@@ -8,30 +8,50 @@
 //! implementing communication for cases were vsock isn't available or
 //! appropriate.
 
+use core::mem::replace;
 use std::boxed::Box;
 use std::convert::TryInto;
-use std::fmt::{self, Debug, Display, Formatter};
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io;
+use std::io::Read;
+use std::io::Write;
 use std::iter::Iterator;
 use std::marker::Send;
-use std::net::{
-    Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, TcpListener, TcpStream,
-    ToSocketAddrs,
-};
+use std::net::Ipv4Addr;
+use std::net::Ipv6Addr;
+use std::net::SocketAddr;
+use std::net::SocketAddrV4;
+use std::net::SocketAddrV6;
+use std::net::TcpListener;
+use std::net::TcpStream;
+use std::net::ToSocketAddrs;
 use std::os::raw::c_uint;
-use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::IntoRawFd;
+use std::os::unix::io::RawFd;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use core::mem::replace;
-use sys_util::net::{InetVersion, TcpSocket, UnixSeqpacket, UnixSeqpacketListener};
-use sys_util::vsock::{
-    AddrParseError, SocketAddr as VSocketAddr, ToSocketAddr, VsockCid, VsockListener, VsockSocket,
-    VsockStream, VMADDR_PORT_ANY,
-};
-use sys_util::{getpid, handle_eintr, pipe};
+use sys_util::getpid;
+use sys_util::handle_eintr;
+use sys_util::net::InetVersion;
+use sys_util::net::TcpSocket;
+use sys_util::net::UnixSeqpacket;
+use sys_util::net::UnixSeqpacketListener;
+use sys_util::pipe;
+use sys_util::vsock::AddrParseError;
+use sys_util::vsock::SocketAddr as VSocketAddr;
+use sys_util::vsock::ToSocketAddr;
+use sys_util::vsock::VsockCid;
+use sys_util::vsock::VsockListener;
+use sys_util::vsock::VsockSocket;
+use sys_util::vsock::VsockStream;
+use sys_util::vsock::VMADDR_PORT_ANY;
 use thiserror::Error as ThisError;
 
 pub const CROS_CID: VsockCid = VsockCid::Cid(3);
@@ -703,14 +723,17 @@ pub fn get_test_vsock_uri() -> String {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
-
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::net::IpAddr;
+    use std::net::Ipv4Addr;
     use std::thread::spawn;
 
     use assert_matches::assert_matches;
-    use sys_util::scoped_path::{get_temp_path, ScopedPath};
-    use sys_util::vsock::{VsockCid, VMADDR_PORT_ANY};
+    use sys_util::scoped_path::get_temp_path;
+    use sys_util::scoped_path::ScopedPath;
+    use sys_util::vsock::VsockCid;
+    use sys_util::vsock::VMADDR_PORT_ANY;
+
+    use super::*;
 
     const CLIENT_SEND: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
     const SERVER_SEND: [u8; 5] = [11, 12, 13, 14, 15];

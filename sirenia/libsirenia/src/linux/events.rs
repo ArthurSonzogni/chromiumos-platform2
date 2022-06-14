@@ -19,17 +19,28 @@
 
 use std::boxed::Box;
 use std::cmp::max;
-use std::collections::{BTreeMap, VecDeque};
-use std::fmt::{Debug, Formatter};
+use std::collections::BTreeMap;
+use std::collections::VecDeque;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::io::Read;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::RawFd;
 use std::result::Result as StdResult;
 
-use sys_util::{error, warn, Error as SysError, PollContext, PollToken, WatchingEvents};
+use sys_util::error;
+use sys_util::warn;
+use sys_util::Error as SysError;
+use sys_util::PollContext;
+use sys_util::PollToken;
+use sys_util::WatchingEvents;
 use thiserror::Error as ThisError;
 
-use crate::sys::{eagain_is_ok, set_nonblocking, write_all_blocking};
-use crate::transport::{TransportRead, TransportWrite};
+use crate::sys::eagain_is_ok;
+use crate::sys::set_nonblocking;
+use crate::sys::write_all_blocking;
+use crate::transport::TransportRead;
+use crate::transport::TransportWrite;
 
 #[derive(Debug, ThisError)]
 pub enum Error {
@@ -450,14 +461,16 @@ impl EventSource for HangupListener {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use std::cell::RefCell;
     use std::fs::File;
+    use std::io::Read;
+    use std::io::Write;
     use std::rc::Rc;
 
-    use std::io::{Read, Write};
-    use sys_util::{pipe, EventFd};
+    use sys_util::pipe;
+    use sys_util::EventFd;
+
+    use super::*;
 
     #[derive(Debug)]
     struct EventMultiplexerTestHandler {

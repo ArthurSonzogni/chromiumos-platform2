@@ -12,16 +12,37 @@ use std::convert::TryFrom;
 use std::env;
 use std::result::Result as StdResult;
 
-use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
-use syn::{
-    parse::{Error, Parse, Parser, Result},
-    parse_macro_input, parse_quote,
-    spanned::Spanned,
-    Attribute, AttributeArgs, FieldsUnnamed, FnArg, Ident, ItemTrait, Lit, Meta, NestedMeta, Path,
-    PathArguments, PathSegment, ReturnType, Signature, TraitBound, TraitBoundModifier, TraitItem,
-    Type, TypeParamBound,
-};
+use proc_macro2::Span;
+use proc_macro2::TokenStream;
+use quote::format_ident;
+use quote::quote;
+use quote::ToTokens;
+use syn::parse::Error;
+use syn::parse::Parse;
+use syn::parse::Parser;
+use syn::parse::Result;
+use syn::parse_macro_input;
+use syn::parse_quote;
+use syn::spanned::Spanned;
+use syn::Attribute;
+use syn::AttributeArgs;
+use syn::FieldsUnnamed;
+use syn::FnArg;
+use syn::Ident;
+use syn::ItemTrait;
+use syn::Lit;
+use syn::Meta;
+use syn::NestedMeta;
+use syn::Path;
+use syn::PathArguments;
+use syn::PathSegment;
+use syn::ReturnType;
+use syn::Signature;
+use syn::TraitBound;
+use syn::TraitBoundModifier;
+use syn::TraitItem;
+use syn::Type;
+use syn::TypeParamBound;
 
 const INNER_ERROR_MACRO_ATTRIBUTE: &str = "error";
 

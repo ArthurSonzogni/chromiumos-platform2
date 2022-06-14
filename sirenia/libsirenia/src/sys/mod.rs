@@ -7,16 +7,33 @@
 //! interact with the libc package.
 
 use std::fs::File;
-use std::io::{self, stdin, Write};
+use std::io;
+use std::io::stdin;
+use std::io::Write;
 use std::mem::MaybeUninit;
-use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
+use std::os::unix::io::FromRawFd;
+use std::os::unix::io::RawFd;
 use std::ptr::null_mut;
 
 use anyhow::Context;
-use libc::{
-    self, c_int, isatty, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK,
-};
-use sys_util::{self, add_fd_flags, error, handle_eintr, PollContext, Terminal, WatchingEvents};
+use libc;
+use libc::c_int;
+use libc::isatty;
+use libc::sigfillset;
+use libc::sigprocmask;
+use libc::sigset_t;
+use libc::wait;
+use libc::ECHILD;
+use libc::SIG_BLOCK;
+use libc::SIG_UNBLOCK;
+use sys_util;
+use sys_util::add_fd_flags;
+use sys_util::error;
+use sys_util::handle_eintr;
+use sys_util::PollContext;
+use sys_util::Terminal;
+use sys_util::WatchingEvents;
 
 pub struct ScopedRaw {}
 
