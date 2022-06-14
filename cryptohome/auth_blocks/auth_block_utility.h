@@ -130,6 +130,7 @@ class AuthBlockUtility {
 
   // Generates a payload for cryptohome recovery AuthFactor authentication.
   [[nodiscard]] virtual CryptoStatus GenerateRecoveryRequest(
+      const std::string& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,
       const CryptohomeRecoveryAuthBlockState& state,

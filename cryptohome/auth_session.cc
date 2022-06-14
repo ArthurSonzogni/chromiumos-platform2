@@ -1017,7 +1017,7 @@ bool AuthSession::GetRecoveryRequest(
   // - `ephemeral_pub_key` which is saved in AuthSession and retrieved during
   // the `AuthenticateAuthFactor` call.
   CryptoStatus status = auth_block_utility_->GenerateRecoveryRequest(
-      RequestMetadataFromProto(request),
+      obfuscated_username_, RequestMetadataFromProto(request),
       brillo::BlobFromString(request.epoch_response()), *state, crypto_->tpm(),
       &recovery_request, &ephemeral_pub_key);
   if (!status.ok()) {

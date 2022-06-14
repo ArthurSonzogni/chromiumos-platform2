@@ -110,6 +110,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                               KeyBlobs& out_key_blobs) const override;
 
   CryptoStatus GenerateRecoveryRequest(
+      const std::string& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,
       const CryptohomeRecoveryAuthBlockState& state,

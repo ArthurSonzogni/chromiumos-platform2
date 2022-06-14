@@ -925,6 +925,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmNotBoundToPcrAuthBlockObscureMessageFailedInCreate = 549,
   /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
   kLocTpmNotBoundToPcrAuthBlockUnobscureMessageFailedInDecrypt = 550,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockNoUsernameInCreate = 551,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockNoUsernameInDerive = 552,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

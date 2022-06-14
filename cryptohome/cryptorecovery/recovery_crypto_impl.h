@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_IMPL_H_
 
 #include <memory>
+#include <string>
 
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
@@ -36,11 +37,13 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const brillo::SecureBlob& encrypted_rsa_priv_key,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
+      const std::string& obfuscated_username,
       CryptoRecoveryRpcRequest* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(
       const brillo::SecureBlob& mediator_pub_key,
       const OnboardingMetadata& onboarding_metadata,
+      const std::string& obfuscated_username,
       HsmPayload* hsm_payload,
       brillo::SecureBlob* encrypted_rsa_priv_key,
       brillo::SecureBlob* encrypted_destination_share,
@@ -52,11 +55,13 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                           const brillo::SecureBlob& encrypted_destination_share,
                           const brillo::SecureBlob& ephemeral_pub_key,
                           const brillo::SecureBlob& mediated_publisher_pub_key,
+                          const std::string& obfuscated_username,
                           brillo::SecureBlob* destination_dh) const override;
   bool DecryptResponsePayload(
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const CryptoRecoveryEpochResponse& epoch_response,
       const CryptoRecoveryRpcResponse& recovery_response_proto,
+      const std::string& obfuscated_username,
       HsmResponsePlainText* response_plain_text) const override;
 
  private:

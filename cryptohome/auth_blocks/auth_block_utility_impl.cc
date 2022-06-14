@@ -614,6 +614,7 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
 }
 
 CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
+    const std::string& obfuscated_username,
     const cryptorecovery::RequestMetadata& request_metadata,
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,
@@ -672,7 +673,8 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
   if (!recovery->GenerateRecoveryRequest(
           hsm_payload, request_metadata, epoch_response_proto,
           state.encrypted_rsa_priv_key, state.encrypted_channel_priv_key,
-          state.channel_pub_key, &recovery_request, out_ephemeral_pub_key)) {
+          state.channel_pub_key, obfuscated_username, &recovery_request,
+          out_ephemeral_pub_key)) {
     LOG(ERROR) << "Call to GenerateRecoveryRequest failed";
     // TODO(b/231297066): send more specific error.
     return MakeStatus<CryptohomeCryptoError>(

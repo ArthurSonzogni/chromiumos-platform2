@@ -1906,8 +1906,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // Test.
   // Setting the expectation that the auth block utility will generate recovery
   // request.
-  EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _))
-      .WillOnce([&](const cryptorecovery::RequestMetadata& request_metadata,
+  EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _, _))
+      .WillOnce([&](const std::string& obfuscated_username,
+                    const cryptorecovery::RequestMetadata& request_metadata,
                     const brillo::Blob& epoch_response,
                     const CryptohomeRecoveryAuthBlockState& state, Tpm* tpm,
                     brillo::SecureBlob* out_recovery_request,

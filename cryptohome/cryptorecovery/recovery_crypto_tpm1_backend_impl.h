@@ -7,6 +7,7 @@
 
 #include <map>
 #include <optional>
+#include <string>
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -40,6 +41,7 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
       const hwsec_foundation::EllipticCurve& ec,
       const crypto::ScopedEC_KEY& own_key_pair,
       const std::optional<brillo::SecureBlob>& auth_value,
+      const std::string& obfuscated_username,
       brillo::SecureBlob* encrypted_own_priv_key) override;
   // Performs the scalar multiplication by unsealing the encrypted secret via
   // the TPM_Unseal command and generated the corresponding shared secret via
@@ -48,6 +50,7 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
       const hwsec_foundation::EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& auth_value,
+      const std::string& obfuscated_username,
       const EC_POINT& others_pub_point) override;
   // Generate RSA key pair from tpm modules. Return true if the key generation
   // from TPM modules is successful.

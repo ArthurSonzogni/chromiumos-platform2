@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <variant>
 
@@ -70,6 +71,16 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
       auth_input.cryptohome_recovery_auth_input.value();
   DCHECK(cryptohome_recovery_auth_input.mediator_pub_key.has_value());
 
+  if (!auth_input.obfuscated_username.has_value()) {
+    LOG(ERROR) << "Missing obfuscated_username";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocCryptohomeRecoveryAuthBlockNoUsernameInCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+  const std::string& obfuscated_username =
+      auth_input.obfuscated_username.value();
+
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
@@ -96,9 +107,9 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   // TODO(b/184924482): set values in onboarding_metadata.
   OnboardingMetadata onboarding_metadata;
   if (!recovery->GenerateHsmPayload(
-          mediator_pub_key, onboarding_metadata, &hsm_payload,
-          &encrypted_rsa_priv_key, &encrypted_destination_share, &recovery_key,
-          &channel_pub_key, &encrypted_channel_priv_key)) {
+          mediator_pub_key, onboarding_metadata, obfuscated_username,
+          &hsm_payload, &encrypted_rsa_priv_key, &encrypted_destination_share,
+          &recovery_key, &channel_pub_key, &encrypted_channel_priv_key)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockGenerateHSMPayloadFailedInCreate),
@@ -178,6 +189,17 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
+
+  if (!auth_input.obfuscated_username.has_value()) {
+    LOG(ERROR) << "Missing obfuscated_username";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocCryptohomeRecoveryAuthBlockNoUsernameInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+  const std::string& obfuscated_username =
+      auth_input.obfuscated_username.value();
+
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
@@ -222,9 +244,9 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   HsmResponsePlainText response_plain_text;
-  if (!recovery->DecryptResponsePayload(auth_state->encrypted_channel_priv_key,
-                                        epoch_response, response_proto,
-                                        &response_plain_text)) {
+  if (!recovery->DecryptResponsePayload(
+          auth_state->encrypted_channel_priv_key, epoch_response,
+          response_proto, obfuscated_username, &response_plain_text)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockDecryptFailedInDerive),
@@ -234,11 +256,12 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   brillo::SecureBlob recovery_key;
-  if (!recovery->RecoverDestination(
-          response_plain_text.dealer_pub_key,
-          response_plain_text.key_auth_value,
-          auth_state->encrypted_destination_share, ephemeral_pub_key,
-          response_plain_text.mediated_point, &recovery_key)) {
+  if (!recovery->RecoverDestination(response_plain_text.dealer_pub_key,
+                                    response_plain_text.key_auth_value,
+                                    auth_state->encrypted_destination_share,
+                                    ephemeral_pub_key,
+                                    response_plain_text.mediated_point,
+                                    obfuscated_username, &recovery_key)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockRecoveryFailedInDerive),

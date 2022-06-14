@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_FAKE_TPM_BACKEND_IMPL_H_
 
 #include <optional>
+#include <string>
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -39,6 +40,7 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
       const hwsec_foundation::EllipticCurve& ec,
       const crypto::ScopedEC_KEY& own_key_pair,
       const std::optional<brillo::SecureBlob>& /*auth_value*/,
+      const std::string& obfuscated_username,
       brillo::SecureBlob* encrypted_own_priv_key) override;
   // Performs the scalar multiplication of the raw private key and the
   // supplied point in software. auth_value will not be used as it's to seal
@@ -47,6 +49,7 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
       const hwsec_foundation::EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& /*auth_value*/,
+      const std::string& obfuscated_username,
       const EC_POINT& others_pub_point) override;
   // Generate RSA key pair from tpm modules. Return true if the key generation
   // from TPM modules is successful.

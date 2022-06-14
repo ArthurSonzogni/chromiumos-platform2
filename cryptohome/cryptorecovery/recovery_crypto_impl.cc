@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -278,6 +279,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     const brillo::SecureBlob& encrypted_rsa_priv_key,
     const brillo::SecureBlob& encrypted_channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
+    const std::string& obfuscated_username,
     CryptoRecoveryRpcRequest* recovery_request,
     brillo::SecureBlob* ephemeral_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -317,7 +319,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
           ec_, encrypted_channel_priv_key, /*auth_value=*/std::nullopt,
-          *epoch_pub_point);
+          obfuscated_username, *epoch_pub_point);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key";
@@ -388,6 +390,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
 bool RecoveryCryptoImpl::GenerateHsmPayload(
     const brillo::SecureBlob& mediator_pub_key,
     const OnboardingMetadata& onboarding_metadata,
+    const std::string& obfuscated_username,
     HsmPayload* hsm_payload,
     brillo::SecureBlob* encrypted_rsa_priv_key,
     brillo::SecureBlob* encrypted_destination_share,
@@ -433,7 +436,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
 
   brillo::SecureBlob key_auth_value = tpm_backend_->GenerateKeyAuthValue();
   if (!tpm_backend_->EncryptEccPrivateKey(ec_, destination_share_key_pair,
-                                          key_auth_value,
+                                          key_auth_value, obfuscated_username,
                                           encrypted_destination_share)) {
     LOG(ERROR) << "Failed to encrypt destination share";
     return false;
@@ -470,6 +473,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // is unsealed from TPM1.2
   if (!tpm_backend_->EncryptEccPrivateKey(ec_, channel_key_pair,
                                           /*auth_value=*/std::nullopt,
+                                          obfuscated_username,
                                           encrypted_channel_priv_key)) {
     LOG(ERROR) << "Failed to encrypt channel_priv_key";
     return false;
@@ -594,6 +598,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
     const brillo::SecureBlob& encrypted_destination_share,
     const brillo::SecureBlob& ephemeral_pub_key,
     const brillo::SecureBlob& mediated_publisher_pub_key,
+    const std::string& obfuscated_username,
     brillo::SecureBlob* destination_recovery_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -629,7 +634,8 @@ bool RecoveryCryptoImpl::RecoverDestination(
   // Performs scalar multiplication of dealer_pub_point and destination_share.
   crypto::ScopedEC_POINT point_dh =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_destination_share, key_auth_value, *dealer_pub_point);
+          ec_, encrypted_destination_share, key_auth_value, obfuscated_username,
+          *dealer_pub_point);
   if (!point_dh) {
     LOG(ERROR) << "Failed to perform scalar multiplication of dealer_pub_point "
                   "and destination_share";
@@ -674,6 +680,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& encrypted_channel_priv_key,
     const CryptoRecoveryEpochResponse& epoch_response,
     const CryptoRecoveryRpcResponse& recovery_response_proto,
+    const std::string& obfuscated_username,
     HsmResponsePlainText* response_plain_text) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -713,7 +720,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
           ec_, encrypted_channel_priv_key, /*auth_value=*/std::nullopt,
-          *epoch_pub_point);
+          obfuscated_username, *epoch_pub_point);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key";

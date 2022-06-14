@@ -90,7 +90,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest, EncryptEccPrivateKeySuccess) {
 
   brillo::SecureBlob encrypted_privated_key;
   EXPECT_TRUE(recovery_crypto_tpm1_backend_.EncryptEccPrivateKey(
-      ec_256_.value(), own_key_pair, auth_value, &encrypted_privated_key));
+      ec_256_.value(), own_key_pair, auth_value, /*obfuscated_username=*/"",
+      &encrypted_privated_key));
   EXPECT_EQ(encrypted_privated_key.to_string(),
             expected_encrypted_own_priv_key.to_string());
 }
@@ -111,7 +112,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   // the input key pair is not on the elliptic curve 256
   EXPECT_FALSE(recovery_crypto_tpm1_backend_.EncryptEccPrivateKey(
       ec_256_.value(), wrong_curve_key_pair, auth_value,
-      &encrypted_privated_key));
+      /*obfuscated_username=*/"", &encrypted_privated_key));
   EXPECT_EQ(encrypted_privated_key.to_string(), "");
 }
 
@@ -133,7 +134,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   brillo::SecureBlob encrypted_privated_key;
   EXPECT_TRUE(recovery_crypto_tpm1_backend_.EncryptEccPrivateKey(
       ec_256_.value(), own_key_pair,
-      /*auth_value=*/std::nullopt, &encrypted_privated_key));
+      /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
+      &encrypted_privated_key));
   EXPECT_EQ(encrypted_privated_key.to_string(),
             expected_privated_key.to_string());
 }
@@ -169,7 +171,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
 
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), own_priv_point_blob, auth_value, *others_pub_key);
+          ec_256_.value(), own_priv_point_blob, auth_value,
+          /*obfuscated_username=*/"", *others_pub_key);
   EXPECT_NE(shared_secret_point, nullptr);
   EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point, *expected_shared_secret,
                                 context_.get()));
@@ -201,7 +204,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
 
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), own_priv_point_blob, auth_value, *others_pub_key);
+          ec_256_.value(), own_priv_point_blob, auth_value,
+          /*obfuscated_username=*/"", *others_pub_key);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 
@@ -231,7 +235,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
 
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), own_priv_point_blob, auth_value, *others_pub_key);
+          ec_256_.value(), own_priv_point_blob, auth_value,
+          /*obfuscated_username=*/"", *others_pub_key);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 
@@ -261,7 +266,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
 
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), own_priv_point_blob, auth_value, *others_pub_key);
+          ec_256_.value(), own_priv_point_blob, auth_value,
+          /*obfuscated_username=*/"", *others_pub_key);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 
@@ -294,7 +300,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
           ec_256_.value(), own_priv_point_blob,
-          /*auth_value=*/std::nullopt, *others_pub_key);
+          /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
+          *others_pub_key);
   EXPECT_NE(nullptr, shared_secret_point);
   EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point, *expected_shared_secret,
                                 context_.get()));

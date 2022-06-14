@@ -40,6 +40,7 @@ using cryptohome::cryptorecovery::RecoveryResponse;
 using cryptohome::cryptorecovery::RequestMetadata;
 
 namespace {
+constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";
 
 OnboardingMetadata GenerateFakeOnboardingMetadata() {
   SecureBlob recovery_id = hwsec_foundation::Sha256(SecureBlob("recovery_id"));
@@ -131,8 +132,9 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   SecureBlob channel_priv_key;
   OnboardingMetadata onboarding_metadata = GenerateFakeOnboardingMetadata();
   if (!recovery_crypto->GenerateHsmPayload(
-          mediator_pub_key, onboarding_metadata, &hsm_payload, &rsa_priv_key,
-          &destination_share, &recovery_key, &channel_pub_key,
+          mediator_pub_key, onboarding_metadata,
+          /*obfuscated_username=*/kObfuscatedUsername, &hsm_payload,
+          &rsa_priv_key, &destination_share, &recovery_key, &channel_pub_key,
           &channel_priv_key)) {
     return false;
   }
@@ -217,7 +219,8 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   CryptoRecoveryRpcRequest recovery_request;
   if (!recovery_crypto->GenerateRecoveryRequest(
           hsm_payload, request_metadata, epoch_response, rsa_priv_key,
-          channel_priv_key, channel_pub_key, &recovery_request,
+          channel_priv_key, channel_pub_key,
+          /*obfuscated_username=*/kObfuscatedUsername, &recovery_request,
           &ephemeral_pub_key)) {
     return false;
   }
@@ -318,18 +321,19 @@ bool DoRecoveryCryptoDecryptAction(
   }
 
   HsmResponsePlainText response_plain_text;
-  if (!recovery_crypto->DecryptResponsePayload(channel_priv_key, epoch_response,
-                                               recovery_response_proto,
-                                               &response_plain_text)) {
+  if (!recovery_crypto->DecryptResponsePayload(
+          channel_priv_key, epoch_response, recovery_response_proto,
+          /*obfuscated_username=*/kObfuscatedUsername, &response_plain_text)) {
     return false;
   }
 
   brillo::SecureBlob mediated_recovery_key;
-  if (!recovery_crypto->RecoverDestination(response_plain_text.dealer_pub_key,
-                                           response_plain_text.key_auth_value,
-                                           destination_share, ephemeral_pub_key,
-                                           response_plain_text.mediated_point,
-                                           &mediated_recovery_key)) {
+  if (!recovery_crypto->RecoverDestination(
+          response_plain_text.dealer_pub_key,
+          response_plain_text.key_auth_value, destination_share,
+          ephemeral_pub_key, response_plain_text.mediated_point,
+          /*obfuscated_username=*/kObfuscatedUsername,
+          &mediated_recovery_key)) {
     return false;
   }
 
