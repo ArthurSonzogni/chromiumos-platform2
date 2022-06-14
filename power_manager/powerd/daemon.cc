@@ -892,7 +892,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 }
 
-void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
+void Daemon::UndoPrepareToSuspend(bool success,
+                                  int num_suspend_attempts,
+                                  bool hibernated) {
   LidState lid_state = input_watcher_->QueryLidState();
 
   // Update the lid state first so that resume does not turn the internal
@@ -914,9 +916,10 @@ void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
   power_supply_->SetSuspended(false);
 
   if (success)
-    metrics_collector_->HandleResume(num_suspend_attempts);
+    metrics_collector_->HandleResume(num_suspend_attempts, hibernated);
   else if (num_suspend_attempts > 0)
-    metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts);
+    metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts,
+                                                     hibernated);
 }
 
 void Daemon::GenerateDarkResumeMetrics(

@@ -128,7 +128,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_result_;
   }
 
-  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override {
+  void UndoPrepareToSuspend(bool success,
+                            int num_suspend_attempts,
+                            bool hibernated) override {
     AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;

@@ -170,7 +170,9 @@ class Daemon :
                           bool wakeup_count_valid,
                           base::TimeDelta duration,
                           bool to_hibernate) override;
-  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override;
+  void UndoPrepareToSuspend(bool success,
+                            int num_suspend_attempts,
+                            bool hibernated) override;
   void GenerateDarkResumeMetrics(
       const std::vector<policy::Suspender::DarkResumeInfo>&
           dark_resume_wake_durations,

@@ -296,19 +296,25 @@ void MetricsCollector::PrepareForSuspend() {
     TrackS0ixResidency(true);
 }
 
-void MetricsCollector::HandleResume(int num_suspend_attempts) {
-  SendMetric(kSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
-             kSuspendAttemptsMin, kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
+  last_suspend_was_hibernate_ = hibernated;
+  SendMetric(hibernated ? kHibernateAttemptsBeforeSuccessName
+                        : kSuspendAttemptsBeforeSuccessName,
+             num_suspend_attempts, kSuspendAttemptsMin, kSuspendAttemptsMax,
+             kSuspendAttemptsBuckets);
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
-  if (suspend_to_idle_)
+  if (suspend_to_idle_ && !hibernated)
     TrackS0ixResidency(false);
 }
 
-void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
-  SendMetric(kSuspendAttemptsBeforeCancelName, num_suspend_attempts,
-             kSuspendAttemptsMin, kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts,
+                                                    bool hibernate) {
+  SendMetric(hibernate ? kHibernateAttemptsBeforeCancelName
+                       : kSuspendAttemptsBeforeCancelName,
+             num_suspend_attempts, kSuspendAttemptsMin, kSuspendAttemptsMax,
+             kSuspendAttemptsBuckets);
 }
 
 void MetricsCollector::GenerateDarkResumeMetrics(
@@ -506,7 +512,9 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   if (discharge_rate_watts < 0.0)
     return;
 
-  SendMetric(kBatteryDischargeRateWhileSuspendedName,
+  SendMetric(last_suspend_was_hibernate_
+                 ? kBatteryDischargeRateWhileHibernatedName
+                 : kBatteryDischargeRateWhileSuspendedName,
              static_cast<int>(round(discharge_rate_watts * 1000)),
              kBatteryDischargeRateWhileSuspendedMin,
              kBatteryDischargeRateWhileSuspendedMax, kDefaultDischargeBuckets);

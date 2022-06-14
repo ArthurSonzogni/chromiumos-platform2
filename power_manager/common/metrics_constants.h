@@ -26,7 +26,9 @@ extern const int kDefaultBuckets;
 extern const int kDefaultDischargeBuckets;
 
 extern const char kSuspendAttemptsBeforeSuccessName[];
+extern const char kHibernateAttemptsBeforeSuccessName[];
 extern const char kSuspendAttemptsBeforeCancelName[];
+extern const char kHibernateAttemptsBeforeCancelName[];
 extern const int kSuspendAttemptsMin;
 extern const int kSuspendAttemptsMax;
 extern const int kSuspendAttemptsBuckets;
@@ -59,6 +61,7 @@ extern const int kBatteryDischargeRateMax;
 extern const base::TimeDelta kBatteryDischargeRateInterval;
 
 extern const char kBatteryDischargeRateWhileSuspendedName[];
+extern const char kBatteryDischargeRateWhileHibernatedName[];
 extern const int kBatteryDischargeRateWhileSuspendedMin;
 extern const int kBatteryDischargeRateWhileSuspendedMax;
 extern const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend;

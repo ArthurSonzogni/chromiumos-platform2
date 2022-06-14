@@ -18,8 +18,12 @@ const int kDefaultDischargeBuckets = 100;
 
 const char kSuspendAttemptsBeforeSuccessName[] =
     "Power.SuspendAttemptsBeforeSuccess";
+const char kHibernateAttemptsBeforeSuccessName[] =
+    "Power.HibernateAttemptsBeforeSuccess";
 const char kSuspendAttemptsBeforeCancelName[] =
     "Power.SuspendAttemptsBeforeCancel";
+const char kHibernateAttemptsBeforeCancelName[] =
+    "Power.HibernateAttemptsBeforeCancel";
 const int kSuspendAttemptsMin = 1;
 const int kSuspendAttemptsMax = 20;
 const int kSuspendAttemptsBuckets =
@@ -55,6 +59,8 @@ const base::TimeDelta kBatteryDischargeRateInterval = base::Seconds(30);
 
 const char kBatteryDischargeRateWhileSuspendedName[] =
     "Power.BatteryDischargeRateWhileSuspended";  // mW
+const char kBatteryDischargeRateWhileHibernatedName[] =
+    "Power.BatteryDischargeRateWhileHibernated";  // mW
 const int kBatteryDischargeRateWhileSuspendedMin = 1;
 const int kBatteryDischargeRateWhileSuspendedMax = 5000;
 const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend =

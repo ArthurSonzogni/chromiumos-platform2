@@ -92,12 +92,13 @@ class MetricsCollector {
 
   // Called at the end of a successful suspend request. |num_suspend_attempts|
   // contains the number of attempts up to and including the one in which the
-  // system successfully suspended.
-  void HandleResume(int num_suspend_attempts);
+  // system successfully suspended. |hibernated| indicates whether or not the
+  // system suspended to disk (true) or RAM (false).
+  void HandleResume(int num_suspend_attempts, bool hibernated);
 
   // Called after a suspend request (that is, a series of one or more suspend
   // attempts performed in response to e.g. the lid being closed) is canceled.
-  void HandleCanceledSuspendRequest(int num_suspend_attempts);
+  void HandleCanceledSuspendRequest(int num_suspend_attempts, bool hibernate);
 
   // Called after a suspend request has completed (successfully or not).
   // Generates UMA metrics for dark resume.  The size of |wake_durations| is the
@@ -232,6 +233,9 @@ class MetricsCollector {
 
   // Idle duration as of the last idle event.
   base::TimeDelta last_idle_timedelta_;
+
+  // Notes if the most recent suspend attempt was a hibernation or not.
+  bool last_suspend_was_hibernate_ = false;
 
   // Timestamps of the last idle-triggered power state transitions.
   base::TimeTicks screen_dim_timestamp_;
