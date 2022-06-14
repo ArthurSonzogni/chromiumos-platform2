@@ -202,6 +202,15 @@ chromeos:
               image-name: "some2"
               build-targets:
                 zephyr-ec: "experimental/some2"
+        - $sku-id: 3
+          config:
+            <<: *some_config
+            firmware:
+              # if image-name is present, then coreboot build-target is not
+              # required to be present
+              image-name: "some2_custom"
+              build-targets:
+                zephyr-ec: "experimental/some2"
     - $name: "another"
       products:
         - $key-id: "ANOTHER"

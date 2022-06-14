@@ -208,6 +208,7 @@ class CrosConfigHostTest(unittest.TestCase):
                 ("badrecovery2", ["badrecovery2", "badrecovery2"]),
                 ("some", ["some", "some"]),
                 ("some2", [None, None]),
+                ("some2_custom", [None, None]),
             ]
         )
         result = config.GetFirmwareBuildCombinations(
@@ -223,6 +224,7 @@ class CrosConfigHostTest(unittest.TestCase):
                 ("badrecovery2", [None]),
                 ("some", [None]),
                 ("some2", ["experimental/some2"]),
+                ("some2_custom", ["experimental/some2"]),
             ]
         )
         result = config.GetFirmwareBuildCombinations(["zephyr-ec"])
@@ -506,6 +508,23 @@ class CrosConfigHostTest(unittest.TestCase):
                     ),
                 ),
                 (
+                    "some2_custom",
+                    FirmwareInfo(
+                        model="some2_custom",
+                        shared_model="some2_custom",
+                        key_id="SOME",
+                        have_image=True,
+                        bios_build_target=None,
+                        ec_build_target="experimental/some2",
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        pd_image_uri="",
+                        sig_id="some2",
+                        brand_code="",
+                    ),
+                ),
+                (
                     "whitelabel",
                     FirmwareInfo(
                         model="whitelabel",
@@ -601,6 +620,7 @@ class CrosConfigHostTest(unittest.TestCase):
                 ),
             ],
             "some2": [],
+            "some2_custom": [],
         }
 
         result = CrosConfig(self.filepath).GetFirmwareConfigs()
@@ -611,6 +631,7 @@ class CrosConfigHostTest(unittest.TestCase):
         expected = {
             "some": "some",
             "some2": "some2",
+            "some2_custom": "some2_custom",
             "another": "another",
             "whitelabel": "some",
             "whitelabel-whitelabel1": "some",
@@ -633,6 +654,7 @@ class CrosConfigHostTest(unittest.TestCase):
             ),
             "some": DeviceSignerInfo(key_id="SOME", sig_id="some"),
             "some2": DeviceSignerInfo(key_id="SOME", sig_id="some2"),
+            "some2_custom": DeviceSignerInfo(key_id="SOME", sig_id="some2"),
             "whitelabel": DeviceSignerInfo(
                 key_id="WHITELABEL1", sig_id="sig-id-in-customization-id"
             ),

@@ -73,7 +73,9 @@ def WriteIdentityStruct(config, output_file):
     # Write each of the entry structs.
     for device_config in device_configs:
         identity_info = device_config.get("identity", {})
-        firmware_manifest_key = device_config["name"]
+        firmware_manifest_key = device_config.get("firmware", {}).get(
+            "image-name", device_config["name"]
+        )
         flags = 0
         sku_id = 0
         if "sku-id" in identity_info:

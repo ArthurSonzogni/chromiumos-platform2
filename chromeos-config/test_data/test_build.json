@@ -404,6 +404,112 @@
         "wallpaper": "some"
       },
       {
+        "arc": {
+          "build-properties": {
+            "device": "some2_cheets",
+            "metrics-tag": "abc123",
+            "product": "some2"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "some2",
+            "files": [
+              {
+                "destination": "/etc/cras/some2/a-card",
+                "source": "cras-config/some2/a-card"
+              },
+              {
+                "destination": "/etc/cras/some2/dsp.ini",
+                "source": "cras-config/some2/dsp.ini"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/a-card.some2/HiFi.conf",
+                "source": "ucm-config/a-card.some2/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/a-card.some2/a-card.some2.conf",
+                "source": "ucm-config/a-card.some2/a-card.some2.conf"
+              },
+              {
+                "destination": "/lib/firmware/some-tplg.bin",
+                "source": "topology/some-tplg.bin"
+              }
+            ],
+            "ucm-suffix": "some2"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "demo-mode": {
+          "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
+          "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "build-targets": {
+            "zephyr-ec": "experimental/some2"
+          },
+          "image-name": "some2_custom"
+        },
+        "firmware-signing": {
+          "key-id": "SOME",
+          "signature-id": "some2"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "is-lid-convertible": true,
+          "recovery-input": "POWER_BUTTON"
+        },
+        "identity": {
+          "platform-name": "Some",
+          "sku-id": 3,
+          "smbios-name-match": "Some"
+        },
+        "modem": {
+          "attach-apn-required": true,
+          "firmware-variant": "some",
+          "wedge-reboot-delay-ms": "20000"
+        },
+        "name": "some2",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "some2"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        },
+        "wallpaper": "some"
+      },
+      {
         "audio": {
           "main": {
             "cras-config-dir": "another",

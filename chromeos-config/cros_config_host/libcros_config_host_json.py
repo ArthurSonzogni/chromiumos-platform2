@@ -188,16 +188,26 @@ class CrosConfigJson(CrosConfigBaseImpl):
             fw = config.GetFirmwareConfig()
             # For partial configs (public vs private), we need to support the name
             # for cases where identity isn't specified.
-            identity = config.GetName() + str(config.GetProperties("/identity"))
             brand_code = config.GetProperty("/", "brand-code")
-            if fw and identity not in processed:
+            if fw:
+                image_name = fw.get("image-name")
+                name = config.GetName()
+                identity = (
+                    name,
+                    image_name,
+                    str(config.GetProperties("/identity")),
+                )
+                if identity in processed:
+                    continue
+
+                firmware_name = image_name or name
+
                 fw_str = str(fw)
-                shared_model = None
                 if fw_str not in fw_by_model:
-                    # Use the explict name of the firmware, else use the device name
-                    # This supports equivalence testing with DT since it allowed
-                    # naming firmware images.
-                    fw_by_model[fw_str] = fw.get("name", config.GetName())
+                    # Use the explicit name of the firmware, else use the
+                    # calculated firmware name. This supports equivalence
+                    # testing with DT since it allowed naming firmware images.
+                    fw_by_model[fw_str] = fw.get("name", firmware_name)
 
                 shared_model = fw_by_model[fw_str]
 
@@ -226,7 +236,6 @@ class CrosConfigJson(CrosConfigBaseImpl):
                 )
 
                 have_image = True
-                name = config.GetName()
 
                 if sig_in_customization_id:
                     sig_id = "sig-id-in-customization-id"
@@ -236,7 +245,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                     processed.add(identity)
 
                 info = FirmwareInfo(
-                    name,
+                    firmware_name,
                     shared_model,
                     key_id,
                     have_image,
@@ -249,7 +258,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                     sig_id,
                     brand_code,
                 )
-                config.firmware_info[name] = info
+                config.firmware_info[firmware_name] = info
 
                 if sig_in_customization_id:
                     for wl_config in self._configs:
@@ -260,7 +269,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                             wl_identity_str = str(
                                 wl_config.GetProperties("/identity")
                             )
-                            wl_identity = wl_config.GetName() + wl_identity_str
+                            wl_identity = name, image_name, wl_identity_str
                             processed.add(wl_identity)
                             fw_signer_config = wl_config.GetProperties(
                                 "/firmware-signing"
