@@ -5,6 +5,7 @@
 #ifndef CRASH_REPORTER_UTIL_H_
 #define CRASH_REPORTER_UTIL_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -177,6 +178,12 @@ base::FilePath GetPathToThisBinary(const char* const argv[]);
 // reports together whenever digests are present in the crash's unique
 // signature.
 bool RedactDigests(std::string* to_filter);
+
+// Given the path to a Chrome metadata.json file, parse out the Chrome version
+// in the file. Return std::nullopt and logs error message on error, otherwise
+// return the version as a string.
+std::optional<std::string> ExtractChromeVersionFromMetadata(
+    const base::FilePath& metadata_path);
 
 }  // namespace util
 

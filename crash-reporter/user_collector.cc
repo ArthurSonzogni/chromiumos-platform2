@@ -648,6 +648,15 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
     // browser process.
     AddCrashMetaUploadData(kChromeProcessTypeKey,
                            kChromeProcessTypeBrowserValue);
+    // Get the Chrome version if we can, so that the crashes show up correctly
+    // on the "crashes in the latest dev release" dashboards.
+    base::FilePath chrome_metadata_path =
+        exec_directory.Append("metadata.json");
+    if (std::optional<std::string> version_maybe =
+            util::ExtractChromeVersionFromMetadata(chrome_metadata_path);
+        version_maybe) {
+      AddCrashMetaUploadData("ver", *version_maybe);
+    }
 
     // TODO(b/234500620): We should also check for crash-loop mode and activate
     // it here if appropriate. Otherwise we risk losing crashes if there's an

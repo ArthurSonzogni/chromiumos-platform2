@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <brillo/process/process.h>
 
+#include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
 namespace arc_util {
@@ -21,7 +22,7 @@ namespace {
 
 constexpr char kUnknownValue[] = "unknown";
 
-const char kChromePath[] = "/opt/google/chrome/chrome";
+constexpr char kChromeDirectory[] = "/opt/google/chrome";
 
 bool HasExceptionInfo(const std::string& type) {
   static const std::unordered_set<std::string> kTypes = {
@@ -189,18 +190,15 @@ std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
 }
 
 bool GetChromeVersion(std::string* version) {
-  brillo::ProcessImpl chrome;
-  chrome.AddArg(kChromePath);
-  chrome.AddArg("--product-version");
-
-  int exit_code = util::RunAndCaptureOutput(&chrome, STDOUT_FILENO, version);
-  if (exit_code != EX_OK || version->empty()) {
-    LOG(ERROR) << "Failed to get Chrome version";
-    return false;
+  base::FilePath chrome_metadata_path =
+      paths::Get(kChromeDirectory).Append("metadata.json");
+  if (std::optional<std::string> version_maybe =
+          util::ExtractChromeVersionFromMetadata(chrome_metadata_path);
+      version_maybe) {
+    *version = *version_maybe;
+    return true;
   }
-
-  version->pop_back();  // Discard EOL.
-  return true;
+  return false;
 }
 
 std::string GetProductVersion() {

@@ -22,6 +22,7 @@
 #include <libcrossystem/crossystem_fake.h>
 #include <brillo/process/process.h>
 #include <brillo/streams/memory_stream.h>
+#include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -41,6 +42,12 @@
 
 namespace util {
 namespace {
+
+using ::testing::AllOf;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::Optional;
+using ::testing::StrEq;
 
 constexpr char kLsbReleaseContents[] =
     "CHROMEOS_RELEASE_BOARD=bob\n"
@@ -675,6 +682,132 @@ TEST_F(CrashCommonUtilTest, RedactDigests) {
     EXPECT_EQ(RedactDigests(&input), ret);
     EXPECT_EQ(input, expected);
   }
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_Success) {
+  constexpr char kChromeMetadata[] =
+      R"--({
+  "content": {
+    "version": "104.0.5106.0"
+  },
+  "metadata_version": 1
+})--";
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, kChromeMetadata));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Optional(StrEq("104.0.5106.0")));
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_NoSuchFile) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(brillo::GetLog(),
+              HasSubstr("Could not read Chrome metadata file"));
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_NotJSON) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, "Not JSON data"));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(brillo::GetLog(),
+              AllOf(HasSubstr("Error parsing Chrome metadata file"),
+                    HasSubstr("as JSON")));
+}
+
+TEST_F(CrashCommonUtilTest,
+       ExtractChromeVersionFromMetadata_NotOuterDictionary) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, R"("104.0.5106.0")"));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(
+      brillo::GetLog(),
+      AllOf(
+          HasSubstr("Error parsing Chrome metadata file"),
+          HasSubstr(
+              "expected outermost value to be a DICTIONARY but got a string")));
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_NoContent) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  constexpr char kChromeMetadata[] =
+      R"--({
+  "metadata_version": 2,
+  "someotherwayofgettingversion": {
+    "something": "104.0.5106.0"
+  }
+})--";
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, kChromeMetadata));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(brillo::GetLog(),
+              AllOf(HasSubstr("Error parsing Chrome metadata file"),
+                    HasSubstr("could not find 'content' key")));
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_ContentNotDict) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  constexpr char kChromeMetadata[] =
+      R"--({
+  "metadata_version": 2,
+  "content": "104.0.5106.0"
+})--";
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, kChromeMetadata));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(brillo::GetLog(),
+              AllOf(HasSubstr("Error parsing Chrome metadata file"),
+                    HasSubstr("content is not a DICT but instead a string")));
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_NoVersion) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  constexpr char kChromeMetadata[] =
+      R"--({
+  "metadata_version": 2,
+  "content": {
+    "chrome_version": "104.0.5106.0"
+  }
+})--";
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, kChromeMetadata));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(brillo::GetLog(),
+              AllOf(HasSubstr("Error parsing Chrome metadata file"),
+                    HasSubstr("could not find 'version' key")));
+}
+
+TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_VersionNotString) {
+  brillo::ClearLog();
+  base::FilePath metadata_path = test_dir_.Append("metadata.json");
+  constexpr char kChromeMetadata[] =
+      R"--({
+  "metadata_version": 2,
+  "content": {
+    "version": 104
+  }
+})--";
+  ASSERT_TRUE(test_util::CreateFile(metadata_path, kChromeMetadata));
+
+  EXPECT_THAT(ExtractChromeVersionFromMetadata(metadata_path),
+              Eq(std::nullopt));
+  EXPECT_THAT(brillo::GetLog(),
+              AllOf(HasSubstr("Error parsing Chrome metadata file"),
+                    HasSubstr("version is not a string but instead a int")));
 }
 
 }  // namespace util

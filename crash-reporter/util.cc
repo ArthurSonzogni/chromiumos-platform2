@@ -22,8 +22,10 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/values.h>
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
@@ -652,6 +654,63 @@ bool RedactDigests(std::string* to_filter) {
   static constexpr const LazyRE2 digest_re = {
       R"((^|[^0-9a-fA-F])(?:[0-9a-fA-F]{32,})([^0-9a-fA-F]|$))"};
   return re2::RE2::Replace(to_filter, *digest_re, R"(\1<Redacted Digest>\2)");
+}
+
+std::optional<std::string> ExtractChromeVersionFromMetadata(
+    const base::FilePath& metadata_path) {
+  // Arbitrary max, just for safety. The json file should be under a kilobyte.
+  constexpr size_t kMaxSize = 128 * 1024;
+  std::string raw_metadata;
+  if (!ReadFileToStringWithMaxSize(metadata_path, &raw_metadata, kMaxSize)) {
+    PLOG(ERROR) << "Could not read Chrome metadata file "
+                << metadata_path.value() << ": ";
+    return std::nullopt;
+  }
+
+  base::JSONReader::ValueWithError parsed_metadata =
+      base::JSONReader::ReadAndReturnValueWithError(raw_metadata);
+
+  if (!parsed_metadata.value) {
+    LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
+               << " as JSON: " << parsed_metadata.error_message;
+    return std::nullopt;
+  }
+
+  if (!parsed_metadata.value->is_dict()) {
+    LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
+               << ": expected outermost value to be a DICTIONARY but got a "
+               << base::Value::GetTypeName(parsed_metadata.value->type());
+    return std::nullopt;
+  }
+
+  const base::Value* content = parsed_metadata.value->FindKey("content");
+  if (content == nullptr) {
+    LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
+               << ": could not find 'content' key";
+    return std::nullopt;
+  }
+  if (!content->is_dict()) {
+    LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
+               << ": content is not a DICT but instead a "
+               << base::Value::GetTypeName(content->type());
+    return std::nullopt;
+  }
+  const base::Value* version = content->FindKey("version");
+  if (version == nullptr) {
+    LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
+               << ": could not find 'version' key";
+    return std::nullopt;
+  }
+
+  const std::string* version_string = version->GetIfString();
+  if (version_string == nullptr) {
+    LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
+               << ": version is not a string but instead a "
+               << base::Value::GetTypeName(version->type());
+    return std::nullopt;
+  }
+
+  return *version_string;
 }
 
 }  // namespace util
