@@ -98,6 +98,7 @@ dump_stats_and_exit() {
                               ($(get_success_count) - initial_successes) ))"
   echo "Wakealarm errors: ${wakealarm_errors}"
   echo "Firmware log errors: ${firmware_errors}"
+  echo "EC detected AP suspend errors: ${ec_suspend_errors}"
 
   if [ "${check_s0ix_errors}" = 1 ]; then
     echo "s0ix errors: ${s0ix_errors}"
@@ -225,6 +226,7 @@ stop tlsdated
 
 cur=0
 wakealarm_errors=0
+ec_suspend_errors=0
 firmware_errors=0
 s0ix_errors=0
 s2idle_errors=0
@@ -366,8 +368,8 @@ while true; do
       record_dmesg_for_iteration ${cur}
     fi
   elif [ "$(($(get_ec_resume_result) & 0x80000000))" -ne 0 ]; then
-    echo "EC reported S0ix failure: $(get_ec_resume_result)"
-    : $(( s0ix_errors += 1 ))
+    echo "EC detected AP suspend error: $(get_ec_resume_result)"
+    : $(( ec_suspend_errors += 1 ))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       exit_loop=1
     elif [ -n "${FLAGS_record_dmesg_dir}" ]; then
