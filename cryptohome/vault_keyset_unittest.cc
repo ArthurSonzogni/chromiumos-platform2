@@ -1048,13 +1048,12 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
-  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
 
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false,
-                          "unused", std::nullopt,
+                          "unused", /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.reset_seed_};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
@@ -1084,7 +1083,30 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'), false, "unused",
-                          std::nullopt, reset_seed};
+                          /*reset_secret*/ std::nullopt,
+                          pin_vault_keyset_.GetResetSeed()};
+  KeyBlobs key_blobs;
+  AuthBlockState auth_state;
+  CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
+  ASSERT_FALSE(status.ok());
+
+  EXPECT_FALSE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+}
+
+TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _)).Times(0);
+
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
+  pin_vault_keyset_.SetLowEntropyCredential(true);
+
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+
+  AuthInput auth_input = {brillo::SecureBlob(44, 'A'), false, "unused",
+                          /*reset_secret*/ std::nullopt,
+                          /*reset_seed*/ std::nullopt};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
   CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
