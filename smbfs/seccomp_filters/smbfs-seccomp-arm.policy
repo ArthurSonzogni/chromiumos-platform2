@@ -105,6 +105,7 @@ setsockopt: 1
 set_tid_address: 1
 ARM_set_tls: 1
 signalfd4: 1
+sigreturn: 1
 # Samba uses the getifaddrs() libc function to enumerate network interfaces,
 # which is implemented using netlink in glibc:
 # https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/ifaddrs.c;hb=d93769405996dfc11d216ddbe415946617b5a494#l258
