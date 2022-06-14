@@ -19,33 +19,33 @@ struct AuthBlockFlags {
   AuthBlockType auth_block_type;
 };
 
-constexpr AuthBlockFlags kPinWeaverFlags = {
+inline constexpr AuthBlockFlags kPinWeaverFlags = {
     .require_flags = SerializedVaultKeyset::LE_CREDENTIAL,
     .refuse_flags = 0,
     .auth_block_type = AuthBlockType::kPinWeaver,
 };
 
-constexpr AuthBlockFlags kChallengeCredentialFlags = {
+inline constexpr AuthBlockFlags kChallengeCredentialFlags = {
     .require_flags = SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED,
     .refuse_flags = 0,
     .auth_block_type = AuthBlockType::kChallengeCredential,
 };
 
-constexpr AuthBlockFlags kDoubleWrappedCompatFlags = {
+inline constexpr AuthBlockFlags kDoubleWrappedCompatFlags = {
     .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED |
                      SerializedVaultKeyset::TPM_WRAPPED,
     .refuse_flags = 0,
     .auth_block_type = AuthBlockType::kDoubleWrappedCompat,
 };
 
-constexpr AuthBlockFlags kLibScryptCompatFlags = {
+inline constexpr AuthBlockFlags kLibScryptCompatFlags = {
     .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
     .refuse_flags = SerializedVaultKeyset::TPM_WRAPPED |
                     SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED,
     .auth_block_type = AuthBlockType::kLibScryptCompat,
 };
 
-constexpr AuthBlockFlags kTpmNotBoundToPcrFlags = {
+inline constexpr AuthBlockFlags kTpmNotBoundToPcrFlags = {
     .require_flags = SerializedVaultKeyset::TPM_WRAPPED,
     .refuse_flags = SerializedVaultKeyset::SCRYPT_WRAPPED |
                     SerializedVaultKeyset::PCR_BOUND |
@@ -53,7 +53,7 @@ constexpr AuthBlockFlags kTpmNotBoundToPcrFlags = {
     .auth_block_type = AuthBlockType::kTpmNotBoundToPcr,
 };
 
-constexpr AuthBlockFlags kTpmBoundToPcrFlags = {
+inline constexpr AuthBlockFlags kTpmBoundToPcrFlags = {
     .require_flags =
         SerializedVaultKeyset::TPM_WRAPPED | SerializedVaultKeyset::PCR_BOUND,
     .refuse_flags =
@@ -61,7 +61,7 @@ constexpr AuthBlockFlags kTpmBoundToPcrFlags = {
     .auth_block_type = AuthBlockType::kTpmBoundToPcr,
 };
 
-constexpr AuthBlockFlags kTpmEccFlags = {
+inline constexpr AuthBlockFlags kTpmEccFlags = {
     .require_flags = SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::SCRYPT_DERIVED |
                      SerializedVaultKeyset::PCR_BOUND |

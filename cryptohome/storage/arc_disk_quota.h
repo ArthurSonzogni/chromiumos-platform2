@@ -20,15 +20,16 @@ namespace cryptohome {
 
 // This is the constant that is usually fed to the |home| parameter in
 // ArcDiskQuota's constructor.
-constexpr char kArcDiskHome[] = "/home/chronos/user";
+inline constexpr char kArcDiskHome[] = "/home/chronos/user";
 
 // Used for constructing the target path for SetProjectId().
-constexpr char kUserDownloadsDir[] = "MyFiles/Downloads";
-constexpr char kAndroidDataDir[] = "android-data";
+inline constexpr char kUserDownloadsDir[] = "MyFiles/Downloads";
+inline constexpr char kAndroidDataDir[] = "android-data";
 
 // SELinux context of Android media files.
-constexpr std::array<const char*, 4> kMediaRWDataFileSELinuxContextTokens = {
-    "u", "object_r", "media_rw_data_file", "s0"};
+inline constexpr std::array<const char*, 4>
+    kMediaRWDataFileSELinuxContextTokens = {"u", "object_r",
+                                            "media_rw_data_file", "s0"};
 
 // This class handles quota-related query from ARC++, and only designed to be
 // called from within the container. The main reason is that IsQuotaSupported

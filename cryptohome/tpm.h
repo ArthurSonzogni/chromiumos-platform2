@@ -37,17 +37,17 @@ class LECredentialBackend;
 class SignatureSealingBackend;
 class Tpm;
 
-constexpr uint32_t kNotBoundToPCR = UINT32_MAX;
-constexpr uint32_t kTpmBootPCR = 0;
+inline constexpr uint32_t kNotBoundToPCR = UINT32_MAX;
+inline constexpr uint32_t kTpmBootPCR = 0;
 
 // The PCR index used to restrict the device to access to a single user data.
 #if USE_TPM_DYNAMIC
-constexpr uint32_t kTpmSingleUserPCR = 11;
+inline constexpr uint32_t kTpmSingleUserPCR = 11;
 #else
-constexpr uint32_t kTpmSingleUserPCR = 4;
+inline constexpr uint32_t kTpmSingleUserPCR = 4;
 #endif
 
-const char kDefaultPcrValue[32] = {0};
+inline constexpr char kDefaultPcrValue[32] = {0};
 
 // Specifies what the key can be used for.
 enum class AsymmetricKeyUsage { kDecryptKey, kSignKey, kDecryptAndSignKey };

@@ -17,9 +17,9 @@ namespace cryptohome {
 
 // Constants used to define the hash tree. Currently we place them here,
 // since they are used between LECredentialManager and LECredentialBackend.
-const uint32_t kLengthLabels = 14;
-const uint32_t kNumChildren = 4;
-const uint32_t kBitsPerLevel = 2;
+inline constexpr uint32_t kLengthLabels = 14;
+inline constexpr uint32_t kNumChildren = 4;
+inline constexpr uint32_t kBitsPerLevel = 2;
 
 // Enum used to denote the LE log entry type.
 enum LELogEntryType {

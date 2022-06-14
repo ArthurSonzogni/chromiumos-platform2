@@ -60,12 +60,12 @@ extern const std::vector<std::string> kDefaultExt4FormatOpts;
 extern const char kLoopPrefix[];
 
 // IDs of necessary groups and users
-constexpr uid_t kRootUid = 0;
-constexpr gid_t kRootGid = 0;
-constexpr gid_t kDaemonStoreGid = 400;
-constexpr uid_t kChronosUid = 1000;
-constexpr gid_t kChronosGid = 1000;
-constexpr gid_t kChronosAccessGid = 1001;
+inline constexpr uid_t kRootUid = 0;
+inline constexpr gid_t kRootGid = 0;
+inline constexpr gid_t kDaemonStoreGid = 400;
+inline constexpr uid_t kChronosUid = 1000;
+inline constexpr gid_t kChronosGid = 1000;
+inline constexpr gid_t kChronosAccessGid = 1001;
 
 // Decoded content of /proc/<id>/mountinfo file that has format:
 // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root .. // nocheck

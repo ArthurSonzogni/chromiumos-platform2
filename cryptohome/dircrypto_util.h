@@ -32,7 +32,7 @@ struct KeyReference {
 };
 
 // keyutils functions use -1 as the invalid key serial value.
-constexpr key_serial_t kInvalidKeySerial = -1;
+inline constexpr key_serial_t kInvalidKeySerial = -1;
 
 // Checks if the device supports fscrypt key add/remove ioctls.
 bool CheckFscryptKeyIoctlSupport();

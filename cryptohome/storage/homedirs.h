@@ -39,9 +39,9 @@
 namespace cryptohome {
 
 // The uid shift of ARC++ container.
-const uid_t kArcContainerShiftUid = 655360;
+inline constexpr uid_t kArcContainerShiftUid = 655360;
 // The gid shift of ARC++ container.
-const gid_t kArcContainerShiftGid = 655360;
+inline constexpr gid_t kArcContainerShiftGid = 655360;
 extern const char kAndroidCacheInodeAttribute[];
 extern const char kAndroidCodeCacheInodeAttribute[];
 extern const char kTrackedDirectoryNameAttribute[];

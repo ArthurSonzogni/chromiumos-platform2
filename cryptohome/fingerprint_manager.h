@@ -12,8 +12,9 @@
 
 namespace cryptohome {
 
-const char kCrosFpBiometricsManagerRelativePath[] = "/CrosFpBiometricsManager";
-const int kMaxFingerprintRetries = 5;
+inline constexpr char kCrosFpBiometricsManagerRelativePath[] =
+    "/CrosFpBiometricsManager";
+inline constexpr int kMaxFingerprintRetries = 5;
 
 enum class FingerprintScanStatus {
   SUCCESS = 0,

@@ -23,7 +23,7 @@
 
 namespace cryptohome {
 
-const char kLeafCacheFileName[] = "leafcache";
+inline constexpr char kLeafCacheFileName[] = "leafcache";
 
 // This class represents the hash tree which is used to store and manage the
 // various credentials used to access the system. It is used to represent

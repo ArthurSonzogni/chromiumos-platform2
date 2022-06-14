@@ -17,10 +17,10 @@ namespace cryptohome {
 
 // TODO(pmalani): Get max attempts from delay schedule.
 // Hard code max attempts at 5 for now.
-const int LE_MAX_INCORRECT_ATTEMPTS = 5;
+inline constexpr int LE_MAX_INCORRECT_ATTEMPTS = 5;
 
 // Number of entries the replay log can store.
-const int kFakeLogSize = 2;
+inline constexpr int kFakeLogSize = 2;
 
 // Wrapper around LELogEntry which stores extra data about the log entry used
 // by FakeLECredentialBackend.

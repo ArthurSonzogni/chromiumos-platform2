@@ -24,10 +24,12 @@
 namespace cryptohome {
 
 // Cleanup parameters in bytes.
-const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
-const int64_t kFreeSpaceThresholdToTriggerAggressiveCleanup = 768 * 1024 * 1024;
-const int64_t kFreeSpaceThresholdToTriggerCriticalCleanup = 512 * 1024 * 1024;
-const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
+inline constexpr int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
+inline constexpr int64_t kFreeSpaceThresholdToTriggerAggressiveCleanup =
+    768 * 1024 * 1024;
+inline constexpr int64_t kFreeSpaceThresholdToTriggerCriticalCleanup =
+    512 * 1024 * 1024;
+inline constexpr int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 
 class DiskCleanupRoutines;
 

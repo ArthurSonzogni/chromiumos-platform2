@@ -18,55 +18,55 @@ namespace fido_device {
 
 // Length of the U2F challenge parameter:
 // https://goo.gl/y75WrX#registration-request-message---u2f_register
-constexpr size_t kU2fChallengeParamLength = 32;
+inline constexpr size_t kU2fChallengeParamLength = 32;
 
 // Length of the U2F application parameter:
 // https://goo.gl/y75WrX#registration-request-message---u2f_register
-constexpr size_t kU2fApplicationParamLength = 32;
+inline constexpr size_t kU2fApplicationParamLength = 32;
 
 // Offset of the length of the U2F registration key handle:
 // https://goo.gl/y75WrX#registration-response-message-success
-constexpr size_t kU2fKeyHandleLengthOffset = 66;
+inline constexpr size_t kU2fKeyHandleLengthOffset = 66;
 
 // Offset of the U2F registration key handle:
 // https://goo.gl/y75WrX#registration-response-message-success
-constexpr size_t kU2fKeyHandleOffset = 67;
+inline constexpr size_t kU2fKeyHandleOffset = 67;
 
 // Length of the SHA-256 hash of the JSON-serialized client data:
 // https://www.w3.org/TR/webauthn/#collectedclientdata-hash-of-the-serialized-client-data
-constexpr size_t kClientDataHashLength = 32;
+inline constexpr size_t kClientDataHashLength = 32;
 
 // Length of the SHA-256 hash of the RP ID associated with the credential:
 // https://www.w3.org/TR/webauthn/#sec-authenticator-data
-constexpr size_t kRpIdHashLength = 32;
+inline constexpr size_t kRpIdHashLength = 32;
 
 // Max length for the user handle:
 // https://www.w3.org/TR/webauthn/#user-handle
-constexpr size_t kUserHandleMaxLength = 64;
+inline constexpr size_t kUserHandleMaxLength = 64;
 
 static_assert(kU2fApplicationParamLength == kRpIdHashLength,
               "kU2fApplicationParamLength must be equal to kRpIdHashLength.");
 
 // Length of the flags:
 // https://www.w3.org/TR/webauthn/#sec-authenticator-data
-constexpr size_t kFlagsLength = 1;
+inline constexpr size_t kFlagsLength = 1;
 
 // Length of the signature counter, 32-bit unsigned big-endian integer:
 // https://www.w3.org/TR/webauthn/#sec-authenticator-data
-constexpr size_t kSignCounterLength = 4;
+inline constexpr size_t kSignCounterLength = 4;
 
 // Length of the AAGUID of the authenticator:
 // https://www.w3.org/TR/webauthn/#sec-attested-credential-data
-constexpr size_t kAaguidLength = 16;
+inline constexpr size_t kAaguidLength = 16;
 
 // Length of the byte length L of Credential ID, 16-bit unsigned big-endian
 // integer: https://www.w3.org/TR/webauthn/#sec-attested-credential-data
-constexpr size_t kCredentialIdLengthLength = 2;
+inline constexpr size_t kCredentialIdLengthLength = 2;
 
 // Relevant LE Discoverable Mode bits. Reference:
 // Bluetooth Core Specification Supplement, Part A, section 1.3
-constexpr uint8_t kLeLimitedDiscoverableModeBit = 0;
-constexpr uint8_t kLeGeneralDiscoverableModeBit = 1;
+inline constexpr uint8_t kLeLimitedDiscoverableModeBit = 0;
+inline constexpr uint8_t kLeGeneralDiscoverableModeBit = 1;
 
 // Fido Service Data Flags as specified in
 // https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-client-to-authenticator-protocol-v2.0-id-20180227.html#ble-pairing-authnr-considerations
@@ -91,7 +91,7 @@ enum class ApplicationParameterType {
 };
 
 // String used as Relying Party ID to check for user presence.
-constexpr char kDummyRpID[] = ".dummy";
+inline constexpr char kDummyRpID[] = ".dummy";
 
 // String key values for CTAP request optional parameters and
 // AuthenticatorGetInfo response.
@@ -114,17 +114,17 @@ extern const char kUvTokenMapKey[];
 
 // U2F APDU encoding constants, as specified in
 // https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/fido-u2f-raw-message-formats-v1.2-ps-20170411.html#bib-U2FHeader
-constexpr size_t kU2fMaxResponseSize = 65536;
+inline constexpr size_t kU2fMaxResponseSize = 65536;
 
 // Control byte used for check-only setting. The check-only command is used to
 // determine if the provided key handle was originally created by this token
 // and whether it was created for the provided application parameter.
-constexpr uint8_t kP1CheckOnly = 0x07;
+inline constexpr uint8_t kP1CheckOnly = 0x07;
 
 // Indicates that an individual attestation certificate is acceptable to
 // return with this registration.
-constexpr uint8_t kP1IndividualAttestation = 0x80;
-constexpr size_t kMaxKeyHandleLength = 255;
+inline constexpr uint8_t kP1IndividualAttestation = 0x80;
+inline constexpr size_t kMaxKeyHandleLength = 255;
 
 // Maximum wait time before client error outs on device.
 extern const base::TimeDelta kDeviceTimeout;

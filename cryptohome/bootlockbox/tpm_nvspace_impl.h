@@ -23,12 +23,12 @@ struct BootLockboxNVSpace {
   uint16_t flags;
   uint8_t digest[SHA256_DIGEST_LENGTH];
 } __attribute__((packed));
-constexpr uint8_t kNVSpaceVersion = 1;
-constexpr uint32_t kNVSpaceSize = sizeof(BootLockboxNVSpace);
+inline constexpr uint8_t kNVSpaceVersion = 1;
+inline constexpr uint32_t kNVSpaceSize = sizeof(BootLockboxNVSpace);
 
 // Empty password is used for bootlockbox nvspace. Confidentiality
 // is not required and the nvspace is write locked after user logs in.
-constexpr char kWellKnownPassword[] = "";
+inline constexpr char kWellKnownPassword[] = "";
 
 // This class handles tpm operations to read, write, lock and define nv spaces.
 // Usage:

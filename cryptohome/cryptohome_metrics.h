@@ -418,23 +418,24 @@ const char kAttestationOriginSpecificIdentifiersExhausted[] =
 const char kCryptohomeDoubleMount[] = "Cryptohome.DoubleMountRequest";
 
 // Constants related to LE Credential UMA logging.
-constexpr char kLEOpResetTree[] = ".ResetTree";
-constexpr char kLEOpInsert[] = ".Insert";
-constexpr char kLEOpCheck[] = ".Check";
-constexpr char kLEOpReset[] = ".Reset";
-constexpr char kLEOpRemove[] = ".Remove";
-constexpr char kLEOpSync[] = ".Sync";
-constexpr char kLEActionLoadFromDisk[] = ".LoadFromDisk";
-constexpr char kLEActionBackend[] = ".Backend";
-constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";
-constexpr char kLEActionBackendGetLog[] = ".BackendGetLog";
-constexpr char kLEActionBackendReplayLog[] = ".BackendReplayLog";
+inline constexpr char kLEOpResetTree[] = ".ResetTree";
+inline constexpr char kLEOpInsert[] = ".Insert";
+inline constexpr char kLEOpCheck[] = ".Check";
+inline constexpr char kLEOpReset[] = ".Reset";
+inline constexpr char kLEOpRemove[] = ".Remove";
+inline constexpr char kLEOpSync[] = ".Sync";
+inline constexpr char kLEActionLoadFromDisk[] = ".LoadFromDisk";
+inline constexpr char kLEActionBackend[] = ".Backend";
+inline constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";
+inline constexpr char kLEActionBackendGetLog[] = ".BackendGetLog";
+inline constexpr char kLEActionBackendReplayLog[] = ".BackendReplayLog";
 
 // Attestation-related operations. Those are suffixes of the histogram
 // kAttestationStatusHistogramPrefix defined in the .cc file.
-constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
-constexpr char kAttestationMigrateDatabase[] = "MigrateDatabase";
-constexpr char kAttestationPrepareForEnrollment[] = "PrepareForEnrollment";
+inline constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
+inline constexpr char kAttestationMigrateDatabase[] = "MigrateDatabase";
+inline constexpr char kAttestationPrepareForEnrollment[] =
+    "PrepareForEnrollment";
 
 // Various counts for ReportVaultKeysetMetrics.
 struct VaultKeysetMetrics {

@@ -42,7 +42,7 @@ inline constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
 
 inline constexpr char kUserSecretStashDir[] = "user_secret_stash";
 inline constexpr char kUserSecretStashFileBase[] = "uss";
-constexpr int kUserSecretStashDefaultSlot = 0;
+inline constexpr int kUserSecretStashDefaultSlot = 0;
 inline constexpr char kAuthFactorsDir[] = "auth_factors";
 
 base::FilePath ShadowRoot();
