@@ -31,6 +31,7 @@ read: 1
 readlink: 1
 restart_syscall: 1
 rt_sigreturn: 1
+sigreturn: 1
 statx: 1
 uname: 1
 write: 1

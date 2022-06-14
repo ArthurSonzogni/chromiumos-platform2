@@ -63,6 +63,7 @@ setresgid32: 1
 setresuid32: 1
 setsid: 1
 signalfd4: 1
+sigreturn: 1
 socket: arg0 == AF_UNIX
 statx: 1
 ugetrlimit: 1
