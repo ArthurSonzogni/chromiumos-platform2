@@ -487,9 +487,9 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
           model_field, R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)",
           &model) ||
 
-      re2::RE2::PartialMatch(model_field,
-                             R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+) +@)",
-                             &model) ||
+      re2::RE2::PartialMatch(
+          model_field, R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+)(?: +@|$))",
+          &model) ||
 
       // This one is tricky because the trailing "@ <clock frequency>" is
       // optional.
