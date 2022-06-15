@@ -2547,10 +2547,13 @@ void UserDataAuth::CheckKey(
   const std::string obfuscated_username = credentials.GetObfuscatedUsername();
 
   bool found_valid_credentials = false;
-  for (const auto& session_pair : sessions_) {
-    if (session_pair.second->VerifyCredentials(credentials)) {
+  if (sessions_.count(account_id) != 0U) {
+    if (sessions_[account_id]->VerifyCredentials(credentials)) {
       found_valid_credentials = true;
-      break;
+    } else if (sessions_[account_id]->IsEphemeral()) {
+      std::move(on_done).Run(
+          user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+      return;
     }
   }
 

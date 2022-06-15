@@ -3483,6 +3483,21 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
+TEST_F(UserDataAuthExTest, CheckKeyEphemeralFailed) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+  SetupMount(kUser);
+
+  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*session_, VerifyCredentials(_)).WillOnce(Return(false));
+  EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(true));
+
+  CallCheckKeyAndVerify(
+      user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+}
+
 TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
