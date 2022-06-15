@@ -2241,6 +2241,32 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 }
 
+// Test that GetVaultKeysetLabelsAndData() ignores keysets without KeyData.
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataNoKeyData) {
+  constexpr char kFakeLabel[] = "legacy-123";
+  constexpr int kVaultFilePermissions = 0600;
+
+  // Setup a fake vk file, but we will not read the content.
+  platform_.WriteFileAtomicDurable(
+      users_[0].homedir_path.Append(kKeyFile).AddExtension("0"), brillo::Blob(),
+      kVaultFilePermissions);
+
+  auto mock_vk = new NiceMock<MockVaultKeyset>();
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
+  EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_vk, GetLabel()).WillRepeatedly(Return(kFakeLabel));
+
+  // Test
+  std::map<std::string, KeyData> labels_and_data_map;
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabelsAndData(
+      users_[0].obfuscated, &labels_and_data_map));
+  ASSERT_EQ(labels_and_data_map.size(), 1);
+  EXPECT_EQ(kFakeLabel, labels_and_data_map.begin()->first);
+  EXPECT_TRUE(labels_and_data_map.begin()->second.has_type());
+  EXPECT_EQ(KeyData::KEY_TYPE_PASSWORD,
+            labels_and_data_map.begin()->second.type());
+}
+
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 TEST_F(KeysetManagementTest, GetKeysetBoundTimestamp) {
   KeysetSetUpWithKeyData(DefaultKeyData());

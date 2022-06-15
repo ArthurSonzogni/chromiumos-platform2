@@ -125,6 +125,9 @@ class VaultKeyset {
   virtual void ClearKeyData();
   virtual const KeyData& GetKeyData() const;
 
+  // Gets the KeyData or return default value if it's empty.
+  virtual KeyData GetKeyDataOrDefault() const;
+
   // Gets the label from the KeyData.
   virtual std::string GetLabel() const;
 

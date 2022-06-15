@@ -163,7 +163,7 @@ AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
     LOG(ERROR) << "No keyset found for the label " << obfuscated_username;
     return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
-  out_vk_key_data = vk->GetKeyData();
+  out_vk_key_data = vk->GetKeyDataOrDefault();
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }

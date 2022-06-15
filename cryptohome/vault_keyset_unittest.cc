@@ -810,6 +810,46 @@ TEST_F(VaultKeysetTest, DecryptWithAuthBlockFailNotLoaded) {
   ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
+TEST_F(VaultKeysetTest, KeyData) {
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.SetLegacyIndex(0);
+  EXPECT_FALSE(vk.HasKeyData());
+
+  KeyData key_data = vk.GetKeyDataOrDefault();
+  EXPECT_TRUE(key_data.has_type());
+  EXPECT_TRUE(key_data.has_label());
+  EXPECT_EQ(key_data.type(), KeyData::KEY_TYPE_PASSWORD);
+  EXPECT_EQ(key_data.label(), "legacy-0");
+
+  KeyData key_data2;
+  key_data2.set_type(KeyData::KEY_TYPE_PASSWORD);
+  key_data2.set_label("pin");
+  vk.SetKeyData(key_data2);
+  vk.SetLowEntropyCredential(true);
+  ASSERT_TRUE(vk.HasKeyData());
+
+  KeyData key_data3 = vk.GetKeyData();
+  KeyData key_data4 = vk.GetKeyDataOrDefault();
+  EXPECT_EQ(key_data3.has_type(), key_data4.has_type());
+  EXPECT_EQ(key_data3.type(), key_data4.type());
+  EXPECT_EQ(key_data3.has_label(), key_data4.has_label());
+  EXPECT_EQ(key_data3.label(), key_data4.label());
+  EXPECT_EQ(key_data3.has_policy(), key_data4.has_policy());
+  EXPECT_EQ(key_data3.policy().has_low_entropy_credential(),
+            key_data4.policy().has_low_entropy_credential());
+  EXPECT_EQ(key_data3.policy().low_entropy_credential(),
+            key_data4.policy().low_entropy_credential());
+
+  EXPECT_TRUE(key_data3.has_type());
+  EXPECT_EQ(key_data3.type(), KeyData::KEY_TYPE_PASSWORD);
+  EXPECT_TRUE(key_data3.has_label());
+  EXPECT_EQ(key_data3.label(), "pin");
+  EXPECT_TRUE(key_data3.has_policy());
+  EXPECT_TRUE(key_data3.policy().has_low_entropy_credential());
+  EXPECT_TRUE(key_data3.policy().low_entropy_credential());
+}
+
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest() : crypto_(&tpm_, &cryptohome_keys_manager_) {

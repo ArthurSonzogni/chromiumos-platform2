@@ -298,7 +298,8 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
       LOG(INFO) << "Found a duplicate label, skipping it: " << vk->GetLabel();
       continue;
     }
-    key_label_data->insert({vk->GetLabel(), vk->GetKeyData()});
+
+    key_label_data->insert({vk->GetLabel(), vk->GetKeyDataOrDefault()});
   }
 
   return (key_label_data->size() > 0);

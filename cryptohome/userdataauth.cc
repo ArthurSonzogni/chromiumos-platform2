@@ -3066,7 +3066,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
       obfuscated_username, request.key().data().label()));
   *found = (vk != nullptr);
   if (*found) {
-    *data_out = vk->GetKeyData();
+    *data_out = vk->GetKeyDataOrDefault();
   }
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

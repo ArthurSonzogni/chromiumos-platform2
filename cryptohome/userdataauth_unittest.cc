@@ -3949,6 +3949,29 @@ TEST_F(UserDataAuthExTest, GetKeyDataExOneMatch) {
   // Request the single key by label.
   PrepareArguments();
 
+  get_key_data_req_->mutable_key()->mutable_data()->set_label("");
+  get_key_data_req_->mutable_account_id()->set_account_id(
+      "unittest@example.com");
+
+  auto vk = std::make_unique<VaultKeyset>();
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  cryptohome::KeyData keydata_out;
+  bool found = false;
+  EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  EXPECT_TRUE(found);
+  EXPECT_EQ(keydata_out.type(), KeyData::KEY_TYPE_PASSWORD);
+}
+
+TEST_F(UserDataAuthExTest, GetKeyDataExEmpty) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // Request the single key by label.
+  PrepareArguments();
+
   static const char* kExpectedLabel = "find-me";
   get_key_data_req_->mutable_key()->mutable_data()->set_label(kExpectedLabel);
   get_key_data_req_->mutable_account_id()->set_account_id(
