@@ -59,8 +59,13 @@ std::string GetDimEventString(metrics::DimEvent sample) {
   return base::StringPrintf("DimEvent-%d", sample);
 }
 
+// Return a string representation of LockEvent.
+std::string GetLockEventString(metrics::LockEvent sample) {
+  return base::StringPrintf("LockEvent-%d", sample);
+}
+
 // Return a string representation of event name and duration.
-std::string GetDimEventDurationString(const std::string& event_name,
+std::string GetHpsEventDurationString(const std::string& event_name,
                                       base::TimeDelta duration) {
   return base::StringPrintf("%s:%d", event_name.c_str(),
                             static_cast<int>(duration.InSeconds()));
@@ -78,8 +83,8 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void set_record_metrics_actions(bool record) {
     record_metrics_actions_ = record;
   }
-  void set_record_dim_event_metrics(bool record) {
-    record_dim_event_metrics_ = record;
+  void set_record_hps_event_metrics(bool record) {
+    record_hps_event_metrics_ = record;
   }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
@@ -121,14 +126,19 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
       AppendAction(kReportUserActivityMetrics);
   }
   void ReportDimEventMetrics(metrics::DimEvent sample) override {
-    if (record_dim_event_metrics_) {
+    if (record_hps_event_metrics_) {
       AppendAction(GetDimEventString(sample));
     }
   }
-  void ReportDimEventDurationMetrics(const std::string& event_name,
+  void ReportLockEventMetrics(metrics::LockEvent sample) override {
+    if (record_hps_event_metrics_) {
+      AppendAction(GetLockEventString(sample));
+    }
+  }
+  void ReportHpsEventDurationMetrics(const std::string& event_name,
                                      base::TimeDelta duration) override {
-    if (record_dim_event_metrics_) {
-      AppendAction(GetDimEventDurationString(event_name, duration));
+    if (record_hps_event_metrics_) {
+      AppendAction(GetHpsEventDurationString(event_name, duration));
     }
   }
 
@@ -138,9 +148,9 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   bool record_metrics_actions_ = false;
 
   // Should calls to ReportDimEventMetrics and
-  // ReportDimEventDurationMetrics be recorded in |actions_|? These are noisy,
+  // ReportHpsEventDurationMetrics be recorded in |actions_|? These are noisy,
   // so by default, they aren't recorded.
-  bool record_dim_event_metrics_ = false;
+  bool record_hps_event_metrics_ = false;
 
   // Should IsUsbInputDeviceConnected() return true?
   bool usb_input_device_connected_ = false;
@@ -2494,9 +2504,7 @@ TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
 
   const base::TimeDelta kTimeForward = base::Seconds(6);
 
-  delegate_.set_record_dim_event_metrics(true);
-  // Send Hps positive signal to enable HpsSense.
-  EmitHpsSignal(HpsResult::POSITIVE);
+  delegate_.set_record_hps_event_metrics(true);
 
   // Case (1) trigger a standard dim.
   const std::string standard_dim_event =
@@ -2504,7 +2512,13 @@ TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
   const std::string quick_dim_event =
       GetDimEventString(metrics::DimEvent::QUICK_DIM);
 
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  // We have to advance the timer then send POSITIVE signal in order to avoid
+  // a defer from HPS.
+  AdvanceTime(default_ac_screen_dim_delay_ - kTimeForward);
+  // Send Hps positive signal to enable HpsSense.
+  EmitHpsSignal(HpsResult::POSITIVE);
+
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kTimeForward));
   EXPECT_EQ(JoinActions(kScreenDim, standard_dim_event.c_str(), nullptr),
             delegate_.GetActions());
 
@@ -2512,7 +2526,7 @@ TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
   AdvanceTime(kTimeForward);
   controller_.HandleUserActivity();
   const std::string standard_dim_revert_duration_event =
-      GetDimEventDurationString(
+      GetHpsEventDurationString(
           metrics::kStandardDimDurationBeforeRevertedByUserSec, kTimeForward);
   EXPECT_EQ(JoinActions(kScreenUndim,
                         standard_dim_revert_duration_event.c_str(), nullptr),
@@ -2527,7 +2541,7 @@ TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
   AdvanceTime(kTimeForward);
   EmitHpsSignal(HpsResult::POSITIVE);
   const std::string quick_dim_revert_by_hps_duration_event =
-      GetDimEventDurationString(
+      GetHpsEventDurationString(
           metrics::kQuickDimDurationBeforeRevertedByHpsSec, kTimeForward);
   const std::string quick_dim_revert_by_hps_event =
       GetDimEventString(metrics::DimEvent::QUICK_DIM_REVERTED_BY_HPS);
@@ -2548,7 +2562,7 @@ TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
   AdvanceTime(kTimeForward);
   controller_.HandleUserActivity();
   std::string quick_dim_revert_by_user_duration_event =
-      GetDimEventDurationString(
+      GetHpsEventDurationString(
           metrics::kQuickDimDurationBeforeRevertedByUserSec, kTimeForward);
   const std::string quick_dim_revert_by_user_event =
       GetDimEventString(metrics::DimEvent::QUICK_DIM_REVERTED_BY_USER);
@@ -2566,7 +2580,7 @@ TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
             delegate_.GetActions());
   AdvanceTime(default_ac_screen_dim_delay_);
   controller_.HandleUserActivity();
-  quick_dim_revert_by_user_duration_event = GetDimEventDurationString(
+  quick_dim_revert_by_user_duration_event = GetHpsEventDurationString(
       metrics::kQuickDimDurationBeforeRevertedByUserSec,
       default_ac_screen_dim_delay_);
   const std::string quick_dim_revert_transite_event = GetDimEventString(
@@ -2720,6 +2734,11 @@ TEST_F(StateControllerTest, QuickLockAfterQuickDim) {
 TEST_F(StateControllerTest, QuickLockAfterStandardDim) {
   initial_power_source_ = PowerSource::BATTERY;
   Init();
+  delegate_.set_record_hps_event_metrics(true);
+  const std::string standard_dim_event =
+      GetDimEventString(metrics::DimEvent::STANDARD_DIM);
+  const std::string quick_lock_event =
+      GetLockEventString(metrics::LockEvent::QUICK_LOCK);
 
   const auto delta_quick_dim_to_standard_dim =
       default_battery_screen_dim_delay_ - default_battery_quick_dim_delay_ +
@@ -2730,12 +2749,14 @@ TEST_F(StateControllerTest, QuickLockAfterStandardDim) {
 
   // There is not enough delay for a quick dim, so a standard dim will happen.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, standard_dim_event.c_str(), nullptr),
+            delegate_.GetActions());
 
   // A quick lock will then happen.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_quick_lock_delay_ +
                                         delta_quick_dim_to_standard_dim));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenLock, quick_lock_event.c_str(), nullptr),
+            delegate_.GetActions());
 
   // A screen off will then happen.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_off_delay_));
@@ -2874,6 +2895,8 @@ TEST_F(StateControllerTest, NoDimDeferAfterkDeferDimmingTimeLimit) {
   default_ac_quick_lock_delay_ = base::Minutes(8);
 
   Init();
+  delegate_.set_record_hps_event_metrics(true);
+
   // Turn on the MLDecision Service.
   dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
 
@@ -2887,7 +2910,13 @@ TEST_F(StateControllerTest, NoDimDeferAfterkDeferDimmingTimeLimit) {
   // Next timeout should be scheduled at kDimImminentDelay for a dim defer
   // query. And there should be a defer caused by hps.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ("", delegate_.GetActions());
+
+  const std::string standard_dim_deferred_by_hps_event =
+      GetHpsEventDurationString(metrics::kStandardDimDeferredByHpsSec,
+                                kDimImminentDelay);
+
+  EXPECT_EQ(JoinActions(standard_dim_deferred_by_hps_event.c_str(), nullptr),
+            delegate_.GetActions());
 
   // Next timeout should be scheduled at kDimImminentDelay for a dim defer
   // query. But there will be no defer this time even if MLDecision service

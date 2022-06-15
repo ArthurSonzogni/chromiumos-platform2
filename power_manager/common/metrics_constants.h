@@ -143,11 +143,14 @@ extern const int kDarkResumeWakeDurationMsMax;
 extern const char kS0ixResidencyRateName[];
 
 extern const char kDimEvent[];
-extern const int kDimEventDurationMin;
-extern const int kDimEventDurationMax;
+extern const int kHpsEventDurationMin;
+extern const int kHpsEventDurationMax;
 extern const char kQuickDimDurationBeforeRevertedByHpsSec[];
 extern const char kQuickDimDurationBeforeRevertedByUserSec[];
 extern const char kStandardDimDurationBeforeRevertedByUserSec[];
+extern const char kStandardDimDeferredByHpsSec[];
+
+extern const char kLockEvent[];
 // Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,
@@ -192,6 +195,9 @@ enum class DimEvent {
   QUICK_DIM_REVERTED_BY_USER,
   MAX
 };
+
+// Values for lock event in StateController.
+enum class LockEvent { STANDARD_LOCK, QUICK_LOCK, MAX };
 
 // Values for unplug metrics for AdaptiveChargingController.
 enum class AdaptiveChargingState {

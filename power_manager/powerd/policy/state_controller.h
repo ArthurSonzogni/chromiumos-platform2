@@ -103,8 +103,11 @@ class StateController : public PrefsObserver {
     // Reports metrics when a dim/undim happens.
     virtual void ReportDimEventMetrics(metrics::DimEvent sample) = 0;
 
+    // Reports metrics when a quick/standard lock happens.
+    virtual void ReportLockEventMetrics(metrics::LockEvent sample) = 0;
+
     // Reports duration metrics when a dim/undim happens.
-    virtual void ReportDimEventDurationMetrics(const std::string& event_name,
+    virtual void ReportHpsEventDurationMetrics(const std::string& event_name,
                                                base::TimeDelta duration) = 0;
   };
 

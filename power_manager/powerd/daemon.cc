@@ -299,9 +299,13 @@ class Daemon::StateControllerDelegate
     daemon_->metrics_collector_->GenerateDimEventMetrics(sample);
   }
 
-  void ReportDimEventDurationMetrics(const std::string& event_name,
+  void ReportLockEventMetrics(metrics::LockEvent sample) override {
+    daemon_->metrics_collector_->GenerateLockEventMetrics(sample);
+  }
+
+  void ReportHpsEventDurationMetrics(const std::string& event_name,
                                      base::TimeDelta duration) override {
-    daemon_->metrics_collector_->GenerateDimEventDurationMetrics(event_name,
+    daemon_->metrics_collector_->GenerateHpsEventDurationMetrics(event_name,
                                                                  duration);
   }
 

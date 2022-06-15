@@ -118,8 +118,12 @@ class MetricsCollector {
   // Generates UMA metrics about dimming events.
   void GenerateDimEventMetrics(DimEvent sample);
 
-  // Generates UMA metrics about dimming events durations.
-  void GenerateDimEventDurationMetrics(const std::string& event_name,
+  // Generates UMA metrics about locking events.
+  void GenerateLockEventMetrics(LockEvent sample);
+
+  // Generates UMA metrics about Hps events (dimming, locking, deferring by Hps)
+  // durations.
+  void GenerateHpsEventDurationMetrics(const std::string& event_name,
                                        base::TimeDelta duration);
 
   // Generates UMA metric on number of Adaptive Charging Actives.

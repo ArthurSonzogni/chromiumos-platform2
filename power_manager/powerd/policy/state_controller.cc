@@ -1236,6 +1236,9 @@ void StateController::UpdateState() {
             kNTimesForHpsToDeferDimming * delays_.screen_dim) {
       last_defer_screen_dim_time_ = clock_->GetCurrentTime();
       LOG(INFO) << "StateController: screen dim is deferred by HPS.";
+      delegate_->ReportHpsEventDurationMetrics(
+          metrics::kStandardDimDeferredByHpsSec,
+          duration_since_last_activity_for_screen_dim);
     } else if (dim_advisor_.ReadyForSmartDimRequest(
                    now, delays_.screen_dim_imminent)) {
       // Ask for a SmartDimDecision which may also decide to defer the screen
@@ -1625,7 +1628,7 @@ void StateController::HandleDimWithHps(
       if (undim_for_hps) {
         // Undimmed by hps.
 
-        delegate_->ReportDimEventDurationMetrics(
+        delegate_->ReportHpsEventDurationMetrics(
             metrics::kQuickDimDurationBeforeRevertedByHpsSec,
             duration_since_last_dim);
         delegate_->ReportDimEventMetrics(
@@ -1635,12 +1638,12 @@ void StateController::HandleDimWithHps(
 
         if (quick_dim_ahead_.is_zero()) {
           // A standard dim was undimmed.
-          delegate_->ReportDimEventDurationMetrics(
+          delegate_->ReportHpsEventDurationMetrics(
               metrics::kStandardDimDurationBeforeRevertedByUserSec,
               duration_since_last_dim);
         } else {
           // A quick dim was undimmed.
-          delegate_->ReportDimEventDurationMetrics(
+          delegate_->ReportHpsEventDurationMetrics(
               metrics::kQuickDimDurationBeforeRevertedByUserSec,
               duration_since_last_dim);
           if (transitioned_to_standard_dim) {
@@ -1676,6 +1679,11 @@ void StateController::HandleScreenLockWithHps(
       delegate_->LockScreen();
       requested_screen_lock_ = true;
       last_lock_requested_time_ = now;
+      if (should_quick_lock) {
+        delegate_->ReportLockEventMetrics(metrics::LockEvent::QUICK_LOCK);
+      } else {
+        delegate_->ReportLockEventMetrics(metrics::LockEvent::STANDARD_LOCK);
+      }
     }
   } else if (GetLastActivityTimeForScreenLock(now) >=
              last_lock_requested_time_) {
