@@ -786,6 +786,7 @@ TEST_F(AttestationServiceBaseTest, SignSimpleChallengeInternalFailure) {
 
 TEST_F(AttestationServiceBaseTest, VerifyCertificateWithSubjectPublicKeyInfo) {
   std::string issuer = "Infineon OPTIGA(TM) TPM 2.0 ECC CA 055";
+  std::string issuer_with_multiple_keys = "CROS D2 CIK";
   std::string invalid_issuer = "INVALID ISSUER";
   std::string ek_cert = "";  // not used
 
@@ -805,6 +806,18 @@ TEST_F(AttestationServiceBaseTest, VerifyCertificateWithSubjectPublicKeyInfo) {
       .WillOnce(Return(false));
   EXPECT_FALSE(service_->VerifyCertificateWithSubjectPublicKeyInfo(
       issuer, false, ek_cert));
+
+  // Test issuer with multiple keys
+  EXPECT_CALL(mock_crypto_utility_, VerifyCertificateWithSubjectPublicKey)
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(service_->VerifyCertificateWithSubjectPublicKeyInfo(
+      issuer_with_multiple_keys, false, ek_cert));
+
+  EXPECT_CALL(mock_crypto_utility_, VerifyCertificateWithSubjectPublicKey)
+      .WillRepeatedly(Return(false));
+  EXPECT_FALSE(service_->VerifyCertificateWithSubjectPublicKeyInfo(
+      issuer_with_multiple_keys, false, ek_cert));
 
   // Test issuer that is not on the list
   EXPECT_CALL(mock_crypto_utility_, VerifyCertificateWithSubjectPublicKey)
