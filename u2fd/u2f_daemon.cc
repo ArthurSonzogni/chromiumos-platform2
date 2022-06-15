@@ -101,18 +101,16 @@ U2fDaemon::U2fDaemon(bool force_u2f,
                      bool force_g2f,
                      bool enable_corp_protocol,
                      bool g2f_allowlist_data,
-                     bool legacy_kh_fallback,
-                     uint32_t vendor_id,
-                     uint32_t product_id)
+                     bool legacy_kh_fallback)
     : brillo::DBusServiceDaemon(kU2FServiceName),
       force_u2f_(force_u2f),
       force_g2f_(force_g2f),
+      enable_corp_protocol_(enable_corp_protocol),
       g2f_allowlist_data_(g2f_allowlist_data),
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false) {
 #if USE_GSC
-  u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(
-      enable_corp_protocol, legacy_kh_fallback, vendor_id, product_id);
+  u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(legacy_kh_fallback);
 #endif  // USE_GSC
 }
 
@@ -198,7 +196,8 @@ int U2fDaemon::StartU2fHidService() {
     return EX_CONFIG;
   }
 
-  VLOG(1) << "Starting U2fHid service.";
+  LOG(INFO) << "Starting U2fHid service, enable_corp_protocol: "
+            << enable_corp_protocol_ << ".";
 
   // If g2f is enabled by policy, we always include allowlisting data.
   bool include_g2f_allowlist_data =
@@ -213,8 +212,9 @@ int U2fDaemon::StartU2fHidService() {
 
   return u2fhid_service_->CreateU2fHid(
              u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
-             include_g2f_allowlist_data, request_presence, user_state_.get(),
-             sm_proxy_.get(), &metrics_library_)
+             include_g2f_allowlist_data, enable_corp_protocol_,
+             request_presence, user_state_.get(), sm_proxy_.get(),
+             &metrics_library_)
              ? EX_OK
              : EX_PROTOCOL;
 }

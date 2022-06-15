@@ -34,9 +34,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
             bool force_g2f,
             bool enable_corp_protocol,
             bool g2f_allowlist_data,
-            bool legacy_kh_fallback,
-            uint32_t vendor_id,
-            uint32_t product_id);
+            bool legacy_kh_fallback);
   U2fDaemon(const U2fDaemon&) = delete;
   U2fDaemon& operator=(const U2fDaemon&) = delete;
 
@@ -82,6 +80,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   // U2F Behavior Flags
   const bool force_u2f_;
   const bool force_g2f_;
+  const bool enable_corp_protocol_;
   const bool g2f_allowlist_data_;
   const bool legacy_kh_fallback_;
 

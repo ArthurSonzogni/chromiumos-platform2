@@ -26,19 +26,15 @@ namespace {
 constexpr char kDeviceName[] = "Integrated U2F";
 constexpr char kKeyLabelEmk[] = "attest-ent-machine";
 
+constexpr uint32_t kDefaultVendorId = 0x18d1;
+constexpr uint32_t kDefaultProductId = 0x502c;
+constexpr uint32_t kCorpVendorId = 0x18d1;
+constexpr uint32_t kCorpProductId = 0x5212;
+
 }  // namespace
 
-U2fHidServiceImpl::U2fHidServiceImpl(bool enable_corp_protocol,
-                                     bool legacy_kh_fallback,
-                                     uint32_t vendor_id,
-                                     uint32_t product_id)
-    : legacy_kh_fallback_(legacy_kh_fallback),
-      vendor_id_(vendor_id),
-      product_id_(product_id) {
-  if (enable_corp_protocol) {
-    u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-  }
-}
+U2fHidServiceImpl::U2fHidServiceImpl(bool legacy_kh_fallback)
+    : legacy_kh_fallback_(legacy_kh_fallback) {}
 
 bool U2fHidServiceImpl::InitializeDBusProxies(dbus::Bus* bus) {
   if (!tpm_proxy_.Init()) {
@@ -61,14 +57,20 @@ bool U2fHidServiceImpl::InitializeDBusProxies(dbus::Bus* bus) {
 bool U2fHidServiceImpl::CreateU2fHid(
     bool allow_g2f_attestation,
     bool include_g2f_allowlisting_data,
+    bool enable_corp_protocol,
     std::function<void()> request_user_presence,
     UserState* user_state,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics) {
-  if (u2f_corp_processor_) {
+  if (enable_corp_protocol) {
+    u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
     u2f_corp_processor_->Initialize(sm_proxy, &tpm_proxy_,
                                     request_user_presence);
   }
+
+  uint32_t vendor_id = enable_corp_protocol ? kCorpVendorId : kDefaultVendorId;
+  uint32_t product_id =
+      enable_corp_protocol ? kCorpProductId : kDefaultProductId;
 
   std::unique_ptr<u2f::AllowlistingUtil> allowlisting_util;
 
@@ -83,7 +85,7 @@ bool U2fHidServiceImpl::CreateU2fHid(
       allow_g2f_attestation, u2f_corp_processor_.get());
 
   u2fhid_ = std::make_unique<u2f::U2fHid>(
-      std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
+      std::make_unique<u2f::UHidDevice>(vendor_id, product_id, kDeviceName,
                                         "u2fd-tpm-cr50"),
       u2f_msg_handler_.get(), u2f_corp_processor_.get());
 

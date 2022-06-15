@@ -30,6 +30,7 @@ class U2fHidService {
   virtual bool CreateU2fHid(
       bool allow_g2f_attestation,
       bool include_g2f_allowlisting_data,
+      bool enable_corp_protocol,
       std::function<void()> request_user_presence,
       UserState* user_state,
       org::chromium::SessionManagerInterfaceProxy* sm_proxy,

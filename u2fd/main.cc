@@ -10,18 +10,6 @@
 
 #include "u2fd/u2f_daemon.h"
 
-namespace {
-
-constexpr uint32_t kDefaultVendorId = 0x18d1;
-constexpr uint32_t kDefaultProductId = 0x502c;
-
-// TODO(b/232714525): Before this feature is completed, use a known (vid, pid)
-// pair when corp protocol is enabled by force flag for testing purpose.
-constexpr uint32_t kCorpVendorId = 4176;
-constexpr uint32_t kCorpProductId = 512;
-
-}  // namespace
-
 int main(int argc, char* argv[]) {
   DEFINE_bool(force_u2f, false, "force U2F mode even if disabled by policy");
   DEFINE_bool(force_g2f, false,
@@ -33,7 +21,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(legacy_kh_fallback, false,
               "Whether to allow auth with legacy keys when user-specific keys "
               "are enabled");
-  DEFINE_bool(force_corp_protocol, false, "enable corp internal APDU protocl");
+  DEFINE_bool(force_corp_protocol, false, "enable corp internal APDU protocol");
 
   brillo::FlagHelper::Init(argc, argv, "u2fd, U2FHID emulation daemon.");
 
@@ -46,14 +34,9 @@ int main(int argc, char* argv[]) {
 
   bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
 
-  uint32_t vendor_id =
-      FLAGS_force_corp_protocol ? kCorpVendorId : kDefaultVendorId;
-  uint32_t product_id =
-      FLAGS_force_corp_protocol ? kCorpProductId : kDefaultProductId;
-
   u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f,
                         FLAGS_force_corp_protocol, FLAGS_g2f_allowlist_data,
-                        legacy_kh_fallback, vendor_id, product_id);
+                        legacy_kh_fallback);
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;

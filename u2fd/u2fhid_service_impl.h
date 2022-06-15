@@ -27,10 +27,7 @@ namespace u2f {
 // U2F HID service. Initialized by U2F Daemon.
 class U2fHidServiceImpl : public U2fHidService {
  public:
-  U2fHidServiceImpl(bool enable_corp_protocol,
-                    bool legacy_kh_fallback,
-                    uint32_t vendor_id,
-                    uint32_t product_id);
+  explicit U2fHidServiceImpl(bool legacy_kh_fallback);
   U2fHidServiceImpl(const U2fHidServiceImpl&) = delete;
   U2fHidServiceImpl& operator=(const U2fHidServiceImpl&) = delete;
 
@@ -40,6 +37,7 @@ class U2fHidServiceImpl : public U2fHidService {
 
   bool CreateU2fHid(bool allow_g2f_attestation,
                     bool include_g2f_allowlisting_data,
+                    bool enable_corp_protocol,
                     std::function<void()> request_user_presence,
                     UserState* user_state,
                     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
@@ -55,10 +53,6 @@ class U2fHidServiceImpl : public U2fHidService {
 
  private:
   const bool legacy_kh_fallback_;
-
-  // Virtual USB Device ID
-  const uint32_t vendor_id_;
-  const uint32_t product_id_;
 
   TpmVendorCommandProxy tpm_proxy_;
   dbus::ObjectProxy* attestation_proxy_;  // Not Owned.
