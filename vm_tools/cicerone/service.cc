@@ -1141,7 +1141,7 @@ void Service::OpenUrl(const std::string& container_token,
     event->Signal();
     return;
   }
-  if (vm->GetType() == VirtualMachine::VmType::ApplicationList_VmType_TERMINA) {
+  if (vm->GetType() == VirtualMachine::VmType::TERMINA) {
     Container* container = vm->GetContainerForToken(container_token);
     if (!container) {
       LOG(ERROR) << "No container found matching token: " << container_token;
@@ -3620,8 +3620,7 @@ bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
       *owner_id_out = vm.first.first;
       *name_out = vm.first.second;
       *vm_out = vm.second.get();
-      DCHECK((*vm_out)->GetType() !=
-             VirtualMachine::VmType::ApplicationList_VmType_PLUGIN_VM);
+      DCHECK((*vm_out)->GetType() != VirtualMachine::VmType::PLUGIN_VM);
       return true;
     }
     return false;
@@ -3636,8 +3635,7 @@ bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
       // This DCHECK is asserting the inputs are valid. Since fuzzers are
       // intended to give us invalid inputs, skip the DCHECK when fuzzing.
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-      DCHECK((*vm_out)->GetType() ==
-             VirtualMachine::VmType::ApplicationList_VmType_PLUGIN_VM);
+      DCHECK((*vm_out)->GetType() == VirtualMachine::VmType::PLUGIN_VM);
 #endif  // FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
       return true;
     }

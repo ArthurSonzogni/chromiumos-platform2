@@ -43,11 +43,11 @@ VirtualMachine::VmType DetermineTypeFromCidAndToken(uint32_t cid,
                                                     const std::string& token) {
   // PluginVm does not have a CID
   if (cid == 0)
-    return VirtualMachine::VmType::ApplicationList_VmType_PLUGIN_VM;
+    return VirtualMachine::VmType::PLUGIN_VM;
   // Termina hosts containers, so it does not have a VM token.
   if (token.empty())
-    return VirtualMachine::VmType::ApplicationList_VmType_TERMINA;
-  return VirtualMachine::VmType::ApplicationList_VmType_BOREALIS;
+    return VirtualMachine::VmType::TERMINA;
+  return VirtualMachine::VmType::BOREALIS;
 }
 
 }  // namespace
@@ -77,7 +77,7 @@ VirtualMachine::VmType VirtualMachine::GetType() const {
 
 bool VirtualMachine::IsContainerless() const {
   // Termina runs containers, the others do not.
-  return GetType() != VmType::ApplicationList_VmType_TERMINA;
+  return GetType() != VmType::TERMINA;
 }
 
 bool VirtualMachine::ConnectTremplin() {
@@ -170,7 +170,7 @@ bool VirtualMachine::RegisterContainer(const std::string& container_token,
 
   auto iter = containers_.find(container_token);
   std::string garcon_addr;
-  if (GetType() == VmType::ApplicationList_VmType_PLUGIN_VM) {
+  if (GetType() == VmType::PLUGIN_VM) {
     garcon_addr = base::StringPrintf("unix:///run/vm_cicerone/client/%s.sock",
                                      container_token.c_str());
   } else if (garcon_vsock_port != 0) {

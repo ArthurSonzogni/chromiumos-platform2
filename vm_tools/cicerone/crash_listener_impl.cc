@@ -204,8 +204,7 @@ grpc::Status CrashListenerImpl::SendFailureReport(
     EmptyMessage* response) {
   VirtualMachine* vm = GetVirtualMachineForContext(ctx);
   const std::string histogram =
-      vm && vm->GetType() ==
-                  VirtualMachine::VmType::ApplicationList_VmType_BOREALIS
+      vm && vm->GetType() == VirtualMachine::VmType::BOREALIS
           ? "Borealis.Stability"
           : "Crostini.Stability";
   const std::string service = failure_report->failed_process();

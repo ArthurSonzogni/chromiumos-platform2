@@ -28,7 +28,7 @@ class OsRelease;
 class VirtualMachine {
  public:
   // Convenience for the enumeration over vm types defined in vm_applications.
-  using VmType = vm_tools::apps::ApplicationList_VmType;
+  using VmType = vm_tools::apps::VmType;
 
   enum class CreateLxdContainerStatus {
     UNKNOWN,
