@@ -2233,11 +2233,11 @@ class VMDelegate : public base::PlatformThread::Delegate {
   VMDelegate& operator=(VMDelegate&& other) = default;
   explicit VMDelegate(const Service&) = delete;
   VMDelegate& operator=(const Service&) = delete;
-  explicit VMDelegate(std::unique_ptr<VmInterface> vm) : vm_(std::move(vm)) {}
-  void ThreadMain() override { vm_.reset(); }
+  explicit VMDelegate(VmInterface* vm) : vm_(vm) {}
+  void ThreadMain() override { vm_->Shutdown(); }
 
  private:
-  std::unique_ptr<VmInterface> vm_;
+  VmInterface* vm_;
 };
 
 std::unique_ptr<dbus::Response> Service::StopAllVms(
@@ -2252,45 +2252,46 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
 
   struct ThreadContext {
     base::PlatformThreadHandle handle;
-    uint32_t cid;
-    std::optional<uint32_t> vm_memory_id;
     VMDelegate delegate;
   };
   std::vector<ThreadContext> ctxs(vms_.size());
 
   // Spawn a thread for each VM to shut it down.
   int i = 0;
-  for (auto& iter : vms_) {
+  for (auto& vm : vms_) {
     ThreadContext& ctx = ctxs[i++];
 
-    // Copy out cid from the VM object, as we will need it after the VM has been
-    // destroyed.
-    ctx.cid = iter.second->GetInfo().cid;
-    ctx.vm_memory_id = iter.second->GetInfo().vm_memory_id;
+    const VmId& id = vm.first;
+    VmInterface* vm_interface = vm.second.get();
+    VmInterface::Info info = vm_interface->GetInfo();
 
     // Notify that we are about to stop a VM.
-    NotifyVmStopping(iter.first, ctx.cid);
+    NotifyVmStopping(id, info.cid);
 
     // The VM will be destructred in the new thread, stopping it normally (and
     // then forcibly) it if it hasn't stopped yet.
     //
     // Would you just take a lambda function? Why do we need the Delegate?...
-    ctx.delegate = VMDelegate(std::move(iter.second));
+    ctx.delegate = VMDelegate(vm_interface);
     base::PlatformThread::Create(0, &ctx.delegate, &ctx.handle);
   }
 
   i = 0;
-  for (auto& iter : vms_) {
+  for (auto& vm : vms_) {
     ThreadContext& ctx = ctxs[i++];
     base::PlatformThread::Join(ctx.handle);
 
+    const VmId& id = vm.first;
+    VmInterface* vm_interface = vm.second.get();
+    VmInterface::Info info = vm_interface->GetInfo();
+
     if (USE_CROSVM_SIBLINGS) {
       // Notify HMS that the VM has exited.
-      mms_->RemoveVm(*ctx.vm_memory_id);
+      mms_->RemoveVm(info.vm_memory_id);
     }
 
     // Notify that we have stopped a VM.
-    NotifyVmStopped(iter.first, ctx.cid, reason);
+    NotifyVmStopped(id, info.cid, reason);
   }
 
   vms_.clear();
