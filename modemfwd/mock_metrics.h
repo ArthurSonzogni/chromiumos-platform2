@@ -35,6 +35,12 @@ class MockMetrics : public Metrics {
               (metrics::FwUpdateLocation location),
               (override));
 
+  MOCK_METHOD(void, StartFwFlashTimer, (), (override));
+
+  MOCK_METHOD(void, StopFwFlashTimer, (), (override));
+
+  MOCK_METHOD(void, SendFwFlashTime, (), (override));
+
  private:
   MockMetrics(const MockMetrics&) = delete;
   MockMetrics& operator=(const MockMetrics&) = delete;

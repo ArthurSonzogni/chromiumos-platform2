@@ -4,6 +4,7 @@
 
 #include "metrics/timer.h"
 
+#include <base/logging.h>
 #include <string>
 
 #include "metrics/metrics_library.h"
@@ -92,13 +93,34 @@ TimerReporter::TimerReporter(const std::string& histogram_name,
     : histogram_name_(histogram_name),
       min_(min),
       max_(max),
-      num_buckets_(num_buckets) {}
+      num_buckets_(num_buckets),
+      timer_unit_(kTimerUnitNone) {}
 
 bool TimerReporter::ReportMilliseconds() const {
   base::TimeDelta elapsed_time;
+  if (timer_unit_ == kTimerUnitNone)
+    timer_unit_ = kTimerUnitMilliseconds;
+  if (timer_unit_ != kTimerUnitMilliseconds) {
+    LOG(ERROR) << "Intermixed usage of milliseconds/seconds reporting.";
+    return false;
+  }
   if (!metrics_lib_ || !GetElapsedTime(&elapsed_time))
     return false;
   return metrics_lib_->SendToUMA(histogram_name_, elapsed_time.InMilliseconds(),
+                                 min_, max_, num_buckets_);
+}
+
+bool TimerReporter::ReportSeconds() const {
+  base::TimeDelta elapsed_time;
+  if (timer_unit_ == kTimerUnitNone)
+    timer_unit_ = kTimerUnitSeconds;
+  if (timer_unit_ != kTimerUnitSeconds) {
+    LOG(ERROR) << "Intermixed usage of milliseconds/seconds reporting.";
+    return false;
+  }
+  if (!metrics_lib_ || !GetElapsedTime(&elapsed_time))
+    return false;
+  return metrics_lib_->SendToUMA(histogram_name_, elapsed_time.InSeconds(),
                                  min_, max_, num_buckets_);
 }
 

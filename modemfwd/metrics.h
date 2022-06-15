@@ -13,6 +13,7 @@
 #include <brillo/errors/error.h>
 #include <metrics/metrics_library.h>
 #include <metrics/structured/structured_events.h>
+#include <metrics/timer.h>
 
 namespace modemfwd {
 
@@ -22,6 +23,7 @@ extern const char kMetricDlcInstallResult[];
 extern const char kMetricDlcUninstallResult[];
 extern const char kMetricFwUpdateLocation[];
 extern const char kMetricFwInstallResult[];
+extern const char kMetricFwInstallTime[];
 
 // IMPORTANT: Please read this before making any changes to the file:
 // - Never change existing numerical values on the enums, because the same
@@ -146,6 +148,10 @@ class Metrics {
 
   virtual void SendDetailedFwInstallSuccessResult(uint32_t firmware_types);
 
+  virtual void StartFwFlashTimer();
+  virtual void StopFwFlashTimer();
+  virtual void SendFwFlashTime();
+
  protected:
   // For testing.
   Metrics() = default;
@@ -160,6 +166,7 @@ class Metrics {
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+  std::unique_ptr<chromeos_metrics::TimerReporter> flash_timer_;
   // Map DBus error codes and |modemfwd::error|s to |DlcInstallResult| values.
   typedef std::map<std::string, metrics::DlcInstallResult> DlcInstallResultMap;
   static DlcInstallResultMap install_result_;

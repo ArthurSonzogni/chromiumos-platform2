@@ -266,8 +266,8 @@ void Daemon::CompleteInitialization() {
   }
 
   modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      fw_manifest_directory_.get(), std::move(journal),
-      notification_mgr_.get());
+      fw_manifest_directory_.get(), std::move(journal), notification_mgr_.get(),
+      metrics_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,

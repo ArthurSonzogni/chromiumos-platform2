@@ -31,6 +31,7 @@ class TimerReporterMock : public TimerReporter {
   MOCK_METHOD(bool, HasStarted, (), (const, override));
   MOCK_METHOD(bool, GetElapsedTime, (base::TimeDelta*), (const, override));
   MOCK_METHOD(bool, ReportMilliseconds, (), (const, override));
+  MOCK_METHOD(bool, ReportSeconds, (), (const, override));
 };
 
 class ClockWrapperMock : public ClockWrapper {

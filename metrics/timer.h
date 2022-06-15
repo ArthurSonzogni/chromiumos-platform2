@@ -114,8 +114,8 @@ class Timer : public TimerInterface {
   std::unique_ptr<ClockWrapper> clock_wrapper_;
 };
 
-// Extends the Timer class to report the elapsed time in milliseconds through
-// the UMA metrics library.
+// Extends the Timer class to report the elapsed time in milliseconds or
+// seconds through the UMA metrics library.
 class TimerReporter : public Timer {
  public:
   // Initializes the timer by providing a |histogram_name| to report to with
@@ -134,9 +134,18 @@ class TimerReporter : public Timer {
     metrics_lib_ = metrics_lib;
   }
 
+  // TimerReporter exposes 2 different methods ReportMilliseconds() and
+  // ReportSeconds() to allow reporting elapsed time in 2 different units
+  // milliseconds and seconds respectively. It is expected that for a given
+  // timer reporter instance only one unit of reporting must be used
+  // for consistent reporting of elapsed time.
+
   // Reports the current duration to UMA, in milliseconds. Returns false if
   // there is nothing to report, e.g. a metrics library is not set.
   virtual bool ReportMilliseconds() const;
+  // Reports the current duration to UMA, in seconds. Returns false if
+  // there is nothing to report, e.g. a metrics library is not set.
+  virtual bool ReportSeconds() const;
 
   // Accessor methods.
   const std::string& histogram_name() const { return histogram_name_; }
@@ -145,6 +154,7 @@ class TimerReporter : public Timer {
   int num_buckets() const { return num_buckets_; }
 
  private:
+  enum TimerUnit { kTimerUnitNone, kTimerUnitMilliseconds, kTimerUnitSeconds };
   friend class TimerReporterTest;
   FRIEND_TEST(TimerReporterTest, StartStopReport);
   FRIEND_TEST(TimerReporterTest, InvalidReport);
@@ -154,6 +164,8 @@ class TimerReporter : public Timer {
   int min_;
   int max_;
   int num_buckets_;
+  // Unit used by timer reporter for reporting elapsed time.
+  mutable TimerUnit timer_unit_;
 };
 
 }  // namespace chromeos_metrics

@@ -57,10 +57,12 @@ std::string GetFirmwareVersion(Modem* modem, std::string type) {
 
 ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
                            std::unique_ptr<Journal> journal,
-                           NotificationManager* notification_mgr)
+                           NotificationManager* notification_mgr,
+                           Metrics* metrics)
     : journal_(std::move(journal)),
       firmware_directory_(firmware_directory),
-      notification_mgr_(notification_mgr) {}
+      notification_mgr_(notification_mgr),
+      metrics_(metrics) {}
 
 void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
     const base::Location& code_location,
@@ -253,6 +255,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
 
   InhibitMode _inhibit(modem);
   journal_->MarkStartOfFlashingFirmware(fw_types, device_id, current_carrier);
+  metrics_->StartFwFlashTimer();
   if (!modem->FlashFirmwares(flash_cfg)) {
     flash_state->OnFlashFailed();
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
@@ -262,8 +265,13 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
         err->get(), GetFirmwareTypesForMetrics(flash_cfg));
     flash_state->fw_flashed_ = false;
     flash_state->fw_types_flashed_ = 0;
+    // Stop the flashing timer. We will not report flashing
+    // times in failure cases as it will be inconclusive.
+    metrics_->StopFwFlashTimer();
     return base::OnceClosure();
   }
+  // Report flashing time in successful cases
+  metrics_->SendFwFlashTime();
   flash_state->fw_flashed_ = true;
   flash_state->fw_types_flashed_ = GetFirmwareTypesForMetrics(flash_cfg);
 

@@ -48,6 +48,10 @@ const char kMetricDlcInstallResult[] = "Platform.Modemfwd.DlcInstallResult";
 const char kMetricDlcUninstallResult[] = "Platform.Modemfwd.DlcUninstallResult";
 const char kMetricFwUpdateLocation[] = "Platform.Modemfwd.FWUpdateLocation";
 const char kMetricFwInstallResult[] = "Platform.Modemfwd.FWInstallResult";
+const char kMetricFwInstallTime[] = "Platform.Modemfwd.FWInstallTime";
+static constexpr base::TimeDelta kMetricFwInstallTimeMax = base::Minutes(5);
+static constexpr base::TimeDelta kMetricFwInstallTimeMin = base::Seconds(1);
+static constexpr int kMetricFwInstallTimeNumBuckets = 60;
 
 }  // namespace metrics
 
@@ -112,6 +116,12 @@ Metrics::FwInstallResultMap Metrics::fw_install_result_ = {
 
 void Metrics::Init() {
   metrics_library_->Init();
+
+  flash_timer_.reset(new chromeos_metrics::TimerReporter(
+      metrics::kMetricFwInstallTime,
+      metrics::kMetricFwInstallTimeMin.InSeconds(),
+      metrics::kMetricFwInstallTimeMax.InSeconds(),
+      metrics::kMetricFwInstallTimeNumBuckets));
 }
 
 void Metrics::SendDlcInstallResultSuccess() {
@@ -196,6 +206,21 @@ void Metrics::SendDetailedFwInstallFailureResult(uint32_t firmware_types,
 
 void Metrics::SendDetailedFwInstallSuccessResult(uint32_t firmware_types) {
   SendDetailedFwInstallResult(firmware_types, FwInstallResult::kSuccess);
+}
+
+void Metrics::StartFwFlashTimer() {
+  DCHECK(flash_timer_);
+  flash_timer_->Start();
+}
+
+void Metrics::StopFwFlashTimer() {
+  DCHECK(flash_timer_);
+  flash_timer_->Stop();
+}
+
+void Metrics::SendFwFlashTime() {
+  DCHECK(flash_timer_);
+  flash_timer_->ReportSeconds();
 }
 
 }  // namespace modemfwd

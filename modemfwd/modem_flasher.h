@@ -28,7 +28,8 @@ class ModemFlasher {
  public:
   ModemFlasher(FirmwareDirectory* firmware_directory,
                std::unique_ptr<Journal> journal,
-               NotificationManager* notification_mgr);
+               NotificationManager* notification_mgr,
+               Metrics* metrics);
   ModemFlasher(const ModemFlasher&) = delete;
   ModemFlasher& operator=(const ModemFlasher&) = delete;
 
@@ -125,6 +126,7 @@ class ModemFlasher {
   // Owned by Daemon
   FirmwareDirectory* firmware_directory_;
   NotificationManager* notification_mgr_;
+  Metrics* metrics_;
 };
 
 }  // namespace modemfwd
