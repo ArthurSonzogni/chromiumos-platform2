@@ -20,7 +20,9 @@ use openssl::error::ErrorStack;
 use openssl::hash::DigestBytes;
 use openssl::hash::Hasher;
 use openssl::hash::MessageDigest;
-use openssl::pkcs5::hkdf;
+use openssl::md::Md;
+use openssl::pkey::Id;
+use openssl::pkey_ctx::PkeyCtx;
 use thiserror::Error as ThisError;
 
 use crate::app_info::AppManifest;
@@ -41,6 +43,18 @@ pub const MAX_VERSION: usize = 1024;
 pub enum Error {
     #[error("failed to derive key: {0:}")]
     Derive(#[source] ErrorStack),
+    #[error("failed to allocate key derivation: {0:}")]
+    DeriveNew(#[source] ErrorStack),
+    #[error("failed to initialize key derivation: {0:}")]
+    DeriveInit(#[source] ErrorStack),
+    #[error("failed to set key for key derivation: {0:}")]
+    DeriveSetKey(#[source] ErrorStack),
+    #[error("failed to set info for key derivation: {0:}")]
+    DeriveSetInfo(#[source] ErrorStack),
+    #[error("failed to set salt for key derivation: {0:}")]
+    DeriveSetSalt(#[source] ErrorStack),
+    #[error("failed to set digest for key derivation: {0:}")]
+    DeriveSetDigest(#[source] ErrorStack),
     #[error("requested API is is not enabled for `{0}`.")]
     ApiNotEnabledForApp(String),
     #[error("requested version is too large: got {0}; max {1}")]
@@ -480,7 +494,16 @@ fn derive_secret(
     key_size_bytes: usize,
 ) -> Result<SecureBlob> {
     let mut secret = SecureBlob::from(vec![0; key_size_bytes]);
-    hkdf(key, salt, input, MessageDigest::sha256(), secret.as_mut()).map_err(Error::Derive)?;
+    let mut ctx = PkeyCtx::new_id(Id::HKDF).map_err(Error::DeriveNew)?;
+    ctx.derive_init().map_err(Error::DeriveInit)?;
+    ctx.set_hkdf_key(key).map_err(Error::DeriveSetKey)?;
+    ctx.set_hkdf_salt(salt).map_err(Error::DeriveSetSalt)?;
+    ctx.add_hkdf_info(input).map_err(Error::DeriveSetInfo)?;
+    ctx.set_hkdf_md(Md::sha256())
+        .map_err(Error::DeriveSetDigest)?;
+    if ctx.derive(Some(secret.as_mut())).map_err(Error::Derive)? != secret.len() {
+        unreachable!("openssl usage is incorrect.")
+    }
     Ok(secret)
 }
 
