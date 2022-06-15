@@ -14,22 +14,25 @@ import power_manager_prefs_gen_schema
 from chromite.lib import cros_test_lib
 
 THIS_DIR = os.path.dirname(__file__)
-SCHEMA_FILE = os.path.join(THIS_DIR, 'power_manager_prefs_schema.yaml')
+SCHEMA_FILE = os.path.join(THIS_DIR, "power_manager_prefs_schema.yaml")
 
 
 class MainTest(cros_test_lib.TempDirTestCase):
+    def testSchemaMatches(self):
+        output_file = os.path.join(self.tempdir, "output")
+        power_manager_prefs_gen_schema.Main(output=output_file)
 
-  def testSchemaMatches(self):
-    output_file = os.path.join(self.tempdir, 'output')
-    power_manager_prefs_gen_schema.Main(output=output_file)
+        changed = (
+            subprocess.run(  # pylint: disable=subprocess-run-check
+                ["diff", SCHEMA_FILE, output_file]
+            ).returncode
+            != 0
+        )
 
-    changed = subprocess.run(  # pylint: disable=subprocess-run-check
-        ['diff', SCHEMA_FILE, output_file]).returncode != 0
-
-    if changed:
-      print('Please run ./regen.sh in the chromeos-config directory')
-      self.fail('Powerd prefs schema does not match C++ prefs source.')
+        if changed:
+            print("Please run ./regen.sh in the chromeos-config directory")
+            self.fail("Powerd prefs schema does not match C++ prefs source.")
 
 
-if __name__ == '__main__':
-  cros_test_lib.main(module=__name__)
+if __name__ == "__main__":
+    cros_test_lib.main(module=__name__)

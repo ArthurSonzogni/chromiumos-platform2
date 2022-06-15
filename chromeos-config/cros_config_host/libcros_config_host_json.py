@@ -25,276 +25,304 @@ from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
 from libcros_config_host_base import FirmwareInfo, SymlinkedFile
 from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
+
 sys.path.pop(0)
 
 
 class DeviceConfigJson(DeviceConfig):
-  """JSON specific impl of DeviceConfig
+    """JSON specific impl of DeviceConfig
 
-  Attributes:
-    _config: Root dictionary element for a given config.
-  """
+    Attributes:
+      _config: Root dictionary element for a given config.
+    """
 
-  def __init__(self, config):
-    self._schema_properties = GetValidSchemaProperties()
-    self._config = config
-    self.firmware_info = OrderedDict()
+    def __init__(self, config):
+        self._schema_properties = GetValidSchemaProperties()
+        self._config = config
+        self.firmware_info = OrderedDict()
 
-  def GetName(self):
-    return str(self._config['name'])
+    def GetName(self):
+        return str(self._config["name"])
 
-  def GetProperties(self, path):
-    result = self._config
-    if path != '/':
-      for path_token in path[1:].split('/'):  # Burn the first '/' char
-        if path_token in result:
-          result = result[path_token]
-        else:
-          return {}
-    return result
+    def GetProperties(self, path):
+        result = self._config
+        if path != "/":
+            for path_token in path[1:].split("/"):  # Burn the first '/' char
+                if path_token in result:
+                    result = result[path_token]
+                else:
+                    return {}
+        return result
 
-  def GetProperty(self, path, name):
-    schema_props = self._schema_properties.get(path, None)
-    if not schema_props or not name in schema_props:
-      raise Exception('Property not present in schema: %s:%s' % (path, name))
-    props = self.GetProperties(path)
-    if props and name in props:
-      return str(props[name])
-    return ''
+    def GetProperty(self, path, name):
+        schema_props = self._schema_properties.get(path, None)
+        if not schema_props or not name in schema_props:
+            raise Exception("Property not present in schema: %s:%s" % (path, name))
+        props = self.GetProperties(path)
+        if props and name in props:
+            return str(props[name])
+        return ""
 
-  def GetValue(self, source, name):
-    return source.get(name, None)
+    def GetValue(self, source, name):
+        return source.get(name, None)
 
-  def _GetFiles(self, path):
-    result = []
-    file_region = self.GetProperties(path)
-    if file_region and 'files' in file_region:
-      for item in file_region['files']:
-        if 'build-path' in item:
-          result.append(BaseFile(item['build-path'], item['system-path']))
-        else:
-          result.append(BaseFile(item['source'], item['destination']))
-    return result
+    def _GetFiles(self, path):
+        result = []
+        file_region = self.GetProperties(path)
+        if file_region and "files" in file_region:
+            for item in file_region["files"]:
+                if "build-path" in item:
+                    result.append(BaseFile(item["build-path"], item["system-path"]))
+                else:
+                    result.append(BaseFile(item["source"], item["destination"]))
+        return result
 
-  def _GetSymlinkedFiles(self, path):
-    result = []
-    items = self.GetProperties(path)
-    if items and 'files' in items:
-      for item in items['files']:
-        result.append(
-            SymlinkedFile(item['source'], item['destination'], item['symlink']))
+    def _GetSymlinkedFiles(self, path):
+        result = []
+        items = self.GetProperties(path)
+        if items and "files" in items:
+            for item in items["files"]:
+                result.append(
+                    SymlinkedFile(item["source"], item["destination"], item["symlink"])
+                )
 
-    return result
+        return result
 
-  def _GetSystemFileV2(self, path):
-    return self._GetSystemFilesV2([path])
+    def _GetSystemFileV2(self, path):
+        return self._GetSystemFilesV2([path])
 
-  def _GetSystemFilesV2(self, paths):
-    result = []
-    for path in paths:
-      config = self.GetProperties(path)
-      if config:
-        result.append(BaseFile(config['build-path'], config['system-path']))
-    return result
+    def _GetSystemFilesV2(self, paths):
+        result = []
+        for path in paths:
+            config = self.GetProperties(path)
+            if config:
+                result.append(BaseFile(config["build-path"], config["system-path"]))
+        return result
 
-  def GetFirmwareConfig(self):
-    firmware = self.GetProperties('/firmware')
-    if not firmware or self.GetValue(firmware, 'no-firmware'):
-      return {}
-    return firmware
+    def GetFirmwareConfig(self):
+        firmware = self.GetProperties("/firmware")
+        if not firmware or self.GetValue(firmware, "no-firmware"):
+            return {}
+        return firmware
 
-  def GetFirmwareInfo(self):
-    return self.firmware_info
+    def GetFirmwareInfo(self):
+        return self.firmware_info
 
-  def GetTouchFirmwareFiles(self):
-    return self._GetSymlinkedFiles('/touch')
+    def GetTouchFirmwareFiles(self):
+        return self._GetSymlinkedFiles("/touch")
 
-  def GetDetachableBaseFirmwareFiles(self):
-    return self._GetSymlinkedFiles('/detachable-base')
+    def GetDetachableBaseFirmwareFiles(self):
+        return self._GetSymlinkedFiles("/detachable-base")
 
-  def GetArcFiles(self):
-    return self._GetSystemFilesV2([
-        '/arc/hardware-features',
-        '/arc/media-profiles'])
+    def GetArcFiles(self):
+        return self._GetSystemFilesV2(["/arc/hardware-features", "/arc/media-profiles"])
 
-  def GetAudioFiles(self):
-    return self._GetFiles('/audio/main')
+    def GetAudioFiles(self):
+        return self._GetFiles("/audio/main")
 
-  def GetBluetoothFiles(self):
-    return self._GetSystemFileV2('/bluetooth/config')
+    def GetBluetoothFiles(self):
+        return self._GetSystemFileV2("/bluetooth/config")
 
-  def GetCameraFiles(self):
-    return self._GetSystemFileV2('/camera/config-file')
+    def GetCameraFiles(self):
+        return self._GetSystemFileV2("/camera/config-file")
 
-  def GetThermalFiles(self):
-    return self._GetFiles('/thermal')
+    def GetThermalFiles(self):
+        return self._GetFiles("/thermal")
 
-  def GetIntelWifiSarFiles(self):
-    return self._GetSystemFileV2('/wifi/sar-file')
+    def GetIntelWifiSarFiles(self):
+        return self._GetSystemFileV2("/wifi/sar-file")
 
-  def GetWallpaperFiles(self):
-    result = set()
-    wallpaper = self.GetValue(self._config, 'wallpaper')
-    if wallpaper:
-      result.add(wallpaper)
-    return result
+    def GetWallpaperFiles(self):
+        result = set()
+        wallpaper = self.GetValue(self._config, "wallpaper")
+        if wallpaper:
+            result.add(wallpaper)
+        return result
 
-  def GetAutobrightnessFiles(self):
-    return self._GetSystemFileV2('/power/autobrightness/config-file')
+    def GetAutobrightnessFiles(self):
+        return self._GetSystemFileV2("/power/autobrightness/config-file")
 
 
 class CrosConfigJson(CrosConfigBaseImpl):
-  """JSON specific impl of CrosConfig
+    """JSON specific impl of CrosConfig
 
-  Attributes:
-    _json: Root json for the entire config.
-    _configs: List of DeviceConfigJson instances
-  """
-
-  def __init__(self, infile, model_filter_regex=None):
-    """Constructor for JSON specific implementation of CrosConfig
-
-    Args:
-      infile: File-like object with JSON configuration
-      model_filter_regex: Only returns configs that match the filter.
+    Attributes:
+      _json: Root json for the entire config.
+      _configs: List of DeviceConfigJson instances
     """
-    self._json = json.loads(
-        TransformConfig(infile.read(), model_filter_regex=model_filter_regex))
-    self._configs = []
-    for config in self._json['chromeos']['configs']:
-      self._configs.append(DeviceConfigJson(config))
 
-    sorted(self._configs, key=lambda x: str(x.GetProperties('/identity')))
+    def __init__(self, infile, model_filter_regex=None):
+        """Constructor for JSON specific implementation of CrosConfig
 
-    # TODO(shapiroc): This is mess and needs considerable rework on the fw
-    # side to cleanup, but for now, we're sticking with it in order to
-    # finish migration to YAML.
-    fw_by_model = {}
-    processed = set()
-    for config in self._configs:
-      fw = config.GetFirmwareConfig()
-      # For partial configs (public vs private), we need to support the name
-      # for cases where identity isn't specified.
-      identity = config.GetName() + str(config.GetProperties('/identity'))
-      brand_code = config.GetProperty('/', 'brand-code')
-      if fw and identity not in processed:
-        fw_str = str(fw)
-        shared_model = None
-        if fw_str not in fw_by_model:
-          # Use the explict name of the firmware, else use the device name
-          # This supports equivalence testing with DT since it allowed
-          # naming firmware images.
-          fw_by_model[fw_str] = fw.get('name', config.GetName())
+        Args:
+          infile: File-like object with JSON configuration
+          model_filter_regex: Only returns configs that match the filter.
+        """
+        self._json = json.loads(
+            TransformConfig(infile.read(), model_filter_regex=model_filter_regex)
+        )
+        self._configs = []
+        for config in self._json["chromeos"]["configs"]:
+            self._configs.append(DeviceConfigJson(config))
 
-        shared_model = fw_by_model[fw_str]
+        sorted(self._configs, key=lambda x: str(x.GetProperties("/identity")))
 
-        build_config = config.GetProperties('/firmware/build-targets')
-        if build_config:
-          bios_build_target = config.GetValue(build_config, 'coreboot')
-          ec_build_target = config.GetValue(build_config, 'ec')
-          if not ec_build_target:
-            ec_build_target = config.GetValue(build_config, 'zephyr-ec')
-        else:
-          bios_build_target, ec_build_target = None, None
+        # TODO(shapiroc): This is mess and needs considerable rework on the fw
+        # side to cleanup, but for now, we're sticking with it in order to
+        # finish migration to YAML.
+        fw_by_model = {}
+        processed = set()
+        for config in self._configs:
+            fw = config.GetFirmwareConfig()
+            # For partial configs (public vs private), we need to support the name
+            # for cases where identity isn't specified.
+            identity = config.GetName() + str(config.GetProperties("/identity"))
+            brand_code = config.GetProperty("/", "brand-code")
+            if fw and identity not in processed:
+                fw_str = str(fw)
+                shared_model = None
+                if fw_str not in fw_by_model:
+                    # Use the explict name of the firmware, else use the device name
+                    # This supports equivalence testing with DT since it allowed
+                    # naming firmware images.
+                    fw_by_model[fw_str] = fw.get("name", config.GetName())
 
-        main_image_uri = config.GetValue(fw, 'main-ro-image') or ''
-        main_rw_image_uri = config.GetValue(fw, 'main-rw-image') or ''
-        ec_image_uri = config.GetValue(fw, 'ec-ro-image') or ''
-        pd_image_uri = config.GetValue(fw, 'pd-ro-image') or ''
+                shared_model = fw_by_model[fw_str]
 
-        fw_signer_config = config.GetProperties('/firmware-signing')
-        key_id = config.GetValue(fw_signer_config, 'key-id')
-        sig_in_customization_id = config.GetValue(fw_signer_config,
-                                                  'sig-id-in-customization-id')
+                build_config = config.GetProperties("/firmware/build-targets")
+                if build_config:
+                    bios_build_target = config.GetValue(build_config, "coreboot")
+                    ec_build_target = config.GetValue(build_config, "ec")
+                    if not ec_build_target:
+                        ec_build_target = config.GetValue(build_config, "zephyr-ec")
+                else:
+                    bios_build_target, ec_build_target = None, None
 
-        have_image = True
-        name = config.GetName()
+                main_image_uri = config.GetValue(fw, "main-ro-image") or ""
+                main_rw_image_uri = config.GetValue(fw, "main-rw-image") or ""
+                ec_image_uri = config.GetValue(fw, "ec-ro-image") or ""
+                pd_image_uri = config.GetValue(fw, "pd-ro-image") or ""
 
-        if sig_in_customization_id:
-          sig_id = 'sig-id-in-customization-id'
-          brand_code = ''
-        else:
-          sig_id = config.GetValue(fw_signer_config, 'signature-id')
-          processed.add(identity)
+                fw_signer_config = config.GetProperties("/firmware-signing")
+                key_id = config.GetValue(fw_signer_config, "key-id")
+                sig_in_customization_id = config.GetValue(
+                    fw_signer_config, "sig-id-in-customization-id"
+                )
 
-        info = FirmwareInfo(name, shared_model, key_id, have_image,
-                            bios_build_target, ec_build_target, main_image_uri,
-                            main_rw_image_uri, ec_image_uri, pd_image_uri,
-                            sig_id, brand_code)
-        config.firmware_info[name] = info
+                have_image = True
+                name = config.GetName()
 
-        if sig_in_customization_id:
-          for wl_config in self._configs:
-            if wl_config.GetName() == name:
-              wl_brand_code = wl_config.GetProperty('/', 'brand-code')
-              wl_identity_str = str(wl_config.GetProperties('/identity'))
-              wl_identity = wl_config.GetName() + wl_identity_str
-              processed.add(wl_identity)
-              fw_signer_config = wl_config.GetProperties('/firmware-signing')
-              wl_key_id = wl_config.GetValue(fw_signer_config, 'key-id')
-              wl_sig_id = wl_config.GetValue(fw_signer_config, 'signature-id')
-              wl_fw_info = copy.deepcopy(info)
-              # Firmware info associated with model name should be kept with
-              # have_image=True so following process will generate one firmware
-              # entry for this model.
-              if wl_sig_id == name:
-                wl_config.firmware_info[wl_sig_id] = wl_fw_info._replace(
-                    brand_code=wl_brand_code)
-              else:
-                wl_config.firmware_info[wl_sig_id] = wl_fw_info._replace(
-                    model=wl_sig_id,
-                    key_id=wl_key_id,
-                    have_image=False,
-                    sig_id=wl_sig_id,
-                    brand_code=wl_brand_code)
+                if sig_in_customization_id:
+                    sig_id = "sig-id-in-customization-id"
+                    brand_code = ""
+                else:
+                    sig_id = config.GetValue(fw_signer_config, "signature-id")
+                    processed.add(identity)
 
-  def GetDeviceConfigs(self):
-    return self._configs
+                info = FirmwareInfo(
+                    name,
+                    shared_model,
+                    key_id,
+                    have_image,
+                    bios_build_target,
+                    ec_build_target,
+                    main_image_uri,
+                    main_rw_image_uri,
+                    ec_image_uri,
+                    pd_image_uri,
+                    sig_id,
+                    brand_code,
+                )
+                config.firmware_info[name] = info
 
-  def GetFirmwareConfigs(self):
-    result = dict()
-    for value in self.GetFirmwareInfo().values():
-      fw_images = []
-      ap_build_target = value.bios_build_target
-      ec_build_target = value.ec_build_target
-      if value.main_image_uri:
-        fw_images.append(
-            FirmwareImage(
-                type='ap',
-                build_target=ap_build_target,
-                image_uri=value.main_image_uri))
-      if value.main_rw_image_uri:
-        fw_images.append(
-            FirmwareImage(
-                type='rw',
-                build_target=ap_build_target,
-                image_uri=value.main_rw_image_uri))
-      if value.ec_image_uri:
-        fw_images.append(
-            FirmwareImage(
-                type='ec',
-                build_target=ec_build_target,
-                image_uri=value.ec_image_uri))
-      if value.pd_image_uri:
-        fw_images.append(
-            FirmwareImage(
-                type='pd',
-                build_target=ec_build_target,
-                image_uri=value.pd_image_uri))
+                if sig_in_customization_id:
+                    for wl_config in self._configs:
+                        if wl_config.GetName() == name:
+                            wl_brand_code = wl_config.GetProperty("/", "brand-code")
+                            wl_identity_str = str(wl_config.GetProperties("/identity"))
+                            wl_identity = wl_config.GetName() + wl_identity_str
+                            processed.add(wl_identity)
+                            fw_signer_config = wl_config.GetProperties(
+                                "/firmware-signing"
+                            )
+                            wl_key_id = wl_config.GetValue(fw_signer_config, "key-id")
+                            wl_sig_id = wl_config.GetValue(
+                                fw_signer_config, "signature-id"
+                            )
+                            wl_fw_info = copy.deepcopy(info)
+                            # Firmware info associated with model name should be kept with
+                            # have_image=True so following process will generate one firmware
+                            # entry for this model.
+                            if wl_sig_id == name:
+                                wl_config.firmware_info[
+                                    wl_sig_id
+                                ] = wl_fw_info._replace(brand_code=wl_brand_code)
+                            else:
+                                wl_config.firmware_info[
+                                    wl_sig_id
+                                ] = wl_fw_info._replace(
+                                    model=wl_sig_id,
+                                    key_id=wl_key_id,
+                                    have_image=False,
+                                    sig_id=wl_sig_id,
+                                    brand_code=wl_brand_code,
+                                )
 
-      result[value.shared_model] = fw_images
+    def GetDeviceConfigs(self):
+        return self._configs
 
-    return result
+    def GetFirmwareConfigs(self):
+        result = dict()
+        for value in self.GetFirmwareInfo().values():
+            fw_images = []
+            ap_build_target = value.bios_build_target
+            ec_build_target = value.ec_build_target
+            if value.main_image_uri:
+                fw_images.append(
+                    FirmwareImage(
+                        type="ap",
+                        build_target=ap_build_target,
+                        image_uri=value.main_image_uri,
+                    )
+                )
+            if value.main_rw_image_uri:
+                fw_images.append(
+                    FirmwareImage(
+                        type="rw",
+                        build_target=ap_build_target,
+                        image_uri=value.main_rw_image_uri,
+                    )
+                )
+            if value.ec_image_uri:
+                fw_images.append(
+                    FirmwareImage(
+                        type="ec",
+                        build_target=ec_build_target,
+                        image_uri=value.ec_image_uri,
+                    )
+                )
+            if value.pd_image_uri:
+                fw_images.append(
+                    FirmwareImage(
+                        type="pd",
+                        build_target=ec_build_target,
+                        image_uri=value.pd_image_uri,
+                    )
+                )
 
-  def GetFirmwareConfigsByDevice(self):
-    return {
-        value.model: value.shared_model or value.model
-        for value in self.GetFirmwareInfo().values()
-    }
+            result[value.shared_model] = fw_images
 
-  def GetDeviceSignerInfo(self):
-    return {
-        value.model: DeviceSignerInfo(key_id=value.key_id, sig_id=value.sig_id)
-        for value in self.GetFirmwareInfo().values()
-        if value.key_id
-    }
+        return result
+
+    def GetFirmwareConfigsByDevice(self):
+        return {
+            value.model: value.shared_model or value.model
+            for value in self.GetFirmwareInfo().values()
+        }
+
+    def GetDeviceSignerInfo(self):
+        return {
+            value.model: DeviceSignerInfo(key_id=value.key_id, sig_id=value.sig_id)
+            for value in self.GetFirmwareInfo().values()
+            if value.key_id
+        }

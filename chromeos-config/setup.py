@@ -9,27 +9,28 @@ from __future__ import print_function
 from setuptools import setup
 
 setup(
-    name='cros_config_host',
-    version='1',
-    author='Simon Glass',
-    author_email='sjg@chromium.org',
-    url='README.md',
-    packages=['cros_config_host'],
+    name="cros_config_host",
+    version="1",
+    author="Simon Glass",
+    author_email="sjg@chromium.org",
+    url="README.md",
+    packages=["cros_config_host"],
     package_data={
-        'cros_config_host': [
-            'cros_config_schema.yaml',
-            'power_manager_prefs_schema.yaml',
+        "cros_config_host": [
+            "cros_config_schema.yaml",
+            "power_manager_prefs_schema.yaml",
         ]
     },
     entry_points={
-        'console_scripts': [
-            '{0} = cros_config_host.{0}:main'.format(script) for script in (
-                'cros_config_host',
-                'cros_config_merge_backfilled_config',
-                'cros_config_proto_converter',
-                'cros_config_schema',
+        "console_scripts": [
+            "{0} = cros_config_host.{0}:main".format(script)
+            for script in (
+                "cros_config_host",
+                "cros_config_merge_backfilled_config",
+                "cros_config_proto_converter",
+                "cros_config_schema",
             )
         ],
     },
-    description='Access to the model configuration from the host',
+    description="Access to the model configuration from the host",
 )

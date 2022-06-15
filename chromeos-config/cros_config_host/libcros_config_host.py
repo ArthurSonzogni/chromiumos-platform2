@@ -18,38 +18,41 @@ import sys
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
 import libcros_config_host_json
+
 sys.path.pop(0)
 
 
-UNIBOARD_CONFIG_INSTALL_DIR = 'usr/share/chromeos-config'
+UNIBOARD_CONFIG_INSTALL_DIR = "usr/share/chromeos-config"
+
 
 def CrosConfig(fname=None, model_filter_regex=None):
-  """Create a new CrosConfigBaseImpl object
+    """Create a new CrosConfigBaseImpl object
 
-  This is in a separate function to allow us to (in the future) support YAML,
-  which will have a different means of creating the impl class.
+    This is in a separate function to allow us to (in the future) support YAML,
+    which will have a different means of creating the impl class.
 
-  Args:
-    fname: Filename of config file
-    model_filter_regex: Only returns configs that match the filter
-  """
-  if not fname:
-    if 'SYSROOT' not in os.environ:
-      raise ValueError('No model configuration is available outside the '
-                       'ebuild environemnt. You must specify one')
-    fname = os.path.join(
-        os.environ['SYSROOT'],
-        UNIBOARD_CONFIG_INSTALL_DIR,
-        'yaml',
-        'config.yaml')
-  if fname == '-':
-    infile = sys.stdin
-  else:
-    infile = open(fname)
+    Args:
+      fname: Filename of config file
+      model_filter_regex: Only returns configs that match the filter
+    """
+    if not fname:
+        if "SYSROOT" not in os.environ:
+            raise ValueError(
+                "No model configuration is available outside the "
+                "ebuild environemnt. You must specify one"
+            )
+        fname = os.path.join(
+            os.environ["SYSROOT"], UNIBOARD_CONFIG_INSTALL_DIR, "yaml", "config.yaml"
+        )
+    if fname == "-":
+        infile = sys.stdin
+    else:
+        infile = open(fname)
 
-  try:
-    return libcros_config_host_json.CrosConfigJson(
-        infile, model_filter_regex=model_filter_regex)
-  finally:
-    if fname != '-':
-      infile.close()
+    try:
+        return libcros_config_host_json.CrosConfigJson(
+            infile, model_filter_regex=model_filter_regex
+        )
+    finally:
+        if fname != "-":
+            infile.close()

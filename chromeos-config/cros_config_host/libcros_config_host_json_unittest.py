@@ -17,15 +17,14 @@ this_dir = os.path.dirname(__file__)
 
 
 class CrosConfigHostJsonTests(unittest.TestCase):
+    def setUp(self):
+        source = os.path.join(this_dir, "../test_data/test.yaml")
+        with open(source, "r") as source_stream:
+            self.config = libcros_config_host_json.CrosConfigJson(source_stream)
 
-  def setUp(self):
-    source = os.path.join(this_dir, '../test_data/test.yaml')
-    with open(source, 'r') as source_stream:
-      self.config = libcros_config_host_json.CrosConfigJson(source_stream)
-
-  def testWallpaper(self):
-    self.assertIn('wallpaper-wl1', self.config.GetWallpaperFiles())
+    def testWallpaper(self):
+        self.assertIn("wallpaper-wl1", self.config.GetWallpaperFiles())
 
 
-if __name__ == '__main__':
-  unittest.main()
+if __name__ == "__main__":
+    unittest.main()
