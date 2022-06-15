@@ -27,7 +27,7 @@ constexpr char kJobName[] = "u2fd";
 
 constexpr const char* kKnownFlags[] = {
     u2f_flags::kU2f,      u2f_flags::kG2f,           u2f_flags::kVerbose,
-    u2f_flags::kUserKeys, u2f_flags::kAllowlistData,
+    u2f_flags::kUserKeys, u2f_flags::kAllowlistData, u2f_flags::kCorpProtocol,
 };
 
 int ControlU2fd(bool start) {

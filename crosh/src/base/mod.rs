@@ -5,6 +5,7 @@
 // The base module handles registration of a base set of crosh commands.
 
 mod arc;
+mod builtin_corpssh;
 mod ccd_pass;
 mod display_debug;
 mod dlc_install;
@@ -20,6 +21,7 @@ use crate::dispatcher::Dispatcher;
 
 pub fn register(dispatcher: &mut Dispatcher) {
     arc::register(dispatcher);
+    builtin_corpssh::register(dispatcher);
     ccd_pass::register(dispatcher);
     dlc_install::register(dispatcher);
     display_debug::register(dispatcher);
