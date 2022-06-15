@@ -36,11 +36,12 @@ CryptohomeStatusOr<std::unique_ptr<AuthFactor>> AuthFactor::CreateNew(
     const AuthFactorMetadata& metadata,
     const AuthInput& auth_input,
     AuthBlockUtility* auth_block_utility,
-    KeyBlobs& out_key_blobs) {
+    KeyBlobs& out_key_blobs,
+    AuthBlockType& out_auth_block_type) {
   AuthBlockState auth_block_state;
   CryptoStatus error = auth_block_utility->CreateKeyBlobsWithAuthFactorType(
       type, auth_factor_storage_type, auth_input, auth_block_state,
-      out_key_blobs);
+      out_key_blobs, out_auth_block_type);
   if (!error.ok()) {
     LOG(ERROR) << "Auth block creation failed for new auth factor";
     return MakeStatus<CryptohomeError>(
@@ -61,9 +62,10 @@ AuthFactor::AuthFactor(AuthFactorType type,
 
 CryptoStatus AuthFactor::Authenticate(const AuthInput& auth_input,
                                       AuthBlockUtility* auth_block_utility,
-                                      KeyBlobs& out_key_blobs) {
+                                      KeyBlobs& out_key_blobs,
+                                      AuthBlockType& out_auth_block_type) {
   CryptoStatus crypto_error = auth_block_utility->DeriveKeyBlobs(
-      auth_input, auth_block_state_, out_key_blobs);
+      auth_input, auth_block_state_, out_key_blobs, out_auth_block_type);
   if (!crypto_error.ok()) {
     LOG(ERROR) << "Auth factor authentication failed: error " << crypto_error;
     return MakeStatus<CryptohomeCryptoError>(

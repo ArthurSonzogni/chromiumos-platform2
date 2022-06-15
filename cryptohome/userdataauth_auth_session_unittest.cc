@@ -212,13 +212,13 @@ class AuthSessionInterfaceTest : public ::testing::Test {
         .WillOnce(Return(ByMove(std::move(vk))));
   }
 
-  void ExpectVaultKeyset() {
+  void ExpectVaultKeyset(int num_of_keysets) {
+    // Assert parameter num_of_calls cannot be negative.
+    DCHECK_GT(num_of_keysets, 0);
+
     // Setup expectations for GetVaultKeyset to return an initialized
     // VaultKeyset Construct the vault keyset with credentials for
     // AuthBlockType::kTpmNotBoundToPcrAuthBlockState.
-    auto vk = std::make_unique<VaultKeyset>();
-    auto vk2 = std::make_unique<VaultKeyset>();
-
     const brillo::SecureBlob blob16(16, 'A');
 
     brillo::SecureBlob passkey(20, 'A');
@@ -233,12 +233,15 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     serialized.set_le_chaps_iv(blob16.data(), blob16.size());
     serialized.set_le_label(0);
     serialized.set_le_fek_iv(blob16.data(), blob16.size());
-    vk->InitializeFromSerialized(serialized);
-    vk2->InitializeFromSerialized(serialized);
 
     EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-        .WillOnce(Return(ByMove(std::move(vk))))
-        .WillOnce(Return(ByMove(std::move(vk2))));
+        .Times(num_of_keysets)
+        .WillRepeatedly([=](const std::string& obfuscated_username,
+                            const std::string& key_label) {
+          auto vk = std::make_unique<VaultKeyset>();
+          vk->InitializeFromSerialized(serialized);
+          return vk;
+        });
   }
 };
 
@@ -269,7 +272,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
 
   // ... ephemeral, ...
   // Set up expectation in callback for success.
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done_ephemeral;
   EXPECT_CALL(on_done_ephemeral, Run(_)).WillOnce(SaveArg<0>(&reply));
@@ -404,7 +407,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
 
   user_data_auth::AuthenticateAuthSessionReply reply3;
   // Set up expectation in callback for success.
@@ -484,7 +487,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultRegularCase) {
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
   // Set up expectation for authenticate callback success.
@@ -530,7 +533,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
   // Set up expectation for authenticate callback success.
@@ -585,7 +588,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
   EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
   auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
@@ -630,7 +633,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
   // Set up expectation for authenticate callback success.
@@ -689,7 +692,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
   // Set up expectation for authenticate callback success.
@@ -737,7 +740,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   base::MockCallback<AuthenticateCallback> on_done2;
   EXPECT_CALL(on_done2, Run(_)).WillOnce(SaveArg<0>(&reply2));
 
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   ExpectAuth(kUsername2, brillo::SecureBlob(kPassword2));
 
   AuthenticateAuthSession(request2, on_done2.Get());
@@ -916,7 +919,7 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretTest) {
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-  ExpectVaultKeyset();
+  ExpectVaultKeyset(/*num_of_keysets=*/2);
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
   EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));

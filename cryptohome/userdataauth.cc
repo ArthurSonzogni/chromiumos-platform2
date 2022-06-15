@@ -31,6 +31,7 @@
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <metrics/timer.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
@@ -4462,8 +4463,16 @@ void UserDataAuth::CreatePersistentUser(
 
   LOG(INFO) << "Creating persistent user";
   user_data_auth::CreatePersistentUserReply reply;
+
+  // Record current time for timing how long CreatePersistentUserImpl will
+  // take.
+  auto start_time = base::TimeTicks::Now();
+
   StatusChain<CryptohomeError> ret =
       CreatePersistentUserImpl(request.auth_session_id());
+
+  ReportTimerDuration(kCreatePersistentUserTimer, start_time, "");
+
   reply.set_sanitized_username(
       SanitizedUserNameForSession(request.auth_session_id()));
   ReplyWithError(std::move(on_done), reply, ret);

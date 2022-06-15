@@ -119,13 +119,15 @@ class AuthBlockUtility {
       const AuthFactorStorageType auth_factor_storage_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
-      KeyBlobs& out_key_blobs) const = 0;
+      KeyBlobs& out_key_blobs,
+      AuthBlockType& out_auth_block_type) const = 0;
 
   // Derives key blobs using the given auth block state and input.
   [[nodiscard]] virtual CryptoStatus DeriveKeyBlobs(
       const AuthInput& auth_input,
       const AuthBlockState& auth_block_state,
-      KeyBlobs& out_key_blobs) const = 0;
+      KeyBlobs& out_key_blobs,
+      AuthBlockType& out_auth_block_type) const = 0;
 
   // Executes additional steps needed for auth block removal, using the given
   // auth block state.

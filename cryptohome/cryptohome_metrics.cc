@@ -161,6 +161,30 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     {"Cryptohome.TimeToPerformMount", 0, 3000, 50},
     // The time to generate the ECC auth value in TpmEccAuthBlock.
     {"Cryptohome.TimeToGenerateEccAuthValue", 0, 5000, 50},
+    // The time for AuthSession to add a credential.
+    {"Cryptohome.TimetoAuthSessionAddCredentials", 0, 6000, 60},
+    // The time for AuthSession to add an auth factor with VaultKeyset.
+    {"Cryptohome.TimeToAuthSessionAddAuthFactorVK", 0, 6000, 60},
+    // The time for AuthSession to add an auth factor with USS.
+    {"Cryptohome.TimeToAuthSessionAddAuthFactorUSS", 0, 6000, 60},
+    // The time for AuthSession to authenticate a credential.
+    {"Cryptohome.TimeToAuthSessionAuthenticate", 0, 6000, 60},
+    // The time for AuthSession to authenticate an auth factor with VaultKeyset.
+    {"Cryptohome.TimeToAuthSessionAuthenticateAuthFactorVK", 0, 6000, 60},
+    // The time for AuthSession to authenticate an auth factor with USS.
+    {"Cryptohome.TimeToAuthSessionAuthenticateAuthFactorUSS", 0, 6000, 60},
+    // The time for AuthSession to update a credential.
+    {"Cryptohome.TimeToAuthSessionUpdateCredentials", 0, 6000, 60},
+    // TODO(b/236415538, thomascedeno) - Add metric once UpdateAuthFactor is
+    // implemented.
+    {"Cryptohome.TimeToAuthSessionUpdateAuthFactorVK", 0, 6000, 60},
+    {"Cryptohome.TimeToAuthSessionUpdateAuthFactorUSS", 0, 6000, 60},
+    // TODO(b/236415640, thomascedeno) - Add metric once RemoveAuthFactor is
+    // implemented.
+    {"Cryptohome.TimeToAuthSessionRemoveAuthFactorVK", 0, 6000, 60},
+    {"Cryptohome.TimeToAuthSessionRemoveAuthFactorUSS", 0, 6000, 60},
+    // Time for User Data Auth class to create a persistent user.
+    {"Cryptohome.TimeToCreatePersistentUser", 0, 6000, 60},
 };
 
 static_assert(std::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
@@ -173,6 +197,21 @@ static_assert(
     std::size(kLegacyCodePathLocations) ==
         static_cast<int>(cryptohome::LegacyCodePathLocation::kMaxValue) + 1,
     "kLegacyCodePathLocations out of sync with enum LegacyCodePathLocation");
+
+// List of strings for corresponding AuthBlockType parameters.
+const char* const kAuthBlockTypeString[] = {".PinWeaver",
+                                            ".ChallengeCredential",
+                                            ".DoubleWrappedCompat",
+                                            ".TpmBoundToPcr",
+                                            ".TpmNotBoundToPcr",
+                                            ".LibScryptCompat",
+                                            ".CryptohomeRecovery",
+                                            ".TpmEcc",
+                                            ".Scrypt"};
+
+static_assert(std::size(kAuthBlockTypeString) ==
+                  static_cast<int>(cryptohome::AuthBlockType::kMaxValue),
+              "kAuthBlockTypeString out of sync with AuthBlockType");
 
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
     "Cryptohome.DeprecatedApiCalled";
@@ -291,6 +330,52 @@ void ReportTimerStop(TimerType timer_type) {
     LOG(WARNING) << "Timer " << kTimerHistogramParams[timer_type].metric_name
                  << " failed to report.";
   }
+}
+
+void ReportTimerDuration(
+    const AuthSessionPerformanceTimer* auth_session_performance_timer) {
+  if (!g_metrics) {
+    return;
+  }
+  // Check that timer_type is a valid timer.
+  TimerType timer_type = auth_session_performance_timer->type;
+  DCHECK_LT(timer_type, kNumTimerTypes);
+
+  // Parameterize metric by AuthBlockType if needed.
+  // kMaxValue is an invalid value, showing that
+  // timer_type doesn't need to be parameterized.
+  AuthBlockType auth_block_type =
+      auth_session_performance_timer->auth_block_type;
+  std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
+  if (auth_block_type != cryptohome::AuthBlockType::kMaxValue) {
+    metric_name.append(kAuthBlockTypeString[static_cast<int>(auth_block_type)]);
+  }
+
+  auto duration =
+      base::TimeTicks::Now() - auth_session_performance_timer->start_time;
+  g_metrics->SendToUMA(metric_name, duration.InMilliseconds(),
+                       kTimerHistogramParams[timer_type].min_sample,
+                       kTimerHistogramParams[timer_type].max_sample,
+                       kTimerHistogramParams[timer_type].num_buckets);
+}
+
+void ReportTimerDuration(const TimerType& timer_type,
+                         base::TimeTicks start_time,
+                         const std::string& parameter_string) {
+  if (!g_metrics) {
+    return;
+  }
+  // Check that timer_type is a valid timer.
+  DCHECK_LT(timer_type, kNumTimerTypes);
+
+  std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
+  metric_name.append(parameter_string);
+
+  auto duration = base::TimeTicks::Now() - start_time;
+  g_metrics->SendToUMA(metric_name, duration.InMilliseconds(),
+                       kTimerHistogramParams[timer_type].min_sample,
+                       kTimerHistogramParams[timer_type].max_sample,
+                       kTimerHistogramParams[timer_type].num_buckets);
 }
 
 void ReportChecksum(ChecksumStatus status) {

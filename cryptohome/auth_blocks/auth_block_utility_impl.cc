@@ -523,7 +523,8 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
     const AuthFactorStorageType auth_factor_storage_type,
     const AuthInput& auth_input,
     AuthBlockState& out_auth_block_state,
-    KeyBlobs& out_key_blobs) const {
+    KeyBlobs& out_key_blobs,
+    AuthBlockType& out_auth_block_type) const {
   bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
   bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
   AuthBlockType auth_block_type = GetAuthBlockTypeForCreation(
@@ -538,6 +539,8 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
+
+  out_auth_block_type = auth_block_type;
 
   AuthInput mutable_auth_input = auth_input;
 
@@ -591,7 +594,8 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
 CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
     const AuthInput& auth_input,
     const AuthBlockState& auth_block_state,
-    KeyBlobs& out_key_blobs) const {
+    KeyBlobs& out_key_blobs,
+    AuthBlockType& out_auth_block_type) const {
   AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
   if (auth_block_type == AuthBlockType::kMaxValue ||
       auth_block_type == AuthBlockType::kChallengeCredential) {
@@ -601,6 +605,9 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
+  // Parameterize the AuthSession performance timer by AuthBlockType
+  out_auth_block_type = auth_block_type;
+
   CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
       GetAuthBlockWithType(auth_block_type);
   return auth_block.value()->Derive(auth_input, auth_block_state,

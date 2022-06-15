@@ -127,7 +127,36 @@ enum TimerType {
   kPerformEphemeralMountTimer = 13,
   kPerformMountTimer = 14,
   kGenerateEccAuthValueTimer = 15,
+  kAuthSessionAddCredentialsTimer = 16,
+  kAuthSessionAddAuthFactorVKTimer = 17,
+  kAuthSessionAddAuthFactorUSSTimer = 18,
+  kAuthSessionAuthenticateTimer = 19,
+  kAuthSessionAuthenticateAuthFactorVKTimer = 20,
+  kAuthSessionAuthenticateAuthFactorUSSTimer = 21,
+  kAuthSessionUpdateCredentialsTimer = 22,
+  kAuthSessionUpdateAuthFactorVKTimer = 23,
+  kAuthSessionUpdateAuthFactorUSSTimer = 24,
+  kAuthSessionRemoveAuthFactorVKTimer = 25,
+  kAuthSessionRemoveAuthFactorUSSTimer = 26,
+  kCreatePersistentUserTimer = 27,
   kNumTimerTypes  // For the number of timer types.
+};
+
+// Struct for recording metrics on how long certain AuthSession operations take.
+struct AuthSessionPerformanceTimer {
+  TimerType type;
+  base::TimeTicks start_time;
+  AuthBlockType auth_block_type;
+
+  explicit AuthSessionPerformanceTimer(TimerType init_type)
+      : type(init_type),
+        start_time(base::TimeTicks::Now()),
+        auth_block_type(AuthBlockType::kMaxValue) {}
+  AuthSessionPerformanceTimer(TimerType init_type,
+                              AuthBlockType init_auth_block_type)
+      : type(init_type),
+        start_time(base::TimeTicks::Now()),
+        auth_block_type(init_auth_block_type) {}
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -548,6 +577,15 @@ void ReportTimerStart(TimerType timer_type);
 // Stops a timer and reports in milliseconds. Timers are reported to the
 // "Cryptohome.TimeTo*" histograms.
 void ReportTimerStop(TimerType timer_type);
+
+// Reports a timer length in milliseconds, duration is calculated by the time it
+// is called minus the start_time of the reported timer.
+void ReportTimerDuration(
+    const AuthSessionPerformanceTimer* auth_session_performance_timer);
+
+void ReportTimerDuration(const TimerType& timer_type,
+                         base::TimeTicks start_time,
+                         const std::string& parameter_string);
 
 void ReportChecksum(ChecksumStatus status);
 

@@ -1497,17 +1497,19 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
                                        AuthFactorStorageType::kUserSecretStash,
                                        /*auth_input=*/_,
                                        /*out_auth_block_state=*/_,
-                                       /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type,
-                   const AuthFactorStorageType auth_factor_storage_type,
-                   const AuthInput& auth_input,
-                   AuthBlockState& out_auth_block_state,
-                   KeyBlobs& out_key_blobs) {
-        // An arbitrary auth block state type can be used in this test.
-        out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
-        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return OkStatus<CryptohomeCryptoError>();
-      });
+                                       /*out_key_blobs=*/_,
+                                       /*out_auth_block_type=*/_))
+      .WillOnce(
+          [](AuthFactorType auth_factor_type,
+             const AuthFactorStorageType auth_factor_storage_type,
+             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
+             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
+            // An arbitrary auth block state type can be used in this test.
+            out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
+            out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
+            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+            return OkStatus<CryptohomeCryptoError>();
+          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -1599,17 +1601,19 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
                                        AuthFactorStorageType::kUserSecretStash,
                                        /*auth_input=*/_,
                                        /*out_auth_block_state=*/_,
-                                       /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type,
-                   const AuthFactorStorageType auth_factor_storage_type,
-                   const AuthInput& auth_input,
-                   AuthBlockState& out_auth_block_state,
-                   KeyBlobs& out_key_blobs) {
-        // An arbitrary auth block state type can be used in this test.
-        out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
-        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return OkStatus<CryptohomeCryptoError>();
-      });
+                                       /*out_key_blobs=*/_,
+                                       /*out_auth_block_type=*/_))
+      .WillOnce(
+          [](AuthFactorType auth_factor_type,
+             const AuthFactorStorageType auth_factor_storage_type,
+             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
+             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
+            // An arbitrary auth block state type can be used in this test.
+            out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
+            out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
+            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+            return OkStatus<CryptohomeCryptoError>();
+          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -1641,17 +1645,19 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
                   AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
                   /*auth_input=*/_,
                   /*out_auth_block_state=*/_,
-                  /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type,
-                   const AuthFactorStorageType auth_factor_storage_type,
-                   const AuthInput& auth_input,
-                   AuthBlockState& out_auth_block_state,
-                   KeyBlobs& out_key_blobs) {
-        // An arbitrary auth block state type can be used in this test.
-        out_auth_block_state.state = PinWeaverAuthBlockState();
-        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return OkStatus<CryptohomeCryptoError>();
-      });
+                  /*out_key_blobs=*/_,
+                  /*out_auth_block_type=*/_))
+      .WillOnce(
+          [](AuthFactorType auth_factor_type,
+             const AuthFactorStorageType auth_factor_storage_type,
+             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
+             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
+            // An arbitrary auth block state type can be used in this test.
+            out_auth_block_state.state = PinWeaverAuthBlockState();
+            out_auth_block_type = AuthBlockType::kPinWeaver;
+            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+            return OkStatus<CryptohomeCryptoError>();
+          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -1737,11 +1743,13 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will derive key blobs.
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _, _))
       .WillOnce([&](const AuthInput& auth_input,
                     const AuthBlockState& auth_block_state,
-                    KeyBlobs& out_key_blobs) {
+                    KeyBlobs& out_key_blobs,
+                    AuthBlockType& out_auth_block_type) {
         out_key_blobs.vkk_key = kFakePerCredentialSecret;
+        out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
         return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AuthenticateAuthFactor.
@@ -1816,11 +1824,13 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will derive key blobs.
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _, _))
       .WillOnce([&](const AuthInput& auth_input,
                     const AuthBlockState& auth_block_state,
-                    KeyBlobs& out_key_blobs) {
+                    KeyBlobs& out_key_blobs,
+                    AuthBlockType& out_auth_block_type) {
         out_key_blobs.vkk_key = kFakePerCredentialSecret;
+        out_auth_block_type = AuthBlockType::kPinWeaver;
         return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AuthenticateAuthFactor.
@@ -1868,17 +1878,19 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
                                        AuthFactorStorageType::kUserSecretStash,
                                        /*auth_input=*/_,
                                        /*out_auth_block_state=*/_,
-                                       /*out_key_blobs=*/_))
-      .WillOnce([](AuthFactorType auth_factor_type,
-                   const AuthFactorStorageType auth_factor_storage_type,
-                   const AuthInput& auth_input,
-                   AuthBlockState& out_auth_block_state,
-                   KeyBlobs& out_key_blobs) {
-        // An arbitrary auth block state type can be used in this test.
-        out_auth_block_state.state = CryptohomeRecoveryAuthBlockState();
-        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-        return OkStatus<CryptohomeCryptoError>();
-      });
+                                       /*out_key_blobs=*/_,
+                                       /*out_auth_block_type=*/_))
+      .WillOnce(
+          [](AuthFactorType auth_factor_type,
+             const AuthFactorStorageType auth_factor_storage_type,
+             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
+             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
+            // An arbitrary auth block state type can be used in this test.
+            out_auth_block_state.state = CryptohomeRecoveryAuthBlockState();
+            out_auth_block_type = AuthBlockType::kCryptohomeRecovery;
+            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+            return OkStatus<CryptohomeCryptoError>();
+          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -2001,11 +2013,13 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Test.
   // Setting the expectation that the auth block utility will derive key blobs.
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _, _))
       .WillOnce([&](const AuthInput& auth_input,
                     const AuthBlockState& auth_block_state,
-                    KeyBlobs& out_key_blobs) {
+                    KeyBlobs& out_key_blobs,
+                    AuthBlockType& out_auth_block_type) {
         out_key_blobs.vkk_key = kFakePerCredentialSecret;
+        out_auth_block_type = AuthBlockType::kCryptohomeRecovery;
         return OkStatus<CryptohomeCryptoError>();
       });
   // Calling AuthenticateAuthFactor.

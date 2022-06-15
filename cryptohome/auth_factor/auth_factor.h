@@ -42,7 +42,8 @@ class AuthFactor {
       const AuthFactorMetadata& metadata,
       const AuthInput& auth_input,
       AuthBlockUtility* auth_block_utility,
-      KeyBlobs& out_key_blobs);
+      KeyBlobs& out_key_blobs,
+      AuthBlockType& out_auth_block_type);
 
   AuthFactor(AuthFactorType type,
              const std::string& label,
@@ -61,7 +62,8 @@ class AuthFactor {
   // this call.
   CryptoStatus Authenticate(const AuthInput& auth_input,
                             AuthBlockUtility* auth_block_utility,
-                            KeyBlobs& out_key_blobs);
+                            KeyBlobs& out_key_blobs,
+                            AuthBlockType& out_auth_block_type);
 
  private:
   // The auth factor public information.

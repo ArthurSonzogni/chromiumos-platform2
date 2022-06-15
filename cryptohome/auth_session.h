@@ -269,6 +269,8 @@ class AuthSession final {
       AuthInput auth_input,
       const KeyData& key_data,
       bool initial_keyset,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       base::OnceCallback<void(const AddKeyReply&)> on_done);
 
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
@@ -287,6 +289,8 @@ class AuthSession final {
   template <typename AddKeyReply>
   void AddVaultKeyset(const KeyData& key_data,
                       AuthInput auth_input,
+                      std::unique_ptr<AuthSessionPerformanceTimer>
+                          auth_session_performance_timer,
                       base::OnceCallback<void(const AddKeyReply&)> on_done,
                       CryptoStatus callback_error,
                       std::unique_ptr<KeyBlobs> key_blobs,
@@ -300,6 +304,8 @@ class AuthSession final {
   void UpdateVaultKeyset(
       const KeyData& key_data,
       AuthInput auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
           on_done,
       CryptoStatus callback_error,
@@ -313,6 +319,8 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
           on_done);
 
@@ -322,13 +330,18 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       AuthInput auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
           on_done);
 
   // Loads and decrypts the USS payload with |auth_factor_label| using the
   // given KeyBlobs.
   CryptohomeStatus LoadUSSMainKeyAndFsKeyset(
-      const std::string& auth_factor_label, const KeyBlobs& key_blobs);
+      const std::string& auth_factor_label,
+      const KeyBlobs& key_blobs,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer);
 
   // This function is used to reset the attempt count for a low entropy
   // credential. Currently, this resets all low entropy credentials. In the
@@ -341,6 +354,8 @@ class AuthSession final {
   CryptohomeStatus AuthenticateViaUserSecretStash(
       const std::string& auth_factor_label,
       const AuthInput auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       AuthFactor& auth_factor);
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
@@ -350,6 +365,8 @@ class AuthSession final {
   template <typename AuthenticateReply>
   bool AuthenticateViaVaultKeyset(
       const AuthInput& auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       base::OnceCallback<void(const AuthenticateReply&)> on_done);
 
   // Fetches a valid VaultKeyset for |obfuscated_username_| that matches the
@@ -362,6 +379,8 @@ class AuthSession final {
   void LoadVaultKeysetAndFsKeys(
       const std::optional<brillo::SecureBlob> passkey,
       const AuthBlockType& auth_block_type,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       base::OnceCallback<void(const AuthenticateReply&)> on_done,
       CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs);

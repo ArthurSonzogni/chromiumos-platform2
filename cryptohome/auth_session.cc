@@ -276,6 +276,7 @@ template <typename AddKeyReply>
 void AuthSession::AddVaultKeyset(
     const KeyData& key_data,
     AuthInput auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const AddKeyReply&)> on_done,
     CryptoStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -368,6 +369,8 @@ void AuthSession::AddVaultKeyset(
                                   std::move(added_auth_factor));
   }
 
+  // Report timer for how long AuthSession operation takes.
+  ReportTimerDuration(auth_session_performance_timer.get());
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
@@ -377,6 +380,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
     AuthInput auth_input,
     const KeyData& key_data,
     bool initial_keyset,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const AddKeyReply&)> on_done) {
   AddKeyReply reply;
   AuthBlockType auth_block_type;
@@ -398,6 +402,9 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
     return;
   }
+
+  // Parameterize the AuthSession performance timer by AuthBlockType
+  auth_session_performance_timer->auth_block_type = auth_block_type;
 
   // |auth_state| will be the input to AuthSession::AddVaultKeyset(),
   // which calls VaultKeyset::Encrypt().
@@ -425,7 +432,8 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
 
   auto create_callback = base::BindOnce(
       &AuthSession::AddVaultKeyset<AddKeyReply>, weak_factory_.GetWeakPtr(),
-      key_data, auth_input, std::move(on_done));
+      key_data, auth_input, std::move(auth_session_performance_timer),
+      std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
 }
@@ -449,6 +457,11 @@ void AuthSession::AddCredentials(
 
   std::unique_ptr<Credentials> credentials =
       std::move(credentials_or_err).value();
+
+  // Record current time for timing for how long AddCredentials will take.
+  auto auth_session_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionAddCredentialsTimer);
 
   if (user_has_configured_credential_) {  // AddKeyset
     // Can't add kiosk key for an existing user.
@@ -504,7 +517,8 @@ void AuthSession::AddCredentials(
 
   CreateKeyBlobsToAddKeyset<user_data_auth::AddCredentialsReply>(
       request.authorization(), auth_input, credentials->key_data(),
-      is_initial_keyset, std::move(on_done));
+      is_initial_keyset, std::move(auth_session_performance_timer),
+      std::move(on_done));
 }
 
 void AuthSession::UpdateCredential(
@@ -590,6 +604,12 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
     return;
   }
 
+  // Report timer for how long UpdateCredentials operation takes and
+  // record current time for timing for how long UpdateCredentials will take.
+  auto auth_session_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionUpdateCredentialsTimer, auth_block_type);
+
   // Create and initialize fields for auth_input.
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt,
@@ -602,7 +622,8 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
 
   AuthBlock::CreateCallback create_callback = base::BindOnce(
       &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
-      credentials.key_data(), auth_input, std::move(on_done));
+      credentials.key_data(), auth_input,
+      std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
 }
@@ -610,6 +631,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(
 void AuthSession::UpdateVaultKeyset(
     const KeyData& key_data,
     AuthInput auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
         on_done,
     CryptoStatus callback_error,
@@ -652,6 +674,7 @@ void AuthSession::UpdateVaultKeyset(
     if (auth_input.user_input.has_value()) {
       SetCredentialVerifier(auth_input.user_input.value());
     }
+    ReportTimerDuration(auth_session_performance_timer.get());
     ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
   }
 }
@@ -659,6 +682,7 @@ void AuthSession::UpdateVaultKeyset(
 template <typename AuthenticateReply>
 bool AuthSession::AuthenticateViaVaultKeyset(
     const AuthInput& auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const AuthenticateReply&)> on_done) {
   AuthenticateReply reply;
   AuthBlockType auth_block_type =
@@ -678,6 +702,9 @@ bool AuthSession::AuthenticateViaVaultKeyset(
     return false;
   }
 
+  // Parameterize the AuthSession performance timer by AuthBlockType
+  auth_session_performance_timer->auth_block_type = auth_block_type;
+
   AuthBlockState auth_state;
   if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
           key_data_.label(), obfuscated_username_, auth_state /*Out*/)) {
@@ -696,10 +723,10 @@ bool AuthSession::AuthenticateViaVaultKeyset(
 
   // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
   // as a callback that loads |vault_keyset_| and resaves if needed.
-  AuthBlock::DeriveCallback derive_callback =
-      base::BindOnce(&AuthSession::LoadVaultKeysetAndFsKeys<AuthenticateReply>,
-                     weak_factory_.GetWeakPtr(), auth_input.user_input,
-                     auth_block_type, std::move(on_done));
+  AuthBlock::DeriveCallback derive_callback = base::BindOnce(
+      &AuthSession::LoadVaultKeysetAndFsKeys<AuthenticateReply>,
+      weak_factory_.GetWeakPtr(), auth_input.user_input, auth_block_type,
+      std::move(auth_session_performance_timer), std::move(on_done));
 
   return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_state, std::move(derive_callback));
@@ -709,6 +736,7 @@ template <typename AuthenticateReply>
 void AuthSession::LoadVaultKeysetAndFsKeys(
     const std::optional<brillo::SecureBlob> passkey,
     const AuthBlockType& auth_block_type,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const AuthenticateReply&)> on_done,
     CryptoStatus status,
     std::unique_ptr<KeyBlobs> key_blobs) {
@@ -798,6 +826,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   }
 
   reply.set_authenticated(GetStatus() == AuthStatus::kAuthStatusAuthenticated);
+  ReportTimerDuration(auth_session_performance_timer.get());
   ReplyWithError(std::move(on_done), reply, OkStatus<error::CryptohomeError>());
 }
 
@@ -857,6 +886,11 @@ void AuthSession::Authenticate(
   // Store key data in current auth_factor for future use.
   key_data_ = credentials->key_data();
 
+  // Record current time for timing for how long Authenticate will take.
+  auto auth_session_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionAuthenticateTimer);
+
   if (is_ephemeral_user_) {  // Ephemeral mount.
     // For ephemeral session, just authenticate the session,
     // no need to derive KeyBlobs.
@@ -891,7 +925,8 @@ void AuthSession::Authenticate(
     }
   }
   AuthenticateViaVaultKeyset<user_data_auth::AuthenticateAuthSessionReply>(
-      auth_input, std::move(on_done));
+      auth_input, std::move(auth_session_performance_timer),
+      std::move(on_done));
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
@@ -947,8 +982,15 @@ bool AuthSession::AuthenticateAuthFactor(
   if (user_has_configured_auth_factor_) {
     AuthFactor auth_factor = *label_to_auth_factor_iter->second;
 
+    // Record current time for timing for how long AuthenticateAuthFactor will
+    // take.
+    auto auth_session_performance_timer =
+        std::make_unique<AuthSessionPerformanceTimer>(
+            kAuthSessionAuthenticateAuthFactorUSSTimer);
+
     CryptohomeStatus status = AuthenticateViaUserSecretStash(
-        request.auth_factor_label(), auth_input.value(), auth_factor);
+        request.auth_factor_label(), auth_input.value(),
+        std::move(auth_session_performance_timer), auth_factor);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to authenticate auth session via factor "
                  << request.auth_factor_label();
@@ -986,9 +1028,16 @@ bool AuthSession::AuthenticateAuthFactor(
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
     return false;
   }
+  // Record current time for timing for how long AuthenticateAuthFactor will
+  // take.
+  auto auth_session_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionAuthenticateAuthFactorVKTimer);
+
   return AuthenticateViaVaultKeyset<
-      user_data_auth::AuthenticateAuthFactorReply>(auth_input.value(),
-                                                   std::move(on_done));
+      user_data_auth::AuthenticateAuthFactorReply>(
+      auth_input.value(), std::move(auth_session_performance_timer),
+      std::move(on_done));
 }
 
 bool AuthSession::GetRecoveryRequest(
@@ -1283,6 +1332,10 @@ void AuthSession::AddAuthFactor(
     // experiment is on or it's an existing user who went through this flow), so
     // proceed with wrapping the USS via the new factor and persisting both.
 
+    // Report timer for how long AuthenticateAuthFactor operation takes.
+    auto auth_session_performance_timer =
+        std::make_unique<AuthSessionPerformanceTimer>(
+            kAuthSessionAddAuthFactorUSSTimer);
     // Anything backed PinWeaver needs a reset secret. The list of is_le_cred
     // could expand in the future.
     if (NeedsResetSecret(auth_factor_type)) {
@@ -1292,18 +1345,25 @@ void AuthSession::AddAuthFactor(
 
     AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
                                     auth_factor_metadata, auth_input.value(),
+                                    std::move(auth_session_performance_timer),
                                     std::move(on_done));
     return;
   }
+  // Report timer for how long AuthenticateAuthFactor operation takes.
+  auto auth_session_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionAddAuthFactorVKTimer);
 
-  AddAuthFactorViaVaultKeyset(auth_factor_type, auth_factor_label,
-                              auth_input.value(), std::move(on_done));
+  AddAuthFactorViaVaultKeyset(
+      auth_factor_type, auth_factor_label, auth_input.value(),
+      std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 void AuthSession::AddAuthFactorViaVaultKeyset(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     AuthInput auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
         on_done) {
   user_data_auth::AddAuthFactorReply reply;
@@ -1325,7 +1385,8 @@ void AuthSession::AddAuthFactorViaVaultKeyset(
   cryptohome::AuthorizationRequest authorization;
   CreateKeyBlobsToAddKeyset<user_data_auth::AddAuthFactorReply>(
       authorization, auth_input, key_data,
-      /*initial_keyset*/ !user_has_configured_credential_, std::move(on_done));
+      /*initial_keyset*/ !user_has_configured_credential_,
+      std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 void AuthSession::AddAuthFactorViaUserSecretStash(
@@ -1333,6 +1394,7 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
         on_done) {
   // Preconditions.
@@ -1343,11 +1405,12 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
 
   // 1. Create a new auth factor in-memory, by executing auth block's Create().
   KeyBlobs key_blobs;
+  AuthBlockType auth_block_type;
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_or_status =
       AuthFactor::CreateNew(auth_factor_type,
                             AuthFactorStorageType::kUserSecretStash,
                             auth_factor_label, auth_factor_metadata, auth_input,
-                            auth_block_utility_, key_blobs);
+                            auth_block_utility_, key_blobs, auth_block_type);
   if (!auth_factor_or_status.ok()) {
     LOG(ERROR) << "Failed to create new auth factor";
     ReplyWithError(std::move(on_done), reply,
@@ -1358,6 +1421,9 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
                        .Wrap(std::move(auth_factor_or_status).status()));
     return;
   }
+
+  // Parameterize timer by AuthBlockType.
+  auth_session_performance_timer->auth_block_type = auth_block_type;
 
   // 2. Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =
@@ -1464,19 +1530,24 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
   label_to_auth_factor_.emplace(auth_factor_label, std::move(auth_factor));
   user_has_configured_auth_factor_ = true;
 
+  // Report timer for how long AuthSession operation takes.
+  ReportTimerDuration(auth_session_performance_timer.get());
+
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 CryptohomeStatus AuthSession::AuthenticateViaUserSecretStash(
     const std::string& auth_factor_label,
     const AuthInput auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     AuthFactor& auth_factor) {
   // TODO(b/223207622): This step is the same for both USS and
   // VaultKeyset other than how the AuthBlock state is obtained. Make the
   // derivation for USS asynchronous and merge these two.
   KeyBlobs key_blobs;
-  CryptoStatus crypto_status =
-      auth_factor.Authenticate(auth_input, auth_block_utility_, key_blobs);
+  AuthBlockType auth_block_type;
+  CryptoStatus crypto_status = auth_factor.Authenticate(
+      auth_input, auth_block_utility_, key_blobs, auth_block_type);
   if (!crypto_status.ok()) {
     LOG(ERROR) << "Failed to authenticate auth session via factor "
                << auth_factor_label;
@@ -1485,9 +1556,12 @@ CryptohomeStatus AuthSession::AuthenticateViaUserSecretStash(
         .Wrap(std::move(crypto_status));
   }
 
+  // Parameterize timer by AuthBlockType.
+  auth_session_performance_timer->auth_block_type = auth_block_type;
+
   // Use USS to finish the authentication.
-  CryptohomeStatus status =
-      LoadUSSMainKeyAndFsKeyset(auth_factor_label, key_blobs);
+  CryptohomeStatus status = LoadUSSMainKeyAndFsKeyset(
+      auth_factor_label, key_blobs, std::move(auth_session_performance_timer));
   if (!status.ok()) {
     LOG(ERROR) << "Failed to authenticate auth session via factor "
                << auth_factor_label;
@@ -1499,7 +1573,10 @@ CryptohomeStatus AuthSession::AuthenticateViaUserSecretStash(
 }
 
 CryptohomeStatus AuthSession::LoadUSSMainKeyAndFsKeyset(
-    const std::string& auth_factor_label, const KeyBlobs& key_blobs) {
+    const std::string& auth_factor_label,
+    const KeyBlobs& key_blobs,
+    std::unique_ptr<AuthSessionPerformanceTimer>
+        auth_session_performance_timer) {
   // 1. Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =
       key_blobs.DeriveUssCredentialSecret();
@@ -1548,6 +1625,7 @@ CryptohomeStatus AuthSession::LoadUSSMainKeyAndFsKeyset(
   // 4. Populate data fields from the USS.
   file_system_keyset_ = user_secret_stash_->GetFileSystemKeyset();
 
+  ReportTimerDuration(auth_session_performance_timer.get());
   return OkStatus<CryptohomeError>();
 }
 
