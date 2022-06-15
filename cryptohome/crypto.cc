@@ -176,8 +176,7 @@ bool Crypto::CanUnsealWithUserAuth() const {
     return false;
 
   bool is_pcr_bound;
-  if (hwsec::Status err = tpm_->IsDelegateBoundToPcr(&is_pcr_bound);
-      !err.ok()) {
+  if (hwsec::Status err = tpm_->IsDelegateBoundToPcr(&is_pcr_bound)) {
     LOG(ERROR) << "Failed to check the status of delegate bound to pcr: "
                << err;
   } else {

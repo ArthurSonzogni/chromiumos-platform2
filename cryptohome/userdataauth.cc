@@ -1350,15 +1350,13 @@ void UserDataAuth::MountGuest(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   } else {
-    MountStatus guest_status = guest_session->MountGuest();
-    if (!guest_status.ok()) {
-      LOG(ERROR) << "Could not initialize guest session: " << guest_status;
-      status =
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountGuestSessionMountFailed),
-              ErrorActionSet({ErrorAction::kReboot}),
-              user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL)
-              .Wrap(std::move(guest_status));
+    auto inner = guest_session->MountGuest();
+    if (inner) {
+      LOG(ERROR) << "Could not initialize guest session.";
+      status = MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountGuestSessionMountFailed),
+          ErrorActionSet({ErrorAction::kReboot}),
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
     }
   }
 
@@ -1642,8 +1640,7 @@ bool UserDataAuth::InitForChallengeResponseAuth(
 
   // Fail if the TPM is known to be vulnerable and we're not in a test image.
   bool is_srk_roca_vulnerable;
-  if (hwsec::Status err = tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable);
-      !err.ok()) {
+  if (hwsec::Status err = tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable)) {
     LOG(ERROR) << "Cannot do challenge-response mount: Failed to check for "
                   "ROCA vulnerability: "
                << err;

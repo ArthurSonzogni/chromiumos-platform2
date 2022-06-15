@@ -288,7 +288,7 @@ TEST_F(StatusChainTest, WrappingUnwrapping) {
   EXPECT_EQ(e0_unwrap.Find<Fake2Error>()->val(), 4);
 
   e0_unwrap.UnwrapInPlace().UnwrapInPlace();
-  EXPECT_TRUE(e0_unwrap.ok());
+  EXPECT_FALSE(e0_unwrap);
   EXPECT_FALSE(e0_unwrap.IsWrapping());
 }
 
@@ -379,26 +379,31 @@ TEST_F(StatusChainTest, WrapTransform) {
   EXPECT_EQ(e6.Find<Fake1Error>(), nullptr);
 }
 
-TEST_F(StatusChainTest, OksAndMessages) {
+TEST_F(StatusChainTest, BoolsOksAndMessages) {
   StatusChain<FakeBaseError> base_ok;
+  EXPECT_FALSE(base_ok);
   EXPECT_TRUE(base_ok.ok());
 
   StatusChain<FakeBaseError> base_error =
       MakeStatus<FakeBaseError>("base_error", 0);
+  EXPECT_TRUE(base_error);
   EXPECT_FALSE(base_error.ok());
   EXPECT_EQ(base_error.ToFullString(), "FakeBase: base_error");
 
   StatusChain<Fake1Error> fake_1_error = MakeStatus<Fake1Error>("fake1", 0);
+  EXPECT_TRUE(fake_1_error);
   EXPECT_FALSE(fake_1_error.ok());
   EXPECT_EQ(fake_1_error.ToFullString(), "Fake1: fake1");
 
   StatusChain<Fake2Error> fake_2_error = MakeStatus<Fake2Error>("fake2", 0);
+  EXPECT_TRUE(fake_2_error);
   EXPECT_FALSE(fake_2_error.ok());
   EXPECT_EQ(fake_2_error.ToFullString(), "Fake2: fake2: FROM TRAIT");
 
   auto tmp_1 = std::move(fake_1_error).Wrap(std::move(base_error));
   auto tmp_2 = std::move(fake_2_error).Wrap(std::move(tmp_1));
   StatusChain<FakeBaseError> stack = std::move(tmp_2);
+  EXPECT_TRUE(stack);
   EXPECT_FALSE(stack.ok());
 
   EXPECT_EQ(stack.ToFullString(),

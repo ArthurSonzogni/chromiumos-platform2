@@ -119,8 +119,7 @@ bool RecoveryCryptoTpm1BackendImpl::EncryptEccPrivateKey(
     *encrypted_own_priv_key = own_priv_key;
   } else if (hwsec::Status err = tpm_impl_->SealToPcrWithAuthorization(
                  own_priv_key, auth_value.value(), /*pcr_map=*/{{}},
-                 encrypted_own_priv_key);
-             !err.ok()) {
+                 encrypted_own_priv_key)) {
     LOG(ERROR) << "Error sealing the blob: " << err;
     return false;
   }
@@ -148,8 +147,7 @@ RecoveryCryptoTpm1BackendImpl::GenerateDiffieHellmanSharedSecret(
   } else if (hwsec::Status err = tpm_impl_->UnsealWithAuthorization(
                  /*preload_handle=*/std::nullopt, encrypted_own_priv_key,
                  auth_value.value(),
-                 /* pcr_map=*/{}, &unencrypted_own_priv_key);
-             !err.ok()) {
+                 /* pcr_map=*/{}, &unencrypted_own_priv_key)) {
     LOG(ERROR) << "Failed to unseal the secret value: " << err;
     return nullptr;
   }
