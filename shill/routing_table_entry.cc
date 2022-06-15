@@ -59,7 +59,7 @@ RoutingTableEntry& RoutingTableEntry::SetType(unsigned char type_in) {
   return *this;
 }
 
-RoutingTableEntry& RoutingTableEntry::SetTag(uint8_t tag_in) {
+RoutingTableEntry& RoutingTableEntry::SetTag(int tag_in) {
   tag = tag_in;
   return *this;
 }

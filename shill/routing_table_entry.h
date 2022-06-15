@@ -26,7 +26,7 @@ struct RoutingTableEntry {
   RoutingTableEntry& SetScope(unsigned char scope_in);
   RoutingTableEntry& SetTable(uint32_t table_in);
   RoutingTableEntry& SetType(unsigned char type_in);
-  RoutingTableEntry& SetTag(uint8_t tag_in);
+  RoutingTableEntry& SetTag(int tag_in);
 
   bool operator==(const RoutingTableEntry& b) const;
 
