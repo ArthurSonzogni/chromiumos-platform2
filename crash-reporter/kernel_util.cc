@@ -195,6 +195,12 @@ bool FindPanicMessage(re2::StringPiece kernel_dump,
 namespace kernel_util {
 
 const char kKernelExecName[] = "kernel";
+const char kHypervisorExecName[] = "hypervisor";
+
+bool IsHypervisorCrash(const std::string& kernel_dump) {
+  RE2 hypervisor_re("Linux version [0-9.]+-manatee");
+  return RE2::PartialMatch(kernel_dump, hypervisor_re);
+}
 
 ArchKind GetCompilerArch() {
 #if defined(COMPILER_GCC) && defined(ARCH_CPU_ARM_FAMILY)

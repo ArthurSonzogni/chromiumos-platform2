@@ -833,3 +833,35 @@ TEST(KernelUtilTest, WatchdogSignature) {
   EXPECT_EQ("kernel-(WATCHDOG)-broken-28348215",
             kernel_util::WatchdogSignature(kBrokenConsoleRamoops));
 }
+
+TEST(KernelUtilTest, IsHypervisor) {
+  const char kHypervisorLog[] =
+      "Panic#1 Part1\n"
+      "<6>[    0.000000] microcode: microcode updated early to revision 0xa4, "
+      "date = 2022-02-01\n"
+      "<5>[    0.000000] Linux version 5.10.117-manatee (<redacted email"
+      "address>) (Chromium OS 14.0_pre450784_p20220316-r22 clang version 14.0.0"
+      " (/var/tmp/portage/sys-devel/llvm-14.0_pre450784_p20220316-r22/work/"
+      "llvm-14.0_pre450784_p20220316/clang), LLD 14.0.0) #1 SMP Fri Jun 3 "
+      "16:57:19 PDT 2022\n"
+      "<6>[    0.000000] x86/split lock detection: warning about user-space "
+      "split_locks\n"
+      "<6>[    0.000000] x86/fpu: Supporting XSAVE feature 0x001: 'x87 "
+      "floating point registers'\n"
+      "";
+  EXPECT_TRUE(kernel_util::IsHypervisorCrash(kHypervisorLog));
+
+  const char kChromeOsLog[] =
+      "Panic#1 Part1\n"
+      "<5>[    0.000000] Linux version 5.10.119 (<redacted email address>) "
+      "(Chromium OS 14.0_pre450784_p20220316-r22 clang version 14.0.0 "
+      "(/var/tmp/portage/sys-devel/llvm-14.0_pre450784_p20220316-r22/work/"
+      "llvm-14.0_pre450784_p20220316/clang), LLD 14.0.0) #1 SMP PREEMPT "
+      "Fri Jun 10 12:46:22 PDT 2022\n"
+      "<6>[    0.000000] x86/fpu: Supporting XSAVE feature 0x001: 'x87 "
+      "floating point registers'\n"
+      "<6>[    0.000000] x86/fpu: Supporting XSAVE feature 0x002: 'SSE "
+      "registers'\n"
+      "";
+  EXPECT_FALSE(kernel_util::IsHypervisorCrash(kChromeOsLog));
+}

@@ -526,10 +526,13 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
 
+  const char* exec_name = kernel_util::IsHypervisorCrash(kernel_dump)
+                              ? kernel_util::kHypervisorExecName
+                              : kernel_util::kKernelExecName;
+
   FinishCrash(root_crash_directory.Append(
                   StringPrintf("%s.meta", dump_basename.c_str())),
-              kernel_util::kKernelExecName,
-              kernel_crash_path.BaseName().value());
+              exec_name, kernel_crash_path.BaseName().value());
 
   LOG(INFO) << "Stored kcrash to " << kernel_crash_path.value();
 

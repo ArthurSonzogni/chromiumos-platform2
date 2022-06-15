@@ -24,6 +24,10 @@ enum ArchKind {
 };
 
 extern const char kKernelExecName[];
+extern const char kHypervisorExecName[];
+
+// Check if this is a hypervisor kernel crash.
+bool IsHypervisorCrash(const std::string& kernel_dump);
 
 // Returns the architecture kind for which we are built.
 ArchKind GetCompilerArch();
