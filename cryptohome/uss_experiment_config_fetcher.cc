@@ -37,11 +37,6 @@ constexpr char kConfigLastInvalidKey[] = "last_invalid";
 
 constexpr char kMaxRetries = 9;
 
-void LogUssExperimentConfig(int last_invalid, double population) {
-  LOG(INFO) << "USS experiment config fetched from server: last_inavlid = "
-            << last_invalid << ", population = " << population;
-}
-
 }  // namespace
 
 std::unique_ptr<UssExperimentConfigFetcher> UssExperimentConfigFetcher::Create(
@@ -229,8 +224,6 @@ void UssExperimentConfigFetcher::RetryFetch(
 
 void UssExperimentConfigFetcher::SetUssExperimentFlag(int last_invalid,
                                                       double population) {
-  LogUssExperimentConfig(last_invalid, population);
-
   bool enabled;
   if (last_invalid >= UserSecretStashExperimentVersion()) {
     enabled = false;
