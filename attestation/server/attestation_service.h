@@ -702,6 +702,12 @@ class AttestationService : public AttestationInterface {
   // Compute the enterprise EID for attestation-based enrollment.
   std::string ComputeEnterpriseEnrollmentId();
 
+  // Finds CA by |issuer_name| and |is_cros_core| flag, then verifies the
+  // |ek_cert| by the CA public key hex-encoded DER. On success returns true.
+  bool VerifyCertificateWithSubjectPublicKeyInfo(const std::string& issuer_name,
+                                                 bool is_cros_core,
+                                                 const std::string& ek_cert);
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   FRIEND_TEST(AttestationServiceBaseTest, MigrateAttestationDatabase);
@@ -709,6 +715,8 @@ class AttestationService : public AttestationInterface {
               MigrateAttestationDatabaseWithCorruptedFields);
   FRIEND_TEST(AttestationServiceBaseTest,
               MigrateAttestationDatabaseAllEndorsementCredentials);
+  FRIEND_TEST(AttestationServiceBaseTest,
+              VerifyCertificateWithSubjectPublicKeyInfo);
   FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,
                            SignEnterpriseChallengeSuccess);
   FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,

@@ -304,23 +304,6 @@ bool GetAuthorityPublicKey(const std::string& issuer_name,
   return false;
 }
 
-// Finds CA by |issuer_name| and |is_cros_core| flag. On success returns true
-// and fills |public_key_hex| with CA public key hex-encoded DER.
-bool GetAuthoritySubjectPublicKeyInfo(const std::string& issuer_name,
-                                      bool is_cros_core,
-                                      std::string* public_key_hex) {
-  if (is_cros_core) {
-    return false;
-  }
-  for (const auto& info : kKnownEndorsementCASubjectKeyInfo) {
-    if (issuer_name == info.issuer) {
-      public_key_hex->assign(info.subject_public_key_info);
-      return true;
-    }
-  }
-  return false;
-}
-
 std::string GetACAName(attestation::ACAType aca_type) {
   switch (aca_type) {
     case attestation::DEFAULT_ACA:
@@ -2391,29 +2374,19 @@ void AttestationService::VerifyTask(
   std::string ca_public_key;
   bool has_found_ca_public_key =
       GetAuthorityPublicKey(issuer, request.cros_core(), &ca_public_key);
-  bool is_subject_public_key_info = false;
-  if (!has_found_ca_public_key) {
-    has_found_ca_public_key = GetAuthoritySubjectPublicKeyInfo(
-        issuer, request.cros_core(), &ca_public_key);
-    is_subject_public_key_info = has_found_ca_public_key;
-  }
-
-  if (!has_found_ca_public_key) {
-    LOG(ERROR) << __func__ << ": Failed to get CA public key.";
-    return;
-  }
-
-  bool valid_credential = false;
-  if (is_subject_public_key_info) {
-    valid_credential = crypto_utility_->VerifyCertificateWithSubjectPublicKey(
-        ek_cert.value(), ca_public_key);
+  if (has_found_ca_public_key) {
+    if (!crypto_utility_->VerifyCertificate(ek_cert.value(), ca_public_key)) {
+      LOG(WARNING) << __func__ << ": Bad endorsement credential.";
+      return;
+    }
   } else {
-    valid_credential =
-        crypto_utility_->VerifyCertificate(ek_cert.value(), ca_public_key);
-  }
-  if (!valid_credential) {
-    LOG(WARNING) << __func__ << ": Bad endorsement credential.";
-    return;
+    if (!VerifyCertificateWithSubjectPublicKeyInfo(issuer, request.cros_core(),
+                                                   ek_cert.value())) {
+      LOG(ERROR)
+          << __func__
+          << ": Failed to verify the certificate with subject public key info.";
+      return;
+    }
   }
 
   // Verifies that the given public key matches the one in the credential.
@@ -3514,6 +3487,32 @@ ACAType AttestationService::GetACAType(ACATypeInternal aca_type_internal) {
     default:
       return DEFAULT_ACA;
   }
+}
+
+bool AttestationService::VerifyCertificateWithSubjectPublicKeyInfo(
+    const std::string& issuer_name,
+    bool is_cros_core,
+    const std::string& ek_cert) {
+  if (is_cros_core) {
+    return false;
+  }
+  bool has_subject_public_key_info = false;
+  for (const auto& info : kKnownEndorsementCASubjectKeyInfo) {
+    if (issuer_name == info.issuer) {
+      if (crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+              ek_cert, info.subject_public_key_info)) {
+        return true;
+      }
+      has_subject_public_key_info = true;
+    }
+  }
+  if (has_subject_public_key_info) {
+    LOG(WARNING) << __func__
+                 << ": Failed to verify the certificate with CA public keys";
+  } else {
+    LOG(WARNING) << __func__ << ": Failed to get CA public key.";
+  }
+  return false;
 }
 
 }  // namespace attestation
