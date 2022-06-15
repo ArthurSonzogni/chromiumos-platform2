@@ -438,7 +438,8 @@ void HostNotifier::RemoveAnsiblePlaybookApplication() {
   ansible_playbook_application_.reset();
 }
 
-bool HostNotifier::Init(uint32_t vsock_port,
+bool HostNotifier::Init(uint32_t garcon_port,
+                        uint32_t sftp_port,
                         PackageKitProxy* package_kit_proxy) {
   CHECK(package_kit_proxy);
   package_kit_proxy_ = package_kit_proxy;
@@ -449,7 +450,7 @@ bool HostNotifier::Init(uint32_t vsock_port,
     return false;
   }
   SetUpContainerListenerStub(std::move(host_ip));
-  if (!NotifyHostGarconIsReady(vsock_port)) {
+  if (!NotifyHostGarconIsReady(garcon_port, sftp_port)) {
     return false;
   }
 
@@ -560,12 +561,14 @@ void HostNotifier::CheckDiskSpace() {
   }
 }
 
-bool HostNotifier::NotifyHostGarconIsReady(uint32_t vsock_port) {
+bool HostNotifier::NotifyHostGarconIsReady(uint32_t garcon_port,
+                                           uint32_t sftp_port) {
   // Notify the host system that we are ready.
   grpc::ClientContext ctx;
   vm_tools::container::ContainerStartupInfo startup_info;
   startup_info.set_token(token_);
-  startup_info.set_garcon_port(vsock_port);
+  startup_info.set_garcon_port(garcon_port);
+  startup_info.set_sftp_port(sftp_port);
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub_->ContainerReady(&ctx, startup_info, &empty);
   if (!status.ok()) {

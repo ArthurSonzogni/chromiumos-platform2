@@ -21,6 +21,9 @@ message ContainerStartupInfo {
 
   // The vsock port on which garcon will be listening.
   uint32 garcon_port = 2;
+
+  // The vsock port on which sftp-server will be listening.
+  uint32 sftp_port = 3;
 }
 
 // Request protobuf for notifying host that a container is shutting down.

@@ -46,11 +46,15 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/threading/thread.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
+#include <base/files/scoped_file.h>
 
 #include "google/protobuf/util/json_util.h"
+#include "vm_tools/common/spawn_util.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
 #include "vm_tools/garcon/service_impl.h"
+
+namespace {
 
 constexpr char kLogPrefix[] = "garcon: ";
 constexpr char kAllowAnyUserSwitch[] = "allow_any_user";
@@ -67,6 +71,7 @@ constexpr char kDiskSwitch[] = "disk";
 constexpr char kGetDiskInfoArg[] = "get_disk_info";
 constexpr char kRequestSpaceArg[] = "request_space";
 constexpr char kReleaseSpaceArg[] = "release_space";
+constexpr char kSftpServer[] = "/usr/lib/openssh/sftp-server";
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
 
@@ -99,6 +104,65 @@ bool LogToSyslog(logging::LogSeverity severity,
   return true;
 }
 
+void BlockSigterm() {
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGTERM);
+  PCHECK(sigprocmask(SIG_BLOCK, &mask, nullptr) == 0);
+}
+
+// Picks a vsock port, listens on it, and launches sftp-server when the
+// other side connects.
+void RunSftpHandler(uint32_t* sftp_port, base::WaitableEvent* event) {
+  BlockSigterm();
+  base::ScopedFD vsock(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
+  PCHECK(vsock.is_valid());
+  {
+    const sockaddr_vm addr{
+        .svm_family = AF_VSOCK,
+        .svm_port = VMADDR_PORT_ANY,
+        .svm_cid = VMADDR_CID_ANY,
+    };
+    PCHECK(bind(vsock.get(), reinterpret_cast<const struct sockaddr*>(&addr),
+                sizeof(addr)) == 0);
+  }
+  PCHECK(listen(vsock.get(), 1) == 0);
+  {
+    sockaddr_vm addr;
+    socklen_t len = sizeof(addr);
+    PCHECK(getsockname(vsock.get(), reinterpret_cast<struct sockaddr*>(&addr),
+                       &len) == 0);
+    *sftp_port = addr.svm_port;
+  }
+  LOG(INFO) << "sftp listening on vsock port " << *sftp_port;
+  event->Signal();
+
+  // TODO(b/231500896): Does this loop need to exit? Maybe check
+  // base::Thread::IsRunning?
+  while (1) {
+    LOG(INFO) << "sftp: accept waiting";
+    sockaddr_vm addr;
+    socklen_t len = sizeof(addr);
+    base::ScopedFD fd(accept4(vsock.get(),
+                              reinterpret_cast<struct sockaddr*>(&addr), &len,
+                              SOCK_CLOEXEC));
+    PCHECK(fd.is_valid());
+    LOG(INFO) << "sftp: accepted connection from vsock:" << addr.svm_cid << ":"
+              << addr.svm_port;
+
+    std::vector<std::string> argv = {kSftpServer};
+    std::map<std::string, std::string> env;
+    const std::string working_dir;
+    int stdio_fd[3] = {fd.get(), fd.get(), STDERR_FILENO};
+    if (vm_tools::Spawn(argv, env, working_dir, stdio_fd)) {
+      fd.reset();
+      LOG(INFO) << "sftp: forked child process";
+    } else {
+      PLOG(ERROR) << "sftp: failed to spawn child process";
+    }
+  }
+}
+
 void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
                       base::WaitableEvent* event,
                       std::shared_ptr<grpc::Server>* server_copy,
@@ -106,10 +170,7 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
                       scoped_refptr<base::TaskRunner> task_runner,
                       vm_tools::garcon::HostNotifier* host_notifier) {
   // We don't want to receive SIGTERM on this thread.
-  sigset_t mask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGTERM);
-  sigprocmask(SIG_BLOCK, &mask, nullptr);
+  BlockSigterm();
 
   // See crbug.com/922694 for more reference.
   // There's a bug in our patched version of gRPC where it uses signed integers
@@ -142,7 +203,7 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
     *server_copy = server;
     event->Signal();
 
-    LOG(INFO) << "Server listening on vsock port " << *vsock_listen_port;
+    LOG(INFO) << "garcon listening on vsock port " << *vsock_listen_port;
     // The following call will return once we invoke Shutdown on the gRPC
     // server when the main RunLoop exits.
     server->Wait();
@@ -155,10 +216,7 @@ void CreatePackageKitProxy(
     vm_tools::garcon::HostNotifier* host_notifier,
     std::unique_ptr<vm_tools::garcon::PackageKitProxy>* proxy_ptr) {
   // We don't want to receive SIGTERM on this thread.
-  sigset_t mask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGTERM);
-  sigprocmask(SIG_BLOCK, &mask, nullptr);
+  BlockSigterm();
 
   *proxy_ptr = vm_tools::garcon::PackageKitProxy::Create(host_notifier);
   event->Signal();
@@ -264,6 +322,8 @@ int HandleDiskArgs(std::vector<std::string> args) {
   return -1;
 }
 
+}  // namespace
+
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
@@ -341,21 +401,31 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Note on threading model. There are 4 threads used in garcon. One is for the
-  // incoming gRPC requests. One is for the D-Bus communication with the
-  // PackageKit daemon. The third is the main thread which is for gRPC requests
-  // to the host as well as for monitoring filesystem changes (which result in a
+  // Note on the threading model: There are 5 threads used in garcon:
+  //
+  // - incoming gRPC requests
+  // - handling connections to the sftp-server over vsock
+  // - D-Bus communication with the PackageKit
+  // - the main thread which is for gRPC requests to the host as well as for
+  // monitoring filesystem changes (which result in a
   // gRPC call to the host under certain conditions). The main thing to be
   // careful of is that the gRPC thread for incoming requests is never blocking
   // on the gRPC thread for outgoing requests (since they are both talking to
   // cicerone, and both of those operations in cicerone are likely going to use
-  // the same D-Bus thread for communication within cicerone). The fourth thread
-  // is for running tasks initiated by garcon service.
+  // the same D-Bus thread for communication within cicerone).
+  // - running tasks initiated by garcon service.
 
   // Thread that the gRPC server is running on.
   base::Thread grpc_thread{"gRPC Server Thread"};
   if (!grpc_thread.Start()) {
     LOG(ERROR) << "Failed starting the gRPC thread";
+    return -1;
+  }
+
+  // Thread that the sftp-server handler is running on.
+  base::Thread sftp_thread{"sftp-server Thread"};
+  if (!sftp_thread.Start()) {
+    LOG(ERROR) << "Failed starting the sftp-server thread";
     return -1;
   }
 
@@ -425,18 +495,36 @@ int main(int argc, char** argv) {
 
   // Wait for the gRPC server to start.
   event.Wait();
-
   if (!server_copy) {
     LOG(ERROR) << "gRPC server failed to start";
     return -1;
   }
+  event.Reset();
+
+  // Launch a thread that listens for incoming connections and runs sftp-server
+  // to handle them.
+  uint32_t sftp_port = 0;
+  ret = sftp_thread.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&RunSftpHandler, &sftp_port, &event));
+  if (!ret) {
+    LOG(ERROR) << "Failed to post server startup task to sftp thread";
+    return -1;
+  }
+
+  // Wait for the sftp server to start.
+  event.Wait();
+  if (sftp_port == 0) {
+    LOG(ERROR) << "sftp server failed to start";
+    return -1;
+  }
+  event.Reset();
 
   if (signal(SIGCHLD, SIG_IGN) == SIG_ERR) {
     PLOG(ERROR) << "Unable to explicitly ignore SIGCHILD";
     return -1;
   }
 
-  if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port),
+  if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port), sftp_port,
                            pk_proxy.get())) {
     LOG(ERROR) << "Failed to set up host notifier";
     return -1;
@@ -453,5 +541,6 @@ int main(int argc, char** argv) {
   server_copy->Shutdown();
   dbus_thread.Stop();
   garcon_service_tasks_thread.Stop();
+  sftp_thread.Stop();
   return 0;
 }

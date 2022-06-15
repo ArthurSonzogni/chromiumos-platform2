@@ -72,7 +72,9 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // Notifies the host that garcon is ready. This will send the initial update
   // for the application list and also establish a watcher for any updates to
   // the list of installed applications. Returns false if there was any failure.
-  bool Init(uint32_t vsock_port, PackageKitProxy* package_kit_proxy);
+  bool Init(uint32_t garcon_port,
+            uint32_t sftp_port,
+            PackageKitProxy* package_kit_proxy);
 
   // vm_tools::garcon::PackageKitObserver overrides.
   void OnInstallCompletion(const std::string& command_uuid,
@@ -123,7 +125,7 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
 
   // Sends a message to the host indicating that our server is ready for
   // accepting incoming calls.
-  bool NotifyHostGarconIsReady(uint32_t vsock_port);
+  bool NotifyHostGarconIsReady(uint32_t garcon_port, uint32_t sftp_port);
 
   // Sends a message to the host indicating the container is shutting down.
   void NotifyHostOfContainerShutdown();
