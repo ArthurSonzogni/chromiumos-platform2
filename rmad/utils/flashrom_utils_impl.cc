@@ -70,8 +70,9 @@ bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
 
 bool FlashromUtilsImpl::DisableSoftwareWriteProtection() {
   std::string unused_output;
-  return cmd_utils_->GetOutput({kFlashromCmd, "-p", "host", "--wp-disable"},
-                               &unused_output);
+  return cmd_utils_->GetOutput(
+      {kFlashromCmd, "-p", "host", "--wp-disable", "--wp-range", "0,0"},
+      &unused_output);
 }
 
 bool FlashromUtilsImpl::GetWriteProtectionRange(int* wp_start, int* wp_len) {
