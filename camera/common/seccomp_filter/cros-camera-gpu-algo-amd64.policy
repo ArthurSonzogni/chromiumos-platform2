@@ -38,6 +38,7 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 # ioctl values:
+#   0x5401     == TCGETS
 #   0x6458     == DRM_IOCTL_I915_GEM_THROTTLE
 #   0x40046460 == DRM_IOCTL_I915_GEM_SW_FINISH
 #   0x40086409 == DRM_IOCTL_GEM_CLOSE
@@ -61,14 +62,16 @@ getuid: 1
 #   0xc028645e == DRM_IOCTL_I915_GEM_MMAP
 #   0xc0406400 == DRM_IOCTL_VERSION
 #   0xc0406469 == DRM_IOCTL_I915_GEM_EXECBUFFER2_WR
-ioctl: arg1 == TCGETS || arg1 == 0x6458 || arg1 == 0x40086409 || \
-       arg1 == 0x400c645f || arg1 == 0x4020645d || arg1 == 0x40406469 || \
-       arg1 == 0x80106463 || arg1 == 0xc0086457 || arg1 == 0xc008646d || \
-       arg1 == 0xc00c6466 || arg1 == 0xc0106446 || arg1 == 0xc010645b || \
-       arg1 == 0xc0106461 || arg1 == 0xc0106471 || arg1 == 0xc0106479 || \
-       arg1 == 0xc0186472 || arg1 == 0xc0186474 || arg1 == 0xc0186475 || \
-       arg1 == 0xc028645e || arg1 == 0xc0406400 || arg1 == 0xc010646c || \
-       arg1 == 0xc0186473 || arg1 == 0x40046460 || arg1 == 0xc0406469
+#   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
+ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 \
+       arg1 == 0x40086409 || arg1 == 0x400c645f || arg1 == 0x4020645d || \
+       arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
+       arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \
+       arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc0106471 || \
+       arg1 == 0xc0106479 || arg1 == 0xc0186472 || arg1 == 0xc0186474 || \
+       arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc028645e || \
+       arg1 == 0xc0406400 || arg1 == 0xc010646c || arg1 == 0xc0186473 || \
+       arg1 == 0xc0406469
 kill: 1
 listen: 1
 lseek: 1
