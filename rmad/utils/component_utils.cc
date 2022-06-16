@@ -27,33 +27,33 @@ namespace rmad {
 // bit length for each fields.
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Battery_Fields& fields) {
-  // Battery. Identifier is "Battery_<manufacturer name>_<model name>".
-  return "Battery_" + fields.manufacturer() + "_" + fields.model_name();
+  // Battery. Identifier is "battery_<manufacturer name>_<model name>".
+  return "battery_" + fields.manufacturer() + "_" + fields.model_name();
 }
 
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Storage_Fields& fields) {
   // Storage. Identifier depends on storage type.
   if (fields.type() == "MMC") {
-    // eMMC storage. Identifier is "Storage(eMMC)_<manufacturer id>_<name>".
-    return "Storage(eMMC)_" + Uint32ToHexString(fields.mmc_manfid(), 2) + "_" +
+    // eMMC storage. Identifier is "storage(eMMC)_<manufacturer id>_<name>".
+    return "storage(eMMC)_" + Uint32ToHexString(fields.mmc_manfid(), 2) + "_" +
            fields.mmc_name();
   } else if (fields.type() == "NVMe") {
-    // NVMe storage. Identifier is "Storage(NVMe)_<vendor id>_<device id>".
-    return "Storage(NVMe)_" + Uint32ToHexString(fields.pci_vendor(), 4) + "_" +
+    // NVMe storage. Identifier is "storage(NVMe)_<vendor id>_<device id>".
+    return "storage(NVMe)_" + Uint32ToHexString(fields.pci_vendor(), 4) + "_" +
            Uint32ToHexString(fields.pci_device(), 4);
   } else if (fields.type() == "ATA") {
     // SATA storage. Identifier is
-    // "Storage(SATA)_<vendor name>_<model name>".
-    return "Storage(SATA)_" + fields.ata_vendor() + "_" + fields.ata_model();
+    // "storage(SATA)_<vendor name>_<model name>".
+    return "storage(SATA)_" + fields.ata_vendor() + "_" + fields.ata_model();
   }
-  return "Storage(unknown)";
+  return "storage(unknown)";
 }
 
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Camera_Fields& fields) {
-  // Camera. Identifier is "Camera_<vendor id>_<product id>".
-  return "Camera_" + Uint32ToHexString(fields.usb_vendor_id(), 4) + "_" +
+  // Camera. Identifier is "camera_<vendor id>_<product id>".
+  return "camera_" + Uint32ToHexString(fields.usb_vendor_id(), 4) + "_" +
          Uint32ToHexString(fields.usb_product_id(), 4);
 }
 
@@ -61,53 +61,53 @@ std::string GetComponentFieldsIdentifier(
     const runtime_probe::InputDevice_Fields& fields) {
   // Input device. Identifier is "<type>_<vendor id>_<product_id>".
   if (fields.device_type() == runtime_probe::InputDevice::TYPE_STYLUS) {
-    return "Stylus_" + Uint32ToHexString(fields.vendor(), 4) + "_" +
+    return "stylus_" + Uint32ToHexString(fields.vendor(), 4) + "_" +
            Uint32ToHexString(fields.product(), 4);
   } else if (fields.device_type() ==
              runtime_probe::InputDevice::TYPE_TOUCHPAD) {
-    return "Touchpad_" + Uint32ToHexString(fields.vendor(), 4) + "_" +
+    return "touchpad_" + Uint32ToHexString(fields.vendor(), 4) + "_" +
            Uint32ToHexString(fields.product(), 4);
   } else if (fields.device_type() ==
              runtime_probe::InputDevice::TYPE_TOUCHSCREEN) {
-    return "Touchscreen_" + Uint32ToHexString(fields.vendor(), 4) + "_" +
+    return "touchscreen_" + Uint32ToHexString(fields.vendor(), 4) + "_" +
            Uint32ToHexString(fields.product(), 4);
   }
-  return "InputDevice(unknown)";
+  return "input_device(unknown)";
 }
 
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Memory_Fields& fields) {
-  // Memory. Identifier is "Memory_<part number>".
-  return "Memory_" + fields.part();
+  // Memory. Identifier is "dram_<part number>".
+  return "dram_" + fields.part();
 }
 
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Edid_Fields& fields) {
-  // Display panel. Identifier is "Display_<vendor code>_<product_id>".
-  return "Display_" + fields.vendor() + "_" +
+  // Display panel. Identifier is "display_<vendor code>_<product_id>".
+  return "display_" + fields.vendor() + "_" +
          Uint32ToHexString(fields.product_id(), 4);
 }
 
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Network_Fields& fields) {
-  // Network (wireless/ethernet/cellular). Identifier depends on bus type.
+  // network (wireless/ethernet/cellular). Identifier depends on bus type.
   if (fields.bus_type() == "pci") {
-    // PCI. Identifier is "Network(<type>:pci)_<vendor id>_<device_id>".
-    return "Network(" + fields.type() + ":pci)_" +
+    // PCI. Identifier is "network(<type>:pci)_<vendor id>_<device_id>".
+    return "network(" + fields.type() + ":pci)_" +
            Uint32ToHexString(fields.pci_vendor_id(), 4) + "_" +
            Uint32ToHexString(fields.pci_device_id(), 4);
   } else if (fields.bus_type() == "usb") {
-    // USB. Identifier is "Network(<type>:usb)_<vendor id>_<product_id>".
-    return "Network(" + fields.type() + ":usb)_" +
+    // USB. Identifier is "network(<type>:usb)_<vendor id>_<product_id>".
+    return "network(" + fields.type() + ":usb)_" +
            Uint32ToHexString(fields.usb_vendor_id(), 4) + "_" +
            Uint32ToHexString(fields.usb_product_id(), 4);
   } else if (fields.bus_type() == "sdio") {
-    // SDIO. |identifier| is "Network(<type>:sdio)_<vendor id>_<device_id>".
-    return "Network(" + fields.type() + ":sdio)_" +
+    // SDIO. |identifier| is "network(<type>:sdio)_<vendor id>_<device_id>".
+    return "network(" + fields.type() + ":sdio)_" +
            Uint32ToHexString(fields.sdio_vendor_id(), 4) + "_" +
            Uint32ToHexString(fields.sdio_device_id(), 4);
   }
-  return "Network(" + fields.type() + ":unknown)";
+  return "network(" + fields.type() + ":unknown)";
 }
 
 // Extension for |runtime_probe::ComponentFields|.
@@ -136,7 +136,7 @@ std::string GetComponentFieldsIdentifier(
   } else if (component_fields.has_wireless()) {
     return GetComponentFieldsIdentifier(component_fields.wireless());
   }
-  return "UnknownComponent";
+  return "unknown_component";
 }
 
 }  // namespace rmad

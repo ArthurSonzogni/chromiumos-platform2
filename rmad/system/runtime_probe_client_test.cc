@@ -85,9 +85,9 @@ TEST_F(RuntimeProbeClientTest, ProbeAllCategories_Success) {
   EXPECT_TRUE(runtime_probe_client_->ProbeCategories({}, &components));
   EXPECT_EQ(2, components.size());
   EXPECT_EQ(components[0].first, RMAD_COMPONENT_CAMERA);
-  EXPECT_EQ(components[0].second, "Camera_0001_0002");
+  EXPECT_EQ(components[0].second, "camera_0001_0002");
   EXPECT_EQ(components[1].first, RMAD_COMPONENT_ETHERNET);
-  EXPECT_EQ(components[1].second, "Network(ethernet:pci)_0005_0006");
+  EXPECT_EQ(components[1].second, "network(ethernet:pci)_0005_0006");
 }
 
 TEST_F(RuntimeProbeClientTest, ProbeSingleCategory_Success) {

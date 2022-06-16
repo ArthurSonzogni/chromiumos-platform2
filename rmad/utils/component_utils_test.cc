@@ -28,7 +28,7 @@ TEST_F(ComponentUtilsTest, Battery) {
   runtime_probe::Battery_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Battery_ABC_abc");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "battery_ABC_abc");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Battery) {
@@ -42,7 +42,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Battery) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Battery_ABC_abc");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "battery_ABC_abc");
 }
 
 TEST_F(ComponentUtilsTest, Storage_MMC) {
@@ -55,7 +55,7 @@ TEST_F(ComponentUtilsTest, Storage_MMC) {
   runtime_probe::Storage_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(eMMC)_0a_abc");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(eMMC)_0a_abc");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Storage_MMC) {
@@ -70,7 +70,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Storage_MMC) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(eMMC)_0a_abc");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(eMMC)_0a_abc");
 }
 
 TEST_F(ComponentUtilsTest, Storage_NVMe) {
@@ -83,7 +83,7 @@ TEST_F(ComponentUtilsTest, Storage_NVMe) {
   runtime_probe::Storage_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(NVMe)_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(NVMe)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Storage_NVMe) {
@@ -98,7 +98,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Storage_NVMe) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(NVMe)_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(NVMe)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, Storage_ATA) {
@@ -111,7 +111,7 @@ TEST_F(ComponentUtilsTest, Storage_ATA) {
   runtime_probe::Storage_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(SATA)_ABC_abc");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(SATA)_ABC_abc");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Storage_ATA) {
@@ -126,7 +126,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Storage_ATA) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(SATA)_ABC_abc");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(SATA)_ABC_abc");
 }
 
 TEST_F(ComponentUtilsTest, Storage_Unknown) {
@@ -137,7 +137,7 @@ TEST_F(ComponentUtilsTest, Storage_Unknown) {
   runtime_probe::Storage_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(unknown)");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(unknown)");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Storage_Unknown) {
@@ -150,7 +150,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Storage_Unknown) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Storage(unknown)");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "storage(unknown)");
 }
 
 TEST_F(ComponentUtilsTest, Camera) {
@@ -162,7 +162,7 @@ TEST_F(ComponentUtilsTest, Camera) {
   runtime_probe::Camera_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Camera_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "camera_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Camera) {
@@ -176,7 +176,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Camera) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Camera_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "camera_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, InputDevice_Stylus) {
@@ -189,7 +189,7 @@ TEST_F(ComponentUtilsTest, InputDevice_Stylus) {
   runtime_probe::InputDevice_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Stylus_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "stylus_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Stylus) {
@@ -204,7 +204,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Stylus) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Stylus_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "stylus_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, InputDevice_Touchpad) {
@@ -217,7 +217,7 @@ TEST_F(ComponentUtilsTest, InputDevice_Touchpad) {
   runtime_probe::InputDevice_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Touchpad_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "touchpad_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Touchpad) {
@@ -232,7 +232,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Touchpad) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Touchpad_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "touchpad_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, InputDevice_Touchscreen) {
@@ -245,7 +245,7 @@ TEST_F(ComponentUtilsTest, InputDevice_Touchscreen) {
   runtime_probe::InputDevice_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Touchscreen_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "touchscreen_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Touchscreen) {
@@ -260,7 +260,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Touchscreen) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Touchscreen_000a_000b");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "touchscreen_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, InputDevice_Unknown) {
@@ -271,7 +271,7 @@ TEST_F(ComponentUtilsTest, InputDevice_Unknown) {
   runtime_probe::InputDevice_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "InputDevice(unknown)");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "input_device(unknown)");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Unknown) {
@@ -284,7 +284,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_InputDevice_Unknown) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "InputDevice(unknown)");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "input_device(unknown)");
 }
 
 TEST_F(ComponentUtilsTest, Memory) {
@@ -295,7 +295,7 @@ TEST_F(ComponentUtilsTest, Memory) {
   runtime_probe::Memory_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Memory_ABC");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "dram_ABC");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Memory) {
@@ -308,7 +308,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Memory) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Memory_ABC");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "dram_ABC");
 }
 
 TEST_F(ComponentUtilsTest, Display) {
@@ -320,7 +320,7 @@ TEST_F(ComponentUtilsTest, Display) {
   runtime_probe::Edid_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Display_ABC_000a");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "display_ABC_000a");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Display) {
@@ -334,7 +334,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Display) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Display_ABC_000a");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "display_ABC_000a");
 }
 
 TEST_F(ComponentUtilsTest, Network_Pci) {
@@ -349,7 +349,7 @@ TEST_F(ComponentUtilsTest, Network_Pci) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
   EXPECT_EQ(GetComponentFieldsIdentifier(fields),
-            "Network(cellular:pci)_000a_000b");
+            "network(cellular:pci)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Network_Pci) {
@@ -366,7 +366,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Network_Pci) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
   EXPECT_EQ(GetComponentFieldsIdentifier(fields),
-            "Network(cellular:pci)_000a_000b");
+            "network(cellular:pci)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, Network_Usb) {
@@ -381,7 +381,7 @@ TEST_F(ComponentUtilsTest, Network_Usb) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
   EXPECT_EQ(GetComponentFieldsIdentifier(fields),
-            "Network(ethernet:usb)_000a_000b");
+            "network(ethernet:usb)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Network_Usb) {
@@ -398,7 +398,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Network_Usb) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
   EXPECT_EQ(GetComponentFieldsIdentifier(fields),
-            "Network(ethernet:usb)_000a_000b");
+            "network(ethernet:usb)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, Network_Sdio) {
@@ -413,7 +413,7 @@ TEST_F(ComponentUtilsTest, Network_Sdio) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
   EXPECT_EQ(GetComponentFieldsIdentifier(fields),
-            "Network(wireless:sdio)_000a_000b");
+            "network(wireless:sdio)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Network_Sdio) {
@@ -430,7 +430,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Network_Sdio) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
   EXPECT_EQ(GetComponentFieldsIdentifier(fields),
-            "Network(wireless:sdio)_000a_000b");
+            "network(wireless:sdio)_000a_000b");
 }
 
 TEST_F(ComponentUtilsTest, Network_Unknown) {
@@ -442,7 +442,7 @@ TEST_F(ComponentUtilsTest, Network_Unknown) {
   runtime_probe::Network_Fields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Network(cellular:unknown)");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "network(cellular:unknown)");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Network_Unknown) {
@@ -456,12 +456,12 @@ TEST_F(ComponentUtilsTest, ComponentFields_Network_Unknown) {
   runtime_probe::ComponentFields fields;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &fields));
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "Network(cellular:unknown)");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "network(cellular:unknown)");
 }
 
 TEST_F(ComponentUtilsTest, ComponentFields_Unknown) {
   runtime_probe::ComponentFields fields;
-  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "UnknownComponent");
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "unknown_component");
 }
 
 TEST_F(ComponentUtilsTest, Component_Battery) {
@@ -475,7 +475,7 @@ TEST_F(ComponentUtilsTest, Component_Battery) {
   runtime_probe::Battery battery;
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(prototext, &battery));
-  EXPECT_EQ(GetComponentIdentifier(battery), "Battery_ABC_abc");
+  EXPECT_EQ(GetComponentIdentifier(battery), "battery_ABC_abc");
 }
 
 }  // namespace rmad

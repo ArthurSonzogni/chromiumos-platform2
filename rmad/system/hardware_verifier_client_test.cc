@@ -75,20 +75,27 @@ const char kVerifyComponentsReplyNotCompliant[] = R"(
       },
       {
         component_category: camera
-        qualification_status: UNQUALIFIED
+        qualification_status: REJECTED
         component_fields: {
           camera: {
             usb_vendor_id: 10
             usb_product_id: 11
           }
         }
+      },
+      {
+        component_category: dram
+        qualification_status: NO_MATCH
       }
     ]
   }
 )";
 
 const char kVerifyComponentsErrorStrNotCompliant[] =
-    "Battery_ABC_abc\nCamera_000a_000b\n";
+    R"(Unqualified: battery_ABC_abc
+Unqualified: camera_000a_000b
+Missing: dram
+)";
 
 const char kVerifyComponentsReplyError[] = R"(
   error: ERROR_OTHER_ERROR

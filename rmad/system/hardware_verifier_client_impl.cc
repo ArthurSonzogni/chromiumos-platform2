@@ -58,8 +58,15 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
   for (int i = 0; i < report.found_component_infos_size(); ++i) {
     const hardware_verifier::ComponentInfo& info =
         report.found_component_infos(i);
-    if (info.qualification_status() != hardware_verifier::QUALIFIED) {
+    if (info.qualification_status() == hardware_verifier::UNQUALIFIED ||
+        info.qualification_status() == hardware_verifier::REJECTED) {
+      error_str += "Unqualified: ";
       error_str += GetComponentFieldsIdentifier(info.component_fields());
+      error_str += "\n";
+    } else if (info.qualification_status() == hardware_verifier::NO_MATCH) {
+      error_str += "Missing: ";
+      error_str += runtime_probe::ProbeRequest_SupportCategory_Name(
+          info.component_category());
       error_str += "\n";
     }
   }
