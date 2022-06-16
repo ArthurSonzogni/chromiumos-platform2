@@ -13,7 +13,10 @@ dbus = { version = "0.9", optional = true }
 lazy_static = { version = "1.4.0", optional = true }
 libc = "0.2"
 log = "0.4"
+multi_log = "0.1.2"
 serde = { version = "1.0.114", features = ["derive"] }
+stderrlog = "0.5.0"
+syslog = "4.0.1"
 system_api = { path = "../system_api", optional = true } # provided by ebuild
 thiserror = "1.0.20"
 vboot_reference-sys = { path = "../../platform/vboot_reference/rust/vboot_reference-sys", optional = true } # provided by ebuild
@@ -27,3 +30,5 @@ chromeos-module = ["dbus", "lazy_static", "pkg-config", "system_api", "vboot_ref
 audio_streams = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/audio_streams-0.1.0/" } # ignored by ebuild
 base_event_token_derive = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/base_event_token_derive-0.1.0/" } # ignored by ebuild
 crosvm-base = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/crosvm-base-0.1.0/" } # ignored by ebuild
+data_model = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/data_model-0.1.0/" } # ignored by ebuild
+sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" } # ignored by ebuild

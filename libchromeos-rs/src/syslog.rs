@@ -2,72 +2,61 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::ffi::CStr;
+use std::env;
 
-use log::{self, Level, LevelFilter, Metadata, Record, SetLoggerError};
+use crosvm_base::unix::getpid;
+use log::SetLoggerError;
+use stderrlog::StdErrLog;
+use syslog::{BasicLogger, Facility, Formatter3164};
 
-static LOGGER: SyslogLogger = SyslogLogger;
-
-struct SyslogLogger;
-
-impl log::Log for SyslogLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        if cfg!(debug_assertions) {
-            metadata.level() <= Level::Debug
-        } else {
-            metadata.level() <= Level::Info
-        }
-    }
-
-    fn log(&self, record: &Record) {
-        if !self.enabled(record.metadata()) {
-            return;
-        }
-
-        let level = match record.level() {
-            Level::Error => libc::LOG_ERR,
-            Level::Warn => libc::LOG_WARNING,
-            Level::Info => libc::LOG_INFO,
-            Level::Debug => libc::LOG_DEBUG,
-            Level::Trace => libc::LOG_DEBUG,
-        };
-
-        let msg = format!("{}\0", record.args());
-        let cmsg = if let Ok(m) = CStr::from_bytes_with_nul(msg.as_bytes()) {
-            m
-        } else {
-            // For now we just drop messages with interior nuls.
-            return;
-        };
-
-        // Safe because this doesn't modify any memory.  There's not much use
-        // in checking the return value because this _is_ the logging function
-        // so there's no way for us to tell anyone about the error.
-        unsafe {
-            libc::syslog(level, cmsg.as_ptr());
-        }
-    }
-    fn flush(&self) {}
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("unix socket syslog setup failed: {0}")]
+    SyslogUnix(#[source] syslog::Error),
+    #[error("failed to set logger: {0}")]
+    SetLoggerError(#[source] SetLoggerError),
 }
 
-/// Initializes the logger to send log messages to syslog.
-pub fn init(ident: &'static CStr) -> Result<(), SetLoggerError> {
-    // Safe because this only modifies libc's internal state and is safe to call
-    // multiple times.
-    unsafe {
-        libc::openlog(
-            ident.as_ptr(),
-            libc::LOG_NDELAY | libc::LOG_PID,
-            libc::LOG_USER,
-        )
-    };
-    log::set_logger(&LOGGER)?;
-    let level = if cfg!(debug_assertions) {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Info
-    };
-    log::set_max_level(level);
+pub type Result<T> = std::result::Result<T, Error>;
 
-    Ok(())
+/// Get an identifier to be used with init(...) from the current process.
+pub fn get_ident_from_process() -> Option<String> {
+    env::current_exe()
+        .map(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+        .unwrap_or(None)
+}
+
+/// Get the default syslog-based logger.
+pub fn get_syslog_logger(ident: String) -> Result<BasicLogger> {
+    Ok(BasicLogger::new(
+        syslog::unix(Formatter3164 {
+            facility: Facility::LOG_USER,
+            hostname: None,
+            pid: getpid(),
+            process: ident,
+        })
+        .map_err(Error::SyslogUnix)?,
+    ))
+}
+
+/// Initialize logging to the system log and stderr if |log_to_stderr| is true.
+///
+/// Before logging is initialized eprintln(...) and println(...) should be
+/// used. Afterward, debug!(...), info!(...), warn!(....), and error!(...)
+/// should be used instead.
+pub fn init(ident: String, log_to_stderr: bool) -> Result<()> {
+    let syslog_logger = Box::new(get_syslog_logger(ident)?);
+
+    if log_to_stderr {
+        let mut stderr_logger = StdErrLog::new();
+        stderr_logger.verbosity(5);
+
+        multi_log::MultiLogger::init(
+            vec![Box::new(stderr_logger), syslog_logger],
+            log::Level::Info,
+        )
+    } else {
+        log::set_boxed_logger(syslog_logger)
+    }
+    .map_err(Error::SetLoggerError)
 }

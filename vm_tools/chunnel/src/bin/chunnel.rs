@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::env;
-use std::ffi::CStr;
 use std::fmt;
 use std::process;
 use std::result;
@@ -17,7 +16,7 @@ use chunnel::forwarder::{ForwarderError, ForwarderSession};
 use chunnel::stream::{StreamSocket, StreamSocketError};
 
 // Program name.
-const IDENT: &[u8] = b"chunnel\0";
+const IDENT: &str = "chunnel";
 
 #[remain::sorted]
 #[derive(Debug)]
@@ -28,7 +27,7 @@ enum Error {
     PollContextDelete(sys_util::Error),
     PollContextNew(sys_util::Error),
     PollWait(sys_util::Error),
-    Syslog(log::SetLoggerError),
+    Syslog(syslog::Error),
 }
 
 type Result<T> = result::Result<T, Error>;
@@ -124,10 +123,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Safe because this string is defined above in this file and it contains exactly
-    // one nul byte, which appears at the end.
-    let ident = CStr::from_bytes_with_nul(IDENT).unwrap();
-    syslog::init(ident).map_err(Error::Syslog)?;
+    syslog::init(IDENT.to_string(), false /* log_to_stderr */).map_err(Error::Syslog)?;
 
     let local_sockaddr = match matches.opt_str("l") {
         Some(sockaddr) => sockaddr,

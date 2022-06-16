@@ -4,7 +4,6 @@
 
 use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::ffi::CStr;
 use std::fmt;
 use std::fs::File;
 use std::io;
@@ -54,7 +53,7 @@ const CHUNNEL_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const DBUS_TIMEOUT: Duration = Duration::from_secs(30);
 
 // Program name.
-const IDENT: &[u8] = b"chunneld\0";
+const IDENT: &str = "chunneld";
 
 #[remain::sorted]
 #[derive(Debug)]
@@ -79,7 +78,7 @@ enum Error {
     ProtobufDeserialize(ProtobufError),
     ProtobufSerialize(ProtobufError),
     SetVsockNonblocking(io::Error),
-    Syslog(log::SetLoggerError),
+    Syslog(syslog::Error),
     TcpAccept(io::Error),
     TcpListenerPort(io::Error),
     UpdateEventRead(sys_util::Error),
@@ -590,10 +589,7 @@ fn dbus_thread(
 }
 
 fn main() -> Result<()> {
-    // Safe because this string is defined above in this file and it contains exactly
-    // one nul byte, which appears at the end.
-    let ident = CStr::from_bytes_with_nul(IDENT).unwrap();
-    syslog::init(ident).map_err(Error::Syslog)?;
+    syslog::init(IDENT.to_string(), false /* log_to_stderr */).map_err(Error::Syslog)?;
 
     // Block SIGPIPE so the process doesn't exit when writing to a socket that's been shutdown.
     block_signal(libc::SIGPIPE).map_err(Error::BlockSigpipe)?;

@@ -15,7 +15,7 @@ extern crate sys_util;
 
 use libc::gid_t;
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::fmt;
 use std::fs::{remove_file, File};
 use std::io::{self, BufReader, BufWriter};
@@ -47,7 +47,7 @@ const UNIX_FD: &str = "unix-fd:";
 const USAGE: &str = "9s [options] {vsock:<port>|unix:<path>|unix-fd:<fd>|<ip>:<port>}";
 
 // Program name.
-const IDENT: &[u8] = b"9s\0";
+const IDENT: &str = "9s";
 
 enum ListenAddress {
     Net(net::SocketAddr),
@@ -130,7 +130,7 @@ enum Error {
     MissingAcceptCid,
     SocketGid(ParseIntError),
     SocketPathNotAbsolute(PathBuf),
-    Syslog(log::SetLoggerError),
+    Syslog(syslog::Error),
 }
 
 impl fmt::Display for Error {
@@ -394,10 +394,7 @@ fn main() -> Result<()> {
         gid_map,
     });
 
-    // Safe because this string is defined above in this file and it contains exactly
-    // one nul byte, which appears at the end.
-    let ident = CStr::from_bytes_with_nul(IDENT).unwrap();
-    syslog::init(ident).map_err(Error::Syslog)?;
+    syslog::init(IDENT.to_string(), false /* log_to_stderr */).map_err(Error::Syslog)?;
 
     // We already checked that |matches.free| has at least one item.
     match matches.free[0]
