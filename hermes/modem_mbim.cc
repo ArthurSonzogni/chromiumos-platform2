@@ -388,6 +388,7 @@ void ModemMbim::ReadSlotsInfo(uint32_t slot_num,
         base::BindOnce(&ModemMbim::ReadSlotsInfo, weak_factory_.GetWeakPtr(), 0,
                        ++retry_count, std::move(cb)),
         kSlotInfoDelay);
+    return;
   }
   SendMessage(MbimCmd::MbimType::kMbimSlotInfoStatus,
               std::make_unique<SwitchSlotTxInfo>(slot_num), std::move(cb),
