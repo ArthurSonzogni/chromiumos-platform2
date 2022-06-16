@@ -37,11 +37,11 @@ CrosDisksServer::CrosDisksServer(scoped_refptr<dbus::Bus> bus,
       format_manager_(format_manager),
       partition_manager_(partition_manager),
       rename_manager_(rename_manager) {
-  CHECK(platform_) << "Invalid platform object";
-  CHECK(disk_monitor_) << "Invalid disk monitor object";
-  CHECK(format_manager_) << "Invalid format manager object";
-  CHECK(partition_manager_) << "Invalid partition manager object";
-  CHECK(rename_manager_) << "Invalid rename manager object";
+  DCHECK(platform_);
+  DCHECK(disk_monitor_);
+  DCHECK(format_manager_);
+  DCHECK(partition_manager_);
+  DCHECK(rename_manager_);
 
   format_manager_->set_observer(this);
   rename_manager_->set_observer(this);
@@ -172,17 +172,25 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
     return MOUNT_ERROR_INVALID_ARGUMENT;
   }
 
+  LOG(INFO) << "Unmounting " << redact(path) << "...";
   LOG_IF(WARNING, !options.empty())
-      << "Ignoring non-empty unmount options " << quote(options);
+      << "Ignored unmount options " << quote(options) << " for "
+      << redact(path);
 
+  MountErrorType error = MOUNT_ERROR_PATH_NOT_MOUNTED;
   for (const auto& manager : mount_managers_) {
-    const MountErrorType error = manager->Unmount(path);
+    error = manager->Unmount(path);
     if (error != MOUNT_ERROR_PATH_NOT_MOUNTED)
-      return error;
+      break;
   }
 
-  LOG(ERROR) << "Cannot find mount point " << redact(path);
-  return MOUNT_ERROR_PATH_NOT_MOUNTED;
+  if (error) {
+    LOG(ERROR) << "Cannot unmount " << redact(path) << ": " << error;
+  } else {
+    LOG(INFO) << "Unmounted " << redact(path);
+  }
+
+  return error;
 }
 
 void CrosDisksServer::UnmountAll() {
@@ -296,21 +304,19 @@ void CrosDisksServer::OnRenameCompleted(const std::string& device_path,
   SendRenameCompletedSignal(error, device_path);
 }
 
-void CrosDisksServer::OnScreenIsLocked() {
-  // no-op
-}
+void CrosDisksServer::OnScreenIsLocked() {}
 
-void CrosDisksServer::OnScreenIsUnlocked() {
-  // no-op
-}
+void CrosDisksServer::OnScreenIsUnlocked() {}
 
 void CrosDisksServer::OnSessionStarted() {
+  LOG(INFO) << "Starting session...";
   for (const auto& manager : mount_managers_) {
     manager->StartSession();
   }
 }
 
 void CrosDisksServer::OnSessionStopped() {
+  LOG(INFO) << "Stopping session...";
   for (const auto& manager : mount_managers_) {
     manager->StopSession();
   }

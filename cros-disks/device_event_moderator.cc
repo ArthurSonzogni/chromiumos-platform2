@@ -20,39 +20,37 @@ DeviceEventModerator::DeviceEventModerator(
     : event_dispatcher_(event_dispatcher),
       event_source_(event_source),
       is_event_queued_(dispatch_initially) {
-  CHECK(event_dispatcher_) << "Invalid event dispatcher object";
-  CHECK(event_source_) << "Invalid event source object";
+  DCHECK(event_dispatcher_);
+  DCHECK(event_source_);
 }
 
 void DeviceEventModerator::DispatchQueuedDeviceEvents() {
   const DeviceEvent* event;
   while ((event = event_queue_.Head()) != nullptr) {
-    LOG(INFO) << "Dispatch queued event type:" << event->event_type
-              << " device:" << quote(event->device_path);
     event_dispatcher_->DispatchDeviceEvent(*event);
     event_queue_.Remove();
   }
 }
 
 void DeviceEventModerator::OnScreenIsLocked() {
-  LOG(INFO) << "Screen is locked. Device events are now queued.";
+  LOG(INFO) << "Screen is locked";
   is_event_queued_ = true;
 }
 
 void DeviceEventModerator::OnScreenIsUnlocked() {
-  LOG(INFO) << "Screen is locked. Queued device events are now dispatched.";
+  LOG(INFO) << "Screen is unlocked";
   DispatchQueuedDeviceEvents();
   is_event_queued_ = false;
 }
 
 void DeviceEventModerator::OnSessionStarted() {
-  LOG(INFO) << "Session started. Queued device events are now dispatched.";
+  LOG(INFO) << "Session started";
   DispatchQueuedDeviceEvents();
   is_event_queued_ = false;
 }
 
 void DeviceEventModerator::OnSessionStopped() {
-  LOG(INFO) << "Session stopped. Device events are now queued.";
+  LOG(INFO) << "Session stopped";
   is_event_queued_ = true;
 }
 
