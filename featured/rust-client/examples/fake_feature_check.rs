@@ -17,6 +17,22 @@ fn main() {
     features.set_feature_enabled(&feature, true);
     assert!(features.is_feature_enabled_blocking(&feature));
 
+    // Set parameters
+    let param_key = "key".to_string();
+    let param_value = "value".to_string();
+    features.set_param(&feature, &param_key, &param_value);
+    let status = features
+        .get_params_and_enabled(&[&feature])
+        .expect("Unable to fetch feature status");
+    assert_eq!(status.get_param(&feature, &param_key), Some(&param_value));
+
+    // Clear parameters
+    features.clear_params(&feature);
+    let status = features
+        .get_params_and_enabled(&[&feature])
+        .expect("Unable to fetch feature status");
+    assert_eq!(status.get_param(&feature, &param_key), None);
+
     // Override to false
     features.set_feature_enabled(&feature, false);
     assert!(!features.is_feature_enabled_blocking(&feature));

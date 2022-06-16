@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
+[dependencies]
+thiserror = "1.0.30"
+
 [build-dependencies]
 bindgen = "0.59"
 

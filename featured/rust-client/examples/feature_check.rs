@@ -12,4 +12,9 @@ fn main() {
 
     let is_enabled = features.is_feature_enabled_blocking(&feature);
     info!("Feature is enabled: {}", is_enabled);
+
+    let status = features
+        .get_params_and_enabled(&[&feature])
+        .expect("Unable to fetch feature status");
+    info!("Feature params: {:?}", status.get_params(&feature).unwrap());
 }
