@@ -6,15 +6,18 @@
 
 use std::fs::create_dir;
 use std::io::Error as IoError;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
-use libchromeos::chromeos::{self, get_daemonstore_path};
-use libsirenia::storage::{self, FileStorage, Storage};
-use sys_util::scoped_path::get_temp_path;
-use thiserror::Error as ThisError;
-
+use libchromeos::chromeos;
+use libchromeos::chromeos::get_daemonstore_path;
+use libchromeos::scoped_path::get_temp_path;
 // Export this so dependencies don't need to explicitly depend on libsirenia.
 pub use libsirenia::communication::persistence::Scope;
+use libsirenia::storage::FileStorage;
+use libsirenia::storage::Storage;
+use libsirenia::storage::{self};
+use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -132,13 +135,14 @@ pub fn retrieve(scope: Scope, domain: &str, identifier: &str) -> Result<Vec<u8>>
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use std::fs::File;
     use std::io::Write;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
-    use sys_util::scoped_path::ScopedPath;
+    use libchromeos::scoped_path::ScopedPath;
+
+    use super::*;
 
     const TEST_DOMAIN: &str = "DOMAIN";
 

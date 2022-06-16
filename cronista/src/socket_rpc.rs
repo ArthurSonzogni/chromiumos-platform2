@@ -7,19 +7,26 @@
 use std::os::raw::c_uint;
 use std::result::Result as StdResult;
 
-use getopts::{Matches, Options};
-use libsirenia::cli::{self, TransportTypeOption};
-use libsirenia::communication::persistence::{Cronista, CronistaServer, Scope, Status};
+use crosvm_base::unix::vsock::SocketAddr;
+use crosvm_base::unix::vsock::VsockCid;
+use getopts::Matches;
+use getopts::Options;
+use libsirenia::cli;
+use libsirenia::cli::TransportTypeOption;
+use libsirenia::communication::persistence::Cronista;
+use libsirenia::communication::persistence::CronistaServer;
+use libsirenia::communication::persistence::Scope;
+use libsirenia::communication::persistence::Status;
 use libsirenia::linux::events::EventMultiplexer;
-use libsirenia::rpc::{register_server, Error as RpcError};
+use libsirenia::rpc::register_server;
+use libsirenia::rpc::Error as RpcError;
 use libsirenia::transport::TransportType;
-use sys_util::{
-    self, error, info,
-    vsock::{SocketAddr, VsockCid},
-};
+use log::error;
+use log::info;
 use thiserror::Error as ThisError;
 
-use crate::storage::{self, is_unwritten_id};
+use crate::storage;
+use crate::storage::is_unwritten_id;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
