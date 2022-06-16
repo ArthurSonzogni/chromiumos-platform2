@@ -32,6 +32,8 @@ use crate::lvm::{
 
 /// Define the name of the hibernate logical volume.
 const HIBER_VOLUME_NAME: &str = "hibervol";
+/// Define the name of the thinpool logical volume.
+pub const THINPOOL_NAME: &str = "thinpool";
 
 /// Define the known path to the dmsetup utility.
 const DMSETUP_PATH: &str = "/sbin/dmsetup";
@@ -51,7 +53,7 @@ const HIBER_VOLUME_FUDGE_BYTES: i64 = 1024 * 1024 * 1024;
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
 
 /// Define the list of logical volumes known to not need a snapshot.
-const NO_SNAPSHOT_LVS: [&str; 3] = ["thinpool", HIBER_VOLUME_NAME, "cryptohome-"];
+const NO_SNAPSHOT_LVS: [&str; 3] = [THINPOOL_NAME, HIBER_VOLUME_NAME, "cryptohome-"];
 
 /// Define the size of a volume snapshot.
 const SNAPSHOT_SIZE: u64 = 512 * 1024 * 1024;
@@ -82,6 +84,11 @@ impl Drop for PendingStatefulMerge<'_> {
     }
 }
 
+enum ThinpoolMode {
+    ReadOnly,
+    ReadWrite,
+}
+
 pub struct VolumeManager {
     vg_name: String,
     hibervol: Option<ActiveMount>,
@@ -96,6 +103,21 @@ impl VolumeManager {
             vg_name,
             hibervol: None,
         })
+    }
+
+    /// Activate the thinpool in RO mode.
+    pub fn activate_thinpool_ro(&mut self) -> Result<Option<ActivatedLogicalVolume>> {
+        let thinpool = ActivatedLogicalVolume::new(&self.vg_name, THINPOOL_NAME)
+            .context("Failed to activate thinpool")?;
+        self.set_thinpool_mode(ThinpoolMode::ReadOnly)
+            .context("Failed to make thin-pool RO")?;
+        Ok(thinpool)
+    }
+
+    /// Change the RO thinpool to be RW.
+    fn make_thinpool_rw(&mut self) -> Result<()> {
+        self.set_thinpool_mode(ThinpoolMode::ReadWrite)
+            .context("Failed to make thin-pool RW")
     }
 
     /// Set up the hibernate logical volume.
@@ -328,6 +350,10 @@ impl VolumeManager {
             return Ok(());
         }
 
+        // First make the thinpool writable. If this fails, the merges below
+        // won't work either, so don't try.
+        self.make_thinpool_rw()
+            .context("Failed to make thinpool RW")?;
         let mut snapshots = vec![];
         let mut result = Ok(());
         let snapshot_files = read_dir(snapshot_dir())?;
@@ -360,6 +386,48 @@ impl VolumeManager {
         }
 
         wait_for_snapshots_merge(snapshots).and(result)
+    }
+
+    /// Set the thinpool mode for the current volume group.
+    fn set_thinpool_mode(&self, mode: ThinpoolMode) -> Result<()> {
+        let (name, table) = Self::get_thinpool_table()?;
+        let mut thinpool_config = ThinpoolConfig::new(&table)?;
+        match mode {
+            ThinpoolMode::ReadOnly => thinpool_config.add_option("read_only"),
+            ThinpoolMode::ReadWrite => thinpool_config.remove_option("read_only"),
+        }
+
+        let new_table = thinpool_config.to_table();
+        let _suspended_device = SuspendedDmDevice::new(&name);
+        reload_dm_table(&name, &new_table).context("Failed to reload thin-pool table")
+    }
+
+    /// Get the thinpool volume name and table line.
+    fn get_thinpool_table() -> Result<(String, String)> {
+        let line = dmsetup_checked_output(Command::new(DMSETUP_PATH).args([
+            "table",
+            "--target",
+            "thin-pool",
+        ]))
+        .context("Failed to get dm target line for thin-pool")?;
+
+        let trimmed_line = line.trim();
+        if trimmed_line.contains('\n') {
+            return Err(HibernateError::DeviceMapperError(
+                "More than one thin-pool".to_string(),
+            ))
+            .context("Failed to get thinpool table");
+        }
+
+        let split: Vec<&str> = trimmed_line.split(':').collect();
+        if split.len() < 2 {
+            return Err(HibernateError::DeviceMapperError(
+                "Bad dmsetup table line".to_string(),
+            ))
+            .context("Failed to get thinpool table");
+        }
+
+        Ok((split[0].to_string(), split[1..].join(":")))
     }
 }
 
@@ -755,4 +823,74 @@ fn get_nth_element(s: &str, n: usize) -> Result<&str> {
     }
 
     Ok(elements[n])
+}
+
+/// Define the number of elements in a thin-pool target before the options.
+const THINPOOL_CONFIG_COUNT: usize = 7;
+
+/// Define the configuration for a thin-pool dm target.
+struct ThinpoolConfig {
+    config: String,
+    options: Vec<String>,
+}
+
+impl ThinpoolConfig {
+    pub fn new(table: &str) -> Result<Self> {
+        let elements: Vec<&str> = table.split_whitespace().collect();
+        // Fail if there aren't enough fields.
+        if elements.len() <= THINPOOL_CONFIG_COUNT {
+            return Err(HibernateError::IndexOutOfRangeError())
+                .context(format!("Got too few thinpool configs: {}", elements.len()));
+        }
+
+        // Fail if something other than a thin-pool target was given.
+        if elements[2] != "thin-pool" {
+            return Err(HibernateError::DeviceMapperError(
+                "Not a thin-pool".to_string(),
+            ))
+            .context("Failed to parse thinpool config");
+        }
+
+        // Fail if the option count isn't valid, or if there is extra stuff on
+        // the end, since this code doesn't retain that.
+        let option_count: usize = elements[THINPOOL_CONFIG_COUNT].parse()?;
+        if THINPOOL_CONFIG_COUNT + option_count + 1 != elements.len() {
+            return Err(HibernateError::DeviceMapperError(
+                "Unexpected thin-pool elements on the end".to_string(),
+            ))
+            .context("Failed to parse thinpool config");
+        }
+
+        Ok(Self {
+            config: elements[..THINPOOL_CONFIG_COUNT].join(" "),
+            options: elements[(THINPOOL_CONFIG_COUNT + 1)..]
+                .iter()
+                .map(|v| v.to_string())
+                .collect(),
+        })
+    }
+
+    /// Add an option to the thinpool config if it doesn't already exist.
+    pub fn add_option(&mut self, option: &str) {
+        let option = option.to_string();
+        if !self.options.contains(&option) {
+            self.options.push(option)
+        }
+    }
+
+    /// Remove an option from the thinpool config.
+    pub fn remove_option(&mut self, option: &str) {
+        // Retain every value in the options that doesn't match the given option.
+        self.options.retain(|x| x != option);
+    }
+
+    /// Convert this config to a dm-table line.
+    pub fn to_table(&self) -> String {
+        format!(
+            "{} {} {}",
+            &self.config,
+            self.options.len(),
+            self.options.join(" ")
+        )
+    }
 }

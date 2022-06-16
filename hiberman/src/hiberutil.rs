@@ -104,6 +104,9 @@ pub enum HibernateError {
     /// Resume abort requested
     #[error("Resume abort requested: {0}")]
     ResumeAbortRequested(String),
+    /// Device mapper error
+    #[error("Device mapper error: {0}")]
+    DeviceMapperError(String),
 }
 
 /// Options taken from the command line affecting hibernate.

@@ -47,6 +47,18 @@ impl ResumeInitConductor {
         volmgr
             .setup_stateful_snapshots()
             .context("Failed to set up stateful snapshots")?;
+
+        // Change the thinpool to be read-only to avoid accidental thinpool
+        // metadata changes that somehow get around the snapshot. Ideally we'd
+        // do this before activating all the LVs under the snapshots, but doing
+        // the activation seems to flip the pool back to being writeable.
+        let ro_thinpool = volmgr
+            .activate_thinpool_ro()
+            .context("Failed to activate thinpool RO")?;
+        if let Some(mut ro_thinpool) = ro_thinpool {
+            ro_thinpool.dont_deactivate();
+        }
+
         info!("Done with resume init");
         Ok(())
     }
