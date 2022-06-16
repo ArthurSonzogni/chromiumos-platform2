@@ -23,6 +23,7 @@ namespace {
 
 using ::chromeos::cros_healthd::mojom::ErrorType;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -61,18 +62,51 @@ struct GetVolumeStateOutput {
 
 class AudioFetcherTest : public ::testing::Test {
  protected:
-  AudioFetcherTest() = default;
+  void SetUp() override {
+    // Set a default behavior for these methods. These may be overridden in
+    // tests.
+    ON_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
+        .Times(AnyNumber());
+    ON_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _)).Times(AnyNumber());
+  }
 
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() {
     return mock_context_.mock_cras_proxy();
   }
 
-  std::vector<brillo::VariantDictionary> get_node_infos_output() {
-    return get_node_infos_output_;
+  void SetExpectedVolumeState(bool output_mute,
+                              bool input_mute,
+                              bool output_user_mute) {
+    EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(output_mute),
+                        SetArgPointee<2>(input_mute),
+                        SetArgPointee<3>(output_user_mute), Return(true)));
   }
 
-  void append_node_infos_output(const brillo::VariantDictionary& data) {
-    get_node_infos_output_.push_back(data);
+  void SetExpectedNodeInfos(
+      const std::vector<brillo::VariantDictionary>& node_info) {
+    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
+        .WillOnce(DoAll(SetArgPointee<0>(node_info), Return(true)));
+  }
+
+  void SetExpectedVolumeStateError() {
+    EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
+        .WillOnce(DoAll(WithArg<4>(Invoke([](brillo::ErrorPtr* error) {
+                          *error = brillo::Error::Create(FROM_HERE, "", "", "");
+                        })),
+                        Return(false)));
+  }
+
+  void SetExpectedNodeInfosError() {
+    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
+        .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
+                          *error = brillo::Error::Create(FROM_HERE, "", "", "");
+                        })),
+                        Return(false)));
   }
 
   mojom::AudioResultPtr FetchAudioInfoSync() {
@@ -91,8 +125,6 @@ class AudioFetcherTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  std::vector<brillo::VariantDictionary> get_node_infos_output_{
-      kInactiveOutputDevice, kInactiveInputDevice};
 };
 
 class AudioFetcherGetVolumeStateTest
@@ -107,9 +139,9 @@ class AudioFetcherGetVolumeStateTest
 // This is a parameterized test, we test all possible combination of
 // GetVolumeState() output.
 TEST_P(AudioFetcherGetVolumeStateTest, FetchAudioInfo) {
-  // Add active input, output device to the mock output data
-  append_node_infos_output(kActiveOutputDevice);
-  append_node_infos_output(kActiveInputDevice);
+  const bool output_mute = params().output_mute;
+  const bool input_mute = params().input_mute;
+  const bool output_user_mute = params().output_user_mute;
   std::string output_device_name =
       brillo::GetVariantValueOrDefault<std::string>(kActiveOutputDevice,
                                                     cras::kNameProperty);
@@ -124,16 +156,8 @@ TEST_P(AudioFetcherGetVolumeStateTest, FetchAudioInfo) {
   uint32_t severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
       kActiveOutputDevice, cras::kNumberOfSevereUnderrunsProperty);
 
-  const bool output_mute = params().output_mute;
-  const bool input_mute = params().input_mute;
-  const bool output_user_mute = params().output_user_mute;
-
-  EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(output_mute),
-                      SetArgPointee<2>(input_mute),
-                      SetArgPointee<3>(output_user_mute), Return(true)));
-  EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(get_node_infos_output()), Return(true)));
+  SetExpectedVolumeState(output_mute, input_mute, output_user_mute);
+  SetExpectedNodeInfos({kActiveOutputDevice, kActiveInputDevice});
 
   auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_audio_info());
@@ -163,11 +187,6 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Test no active output device.
 TEST_F(AudioFetcherTest, FetchAudioInfoWithoutActiveOutputDevice) {
-  EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-      .WillOnce(DoAll(Return(true)));
-  EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(get_node_infos_output()), Return(true)));
-
   auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_audio_info());
 
@@ -177,11 +196,7 @@ TEST_F(AudioFetcherTest, FetchAudioInfoWithoutActiveOutputDevice) {
 
 // Test that when GetVolumeState fails.
 TEST_F(AudioFetcherTest, FetchAudioInfoGetVolumeStateFail) {
-  EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-      .WillOnce(DoAll(WithArg<4>(Invoke([](brillo::ErrorPtr* error) {
-                        *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                      })),
-                      Return(false)));
+  SetExpectedVolumeStateError();
 
   auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_error());
@@ -190,13 +205,7 @@ TEST_F(AudioFetcherTest, FetchAudioInfoGetVolumeStateFail) {
 
 // Test that when GetNodeInfos fails.
 TEST_F(AudioFetcherTest, FetchAudioInfoGetNodeInfosFail) {
-  EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-      .WillOnce(DoAll(Return(true)));
-  EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-      .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
-                        *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                      })),
-                      Return(false)));
+  SetExpectedNodeInfosError();
 
   auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_error());
