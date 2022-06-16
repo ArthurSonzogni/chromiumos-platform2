@@ -30,4 +30,3 @@ has_arc(`
 type gpu_device, dev_type, mlstrustedobject, cros_labeled_dev_type;
 allow gpu_device sysfs:filesystem associate;
 ');
-

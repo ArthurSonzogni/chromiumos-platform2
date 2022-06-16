@@ -4,4 +4,3 @@ permissive cros_patchpaneld;
 
 
 domain_auto_trans(cros_init, cros_patchpaneld_exec, cros_patchpaneld);
-

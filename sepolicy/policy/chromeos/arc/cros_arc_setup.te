@@ -31,4 +31,3 @@ allow cros_arc_setup cros_run_file_type:dir search;
 
 allow cros_arc_setup cros_var_cache_camera:dir create_dir_perms;
 allow cros_arc_setup cros_var_cache_camera:file create_file_perms;
-

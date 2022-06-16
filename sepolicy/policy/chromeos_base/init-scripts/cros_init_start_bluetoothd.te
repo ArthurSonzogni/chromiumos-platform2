@@ -3,4 +3,3 @@ type cros_init_start_bluetoothd, chromeos_domain, domain, cros_init_scripts_doma
 permissive cros_init_start_bluetoothd;
 
 domain_auto_trans(cros_init, cros_init_start_bluetoothd_shell_script, cros_init_start_bluetoothd);
-

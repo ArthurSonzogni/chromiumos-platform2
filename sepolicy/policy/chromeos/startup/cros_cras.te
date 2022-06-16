@@ -54,4 +54,3 @@ allow cros_cras_client_domain cros_cras:fd use;
 allow cros_cras cros_cras_client_domain:fd use;
 allow cros_cras cros_cras_client_domain:unix_stream_socket { read write };
 unix_socket_connect(cros_cras_client_domain, cras, cros_cras);
-
