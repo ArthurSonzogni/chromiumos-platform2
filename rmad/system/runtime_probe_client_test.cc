@@ -53,7 +53,29 @@ TEST_F(RuntimeProbeClientTest, ProbeAllCategories_Success) {
         std::unique_ptr<dbus::Response> runtime_probe_response =
             dbus::Response::CreateEmpty();
         runtime_probe::ProbeResult probe_result_proto;
-        probe_result_proto.add_battery();
+        // Fixed USB camera.
+        runtime_probe::Camera* camera1 = probe_result_proto.add_camera();
+        camera1->mutable_values()->set_usb_vendor_id(0x0001);
+        camera1->mutable_values()->set_usb_product_id(0x0002);
+        camera1->mutable_values()->set_usb_removable(runtime_probe::FIXED);
+        // Removable USB camera. Will be filtered.
+        runtime_probe::Camera* camera2 = probe_result_proto.add_camera();
+        camera2->mutable_values()->set_usb_vendor_id(0x0003);
+        camera2->mutable_values()->set_usb_product_id(0x0004);
+        camera2->mutable_values()->set_usb_removable(runtime_probe::REMOVABLE);
+        // PCI network.
+        runtime_probe::Network* ethernet1 = probe_result_proto.add_ethernet();
+        ethernet1->mutable_values()->set_type("ethernet");
+        ethernet1->mutable_values()->set_bus_type("pci");
+        ethernet1->mutable_values()->set_pci_vendor_id(0x0005);
+        ethernet1->mutable_values()->set_pci_device_id(0x0006);
+        // USB network. Will be filtered.
+        runtime_probe::Network* ethernet2 = probe_result_proto.add_ethernet();
+        ethernet2->mutable_values()->set_type("ethernet");
+        ethernet2->mutable_values()->set_bus_type("usb");
+        ethernet2->mutable_values()->set_usb_vendor_id(0x0007);
+        ethernet2->mutable_values()->set_usb_product_id(0x0008);
+
         dbus::MessageWriter writer(runtime_probe_response.get());
         writer.AppendProtoAsArrayOfBytes(probe_result_proto);
         return runtime_probe_response;
@@ -61,8 +83,11 @@ TEST_F(RuntimeProbeClientTest, ProbeAllCategories_Success) {
 
   ComponentsWithIdentifier components;
   EXPECT_TRUE(runtime_probe_client_->ProbeCategories({}, &components));
-  EXPECT_EQ(1, components.size());
-  EXPECT_EQ(components[0].first, RMAD_COMPONENT_BATTERY);
+  EXPECT_EQ(2, components.size());
+  EXPECT_EQ(components[0].first, RMAD_COMPONENT_CAMERA);
+  EXPECT_EQ(components[0].second, "Camera_0001_0002");
+  EXPECT_EQ(components[1].first, RMAD_COMPONENT_ETHERNET);
+  EXPECT_EQ(components[1].second, "Network(ethernet:pci)_0005_0006");
 }
 
 TEST_F(RuntimeProbeClientTest, ProbeSingleCategory_Success) {
