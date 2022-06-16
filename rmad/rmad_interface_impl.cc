@@ -530,6 +530,7 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   GetLogReply reply;
   std::string log_string;
   if (cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
+    reply.set_error(RMAD_ERROR_OK);
     reply.set_log(log_string);
   } else {
     LOG(ERROR) << "Failed to generate logs";
