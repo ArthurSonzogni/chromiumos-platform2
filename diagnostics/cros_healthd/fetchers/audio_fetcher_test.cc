@@ -3,8 +3,12 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/run_loop.h>
+#include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -59,8 +63,6 @@ class AudioFetcherTest : public ::testing::Test {
  protected:
   AudioFetcherTest() = default;
 
-  AudioFetcher* audio_fetcher() { return &audio_fetcher_; }
-
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() {
     return mock_context_.mock_cras_proxy();
   }
@@ -73,9 +75,22 @@ class AudioFetcherTest : public ::testing::Test {
     get_node_infos_output_.push_back(data);
   }
 
+  mojom::AudioResultPtr FetchAudioInfoSync() {
+    base::RunLoop run_loop;
+    mojom::AudioResultPtr result;
+    FetchAudioInfo(&mock_context_, base::BindLambdaForTesting(
+                                       [&](mojom::AudioResultPtr response) {
+                                         result = std::move(response);
+                                         run_loop.Quit();
+                                       }));
+    run_loop.Run();
+    return result;
+  }
+
  private:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  AudioFetcher audio_fetcher_{&mock_context_};
   std::vector<brillo::VariantDictionary> get_node_infos_output_{
       kInactiveOutputDevice, kInactiveInputDevice};
 };
@@ -120,7 +135,7 @@ TEST_P(AudioFetcherGetVolumeStateTest, FetchAudioInfo) {
   EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
       .WillOnce(DoAll(SetArgPointee<0>(get_node_infos_output()), Return(true)));
 
-  auto audio_result = audio_fetcher()->FetchAudioInfo();
+  auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_audio_info());
 
   const auto& audio = audio_result->get_audio_info();
@@ -153,7 +168,7 @@ TEST_F(AudioFetcherTest, FetchAudioInfoWithoutActiveOutputDevice) {
   EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
       .WillOnce(DoAll(SetArgPointee<0>(get_node_infos_output()), Return(true)));
 
-  auto audio_result = audio_fetcher()->FetchAudioInfo();
+  auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_audio_info());
 
   const auto& audio = audio_result->get_audio_info();
@@ -168,7 +183,7 @@ TEST_F(AudioFetcherTest, FetchAudioInfoGetVolumeStateFail) {
                       })),
                       Return(false)));
 
-  auto audio_result = audio_fetcher()->FetchAudioInfo();
+  auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_error());
   EXPECT_EQ(audio_result->get_error()->type, ErrorType::kSystemUtilityError);
 }
@@ -183,7 +198,7 @@ TEST_F(AudioFetcherTest, FetchAudioInfoGetNodeInfosFail) {
                       })),
                       Return(false)));
 
-  auto audio_result = audio_fetcher()->FetchAudioInfo();
+  auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_error());
   EXPECT_EQ(audio_result->get_error()->type, ErrorType::kSystemUtilityError);
 }

@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
@@ -49,7 +48,6 @@ class FetchAggregator final {
            mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback);
 
  private:
-  AudioFetcher audio_fetcher_;
   BacklightFetcher backlight_fetcher_;
   BatteryFetcher battery_fetcher_;
   BluetoothFetcher bluetooth_fetcher_;

@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
+#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
@@ -38,8 +39,7 @@ void OnFinish(
 }  // namespace
 
 FetchAggregator::FetchAggregator(Context* context)
-    : audio_fetcher_(context),
-      backlight_fetcher_(context),
+    : backlight_fetcher_(context),
       battery_fetcher_(context),
       bluetooth_fetcher_(context),
       boot_performance_fetcher_(context),
@@ -143,7 +143,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kAudio: {
-        info->audio_result = audio_fetcher_.FetchAudioInfo();
+        FetchAudioInfo(context_,
+                       CreateFetchCallback(&barrier, &info->audio_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kBootPerformance: {

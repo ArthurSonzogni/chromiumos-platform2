@@ -13,28 +13,18 @@
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
+namespace {
 
-mojom::AudioResultPtr AudioFetcher::FetchAudioInfo() {
-  auto res = mojom::AudioResult::NewAudioInfo(mojom::AudioInfo::New());
-
-  PopulateMuteInfo(res);
-  if (res->is_error())
-    return res;
-
-  PopulateActiveNodeInfo(res);
-  return res;
-}
-
-void AudioFetcher::PopulateMuteInfo(mojom::AudioResultPtr& res) {
+void PopulateMuteInfo(Context* context, mojom::AudioResultPtr& res) {
   mojom::AudioInfoPtr& info = res->get_audio_info();
   int32_t unused_output_volume;
   bool output_mute = false;  // Mute by other system daemons.
   bool input_mute = false;
   bool output_user_mute = false;  // Mute by users.
   brillo::ErrorPtr error;
-  if (!context_->cras_proxy()->GetVolumeState(&unused_output_volume,
-                                              &output_mute, &input_mute,
-                                              &output_user_mute, &error)) {
+  if (!context->cras_proxy()->GetVolumeState(&unused_output_volume,
+                                             &output_mute, &input_mute,
+                                             &output_user_mute, &error)) {
     res->set_error(CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
         "Failed retrieving mute info from cras: " + error->GetMessage()));
@@ -45,11 +35,11 @@ void AudioFetcher::PopulateMuteInfo(mojom::AudioResultPtr& res) {
   info->input_mute = input_mute;
 }
 
-void AudioFetcher::PopulateActiveNodeInfo(mojom::AudioResultPtr& res) {
+void PopulateActiveNodeInfo(Context* context, mojom::AudioResultPtr& res) {
   mojom::AudioInfoPtr& info = res->get_audio_info();
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
-  if (!context_->cras_proxy()->GetNodeInfos(&nodes, &error)) {
+  if (!context->cras_proxy()->GetNodeInfos(&nodes, &error)) {
     res->set_error(CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
         "Failed retrieving node info from cras: " + error->GetMessage()));
@@ -93,6 +83,23 @@ void AudioFetcher::PopulateActiveNodeInfo(mojom::AudioResultPtr& res) {
           node, cras::kInputNodeGainProperty);
     }
   }
+}
+
+mojom::AudioResultPtr FetchAudioInfoInner(Context* context) {
+  auto res = mojom::AudioResult::NewAudioInfo(mojom::AudioInfo::New());
+
+  PopulateMuteInfo(context, res);
+  if (res->is_error())
+    return res;
+
+  PopulateActiveNodeInfo(context, res);
+  return res;
+}
+
+}  // namespace
+
+void FetchAudioInfo(Context* context, FetchAudioInfoCallback callback) {
+  std::move(callback).Run(FetchAudioInfoInner(context));
 }
 
 }  // namespace diagnostics
