@@ -95,6 +95,7 @@ copies.
 | [libtpmcrypto](./libtpmcrypto/) | Library for AES256-GCM encryption with TPM sealed keys |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |
 | [lorgnette](./lorgnette/) | Daemon for managing attached USB scanners via [SANE](https://en.wikipedia.org/wiki/Scanner_Access_Now_Easy) |
+| [lvmd](./lvmd/) | ChromeOS LVM daemon |
 | [media_capabilities](./media_capabilities/) | Command line tool to show video and camera capabilities |
 | [media_perception](./media_perception/) | Media perception service for select platforms |
 | [memd](./metrics/memd/) | Daemon that logs memory-related data and events |
