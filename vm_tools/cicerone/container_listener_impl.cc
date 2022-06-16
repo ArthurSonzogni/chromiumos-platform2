@@ -57,7 +57,7 @@ grpc::Status ContainerListenerImpl::ContainerReady(
       FROM_HERE,
       base::BindOnce(&vm_tools::cicerone::Service::ContainerStartupCompleted,
                      service_, request->token(), cid, request->garcon_port(),
-                     &result, &event));
+                     request->sftp_port(), &result, &event));
   event.Wait();
   if (!result) {
     // TODO(b/233831053): We're trying again in a minute to see if this is the
@@ -72,7 +72,7 @@ grpc::Status ContainerListenerImpl::ContainerReady(
         FROM_HERE,
         base::BindOnce(&vm_tools::cicerone::Service::ContainerStartupCompleted,
                        service_, request->token(), cid, request->garcon_port(),
-                       &result, &event),
+                       request->sftp_port(), &result, &event),
         base::Minutes(1));
     event.Wait();
 

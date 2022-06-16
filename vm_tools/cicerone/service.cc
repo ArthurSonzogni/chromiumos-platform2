@@ -732,6 +732,7 @@ void Service::LxdContainerStopping(const uint32_t cid,
 void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t cid,
                                         const uint32_t garcon_vsock_port,
+                                        const uint32_t sftp_port,
                                         bool* result,
                                         base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -822,6 +823,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   proto.set_container_username(username);
   proto.set_container_homedir(homedir);
   proto.set_ipv4_address(string_ip);
+  proto.set_sftp_vsock_port(sftp_port);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
   *result = true;

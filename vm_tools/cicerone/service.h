@@ -189,6 +189,7 @@ class Service final {
   void ContainerStartupCompleted(const std::string& container_token,
                                  const uint32_t cid,
                                  const uint32_t garcon_vsock_port,
+                                 const uint32_t sftp_port,
                                  bool* result,
                                  base::WaitableEvent* event);
 

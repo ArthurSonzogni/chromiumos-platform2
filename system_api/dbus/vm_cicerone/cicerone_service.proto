@@ -99,6 +99,9 @@ message ContainerStartedSignal {
 
   // The IPv4 address of the container.
   string ipv4_address = 6;
+
+  // The vsock port that sftp-server runs on.
+  uint32 sftp_vsock_port = 7;
 }
 
 // Message used in the signal for when a container has shut down.
