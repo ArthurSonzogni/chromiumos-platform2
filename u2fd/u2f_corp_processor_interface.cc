@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <trunks/cr50_headers/u2f.h>
 
+#include "u2fd/client/tpm_vendor_cmd.h"
+#include "u2fd/client/u2f_corp_firmware_version.h"
 #include "u2fd/client/u2f_corp_processor.h"
 
 namespace u2f {
@@ -55,11 +57,12 @@ U2fCorpProcessorInterface::~U2fCorpProcessorInterface() {
 }
 
 void U2fCorpProcessorInterface::Initialize(
+    U2fCorpFirmwareVersion fw_version,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     TpmVendorCommandProxy* tpm_proxy,
     std::function<void()> request_presence) {
   if (processor_) {
-    processor_->Initialize(sm_proxy, tpm_proxy, request_presence);
+    processor_->Initialize(fw_version, sm_proxy, tpm_proxy, request_presence);
   } else {
     VLOG(1) << "Stub initialized.";
   }

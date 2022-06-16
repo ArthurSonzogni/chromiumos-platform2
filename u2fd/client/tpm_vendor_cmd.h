@@ -32,6 +32,14 @@ const uint32_t kVendorRcNoSuchCommand = kVendorRcErr | 0x7f;
 // Response was invalid (TPM response code was not available).
 const uint32_t kVendorRcInvalidResponse = 0xffffffff;
 
+// The 3-bytes X.Y.Z RW version. This is returned as both the applet version and
+// firmware version to corp.
+struct U2F_CLIENT_EXPORT TpmRwVersion {
+  uint32_t epoch;
+  uint32_t major;
+  uint32_t minor;
+};
+
 // TpmVendorCommandProxy sends vendor commands to the TPM security chip
 // by using the D-Bus connection to the trunksd daemon which communicates
 // with the physical TPM through the kernel driver exposing /dev/tpm0.
@@ -83,6 +91,9 @@ class U2F_CLIENT_EXPORT TpmVendorCommandProxy {
   // Returns the TPM response code, or kVendorRcInvalidResponse if the
   // response was invalid.
   virtual uint32_t GetG2fCertificate(std::string* cert_out);
+
+  // Retrieves the epoch.major.minor RW version of cr50.
+  virtual uint32_t GetRwVersion(TpmRwVersion* version);
 
  private:
   // Sends the TPM command with vendor-specific command code |cc| and the

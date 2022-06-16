@@ -11,6 +11,7 @@
 
 #include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/u2f_apdu.h"
+#include "u2fd/client/u2f_corp_firmware_version.h"
 
 namespace u2f {
 
@@ -19,7 +20,8 @@ class U2fCorpProcessor {
   U2fCorpProcessor() = default;
   virtual ~U2fCorpProcessor() = default;
 
-  virtual void Initialize(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
+  virtual void Initialize(U2fCorpFirmwareVersion fw_version,
+                          org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                           TpmVendorCommandProxy* tpm_proxy,
                           std::function<void()> request_presence) = 0;
 

@@ -16,6 +16,7 @@
 #include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/client/u2f_apdu.h"
+#include "u2fd/client/u2f_corp_firmware_version.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/hid_interface.h"
 #include "u2fd/u2f_corp_processor_interface.h"
@@ -76,6 +77,7 @@ class U2fHid {
   // Create a new virtual U2F HID Device. Does not take ownership of
   // msg_handler, which must outlive this instance.
   U2fHid(std::unique_ptr<HidInterface> hid,
+         U2fCorpFirmwareVersion fw_version,
          U2fMessageHandlerInterface* msg_handler,
          U2fCorpProcessorInterface* u2f_corp_processor);
   U2fHid(const U2fHid&) = delete;
@@ -120,6 +122,7 @@ class U2fHid {
   void ProcessReport(const std::string& report);
 
   std::unique_ptr<HidInterface> hid_;
+  const U2fCorpFirmwareVersion fw_version_;
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;

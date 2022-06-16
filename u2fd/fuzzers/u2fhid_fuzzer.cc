@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "u2fd/client/u2f_corp_firmware_version.h"
 #include "u2fd/fuzzers/fake_u2f_msg_handler.h"
 #include "u2fd/fuzzers/fake_uhid_device.h"
 #include "u2fd/hid_interface.h"
@@ -38,8 +39,10 @@ class FuzzerLoop : public brillo::Daemon {
     fake_u2f_msg_handler_ = std::make_unique<u2f::FakeU2fMessageHandler>();
     auto fake_uhid_device = std::make_unique<u2f::FakeUHidDevice>();
     fake_uhid_device_ = fake_uhid_device.get();
+    u2f::U2fCorpFirmwareVersion fake_fw_version;
 
     u2fhid_ = std::make_unique<u2f::U2fHid>(std::move(fake_uhid_device),
+                                            fake_fw_version,
                                             fake_u2f_msg_handler_.get(),
                                             /*u2f_corp_processor=*/nullptr);
 

@@ -18,6 +18,7 @@
 #include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/client/u2f_apdu.h"
+#include "u2fd/client/u2f_corp_firmware_version.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_corp_processor_interface.h"
@@ -199,9 +200,11 @@ struct U2fHid::Transaction {
 };
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
+               U2fCorpFirmwareVersion fw_version,
                U2fMessageHandlerInterface* msg_handler,
                U2fCorpProcessorInterface* u2f_corp_processor)
     : hid_(std::move(hid)),
+      fw_version_(fw_version),
       free_cid_(1),
       locked_cid_(0),
       msg_handler_(msg_handler),
@@ -326,12 +329,9 @@ int U2fHid::CmdLock(std::string* resp) {
 
 int U2fHid::CmdSysInfo(std::string* resp) {
   if (u2f_corp_processor_) {
-    VLOG(1) << "Received SysInfo command";
+    std::string version = fw_version_.ToString();
     // 8 bytes name + 3 bytes firmware version + 3 bytes applet version.
-    // TODO(b/232715968): Return some version value from CR50 here instead of
-    // returning placeholder.
-    *resp =
-        std::string("cr50") + std::string(4, '\x00') + std::string(6, '\x01');
+    *resp = std::string("cr50") + std::string(4, '\x00') + version + version;
     return 0;
   }
 

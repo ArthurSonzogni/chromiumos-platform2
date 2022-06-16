@@ -43,6 +43,7 @@ shared_library("libu2fd-client") {
     sources += [
       "tpm_vendor_cmd.cc",
       "u2f_apdu.cc",
+      "u2f_corp_firmware_version.cc",
     ]
   }
   configs += [ ":target_defaults" ]

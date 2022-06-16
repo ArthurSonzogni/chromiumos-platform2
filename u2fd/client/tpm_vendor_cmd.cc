@@ -26,6 +26,22 @@ struct TpmCmdHeader {
   uint16_t subcommand_code;  // Additional command/response codes
 } __attribute__((packed));
 
+// From src/platform/cr50/chip/g/upgrade_fw.h.
+struct signed_header_version {
+  uint32_t minor;
+  uint32_t major;
+  uint32_t epoch;
+};
+
+struct first_response_pdu {
+  uint32_t return_value;
+  uint32_t protocol_version;
+  uint32_t backup_ro_offset;
+  uint32_t backup_rw_offset;
+  struct signed_header_version shv[2];
+  uint32_t keyid[2];
+};
+
 // TPMv2 Spec mandates that vendor-specific command codes have bit 29 set,
 // while bits 15-0 indicate the command. All other bits should be zero. We
 // define one of those 16-bit command values for Cr50 purposes, and use the
@@ -258,6 +274,72 @@ uint32_t TpmVendorCommandProxy::GetG2fCertificate(std::string* cert_out) {
   }
 
   *cert_out = resp.substr(kExpectedCertResponseHeader.size(), kCertSize);
+
+  return 0;
+}
+
+uint32_t TpmVendorCommandProxy::GetRwVersion(TpmRwVersion* version) {
+  // GSC tool uses the FW upgrade command to retrieve the RO/RW versions. There
+  // are two phases of FW upgrade: connection establishment and actual image
+  // transfer. RO/RW versions are included in the response of the first PDU to
+  // establish connection, in new enough cr50 protocol versions. We can use this
+  // first PDU to retrieve the RW version info we want without side effects. It
+  // has all-zero digest and address.
+  constexpr std::array<uint8_t, 20> kExtensionFwUpgradeRequest{
+      0x80, 0x01,              // tag: TPM_ST_NO_SESSIONS
+      0x00, 0x00, 0x00, 0x14,  // length
+      0xba, 0xcc, 0xd0, 0x0a,  // ordinal: CONFIG_EXTENSION_COMMAND
+      0x00, 0x04,              // subcmd: EXTENSION_FW_UPGRADE
+      0x00, 0x00, 0x00, 0x00,  // digest : UINT32
+      0x00, 0x00, 0x00, 0x00,  // address : UINT32
+  };
+
+  constexpr std::array<uint8_t, 16> kExpectedExtensionFwUpgradeResponseHeader{
+      0x80, 0x01,              // TPM_ST_NO_SESSIONS
+      0x00, 0x00, 0x00, 0x3c,  // length
+      0x00, 0x00, 0x00, 0x00,  // ordinal
+      0x00, 0x04,              // subcmd: EXTENSION_FW_UPGRADE
+      0x00, 0x00, 0x00, 0x00,  // return_value: TPM_RC_SUCCESS
+  };
+
+  constexpr int kTpmResponseHeaderSize = 16;
+  constexpr int kResponsePduOffset = 12;
+  constexpr int kExpectedResponseSize =
+      kResponsePduOffset + sizeof(first_response_pdu);
+  constexpr int kRwVersionIndex = 1;
+
+  std::string req(kExtensionFwUpgradeRequest.begin(),
+                  kExtensionFwUpgradeRequest.end());
+
+  VLOG(2) << "Out(" << req.size()
+          << "): " << base::HexEncode(req.data(), req.size());
+
+  std::string resp = transceiver_->SendCommandAndWait(req);
+
+  VLOG(2) << "In(" << resp.size()
+          << "):  " << base::HexEncode(resp.data(), resp.size());
+
+  if (resp.size() < kTpmResponseHeaderSize) {
+    return kVendorRcInvalidResponse;
+  }
+
+  if (resp.size() != kExpectedResponseSize ||
+      resp.compare(
+          0, 16,
+          std::string(kExpectedExtensionFwUpgradeResponseHeader.begin(),
+                      kExpectedExtensionFwUpgradeResponseHeader.end())) != 0) {
+    uint32_t resp_code;
+    memcpy(&resp_code, resp.c_str() + kResponsePduOffset, sizeof(uint32_t));
+    return base::NetToHost32(resp_code);
+  }
+
+  struct first_response_pdu pdu;
+  memcpy(&pdu, resp.c_str() + kResponsePduOffset, sizeof(first_response_pdu));
+  *version = TpmRwVersion{
+      .epoch = base::NetToHost32(pdu.shv[kRwVersionIndex].epoch),
+      .major = base::NetToHost32(pdu.shv[kRwVersionIndex].major),
+      .minor = base::NetToHost32(pdu.shv[kRwVersionIndex].minor),
+  };
 
   return 0;
 }
