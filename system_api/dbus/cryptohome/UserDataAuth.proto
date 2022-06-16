@@ -719,6 +719,11 @@ message StartAuthSessionReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 6;
+
+  // Gives AuthFactors that can be configured as authentication means for
+  // this user (regardless of whether they are already added for this user or
+  // not).
+  repeated AuthFactorType supported_auth_factors = 7;
 }
 
 message AddCredentialsRequest {
