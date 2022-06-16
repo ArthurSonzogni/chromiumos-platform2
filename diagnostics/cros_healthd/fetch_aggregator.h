@@ -12,7 +12,6 @@
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
@@ -55,7 +54,6 @@ class FetchAggregator final {
   BatteryFetcher battery_fetcher_;
   BluetoothFetcher bluetooth_fetcher_;
   BootPerformanceFetcher boot_performance_fetcher_;
-  BusFetcher bus_fetcher_;
   AsyncFetcher<CpuFetcher> cpu_fetcher_;
   DiskFetcher disk_fetcher_;
   DisplayFetcher display_fetcher_;
@@ -69,6 +67,9 @@ class FetchAggregator final {
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
   NetworkInterfaceFetcher network_interface_fetcher_;
+
+  // The pointer to the Context object for accessing system utilities.
+  Context* const context_;
 };
 
 }  // namespace diagnostics

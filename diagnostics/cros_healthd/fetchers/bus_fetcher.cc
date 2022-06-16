@@ -342,15 +342,14 @@ fwupd_utils::DeviceList ParseFwupdDevices(
   return fwupd_utils::ParseDbusFwupdDeviceList(response);
 }
 
-}  // namespace
-
-void BusFetcher::FetchBusDevicesWithFwupdInfo(
-    FetchBusDevicesCallback&& callback,
+void FetchBusDevicesWithFwupdInfo(
+    Context* context,
+    FetchBusDevicesCallback callback,
     const fwupd_utils::DeviceList& fwupd_devices) {
-  const auto& root = context_->root_dir();
+  const auto& root = context->root_dir();
   std::vector<mojom::BusDevicePtr> res;
 
-  auto pci_util = context_->CreatePciUtil();
+  auto pci_util = context->CreatePciUtil();
   for (const auto& path : ListDirectory(root.Append(kPathSysPci))) {
     auto device = FetchPciDevice(path, pci_util);
     if (device) {
@@ -359,7 +358,7 @@ void BusFetcher::FetchBusDevicesWithFwupdInfo(
   }
   for (const auto& path : ListDirectory(root.Append(kPathSysUsb))) {
     auto udevice =
-        context_->udev()->CreateDeviceFromSysPath(path.value().c_str());
+        context->udev()->CreateDeviceFromSysPath(path.value().c_str());
     auto device = FetchUsbDevice(path, udevice, fwupd_devices);
     if (device) {
       res.push_back(std::move(device));
@@ -375,16 +374,16 @@ void BusFetcher::FetchBusDevicesWithFwupdInfo(
   std::move(callback).Run(mojom::BusResult::NewBusDevices(std::move(res)));
 }
 
-void BusFetcher::FetchBusDevices(FetchBusDevicesCallback&& callback) {
-  auto get_devices_cb =
-      base::BindOnce(&ParseFwupdDevices)
-          .Then(base::BindOnce(&BusFetcher::FetchBusDevicesWithFwupdInfo,
-                               weak_factory_.GetWeakPtr(),
-                               std::move(callback)));
+}  // namespace
+
+void FetchBusDevices(Context* context, FetchBusDevicesCallback callback) {
+  auto get_devices_cb = base::BindOnce(&ParseFwupdDevices)
+                            .Then(base::BindOnce(&FetchBusDevicesWithFwupdInfo,
+                                                 context, std::move(callback)));
 
   auto [on_success, on_error] = SplitDbusCallback(std::move(get_devices_cb));
-  context_->fwupd_proxy()->GetDevicesAsync(std::move(on_success),
-                                           std::move(on_error));
+  context->fwupd_proxy()->GetDevicesAsync(std::move(on_success),
+                                          std::move(on_error));
 }
 
 }  // namespace diagnostics

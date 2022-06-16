@@ -343,20 +343,20 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  mojom::BusResultPtr FetchBusDevices() {
+  mojom::BusResultPtr FetchBusDevicesSync() {
     base::RunLoop run_loop;
     mojom::BusResultPtr result;
-    bus_fetcher_.FetchBusDevices(
-        base::BindLambdaForTesting([&](mojom::BusResultPtr response) {
-          result = std::move(response);
-          run_loop.Quit();
-        }));
+    FetchBusDevices(&mock_context_, base::BindLambdaForTesting(
+                                        [&](mojom::BusResultPtr response) {
+                                          result = std::move(response);
+                                          run_loop.Quit();
+                                        }));
     run_loop.Run();
     return result;
   }
 
   void CheckBusDevices() {
-    auto res = FetchBusDevices();
+    auto res = FetchBusDevicesSync();
     ASSERT_TRUE(res->is_bus_devices());
     const auto& bus_devices = res->get_bus_devices();
     const auto got = Sorted(bus_devices);
@@ -370,7 +370,6 @@ class BusFetcherTest : public BaseFileTest {
   std::vector<mojom::BusDevicePtr> expected_bus_devices_;
   fwupd_utils::DeviceList fwupd_device_list_;
   MockContext mock_context_;
-  BusFetcher bus_fetcher_{&mock_context_};
 };
 
 TEST_F(BusFetcherTest, TestFetchPci) {
