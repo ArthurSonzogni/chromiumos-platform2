@@ -17,10 +17,10 @@ allow cros_installer {
   cros_umount_exec
 }:file rx_file_perms;
 
-r_dir_file(cros_installer sysfs);
-r_dir_file(cros_installer unlabeled);
-rw_dir_file(cros_installer cros_stateful_partition);
-rw_dir_file(cros_installer vfat);
+r_dir_file(cros_installer, sysfs);
+r_dir_file(cros_installer, unlabeled);
+rw_dir_file(cros_installer, cros_stateful_partition);
+rw_dir_file(cros_installer, vfat);
 allow cros_installer cros_stateful_partition:file create_file_perms;
 allow cros_installer proc_cmdline:file r_file_perms;
 allow cros_installer cros_var_lib_ureadahead:dir rw_dir_perms;
@@ -42,5 +42,5 @@ allow cros_installer vfat:filesystem { mount unmount };
 # rules. CTS neverallow rules are only tested on the ARC Container
 # and these permissions are only needed for the no_arc board reven.
 no_arc(`
-  rw_dir_file(cros_installer sysfs_efi_vars);
+  rw_dir_file(cros_installer, sysfs_efi_vars);
 ')
