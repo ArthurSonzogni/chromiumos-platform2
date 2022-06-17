@@ -19,6 +19,7 @@ import os.path
 import re
 import subprocess
 import sys
+from typing import Dict, List, Set, Tuple
 
 
 class Symbol:
@@ -27,11 +28,11 @@ class Symbol:
     HEADER_TEMPLATE = ('/* %s */\n'
                        '%s = %d,\n')
 
-    def __init__(self, symbol):
+    def __init__(self, symbol: str):
         """Constructor for Symbol.
 
         Args:
-            symbol (str): The representation of the symbol.
+            symbol: The representation of the symbol.
         """
 
         # 'symbol' is the string that represents the symbol.
@@ -60,7 +61,7 @@ class Symbol:
         # It is the value for the enum in the generated file.
         self.value = None
 
-    def generate_lines(self):
+    def generate_lines(self) -> List[str]:
         """Generates the lines for this symbol in locations.h.
 
         Returns:
@@ -71,7 +72,7 @@ class Symbol:
         return [Symbol.HEADER_TEMPLATE % (self._generate_comments(),
                                           self.symbol, self.value),]
 
-    def _generate_comments(self):
+    def _generate_comments(self) -> str:
         if self.allow_dup:
             return '=Duplicate Allowed='
         if len(self.line_num) == 0 and len(self.path) == 0:
@@ -79,7 +80,7 @@ class Symbol:
         assert len(self.line_num) == 1 and len(self.path) == 1
         return '%s' % (self.path[0],)
 
-    def merge(self, target):
+    def merge(self, target: 'Symbol'):
         """Merges information from another symbol into this object.
 
         The caller is responsible for destroying target after the call.
@@ -105,7 +106,7 @@ class Symbol:
         else:
             self.value = target.value
 
-    def __str__(self):
+    def __str__(self) -> str:
         locs = ','.join(['%s:%d' % x for x in
                          zip(self.path, self.line_num)])
         result = '%s=%s @ %s' % (self.symbol, self.value, locs)
@@ -121,11 +122,11 @@ class LineNumberFinder:
     Each instance represents a file.
     """
 
-    def __init__(self, content):
+    def __init__(self, content: str):
         """Constructor for LineNumberFinder.
 
         Args:
-            content (str): The content of the file.
+            content: The content of the file.
         """
 
         # '_content' is the content of the file in string format.
@@ -144,11 +145,11 @@ class LineNumberFinder:
                                        if c == '\n')
         self._line_num_of_index.append(len(self._content))
 
-    def find_by_pos(self, idx):
+    def find_by_pos(self, idx: int) -> int:
         """Find the line that idx char is on.
 
         Args:
-            idx (int): The location in number of characters.
+            idx: The location in number of characters.
 
         Returns:
             An integer that is the line number, it starts from 1.
@@ -162,11 +163,11 @@ class SourceScanner:
     ERROR_LOC_USAGE_RE = r'CRYPTOHOME_ERR_LOC\(\s*([a-zA-Z][a-zA-Z0-9]*)\s*\)'
 
     @staticmethod
-    def scan_single_file(path):
+    def scan_single_file(path: str) -> List[Symbol]:
         """Scan a single file for error location usage.
 
         Args:
-            path (str): The path to the file to scan.
+            path: The path to the file to scan.
 
         Returns:
             A list of Symbol, representing the symbols found in the given file.
@@ -192,12 +193,12 @@ class SourceScanner:
         return results
 
     @staticmethod
-    def scan_directory(path, allowed_ext):
+    def scan_directory(path: str, allowed_ext: Set[str]) -> List[Symbol]:
         """Scan a directory recursively for error location usage.
 
         Args:
-            path (str): The path to the directory to scan.
-            allowed_ext (Set[str]): Allowed extensions.
+            path: The path to the directory to scan.
+            allowed_ext: Allowed extensions.
                 Only scan files with extensions in the Set.
 
         Returns:
@@ -224,13 +225,13 @@ class Verifier:
     ones. It also helps to collate the various symbols together.
     """
 
-    def __init__(self, dup_allowlist):
+    def __init__(self, dup_allowlist: Set[str]):
         """Constructor for Verifier.
 
         Args:
-            dup_allowlist (Set[str]): a set of symbol representation that is in
-            the duplication allowlist. If a symbol is in the allowlist, then
-            that string can be used multiple times in the source file.
+            dup_allowlist: a set of symbol representation that is in the
+            duplication allowlist. If a symbol is in the allowlist, then that
+            string can be used multiple times in the source file.
         """
 
         # '_dup_allowlist' is the duplication allowlist, see comment above.
@@ -243,7 +244,8 @@ class Verifier:
             if sym.symbol in self._dup_allowlist:
                 sym.allow_dup = True
 
-    def collate_and_verify(self, input_symbols):
+    def collate_and_verify(self, input_symbols: List[Symbol]) -> \
+            Tuple[Dict[str, Symbol], Dict[str, Symbol]]:
         """Collate the list of symbols and check for duplications.
 
         This function collate the symbols by merging the same symbol in the
@@ -251,13 +253,14 @@ class Verifier:
         symbols not in the `self._dup_allowlist`.
 
         Args:
-            input_symbols (List[Symbol]): A list of symbols from the codebase.
+            input_symbols: A list of symbols from the codebase.
 
         Returns:
-            Tuple[Dict[str, Symbol], Dict[str, Symbol]]: Tuple of
-            collated_symbols and violating_dup. `collated_symbols` is the
-            collated symbols after removing duplicates. `violating_dup` is the
-            set of symbols that are duplicated and not in the allow list.
+            Tuple of collated_symbols and violating_dup.
+            `collated_symbols` is the collated symbols after removing
+            duplicates.
+            `violating_dup` is the set of symbols that are duplicated and not
+            in the allow list.
         """
 
         self._update_allow_dup_in_symbols(input_symbols)
@@ -290,12 +293,12 @@ class LocationDB:
     EXISTING_RECORDS_RE = (r'\/\*\s*([a-zA-Z0-9:/_.= \n]|\s)*\s*\*\/\s*'
                            r'\s+([a-zA-Z][a-zA-Z0-9]*)\s*\=\s*([0-9]+)\s*,')
 
-    def __init__(self, path, dup_allowlist):
+    def __init__(self, path: str, dup_allowlist: Set[str]):
         """Constructor for LocationDB.
 
         Args:
-            path (str): The path to locations.h.
-            dup_allowlist (Set[str]): Duplication allowlist, see
+            path: The path to locations.h.
+            dup_allowlist: Duplication allowlist, see
             Verifier.__init__'s documentation.
         """
 
@@ -390,7 +393,7 @@ class LocationDB:
         assert self._end_line is not None
         return '\n'.join(self._lines[self._start_line:self._end_line-1])
 
-    def load(self):
+    def load(self) -> bool:
         """Load from locations.h.
 
         This method will load the content of locations.h from `self.path`.
@@ -412,7 +415,7 @@ class LocationDB:
         symbols_list.sort(key=operator.attrgetter('value'))
         return [sym.generate_lines() for sym in symbols_list]
 
-    def store(self):
+    def store(self) -> None:
         """Save the state in this object back into locations.h.
 
         This method will convert the state in this object into string content
@@ -440,14 +443,14 @@ class LocationDB:
         # Format the result
         subprocess.call(['clang-format', '-i', self.path])
 
-    def update_from_scan_result(self, result):
+    def update_from_scan_result(self, result: Dict[str, Symbol]) -> None:
         """Update the state of this object.
 
         This method will update the internal state within this object from
         the Symbols found in `result`.
 
         Args:
-            result (Dict[str, Symbol]): A dict of symbols found in source tree.
+            result: A dict of symbols found in source tree.
         """
 
         # Clear relevant fields in the current symbols.
@@ -484,11 +487,11 @@ class DBTool:
     SCAN_DENYLIST = frozenset({'./error/location_utils.h'})
     LOCATIONS_H_PATH = './error/locations.h'
 
-    def __init__(self, allowlist_path):
+    def __init__(self, allowlist_path: str):
         """Constructor for DBTool.
 
         Args:
-            allowlist_path (str): The path to the file that stores the content
+            allowlist_path: The path to the file that stores the content
             of dup_allowlist. Each line is a symbol that is in the allowlist,
             thus each line is a symbol that can appear multiple times in the
             code base.
@@ -522,14 +525,13 @@ class DBTool:
         for line in lines:
             self._dup_allowlist.add(line)
 
-    def check_sources(self):
+    def check_sources(self) -> Tuple[bool, Dict[str, Symbol]]:
         """Scan the codebase and check for errors.
 
         Returns:
-            Tuple[bool, Dict[str, Symbol]]: Returns (success, symbols), where
-            by success is a True iff the operation is successful and there's no
-            error found, and in that case Symbol will be the symbols found in
-            the code base.
+            Returns (success, symbols), whereby success is a True iff the
+            operation is successful and there's no error found, and in that
+            case Symbol will be the symbols found in the code base.
         """
 
         # Scan for all symbols.
@@ -546,14 +548,14 @@ class DBTool:
             return False, None
         return True, collated_symbols
 
-    def update_location_db(self):
+    def update_location_db(self) -> bool:
         """Scan the code base and update locations.h
 
         Scan the code base for all usage of error symbols, then process them
         to see if there's any error. If there's no error, update locations.h.
 
         Returns:
-            bool: True if successful.
+            True if successful.
         """
 
         if not self._load_full_db():
@@ -572,14 +574,14 @@ class DBTool:
         self.db.update_from_scan_result(symbols)
         return True
 
-    def lookup_symbol(self, value):
+    def lookup_symbol(self, value: str) -> bool:
         """Print the usage location for an error ID node.
 
         Given an error ID node, as in, a symbol, locate where it is used and
         print it out.
 
         Args:
-            value (str): The symbol.
+            value: The symbol.
         """
 
         self._load_full_db()
@@ -593,14 +595,14 @@ class DBTool:
             print('%s:%d'  % (path, line))
         return True
 
-    def decode_stack(self, locs):
+    def decode_stack(self, locs: str) -> None:
         """Print the stack for an error ID.
 
         Given an error ID (dash-separated symbols), decode the symbols and
         print out their location in the code base.
 
         Args:
-            locs (str): A dash-separated symbols string.
+            locs: A dash-separated symbols string.
         """
 
         self._load_full_db()
