@@ -16,10 +16,12 @@ import logging
 import operator
 import os
 import os.path
+import pathlib
 import re
 import subprocess
 import sys
 from typing import Dict, List, Set, Tuple
+from xml.dom import pulldom
 
 
 class Symbol:
@@ -475,6 +477,132 @@ class LocationDB:
 
         self._build_reverse_map()
 
+class EnumsXmlDB:
+    """For reading and writing enums.xml
+
+    This class allows us to discover the error locations that are already
+    documented in enums.xml. It also allows us to update enums.xml with the
+    given new sets of documented error locations.
+    """
+
+    ERROR_LOCATION_ENUM_START_MARKER = '<enum name="CryptohomeErrorLocation">'
+    ENUM_STOP_MARKER = '</enum>'
+    ERROR_LOCATION_COMMENTS = """<!--
+  This enum is intended to be populated automatically by
+  platform2/cryptohome/error/tool/location_db.py. It populates all values
+  found in the cryptohome code base.
+
+  It is allowed to manually add <int> error location to this file, and the
+  added error location will continue to be updated when the script runs the
+  next time. However, the label, and all changes to the label field may be
+  overwritten by the tool. Furthermore, removal of <int> may be added back
+  if that bucket is still observed in the field.
+
+  The labels are the Cryptohome Error Location enum defined in
+  platform2/cryptohome/error/locations.h
+  -->
+
+"""
+    ERROR_LOCATION_INT_TEMPLATE = '<int value="%d" label="%s"/>\n'
+
+    def __init__(self, enums_xml_path: str):
+        """Constructor for EnumsXmlDB.
+
+        Args:
+            enums_xml_path: Absolute full path to enums.xml
+        """
+        self.enums_xml_path = enums_xml_path
+        self.error_locs = []
+
+    def load_enums_xml(self) -> None:
+        """Loads enums.xml file.
+
+        This method will populate self.error_locs with the list of error
+        locations (as int) found in enums.xml, where the file path is
+        specified in the constructor.
+        """
+
+        event_stream = pulldom.parse(self.enums_xml_path)
+        found_error_loc = False
+        result = []
+        for event, node in event_stream:
+            if (event == 'START_ELEMENT' and node.tagName == 'enum' and
+                    node.hasAttribute('name') and
+                    node.getAttribute('name') == 'CryptohomeErrorLocation'):
+                # Found the CryptohomeErrorLocation enum node.
+                found_error_loc = True
+            if event == 'END_ELEMENT' and node.tagName == 'enum':
+                # Went out of scope of CryptohomeErrorLocation enum node.
+                found_error_loc = False
+            if (found_error_loc and event == 'START_ELEMENT' and
+                    node.tagName == 'int' and node.hasAttribute('value')):
+                # Found a record of error location in enums.xml.
+                result.append(int(node.getAttribute('value')))
+        self.error_locs = result
+
+    def update_enums_xml_with_error_loc(
+            self, values_to_write: List[Tuple[int, str]]) -> bool:
+        """Updates enums.xml with the given error locations.
+
+        Args:
+            values_to_write: A list of error locations
+            to write, each is a tuple. The first element of the tuple is the
+            value and the second element is the label.
+
+        Returns:
+            True for success.
+        """
+
+        with open(self.enums_xml_path, 'r') as f:
+            lines = f.readlines()
+
+        # Verify that there's only 1 error location enum in the DB.
+        if ('\n'.join(lines).count(EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER)
+                != 1):
+            logging.error('Invalid number of CryptohomeErrorLocation <enum> tag'
+                          ' in enums.xml')
+            return False
+
+        idx = 0
+        while idx < len(lines):
+            if (lines[idx].strip() ==
+                    EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER):
+                break
+            idx += 1
+        if idx == len(lines):
+            logging.error('No CryptohomeErrorLocation enum tag found in'
+                          ' enums.xml')
+            return False
+
+        result = lines[0:idx+1]
+        result.append(EnumsXmlDB.ERROR_LOCATION_COMMENTS)
+        for value, label in values_to_write:
+            result.append(EnumsXmlDB.ERROR_LOCATION_INT_TEMPLATE %
+                          (value, label))
+
+        # Note that we do not have nested <enum> tag for
+        # CryptohomeErrorLocation, if that changes, we might need to change
+        # this code.
+        while idx < len(lines):
+            if lines[idx].strip() == EnumsXmlDB.ENUM_STOP_MARKER:
+                break
+            idx += 1
+        if idx == len(lines):
+            logging.error('No end of enum tag found for '
+                          'CryptohomeErrorLocation in enums.xml')
+            return False
+
+        result += lines[idx:]
+
+        with open(self.enums_xml_path, 'w') as f:
+            f.write(''.join(result))
+
+        # Pretty print for conformance with the style.
+        enums_xml_dir = pathlib.Path(self.enums_xml_path)
+        subprocess.call(['./pretty_print.py', '--non-interactive',
+                         'enums.xml'],
+                        cwd=enums_xml_dir.parent)
+        return True
 
 class DBTool:
     """Bridge for various classes above.
@@ -615,6 +743,62 @@ class DBTool:
                 symbol = self.db.symbols[self.db.value_to_symbol[val]]
                 print('%s' % (symbol,))
 
+    def update_enums_xml_with_error_loc(self, chromium_src_path: str) -> None:
+        """Updates the enums.xml with the error location symbols used.
+
+        This method will read the list of error locations that are actually
+        encountered in the field from the stdin and ensure that they're in
+        enums.xml.
+
+        Args:
+            chromium_src_path: Path to Chromium source code.
+        """
+
+        # Normalize the path first.
+        chromium_src_path = pathlib.Path(chromium_src_path)
+        chromium_src_path = chromium_src_path.expanduser().resolve()
+
+        # Find path to enums.xml
+        enums_xml_path = (chromium_src_path / 'tools' / 'metrics' /
+                          'histograms' / 'enums.xml')
+
+        # Load enums.xml
+        enums_db = EnumsXmlDB(str(enums_xml_path))
+        enums_db.load_enums_xml()
+
+        # Grab the list of values from stdin
+        def is_integer(s):
+            """Returns True if the input string is a valid int"""
+            try:
+                _ = int(s)
+                return True
+            except ValueError:
+                return False
+        inputs = sys.stdin.readlines()
+        inputs = [x.strip() for x in inputs]
+        inputs = [int(x) for x in inputs if is_integer(x)]
+
+        # Load the DB and grab all values.
+        self._load_full_db()
+        result_error_loc_values = list(set(inputs)
+                                       .union(set(enums_db.error_locs)))
+        result_error_loc_values.sort()
+        result_error_locs = [(x, self.db.value_to_symbol[x])
+                             for x in result_error_loc_values
+                             if x in self.db.value_to_symbol]
+        invalid_locs = [x for x in result_error_loc_values
+                        if x not in self.db.value_to_symbol]
+
+        # Log warnings for invalid inputs.
+        for loc in invalid_locs:
+            # Note that currently TPM errors are not handled.
+            # TODO(b/236378423): Support TPM Error Locations.
+            logging.warning('Invalid error location value: %d', loc)
+
+        # Write all valid output to enums.xml
+        if not enums_db.update_enums_xml_with_error_loc(result_error_locs):
+            logging.error('Failed to update enums.xml, call to '
+                          'update_enums_xml_with_error_loc failed.')
 
 class DBToolCommandLine:
     """This class handles the command line operations for the tool."""
@@ -660,6 +844,14 @@ class DBToolCommandLine:
                                  help=('Decode a stack of error location, ex.'
                                        '42-7-15'),
                                  default=None)
+        self.parser.add_argument('--update-enums-xml-with-error-loc',
+                                 help=('Update the enums.xml, will need to'
+                                       'supply chromium source directory'),
+                                 action='store_true')
+
+        self.parser.add_argument('--chromium-src',
+                                 help='Path to Chromium source code',
+                                 default='~/chromium/src')
         self.parser.add_argument('--src',
                                  help=('The cryptohome source '
                                        'directory'), default=None)
@@ -700,6 +892,8 @@ class DBToolCommandLine:
             self.db_tool.lookup_symbol(int(self.args.lookup))
         elif self.args.decode is not None:
             self.db_tool.decode_stack(self.args.decode)
+        elif self.args.update_enums_xml_with_error_loc:
+            self.db_tool.update_enums_xml_with_error_loc(self.args.chromium_src)
         else:
             logging.error('No action specified, please see --help')
             return 1
