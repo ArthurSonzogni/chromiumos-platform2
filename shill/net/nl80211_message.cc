@@ -70,7 +70,8 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
   }
 
   return packet->ConsumeAttributes(
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context),
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          context),
       attributes_);
 }
 
@@ -241,8 +242,8 @@ const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 GetRegMessage::GetRegMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_WIPHY,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetStationMessage::kCommand = NL80211_CMD_GET_STATION;
@@ -252,11 +253,12 @@ GetStationMessage::GetStationMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                   NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC,
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t SetWakeOnWiFiMessage::kCommand = NL80211_CMD_SET_WOWLAN;
@@ -271,8 +273,8 @@ const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
 GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   attributes()->CreateFlagAttribute(NL80211_ATTR_SPLIT_WIPHY_DUMP,
                                     "Split wiphy dump");
 }
@@ -313,15 +315,16 @@ ProbeMeshLinkMessage::ProbeMeshLinkMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                   NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC,
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
       NL80211_ATTR_FRAME,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t RegBeaconHintMessage::kCommand = NL80211_CMD_REG_BEACON_HINT;
@@ -335,8 +338,8 @@ RegChangeMessage::RegChangeMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t RemainOnChannelMessage::kCommand = NL80211_CMD_REMAIN_ON_CHANNEL;
@@ -355,8 +358,8 @@ const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 GetScanMessage::GetScanMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
@@ -366,8 +369,8 @@ TriggerScanMessage::TriggerScanMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t UnprotDeauthenticateMessage::kCommand =
@@ -388,16 +391,16 @@ WiphyRegChangeMessage::WiphyRegChangeMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 GetInterfaceMessage::GetInterfaceMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetInterfaceMessage::kCommand = NL80211_CMD_GET_INTERFACE;
@@ -413,8 +416,8 @@ GetSurveyMessage::GetSurveyMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   AddFlag(NLM_F_DUMP);
 }
 
@@ -429,11 +432,12 @@ GetMeshPathInfoMessage::GetMeshPathInfoMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                   NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC,
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetMeshProxyPathMessage::kCommand = NL80211_CMD_GET_MPP;
@@ -443,11 +447,12 @@ GetMeshProxyPathMessage::GetMeshProxyPathMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX,
-      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                 NetlinkMessage::MessageContext()));
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                   NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC,
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t NewPeerCandidateMessage::kCommand =

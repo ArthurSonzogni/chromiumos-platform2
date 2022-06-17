@@ -84,7 +84,8 @@ If the kernel expects the attribute, modify the message's constructor
 nl80211_message.cc) to create the attribute:
 
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      NL80211_ATTR_IFINDEX,
+      BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId));
 
 
 2.1.1.2  Nested attributes.

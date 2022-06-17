@@ -27,8 +27,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   ByteString payload(provider.ConsumeRemainingBytes<uint8_t>());
 
   AttributeListRefPtr attributes(new AttributeList);
-  attributes->Decode(payload, offset,
-                     base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  attributes->Decode(
+      payload, offset,
+      base::BindRepeating(&NetlinkAttribute::NewControlAttributeFromId));
   attributes->Encode();
   attributes->Print(log_level, indent);
 

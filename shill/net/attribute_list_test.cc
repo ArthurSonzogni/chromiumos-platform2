@@ -62,7 +62,8 @@ TEST_F(AttributeListTest, IterateEmptyPayload) {
   AttributeListRefPtr list(new AttributeList());
   EXPECT_TRUE(list->IterateAttributes(
       ByteString(), 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
 }
 
 TEST_F(AttributeListTest, IteratePayload) {
@@ -89,7 +90,8 @@ TEST_F(AttributeListTest, IteratePayload) {
   AttributeListRefPtr list(new AttributeList());
   EXPECT_TRUE(list->IterateAttributes(
       payload, 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // If a valid offset is provided only the attributes that follow should
@@ -101,7 +103,8 @@ TEST_F(AttributeListTest, IteratePayload) {
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
       payload, kLength1,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // If one of the attribute methods returns false, the iteration should abort.
@@ -112,7 +115,8 @@ TEST_F(AttributeListTest, IteratePayload) {
   EXPECT_CALL(*this, AttributeMethod(kType3, PayloadIs("12345"))).Times(0);
   EXPECT_FALSE(list->IterateAttributes(
       payload, 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 }
 
@@ -122,7 +126,8 @@ TEST_F(AttributeListTest, SmallPayloads) {
   AttributeListRefPtr list(new AttributeList());
   EXPECT_FALSE(list->IterateAttributes(
       MakeNetlinkAttribute(kHeaderLength - 1, kType1, "0123"), 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // This is a minimal valid payload.
@@ -130,7 +135,8 @@ TEST_F(AttributeListTest, SmallPayloads) {
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
       MakeNetlinkAttribute(kHeaderLength, kType2, ""), 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // This is a minmal payload except there are not enough bytes to retrieve
@@ -139,7 +145,8 @@ TEST_F(AttributeListTest, SmallPayloads) {
   EXPECT_CALL(*this, AttributeMethod(_, _)).Times(0);
   EXPECT_FALSE(list->IterateAttributes(
       MakeNetlinkAttribute(kHeaderLength + 1, kType3, ""), 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
 }
 
 TEST_F(AttributeListTest, TrailingGarbage) {
@@ -155,7 +162,8 @@ TEST_F(AttributeListTest, TrailingGarbage) {
   AttributeListRefPtr list(new AttributeList());
   EXPECT_TRUE(list->IterateAttributes(
       payload, 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // +---------------+
@@ -169,7 +177,8 @@ TEST_F(AttributeListTest, TrailingGarbage) {
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
       payload, 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // +---------------+-----+
@@ -184,7 +193,8 @@ TEST_F(AttributeListTest, TrailingGarbage) {
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
       payload, 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // +---------------+-------+
@@ -200,7 +210,8 @@ TEST_F(AttributeListTest, TrailingGarbage) {
       .WillOnce(Return(true));
   EXPECT_FALSE(list->IterateAttributes(
       payload, 0,
-      base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));
+      base::BindRepeating(&AttributeListTest::AttributeMethod,
+                          base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 }
 

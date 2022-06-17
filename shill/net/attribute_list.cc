@@ -40,13 +40,14 @@ bool AttributeList::CreateAttribute(int id,
 
 bool AttributeList::CreateControlAttribute(int id) {
   return CreateAttribute(
-      id, base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+      id, base::BindRepeating(&NetlinkAttribute::NewControlAttributeFromId));
 }
 
 bool AttributeList::CreateNl80211Attribute(
     int id, NetlinkMessage::MessageContext context) {
   return CreateAttribute(
-      id, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context));
+      id, base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                              context));
 }
 
 bool AttributeList::CreateAndInitAttribute(
@@ -121,9 +122,10 @@ bool AttributeList::IterateAttributes(
 bool AttributeList::Decode(const ByteString& payload,
                            size_t offset,
                            const AttributeList::NewFromIdMethod& factory) {
-  return IterateAttributes(payload, offset,
-                           base::Bind(&AttributeList::CreateAndInitAttribute,
-                                      base::Unretained(this), factory));
+  return IterateAttributes(
+      payload, offset,
+      base::BindRepeating(&AttributeList::CreateAndInitAttribute,
+                          base::Unretained(this), factory));
 }
 
 ByteString AttributeList::Encode() const {

@@ -803,13 +803,13 @@ bool NetlinkNestedAttribute::InitNestedFromValue(
   if (templates.size() == 1 && templates.cbegin()->second.is_array) {
     return AttributeList::IterateAttributes(
         value, 0,
-        base::Bind(&NetlinkNestedAttribute::AddAttributeToNestedArray,
-                   templates.cbegin()->second, list));
+        base::BindRepeating(&NetlinkNestedAttribute::AddAttributeToNestedArray,
+                            templates.cbegin()->second, list));
   } else {
     return AttributeList::IterateAttributes(
         value, 0,
-        base::Bind(&NetlinkNestedAttribute::AddAttributeToNestedMap, templates,
-                   list));
+        base::BindRepeating(&NetlinkNestedAttribute::AddAttributeToNestedMap,
+                            templates, list));
   }
 }
 
