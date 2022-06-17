@@ -485,7 +485,7 @@ class BRILLO_EXPORT DBusInterface final {
       ::dbus::Bus* bus,
       ::dbus::ExportedObject* exported_object,
       const ::dbus::ObjectPath& object_path,
-      AsyncEventSequencer::CompletionOnceAction completion_callback);
+      AsyncEventSequencer::CompletionAction completion_callback);
   // Exports all the methods and properties of this interface and claims the
   // D-Bus interface synchronously.
   // object_manager - ExportedObjectManager instance that notifies D-Bus
@@ -502,7 +502,7 @@ class BRILLO_EXPORT DBusInterface final {
       ExportedObjectManager* object_manager,
       ::dbus::ExportedObject* exported_object,
       const ::dbus::ObjectPath& object_path,
-      AsyncEventSequencer::CompletionOnceAction completion_callback);
+      AsyncEventSequencer::CompletionAction completion_callback);
   // Releases the D-Bus interface and unexports all the methods synchronously.
   BRILLO_PRIVATE void UnexportAndBlock(ExportedObjectManager* object_manager,
                                        ::dbus::ExportedObject* exported_object,
@@ -574,7 +574,7 @@ class BRILLO_EXPORT DBusObject {
   // interface proxy does not exist yet, it will be automatically created.
   void ExportInterfaceAsync(
       const std::string& interface_name,
-      AsyncEventSequencer::CompletionOnceAction completion_callback);
+      AsyncEventSequencer::CompletionAction completion_callback);
 
   // Exports a proxy handler for the interface |interface_name|. If the
   // interface proxy does not exist yet, it will be automatically created. This
@@ -588,7 +588,7 @@ class BRILLO_EXPORT DBusObject {
   // to make sure it will start with a clean state of method handlers.
   void UnexportInterfaceAsync(
       const std::string& interface_name,
-      AsyncEventSequencer::CompletionOnceAction completion_callback);
+      AsyncEventSequencer::CompletionAction completion_callback);
 
   // Unexports the interface |interface_name| and unexports all method handlers.
   // In some cases, one may want to export an interface even after it's removed.
@@ -602,7 +602,7 @@ class BRILLO_EXPORT DBusObject {
   // that will call |completion_callback| when the object and all of its
   // interfaces are registered.
   virtual void RegisterAsync(
-      AsyncEventSequencer::CompletionOnceAction completion_callback);
+      AsyncEventSequencer::CompletionAction completion_callback);
 
   // Registers the object instance with D-Bus. This is call is synchronous and
   // will block until the object and all of its interfaces are registered.

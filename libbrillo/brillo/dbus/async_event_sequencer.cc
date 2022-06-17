@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -38,7 +39,7 @@ AsyncEventSequencer::ExportHandler AsyncEventSequencer::GetExportHandler(
                              this, finish_handler, interface_name, method_name);
 }
 
-void AsyncEventSequencer::OnAllTasksCompletedCall(CompletionOnceAction action) {
+void AsyncEventSequencer::OnAllTasksCompletedCall(CompletionAction action) {
   CHECK(!started_) << "OnAllTasksCompletedCall called twice!";
   started_ = true;
   completion_action_ = std::move(action);
@@ -47,21 +48,19 @@ void AsyncEventSequencer::OnAllTasksCompletedCall(CompletionOnceAction action) {
 }
 
 namespace {
-void IgnoreSuccess(const AsyncEventSequencer::CompletionTask& task,
-                   bool /*success*/) {
-  task.Run();
+void IgnoreSuccess(AsyncEventSequencer::CompletionTask task, bool /*success*/) {
+  std::move(task).Run();
 }
-void DoNothing(bool /* success */) {}
 }  // namespace
 
 AsyncEventSequencer::CompletionAction AsyncEventSequencer::WrapCompletionTask(
-    const CompletionTask& task) {
-  return base::Bind(&IgnoreSuccess, task);
+    CompletionTask task) {
+  return base::BindOnce(&IgnoreSuccess, std::move(task));
 }
 
 AsyncEventSequencer::CompletionAction
 AsyncEventSequencer::GetDefaultCompletionAction() {
-  return base::Bind(&DoNothing);
+  return base::DoNothing();
 }
 
 void AsyncEventSequencer::HandleFinish(int registration_number,

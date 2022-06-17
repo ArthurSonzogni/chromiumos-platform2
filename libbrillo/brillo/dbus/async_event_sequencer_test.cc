@@ -34,7 +34,7 @@ class AsyncEventSequencerTest : public ::testing::Test {
   }
 
   scoped_refptr<AsyncEventSequencer> aec_;
-  AsyncEventSequencer::CompletionOnceAction cb_;
+  AsyncEventSequencer::CompletionAction cb_;
 };
 
 TEST_F(AsyncEventSequencerTest, WaitForCompletionActions) {

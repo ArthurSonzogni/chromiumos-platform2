@@ -177,7 +177,7 @@ ErrorType AuthPolicy::Initialize(bool device_is_locked) {
 
 void AuthPolicy::RegisterAsync(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    brillo::dbus_utils::AsyncEventSequencer::CompletionOnceAction
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction
         completion_callback) {
   DCHECK(!dbus_object_);
   dbus_object_ = std::move(dbus_object);

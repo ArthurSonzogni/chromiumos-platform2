@@ -96,7 +96,7 @@ class BRILLO_EXPORT ExportedObjectManager
   // exported on the path given in the constructor. Must be called on the
   // origin thread.
   virtual void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction
           completion_callback);
 
   // Trigger a signal that |path| has added an interface |interface_name|

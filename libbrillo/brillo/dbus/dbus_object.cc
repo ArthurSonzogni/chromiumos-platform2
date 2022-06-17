@@ -61,7 +61,7 @@ void DBusInterface::ExportAsync(
     dbus::Bus* /* bus */,
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
-    AsyncEventSequencer::CompletionOnceAction completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   VLOG(1) << "Registering D-Bus interface '" << interface_name_ << "' for '"
           << object_path.value() << "'";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
@@ -77,7 +77,7 @@ void DBusInterface::ExportAsync(
                                   export_handler);
   }
 
-  std::vector<AsyncEventSequencer::CompletionOnceAction> actions;
+  std::vector<AsyncEventSequencer::CompletionAction> actions;
   if (object_manager) {
     auto property_writer_callback =
         dbus_object_->property_set_.GetPropertyWriter(interface_name_);
@@ -87,7 +87,7 @@ void DBusInterface::ExportAsync(
   }
   actions.push_back(std::move(completion_callback));
   auto actions_cb = base::BindOnce(
-      [](std::vector<AsyncEventSequencer::CompletionOnceAction> actions,
+      [](std::vector<AsyncEventSequencer::CompletionAction> actions,
          bool all_succeeded) {
         for (auto& action : actions) {
           std::move(action).Run(all_succeeded);
@@ -126,7 +126,7 @@ void DBusInterface::UnexportAsync(
     ExportedObjectManager* object_manager,
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
-    AsyncEventSequencer::CompletionOnceAction completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   VLOG(1) << "Unexporting D-Bus interface " << interface_name_ << " for "
           << object_path.value();
 
@@ -280,7 +280,7 @@ void DBusObject::RemoveInterface(const std::string& interface_name) {
 
 void DBusObject::ExportInterfaceAsync(
     const std::string& interface_name,
-    AsyncEventSequencer::CompletionOnceAction completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   AddOrGetInterface(interface_name)
       ->ExportAsync(object_manager_.get(), bus_.get(), exported_object_,
                     object_path_, std::move(completion_callback));
@@ -294,7 +294,7 @@ void DBusObject::ExportInterfaceAndBlock(const std::string& interface_name) {
 
 void DBusObject::UnexportInterfaceAsync(
     const std::string& interface_name,
-    AsyncEventSequencer::CompletionOnceAction completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   AddOrGetInterface(interface_name)
       ->UnexportAsync(object_manager_.get(), exported_object_, object_path_,
                       std::move(completion_callback));
@@ -306,7 +306,7 @@ void DBusObject::UnexportInterfaceAndBlock(const std::string& interface_name) {
 }
 
 void DBusObject::RegisterAsync(
-    AsyncEventSequencer::CompletionOnceAction completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   VLOG(1) << "Registering D-Bus object '" << object_path_.value() << "'.";
   CHECK(exported_object_ == nullptr) << "Object already registered.";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());

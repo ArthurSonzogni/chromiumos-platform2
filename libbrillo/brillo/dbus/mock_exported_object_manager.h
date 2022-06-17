@@ -24,7 +24,7 @@ class MockExportedObjectManager : public ExportedObjectManager {
   using ExportedObjectManager::ExportedObjectManager;
   ~MockExportedObjectManager() override = default;
 
-  MOCK_METHOD(void, RegisterAsync, (const CompletionAction&), (override));
+  MOCK_METHOD(void, RegisterAsync, (CompletionAction), (override));
   MOCK_METHOD(void,
               ClaimInterface,
               (const ::dbus::ObjectPath&,

@@ -4,6 +4,7 @@
 
 #include <brillo/dbus/exported_object_manager.h>
 
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -22,7 +23,7 @@ ExportedObjectManager::ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
     : bus_(bus), dbus_object_(nullptr, bus, path) {}
 
 void ExportedObjectManager::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   VLOG(1) << "Registering object manager";
   bus_->AssertOnOriginThread();
   DBusInterface* itf =
@@ -35,7 +36,7 @@ void ExportedObjectManager::RegisterAsync(
       dbus::kObjectManagerInterfacesAdded);
   signal_itf_removed_ = itf->RegisterSignalOfType<SignalInterfacesRemoved>(
       dbus::kObjectManagerInterfacesRemoved);
-  dbus_object_.RegisterAsync(completion_callback);
+  dbus_object_.RegisterAsync(std::move(completion_callback));
 }
 
 void ExportedObjectManager::ClaimInterface(

@@ -41,12 +41,8 @@ class BRILLO_EXPORT AsyncEventSequencer
       base::RepeatingCallback<void(const std::string& interface_name,
                                    const std::string& method_name,
                                    bool success)>;
-  using CompletionAction = base::Callback<void(bool all_succeeded)>;
-  using CompletionTask = base::Callback<void(void)>;
-
-  // TODO(weiluanwang): Rename to CompletionAction when the migration is
-  // finished.
-  using CompletionOnceAction = base::OnceCallback<void(bool all_succeeded)>;
+  using CompletionAction = base::OnceCallback<void(bool all_succeeded)>;
+  using CompletionTask = base::OnceClosure;
 
   AsyncEventSequencer();
   AsyncEventSequencer(const AsyncEventSequencer&) = delete;
@@ -67,13 +63,13 @@ class BRILLO_EXPORT AsyncEventSequencer
                                  bool failure_is_fatal);
 
   // Once all handlers obtained via GetHandler have run,
-  // we'll run the CompletionOnceAction, then discard our reference.
+  // we'll run the CompletionAction, then discard our reference.
   // No more handlers may be obtained after this call.
-  void OnAllTasksCompletedCall(CompletionOnceAction action);
+  void OnAllTasksCompletedCall(CompletionAction action);
 
   // Wrap a CompletionTask with a function that discards the result.
   // This CompletionTask retains no references to the AsyncEventSequencer.
-  static CompletionAction WrapCompletionTask(const CompletionTask& task);
+  static CompletionAction WrapCompletionTask(CompletionTask task);
   // Create a default CompletionAction that doesn't do anything when called.
   static CompletionAction GetDefaultCompletionAction();
 
@@ -103,7 +99,7 @@ class BRILLO_EXPORT AsyncEventSequencer
   bool started_{false};
   int registration_counter_{0};
   std::set<int> outstanding_registrations_;
-  CompletionOnceAction completion_action_;
+  CompletionAction completion_action_;
   bool had_failures_{false};
   // Ref counted objects have private destructors.
   ~AsyncEventSequencer();
