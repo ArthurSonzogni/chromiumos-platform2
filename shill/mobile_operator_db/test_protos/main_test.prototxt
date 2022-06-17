@@ -634,3 +634,32 @@ mno {
     }
   }
 }
+
+# Test[130] APNFilter
+mno {
+  data {
+    mccmnc: "130001"
+    localized_name {
+      name: "name130001"
+    }
+    uuid: "uuid130001"
+    mobile_apn {
+      apn_filter {
+        type: IMSI
+        regex: "130001[0-6]{1}[0-9]{8}"
+      }
+      apn_filter {
+        type: IMSI
+        exclude_regex: "13000111[0-9]{7}"
+      }
+      apn : "apn_regex"
+    }
+    mobile_apn {
+      apn_filter {
+        type: IMSI
+        exclude_regex: "130001[3-4]{1}[0-9]{8}"
+      }
+      apn : "apn_exclude_regex"
+    }
+  }
+}

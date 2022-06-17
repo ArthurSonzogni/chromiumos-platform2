@@ -192,11 +192,17 @@ TEST_F(ServiceProvidersTest, VerifyUniquenessOfApnHashes) {
       int64_t hash =
           Metrics::HashApn(mno.data().uuid(), mobile_apn.apn(),
                            mobile_apn.username(), mobile_apn.password());
-      ASSERT_EQ(hashes.count(hash), 0)
-          << " Non unique hash '" << hash << "' for uuid:" << mno.data().uuid()
-          << ", apn:" << mobile_apn.apn()
-          << " username: " << mobile_apn.username()
-          << ", password:" << mobile_apn.password() << ", and " << hashes[hash];
+      // Only check for uniqueness when not using apn_filter, as carriers
+      // might use the same apn name with different localized_names when using
+      // apn filters.
+      if (hashes.count(hash) == 0 || !mobile_apn.apn_filter_size())
+        ASSERT_EQ(hashes.count(hash), 0)
+            << " Non unique hash '" << hash
+            << "' for uuid:" << mno.data().uuid()
+            << ", apn:" << mobile_apn.apn()
+            << " username: " << mobile_apn.username()
+            << ", password:" << mobile_apn.password() << ", and "
+            << hashes[hash];
       hashes[hash] = mno.data().uuid() + ":" + mobile_apn.apn();
     }
   }
@@ -294,6 +300,23 @@ TEST_F(ServiceProvidersTest, CheckConflictingFilters) {
     auto mvno = mvno_mno_pair.first;
     for (const auto& filter : mvno->data().roaming_filter()) {
       filter_check(filter, mvno->data().uuid(), "olp_filter");
+    }
+  }
+
+  // MobileAPN->apn_filter
+  for (const auto& mno : database_->mno()) {
+    for (const auto& mobile_apn : mno.data().mobile_apn()) {
+      for (const auto& filter : mobile_apn.apn_filter()) {
+        filter_check(filter, mno.data().uuid(), "apn_filter");
+      }
+    }
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& mobile_apn : mvno->data().mobile_apn()) {
+      for (const auto& filter : mobile_apn.apn_filter()) {
+        filter_check(filter, mvno->data().uuid(), "apn_filter");
+      }
     }
   }
 }

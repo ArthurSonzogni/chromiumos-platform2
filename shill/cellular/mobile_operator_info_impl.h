@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -146,6 +147,7 @@ class MobileOperatorInfoImpl {
   void HandleOperatorNameUpdate();
   void HandleSIDUpdate();
   void HandleOnlinePortalUpdate();
+  void HandleAPNListUpdate();
 
   // Accessor functions for testing purpose only.
   mobile_operator_db::MobileOperatorDB* database() { return database_.get(); }
@@ -202,6 +204,8 @@ class MobileOperatorInfoImpl {
   std::vector<std::string> sid_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   bool prioritizes_db_operator_name_;
+  std::vector<mobile_operator_db::MobileAPN> raw_apn_list_;
+  std::set<mobile_operator_db::Filter_Type> raw_apn_filters_types_;
   std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;

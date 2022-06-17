@@ -269,6 +269,9 @@ void MobileOperatorInfoImpl::UpdateIMSI(const std::string& imsi) {
     }
   }
   operator_changed |= UpdateMVNO();
+  if (raw_apn_filters_types_.count(
+          mobile_operator_db::Filter_Type::Filter_Type_IMSI))
+    HandleAPNListUpdate();
 
   // No special notification should be sent for this property, since the object
   // does not expose |imsi| as a property at all.
@@ -284,6 +287,10 @@ void MobileOperatorInfoImpl::UpdateICCID(const std::string& iccid) {
 
   SLOG(this, 1) << __func__ << ": " << iccid;
   user_iccid_ = iccid;
+  if (raw_apn_filters_types_.count(
+          mobile_operator_db::Filter_Type::Filter_Type_ICCID))
+    HandleAPNListUpdate();
+
   // |iccid| is not an exposed property, so don't raise event for just this
   // property update.
   if (UpdateMVNO()) {
@@ -301,6 +308,9 @@ void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
   HandleMCCMNCUpdate();
   candidates_by_operator_code_.clear();
   AppendToCandidatesByMCCMNC(mccmnc);
+  if (raw_apn_filters_types_.count(
+          mobile_operator_db::Filter_Type::Filter_Type_MCCMNC))
+    HandleAPNListUpdate();
 
   // Always update M[V]NO, even if we found no candidates, since we might have
   // lost some candidates due to an incorrect MCCMNC.
@@ -322,6 +332,9 @@ void MobileOperatorInfoImpl::UpdateSID(const std::string& sid) {
   HandleSIDUpdate();
   candidates_by_operator_code_.clear();
   AppendToCandidatesBySID(sid);
+  if (raw_apn_filters_types_.count(
+          mobile_operator_db::Filter_Type::Filter_Type_SID))
+    HandleAPNListUpdate();
 
   // Always update M[V]NO, even if we found no candidates, since we might have
   // lost some candidates due to an incorrect SID.
@@ -373,6 +386,9 @@ void MobileOperatorInfoImpl::UpdateOperatorName(
               << "(Normalized: [" << NormalizeOperatorName(operator_name)
               << "]) does not match any MNO.";
   }
+  if (raw_apn_filters_types_.count(
+          mobile_operator_db::Filter_Type::Filter_Type_OPERATOR_NAME))
+    HandleAPNListUpdate();
 
   operator_changed |= UpdateMNO();
   operator_changed |= UpdateMVNO();
@@ -784,6 +800,9 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   prioritizes_db_operator_name_ = false;
   HandleOperatorNameUpdate();
   apn_list_.clear();
+  raw_apn_list_.clear();
+  raw_apn_filters_types_.clear();
+  HandleAPNListUpdate();
   olp_list_.clear();
   raw_olp_list_.clear();
   HandleOnlinePortalUpdate();
@@ -851,28 +870,16 @@ void MobileOperatorInfoImpl::ReloadData(
   }
 
   if (data.mobile_apn_size() > 0) {
-    apn_list_.clear();
-    for (const auto& apn_data : data.mobile_apn()) {
-      MobileOperatorInfo::MobileAPN apn;
-      apn.apn = apn_data.apn();
-      apn.username = apn_data.username();
-      apn.password = apn_data.password();
-      for (const auto& localized_name : apn_data.localized_name()) {
-        apn.operator_name_list.push_back(
-            {localized_name.name(), localized_name.language()});
+    raw_apn_list_.clear();
+    raw_apn_filters_types_.clear();
+    // Copy the olp list so we can mutate it.
+    for (const auto& mobile_apn : data.mobile_apn()) {
+      raw_apn_list_.push_back(mobile_apn);
+      for (const auto& filter : mobile_apn.apn_filter()) {
+        raw_apn_filters_types_.insert(filter.type());
       }
-      apn.authentication = GetApnAuthentication(apn_data);
-      apn.is_attach_apn =
-          apn_data.has_is_attach_apn() ? apn_data.is_attach_apn() : false;
-      std::optional<std::string> ip_type = GetIpType(apn_data);
-      if (!ip_type.has_value()) {
-        LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";
-        continue;
-      }
-      apn.ip_type = ip_type.value();
-
-      apn_list_.push_back(std::move(apn));
     }
+    HandleAPNListUpdate();
   }
 
   if (data.sid_size() > 0) {
@@ -981,6 +988,43 @@ void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
     if (append_user_olp) {
       olp_list_.push_back(user_olp_);
     }
+  }
+}
+
+void MobileOperatorInfoImpl::HandleAPNListUpdate() {
+  SLOG(this, 3) << __func__;
+  // Always recompute |apn_list_|. We don't expect this list to be big.
+  apn_list_.clear();
+  for (const auto& apn_data : raw_apn_list_) {
+    bool passed_all_filters = true;
+    for (const auto& filter : apn_data.apn_filter()) {
+      if (!FilterMatches(filter)) {
+        passed_all_filters = false;
+        break;
+      }
+    }
+    if (!passed_all_filters)
+      continue;
+
+    MobileOperatorInfo::MobileAPN apn;
+    apn.apn = apn_data.apn();
+    apn.username = apn_data.username();
+    apn.password = apn_data.password();
+    for (const auto& localized_name : apn_data.localized_name()) {
+      apn.operator_name_list.push_back(
+          {localized_name.name(), localized_name.language()});
+    }
+    apn.authentication = GetApnAuthentication(apn_data);
+    apn.is_attach_apn =
+        apn_data.has_is_attach_apn() ? apn_data.is_attach_apn() : false;
+    std::optional<std::string> ip_type = GetIpType(apn_data);
+    if (!ip_type.has_value()) {
+      LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";
+      continue;
+    }
+    apn.ip_type = ip_type.value();
+
+    apn_list_.push_back(std::move(apn));
   }
 }
 

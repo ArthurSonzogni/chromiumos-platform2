@@ -1047,6 +1047,38 @@ TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
   EXPECT_EQ("name113002", operator_info_->operator_name());
 }
 
+TEST_P(MobileOperatorInfoMainTest, APNFilter) {
+  // This test verifies that APNs can be filtered
+  // message: MNO with a apn_filters.
+  // match by: IMSI.
+  ExpectEventCount(1);
+  UpdateMCCMNC("130001");
+  UpdateIMSI("130001123456789");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid130001");
+  ASSERT_EQ(operator_info_->apn_list().size(), 2);
+  EXPECT_STREQ(operator_info_->apn_list()[0].apn.c_str(), "apn_regex");
+  EXPECT_STREQ(operator_info_->apn_list()[1].apn.c_str(), "apn_exclude_regex");
+
+  ResetOperatorInfo();
+  ExpectEventCount(1);
+  UpdateMCCMNC("130001");
+  UpdateIMSI("130001110000000");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid130001");
+  ASSERT_EQ(operator_info_->apn_list().size(), 1);
+  EXPECT_STREQ(operator_info_->apn_list()[0].apn.c_str(), "apn_exclude_regex");
+
+  ResetOperatorInfo();
+  ExpectEventCount(1);
+  UpdateMCCMNC("130001");
+  UpdateIMSI("130001323456789");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid130001");
+  ASSERT_EQ(operator_info_->apn_list().size(), 1);
+  EXPECT_STREQ(operator_info_->apn_list()[0].apn.c_str(), "apn_regex");
+}
+
 // Here, we rely on our knowledge about the implementation: The SID and MCCMNC
 // updates follow the same code paths, and so we can get away with not testing
 // all the scenarios we test above for MCCMNC. Instead, we only do basic testing

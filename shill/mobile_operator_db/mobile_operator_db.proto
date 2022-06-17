@@ -68,6 +68,8 @@ message MobileAPN {
     IPV4V6 = 3;
   }
   optional IpType ip_type = 10 [default = IPV4];
+  // When a filter is present, only select the APN if all filters match.
+  repeated Filter apn_filter = 11;
 }
 
 message OnlinePortal {
