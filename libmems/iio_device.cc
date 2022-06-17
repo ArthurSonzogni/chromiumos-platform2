@@ -39,8 +39,21 @@ std::optional<base::FilePath> IioDevice::GetAbsoluteSysPath() const {
   return std::nullopt;
 }
 
+std::optional<std::string> IioDevice::GetLocation() const {
+  auto label = ReadStringAttribute(kLabelAttr);
+  if (label.has_value()) {
+    if (label->find("-base") != std::string::npos)
+      return "base";
+
+    if (label->find("-display") != std::string::npos)
+      return "lid";
+  }
+
+  return ReadStringAttribute(kLocationAttr);
+}
+
 bool IioDevice::IsSingleSensor() const {
-  return ReadStringAttribute("location").has_value();
+  return ReadStringAttribute(kLocationAttr).has_value();
 }
 
 // static

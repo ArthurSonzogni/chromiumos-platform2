@@ -151,6 +151,43 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("0.0 1.0 100.0 ", true, 1.0, 100.0),
         std::make_tuple("0.0 2.0 a b c 100.0 ", true, 2.0, 100.0)));
 
+class IioDeviceTestOnLocationWithParam
+    : public ::testing::TestWithParam<std::tuple<std::optional<std::string>,
+                                                 std::optional<std::string>,
+                                                 std::optional<std::string>>> {
+ protected:
+  void SetUp() override {
+    device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
+        nullptr, kFakeDeviceName, kFakeDeviceId);
+
+    if (std::get<0>(GetParam()).has_value()) {
+      EXPECT_TRUE(device_->WriteStringAttribute(
+          kLabelAttr, std::get<0>(GetParam()).value()));
+    }
+    if (std::get<1>(GetParam()).has_value()) {
+      EXPECT_TRUE(device_->WriteStringAttribute(
+          kLocationAttr, std::get<1>(GetParam()).value()));
+    }
+  }
+
+  std::unique_ptr<libmems::fakes::FakeIioDevice> device_;
+};
+
+TEST_P(IioDeviceTestOnLocationWithParam, GetLocation) {
+  EXPECT_EQ(device_->GetLocation(), std::get<2>(GetParam()));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    IioDeviceTestOnLocationWithParamRun,
+    IioDeviceTestOnLocationWithParam,
+    ::testing::Values(std::make_tuple(std::nullopt, std::nullopt, std::nullopt),
+                      std::make_tuple(std::nullopt, "base", "base"),
+                      std::make_tuple(std::nullopt, "lid", "lid"),
+                      std::make_tuple(std::nullopt, "camera", "camera"),
+                      std::make_tuple("accel-base", std::nullopt, "base"),
+                      std::make_tuple("accel-display", "base", "lid"),
+                      std::make_tuple("accel-camera", "lid", "lid")));
+
 }  // namespace
 
 }  // namespace libmems

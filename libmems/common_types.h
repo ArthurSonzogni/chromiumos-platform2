@@ -34,6 +34,8 @@ constexpr char kFrequencyAttr[] = "frequency";
 constexpr char kSamplingFrequencyAttr[] = "sampling_frequency";
 constexpr char kHWFifoTimeoutAttr[] = "buffer/hwfifo_timeout";
 constexpr char kSamplingFrequencyAvailable[] = "sampling_frequency_available";
+constexpr char kLabelAttr[] = "label";
+constexpr char kLocationAttr[] = "location";
 
 constexpr double kFrequencyEpsilon = 0.001;  // Hz
 

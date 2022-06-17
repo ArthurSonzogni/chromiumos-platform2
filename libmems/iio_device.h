@@ -55,6 +55,8 @@ class LIBMEMS_EXPORT IioDevice {
 
   std::optional<base::FilePath> GetAbsoluteSysPath() const;
 
+  std::optional<std::string> GetLocation() const;
+
   // Reads the |name| attribute of this device and returns the value
   // as a string. It will return std::nullopt if the attribute cannot
   // be read.
