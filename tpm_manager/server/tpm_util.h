@@ -18,12 +18,12 @@ namespace tpm_manager {
                 << Trspi_Error_String(result) << "): "
 
 // Don't use directly, use GetDefaultOwnerPassword().
-const char kDefaultOwnerPassword[] = TSS_WELL_KNOWN_SECRET;
+inline constexpr char kDefaultOwnerPassword[] = TSS_WELL_KNOWN_SECRET;
 // Owner password is human-readable, so produce N random bytes and then
 // hexdump them into N*2 password bytes. For other passwords, just generate
 // N*2 random bytes.
-const size_t kOwnerPasswordRandomBytes = 10;
-const size_t kDefaultPasswordSize = kOwnerPasswordRandomBytes * 2;
+inline constexpr size_t kOwnerPasswordRandomBytes = 10;
+inline constexpr size_t kDefaultPasswordSize = kOwnerPasswordRandomBytes * 2;
 
 // Builds the default owner password used before TPM is fully initialized.
 //

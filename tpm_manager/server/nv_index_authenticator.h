@@ -19,9 +19,9 @@
 namespace tpm_manager {
 
 // Enable salting for global session.
-const bool kGlobalSessionSalted = true;
+inline constexpr bool kGlobalSessionSalted = true;
 // Enable encryption for global session.
-const bool kGlobalSessionEncryption = true;
+inline constexpr bool kGlobalSessionEncryption = true;
 
 /*
  * NvIndexAuthenticator is a helper class which hold the needed variable used
