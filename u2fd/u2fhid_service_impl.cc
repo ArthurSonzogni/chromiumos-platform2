@@ -75,7 +75,7 @@ bool U2fHidServiceImpl::CreateU2fHid(
       fw_version = U2fCorpFirmwareVersion::FromTpmRwVersion(rw_version);
       u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
       u2f_corp_processor_->Initialize(fw_version, sm_proxy, &tpm_proxy_,
-                                      request_user_presence);
+                                      metrics, request_user_presence);
     }
   }
 

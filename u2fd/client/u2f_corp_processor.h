@@ -7,6 +7,7 @@
 
 #include <functional>
 
+#include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "u2fd/client/tpm_vendor_cmd.h"
@@ -23,6 +24,7 @@ class U2fCorpProcessor {
   virtual void Initialize(U2fCorpFirmwareVersion fw_version,
                           org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                           TpmVendorCommandProxy* tpm_proxy,
+                          MetricsLibraryInterface* metrics,
                           std::function<void()> request_presence) = 0;
 
   virtual U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu) = 0;

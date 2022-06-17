@@ -162,6 +162,8 @@ class U2F_CLIENT_EXPORT U2fResponseApdu {
     sw2_ = static_cast<uint8_t>(sw);
   }
 
+  uint16_t GetStatus() { return (static_cast<uint16_t>(sw1_) << 8) | sw2_; }
+
  private:
   std::vector<uint8_t> data_;
   uint8_t sw1_;
