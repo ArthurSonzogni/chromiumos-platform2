@@ -63,7 +63,7 @@ getuid: 1
 #   0xc0406400 == DRM_IOCTL_VERSION
 #   0xc0406469 == DRM_IOCTL_I915_GEM_EXECBUFFER2_WR
 #   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
-ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 \
+ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 || \
        arg1 == 0x40086409 || arg1 == 0x400c645f || arg1 == 0x4020645d || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
        arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \
