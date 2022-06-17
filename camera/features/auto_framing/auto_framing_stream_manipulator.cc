@@ -327,6 +327,11 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
            << active_array_size[1] << "), (" << active_array_size[2] << ", "
            << active_array_size[3] << ")";
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
+  if (!active_array_dimension_.is_valid()) {
+    LOGF(ERROR) << "Invalid active array size: "
+                << active_array_dimension_.ToString();
+    return false;
+  }
 
   full_frame_size_ =
       GetFullFrameResolution(static_info, active_array_dimension_);
@@ -775,14 +780,25 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     if (raw_face_rectangles.empty()) {
       return;
     }
+    if (raw_face_rectangles.size() % 4 != 0) {
+      LOGF(ERROR) << "Invalid ANDROID_STATISTICS_FACE_RECTANGLES length";
+      return;
+    }
     for (size_t i = 0; i < raw_face_rectangles.size(); i += 4) {
-      const int* rect_bound = &raw_face_rectangles[i];
-      Rect<float> rect = NormalizeRect(
-          Rect<int>(rect_bound[0], rect_bound[1], rect_bound[2] - rect_bound[0],
-                    rect_bound[3] - rect_bound[1])
-              .AsRect<uint32_t>(),
-          active_array_dimension_);
-      face_rectangles.push_back(ConvertToCropSpace(rect, crop_in_active_array));
+      const int32_t* rect_bound = &raw_face_rectangles[i];
+      const Rect<int32_t> rect(rect_bound[0], rect_bound[1],
+                               rect_bound[2] - rect_bound[0] + 1,
+                               rect_bound[3] - rect_bound[1] + 1);
+      const Rect<int32_t> clamped_rect =
+          ClampRect(rect, Rect<int32_t>(0, 0, active_array_dimension_.width,
+                                        active_array_dimension_.height));
+      if (!clamped_rect.is_valid()) {
+        VLOGF(1) << "Invalid face rectangle: " << rect.ToString();
+        continue;
+      }
+      face_rectangles.push_back(ConvertToCropSpace(
+          NormalizeRect(clamped_rect, active_array_dimension_),
+          crop_in_active_array));
     }
   }
   std::vector<int32_t> face_coordinates;
@@ -796,7 +812,8 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     face_coordinates.push_back(static_cast<int32_t>(
         f.bottom() * static_cast<float>(active_array_dimension_.height)));
   }
-  if (!result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
+  if (!face_coordinates.empty() &&
+      !result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
                                        face_coordinates)) {
     LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_RECTANGLES";
   }

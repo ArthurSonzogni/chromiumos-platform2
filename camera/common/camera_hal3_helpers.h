@@ -41,12 +41,22 @@ inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
   return (s1->width * s2->height == s1->height * s2->width);
 }
 
-inline Rect<float> NormalizeRect(const Rect<uint32_t>& rect, const Size& size) {
+template <typename T>
+inline Rect<float> NormalizeRect(const Rect<T>& rect, const Size& size) {
   return Rect<float>(
       static_cast<float>(rect.left) / static_cast<float>(size.width),
       static_cast<float>(rect.top) / static_cast<float>(size.height),
       static_cast<float>(rect.width) / static_cast<float>(size.width),
       static_cast<float>(rect.height) / static_cast<float>(size.height));
+}
+
+template <typename T>
+inline Rect<T> ClampRect(const Rect<T>& rect, const Rect<T>& bound) {
+  const T left = std::clamp(rect.left, bound.left, bound.right());
+  const T top = std::clamp(rect.top, bound.top, bound.bottom());
+  const T right = std::clamp(rect.right(), bound.left, bound.right());
+  const T bottom = std::clamp(rect.bottom(), bound.top, bound.bottom());
+  return Rect<T>(left, top, right - left + 1, bottom - top + 1);
 }
 
 // Returns the maximum centering crop window within |size| with the specified
