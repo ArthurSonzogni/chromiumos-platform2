@@ -993,11 +993,6 @@ class UserDataAuth {
   // functionalities after mounting.
   void InitializePkcs11(UserSession* mount);
 
-  // This is called when TPM is enabled and owned, so that we can continue
-  // the initialization of any PKCS#11 that was paused because TPM wasn't
-  // ready.
-  void ResumeAllPkcs11Initialization();
-
   // =============== Install Attributes Related Utilities ===============
 
   // Set whether this device is enterprise owned. Calling this method will have
@@ -1012,10 +1007,6 @@ class UserDataAuth {
   // Call this method to initialize the install attributes functionality. This
   // can only be called on origin thread.
   void InitializeInstallAttributes();
-
-  // Calling this method will finalize the install attributes if we current have
-  // a non-guest mount mounted. This can only be called on mount thread.
-  void FinalizeInstallAttributesIfMounted();
 
   // =============== Signal Related Utilities/Callback ===============
 

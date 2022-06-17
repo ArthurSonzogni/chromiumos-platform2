@@ -1072,13 +1072,6 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   // We should not pass nullptr to this method.
   DCHECK(session);
 
-  // Wait for ownership if there is a working TPM.
-  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
-    LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
-                 << " handle PKCS#11 initialization.";
-    return;
-  }
-
   bool still_mounted = false;
 
   // The mount has to be mounted, that is, still tracked by cryptohome.
@@ -1110,24 +1103,8 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   LOG(INFO) << "PKCS#11 initialization succeeded.";
 }
 
-void UserDataAuth::ResumeAllPkcs11Initialization() {
-  AssertOnMountThread();
-
-  for (auto& session_pair : sessions_) {
-    scoped_refptr<UserSession> session = session_pair.second;
-    if (!session->GetPkcs11Token() || !session->GetPkcs11Token()->IsReady()) {
-      InitializePkcs11(session.get());
-    }
-  }
-}
-
 void UserDataAuth::Pkcs11RestoreTpmTokens() {
   AssertOnMountThread();
-
-  // There is no token needs to resume if TPM isn't ready.
-  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
-    return;
-  }
 
   for (auto& session_pair : sessions_) {
     scoped_refptr<UserSession> session = session_pair.second;
@@ -1190,18 +1167,9 @@ void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
     // Make sure cryptohome keys are loaded and ready for every mount.
     EnsureCryptohomeKeys();
 
-    // There might be some mounts that is half way through the PKCS#11
-    // initialization, let's resume them.
-    ResumeAllPkcs11Initialization();
-
     // Initialize the install-time locked attributes since we can't do it prior
     // to ownership.
     InitializeInstallAttributes();
-
-    // If we mounted before the TPM finished initialization, we must finalize
-    // the install attributes now too, otherwise it takes a full re-login cycle
-    // to finalize.
-    FinalizeInstallAttributesIfMounted();
   }
 }
 
@@ -1244,20 +1212,6 @@ void UserDataAuth::InitializeInstallAttributes() {
 
   // Check if the machine is enterprise owned and report to mount_ then.
   DetectEnterpriseOwnership();
-}
-
-void UserDataAuth::FinalizeInstallAttributesIfMounted() {
-  AssertOnMountThread();
-
-  bool is_mounted = IsMounted();
-  if (is_mounted &&
-      install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
-    scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
-    bool guest_mounted = guest_session.get() && guest_session->IsActive();
-    if (!guest_mounted) {
-      install_attrs_->Finalize();
-    }
-  }
 }
 
 CryptohomeStatusOr<bool> UserDataAuth::GetShouldMountAsEphemeral(

@@ -982,42 +982,6 @@ TEST_F(UserDataAuthTest, InitializePkcs11Success) {
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
-TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  // Test when TPM isn't owned.
-
-  // Add a mount associated with foo@gmail.com
-  SetupMount("foo@gmail.com");
-
-  CreatePkcs11TokenInSession(session_);
-
-  // At first the token is not ready
-  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
-
-  // TPM is enabled but not owned.
-  ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
-  EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
-
-  InitializePkcs11TokenInSession(session_);
-
-  // Still not ready because TPM is not owned.
-  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
-
-  // We'll need to call Pkcs11Token::Insert() and IsEnabled() later in the test.
-  Mock::VerifyAndClearExpectations(session_.get());
-  Mock::VerifyAndClearExpectations(&tpm_);
-
-  // Next check when the TPM is now owned.
-
-  // TPM is enabled and owned.
-  ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
-  EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(true));
-
-  InitializePkcs11TokenInSession(session_);
-
-  EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
-}
-
 TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Add a mount associated with foo@gmail.com
@@ -1151,29 +1115,6 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
   userdataauth_->Pkcs11RestoreTpmTokens();
 
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
-}
-
-TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensTpmNotOwned) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  // This test the case for PKCS#11 retrieving TPM tokens when TPM isn't ready.
-
-  // Add a mount associated with foo@gmail.com
-  SetupMount("foo@gmail.com");
-
-  CreatePkcs11TokenInSession(session_);
-
-  // It shouldn't call any thing.
-  EXPECT_CALL(*session_, IsActive()).Times(0);
-
-  // TPM is enabled but not owned.
-  ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
-  EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
-
-  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
-
-  userdataauth_->Pkcs11RestoreTpmTokens();
-
-  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
