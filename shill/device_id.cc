@@ -130,6 +130,9 @@ std::string DeviceId::AsString() const {
     case BusType::kPci:
       bus_name = "pci";
       break;
+    case BusType::kSoc:
+      bus_name = "soc";
+      break;
   }
 
   const char* loc;

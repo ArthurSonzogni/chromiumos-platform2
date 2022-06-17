@@ -24,6 +24,7 @@ class DeviceId {
   enum class BusType {
     kPci,
     kUsb,
+    kSoc,
   };
 
   // Location of the device (Currently only supported for PCI devices).

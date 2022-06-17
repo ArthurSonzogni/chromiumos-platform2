@@ -91,6 +91,7 @@ const int kSignalQualityUpdateRateSeconds = 5;
 
 // Plugin strings via ModemManager.
 const char kTelitMMPlugin[] = "Telit";
+const char kQcomSocMMDevice[] = "qcom-soc";
 
 // This identifier is specified in the serviceproviders.prototxt file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
@@ -1505,7 +1506,11 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_DEVICE)) {
     std::string path = properties.Get<std::string>(MM_MODEM_PROPERTY_DEVICE);
-    cellular()->SetDeviceId(DeviceId::CreateFromSysfs(base::FilePath(path)));
+    cellular()->SetDeviceId(
+        path == kQcomSocMMDevice
+            ? std::make_unique<DeviceId>(DeviceId::BusType::kSoc,
+                                         DeviceId::LocationType::kInternal)
+            : DeviceId::CreateFromSysfs(base::FilePath(path)));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
     cellular()->SetEquipmentId(
