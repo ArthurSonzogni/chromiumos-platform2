@@ -230,7 +230,7 @@ bool Configuration::CopyLightCalibrationFromVpd() {
 
 bool Configuration::CopyImuCalibationFromVpd(int max_value) {
   if (sensor_->IsSingleSensor()) {
-    auto location = sensor_->ReadStringAttribute("location");
+    auto location = sensor_->GetLocation();
     if (!location || location->empty()) {
       LOG(ERROR) << "cannot read a valid sensor location";
       return false;
@@ -534,14 +534,13 @@ bool Configuration::ConfigAccelerometer() {
    * If no gyro found, set range to 4g on the lid accel.
    */
   int range = 0;
-  auto location = sensor_->ReadStringAttribute("location");
+  auto location = sensor_->GetLocation();
   if (location && !location->empty()) {
     auto gyros = context_->GetDevicesByName("cros-ec-gyro");
     if (gyros.size() != 1 && strcmp(location->c_str(), kLidSensorLocation) == 0)
       range = 4;
     else if (gyros.size() == 1 &&
-             strcmp(location->c_str(),
-                    gyros[0]->ReadStringAttribute("location")->c_str()) == 0)
+             strcmp(location->c_str(), gyros[0]->GetLocation()->c_str()) == 0)
       range = 4;
     else
       range = 2;
