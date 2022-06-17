@@ -148,10 +148,11 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
       !err.ok()) {
     LOG(ERROR) << "Failed to generate random bytes for the salt: " << err;
     return MakeStatus<CryptohomeTPMError>(
-        CRYPTOHOME_ERR_LOC(kLocChalCredNewGenerateRandomSaltFailed),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        TPMRetryAction::kReboot);
+               CRYPTOHOME_ERR_LOC(kLocChalCredNewGenerateRandomSaltFailed),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                               ErrorAction::kReboot}),
+               TPMRetryAction::kReboot)
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(err)));
   }
   DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount, salt_random_bytes.size());
   // IMPORTANT: Make sure the salt is prefixed with a constant. See the comment
