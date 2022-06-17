@@ -383,13 +383,7 @@ const std::array kCommandLogs {
   Log{kCommand, "tpm-firmware-updater",
     "/usr/share/userfeedback/scripts/getmsgs "
     "/var/log/tpm-firmware-updater.log"},
-  // TODO(jorgelo,mnissler): Don't run this as root.
-  // On TPM 1.2 devices this will likely require adding a new user to the 'tss'
-  // group.
-  // On TPM 2.0 devices 'get_version_info' uses D-Bus and therefore can run as
-  // any user.
-  Log{kCommand, "tpm_version", "/usr/sbin/tpm-manager get_version_info", kRoot,
-    kRoot},
+  Log{kCommand, "tpm_version", "/usr/bin/tpm_manager_client get_version_info"},
   // Type-C data from the type-c connector class, VID/PIDs are obfuscated.
   Log{kCommand, "typec_connector_class",
     "/usr/libexec/debugd/helpers/typec_connector_class_helper"},
