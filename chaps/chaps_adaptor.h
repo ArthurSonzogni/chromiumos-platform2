@@ -16,7 +16,7 @@
 
 namespace chaps {
 
-const char kPersistentLogLevelPath[] = "/var/lib/chaps/.loglevel";
+inline constexpr char kPersistentLogLevelPath[] = "/var/lib/chaps/.loglevel";
 
 class ChapsInterface;
 class TokenManagerInterface;
