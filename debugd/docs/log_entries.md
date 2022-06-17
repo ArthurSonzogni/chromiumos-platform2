@@ -274,6 +274,10 @@ Per-CPU interrupt statistics.  See the `/proc/interrupts` section of the
 
 ## iw_list
 
+## kbmcu_info
+
+RGB KBMCU info. Current FW version on kbmcu.
+
 ## kernel-crashes
 
 ## logcat

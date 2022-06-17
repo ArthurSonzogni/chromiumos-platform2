@@ -300,6 +300,8 @@ const std::array kCommandLogs {
   Log{kCommand, "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm)},
   Log{kCommand, "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi)},
 #endif  // USE_IWLWIFI_DUMP
+  Log{kCommand, "kbmcu_info", "ectool --device 18d1:5022 version",
+    kRoot, kRoot},
   Log{kGlob, "kernel-crashes", "/var/spool/crash/kernel.*.kcrash",
     SandboxedProcess::kDefaultUser, "crash-access"},
   Log{kCommand, "lpstat", "/usr/bin/lpstat -l -r -v -a -p -o",
