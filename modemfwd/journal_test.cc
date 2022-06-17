@@ -57,7 +57,7 @@ class JournalTest : public ::testing::Test {
         firmware_directory_(new FirmwareDirectoryStub(base::FilePath())),
         modem_helper_directory_(new ModemHelperDirectoryStub) {
     CHECK(journal_file_);
-    EXPECT_CALL(modem_helper_, GetFirmwareInfo(_)).Times(0);
+    EXPECT_CALL(modem_helper_, GetFirmwareInfo(_, _)).Times(0);
     modem_helper_directory_->AddHelper(kDeviceId, &modem_helper_);
   }
 

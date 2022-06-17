@@ -88,6 +88,7 @@ class ModemImpl : public Modem {
   ModemImpl(const std::string& device_id,
             const std::string& equipment_id,
             const std::string& carrier_id,
+            const std::string& firmware_revision,
             std::unique_ptr<Inhibitor> inhibitor,
             ModemHelper* helper)
       : device_id_(device_id),
@@ -95,8 +96,9 @@ class ModemImpl : public Modem {
         carrier_id_(carrier_id),
         inhibitor_(std::move(inhibitor)),
         helper_(helper) {
-    if (!helper->GetFirmwareInfo(&installed_firmware_))
+    if (!helper->GetFirmwareInfo(&installed_firmware_, firmware_revision)) {
       LOG(WARNING) << "Could not fetch installed firmware information";
+    }
   }
   ModemImpl(const ModemImpl&) = delete;
   ModemImpl& operator=(const ModemImpl&) = delete;
@@ -189,7 +191,11 @@ std::unique_ptr<Modem> CreateModem(
     LOG(INFO) << "Modem " << object_path << " has no equipment ID, ignoring";
     return nullptr;
   }
-
+  std::string firmware_revision;
+  if (!properties[shill::kFirmwareRevisionProperty].GetValue(
+          &firmware_revision)) {
+    LOG(INFO) << "Modem " << object_path << " has no firmware revision";
+  }
   // This property may not exist and it's not a big deal if it doesn't.
   std::map<std::string, std::string> operator_info;
   std::string carrier_id;
@@ -216,7 +222,8 @@ std::unique_ptr<Modem> CreateModem(
   }
 
   return std::make_unique<ModemImpl>(device_id, equipment_id, carrier_id,
-                                     std::move(inhibitor), helper);
+                                     firmware_revision, std::move(inhibitor),
+                                     helper);
 }
 
 // StubModem acts like a modem with a particular device ID but does not
@@ -293,7 +300,7 @@ std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
     return nullptr;
   }
   FirmwareInfo installed_firmware;
-  if (use_real_fw_info && !helper->GetFirmwareInfo(&installed_firmware)) {
+  if (use_real_fw_info && !helper->GetFirmwareInfo(&installed_firmware, "")) {
     LOG(ERROR) << "Could not fetch installed firmware information";
     return nullptr;
   }

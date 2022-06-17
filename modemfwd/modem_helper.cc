@@ -236,10 +236,15 @@ class ModemHelperImpl : public ModemHelper {
 
   ~ModemHelperImpl() override = default;
 
-  bool GetFirmwareInfo(FirmwareInfo* out_info) override {
+  bool GetFirmwareInfo(FirmwareInfo* out_info,
+                       const std::string& firmware_revision) override {
     CHECK(out_info);
     std::string helper_output;
-    if (!RunHelperProcess(helper_info_, {kGetFirmwareInfo}, &helper_output))
+    if (!RunHelperProcess(helper_info_,
+                          {kGetFirmwareInfo,
+                           base::StringPrintf("%s=%s", kShillFirmwareRevision,
+                                              firmware_revision.c_str())},
+                          &helper_output))
       return false;
 
     base::StringPairs parsed_versions;

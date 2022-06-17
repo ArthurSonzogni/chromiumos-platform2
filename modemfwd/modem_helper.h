@@ -63,7 +63,8 @@ class ModemHelper {
  public:
   virtual ~ModemHelper() = default;
 
-  virtual bool GetFirmwareInfo(FirmwareInfo* out_info) = 0;
+  virtual bool GetFirmwareInfo(FirmwareInfo* out_info,
+                               const std::string& firmware_revision) = 0;
 
   virtual bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) = 0;
 
