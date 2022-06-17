@@ -7046,6 +7046,10 @@ mno {
     }
     mccmnc : "44020"
     mobile_apn {
+      apn_filter {
+        type: IMSI
+        exclude_regex: "44020(835|865|919|945)[0-9]{7}" # ~(filter1 | filter2)
+      }
       apn : "plus.acs.jp.v6"
       localized_name {
         name : "SoftBank(4G LTE)"
@@ -7057,6 +7061,10 @@ mno {
       ip_type: IPV4V6
     }
     mobile_apn {
+      apn_filter {
+        type: IMSI
+        exclude_regex: "44020(835|865|919|945)[0-9]{7}" # ~(filter1 | filter2)
+      }
       apn : "cmn.mgx"
       localized_name {
         name : "SoftBank(Closed Networks)"
@@ -7066,27 +7074,33 @@ mno {
       authentication : PAP
       is_attach_apn : true
     }
-  }
-  mvno {
-    mvno_filter {
-      type: IMSI
-      regex: "44020(919|865)[0-9]{7}"
-    }
-    data {
-      uuid : "81f75c0a-0365-43eb-83e7-4fb43256434d"
+    mobile_apn {
+      apn_filter {
+        type: IMSI
+        regex: "44020(865|919)[0-9]{7}" # filter1
+      }
+      apn : "plus.4g"
       localized_name {
-        name : "SoftBank"
+        name : "SoftBank(ai+ 4G LTE)"
       }
-      mobile_apn {
-        apn : "plus.4g"
-        localized_name {
-          name : "SoftBank(ai+ 4G LTE)"
-        }
-        username : "plus"
-        password : "4g"
-        authentication : CHAP
-        is_attach_apn : true
+      username : "plus"
+      password : "4g"
+      authentication : CHAP
+      is_attach_apn : true
+    }
+    mobile_apn {
+      apn_filter {
+        type: IMSI
+        regex: "44020(835|945)[0-9]{7}" # filter2
       }
+      apn : "plus.4g"
+      localized_name {
+        name : "SoftBank(ai+ 5G/4G LTE)"
+      }
+      username : "plus"
+      password : "4g"
+      authentication : CHAP
+      is_attach_apn : true
     }
   }
 }
