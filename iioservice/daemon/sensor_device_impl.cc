@@ -164,6 +164,8 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
       auto path_opt = client.device_data->iio_device->GetAbsoluteSysPath();
       if (path_opt.has_value())
         value_opt = path_opt.value().value();
+    } else if (attr_name == cros::mojom::kLocation) {
+      value_opt = client.device_data->iio_device->GetLocation();
     } else {
       value_opt =
           client.device_data->iio_device->ReadStringAttribute(attr_name);

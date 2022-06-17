@@ -84,7 +84,7 @@ bool DeviceHasType(libmems::IioDevice* iio_device,
 }
 
 Location GetLocation(libmems::IioDevice* device) {
-  auto location_opt = device->ReadStringAttribute(cros::mojom::kLocation);
+  auto location_opt = device->GetLocation();
   if (location_opt.has_value()) {
     std::string location_str = std::string(
         base::TrimString(location_opt.value(), base::StringPiece("\0\n", 2),
