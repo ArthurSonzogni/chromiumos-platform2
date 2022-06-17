@@ -271,6 +271,8 @@ const std::array kCommandLogs {
 #endif  // USE_IWLWIFI_DUMP
   Log{kCommand, "kbmcu_info", "ectool --device 18d1:5022 version",
     kRoot, kRoot},
+  Log{kCommand, "kbmcu_log", "ectool --device 18d1:5022 console",
+    kRoot, kRoot},
   Log{kGlob, "kernel-crashes", "/var/spool/crash/kernel.*.kcrash",
     SandboxedProcess::kDefaultUser, "crash-access"},
   Log{kCommand, "lpstat", "/usr/bin/lpstat -l -r -v -a -p -o",

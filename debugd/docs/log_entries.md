@@ -290,7 +290,11 @@ Per-CPU interrupt statistics.  See the `/proc/interrupts` section of the
 
 ## kbmcu_info
 
-RGB KBMCU info. Current FW version on kbmcu.
+Information about an MCU controlling an RGB keyboard, including FW version.
+
+## kbmcu_log
+
+Console output of an MCU controlling an RGB keyboard.
 
 ## kernel-crashes
 
