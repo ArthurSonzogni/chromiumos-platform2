@@ -280,6 +280,12 @@ void Daemon::CompleteInitialization() {
         kDlcRemovalDelay);
   }
 
+  // Check if we have any qcom soc based modems that require a flash before they
+  // boot.
+  const char kSocInternalDeviceId[] = "soc:*:* (Internal)";
+  if (helper_directory_->GetHelperForDeviceId(kSocInternalDeviceId))
+    ForceFlash(kSocInternalDeviceId);
+
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Daemon::CheckForWedgedModems,
