@@ -22,6 +22,8 @@ constexpr size_t kSampleBatchMaxLengthForFuzzing =
     10 * metrics::SerializationUtils::kMessageMaxLength;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  logging::SetMinLogLevel(logging::LOGGING_FATAL);  // Disable logging.
+
   base::ScopedTempDir temp_dir;
   CHECK(temp_dir.CreateUniqueTempDir());
   base::FilePath metrics_file = temp_dir.GetPath().Append("metrics");
