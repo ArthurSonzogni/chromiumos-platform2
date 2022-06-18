@@ -68,7 +68,7 @@ RealUserSession::RealUserSession(
       mount_(mount) {}
 
 MountStatus RealUserSession::MountVault(
-    const std::string username,
+    const std::string& username,
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
   if (username_ != username) {
@@ -98,7 +98,7 @@ MountStatus RealUserSession::MountVault(
   return OkStatus<CryptohomeMountError>();
 }
 
-MountStatus RealUserSession::MountEphemeral(const std::string username) {
+MountStatus RealUserSession::MountEphemeral(const std::string& username) {
   if (username_ != username) {
     NOTREACHED() << "MountEphemeral username mismatch.";
   }

@@ -55,12 +55,12 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Mounts disk backed vault for the given username with the supplied file
   // system keyset.
   virtual MountStatus MountVault(
-      const std::string username,
+      const std::string& username,
       const FileSystemKeyset& fs_keyset,
       const CryptohomeVault::Options& vault_options) = 0;
 
   // Creates and mounts a ramdisk backed ephemeral session for the given user.
-  virtual MountStatus MountEphemeral(const std::string username) = 0;
+  virtual MountStatus MountEphemeral(const std::string& username) = 0;
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.

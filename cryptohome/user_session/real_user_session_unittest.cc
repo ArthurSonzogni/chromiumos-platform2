@@ -164,7 +164,9 @@ class RealUserSessionTest : public ::testing::Test {
 };
 
 MATCHER_P(VaultOptionsEqual, options, "") {
-  return memcmp(&options, &arg, sizeof(options)) == 0;
+  return arg.force_type == options.force_type &&
+         arg.migrate == options.migrate &&
+         arg.block_ecryptfs == options.block_ecryptfs;
 }
 
 // Mount twice: first time with create, and the second time for the existing

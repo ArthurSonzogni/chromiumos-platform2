@@ -68,12 +68,12 @@ class RealUserSession : public UserSession {
   // Mounts disk backed vault for the given username with the supplied file
   // system keyset.
   MountStatus MountVault(
-      const std::string username,
+      const std::string& username,
       const FileSystemKeyset& fs_keyset,
       const CryptohomeVault::Options& vault_options) override;
 
   // Creates and mounts a ramdisk backed ephemeral session for the given user.
-  MountStatus MountEphemeral(const std::string username) override;
+  MountStatus MountEphemeral(const std::string& username) override;
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
