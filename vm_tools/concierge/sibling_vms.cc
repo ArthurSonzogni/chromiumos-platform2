@@ -308,54 +308,6 @@ std::optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
   return vvu_proxy_device_config;
 }
 
-// Writes 'str' to the file specified to 'path'.
-bool WriteToFile(const base::FilePath& path, std::string str) {
-  base::File file(path,
-                  base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_WRITE);
-  if (!file.IsValid()) {
-    PLOG(ERROR) << "Failed to open file " << path;
-    return false;
-  }
-
-  if (!file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(str)))) {
-    PLOG(ERROR) << "Failed to write " << str << " to " << path;
-    return false;
-  }
-
-  return true;
-}
-
-// Rebinds |pci_device| to the driver named |driver|.
-bool RebindDevice(const base::FilePath& pci_device, std::string driver) {
-  // The Bus:Device.Function identifying what device to unbind/bind.
-  std::string bdf = pci_device.BaseName().MaybeAsASCII();
-
-  // If currently bound to a driver, unbind.
-  auto unbind_path = base::FilePath("/sys/bus/pci/devices")
-                         .Append(bdf)
-                         .Append("driver/unbind");
-  if (base::PathExists(unbind_path) && !WriteToFile(unbind_path, bdf)) {
-    return false;
-  }
-
-  // Force usage of |driver| via the 'driver_override' setting.
-  if (!WriteToFile(pci_device.Append("driver_override"), driver)) {
-    return false;
-  }
-
-  // Bind to the |driver|.
-  if (!WriteToFile(
-          base::FilePath("/sys/bus/pci/drivers").Append(driver).Append("bind"),
-          bdf)) {
-    return false;
-  }
-
-  // Write the empty string to driver_override to return the device to using
-  // the standard matching rules. Note that this operation won't unbind the
-  // current driver or load a new driver.
-  return WriteToFile(pci_device.Append("driver_override"), "");
-}
-
 // This function returns the socket index corresponding to |pci_device|. It does
 // this by first getting its device configuration and then returning the socket
 // index from the VVU device's UUID.
@@ -363,11 +315,6 @@ bool RebindDevice(const base::FilePath& pci_device, std::string driver) {
 // The caller must ensure that |pci_device| is a VVU device.
 std::optional<int32_t> GetVvuDeviceSocketIndex(
     const base::FilePath& pci_device) {
-  // Rebind so we can access VVU device via VFIO.
-  if (!RebindDevice(pci_device, "vfio-pci")) {
-    return std::nullopt;
-  }
-
   auto vvu_proxy_device_config = ReadVvuProxyDeviceConfig(pci_device);
   if (!vvu_proxy_device_config) {
     return std::nullopt;
