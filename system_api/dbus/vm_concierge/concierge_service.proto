@@ -381,6 +381,48 @@ message StartArcVmRequest {
 
   // Whether to lock guest memory (for the purpose of disabling host swap).
   bool lock_guest_memory = 18;
+
+  // Whether the file picker experiment feature is enabled.
+  bool enable_arc_file_picker_experiment = 19;
+
+  // Whether the custom tabs experiment feature is enabled.
+  bool enable_custom_tabs_experiment = 20;
+
+  // Whether the keyboard shortcut helper integration feature is enabled.
+  bool enable_keyboard_shortcut_helper_integration = 21;
+
+  // Whether the notifications refresh is enabled.
+  bool enable_notifications_refresh = 22;
+
+  // Whether the tts caching feature is enabled.
+  bool enable_tts_caching = 23;
+
+  // Whether gmscore lmk protection is enabled.
+  bool enable_gmscore_lmk_protection = 24;
+
+  // Whether broadcast anr prenotify is enabled.
+  bool enable_broadcast_anr_prenotify = 25;
+
+  // Size of logd config in kBytes, -1 if disabled
+  int32 logd_config_size = 26;
+
+  // Whether virtio blk data is enabled
+  bool enable_virtio_blk_data = 27;
+
+  // ArcVM metrics memory PSI period, -1 if disabled
+  int32 vm_memory_psi_period = 28;
+
+  // Whether media store maintenance is disabled
+  bool disable_media_store_maintenance = 29;
+
+  // Whether Play auto install is generated
+  bool arc_generate_play_auto_install = 30;
+
+  // Whether download provider is disabled
+  bool disable_download_provider = 31;
+
+  // Size of Guest Zram in bytes
+  int32 guest_zram_size = 32;
 }
 
 enum VmStatus {
