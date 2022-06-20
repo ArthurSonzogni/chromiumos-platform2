@@ -24,6 +24,10 @@ const string kDeviceName = "name";
 // will be returned.
 const string kSysPath = "syspath";
 
+// Only available for SAR sensors, needed to determine the antenna type
+// (wifi/lte).
+const string kDevlink = "devlink";
+
 const string kLocationBase = "base";
 const string kLocationLid = "lid";
 const string kLocationCamera = "camera";

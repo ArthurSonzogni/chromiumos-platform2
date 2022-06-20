@@ -166,6 +166,13 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
         value_opt = path_opt.value().value();
     } else if (attr_name == cros::mojom::kLocation) {
       value_opt = client.device_data->iio_device->GetLocation();
+    } else if (attr_name == cros::mojom::kDevlink) {
+      auto path_opt = client.device_data->iio_device->GetAbsoluteSysPath();
+      if (path_opt.has_value() &&
+          base::Contains(client.device_data->types,
+                         cros::mojom::DeviceType::PROXIMITY)) {
+        value_opt = libmems::GetIioSarSensorDevlink(path_opt.value().value());
+      }
     } else {
       value_opt =
           client.device_data->iio_device->ReadStringAttribute(attr_name);
