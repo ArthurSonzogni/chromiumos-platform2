@@ -55,9 +55,9 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
   constexpr int64_t MAX_CRITICAL_DELTA = 10 * MIB;
 
   const int64_t balloon_actual = stats.balloon_actual;
-  const int64_t guest_free = stats.free_memory;
-  const int64_t guest_cached = stats.disk_caches;
-  const int64_t guest_total = stats.total_memory;
+  const int64_t guest_free = stats.stats_ffi.free_memory;
+  const int64_t guest_cached = stats.stats_ffi.disk_caches;
+  const int64_t guest_total = stats.stats_ffi.total_memory;
 
   // NB: max_balloon_actual_ should start at a resonably high value, but we
   // don't know how much memory the guest has until we get some BalloonStats, so
@@ -190,11 +190,12 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
     ComponentMemoryMargins component_margins) {
   const int64_t max_free = MaxFree();
   const int64_t min_free = MinFree();
-  const int64_t guest_free = stats.free_memory;
+  const int64_t guest_free = stats.stats_ffi.free_memory;
   const int64_t guest_unreclaimable =
-      stats.shared_memory + stats.unevictable_memory;
-  const int64_t guest_cache = std::max(stats.disk_caches - guest_unreclaimable,
-                                       static_cast<int64_t>(0));
+      stats.stats_ffi.shared_memory + stats.stats_ffi.unevictable_memory;
+  const int64_t guest_cache =
+      std::max(stats.stats_ffi.disk_caches - guest_unreclaimable,
+               static_cast<int64_t>(0));
   const int64_t guest_lwm = guest_zoneinfo_.sum_low;
   const int64_t critical_margin = margins_.critical;
   const int64_t moderate_margin = margins_.moderate;
@@ -266,7 +267,8 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
 
   UpdateBalloonDeflationLimits(
       component_margins, total_avaialble_memory,
-      std::max(INT64_C(0), stats.balloon_actual + delta));
+      std::max(static_cast<int64_t>(0),
+               static_cast<int64_t>(stats.balloon_actual) + delta));
 
   LOG(INFO) << "BalloonTrace: { "
             << "\"vm\": \"" << vm << "\", "

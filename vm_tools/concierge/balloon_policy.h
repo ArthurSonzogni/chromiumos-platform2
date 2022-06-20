@@ -4,6 +4,8 @@
 #ifndef VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 #define VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 
+#include <crosvm/crosvm_control.h>
+
 #include <limits>
 #include <optional>
 #include <stdint.h>
@@ -17,17 +19,8 @@ constexpr int64_t MIB = 1024 * 1024;
 constexpr int64_t PAGE_BYTES = 4096;
 
 struct BalloonStats {
-  int64_t available_memory;
-  int64_t balloon_actual;
-  int64_t disk_caches;
-  int64_t free_memory;
-  int64_t major_faults;
-  int64_t minor_faults;
-  int64_t swap_in;
-  int64_t swap_out;
-  int64_t total_memory;
-  int64_t shared_memory;
-  int64_t unevictable_memory;
+  BalloonStatsFfi stats_ffi;
+  uint64_t balloon_actual;
 };
 
 struct MemoryMargins {

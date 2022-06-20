@@ -991,7 +991,9 @@ void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
         *available_memory, *component_margins);
 
     if (!USE_CROSVM_SIBLINGS) {
-      int64_t target = std::max(INT64_C(0), stats.balloon_actual + delta);
+      uint64_t target =
+          std::max(static_cast<int64_t>(0),
+                   static_cast<int64_t>(stats.balloon_actual) + delta);
       if (target != stats.balloon_actual) {
         vm->SetBalloonSize(target);
       }

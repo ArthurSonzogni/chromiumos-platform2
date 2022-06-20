@@ -402,51 +402,14 @@ bool CheckProcessExists(pid_t pid) {
 }
 
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
-  // TODO(hikalium): Rewrite this logic to use FFI
-  // after b/188858559 is done.
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg("balloon_stats");
-  crosvm.AddArg(socket_path);
-  crosvm.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
-
-  if (crosvm.Run() != 0) {
-    LOG(ERROR) << "Failed to run crosvm balloon_stats";
+  BalloonStats stats;
+  if (!crosvm_client_balloon_stats(socket_path.c_str(), &stats.stats_ffi,
+                                   &stats.balloon_actual)) {
+    LOG(ERROR) << "Failed to retrieve balloon stats";
     return std::nullopt;
   }
 
-  base::ScopedFD read_fd(crosvm.GetPipe(STDOUT_FILENO));
-  std::string crosvm_response;
-  crosvm_response.resize(1024);
-  ssize_t response_size =
-      read(read_fd.get(), crosvm_response.data(), crosvm_response.size());
-  if (response_size < 0) {
-    LOG(ERROR) << "Failed to read balloon_stats";
-    return std::nullopt;
-  }
-  if (response_size == crosvm_response.size()) {
-    LOG(ERROR) << "Response of balloon_stats is too large";
-    return std::nullopt;
-  }
-  crosvm_response.resize(response_size);
-
-  auto root_value = base::JSONReader::Read(crosvm_response);
-  if (!root_value) {
-    LOG(ERROR) << "Failed to parse balloon_stats JSON";
-    return std::nullopt;
-  }
-
-  if (!root_value->is_dict()) {
-    LOG(ERROR) << "Output of balloon_stats was not a dict";
-    return std::nullopt;
-  }
-  auto balloon_stats = root_value->FindDictKey("BalloonStats");
-  if (!balloon_stats || !balloon_stats->is_dict()) {
-    LOG(ERROR) << "BalloonStats dict not found";
-    return std::nullopt;
-  }
-
-  return ParseBalloonStats(*balloon_stats);
+  return stats;
 }
 
 std::optional<BalloonStats> ParseBalloonStats(
@@ -460,27 +423,28 @@ std::optional<BalloonStats> ParseBalloonStats(
   BalloonStats stats;
   // Using FindDoubleKey here since the value may exceeds 32bit integer range.
   // This is safe since double has 52bits of integer precision.
-  stats.available_memory = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("available_memory").value_or(0));
   stats.balloon_actual = static_cast<int64_t>(
       balloon_stats.FindDoubleKey("balloon_actual").value_or(0));
-  stats.disk_caches = static_cast<int64_t>(
+
+  stats.stats_ffi.available_memory = static_cast<int64_t>(
+      additional_stats->FindDoubleKey("available_memory").value_or(0));
+  stats.stats_ffi.disk_caches = static_cast<int64_t>(
       additional_stats->FindDoubleKey("disk_caches").value_or(0));
-  stats.free_memory = static_cast<int64_t>(
+  stats.stats_ffi.free_memory = static_cast<int64_t>(
       additional_stats->FindDoubleKey("free_memory").value_or(0));
-  stats.major_faults = static_cast<int64_t>(
+  stats.stats_ffi.major_faults = static_cast<int64_t>(
       additional_stats->FindDoubleKey("major_faults").value_or(0));
-  stats.minor_faults = static_cast<int64_t>(
+  stats.stats_ffi.minor_faults = static_cast<int64_t>(
       additional_stats->FindDoubleKey("minor_faults").value_or(0));
-  stats.swap_in = static_cast<int64_t>(
+  stats.stats_ffi.swap_in = static_cast<int64_t>(
       additional_stats->FindDoubleKey("swap_in").value_or(0));
-  stats.swap_out = static_cast<int64_t>(
+  stats.stats_ffi.swap_out = static_cast<int64_t>(
       additional_stats->FindDoubleKey("swap_out").value_or(0));
-  stats.total_memory = static_cast<int64_t>(
+  stats.stats_ffi.total_memory = static_cast<int64_t>(
       additional_stats->FindDoubleKey("total_memory").value_or(0));
-  stats.shared_memory = static_cast<int64_t>(
+  stats.stats_ffi.shared_memory = static_cast<int64_t>(
       additional_stats->FindDoubleKey("shared_memory").value_or(0));
-  stats.unevictable_memory = static_cast<int64_t>(
+  stats.stats_ffi.unevictable_memory = static_cast<int64_t>(
       additional_stats->FindDoubleKey("unevictable_memory").value_or(0));
   return stats;
 }
