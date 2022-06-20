@@ -12,19 +12,21 @@
 
 namespace shill {
 
-Network::Network() {}
+Network::Network(int interface_index,
+                 const std::string& interface_name,
+                 Technology technology)
+    : interface_index_(interface_index),
+      interface_name_(interface_name),
+      technology_(technology) {}
 
-void Network::CreateConnection(int interface_index,
-                               const std::string& interface_name,
-                               bool fixed_ip_params,
-                               Technology technology,
+void Network::CreateConnection(bool fixed_ip_params,
                                const DeviceInfo* device_info) {
   if (connection_ != nullptr) {
     return;
   }
   connection_ =
-      std::make_unique<Connection>(interface_index, interface_name,
-                                   fixed_ip_params, technology, device_info);
+      std::make_unique<Connection>(interface_index_, interface_name_,
+                                   fixed_ip_params, technology_, device_info);
 }
 
 void Network::DestroyConnection() {
@@ -73,16 +75,6 @@ std::string Network::GetSubnetName() const {
 bool Network::IsIPv6() const {
   CHECK(connection_) << __func__ << " called but no connection exists";
   return connection_->IsIPv6();
-}
-
-std::string Network::interface_name() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
-  return connection_->interface_name();
-}
-
-int Network::interface_index() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
-  return connection_->interface_index();
 }
 
 const std::vector<std::string>& Network::dns_servers() const {

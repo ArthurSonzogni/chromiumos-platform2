@@ -25,23 +25,24 @@ class DeviceInfo;
 // class.
 class Network {
  public:
-  Network();
+  explicit Network(int interface_index,
+                   const std::string& interface_name,
+                   Technology technology);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   ~Network() = default;
 
   // Creates the associated Connection object if not exists.
-  void CreateConnection(int interface_index,
-                        const std::string& interface_name,
-                        bool fixed_ip_params,
-                        Technology technology,
-                        const DeviceInfo* device_info);
+  void CreateConnection(bool fixed_ip_params, const DeviceInfo* device_info);
   // Destroys the associated Connection object if exists.
   void DestroyConnection();
   // Returns if the associated Connection object exist. Note that the return
   // value does not indicate any real state of the network. This function will
   // finally be removed.
   bool HasConnectionObject() const;
+
+  int interface_index() const { return interface_index_; }
+  std::string interface_name() const { return interface_name_; }
 
   // TODO(b/232177767): Wrappers for the corresponding functions in the
   // Connection class. This is a temporary solution. The caller should guarantee
@@ -58,8 +59,6 @@ class Network {
   // TODO(b/232177767): Getters for access members in Connection. This is a
   // temporary solution. The caller should guarantee there is a Connection
   // object inside this object.
-  std::string interface_name() const;
-  int interface_index() const;
   const std::vector<std::string>& dns_servers() const;
   const IPAddress& local() const;
   const IPAddress& gateway() const;
@@ -74,6 +73,10 @@ class Network {
   }
 
  private:
+  const int interface_index_;
+  const std::string interface_name_;
+  const Technology technology_;
+
   std::unique_ptr<Connection> connection_;
 };
 

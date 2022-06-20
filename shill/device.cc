@@ -101,7 +101,7 @@ Device::Device(Manager* manager,
       interface_index_(interface_index),
       link_name_(link_name),
       manager_(manager),
-      network_(new Network()),
+      network_(new Network(interface_index, link_name, technology)),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
@@ -767,8 +767,7 @@ void Device::ConfigureStaticIPv6Address() {
 void Device::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
   SLOG(this, 2) << __func__;
-  network_->CreateConnection(interface_index_, link_name_, fixed_ip_params_,
-                             technology_, manager_->device_info());
+  network_->CreateConnection(fixed_ip_params_, manager_->device_info());
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
     ipconfig->SetBlackholedUids(manager_->GetUserTrafficUids());
   } else {

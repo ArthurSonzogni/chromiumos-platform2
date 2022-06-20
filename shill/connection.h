@@ -47,7 +47,7 @@ class Connection {
   Connection(int interface_index,
              const std::string& interface_name,
              bool fixed_ip_params,
-             Technology technology_,
+             Technology technology,
              const DeviceInfo* device_info);
   Connection(const Connection&) = delete;
   Connection& operator=(const Connection&) = delete;
