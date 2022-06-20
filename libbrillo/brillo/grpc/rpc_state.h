@@ -65,7 +65,7 @@ class BRILLO_EXPORT RpcStateBase {
   // when the handler has provided a reply (this could be a response, or a
   // cancellation). Guarantees that |on_handler_done| will only be called if
   // this object has not been destroyed.
-  virtual void CallHandler(const base::Closure& on_handler_done) = 0;
+  virtual void CallHandler(base::OnceClosure on_handler_done) = 0;
 
   // Returns true if the handler has provided a response. If this returns false,
   // it means that the RPC should be cancelled.
@@ -90,27 +90,27 @@ template <typename RequestType, typename ResponseType>
 class RpcState final : public RpcStateBase {
  public:
   // Call to grpc to request the next RPC of this type.
-  using RequestRpcCallback =
-      base::Callback<void(grpc::ServerContext*,
-                          RequestType*,
-                          grpc::ServerAsyncResponseWriter<ResponseType>*,
-                          grpc::CompletionQueue*,
-                          grpc::ServerCompletionQueue*,
-                          void*)>;
+  using RequestRpcCallback = base::RepeatingCallback<void(
+      grpc::ServerContext*,
+      RequestType*,
+      grpc::ServerAsyncResponseWriter<ResponseType>*,
+      grpc::CompletionQueue*,
+      grpc::ServerCompletionQueue*,
+      void*)>;
 
   // Called by the handler to send |status| and |response|.
-  using HandlerDoneCallback = base::Callback<void(
+  using HandlerDoneCallback = base::OnceCallback<void(
       grpc::Status status, std::unique_ptr<ResponseType> response)>;
 
   // The handler callback - will be invoked to compute a response for a request.
   using HandlerCallback =
-      base::Callback<void(std::unique_ptr<RequestType> request,
-                          const HandlerDoneCallback& send_response_callback)>;
+      base::OnceCallback<void(std::unique_ptr<RequestType> request,
+                              HandlerDoneCallback send_response_callback)>;
 
   RpcState(RequestRpcCallback request_rpc_closure,
-           const HandlerCallback& handler_callback)
+           HandlerCallback handler_callback)
       : request_rpc_closure_(request_rpc_closure),
-        handler_callback_(handler_callback),
+        handler_callback_(std::move(handler_callback)),
         responder_(&ctx_) {}
   RpcState(const RpcState&) = delete;
   RpcState& operator=(const RpcState&) = delete;
@@ -124,13 +124,13 @@ class RpcState final : public RpcStateBase {
                              tag());
   }
 
-  void CallHandler(const base::Closure& on_handler_done) override {
+  void CallHandler(base::OnceClosure on_handler_done) override {
     // Ensure that this is not called twice.
     CHECK(request_);
-    handler_callback_.Run(
-        std::move(request_),
-        base::Bind(&RpcState::OnHandlerDone, weak_ptr_factory_.GetWeakPtr(),
-                   on_handler_done));
+    std::move(handler_callback_)
+        .Run(std::move(request_), base::BindOnce(&RpcState::OnHandlerDone,
+                                                 weak_ptr_factory_.GetWeakPtr(),
+                                                 std::move(on_handler_done)));
   }
 
   bool HasResponse() override { return response_.get() != nullptr; }
@@ -149,7 +149,7 @@ class RpcState final : public RpcStateBase {
  private:
   // This will be invoked by the handler when it provides us a |status| and a
   // |response|.
-  void OnHandlerDone(const base::Closure& on_handler_done,
+  void OnHandlerDone(base::OnceClosure on_handler_done,
                      grpc::Status status,
                      std::unique_ptr<ResponseType> response) {
     // Ideally, we would CHECK that |OnHandlerDone| is only called once, but
@@ -158,7 +158,7 @@ class RpcState final : public RpcStateBase {
     CHECK(!response_);
     response_ = std::move(response);
     status_ = std::move(status);
-    on_handler_done.Run();
+    std::move(on_handler_done).Run();
   }
 
   RequestRpcCallback request_rpc_closure_;

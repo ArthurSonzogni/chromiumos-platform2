@@ -281,7 +281,7 @@ class DpslRpcServerImplUnixSocketTest : public DpslRpcServerImplTest {
                                        const ProtoResponse& response) {
     wilco_dtc_grpc_client_->CallRpc(
         client_rpc_ptr, request,
-        base::BindRepeating(
+        base::BindOnce(
             [](DpslThreadContext* thread_context,
                const ProtoResponse& expected_response, grpc::Status status,
                std::unique_ptr<ProtoResponse> response) {
@@ -314,7 +314,7 @@ TEST_P(DpslRpcServerImplUnixSocketTest, HandleMessageFromUi) {
       DpslRpcServer::GrpcServerUri::kUiMessageReceiverVmVsock) {
     wilco_dtc_grpc_client_->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandleMessageFromUi, request,
-        base::BindRepeating(
+        base::BindOnce(
             [](DpslThreadContext* thread_context, grpc::Status status,
                std::unique_ptr<grpc_api::HandleMessageFromUiResponse>
                    response) {

@@ -38,7 +38,7 @@ class BRILLO_EXPORT AsyncGrpcClientBase {
   // Type of the callback which will be called when an RPC response is
   // available.
   template <typename ResponseType>
-  using ReplyCallback = base::Callback<void(
+  using ReplyCallback = base::OnceCallback<void(
       grpc::Status status, std::unique_ptr<ResponseType> response)>;
 
   explicit AsyncGrpcClientBase(
@@ -50,7 +50,7 @@ class BRILLO_EXPORT AsyncGrpcClientBase {
 
   // Shuts down this client. This instance may only be destroyed after
   // |on_shutdown_callback| has been called.
-  void ShutDown(const base::Closure& on_shutdown_callback);
+  void ShutDown(base::OnceClosure on_shutdown_callback);
 
  protected:
   GrpcCompletionQueueDispatcher* dispatcher() { return &dispatcher_; }
@@ -71,11 +71,11 @@ class BRILLO_EXPORT AsyncGrpcClientBase {
 //                               "unix:/path/to/socket");
 //   client.CallRpc(&FooStub::AsyncDoSomething,
 //                  something_request,
-//                  do_something_callback);
+//                  std::move(do_something_callback));
 //   client.CallRpc(&FooStub::AsyncDoOtherThing,
 //                  other_thing_request,
-//                  do_other_thing_callback);
-//   client.Shutdown(on_shutdown_callback);
+//                  std::move(do_other_thing_callback));
+//   client.Shutdown(std::move(on_shutdown_callback));
 //   // Important: Make sure |client| is not destroyed before
 //   // |on_shutdown_callback| is called.
 // The callbacks (e.g. |do_something_callback| in the example) have the
@@ -125,8 +125,8 @@ class AsyncGrpcClient final : public internal::AsyncGrpcClientBase {
                                         dispatcher()->completion_queue());
     dispatcher()->RegisterTag(
         rpc_state_unowned->tag(),
-        base::Bind(&AsyncGrpcClient::OnReplyReceived<ResponseType>,
-                   base::Passed(&rpc_state), on_reply_callback));
+        base::BindOnce(&AsyncGrpcClient::OnReplyReceived<ResponseType>,
+                       std::move(rpc_state), std::move(on_reply_callback)));
     // Accessing |rpc_state_unowned| is safe, because the RpcState will remain
     // alive (owned by the |dispatcher()|) at least until the corresponding tag
     // becomes available through the gRPC CompletionQueue, which can not happen
@@ -144,7 +144,8 @@ class AsyncGrpcClient final : public internal::AsyncGrpcClientBase {
                    async_rpc_start,
                const RequestType& request,
                ReplyCallback<ResponseType> on_reply_callback) {
-    CallRpc(async_rpc_start, default_rpc_deadline_, request, on_reply_callback);
+    CallRpc(async_rpc_start, default_rpc_deadline_, request,
+            std::move(on_reply_callback));
   }
 
   // Sets the request deadline for future requests made with this client.
@@ -170,10 +171,9 @@ class AsyncGrpcClient final : public internal::AsyncGrpcClientBase {
   };
 
   template <typename ResponseType>
-  static void OnReplyReceived(
-      std::unique_ptr<RpcState<ResponseType>> rpc_state,
-      const ReplyCallback<ResponseType>& on_reply_callback,
-      bool ok) {
+  static void OnReplyReceived(std::unique_ptr<RpcState<ResponseType>> rpc_state,
+                              ReplyCallback<ResponseType> on_reply_callback,
+                              bool ok) {
     // gRPC CompletionQueue::Next documentation says that |ok| should always
     // be true for client-side |Finish|.
     CHECK(ok);
@@ -183,8 +183,8 @@ class AsyncGrpcClient final : public internal::AsyncGrpcClientBase {
               << rpc_state->status.error_message() << "', error_details='"
               << rpc_state->status.error_details() << "'";
     }
-    on_reply_callback.Run(std::move(rpc_state->status),
-                          std::move(rpc_state->response));
+    std::move(on_reply_callback)
+        .Run(std::move(rpc_state->status), std::move(rpc_state->response));
   }
 
   base::TimeDelta default_rpc_deadline_ = kDefaultRpcDeadline;

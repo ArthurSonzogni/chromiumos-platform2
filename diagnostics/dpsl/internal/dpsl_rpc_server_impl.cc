@@ -94,66 +94,67 @@ bool DpslRpcServerImpl::Init() {
 
 void DpslRpcServerImpl::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
-    const HandleMessageFromUiCallback& callback) {
+    HandleMessageFromUiCallback callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandleMessageFromUi(
       std::move(request),
       MakeStdFunctionFromCallbackGrpc(
-          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, std::move(callback))));
 }
 
 void DpslRpcServerImpl::HandleMessageFromUiStub(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
-    const HandleMessageFromUiCallback& callback) {
+    HandleMessageFromUiCallback callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  callback.Run(grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "Unimplemented"),
-               nullptr /* response */);
+  std::move(callback).Run(
+      grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "Unimplemented"),
+      nullptr /* response */);
 }
 
 void DpslRpcServerImpl::HandleEcNotification(
     std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
-    const HandleEcNotificationCallback& callback) {
+    HandleEcNotificationCallback callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandleEcNotification(
       std::move(request),
       MakeStdFunctionFromCallbackGrpc(
-          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, std::move(callback))));
 }
 
 void DpslRpcServerImpl::HandlePowerNotification(
     std::unique_ptr<grpc_api::HandlePowerNotificationRequest> request,
-    const HandlePowerNotificationCallback& callback) {
+    HandlePowerNotificationCallback callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandlePowerNotification(
       std::move(request),
       MakeStdFunctionFromCallbackGrpc(
-          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, std::move(callback))));
 }
 
 void DpslRpcServerImpl::HandleConfigurationDataChanged(
     std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
-    const HandleConfigurationDataChangedCallback& callback) {
+    HandleConfigurationDataChangedCallback callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandleConfigurationDataChanged(
       std::move(request),
       MakeStdFunctionFromCallbackGrpc(
-          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, std::move(callback))));
 }
 
 void DpslRpcServerImpl::HandleBluetoothDataChanged(
     std::unique_ptr<grpc_api::HandleBluetoothDataChangedRequest> request,
-    const HandleBluetoothDataChangedCallback& callback) {
+    HandleBluetoothDataChangedCallback callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandleBluetoothDataChanged(
       std::move(request),
       MakeStdFunctionFromCallbackGrpc(
-          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, std::move(callback))));
 }
 
 // static

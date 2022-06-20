@@ -147,7 +147,7 @@ class Core final : public GrpcService::Delegate,
   void GetConfigurationDataFromBrowser(
       GetConfigurationDataFromBrowserCallback callback) override;
   void GetDriveSystemData(DriveSystemDataType data_type,
-                          const GetDriveSystemDataCallback& callback) override;
+                          GetDriveSystemDataCallback callback) override;
   void RequestBluetoothDataNotification() override;
   void ProbeTelemetryInfo(
       std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,

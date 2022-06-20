@@ -6,6 +6,7 @@
 
 #include <list>
 #include <memory>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -39,8 +40,8 @@ class TagAvailableCalledTester {
 
   GrpcCompletionQueueDispatcher::TagAvailableCallback
   GetTagAvailableCallback() {
-    return base::Bind(&TagAvailableCalledTester::Callback,
-                      base::Unretained(this));
+    return base::BindOnce(&TagAvailableCalledTester::Callback,
+                          base::Unretained(this));
   }
 
   // Bind this to a RegisterTag call of the
@@ -52,15 +53,15 @@ class TagAvailableCalledTester {
     has_been_called_ = true;
     value_of_ok_ = ok;
 
-    std::list<base::Closure> callbacks_temp;
+    std::list<base::OnceClosure> callbacks_temp;
     callbacks_temp.swap(call_when_invoked_);
     for (auto& callback : callbacks_temp)
-      callback.Run();
+      std::move(callback).Run();
   }
 
   // Register |call_when_invoked| to be called when |Callback| is called.
-  void CallWhenInvoked(base::Closure call_when_invoked) {
-    call_when_invoked_.push_back(call_when_invoked);
+  void CallWhenInvoked(base::OnceClosure call_when_invoked) {
+    call_when_invoked_.push_back(std::move(call_when_invoked));
   }
 
   // Returns true if |Callback| has been called.
@@ -76,7 +77,7 @@ class TagAvailableCalledTester {
  private:
   bool has_been_called_ = false;
   bool value_of_ok_ = false;
-  std::list<base::Closure> call_when_invoked_;
+  std::list<base::OnceClosure> call_when_invoked_;
 };
 
 // Allows testing if an object (owned by callback) has been destroyed. Also
@@ -162,10 +163,10 @@ TEST_F(GrpcCompletionQueueDispatcherTest, TagNeverAvailable) {
       std::make_unique<ObjectDestroyedTester>(&object_has_been_destroyed);
 
   TagAvailableCalledTester tag_available_called_tester;
-  dispatcher_.RegisterTag(
-      nullptr,
-      base::Bind(&ObjectDestroyedTesterAdapter, &tag_available_called_tester,
-                 base::Passed(&object_destroyed_tester)));
+  dispatcher_.RegisterTag(nullptr,
+                          base::BindOnce(&ObjectDestroyedTesterAdapter,
+                                         &tag_available_called_tester,
+                                         std::move(object_destroyed_tester)));
 
   ShutdownDispatcher();
 
@@ -227,10 +228,11 @@ TEST_F(GrpcCompletionQueueDispatcherTest, ReregisterTag) {
   dispatcher_.RegisterTag(
       kTag, tag_available_called_tester_1.GetTagAvailableCallback());
   auto reregister_tag_callback =
-      base::Bind(&GrpcCompletionQueueDispatcher::RegisterTag,
-                 base::Unretained(&dispatcher_), kTag,
-                 tag_available_called_tester_2.GetTagAvailableCallback());
-  tag_available_called_tester_1.CallWhenInvoked(reregister_tag_callback);
+      base::BindOnce(&GrpcCompletionQueueDispatcher::RegisterTag,
+                     base::Unretained(&dispatcher_), kTag,
+                     tag_available_called_tester_2.GetTagAvailableCallback());
+  tag_available_called_tester_1.CallWhenInvoked(
+      std::move(reregister_tag_callback));
   tag_available_called_tester_1.CallWhenInvoked(run_loop_1.QuitClosure());
 
   tag_available_called_tester_2.CallWhenInvoked(run_loop_2.QuitClosure());

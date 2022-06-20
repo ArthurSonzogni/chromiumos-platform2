@@ -63,16 +63,16 @@ int64_t CalculateWebRequestParameterSize(
 }
 
 // Forwards and wraps the result of a SendMessageToUi into gRPC response.
-void ForwardSendMessageToUiResponse(const SendMessageToUiCallback& callback,
+void ForwardSendMessageToUiResponse(SendMessageToUiCallback callback,
                                     grpc::Status status,
                                     base::StringPiece response_json_message) {
   auto reply = std::make_unique<grpc_api::SendMessageToUiResponse>();
   reply->set_response_json_message(std::string(response_json_message));
-  callback.Run(status, std::move(reply));
+  std::move(callback).Run(status, std::move(reply));
 }
 
 // Forwards and wraps status & HTTP status into gRPC PerformWebRequestResponse.
-void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
+void ForwardWebGrpcResponse(PerformWebRequestResponseCallback callback,
                             DelegateWebRequestStatus status,
                             int http_status,
                             base::StringPiece response_body) {
@@ -97,7 +97,7 @@ void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
           grpc_api::PerformWebRequestResponse::STATUS_INTERNAL_ERROR);
       break;
   }
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Converts gRPC HTTP method into GrpcService::Delegate's HTTP
@@ -166,18 +166,18 @@ bool GetSystemFilesServiceVpdField(
 
 // Forwards and wraps available routines into a gRPC response.
 void ForwardGetAvailableRoutinesResponse(
-    const GetAvailableRoutinesCallback& callback,
+    GetAvailableRoutinesCallback callback,
     const std::vector<grpc_api::DiagnosticRoutine>& routines,
     grpc_api::RoutineServiceStatus service_status) {
   auto reply = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
   for (auto routine : routines)
     reply->add_routines(routine);
   reply->set_service_status(service_status);
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Forwards and wraps the result of a RunRoutine command into a gRPC response.
-void ForwardRunRoutineResponse(const RunRoutineCallback& callback,
+void ForwardRunRoutineResponse(RunRoutineCallback callback,
                                int uuid,
                                grpc_api::DiagnosticRoutineStatus status,
                                grpc_api::RoutineServiceStatus service_status) {
@@ -185,13 +185,13 @@ void ForwardRunRoutineResponse(const RunRoutineCallback& callback,
   reply->set_uuid(uuid);
   reply->set_status(status);
   reply->set_service_status(service_status);
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Forwards and wraps the results of a GetRoutineUpdate command into a gRPC
 // response.
 void ForwardGetRoutineUpdateResponse(
-    const GetRoutineUpdateCallback& callback,
+    GetRoutineUpdateCallback callback,
     int uuid,
     grpc_api::DiagnosticRoutineStatus status,
     int progress_percent,
@@ -207,25 +207,24 @@ void ForwardGetRoutineUpdateResponse(
   reply->set_output(output);
   reply->set_status_message(status_message);
   reply->set_service_status(service_status);
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Forwards and wraps the result of a GetConfigurationDataFromBrowser into gRPC
 // response.
 void ForwardGetConfigurationDataResponse(
-    const GetConfigurationDataCallback& callback,
+    GetConfigurationDataCallback callback,
     const std::string& json_configuration_data) {
   auto reply = std::make_unique<grpc_api::GetConfigurationDataResponse>();
   reply->set_json_configuration_data(json_configuration_data);
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Forwards and wraps the result of a GetDriveSystemData into gRPC
 // response.
-void ForwardGetDriveSystemDataResponse(
-    const GetDriveSystemDataCallback& callback,
-    const std::string& payload,
-    bool success) {
+void ForwardGetDriveSystemDataResponse(GetDriveSystemDataCallback callback,
+                                       const std::string& payload,
+                                       bool success) {
   auto reply = std::make_unique<grpc_api::GetDriveSystemDataResponse>();
   if (success) {
     reply->set_status(grpc_api::GetDriveSystemDataResponse::STATUS_OK);
@@ -234,13 +233,13 @@ void ForwardGetDriveSystemDataResponse(
     reply->set_status(
         grpc_api::GetDriveSystemDataResponse::STATUS_ERROR_REQUEST_PROCESSING);
   }
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Extracts stateful partition info from cros_healthd's TelemetryInfo
 // and moves it into a gRPC response.
 void ForwardGetStatefulPartitionAvailableCapacity(
-    const GetStatefulPartitionAvailableCapacityCallback& callback,
+    GetStatefulPartitionAvailableCapacityCallback callback,
     chromeos::cros_healthd::mojom::TelemetryInfoPtr info) {
   auto reply = std::make_unique<
       grpc_api::GetStatefulPartitionAvailableCapacityResponse>();
@@ -249,7 +248,7 @@ void ForwardGetStatefulPartitionAvailableCapacity(
       !info->stateful_partition_result->is_partition_info()) {
     reply->set_status(grpc_api::GetStatefulPartitionAvailableCapacityResponse::
                           STATUS_ERROR_REQUEST_PROCESSING);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
 
@@ -260,7 +259,7 @@ void ForwardGetStatefulPartitionAvailableCapacity(
       info->stateful_partition_result->get_partition_info()->available_space;
   reply->set_available_capacity_mb((available_space / 1024 / 1024 / 100) * 100);
 
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 // Maps GetEcTelemetryResponse::Status in EcService to
@@ -317,15 +316,15 @@ void GrpcService::set_system_info_service_for_testing(
 
 void GrpcService::SendMessageToUi(
     std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
-    const SendMessageToUiCallback& callback) {
+    SendMessageToUiCallback callback) {
   delegate_->SendWilcoDtcMessageToUi(
       request->json_message(),
-      base::BindOnce(&ForwardSendMessageToUiResponse, callback));
+      base::BindOnce(&ForwardSendMessageToUiResponse, std::move(callback)));
 }
 
 void GrpcService::GetProcData(
     std::unique_ptr<grpc_api::GetProcDataRequest> request,
-    const GetProcDataCallback& callback) {
+    GetProcDataCallback callback) {
   DCHECK(request);
   auto reply = std::make_unique<grpc_api::GetProcDataResponse>();
   switch (request->type()) {
@@ -373,17 +372,17 @@ void GrpcService::GetProcData(
       LOG(ERROR) << "GetProcData gRPC request type unset or invalid: "
                  << request->type();
       // Error is designated by a reply with the empty list of entries.
-      callback.Run(grpc::Status::OK, std::move(reply));
+      std::move(callback).Run(grpc::Status::OK, std::move(reply));
       return;
   }
   VLOG(1) << "Completing GetProcData gRPC request of type " << request->type()
           << ", returning " << reply->file_dump_size() << " items";
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 void GrpcService::GetSysfsData(
     std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
-    const GetSysfsDataCallback& callback) {
+    GetSysfsDataCallback callback) {
   DCHECK(request);
   auto reply = std::make_unique<grpc_api::GetSysfsDataResponse>();
   switch (request->type()) {
@@ -419,17 +418,17 @@ void GrpcService::GetSysfsData(
       LOG(ERROR) << "GetSysfsData gRPC request type unset or invalid: "
                  << request->type();
       // Error is designated by a reply with the empty list of entries.
-      callback.Run(grpc::Status::OK, std::move(reply));
+      std::move(callback).Run(grpc::Status::OK, std::move(reply));
       return;
   }
   VLOG(1) << "Completing GetSysfsData gRPC request of type " << request->type()
           << ", returning " << reply->file_dump_size() << " items";
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 void GrpcService::GetEcTelemetry(
     std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
-    const GetEcTelemetryCallback& callback) {
+    GetEcTelemetryCallback callback) {
   DCHECK(request);
 
   auto response =
@@ -438,12 +437,12 @@ void GrpcService::GetEcTelemetry(
   auto reply = std::make_unique<grpc_api::GetEcTelemetryResponse>();
   reply->set_status(GetGrpcEcTelemetryStatus(response.status));
   reply->set_payload(std::move(response.payload));
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 void GrpcService::PerformWebRequest(
     std::unique_ptr<grpc_api::PerformWebRequestParameter> parameter,
-    const PerformWebRequestResponseCallback& callback) {
+    PerformWebRequestResponseCallback callback) {
   DCHECK(parameter);
   auto reply = std::make_unique<grpc_api::PerformWebRequestResponse>();
 
@@ -451,7 +450,7 @@ void GrpcService::PerformWebRequest(
     LOG(ERROR) << "PerformWebRequest URL is empty.";
     reply->set_status(
         grpc_api::PerformWebRequestResponse::STATUS_ERROR_INVALID_URL);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
   if (!base::StartsWith(parameter->url(), kHttpsPrefix,
@@ -459,7 +458,7 @@ void GrpcService::PerformWebRequest(
     LOG(ERROR) << "PerformWebRequest URL must be an HTTPS URL.";
     reply->set_status(
         grpc_api::PerformWebRequestResponse::STATUS_ERROR_INVALID_URL);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
   if (parameter->headers().size() >
@@ -467,7 +466,7 @@ void GrpcService::PerformWebRequest(
     LOG(ERROR) << "PerformWebRequest number of headers is too large.";
     reply->set_status(
         grpc_api::PerformWebRequestResponse::STATUS_ERROR_MAX_SIZE_EXCEEDED);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
   if (CalculateWebRequestParameterSize(parameter) >
@@ -475,7 +474,7 @@ void GrpcService::PerformWebRequest(
     LOG(ERROR) << "PerformWebRequest request is too large.";
     reply->set_status(
         grpc_api::PerformWebRequestResponse::STATUS_ERROR_MAX_SIZE_EXCEEDED);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
 
@@ -484,7 +483,7 @@ void GrpcService::PerformWebRequest(
                                        &delegate_http_method)) {
     reply->set_status(grpc_api::PerformWebRequestResponse ::
                           STATUS_ERROR_REQUIRED_FIELD_MISSING);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
   delegate_->PerformWebRequestToBrowser(
@@ -493,20 +492,20 @@ void GrpcService::PerformWebRequest(
           std::make_move_iterator(parameter->mutable_headers()->begin()),
           std::make_move_iterator(parameter->mutable_headers()->end())),
       parameter->request_body(),
-      base::BindOnce(&ForwardWebGrpcResponse, callback));
+      base::BindOnce(&ForwardWebGrpcResponse, std::move(callback)));
 }
 
 void GrpcService::GetAvailableRoutines(
     std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
-    const GetAvailableRoutinesCallback& callback) {
+    GetAvailableRoutinesCallback callback) {
   DCHECK(request);
-  delegate_->GetAvailableRoutinesToService(
-      base::BindOnce(&ForwardGetAvailableRoutinesResponse, callback));
+  delegate_->GetAvailableRoutinesToService(base::BindOnce(
+      &ForwardGetAvailableRoutinesResponse, std::move(callback)));
 }
 
 void GrpcService::RunRoutine(
     std::unique_ptr<grpc_api::RunRoutineRequest> request,
-    const RunRoutineCallback& callback) {
+    RunRoutineCallback callback) {
   DCHECK(request);
 
   // Make sure the RunRoutineRequest is superficially valid.
@@ -515,7 +514,7 @@ void GrpcService::RunRoutine(
       if (!request->has_battery_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type BATTERY has no "
                       "battery parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -525,7 +524,7 @@ void GrpcService::RunRoutine(
       if (!request->has_battery_sysfs_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type BATTERY_SYSFS has "
                       "no battery_sysfs parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -535,7 +534,7 @@ void GrpcService::RunRoutine(
       if (!request->has_urandom_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type URANDOM has no "
                       "urandom parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -545,7 +544,7 @@ void GrpcService::RunRoutine(
       if (!request->has_smartctl_check_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type SMARTCTL_CHECK "
                       "has no smartctl_check parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -555,7 +554,7 @@ void GrpcService::RunRoutine(
       if (!request->has_cpu_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type CPU CACHE "
                       "has no cpu parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -565,7 +564,7 @@ void GrpcService::RunRoutine(
       if (!request->has_cpu_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type CPU STRESS "
                       "has no cpu parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -576,7 +575,7 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type "
                       "FLOATING_POINT_ACCURACY has no "
                       "floating_point_accuracy parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -587,7 +586,7 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type "
                       "ROUTINE_NVME_WEAR_LEVEL has no nvme_wear_level "
                       "parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -598,7 +597,7 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type "
                       "ROUTINE_NVME_SHORT_SELF_TEST has no "
                       "nvme_short_self_test parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -609,7 +608,7 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type "
                       "ROUTINE_NVME_LONG_SELF_TEST has no "
                       "nvme_long_self_test parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -619,7 +618,7 @@ void GrpcService::RunRoutine(
       if (!request->has_disk_linear_read_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type LINEAR_READ "
                       "has no linear_read parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -629,7 +628,7 @@ void GrpcService::RunRoutine(
       if (!request->has_disk_random_read_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type RANDOM_READ "
                       "has no random_read parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -639,7 +638,7 @@ void GrpcService::RunRoutine(
       if (!request->has_prime_search_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type PRIME_SEARCH "
                       "has no prime_search parameters.";
-        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+        ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                   grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
@@ -647,38 +646,39 @@ void GrpcService::RunRoutine(
       break;
     default:
       LOG(ERROR) << "RunRoutineRequest routine type invalid or unset.";
-      ForwardRunRoutineResponse(callback, 0 /* uuid */,
+      ForwardRunRoutineResponse(std::move(callback), 0 /* uuid */,
                                 grpc_api::ROUTINE_STATUS_INVALID_FIELD,
                                 grpc_api::ROUTINE_SERVICE_STATUS_OK);
       return;
   }
 
   delegate_->RunRoutineToService(
-      *request, base::BindOnce(&ForwardRunRoutineResponse, callback));
+      *request,
+      base::BindOnce(&ForwardRunRoutineResponse, std::move(callback)));
 }
 
 void GrpcService::GetRoutineUpdate(
     std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
-    const GetRoutineUpdateCallback& callback) {
+    GetRoutineUpdateCallback callback) {
   DCHECK(request);
 
   if (request->command() == grpc_api::GetRoutineUpdateRequest::COMMAND_UNSET) {
     ForwardGetRoutineUpdateResponse(
-        callback, request->uuid(), grpc_api::ROUTINE_STATUS_INVALID_FIELD,
-        0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
-        "" /* output */, "No command specified.",
-        grpc_api::ROUTINE_SERVICE_STATUS_OK);
+        std::move(callback), request->uuid(),
+        grpc_api::ROUTINE_STATUS_INVALID_FIELD, 0 /* progress_percent */,
+        grpc_api::ROUTINE_USER_MESSAGE_UNSET, "" /* output */,
+        "No command specified.", grpc_api::ROUTINE_SERVICE_STATUS_OK);
     return;
   }
 
   delegate_->GetRoutineUpdateRequestToService(
       request->uuid(), request->command(), request->include_output(),
-      base::BindOnce(&ForwardGetRoutineUpdateResponse, callback));
+      base::BindOnce(&ForwardGetRoutineUpdateResponse, std::move(callback)));
 }
 
 void GrpcService::GetOsVersion(
     std::unique_ptr<grpc_api::GetOsVersionRequest> request,
-    const GetOsVersionCallback& callback) {
+    GetOsVersionCallback callback) {
   DCHECK(request);
 
   auto reply = std::make_unique<grpc_api::GetOsVersionResponse>();
@@ -693,21 +693,21 @@ void GrpcService::GetOsVersion(
     reply->set_milestone(milestone);
   }
 
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 void GrpcService::GetConfigurationData(
     std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
-    const GetConfigurationDataCallback& callback) {
+    GetConfigurationDataCallback callback) {
   DCHECK(request);
 
-  delegate_->GetConfigurationDataFromBrowser(
-      base::BindOnce(&ForwardGetConfigurationDataResponse, callback));
+  delegate_->GetConfigurationDataFromBrowser(base::BindOnce(
+      &ForwardGetConfigurationDataResponse, std::move(callback)));
 }
 
 void GrpcService::GetVpdField(
     std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
-    const GetVpdFieldCallback& callback) {
+    GetVpdFieldCallback callback) {
   DCHECK(request);
 
   auto reply = std::make_unique<grpc_api::GetVpdFieldResponse>();
@@ -718,7 +718,7 @@ void GrpcService::GetVpdField(
             << static_cast<int>(request->vpd_field());
     reply->set_status(
         grpc_api::GetVpdFieldResponse::STATUS_ERROR_VPD_FIELD_UNKNOWN);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
 
@@ -727,19 +727,19 @@ void GrpcService::GetVpdField(
     VPLOG(2) << "Failed to read VPD field "
              << static_cast<int>(request->vpd_field());
     reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
-    callback.Run(grpc::Status::OK, std::move(reply));
+    std::move(callback).Run(grpc::Status::OK, std::move(reply));
     return;
   }
 
   reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_OK);
   reply->set_vpd_field_value(std::move(result.value()));
 
-  callback.Run(grpc::Status::OK, std::move(reply));
+  std::move(callback).Run(grpc::Status::OK, std::move(reply));
 }
 
 void GrpcService::GetDriveSystemData(
     std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
-    const GetDriveSystemDataCallback& callback) {
+    GetDriveSystemDataCallback callback) {
   DCHECK(request);
 
   Delegate::DriveSystemDataType data_type;
@@ -756,21 +756,21 @@ void GrpcService::GetDriveSystemData(
       auto reply = std::make_unique<grpc_api::GetDriveSystemDataResponse>();
       reply->set_status(grpc_api::GetDriveSystemDataResponse::
                             STATUS_ERROR_REQUEST_TYPE_UNKNOWN);
-      callback.Run(grpc::Status::OK, std::move(reply));
+      std::move(callback).Run(grpc::Status::OK, std::move(reply));
       return;
   }
 
   delegate_->GetDriveSystemData(
       data_type,
-      base::BindRepeating(&ForwardGetDriveSystemDataResponse, callback));
+      base::BindOnce(&ForwardGetDriveSystemDataResponse, std::move(callback)));
 }
 
 void GrpcService::RequestBluetoothDataNotification(
     std::unique_ptr<grpc_api::RequestBluetoothDataNotificationRequest> request,
-    const RequestBluetoothDataNotificationCallback& callback) {
+    RequestBluetoothDataNotificationCallback callback) {
   delegate_->RequestBluetoothDataNotification();
 
-  callback.Run(
+  std::move(callback).Run(
       grpc::Status::OK,
       std::make_unique<grpc_api::RequestBluetoothDataNotificationResponse>());
 }
@@ -778,14 +778,15 @@ void GrpcService::RequestBluetoothDataNotification(
 void GrpcService::GetStatefulPartitionAvailableCapacity(
     std::unique_ptr<grpc_api::GetStatefulPartitionAvailableCapacityRequest>
         request,
-    const GetStatefulPartitionAvailableCapacityCallback& callback) {
+    GetStatefulPartitionAvailableCapacityCallback callback) {
   DCHECK(request);
 
   std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories{
       chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
   delegate_->ProbeTelemetryInfo(
       std::move(categories),
-      base::BindOnce(&ForwardGetStatefulPartitionAvailableCapacity, callback));
+      base::BindOnce(&ForwardGetStatefulPartitionAvailableCapacity,
+                     std::move(callback)));
 }
 
 void GrpcService::AddFileDump(

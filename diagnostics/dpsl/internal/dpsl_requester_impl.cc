@@ -203,17 +203,8 @@ void DpslRequesterImpl::CallGrpcClientMethod(
              nullptr /* response */);
     return;
   }
-  // TODO(crbug.com/1205291): Remove the rewrapping into a repeating callback
-  // after Brillo's CallRpc() is updated to receive a OnceCallback.
-  auto repeating_callback = base::BindRepeating(
-      [](base::OnceCallback<void(grpc::Status, std::unique_ptr<ResponseType>)>&
-             callback,
-         grpc::Status status, std::unique_ptr<ResponseType> response) {
-        std::move(callback).Run(status, std::move(response));
-      },
-      base::OwnedRef(std::move(response_callback)));
   async_grpc_client_.CallRpc(grpc_stub_method, *request,
-                             std::move(repeating_callback));
+                             std::move(response_callback));
 }
 
 // static

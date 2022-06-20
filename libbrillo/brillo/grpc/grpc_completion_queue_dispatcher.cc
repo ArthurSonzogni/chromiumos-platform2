@@ -19,8 +19,9 @@ namespace internal {
 // |GrpcCompletionQueueDispatcher|.
 class MonitoringThreadDelegate : public base::DelegateSimpleThread::Delegate {
  public:
-  using OnTagAvailableCallback = base::Callback<void(const void* tag, bool ok)>;
-  using OnShutdownCallback = base::Closure;
+  using OnTagAvailableCallback =
+      base::RepeatingCallback<void(const void* tag, bool ok)>;
+  using OnShutdownCallback = base::OnceClosure;
 
   // |GrpcCompletionQueueDispatcher| guarantees that the unowned pointers
   // outlive this delegate. This delegate will post |on_tag_available_callback|
@@ -34,7 +35,7 @@ class MonitoringThreadDelegate : public base::DelegateSimpleThread::Delegate {
       : completion_queue_(completion_queue),
         task_runner_(task_runner),
         on_tag_available_callback_(on_tag_available_callback),
-        on_shutdown_callback_(on_shutdown_callback) {}
+        on_shutdown_callback_(std::move(on_shutdown_callback)) {}
 
   ~MonitoringThreadDelegate() override = default;
 
@@ -47,8 +48,8 @@ class MonitoringThreadDelegate : public base::DelegateSimpleThread::Delegate {
       bool ok;
 
       if (completion_queue_->Next(&tag, &ok)) {
-        task_runner_->PostTask(FROM_HERE,
-                               base::Bind(on_tag_available_callback_, tag, ok));
+        task_runner_->PostTask(
+            FROM_HERE, base::BindOnce(on_tag_available_callback_, tag, ok));
       } else {
         // Next() returned false, which means that this queue has shut down.
         // Exit this 'event loop'.
@@ -56,7 +57,8 @@ class MonitoringThreadDelegate : public base::DelegateSimpleThread::Delegate {
       }
     }
 
-    task_runner_->PostTask(FROM_HERE, on_shutdown_callback_);
+    DCHECK(!on_shutdown_callback_.is_null());
+    task_runner_->PostTask(FROM_HERE, std::move(on_shutdown_callback_));
   }
 
  private:
@@ -104,10 +106,10 @@ void GrpcCompletionQueueDispatcher::Start() {
   monitoring_thread_delegate_ =
       std::make_unique<internal::MonitoringThreadDelegate>(
           completion_queue_, task_runner_.get(),
-          base::Bind(&GrpcCompletionQueueDispatcher::OnTagAvailable,
-                     base::Unretained(this)),
-          base::Bind(&GrpcCompletionQueueDispatcher::OnShutdown,
-                     base::Unretained(this)));
+          base::BindRepeating(&GrpcCompletionQueueDispatcher::OnTagAvailable,
+                              base::Unretained(this)),
+          base::BindOnce(&GrpcCompletionQueueDispatcher::OnShutdown,
+                         base::Unretained(this)));
   monitoring_thread_ = std::make_unique<base::DelegateSimpleThread>(
       monitoring_thread_delegate_.get(),
       "GrpcCompletionQueueDispatcher" /* name_prefix */);
@@ -115,12 +117,12 @@ void GrpcCompletionQueueDispatcher::Start() {
 }
 
 void GrpcCompletionQueueDispatcher::Shutdown(
-    base::Closure on_shutdown_callback) {
+    base::OnceClosure on_shutdown_callback) {
   CHECK(!shut_down_);
   shut_down_ = true;
 
   if (!monitoring_thread_) {
-    on_shutdown_callback.Run();
+    std::move(on_shutdown_callback).Run();
     return;
   }
 
@@ -128,7 +130,7 @@ void GrpcCompletionQueueDispatcher::Shutdown(
   CHECK(on_shutdown_callback_.is_null());
   CHECK(!on_shutdown_callback.is_null());
 
-  on_shutdown_callback_ = on_shutdown_callback;
+  on_shutdown_callback_ = std::move(on_shutdown_callback);
   completion_queue_->Shutdown();
 }
 
@@ -136,7 +138,7 @@ void GrpcCompletionQueueDispatcher::RegisterTag(const void* tag,
                                                 TagAvailableCallback callback) {
   CHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(tag_to_callback_map_.find(tag) == tag_to_callback_map_.end());
-  tag_to_callback_map_.insert(std::make_pair(tag, callback));
+  tag_to_callback_map_.insert(std::make_pair(tag, std::move(callback)));
 }
 
 void GrpcCompletionQueueDispatcher::OnTagAvailable(const void* tag, bool ok) {
@@ -150,9 +152,9 @@ void GrpcCompletionQueueDispatcher::OnTagAvailable(const void* tag, bool ok) {
     DVLOG(2) << "CompletionQueue returned a tag that was not registered.";
     return;
   }
-  TagAvailableCallback callback = iter->second;
+  TagAvailableCallback callback = std::move(iter->second);
   tag_to_callback_map_.erase(iter);
-  callback.Run(ok);
+  std::move(callback).Run(ok);
 }
 
 void GrpcCompletionQueueDispatcher::OnShutdown() {
@@ -167,7 +169,7 @@ void GrpcCompletionQueueDispatcher::OnShutdown() {
     // Post the |on_shutdown_callback_| on the task runner instead of calling it
     // directly, allowing the owner of this instance to delete it in the context
     // of |on_shutdown_callback_|.
-    task_runner_->PostTask(FROM_HERE, on_shutdown_callback_);
+    task_runner_->PostTask(FROM_HERE, std::move(on_shutdown_callback_));
   }
 }
 

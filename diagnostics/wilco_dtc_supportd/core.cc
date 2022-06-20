@@ -359,25 +359,25 @@ void Core::GetConfigurationDataFromBrowser(
 }
 
 void Core::GetDriveSystemData(DriveSystemDataType data_type,
-                              const GetDriveSystemDataCallback& callback) {
+                              GetDriveSystemDataCallback callback) {
   if (!debugd_adapter_) {
     LOG(WARNING) << "DebugdAdapter is not yet ready for incoming requests";
-    callback.Run("", false /* success */);
+    std::move(callback).Run("", false /* success */);
     return;
   }
 
   auto result_callback = base::BindOnce(
-      [](const GetDriveSystemDataCallback& callback, const std::string& result,
+      [](GetDriveSystemDataCallback callback, const std::string& result,
          brillo::Error* error) {
         if (error) {
           LOG(WARNING) << "Debugd smartctl failed with error: "
                        << error->GetMessage();
-          callback.Run("", false /* success */);
+          std::move(callback).Run("", false /* success */);
           return;
         }
-        callback.Run(result, true /* success */);
+        std::move(callback).Run(result, true /* success */);
       },
-      callback);
+      std::move(callback));
 
   switch (data_type) {
     case DriveSystemDataType::kSmartAttributes:
@@ -437,7 +437,7 @@ void Core::OnPowerdEvent(PowerEventType type) {
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandlePowerNotification, request,
-        base::BindRepeating(
+        base::BindOnce(
             [](grpc::Status status,
                std::unique_ptr<grpc_api::HandlePowerNotificationResponse>
                    response) {
@@ -509,10 +509,10 @@ void Core::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandleEcNotification, request,
-        base::BindRepeating([](grpc::Status status,
-                               std::unique_ptr<
-                                   grpc_api::HandleEcNotificationResponse>
-                                   response) {
+        base::BindOnce([](grpc::Status status,
+                          std::unique_ptr<
+                              grpc_api::HandleEcNotificationResponse>
+                              response) {
           if (!status.ok()) {
             VLOG(1)
                 << "Failed to call HandleEcNotificationRequest gRPC method on "
@@ -567,7 +567,7 @@ void Core::NotifyClientsBluetoothAdapterState(
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandleBluetoothDataChanged, request,
-        base::BindRepeating(
+        base::BindOnce(
             [](grpc::Status status,
                std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>
                    response) {

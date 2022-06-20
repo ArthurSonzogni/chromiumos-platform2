@@ -4,6 +4,8 @@
 
 #include "brillo/grpc/async_grpc_client.h"
 
+#include <utility>
+
 #include "brillo/grpc/async_grpc_constants.h"
 
 namespace brillo {
@@ -17,8 +19,8 @@ AsyncGrpcClientBase::AsyncGrpcClientBase(
 
 AsyncGrpcClientBase::~AsyncGrpcClientBase() = default;
 
-void AsyncGrpcClientBase::ShutDown(const base::Closure& on_shutdown_callback) {
-  dispatcher_.Shutdown(on_shutdown_callback);
+void AsyncGrpcClientBase::ShutDown(base::OnceClosure on_shutdown_callback) {
+  dispatcher_.Shutdown(std::move(on_shutdown_callback));
 }
 
 // static

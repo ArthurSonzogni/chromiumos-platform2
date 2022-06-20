@@ -41,7 +41,7 @@ void MojoGrpcAdapter::SendGrpcUiMessageToWilcoDtc(
 
   grpc_client_manager_->GetUiClient()->CallRpc(
       &grpc_api::WilcoDtc::Stub::AsyncHandleMessageFromUi, request,
-      base::BindRepeating(
+      base::BindOnce(
           [](const SendGrpcUiMessageToWilcoDtcCallback& callback,
              grpc::Status status,
              std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response) {
@@ -78,7 +78,7 @@ void MojoGrpcAdapter::NotifyConfigurationDataChangedToWilcoDtc() {
   for (auto& client : grpc_client_manager_->GetClients()) {
     client->CallRpc(
         &grpc_api::WilcoDtc::Stub::AsyncHandleConfigurationDataChanged, request,
-        base::BindRepeating(
+        base::BindOnce(
             [](grpc::Status status,
                std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>
                    response) {

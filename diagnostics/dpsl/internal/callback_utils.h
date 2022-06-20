@@ -44,21 +44,13 @@ inline std::function<ReturnType(ArgType...)> MakeStdFunctionFromOnceCallback(
       base::OwnedRef(std::move(callback))));
 }
 
-// A function that transforms base::RepeatingCallback into std::function, and
+// A function that transforms base::OnceCallback into std::function, and
 // automatically adds grpc::Status::OK
 template <typename ReturnType, typename... ArgType>
 inline std::function<ReturnType(ArgType...)> MakeStdFunctionFromCallbackGrpc(
     base::OnceCallback<ReturnType(grpc::Status, ArgType...)> callback) {
   return MakeStdFunctionFromOnceCallback(
-      base::BindOnce(callback, grpc::Status::OK));
-}
-
-// Legacy version of the above, to aid for migrating from repeating callbacks.
-template <typename ReturnType, typename... ArgType>
-inline std::function<ReturnType(ArgType...)> MakeStdFunctionFromCallbackGrpc(
-    base::RepeatingCallback<ReturnType(grpc::Status, ArgType...)> callback) {
-  return MakeStdFunctionFromRepeatingCallback(
-      base::BindRepeating(callback, grpc::Status::OK));
+      base::BindOnce(std::move(callback), grpc::Status::OK));
 }
 
 namespace internal {
@@ -122,17 +114,6 @@ MakeOriginTaskRunnerPostingCallback(
   return base::BindOnce(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
                         base::ThreadTaskRunnerHandle::Get(), location,
                         std::move(callback));
-}
-
-// Legacy version of the above, to aid for migrating from repeating callbacks.
-template <typename... ArgTypes>
-inline base::RepeatingCallback<void(ArgTypes...)>
-MakeOriginTaskRunnerPostingCallback(
-    const base::Location& location,
-    base::RepeatingCallback<void(ArgTypes...)> callback) {
-  return base::BindRepeating(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
-                             base::ThreadTaskRunnerHandle::Get(), location,
-                             std::move(callback));
 }
 
 }  // namespace diagnostics

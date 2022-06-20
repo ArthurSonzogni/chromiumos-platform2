@@ -85,7 +85,7 @@ class GrpcService final {
     using GetConfigurationDataFromBrowserCallback =
         base::OnceCallback<void(const std::string& json_configuration_data)>;
     using GetDriveSystemDataCallback =
-        base::RepeatingCallback<void(const std::string& payload, bool success)>;
+        base::OnceCallback<void(const std::string& payload, bool success)>;
     using ProbeTelemetryInfoCallback = base::OnceCallback<void(
         chromeos::cros_healthd::mojom::TelemetryInfoPtr)>;
 
@@ -150,9 +150,8 @@ class GrpcService final {
     //
     // Calls wilco_dtc_supportd daemon |GetDriveSystemData| method. The result
     // of the call is returned via |callback|.
-    virtual void GetDriveSystemData(
-        DriveSystemDataType data_type,
-        const GetDriveSystemDataCallback& callback) = 0;
+    virtual void GetDriveSystemData(DriveSystemDataType data_type,
+                                    GetDriveSystemDataCallback callback) = 0;
 
     // Called when gRPC |RequestBluetoothDataNotification| was called.
     //
@@ -172,38 +171,37 @@ class GrpcService final {
     virtual EcService* GetEcService() = 0;
   };
 
-  using SendMessageToUiCallback = base::RepeatingCallback<void(
+  using SendMessageToUiCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::SendMessageToUiResponse>)>;
-  using GetProcDataCallback = base::RepeatingCallback<void(
+  using GetProcDataCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetProcDataResponse>)>;
-  using GetSysfsDataCallback = base::RepeatingCallback<void(
+  using GetSysfsDataCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetSysfsDataResponse>)>;
-  using GetEcTelemetryCallback = base::RepeatingCallback<void(
+  using GetEcTelemetryCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetEcTelemetryResponse>)>;
-  using PerformWebRequestResponseCallback = base::RepeatingCallback<void(
+  using PerformWebRequestResponseCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
-  using GetAvailableRoutinesCallback = base::RepeatingCallback<void(
+  using GetAvailableRoutinesCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetAvailableRoutinesResponse>)>;
-  using RunRoutineCallback = base::RepeatingCallback<void(
+  using RunRoutineCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::RunRoutineResponse>)>;
-  using GetRoutineUpdateCallback = base::RepeatingCallback<void(
+  using GetRoutineUpdateCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>;
-  using GetOsVersionCallback = base::RepeatingCallback<void(
+  using GetOsVersionCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetOsVersionResponse>)>;
-  using GetConfigurationDataCallback = base::RepeatingCallback<void(
+  using GetConfigurationDataCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
-  using GetVpdFieldCallback = base::RepeatingCallback<void(
+  using GetVpdFieldCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetVpdFieldResponse>)>;
-  using GetDriveSystemDataCallback = base::RepeatingCallback<void(
+  using GetDriveSystemDataCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
-  using RequestBluetoothDataNotificationCallback = base::RepeatingCallback<void(
+  using RequestBluetoothDataNotificationCallback = base::OnceCallback<void(
       grpc::Status,
       std::unique_ptr<grpc_api::RequestBluetoothDataNotificationResponse>)>;
-  using GetStatefulPartitionAvailableCapacityCallback =
-      base::RepeatingCallback<void(
-          grpc::Status,
-          std::unique_ptr<
-              grpc_api::GetStatefulPartitionAvailableCapacityResponse>)>;
+  using GetStatefulPartitionAvailableCapacityCallback = base::OnceCallback<void(
+      grpc::Status,
+      std::unique_ptr<
+          grpc_api::GetStatefulPartitionAvailableCapacityResponse>)>;
 
   explicit GrpcService(Delegate* delegate);
   GrpcService(const GrpcService&) = delete;
@@ -225,42 +223,42 @@ class GrpcService final {
   // Implementation of the "WilcoDtcSupportd" gRPC interface:
   void SendMessageToUi(
       std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
-      const SendMessageToUiCallback& callback);
+      SendMessageToUiCallback callback);
   void GetProcData(std::unique_ptr<grpc_api::GetProcDataRequest> request,
-                   const GetProcDataCallback& callback);
+                   GetProcDataCallback callback);
   void GetSysfsData(std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
-                    const GetSysfsDataCallback& callback);
+                    GetSysfsDataCallback callback);
   void GetEcTelemetry(std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
-                      const GetEcTelemetryCallback& callback);
+                      GetEcTelemetryCallback callback);
   void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> parameter,
-      const PerformWebRequestResponseCallback& callback);
+      PerformWebRequestResponseCallback callback);
   void GetAvailableRoutines(
       std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
-      const GetAvailableRoutinesCallback& callback);
+      GetAvailableRoutinesCallback callback);
   void RunRoutine(std::unique_ptr<grpc_api::RunRoutineRequest> request,
-                  const RunRoutineCallback& callback);
+                  RunRoutineCallback callback);
   void GetRoutineUpdate(
       std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
-      const GetRoutineUpdateCallback& callback);
+      GetRoutineUpdateCallback callback);
   void GetOsVersion(std::unique_ptr<grpc_api::GetOsVersionRequest> request,
-                    const GetOsVersionCallback& callback);
+                    GetOsVersionCallback callback);
   void GetConfigurationData(
       std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
-      const GetConfigurationDataCallback& callback);
+      GetConfigurationDataCallback callback);
   void GetVpdField(std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
-                   const GetVpdFieldCallback& callback);
+                   GetVpdFieldCallback callback);
   void GetDriveSystemData(
       std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
-      const GetDriveSystemDataCallback& callback);
+      GetDriveSystemDataCallback callback);
   void RequestBluetoothDataNotification(
       std::unique_ptr<grpc_api::RequestBluetoothDataNotificationRequest>
           request,
-      const RequestBluetoothDataNotificationCallback& callback);
+      RequestBluetoothDataNotificationCallback callback);
   void GetStatefulPartitionAvailableCapacity(
       std::unique_ptr<grpc_api::GetStatefulPartitionAvailableCapacityRequest>
           request,
-      const GetStatefulPartitionAvailableCapacityCallback& callback);
+      GetStatefulPartitionAvailableCapacityCallback callback);
 
  private:
   void AddFileDump(

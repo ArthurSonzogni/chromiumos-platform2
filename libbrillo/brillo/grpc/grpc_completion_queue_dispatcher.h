@@ -39,7 +39,7 @@ class BRILLO_EXPORT GrpcCompletionQueueDispatcher {
   // to the constructor when an expected event is available on the monitored
   // |CompletionQueue|. |ok| has an operation-specific meaning, see grpc's
   // |CompletionQueue::Next| documentation for details.
-  using TagAvailableCallback = base::Callback<void(bool ok)>;
+  using TagAvailableCallback = base::OnceCallback<void(bool ok)>;
 
   // The constructed object will monitor |completion_queue| and post tasks to
   // |task_runner|. Note that the |GrpcCompletionQueueDispatcher| only
@@ -68,7 +68,7 @@ class BRILLO_EXPORT GrpcCompletionQueueDispatcher {
   // If |Shutdown| has been called before this |GrpcCompletionQueueDispatcher|
   // has been |Start|ed, |on_shutdown_callback| is called immediately.
   // |Shutdown| may only be called once.
-  void Shutdown(base::Closure on_shutdown_callback);
+  void Shutdown(base::OnceClosure on_shutdown_callback);
 
   // Starts waiting for an event with |tag|. If |tag| has been or will be sent
   // (through RPC operations or alarms) to the CompletionQueue, |callback| is
@@ -107,7 +107,7 @@ class BRILLO_EXPORT GrpcCompletionQueueDispatcher {
   std::unique_ptr<base::DelegateSimpleThread> monitoring_thread_;
 
   // This callback will be invoked when the moniting thread is exiting.
-  base::Closure on_shutdown_callback_;
+  base::OnceClosure on_shutdown_callback_;
   bool shut_down_ = false;
 
   // Maps tags to the callbacks that should be run on the |task_runner_| when

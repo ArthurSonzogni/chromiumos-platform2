@@ -38,7 +38,8 @@ class BRILLO_EXPORT AsyncGrpcServerBase {
  public:
   // A factory function which creates an |RpcStateBase| for an expected
   // RPC type.
-  using RpcStateFactory = base::Callback<std::unique_ptr<RpcStateBase>()>;
+  using RpcStateFactory =
+      base::RepeatingCallback<std::unique_ptr<RpcStateBase>()>;
 
   AsyncGrpcServerBase(scoped_refptr<base::SequencedTaskRunner> task_runner,
                       const std::vector<std::string>& server_uris);
@@ -60,7 +61,7 @@ class BRILLO_EXPORT AsyncGrpcServerBase {
   // optional but allowed (|on_shutdown_| will be called immediately in this
   // case).
   // This function must not be called twice.
-  void ShutDown(const base::Closure& on_shutdown);
+  void ShutDown(base::OnceClosure on_shutdown);
 
  protected:
   // Returns the grpc::Service instance this server is exposing.
@@ -150,15 +151,16 @@ class BRILLO_EXPORT AsyncGrpcServerBase {
 //                          do_other_thing_handler);
 //   server.Start();
 //   // ...
-//   server.Shutdown(on_shutdown_callback);
+//   server.Shutdown(std::move(on_shutdown_callback));
 //   // Important: Make sure |server| is not destroyed before
 //   // |on_shutdown_callback| is called.
 // The handlers (e.g. |do_something_handler| in the example) have the following
 // form:
 //   void DoSomethingHandler(
 //       std::unique_ptr<DoSomethingRequest> request,
-//       const base::Callback<void(grpc::Status,
-//                                 std::unique_ptr<DoSomethingResponse>)>&
+//       const base::RepeatingCallback<void(
+//           grpc::Status,
+//           std::unique_ptr<DoSomethingResponse>)>&
 //           send_response_callback);
 template <typename AsyncService>
 class AsyncGrpcServer final : public internal::AsyncGrpcServerBase {
@@ -183,10 +185,10 @@ class AsyncGrpcServer final : public internal::AsyncGrpcServerBase {
   static std::unique_ptr<RpcStateBase> RpcStateFactoryFunction(
       const typename RpcState<RequestType, ResponseType>::RequestRpcCallback&
           request_rpc_callback,
-      const typename RpcState<RequestType, ResponseType>::HandlerCallback&
+      typename RpcState<RequestType, ResponseType>::HandlerCallback
           handler_callback) {
     return std::make_unique<RpcState<RequestType, ResponseType>>(
-        request_rpc_callback, handler_callback);
+        request_rpc_callback, std::move(handler_callback));
   }
 
   // A member function pointer which has the signature of functions used to
@@ -204,6 +206,14 @@ class AsyncGrpcServer final : public internal::AsyncGrpcServerBase {
                                  grpc::ServerCompletionQueue*,
                                  void*);
 
+  // The repeating version of HandlerCallback. This type is used for
+  // registering RPC handlers.
+  template <typename RequestType, typename ResponseType>
+  using RepeatingHandlerCallback = base::RepeatingCallback<void(
+      std::unique_ptr<RequestType> request,
+      typename RpcState<RequestType, ResponseType>::HandlerDoneCallback
+          send_response_callback)>;
+
   // Makes this server process RPCs of the type specified by
   // |request_rpc_function|. When such an RPC is received, this server will call
   // |handler_callback| on the task runner passed to the constructor.
@@ -216,11 +226,11 @@ class AsyncGrpcServer final : public internal::AsyncGrpcServerBase {
   void RegisterHandler(
       RequestRpcFunction<AsyncServiceBase, RequestType, ResponseType>
           request_rpc_function,
-      const typename RpcState<RequestType, ResponseType>::HandlerCallback&
+      const RepeatingHandlerCallback<RequestType, ResponseType>&
           handler_callback) {
-    auto request_rpc_callback =
-        base::Bind(request_rpc_function, base::Unretained(service_.get()));
-    AddRpcStateFactory(base::Bind(
+    auto request_rpc_callback = base::BindRepeating(
+        request_rpc_function, base::Unretained(service_.get()));
+    AddRpcStateFactory(base::BindRepeating(
         &AsyncGrpcServer::RpcStateFactoryFunction<RequestType, ResponseType>,
         request_rpc_callback, handler_callback));
   }

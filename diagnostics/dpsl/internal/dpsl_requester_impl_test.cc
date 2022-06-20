@@ -460,35 +460,35 @@ class TestDsplMultiRequesterServer {
   }
 
  private:
-  using HandleSendMessageToUiCallback = base::RepeatingCallback<void(
+  using HandleSendMessageToUiCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::SendMessageToUiResponse>)>;
 
-  using HandlePerformWebRequestCallback = base::RepeatingCallback<void(
+  using HandlePerformWebRequestCallback = base::OnceCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
 
   void HandleSendMessageToUiCallbackCall(
       std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
-      const HandleSendMessageToUiCallback& callback) {
+      HandleSendMessageToUiCallback callback) {
     EXPECT_THAT(*request, ProtobufEquals(send_message_to_ui_expected_request_));
 
     handle_send_message_to_ui_called_++;
 
-    callback.Run(grpc::Status::OK,
-                 std::make_unique<grpc_api::SendMessageToUiResponse>(
-                     send_message_to_ui_response_to_reply_with_));
+    std::move(callback).Run(grpc::Status::OK,
+                            std::make_unique<grpc_api::SendMessageToUiResponse>(
+                                send_message_to_ui_response_to_reply_with_));
   }
 
   void HandlePerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> request,
-      const HandlePerformWebRequestCallback& callback) {
+      HandlePerformWebRequestCallback callback) {
     EXPECT_THAT(*request,
                 ProtobufEquals(perform_web_request_expected_request_));
 
     handle_perform_web_request_called_++;
 
-    callback.Run(grpc::Status::OK,
-                 std::make_unique<grpc_api::PerformWebRequestResponse>(
-                     perform_web_request_response_to_reply_with_));
+    std::move(callback).Run(
+        grpc::Status::OK, std::make_unique<grpc_api::PerformWebRequestResponse>(
+                              perform_web_request_response_to_reply_with_));
   }
 
   grpc_api::SendMessageToUiRequest send_message_to_ui_expected_request_;
@@ -624,16 +624,16 @@ class TestDsplRequesterServer {
 
  private:
   using HandleCallCallback =
-      base::RepeatingCallback<void(grpc::Status, std::unique_ptr<Response>)>;
+      base::OnceCallback<void(grpc::Status, std::unique_ptr<Response>)>;
 
   void HandleCall(std::unique_ptr<Request> request,
-                  const HandleCallCallback& callback) {
+                  HandleCallCallback callback) {
     EXPECT_THAT(*request, ProtobufEquals(expected_request_));
 
     handle_call_called_++;
 
-    callback.Run(grpc::Status::OK,
-                 std::make_unique<Response>(response_to_reply_with_));
+    std::move(callback).Run(
+        grpc::Status::OK, std::make_unique<Response>(response_to_reply_with_));
   }
 
   Request expected_request_;

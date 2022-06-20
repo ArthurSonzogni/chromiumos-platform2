@@ -31,7 +31,8 @@ std::string outgoing_address = ...;
 AsyncGrpcClient<SomeService> client(message_loop.task_runner(),
                                     outgoing_address);
 SomeRpcRequest request;
-client.CallRpc(&SomeService::Stub::SomeRpc, request, base::Bind(&OnRpcResponse);
+client.CallRpc(&SomeService::Stub::SomeRpc, request,
+               base::BindOnce(&OnRpcResponse);
 ```
 
 ## AsyncGrpcServer

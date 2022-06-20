@@ -49,12 +49,12 @@ bool AsyncGrpcServerBase::Start() {
   return true;
 }
 
-void AsyncGrpcServerBase::ShutDown(const base::Closure& on_shutdown) {
+void AsyncGrpcServerBase::ShutDown(base::OnceClosure on_shutdown) {
   CHECK_NE(state_, State::kShutDown);
   // Don't do anything if Start() was not called or it failed.
   if (state_ != State::kStarted || !server_) {
     state_ = State::kShutDown;
-    on_shutdown.Run();
+    std::move(on_shutdown).Run();
     return;
   }
 
@@ -64,7 +64,7 @@ void AsyncGrpcServerBase::ShutDown(const base::Closure& on_shutdown) {
   // provides responses to pending requests.
   server_->Shutdown(gpr_now(GPR_CLOCK_MONOTONIC));
   rpcs_awaiting_handler_reply_.clear();
-  dispatcher_->Shutdown(on_shutdown);
+  dispatcher_->Shutdown(std::move(on_shutdown));
 }
 
 void AsyncGrpcServerBase::AddRpcStateFactory(
@@ -79,8 +79,9 @@ void AsyncGrpcServerBase::ExpectNextRpc(
   RpcStateBase* rpc_state_unowned = rpc_state.get();
   dispatcher_->RegisterTag(
       rpc_state_unowned->tag(),
-      base::Bind(&AsyncGrpcServerBase::OnIncomingRpc, base::Unretained(this),
-                 rpc_state_factory, base::Passed(&rpc_state)));
+      base::BindOnce(&AsyncGrpcServerBase::OnIncomingRpc,
+                     base::Unretained(this), rpc_state_factory,
+                     std::move(rpc_state)));
   // Note: It is OK to use |rpc_state_unowned| because |dispatcher_| guarantees
   // that it will remain alive until the associated tag becomes available
   // through the grpc |CompletionQueue|. This can only happen after it has been
@@ -113,9 +114,9 @@ void AsyncGrpcServerBase::OnIncomingRpc(
   // |rpcs_awaiting_handler_reply_|.
   // It is OK to use Unretained here, because |RpcStateBase| guarantees to
   // only call the callback if it hasn't been destroyed.
-  rpc_state_unowned->CallHandler(base::Bind(&AsyncGrpcServerBase::OnHandlerDone,
-                                            base::Unretained(this),
-                                            rpc_state_unowned->tag()));
+  rpc_state_unowned->CallHandler(
+      base::BindOnce(&AsyncGrpcServerBase::OnHandlerDone,
+                     base::Unretained(this), rpc_state_unowned->tag()));
 }
 
 void AsyncGrpcServerBase::OnHandlerDone(const void* tag) {
@@ -127,8 +128,8 @@ void AsyncGrpcServerBase::OnHandlerDone(const void* tag) {
   RpcStateBase* rpc_state_unowned = rpc_state.get();
   dispatcher_->RegisterTag(
       rpc_state_unowned->tag(),
-      base::Bind(&AsyncGrpcServerBase::OnResponseSent, base::Unretained(this),
-                 base::Passed(&rpc_state)));
+      base::BindOnce(&AsyncGrpcServerBase::OnResponseSent,
+                     base::Unretained(this), std::move(rpc_state)));
   // Note: It is OK to use |rpc_state_unowned| because |dispatcher_| guarantees
   // that it will remain alive until the associated tag becomes available
   // through the grpc |CompletionQueue|. This can only happen after it has been

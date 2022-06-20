@@ -293,7 +293,7 @@ class MockGrpcServiceDelegate : public GrpcService::Delegate {
               (override));
   MOCK_METHOD(void,
               GetDriveSystemData,
-              (DriveSystemDataType, const GetDriveSystemDataCallback&),
+              (DriveSystemDataType, GetDriveSystemDataCallback),
               (override));
   MOCK_METHOD(void, RequestBluetoothDataNotification, (), (override));
   MOCK_METHOD(
