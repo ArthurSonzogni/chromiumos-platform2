@@ -21,6 +21,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libiio",
+    "libudev",
   ]
 }
 
