@@ -12,6 +12,7 @@
 
 #include "shill/connection.h"
 #include "shill/ipconfig.h"
+#include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/technology.h"
 
@@ -30,7 +31,7 @@ class Network {
                    Technology technology);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
-  ~Network() = default;
+  virtual ~Network() = default;
 
   // Creates the associated Connection object if not exists.
   void CreateConnection(bool fixed_ip_params, const DeviceInfo* device_info);
@@ -39,7 +40,7 @@ class Network {
   // Returns if the associated Connection object exist. Note that the return
   // value does not indicate any real state of the network. This function will
   // finally be removed.
-  bool HasConnectionObject() const;
+  mockable bool HasConnectionObject() const;
 
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
@@ -48,19 +49,19 @@ class Network {
   // Connection class. This is a temporary solution. The caller should guarantee
   // there is a Connection object inside this object.
   void UpdateFromIPConfig(const IPConfig::Properties& config);
-  void SetPriority(uint32_t priority, bool is_primary_physical);
-  bool IsDefault() const;
-  void SetUseDNS(bool enable);
+  mockable void SetPriority(uint32_t priority, bool is_primary_physical);
+  mockable bool IsDefault() const;
+  mockable void SetUseDNS(bool enable);
   void UpdateDNSServers(const std::vector<std::string>& dns_servers);
   void UpdateRoutingPolicy();
-  std::string GetSubnetName() const;
+  mockable std::string GetSubnetName() const;
   bool IsIPv6() const;
 
   // TODO(b/232177767): Getters for access members in Connection. This is a
   // temporary solution. The caller should guarantee there is a Connection
   // object inside this object.
-  const std::vector<std::string>& dns_servers() const;
-  const IPAddress& local() const;
+  mockable const std::vector<std::string>& dns_servers() const;
+  mockable const IPAddress& local() const;
   const IPAddress& gateway() const;
 
   // TODO(b/232177767): Remove once we eliminate all Connection references in

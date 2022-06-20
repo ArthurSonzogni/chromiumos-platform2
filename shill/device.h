@@ -330,6 +330,10 @@ class Device : public base::RefCounted<Device> {
     dhcp_controller_ = std::move(dhcp_controller);
   }
 
+  void set_network_for_testing(std::unique_ptr<Network> network) {
+    network_ = std::move(network);
+  }
+
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);

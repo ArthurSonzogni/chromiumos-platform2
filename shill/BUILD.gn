@@ -710,6 +710,7 @@ if (use.test) {
       "network/mock_dhcp_controller.cc",
       "network/mock_dhcp_provider.cc",
       "network/mock_dhcp_proxy.cc",
+      "network/mock_network.cc",
       "portal_detector_test.cc",
       "power_manager_test.cc",
       "process_manager_test.cc",
