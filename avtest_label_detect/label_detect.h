@@ -44,6 +44,7 @@ bool get_v4l2_max_resolution(int fd,
                              uint32_t fourcc,
                              int32_t* const resolution_width,
                              int32_t* const resolution_height);
+bool is_v4l2_enc_vbr_supported(int fd);
 #endif  // defined(USE_V4L2_CODEC)
 
 /* util_vaapi */
@@ -81,8 +82,11 @@ extern bool detect_video_acc_av1_10bpp(void);
 extern bool detect_video_acc_hevc(void);
 extern bool detect_video_acc_hevc_10bpp(void);
 extern bool detect_video_acc_enc_h264(void);
+extern bool detect_video_acc_enc_h264_vbr(void);
 extern bool detect_video_acc_enc_vp8(void);
+extern bool detect_video_acc_enc_vp8_vbr(void);
 extern bool detect_video_acc_enc_vp9(void);
+extern bool detect_video_acc_enc_vp9_vbr(void);
 extern bool detect_jpeg_acc_dec(void);
 extern bool detect_jpeg_acc_enc(void);
 bool detect_4k_device_h264(void);

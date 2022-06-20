@@ -86,6 +86,14 @@ static bool is_v4l2_enc_h264_device(int fd) {
                                 V4L2_PIX_FMT_H264);
 }
 
+/* Helper function for detect_video_acc_enc_h264_vbr.
+ * Returns true if the v4l2 device supports h264 encoding (see
+ * is_v4l2_enc_h264_device comment) and variable bitrate encoding.
+ */
+static bool is_v4l2_enc_h264_vbr_device(int fd) {
+  return is_v4l2_enc_h264_device(fd) && is_v4l2_enc_vbr_supported(fd);
+}
+
 /* Helper function for detect_video_acc_enc_vp8.
  * A V4L2 device supports VP8 encoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
@@ -96,6 +104,14 @@ static bool is_v4l2_enc_vp8_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
                                 V4L2_PIX_FMT_VP8);
+}
+
+/* Helper function for detect_video_acc_enc_vp8_vbr.
+ * Returns true if the v4l2 device supports vp8 encoding (see
+ * is_v4l2_enc_vp8_device comment) and variable bitrate encoding.
+ */
+static bool is_v4l2_enc_vp8_vbr_device(int fd) {
+  return is_v4l2_enc_vp8_device(fd) && is_v4l2_enc_vbr_supported(fd);
 }
 
 /* Helper function for detect_jpeg_acc_dec.
@@ -281,6 +297,32 @@ static bool is_vaapi_enc_h264_device(int fd) {
   return false;
 }
 
+/* Helper function for detect_video_acc_enc_h264.
+ * Returns true if the vaapi driver supports H.264 encoding (see
+ * is_vaapi_enc_h264_device comment) with variable bitrate encoding.
+ */
+static bool is_vaapi_enc_h264_vbr_device(int fd) {
+  VAProfile va_profiles[] = {VAProfileH264Baseline, VAProfileH264Main,
+                             VAProfileH264High,
+                             VAProfileH264ConstrainedBaseline};
+  for (size_t i = 0; i < 4; i++) {
+    VAProfile tmp_va_profiles[] = {va_profiles[i], VAProfileNone};
+    VAEntrypoint va_entrypoints[] = {VAEntrypointEncSlice,
+                                     VAEntrypointEncSliceLP};
+    VAConfigAttrib va_attribs[] = {{VAConfigAttribRateControl, VA_RC_VBR}};
+    for (size_t j = 0; j < 2; j++) {
+      if (is_vaapi_support_formats(fd, tmp_va_profiles, va_entrypoints[j],
+                                   VA_RT_FORMAT_YUV420) &&
+          are_vaapi_attribs_supported(fd, va_profiles[i], va_entrypoints[j],
+                                      va_attribs, 1)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 /* Helper function for detect_video_acc_enc_vp8.
  * Determine given |fd| is a VAAPI device supports VP8 encoding, i.e. it
  * supports one of VP8 profile, has encoding entry point, and input YUV420
@@ -299,6 +341,31 @@ static bool is_vaapi_enc_vp8_device(int fd) {
   return false;
 }
 
+/* Helper function for detect_video_acc_enc_vp8.
+ * Returns true if the vaapi driver supports VP8 encoding (see
+ * is_vaapi_enc_vp8_device comment) with variable bitrate encoding.
+ */
+static bool is_vaapi_enc_vp8_vbr_device(int fd) {
+#if VA_CHECK_VERSION(0, 35, 0)
+  VAProfile va_profiles[] = {VAProfileVP8Version0_3, VAProfileNone};
+  VAEntrypoint va_entrypoints[] = {VAEntrypointEncSlice,
+                                   VAEntrypointEncSliceLP};
+  for (int i = 0; i < 2; i++) {
+    if (!is_vaapi_support_formats(fd, va_profiles, va_entrypoints[i],
+                                  VA_RT_FORMAT_YUV420)) {
+      continue;
+    }
+
+    VAConfigAttrib va_attribs[] = {{VAConfigAttribRateControl, VA_RC_VBR}};
+    if (are_vaapi_attribs_supported(fd, VAProfileVP8Version0_3,
+                                    va_entrypoints[i], va_attribs, 1)) {
+      return true;
+    }
+  }
+#endif
+  return false;
+}
+
 /* Helper function for detect_video_acc_enc_vp9.
  * Determine given |fd| is a VAAPI device supports VP9 encoding, i.e. it
  * supports one of VP9 profile, has encoding entry point, and input YUV420
@@ -312,6 +379,31 @@ static bool is_vaapi_enc_vp9_device(int fd) {
       is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSliceLP,
                                VA_RT_FORMAT_YUV420)) {
     return true;
+  }
+#endif
+  return false;
+}
+
+/* Helper function for detect_video_acc_enc_vp9.
+ * Returns true if the vaapi driver supports VP9 encoding (see
+ * is_vaapi_enc_vp9_device comment) with variable bitrate encoding.
+ */
+static bool is_vaapi_enc_vp9_vbr_device(int fd) {
+#if VA_CHECK_VERSION(0, 37, 1)
+  VAProfile va_profiles[] = {VAProfileVP9Profile0, VAProfileNone};
+  VAEntrypoint va_entrypoints[] = {VAEntrypointEncSlice,
+                                   VAEntrypointEncSliceLP};
+  for (int i = 0; i < 2; i++) {
+    if (!is_vaapi_support_formats(fd, va_profiles, va_entrypoints[i],
+                                  VA_RT_FORMAT_YUV420)) {
+      continue;
+    }
+
+    VAConfigAttrib va_attribs[] = {{VAConfigAttribRateControl, VA_RC_VBR}};
+    if (are_vaapi_attribs_supported(fd, VAProfileVP9Profile0, va_entrypoints[i],
+                                    va_attribs, 1)) {
+      return true;
+    }
   }
 #endif
   return false;
@@ -489,6 +581,25 @@ bool detect_video_acc_enc_h264(void) {
   return false;
 }
 
+/* Determines "hw_video_acc_enc_h264_vbr" label. That is, either there is a
+ * VAAPI device that supports an H.264 profile with an encoding entrypoint for
+ * YUV420 and variable bitrate encoding, or there is a /dev/video* device that
+ * supports H.264 encoding and variable bitrate encoding.
+ */
+bool detect_video_acc_enc_h264_vbr(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_h264_vbr_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_h264_vbr_device))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
+  return false;
+}
+
 /* Determines "hw_video_acc_enc_vp8" label. That is, either the VAAPI device
  * supports one of VP8 profile, has encoding entry point, and input YUV420
  * formats. Or there is a /dev/video* device supporting VP8 encoding.
@@ -507,6 +618,25 @@ bool detect_video_acc_enc_vp8(void) {
   return false;
 }
 
+/* Determines "hw_video_acc_enc_vp8_vbr" label. That is, either there is a VAAPI
+ * device that supports a VP8 profile with an encoding entrypoint for YUV420 and
+ * variable bitrate encoding, or there is a /dev/video* device that supports VP8
+ * encoding and variable bitrate encoding.
+ */
+bool detect_video_acc_enc_vp8_vbr(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp8_vbr_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_vp8_vbr_device))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
+  return false;
+}
+
 /* Determines "hw_video_acc_enc_vp9" label. That is, either the VAAPI device
  * supports one of VP9 profile, has encoding entry point, and input YUV420
  * formats.
@@ -514,6 +644,19 @@ bool detect_video_acc_enc_vp8(void) {
 bool detect_video_acc_enc_vp9(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_enc_vp9_vbr" label. That is, there is a VAAPI device
+ * that supports a VP9 profile with an encoding entrypoint for YUV420 and
+ * variable bitrate encoding.
+ */
+bool detect_video_acc_enc_vp9_vbr(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_vbr_device))
     return true;
 #endif  // defined(USE_VAAPI)
 
