@@ -4,8 +4,6 @@
 
 #include "shill/cellular/mobile_operator_info_impl.h"
 
-#include <regex.h>
-
 #include <memory>
 #include <optional>
 #include <utility>
@@ -19,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/repeated_field.h>
+#include <re2/re2.h>
 
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -42,14 +41,6 @@ const char MobileOperatorInfoImpl::kExclusiveOverrideDatabasePath[] =
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 
 namespace {
-
-// Wrap some low level functions from the GNU regex librarly.
-std::string GetRegError(int code, const regex_t* compiled) {
-  size_t length = regerror(code, compiled, nullptr, 0);
-  std::vector<char> buffer(length);
-  DCHECK_EQ(length, regerror(code, compiled, buffer.data(), length));
-  return buffer.data();
-}
 
 std::string GetApnAuthentication(
     const shill::mobile_operator_db::MobileAPN& apn) {
@@ -684,28 +675,29 @@ MobileOperatorInfoImpl::PickOneFromDuplicates(
 }
 
 bool MobileOperatorInfoImpl::FilterMatches(
-    const shill::mobile_operator_db::Filter& filter) {
+    const shill::mobile_operator_db::Filter& filter, std::string to_match) {
   DCHECK(filter.has_regex() || filter.range_size());
-  std::string to_match;
-  switch (filter.type()) {
-    case mobile_operator_db::Filter_Type_IMSI:
-      to_match = user_imsi_;
-      break;
-    case mobile_operator_db::Filter_Type_ICCID:
-      to_match = user_iccid_;
-      break;
-    case mobile_operator_db::Filter_Type_SID:
-      to_match = user_sid_;
-      break;
-    case mobile_operator_db::Filter_Type_OPERATOR_NAME:
-      to_match = user_operator_name_;
-      break;
-    case mobile_operator_db::Filter_Type_MCCMNC:
-      to_match = user_mccmnc_;
-      break;
-    default:
-      SLOG(this, 1) << "Unknown filter type [" << filter.type() << "]";
-      return false;
+  if (to_match.empty()) {
+    switch (filter.type()) {
+      case mobile_operator_db::Filter_Type_IMSI:
+        to_match = user_imsi_;
+        break;
+      case mobile_operator_db::Filter_Type_ICCID:
+        to_match = user_iccid_;
+        break;
+      case mobile_operator_db::Filter_Type_SID:
+        to_match = user_sid_;
+        break;
+      case mobile_operator_db::Filter_Type_OPERATOR_NAME:
+        to_match = user_operator_name_;
+        break;
+      case mobile_operator_db::Filter_Type_MCCMNC:
+        to_match = user_mccmnc_;
+        break;
+      default:
+        SLOG(this, 1) << "Unknown filter type [" << filter.type() << "]";
+        return false;
+    }
   }
   // |to_match| can be empty if we have no *user provided* information of the
   // correct type.
@@ -734,46 +726,15 @@ bool MobileOperatorInfoImpl::FilterMatches(
     return false;
   }
 
-  // Must use GNU regex implementation, since C++11 implementation is
-  // incomplete.
-  regex_t filter_regex;
-  std::string filter_regex_str = filter.regex();
-
-  // |regexec| matches the given regular expression to a substring of the
-  // given query string. Ensure that |filter_regex_str| uses anchors to
-  // accept only a full match.
-  if (filter_regex_str.front() != '^') {
-    filter_regex_str = "^" + filter_regex_str;
-  }
-  if (filter_regex_str.back() != '$') {
-    filter_regex_str = filter_regex_str + "$";
-  }
-
-  int regcomp_error = regcomp(&filter_regex, filter_regex_str.c_str(),
-                              REG_EXTENDED | REG_NOSUB);
-  if (regcomp_error) {
-    LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. "
-                 << "Error returned: "
-                 << GetRegError(regcomp_error, &filter_regex) << ". ";
-    regfree(&filter_regex);
-    return false;
-  }
-
-  int regexec_error = regexec(&filter_regex, to_match.c_str(), 0, nullptr, 0);
-  if (regexec_error) {
-    std::string error_string;
-    error_string = GetRegError(regcomp_error, &filter_regex);
+  re2::RE2 filter_regex = {filter.regex()};
+  if (!RE2::FullMatch(to_match, filter_regex)) {
     SLOG(this, 2) << "Skipping because string '" << to_match << "' is not a "
-                  << "match of regexp '" << filter.regex() << "'. "
-                  << (error_string.empty() ? "" : "Error returned: ")
-                  << error_string;
-    regfree(&filter_regex);
+                  << "match of regexp '" << filter.regex();
     return false;
-  } else {
-    SLOG(this, 2) << "Regex '" << filter.regex() << "' matches '" << to_match
-                  << "'.";
   }
-  regfree(&filter_regex);
+
+  SLOG(this, 2) << "Regex '" << filter.regex() << "' matches '" << to_match
+                << "'.";
   return true;
 }
 
@@ -1020,19 +981,8 @@ void MobileOperatorInfoImpl::UpdateRequiresRoaming(
         !filter.has_regex()) {
       continue;
     }
-    regex_t roaming_mccmnc_regex;
-    int regcomp_result = regcomp(&roaming_mccmnc_regex, filter.regex().c_str(),
-                                 REG_EXTENDED | REG_NOSUB);
-    if (regcomp_result != 0) {
-      LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. ";
-      regfree(&roaming_mccmnc_regex);
-      continue;
-    }
-    int regexec_result =
-        regexec(&roaming_mccmnc_regex, serving_operator_info->mccmnc().c_str(),
-                0, nullptr, 0);
-    regfree(&roaming_mccmnc_regex);
-    requires_roaming_ = regexec_result == 0;
+
+    requires_roaming_ = FilterMatches(filter, serving_operator_info->mccmnc());
     if (requires_roaming_) {
       SLOG(this, 1)
           << "requires_roaming is updated to true due to roaming filtering";

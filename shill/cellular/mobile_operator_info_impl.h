@@ -105,7 +105,8 @@ class MobileOperatorInfoImpl {
 
   bool UpdateMNO();
   bool UpdateMVNO();
-  bool FilterMatches(const shill::mobile_operator_db::Filter& filter);
+  bool FilterMatches(const shill::mobile_operator_db::Filter& filter,
+                     std::string to_match = "");
   const mobile_operator_db::MobileNetworkOperator* PickOneFromDuplicates(
       const std::vector<const mobile_operator_db::MobileNetworkOperator*>&
           duplicates) const;

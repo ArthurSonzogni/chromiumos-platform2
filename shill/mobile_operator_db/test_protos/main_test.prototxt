@@ -619,3 +619,18 @@ mno {
     }
   }
 }
+
+# Test[129] MNORoamingFilterMCCMNCMatch
+mno {
+  data {
+    mccmnc: "129001"
+    localized_name {
+      name: "name129001"
+    }
+    uuid: "uuid129001"
+    roaming_filter {
+      type: MCCMNC
+      regex: "128[0-6]..?"
+    }
+  }
+}

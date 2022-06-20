@@ -25,8 +25,7 @@ message Filter {
   required Type type = 1;
   // A regular expression specifying the values that are *accepted* by this
   // filter. The field to be tested is chosen by the |type|.
-  // The regular expression should be specified as an extended POSIX regular
-  // expression.
+  // The regular expression should be specified as a re2 regular expression.
   optional string regex = 2;
   // Rather than a regular expression, the filter can be expressed by one
   // or several numerical ranges.

@@ -70,6 +70,7 @@ class MobileOperatorInfoInitTest : public Test {
  public:
   MobileOperatorInfoInitTest()
       : operator_info_(new MobileOperatorInfo(&dispatcher_, "Operator")),
+        serving_operator_info_(new MobileOperatorInfo(&dispatcher_, "Serving")),
         operator_info_impl_(operator_info_->impl()) {}
   MobileOperatorInfoInitTest(const MobileOperatorInfoInitTest&) = delete;
   MobileOperatorInfoInitTest& operator=(const MobileOperatorInfoInitTest&) =
@@ -78,10 +79,12 @@ class MobileOperatorInfoInitTest : public Test {
  protected:
   bool SetUpDatabase(const std::vector<std::string>& files) {
     operator_info_->ClearDatabasePaths();
+    serving_operator_info_->ClearDatabasePaths();
     for (const auto& file : files) {
       operator_info_->AddDatabasePath(GetTestProtoPath(file));
+      serving_operator_info_->AddDatabasePath(GetTestProtoPath(file));
     }
-    return operator_info_->Init();
+    return operator_info_->Init() && serving_operator_info_->Init();
   }
 
   void AssertDatabaseEmpty() {
@@ -95,6 +98,7 @@ class MobileOperatorInfoInitTest : public Test {
 
   EventDispatcherForTest dispatcher_;
   std::unique_ptr<MobileOperatorInfo> operator_info_;
+  std::unique_ptr<MobileOperatorInfo> serving_operator_info_;
   // Owned by |operator_info_| and tied to its life cycle.
   MobileOperatorInfoImpl* operator_info_impl_;
 };
@@ -166,6 +170,7 @@ class MobileOperatorInfoMainTest
   void SetUp() override {
     EXPECT_TRUE(SetUpDatabase({"main_test.pbf"}));
     operator_info_->AddObserver(&observer_);
+    serving_operator_info_->AddObserver(&observer_);
   }
 
  protected:
@@ -205,6 +210,7 @@ class MobileOperatorInfoMainTest
 
   void ResetOperatorInfo() {
     operator_info_->Reset();
+    serving_operator_info_->Reset();
     // Eat up any events caused by |Reset|.
     dispatcher_.DispatchPendingEvents();
     VerifyNoMatch();
@@ -587,6 +593,28 @@ TEST_P(MobileOperatorInfoMainTest, MNOUchangedBySecondaryUpdates) {
   UpdateNID("111202");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid111001");
+}
+
+TEST_P(MobileOperatorInfoMainTest, MNORoamingFilterMCCMNCMatch) {
+  // This test verifies that the network is identified as Home when roaming on
+  // a carrier that matches the roaming filter.
+  // message: MNO with a roaming_filter.
+  // match by: Serving operator MCCMNC.
+  ExpectEventCount(1);
+  UpdateMCCMNC("129001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid129001");
+  serving_operator_info_->UpdateMCCMNC("128001");  // matches "128[0-6]..?"
+  DispatchPendingEventsIfStrict();
+  operator_info_->UpdateRequiresRoaming(serving_operator_info_.get());
+  EXPECT_TRUE(operator_info_->requires_roaming());
+
+  ExpectEventCount(1);
+  serving_operator_info_->UpdateMCCMNC("127001");  // no match
+  DispatchPendingEventsIfStrict();
+  operator_info_->UpdateRequiresRoaming(serving_operator_info_.get());
+  VerifyEventCount();
+  EXPECT_FALSE(operator_info_->requires_roaming());
 }
 
 TEST_P(MobileOperatorInfoMainTest, MVNODefaultMatch) {
@@ -1093,6 +1121,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   void SetUp() override {
     EXPECT_TRUE(SetUpDatabase({"data_test.pbf"}));
     operator_info_->AddObserver(&observer_);
+    serving_operator_info_->AddObserver(&observer_);
   }
 
  protected:
