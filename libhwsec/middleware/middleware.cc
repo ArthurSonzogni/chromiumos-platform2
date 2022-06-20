@@ -32,7 +32,7 @@ MiddlewareOwner::MiddlewareOwner() {
   thread_id_ = background_thread_->GetThreadId();
   base::OnceClosure task = base::BindOnce(&MiddlewareOwner::InitBackend,
                                           weak_factory_.GetWeakPtr(), nullptr);
-  task_runner_->PostTask(FROM_HERE, std::move(task));
+  Middleware(Derive()).RunBlockingTask(std::move(task));
 }
 
 MiddlewareOwner::MiddlewareOwner(scoped_refptr<base::TaskRunner> task_runner,
@@ -42,11 +42,7 @@ MiddlewareOwner::MiddlewareOwner(scoped_refptr<base::TaskRunner> task_runner,
   base::OnceClosure task = base::BindOnce(&MiddlewareOwner::InitBackend,
                                           weak_factory_.GetWeakPtr(), nullptr);
   thread_id_ = thread_id;
-  if (thread_id == base::PlatformThread::CurrentId()) {
-    std::move(task).Run();
-  } else {
-    task_runner_->PostTask(FROM_HERE, std::move(task));
-  }
+  Middleware(Derive()).RunBlockingTask(std::move(task));
 }
 
 MiddlewareOwner::MiddlewareOwner(std::unique_ptr<Backend> custom_backend,
@@ -58,11 +54,7 @@ MiddlewareOwner::MiddlewareOwner(std::unique_ptr<Backend> custom_backend,
       base::BindOnce(&MiddlewareOwner::InitBackend, weak_factory_.GetWeakPtr(),
                      std::move(custom_backend));
   thread_id_ = thread_id;
-  if (thread_id == base::PlatformThread::CurrentId()) {
-    std::move(task).Run();
-  } else {
-    task_runner_->PostTask(FROM_HERE, std::move(task));
-  }
+  Middleware(Derive()).RunBlockingTask(std::move(task));
 }
 
 MiddlewareOwner::~MiddlewareOwner() {
