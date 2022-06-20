@@ -123,14 +123,6 @@ struct sl_context {
   double desired_scale;
   double scale;
 
-  // These scale factors are used for the direct scaling mode.
-  // These factors are set to the values computed from the internal/default
-  // display.
-  // See sommelier-transform.h and the definition in sl_output
-  // for more details on this.
-  double virt_scale_x, virt_scale_y;
-  double xdg_scale_x, xdg_scale_y;
-
   // If non-null, all X11 client apps will be given this application ID.
   const char* application_id;
 
@@ -180,7 +172,6 @@ struct sl_context {
   bool trace_system;
   bool use_explicit_fence;
   bool use_virtgpu_channel;
-  bool use_direct_scale;
   // Never freed after allocation due the fact sommelier doesn't have a
   // shutdown function yet.
   WaylandChannel* channel;

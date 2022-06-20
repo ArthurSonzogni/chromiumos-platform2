@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"            // NOLINT(build/include_directory)
-#include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <stdlib.h>
@@ -131,66 +130,7 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
   }
 }
 
-void sl_output_init_dimensions_direct(struct sl_host_output* host,
-                                      int* out_scale,
-                                      int* out_physical_width,
-                                      int* out_physical_height,
-                                      int* out_width,
-                                      int* out_height) {
-  int32_t virtual_width = host->width;
-  int32_t virtual_height = host->height;
-
-  // This requires xdg_output_manager, it is assumed that it will be
-  // available and we will have an appropriate set of logical dimensions
-  // for this particular output.
-  assert(host->ctx->viewporter);
-  assert(host->ctx->xdg_output_manager);
-
-  // The virtual width/height is computed by this function here based
-  // on the physical width/height
-  sl_transform_output_dimensions(host->ctx, &virtual_width, &virtual_height);
-
-  host->virt_scale_x = static_cast<double>(virtual_width) / host->width;
-  host->virt_scale_y = static_cast<double>(virtual_height) / host->height;
-
-  *out_width = virtual_width;
-  *out_height = virtual_height;
-
-  // Force the scale to 1
-  //
-  // This is reported to the guest through the wl_output protocol.
-  // This value will signal by how much a compositor will upscale
-  // all buffers by (1 is no scale).
-  *out_scale = 1;
-
-  // The physical dimensions (in mm) are the same, regardless
-  // of the provided scale factor.
-  *out_physical_width = host->physical_width;
-  *out_physical_height = host->physical_height;
-
-  // We want to be able to transform from virtual to XDG logical
-  // coordinates
-  // Virt to XDG -> div
-  // XDG to Virt -> mul
-  host->xdg_scale_x = static_cast<double>(virtual_width) /
-                      static_cast<double>(host->logical_width);
-  host->xdg_scale_y = static_cast<double>(virtual_height) /
-                      static_cast<double>(host->logical_height);
-
-  if (host->internal) {
-    host->ctx->virt_scale_x = host->virt_scale_x;
-    host->ctx->virt_scale_y = host->virt_scale_y;
-    host->ctx->xdg_scale_x = host->xdg_scale_x;
-    host->ctx->xdg_scale_y = host->xdg_scale_y;
-  }
-}
-
-void sl_output_get_dimensions_original(struct sl_host_output* host,
-                                       int* out_scale,
-                                       int* out_physical_width,
-                                       int* out_physical_height,
-                                       int* out_width,
-                                       int* out_height) {
+void sl_output_send_host_output_state(struct sl_host_output* host) {
   int scale;
   int physical_width;
   int physical_height;
@@ -220,28 +160,6 @@ void sl_output_get_dimensions_original(struct sl_host_output* host,
         break;
       }
     }
-  }
-
-  *out_scale = scale;
-  *out_physical_width = physical_width;
-  *out_physical_height = physical_height;
-  *out_width = width;
-  *out_height = height;
-}
-
-void sl_output_send_host_output_state(struct sl_host_output* host) {
-  int scale;
-  int physical_width;
-  int physical_height;
-  int width;
-  int height;
-
-  if (host->ctx->use_direct_scale) {
-    sl_output_init_dimensions_direct(host, &scale, &physical_width,
-                                     &physical_height, &width, &height);
-  } else {
-    sl_output_get_dimensions_original(host, &scale, &physical_width,
-                                      &physical_height, &width, &height);
   }
 
   // X/Y are best left at origin as managed X windows are kept centered on
