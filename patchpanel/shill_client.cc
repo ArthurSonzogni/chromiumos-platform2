@@ -361,42 +361,31 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
       continue;
     }
 
-    // Detects the type of IPConfig. For ipv4 and ipv6 configurations, there
-    // should be at most one for each type.
-    auto it = ipconfig_props.find(shill::kMethodProperty);
-    if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "IPConfig properties is missing Method";
-      continue;
-    }
-    const std::string& method = it->second.TryGet<std::string>();
-    const bool is_ipv4_type =
-        (method == shill::kTypeIPv4 || method == shill::kTypeDHCP ||
-         method == shill::kTypeBOOTP || method == shill::kTypeZeroConf);
-    const bool is_ipv6_type = (method == shill::kTypeIPv6);
-    if (!is_ipv4_type && !is_ipv6_type) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "unknown type \"" << method << "\" for " << path.value();
-      continue;
-    }
-    if ((is_ipv4_type && !ipconfig.ipv4_address.empty()) ||
-        (is_ipv6_type && !ipconfig.ipv6_address.empty())) {
-      LOG(WARNING) << "[" << device << "]: "
-                   << "Duplicated ipconfig for " << method;
-      continue;
-    }
-
     // Gets the value of address, prefix_length, gateway, and dns_servers.
-    it = ipconfig_props.find(shill::kAddressProperty);
+    auto it = ipconfig_props.find(shill::kAddressProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: " << method
-                   << " IPConfig properties is missing Address";
+      LOG(WARNING) << "[" << device
+                   << "]: IPConfig properties is missing Address";
       continue;
     }
     const std::string& address = it->second.TryGet<std::string>();
     if (address.empty()) {
-      LOG(WARNING) << "[" << device << "]: " << method
-                   << " IPConfig Address property was empty.";
+      LOG(WARNING) << "[" << device
+                   << "]: IPConfig Address property was empty.";
+      continue;
+    }
+    auto ip_family = GetIpFamily(address);
+    if (ip_family != AF_INET && ip_family != AF_INET6) {
+      LOG(WARNING) << "[" << device
+                   << "]: IPConfig Address property was invalid: " << address;
+      continue;
+    }
+    const bool is_ipv4 = ip_family == AF_INET;
+    const std::string method = is_ipv4 ? "IPv4" : "IPv6";
+    if ((is_ipv4 && !ipconfig.ipv4_address.empty()) ||
+        (!is_ipv4 && !ipconfig.ipv6_address.empty())) {
+      LOG(WARNING) << "[" << device << "]: "
+                   << "Duplicated IPconfig for " << method;
       continue;
     }
 
@@ -407,7 +396,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
       continue;
     }
     int prefix_length = it->second.TryGet<int>();
-    if (prefix_length < 1 || (is_ipv4_type && prefix_length > 32) ||
+    if (prefix_length < 1 || (is_ipv4 && prefix_length > 32) ||
         prefix_length > 128) {
       LOG(WARNING) << "[" << device << "]: " << method
                    << " IPConfig Prefixlen property was invalid: "
@@ -440,12 +429,12 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
         it->second.TryGet<std::vector<std::string>>();
 
     // Fills the IPConfig struct according to the type.
-    if (is_ipv4_type) {
+    if (is_ipv4) {
       ipconfig.ipv4_prefix_length = prefix_length;
       ipconfig.ipv4_address = address;
       ipconfig.ipv4_gateway = gateway;
       ipconfig.ipv4_dns_addresses = dns_addresses;
-    } else {  // is_ipv6_type
+    } else {  // AF_INET6
       ipconfig.ipv6_prefix_length = prefix_length;
       ipconfig.ipv6_address = address;
       ipconfig.ipv6_gateway = gateway;
