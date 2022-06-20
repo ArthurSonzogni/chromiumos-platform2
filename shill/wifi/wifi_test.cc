@@ -56,6 +56,7 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/supplicant/mock_supplicant_bss_proxy.h"
@@ -1146,7 +1147,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   // Used by tests for link status (L2 failure, reliability).
   void SetupConnectionAndIPConfig(const std::string& ipv4_gateway_address) {
-    wifi_->connection_ = std::make_unique<MockConnection>(device_info());
+    wifi_->network_->set_connection_for_testing(
+        std::make_unique<MockConnection>(device_info()));
     auto ipconfig =
         std::make_unique<MockIPConfig>(control_interface(), kDeviceName);
     // We use ReturnRef() below for this object so use `static` here.

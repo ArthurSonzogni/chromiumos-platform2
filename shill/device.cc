@@ -34,7 +34,6 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -47,6 +46,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/network.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
@@ -101,6 +101,7 @@ Device::Device(Manager* manager,
       interface_index_(interface_index),
       link_name_(link_name),
       manager_(manager),
+      network_(new Network()),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
@@ -742,7 +743,7 @@ void Device::OnIPv6ConfigUpdated() {
   // there is no existing IPv4 connection. We always prefer IPv4
   // configuration over IPv6.
   if (ip6config_->properties().HasIPAddressAndDNS() &&
-      (!connection_ || connection_->IsIPv6())) {
+      (!network_->HasConnectionObject() || network_->IsIPv6())) {
     SetupConnection(ip6config_.get());
   }
 }
@@ -765,20 +766,22 @@ void Device::ConfigureStaticIPv6Address() {
 
 void Device::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
-  CreateConnection();
+  SLOG(this, 2) << __func__;
+  network_->CreateConnection(interface_index_, link_name_, fixed_ip_params_,
+                             technology_, manager_->device_info());
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
     ipconfig->SetBlackholedUids(manager_->GetUserTrafficUids());
   } else {
     ipconfig->ClearBlackholedUids();
   }
 
-  connection_->UpdateFromIPConfig(ipconfig->properties());
+  network_->UpdateFromIPConfig(ipconfig->properties());
   ConfigureStaticIPv6Address();
 
   // Report connection type.
   Metrics::NetworkConnectionIPType ip_type =
-      connection_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
-                            : Metrics::kNetworkConnectionIPTypeIPv4;
+      network_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
+                         : Metrics::kNetworkConnectionIPTypeIPv4;
   metrics()->SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType, technology_,
                            ip_type);
 
@@ -904,7 +907,7 @@ void Device::OnDHCPFailure() {
 
   // Fallback to IPv6 if possible.
   if (ip6config_ && ip6config_->properties().HasIPAddressAndDNS()) {
-    if (!connection_ || !connection_->IsIPv6()) {
+    if (!network_->HasConnectionObject() || !network_->IsIPv6()) {
       // Setup IPv6 connection.
       SetupConnection(ip6config_.get());
     } else {
@@ -947,15 +950,6 @@ void Device::OnIPConfigFailure() {
 
 void Device::OnConnected() {}
 
-void Device::CreateConnection() {
-  SLOG(this, 2) << __func__;
-  if (!connection_) {
-    connection_ = std::make_unique<Connection>(interface_index_, link_name_,
-                                               fixed_ip_params_, technology_,
-                                               manager_->device_info());
-  }
-}
-
 void Device::DestroyConnection() {
   SLOG(this, 2) << __func__ << " on " << link_name_;
   StopAllActivities();
@@ -963,7 +957,7 @@ void Device::DestroyConnection() {
     selected_service_->SetIPConfig(RpcIdentifier(),
                                    /*static_ipconfig_changed_callback=*/{});
   }
-  connection_ = nullptr;
+  network_->DestroyConnection();
 }
 
 void Device::GetTrafficCountersCallback(
@@ -1086,7 +1080,7 @@ bool Device::RequestPortalDetection() {
     return false;
   }
 
-  if (!connection_) {
+  if (!network_->HasConnectionObject()) {
     LOG(INFO) << link_name() << ": Skipping portal detection: no Connection";
     return false;
   }
@@ -1150,9 +1144,10 @@ bool Device::StartPortalDetection() {
   portal_detector_.reset(new PortalDetector(
       dispatcher(), metrics(),
       base::Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
-  if (!portal_detector_->Start(
-          manager_->GetProperties(), connection_->interface_name(),
-          connection_->local(), connection_->dns_servers())) {
+  DCHECK(network_->HasConnectionObject());
+  if (!portal_detector_->Start(manager_->GetProperties(),
+                               network_->interface_name(), network_->local(),
+                               network_->dns_servers())) {
     LOG(ERROR) << link_name() << ": Portal detection failed to start";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
@@ -1170,9 +1165,10 @@ void Device::StopPortalDetection() {
 }
 
 void Device::StartConnectionDiagnosticsAfterPortalDetection() {
+  DCHECK(network_->HasConnectionObject());
   connection_diagnostics_.reset(new ConnectionDiagnostics(
-      connection_->interface_name(), connection_->interface_index(),
-      connection_->local(), connection_->gateway(), connection_->dns_servers(),
+      network_->interface_name(), network_->interface_index(),
+      network_->local(), network_->gateway(), network_->dns_servers(),
       dispatcher(), metrics(), manager_->device_info(), base::DoNothing()));
   if (!connection_diagnostics_->Start(
           manager_->GetProperties().portal_http_url)) {
@@ -1231,10 +1227,11 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
 
   if (Service::IsPortalledState(state)) {
     CHECK(portal_detector_.get());
+    CHECK(network_->HasConnectionObject());
     const auto next_delay = portal_detector_->GetNextAttemptDelay();
-    if (!portal_detector_->Start(
-            manager_->GetProperties(), connection_->interface_name(),
-            connection_->local(), connection_->dns_servers(), next_delay)) {
+    if (!portal_detector_->Start(manager_->GetProperties(),
+                                 network_->interface_name(), network_->local(),
+                                 network_->dns_servers(), next_delay)) {
       LOG(ERROR) << link_name() << ": Portal detection failed to restart";
       SetServiceState(Service::kStateOnline);
       StopPortalDetection();
@@ -1441,8 +1438,6 @@ void Device::SetEnabledUnchecked(bool enable,
                   << (ipconfig_ ? "is set." : "is not set.");
     SLOG(this, 3) << "Device " << link_name_ << " ip6config_ "
                   << (ip6config_ ? "is set." : "is not set.");
-    SLOG(this, 3) << "Device " << link_name_ << " connection_ "
-                  << (connection_ ? "is set." : "is not set.");
     SLOG(this, 3) << "Device " << link_name_ << " selected_service_ "
                   << (selected_service_ ? "is set." : "is not set.");
     Stop(error, chained_callback);

@@ -29,6 +29,7 @@
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -191,11 +192,13 @@ class Device : public base::RefCounted<Device> {
   const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
-  mockable Connection* connection() const { return connection_.get(); }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyString(Error* error);
+
+  // TODO(b/232177767): Expose Network directly instead.
+  mockable Connection* connection() const { return network_->connection(); };
 
   IPConfig* ipconfig() const { return ipconfig_.get(); }
   IPConfig* ip6config() const { return ip6config_.get(); }
@@ -710,7 +713,7 @@ class Device : public base::RefCounted<Device> {
   // always expect a SLAAC configu to be available (which will not be true for
   // VPN). Will come back to rework after the Device-Network refactor.
   std::optional<IPConfig::Properties> ipv6_static_properties_;
-  std::unique_ptr<Connection> connection_;
+  std::unique_ptr<Network> network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.

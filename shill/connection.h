@@ -12,7 +12,6 @@
 
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
-#include "shill/refptr_types.h"
 #include "shill/routing_policy_entry.h"
 #include "shill/technology.h"
 

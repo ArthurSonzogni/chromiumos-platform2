@@ -41,6 +41,7 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/routing_table.h"
 #include "shill/static_ip_parameters.h"
@@ -185,7 +186,7 @@ class DeviceTest : public testing::Test {
   }
 
   void SetConnection(std::unique_ptr<Connection> connection) {
-    device_->connection_ = std::move(connection);
+    device_->network_->set_connection_for_testing(std::move(connection));
   }
 
   DeviceMockAdaptor* GetDeviceMockAdaptor() {
