@@ -244,4 +244,58 @@ TEST_F(ServiceProvidersTest, CheckApnNames) {
   }
 }
 
+TEST_F(ServiceProvidersTest, CheckConflictingFilters) {
+  // Verify that some filter configurations don't exist.
+  // regex && exclude_regex is OK
+  // range && (regex || exclude_regex) is NOK
+
+  auto filter_check = [](auto filter, auto filter_name, auto uuid) {
+    ASSERT_TRUE(filter.has_regex() || filter.has_exclude_regex() ||
+                (filter.range_size() > 0))
+        << "MVNO/MNO with uuid: " << uuid
+        << "contains an empty filter of type '" << filter_name << "'";
+    ASSERT_FALSE((filter.range_size() > 0) &&
+                 (filter.has_regex() || filter.has_exclude_regex()))
+        << "MVNO/MNO with uuid: " << uuid
+        << "contains a conflicting filter of type '" << filter_name << "'";
+  };
+  // MobileVirtualNetworkOperator->mvno_filter
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& filter : mvno->mvno_filter()) {
+      filter_check(filter, mvno->data().uuid(), "mvno_filter");
+    }
+  }
+
+  // Data->olp->olp_filter
+  for (const auto& mno : database_->mno()) {
+    for (const auto& olp : mno.data().olp()) {
+      if (olp.has_olp_filter()) {
+        filter_check(olp.olp_filter(), mno.data().uuid(), "olp_filter");
+      }
+    }
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& olp : mvno->data().olp()) {
+      if (olp.has_olp_filter()) {
+        filter_check(olp.olp_filter(), mvno->data().uuid(), "olp_filter");
+      }
+    }
+  }
+
+  // Data->roaming_filter
+  for (const auto& mno : database_->mno()) {
+    for (const auto& filter : mno.data().roaming_filter()) {
+      filter_check(filter, mno.data().uuid(), "olp_filter");
+    }
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& filter : mvno->data().roaming_filter()) {
+      filter_check(filter, mvno->data().uuid(), "olp_filter");
+    }
+  }
+}
+
 }  // namespace shill

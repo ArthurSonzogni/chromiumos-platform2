@@ -31,6 +31,9 @@ message Filter {
   // or several numerical ranges.
   // The value will be accepted if start <= value <= end for one of the ranges.
   repeated FilterRange range = 3;
+  // Same as regex, but the result is inverted. This is needed because re2
+  // doesn't support negative lookahead.
+  optional string exclude_regex = 4;
 }
 
 message LocalizedName {

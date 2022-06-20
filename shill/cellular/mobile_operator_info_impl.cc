@@ -676,7 +676,8 @@ MobileOperatorInfoImpl::PickOneFromDuplicates(
 
 bool MobileOperatorInfoImpl::FilterMatches(
     const shill::mobile_operator_db::Filter& filter, std::string to_match) {
-  DCHECK(filter.has_regex() || filter.range_size());
+  DCHECK(filter.has_regex() || filter.has_exclude_regex() ||
+         filter.range_size());
   if (to_match.empty()) {
     switch (filter.type()) {
       case mobile_operator_db::Filter_Type_IMSI:
@@ -709,8 +710,6 @@ bool MobileOperatorInfoImpl::FilterMatches(
 
   // Match against numerical ranges rather than a regular expression
   if (filter.range_size()) {
-    DCHECK(!filter.has_regex());
-
     uint64_t match_value;
     if (!base::StringToUint64(to_match, &match_value)) {
       SLOG(this, 3) << "Need a number to match against a range (" << match_value
@@ -726,15 +725,30 @@ bool MobileOperatorInfoImpl::FilterMatches(
     return false;
   }
 
-  re2::RE2 filter_regex = {filter.regex()};
-  if (!RE2::FullMatch(to_match, filter_regex)) {
-    SLOG(this, 2) << "Skipping because string '" << to_match << "' is not a "
-                  << "match of regexp '" << filter.regex();
-    return false;
+  if (filter.has_regex()) {
+    re2::RE2 filter_regex = {filter.regex()};
+    if (!RE2::FullMatch(to_match, filter_regex)) {
+      SLOG(this, 2) << "Skipping because string '" << to_match << "' is not a "
+                    << "match of regexp '" << filter.regex();
+      return false;
+    }
+
+    SLOG(this, 2) << "Regex '" << filter.regex() << "' matches '" << to_match
+                  << "'.";
   }
 
-  SLOG(this, 2) << "Regex '" << filter.regex() << "' matches '" << to_match
-                << "'.";
+  if (filter.has_exclude_regex()) {
+    re2::RE2 filter_regex = {filter.exclude_regex()};
+    if (RE2::FullMatch(to_match, filter_regex)) {
+      SLOG(this, 2) << "Skipping because string '" << to_match << "' is a "
+                    << "match of exclude_regex '" << filter.exclude_regex();
+      return false;
+    }
+
+    SLOG(this, 2) << "'" << to_match << "' doesn't match exclude_regex '"
+                  << filter.exclude_regex() << "'.";
+  }
+
   return true;
 }
 
@@ -978,7 +992,7 @@ void MobileOperatorInfoImpl::UpdateRequiresRoaming(
     return;
   for (const auto& filter : roaming_filter_list_) {
     if (filter.type() != mobile_operator_db::Filter_Type_MCCMNC ||
-        !filter.has_regex()) {
+        (!filter.has_regex() && !filter.has_exclude_regex())) {
       continue;
     }
 
