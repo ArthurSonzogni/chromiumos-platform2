@@ -205,6 +205,9 @@ class Manager final : public brillo::DBusDaemon {
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
+  // Signal clients for network configuration change.
+  void SendNetworkConfigurationChangedSignal();
+
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
   // Unique instance of patchpanel::System shared for all subsystems.

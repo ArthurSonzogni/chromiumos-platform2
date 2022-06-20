@@ -1419,7 +1419,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
         LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
         return;
     }
-    // TODO(jasongustaman): Signal DNS proxy addresses change.
+    SendNetworkConfigurationChangedSignal();
   }
 }
 
@@ -1466,7 +1466,7 @@ bool Manager::RedirectDns(
           LOG(ERROR) << "Failed to delete lifeline fd";
         return false;
     }
-    // TODO(jasongustaman): Signal DNS proxy addresses change.
+    SendNetworkConfigurationChangedSignal();
   }
 
   // Store DNS proxy's redirection request.
@@ -1482,6 +1482,11 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
   adb_proxy_->SendMessage(ipm);
   mcast_proxy_->SendMessage(ipm);
   nd_proxy_->SendMessage(ipm);
+}
+
+void Manager::SendNetworkConfigurationChangedSignal() {
+  dbus::Signal signal(kPatchPanelInterface, kNetworkConfigurationChangedSignal);
+  dbus_svc_path_->SendSignal(&signal);
 }
 
 void Manager::StartForwarding(const std::string& ifname_physical,

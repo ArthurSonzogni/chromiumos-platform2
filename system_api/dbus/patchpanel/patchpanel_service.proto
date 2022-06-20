@@ -494,3 +494,6 @@ message SetDnsRedirectionRuleRequest {
 message SetDnsRedirectionRuleResponse {
   bool success = 1;
 }
+
+// Signal that is emitted when a network configuration change happens.
+message NetworkConfigurationChangedSignal {}
