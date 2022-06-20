@@ -14,7 +14,11 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/notreached.h>
+#include <base/sequence_checker.h>
+#include <base/threading/thread.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <libcrossystem/crossystem.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
@@ -155,6 +159,11 @@ class ArcVm final : public VmBaseImpl {
   void InitializeBalloonPolicy(const MemoryMargins& margins,
                                const std::string& vm);
 
+  // Listens for LMKD connections to the Vsock
+  bool SetupLmkdVsock();
+  void HandleLmkdVsockAccept();
+  void HandleLmkdVsockRead();
+
   std::vector<patchpanel::NetworkDevice> network_devices_;
 
   // Proxy to the server providing shared directory access for this VM.
@@ -175,6 +184,25 @@ class ArcVm final : public VmBaseImpl {
   // host knows the correct zone sizes (which change during boot), then replace
   // this timeout.
   std::optional<base::Time> balloon_refresh_time_ = std::nullopt;
+
+  // Max size of a LMKD packet received over the Vsock
+  static constexpr size_t kLmkdPacketMaxSize = 8 * sizeof(int);
+  static constexpr size_t kLmkdKillDecisionRequestPacketSize = 4 * sizeof(int);
+  static constexpr size_t kLmkdKillDecisionReplyPacketSize = 3 * sizeof(int);
+
+  // Must be kept in sync with lmk_host_cmd::LMK_PROCKILL_CANDIDATE defined in
+  // arc_lmkd_hooks.h in Android
+  static constexpr int32_t kLmkProcKillCandidate = 0;
+
+  base::ScopedFD arcvm_lmkd_vsock_fd_;
+  base::ScopedFD lmkd_client_fd_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      lmkd_vsock_accept_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      lmkd_vsock_read_watcher_;
+
+  // Ensure calls are made on the right thread.
+  base::SequenceChecker sequence_checker_;
 };
 
 }  // namespace concierge

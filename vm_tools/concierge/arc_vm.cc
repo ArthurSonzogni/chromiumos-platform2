@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/arc_vm.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -14,6 +15,7 @@
 #include <linux/vm_sockets.h>
 
 #include <csignal>
+#include <cstring>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -103,6 +105,19 @@ constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 // The amount of time after VM creation that we should wait to refresh counters
 // bassed on the zone watermarks, since they can change during boot.
 constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
+
+int GetIntFromVsockBuffer(const uint8_t* buf, size_t index) {
+  int ret = 0;
+  std::memcpy(&ret, &buf[index * sizeof(int)], sizeof(int));
+  ret = ntohl(ret);
+  return ret;
+}
+
+void SetIntInVsockBuffer(uint8_t* buf, size_t index, int val) {
+  val = htonl(val);
+  std::memcpy(&buf[sizeof(int) * index], &val, sizeof(int));
+  return;
+}
 
 // ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
 // returns a pair. The first object is the connected socket if connection was
@@ -224,6 +239,11 @@ std::unique_ptr<ArcVm> ArcVm::Create(
       new ArcVm(vsock_cid, std::move(network_client),
                 std::move(seneschal_server_proxy), std::move(runtime_dir),
                 std::move(data_image_path), vm_memory_id, features));
+
+  if (!vm->SetupLmkdVsock()) {
+    vm.reset();
+    return vm;
+  }
 
   if (!vm->Start(std::move(kernel), std::move(vm_builder))) {
     vm.reset();
@@ -668,6 +688,149 @@ vm_tools::concierge::DiskImageStatus ArcVm::GetDiskResizeStatus(
   // We will need to implement this when we support asynchronous disk resizing.
   *failure_reason = "Not implemented";
   return DiskImageStatus::DISK_STATUS_FAILED;
+}
+
+bool ArcVm::SetupLmkdVsock() {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  arcvm_lmkd_vsock_fd_.reset(socket(AF_VSOCK, SOCK_STREAM, 0));
+
+  if (!arcvm_lmkd_vsock_fd_.is_valid()) {
+    PLOG(ERROR) << "Failed to create ArcVM LMKD vsock";
+    return false;
+  }
+
+  struct sockaddr_vm sa {};
+  sa.svm_family = AF_VSOCK;
+  sa.svm_cid = VMADDR_CID_ANY;
+  sa.svm_port = kLmkdKillDecisionPort;
+
+  if (bind(arcvm_lmkd_vsock_fd_.get(),
+           reinterpret_cast<const struct sockaddr*>(&sa), sizeof(sa)) == -1) {
+    PLOG(ERROR) << "Failed to bind arcvm LMKD VSOCK.";
+    return false;
+  }
+
+  // Only one ARCVM instance at a time, so a backlog of 1 is sufficient.
+  if (listen(arcvm_lmkd_vsock_fd_.get(), 1) == -1) {
+    PLOG(ERROR)
+        << "Failed to start listening for a connection on ArcVM LMKD VSOCK";
+    return false;
+  }
+
+  // The watchers are destroyed at the same time as the ArcVm instance, so this
+  // callback cannot be called after the ArcVm instance is destroyed. Therefore,
+  // Unretained is safe to use here.
+  lmkd_vsock_accept_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      arcvm_lmkd_vsock_fd_.get(),
+      base::BindRepeating(&ArcVm::HandleLmkdVsockAccept,
+                          base::Unretained(this)));
+  if (!lmkd_vsock_accept_watcher_) {
+    PLOG(ERROR) << "Failed to watch LMKD listening socket";
+    return false;
+  }
+
+  LOG(INFO) << "Waiting for LMKD socket connections...";
+
+  return true;
+}
+
+void ArcVm::HandleLmkdVsockAccept() {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  lmkd_client_fd_.reset(
+      HANDLE_EINTR(accept(arcvm_lmkd_vsock_fd_.get(), nullptr, nullptr)));
+  if (!lmkd_client_fd_.is_valid()) {
+    PLOG(ERROR) << "LMKD failed to accept";
+    return;
+  }
+
+  // Don't listen for accepts anymore since we have a client
+  lmkd_vsock_accept_watcher_.reset();
+
+  LOG(INFO) << "Concierge accepted connection from LMKD";
+
+  // The watchers are destroyed at the same time as the ArcVm instance, so this
+  // callback cannot be called after the ArcVm instance is destroyed. Therefore,
+  // Unretained is safe to use here.
+  lmkd_vsock_read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      lmkd_client_fd_.get(),
+      base::BindRepeating(&ArcVm::HandleLmkdVsockRead, base::Unretained(this)));
+
+  if (!lmkd_vsock_read_watcher_) {
+    PLOG(ERROR) << "Failed to start watching LMKD Vsock for reads";
+    lmkd_vsock_read_watcher_.reset();
+    return;
+  }
+}
+
+void ArcVm::HandleLmkdVsockRead() {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  // TODO(210075795) switch to using an int array for simplicity
+  uint8_t lmkd_read_buf[kLmkdPacketMaxSize];
+
+  if (!base::ReadFromFD(lmkd_client_fd_.get(),
+                        reinterpret_cast<char*>(lmkd_read_buf),
+                        kLmkdKillDecisionRequestPacketSize)) {
+    // On failure (except for EAGAIN), disconnect the socket and wait for new
+    // connection.
+    if (errno != EAGAIN) {
+      lmkd_vsock_read_watcher_.reset();
+      lmkd_client_fd_.reset();
+
+      // The watchers are destroyed at the same time as the ArcVm instance, so
+      // this callback cannot be called after the ArcVm instance is destroyed.
+      // Therefore, Unretained is safe to use here.
+      lmkd_vsock_accept_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+          arcvm_lmkd_vsock_fd_.get(),
+          base::BindRepeating(&ArcVm::HandleLmkdVsockAccept,
+                              base::Unretained(this)));
+      if (!lmkd_vsock_accept_watcher_) {
+        PLOG(ERROR) << "Failed to restart watching LMKD Vsock";
+      }
+    } else {
+      PLOG(ERROR) << "Failed to read from LMKD Vsock connection.";
+    }
+
+    return;
+  }
+
+  int cmd_id = GetIntFromVsockBuffer(lmkd_read_buf, 0);
+  int sequence_num = GetIntFromVsockBuffer(lmkd_read_buf, 1);
+  int proc_size_kb = GetIntFromVsockBuffer(lmkd_read_buf, 2);
+  int oom_score_adj = GetIntFromVsockBuffer(lmkd_read_buf, 3);
+
+  if (cmd_id != kLmkProcKillCandidate) {
+    LOG(ERROR) << "Unknown command received from LMKD: " << cmd_id;
+    return;
+  }
+
+  // Proc size comes from LMKD in KB units
+  uint64_t proc_size = proc_size_kb * KIB;
+  uint64_t new_balloon_size = 0;
+  uint64_t freed_space = 0;
+
+  bool can_deflate = balloon_policy_->DeflateBalloonToSaveProcess(
+      proc_size, oom_score_adj, new_balloon_size, freed_space);
+
+  if (can_deflate) {
+    SetBalloonSize(new_balloon_size);
+  }
+
+  // LMKD expects a response in KB units
+  int freed_space_kb = freed_space / KIB;
+
+  // TODO(210075795) switch to using an int array for simplicity
+  uint8_t lmkd_reply_buf[kLmkdPacketMaxSize];
+
+  SetIntInVsockBuffer(lmkd_reply_buf, 0, kLmkProcKillCandidate);
+  SetIntInVsockBuffer(lmkd_reply_buf, 1, sequence_num);
+  SetIntInVsockBuffer(lmkd_reply_buf, 2, freed_space_kb);
+
+  if (!base::WriteFileDescriptor(
+          lmkd_client_fd_.get(),
+          {lmkd_reply_buf, kLmkdKillDecisionReplyPacketSize})) {
+    PLOG(ERROR) << "Failed to write to LMKD VSOCK";
+  }
 }
 
 // static

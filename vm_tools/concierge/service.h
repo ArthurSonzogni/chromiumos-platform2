@@ -323,6 +323,7 @@ class Service final {
   std::optional<int64_t> GetAvailableMemory();
   std::optional<int64_t> GetForegroundAvailableMemory();
   std::optional<MemoryMargins> GetMemoryMargins();
+  std::optional<ComponentMemoryMargins> GetComponentMemoryMargins();
   std::optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
   void FinishBalloonPolicy(
