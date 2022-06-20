@@ -4,6 +4,7 @@
 
 brk: 1
 close: 1
+dup3: 1
 dup: 1
 execve: 1
 exit: 1
