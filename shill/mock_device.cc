@@ -9,6 +9,8 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
+#include "shill/network/network.h"
+
 namespace shill {
 
 class ControlInterface;
@@ -23,8 +25,6 @@ MockDevice::MockDevice(Manager* manager,
     : Device(
           manager, link_name, address, interface_index, Technology::kUnknown) {
   DefaultValue<Technology>::Set(Technology::kUnknown);
-  ON_CALL(*this, connection())
-      .WillByDefault(testing::Return(Device::connection()));
 }
 
 MockDevice::~MockDevice() = default;

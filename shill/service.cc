@@ -26,7 +26,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
-#include "shill/connection.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/logging.h"

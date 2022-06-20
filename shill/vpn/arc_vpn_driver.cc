@@ -15,7 +15,6 @@
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/connection.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"

@@ -40,7 +40,6 @@
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/modem_info.h"
-#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device.h"

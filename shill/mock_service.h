@@ -11,7 +11,6 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
-#include "shill/connection.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/technology.h"

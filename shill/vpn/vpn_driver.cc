@@ -12,7 +12,6 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/connection.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"

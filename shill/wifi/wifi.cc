@@ -4132,9 +4132,9 @@ void WiFi::OnNeighborReachabilityEvent(
   if (role == EventSignal::DNS_SERVER) {
     return;
   }
-  if (!connection()) {
+  if (!network()->HasConnectionObject()) {
     SLOG(this, 2) << "Device " << link_name()
-                  << ": No active connection. Skipped.";
+                  << ": No active network. Skipped.";
     return;
   }
   if (!(ipconfig() &&

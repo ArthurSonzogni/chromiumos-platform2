@@ -37,7 +37,6 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
-#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_profile.h"
@@ -1028,7 +1027,7 @@ ServiceRefPtr Manager::GetServiceWithGUID(const std::string& guid,
 ServiceRefPtr Manager::GetDefaultService() const {
   SLOG(this, 2) << __func__;
   // TODO(b/182777518): Check the connection state instead.
-  if (services_.empty() || !FindConnectionFromService(services_[0])) {
+  if (services_.empty() || !FindActiveNetworkFromService(services_[0])) {
     SLOG(this, 2) << "In " << __func__ << ": No default connection exists.";
     return nullptr;
   }
@@ -1827,48 +1826,49 @@ void Manager::SortServicesTask() {
   uint32_t priority = Connection::kDefaultPriority;
   bool found_dns = false;
   ServiceRefPtr old_logical;
-  Connection* old_logical_connection;
+  Network* old_logical_network;
   int old_logical_priority;
   ServiceRefPtr new_logical;
-  Connection* new_logical_connection;
+  Network* new_logical_network;
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
-    Connection* conn = FindConnectionFromService(service);
+    auto* network = FindActiveNetworkFromService(service);
     if (!new_physical && service->technology() != Technology::kVPN) {
       new_physical = service;
     }
-    if (conn) {
-      if (!found_dns && !conn->dns_servers().empty()) {
+    if (network) {
+      DCHECK(network->HasConnectionObject());
+      if (!found_dns && !network->dns_servers().empty()) {
         found_dns = true;
-        conn->SetUseDNS(true);
+        network->SetUseDNS(true);
       } else {
-        conn->SetUseDNS(false);
+        network->SetUseDNS(false);
       }
 
       if (!new_logical) {
         new_logical = service;
-        new_logical_connection = conn;
+        new_logical_network = network;
       }
 
       priority += Connection::kPriorityStep;
-      if (conn->IsDefault()) {
+      if (network->IsDefault()) {
         old_logical = service;
-        old_logical_connection = conn;
+        old_logical_network = network;
         old_logical_priority = priority;
       } else {
-        conn->SetPriority(priority, new_physical == service);
+        network->SetPriority(priority, new_physical == service);
       }
     }
   }
 
   if (old_logical && old_logical != new_logical) {
-    old_logical_connection->SetPriority(old_logical_priority,
-                                        old_logical == new_physical);
+    old_logical_network->SetPriority(old_logical_priority,
+                                     old_logical == new_physical);
   }
   if (new_logical) {
     bool is_primary_physical = new_logical == new_physical;
-    new_logical_connection->SetPriority(Connection::kDefaultPriority,
-                                        is_primary_physical);
+    new_logical_network->SetPriority(Connection::kDefaultPriority,
+                                     is_primary_physical);
     auto device = FindDeviceFromService(new_logical);
     // Whenever the primary logical device is portalled (regardless of whether
     // it changed), restart portal detection. This will reset the backoff scheme
@@ -2274,8 +2274,7 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
   connectivity_test_portal_detectors_.clear();
 
   for (const auto& device : devices_) {
-    if (device->connection())
-      StartConnectivityTest(device->connection());
+    StartConnectivityTest(device->network());
   }
 }
 
@@ -2705,16 +2704,16 @@ DeviceRefPtr Manager::FindDeviceFromService(
   return nullptr;
 }
 
-Connection* Manager::FindConnectionFromService(
+Network* Manager::FindActiveNetworkFromService(
     const ServiceRefPtr& service) const {
   if (!service || !service->HasActiveConnection()) {
     return nullptr;
   }
   auto device = FindDeviceFromService(service);
-  if (!device) {
+  if (!device || !device->network()->HasConnectionObject()) {
     return nullptr;
   }
-  return device->connection();
+  return device->network();
 }
 
 ServiceRefPtr Manager::GetPrimaryPhysicalService() {
@@ -3234,10 +3233,10 @@ DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
 void Manager::DetectMultiHomedDevices() {
   std::map<std::string, std::vector<DeviceRefPtr>> subnet_buckets;
   for (const auto& device : devices_) {
-    const auto& connection = device->connection();
+    Network* network = device->network();
     std::string subnet_name;
-    if (connection) {
-      subnet_name = connection->GetSubnetName();
+    if (network->HasConnectionObject()) {
+      subnet_name = network->GetSubnetName();
     }
     if (subnet_name.empty()) {
       device->SetIsMultiHomed(false);
@@ -3280,8 +3279,12 @@ const std::vector<uint32_t>& Manager::GetUserTrafficUids() {
   return user_traffic_uids_;
 }
 
-void Manager::StartConnectivityTest(Connection* connection) {
-  std::string interface_name = connection->interface_name();
+void Manager::StartConnectivityTest(Network* network) {
+  // TODO(b/232177767): Check Network state instead.
+  if (!network->HasConnectionObject()) {
+    return;
+  }
+  std::string interface_name = network->interface_name();
   auto portal_detector = std::make_unique<PortalDetector>(
       dispatcher(), metrics_,
       base::BindRepeating(&Manager::ConnectivityTestCallback,
@@ -3290,8 +3293,8 @@ void Manager::StartConnectivityTest(Connection* connection) {
       connectivity_test_portal_detectors_
           .insert(std::make_pair(interface_name, std::move(portal_detector)))
           .first;
-  if (!iter->second->Start(GetProperties(), interface_name, connection->local(),
-                           connection->dns_servers())) {
+  if (!iter->second->Start(GetProperties(), interface_name, network->local(),
+                           network->dns_servers())) {
     LOG(WARNING) << "Failed to start connectivity test for interface: "
                  << interface_name;
   } else {

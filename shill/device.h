@@ -22,7 +22,6 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
-#include "shill/connection.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -197,8 +196,9 @@ class Device : public base::RefCounted<Device> {
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyString(Error* error);
 
-  // TODO(b/232177767): Expose Network directly instead.
-  mockable Connection* connection() const { return network_->connection(); };
+  // Currently, Network object has the same lifetime as Device, and thus this
+  // getter should never return nullptr.
+  Network* network() const { return network_.get(); }
 
   IPConfig* ipconfig() const { return ipconfig_.get(); }
   IPConfig* ip6config() const { return ip6config_.get(); }

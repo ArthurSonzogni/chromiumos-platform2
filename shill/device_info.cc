@@ -43,7 +43,6 @@
 #include <chromeos/constants/vm_tools.h>
 #include <re2/re2.h>
 
-#include "shill/connection.h"
 #include "shill/device.h"
 #include "shill/ethernet/ethernet.h"
 #include "shill/ethernet/virtio_ethernet.h"
@@ -56,6 +55,7 @@
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/net/shill_time.h"
+#include "shill/network/network.h"
 #include "shill/power_manager.h"
 #include "shill/routing_table.h"
 #include "shill/vpn/vpn_provider.h"
@@ -1413,7 +1413,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
     device->OnIPv6AddressChanged(GetPrimaryIPv6Address(interface_index));
   }
 
-  if (device->connection()) {
+  if (device->network()->HasConnectionObject()) {
     // Connection::UpdateRoutingPolicy uses DeviceInfo::GetAddresses to
     // determine an interface's assigned addresses. Thus a modification to
     // |address_list| should cause UpdateRoutingPolicy to retrigger.
@@ -1422,7 +1422,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
     // configuration for a Connection (which it necessarily cannot currently do
     // when an interface has both IPv4 and v6), then Connection will no longer
     // need to rely on DeviceInfo and this can be removed.
-    device->connection()->UpdateRoutingPolicy();
+    device->network()->UpdateRoutingPolicy();
   }
 }
 

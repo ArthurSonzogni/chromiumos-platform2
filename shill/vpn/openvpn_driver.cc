@@ -20,7 +20,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/certificate_file.h"
-#include "shill/connection.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/ipconfig.h"

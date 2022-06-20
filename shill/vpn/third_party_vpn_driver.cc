@@ -19,7 +19,6 @@
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/error.h"

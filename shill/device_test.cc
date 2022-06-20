@@ -545,7 +545,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
   EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _)).Times(0);
   OnDHCPFailure();
   // Verify connection not teardown.
-  EXPECT_NE(device_->connection(), nullptr);
+  // TODO(b/232177767): Check Network state instead.
+  EXPECT_TRUE(device_->network()->HasConnectionObject());
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
@@ -1105,7 +1106,8 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
 
   // IPv6 configuration update with non-IPv6 connection, no connection update.
-  EXPECT_NE(device_->connection(), nullptr);
+  // TODO(b/232177767): Check Network state instead.
+  EXPECT_TRUE(device_->network()->HasConnectionObject());
   IPAddress address1(IPAddress::kFamilyIPv6);
   const char kAddress1[] = "fe80::1aa9:5ff:abcd:1231";
   ASSERT_TRUE(address1.SetAddressFromString(kAddress1));
