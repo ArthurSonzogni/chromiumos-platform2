@@ -1147,8 +1147,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   // Used by tests for link status (L2 failure, reliability).
   void SetupConnectionAndIPConfig(const std::string& ipv4_gateway_address) {
-    wifi_->network_->set_connection_for_testing(
-        std::make_unique<MockConnection>(device_info()));
     auto ipconfig =
         std::make_unique<MockIPConfig>(control_interface(), kDeviceName);
     // We use ReturnRef() below for this object so use `static` here.

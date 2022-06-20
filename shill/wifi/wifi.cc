@@ -4132,11 +4132,6 @@ void WiFi::OnNeighborReachabilityEvent(
   if (role == EventSignal::DNS_SERVER) {
     return;
   }
-  if (!network()->HasConnectionObject()) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": No active network. Skipped.";
-    return;
-  }
   if (!(ipconfig() &&
         ip_address.ToString() == ipconfig()->properties().gateway) &&
       !(ip6config() &&
