@@ -77,7 +77,6 @@ struct sl_context {
   struct sl_linux_explicit_synchronization* linux_explicit_synchronization;
   struct sl_keyboard_extension* keyboard_extension;
   struct sl_text_input_manager* text_input_manager;
-  struct sl_xdg_output_manager* xdg_output_manager;
 #ifdef GAMEPAD_SUPPORT
   struct sl_gaming_input_manager* gaming_input_manager;
 #endif
