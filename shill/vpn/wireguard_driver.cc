@@ -694,8 +694,8 @@ void WireGuardDriver::ReportConnectionMetrics() {
 
 // static
 bool WireGuardDriver::IsSupported() {
-  // WireGuard is current supported on kernel version >= 5.10
-  return VPNUtil::CheckKernelVersion(base::Version("5.10"));
+  // WireGuard is current supported on kernel version >= 5.4
+  return VPNUtil::CheckKernelVersion(base::Version("5.4"));
 }
 
 }  // namespace shill
