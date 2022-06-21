@@ -4,6 +4,7 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm2_backend_impl.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -17,12 +18,17 @@
 #include <openssl/ec.h>
 
 #include <libhwsec-foundation/crypto/big_num_util.h>
+#include <trunks/authorization_delegate.h>
+#include <trunks/error_codes.h>
+#include <trunks/hmac_session.h>
+#include <trunks/openssl_utility.h>
+#include <trunks/policy_session.h>
+#include <trunks/tpm_generated.h>
+#include <trunks/tpm_utility.h>
+#include <trunks/trunks_factory.h>
+#include <trunks/trunks_factory_impl.h>
+
 #include "cryptohome/tpm2_impl.h"
-#include "trunks/error_codes.h"
-#include "trunks/openssl_utility.h"
-#include "trunks/tpm_generated.h"
-#include "trunks/tpm_utility.h"
-#include "trunks/trunks_factory.h"
 
 using ::hwsec_foundation::BigNumToSecureBlob;
 using ::hwsec_foundation::CreateBigNum;
@@ -32,6 +38,77 @@ using ::hwsec_foundation::ScopedBN_CTX;
 
 namespace cryptohome {
 namespace cryptorecovery {
+namespace {
+
+std::map<uint32_t, std::string> ToStrPcrMap(
+    const std::map<uint32_t, brillo::Blob>& pcr_map) {
+  std::map<uint32_t, std::string> str_pcr_map;
+  for (const auto& [index, value] : pcr_map) {
+    str_pcr_map[index] = brillo::BlobToString(value);
+  }
+  return str_pcr_map;
+}
+
+bool UpdatePolicyPcrOr(const std::string& obfuscated_username,
+                       std::string* policy_digest,
+                       trunks::PolicySession* policy_session,
+                       Tpm2Impl* tpm2_impl) {
+  // Obtain the Trunks context for sending TPM commands.
+  Tpm2Impl::TrunksClientContext* trunks = nullptr;
+  if (!tpm2_impl->GetTrunksContext(&trunks)) {
+    LOG(ERROR) << "Failed to get trunks context";
+    return false;
+  }
+  // Calculate policy digests for each of the sets of PCR restrictions
+  // separately.
+  std::map<uint32_t, brillo::Blob> default_pcr_map =
+      tpm2_impl->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false);
+  std::map<uint32_t, std::string> str_default_pcr_map =
+      ToStrPcrMap(default_pcr_map);
+  std::map<uint32_t, brillo::Blob> extended_pcr_map =
+      tpm2_impl->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true);
+  std::map<uint32_t, std::string> str_extended_pcr_map =
+      ToStrPcrMap(extended_pcr_map);
+  std::vector<std::string> pcr_policy_digests;
+
+  std::string extended_pcr_policy_digest;
+  trunks::TPM_RC tpm_result = trunks->tpm_utility->GetPolicyDigestForPcrValues(
+      str_extended_pcr_map, false, &extended_pcr_policy_digest);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting extended PCR policy digest: "
+               << trunks::GetErrorString(tpm_result);
+    return false;
+  }
+  pcr_policy_digests.push_back(extended_pcr_policy_digest);
+
+  std::string default_pcr_policy_digest;
+  tpm_result = trunks->tpm_utility->GetPolicyDigestForPcrValues(
+      str_default_pcr_map, false, &default_pcr_policy_digest);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting default PCR policy digest: "
+               << trunks::GetErrorString(tpm_result);
+    return false;
+  }
+  pcr_policy_digests.push_back(default_pcr_policy_digest);
+
+  // Apply PolicyOR for restricting to the disjunction of the specified sets of
+  // PCR restrictions.
+  tpm_result = policy_session->PolicyOR(pcr_policy_digests);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to logical disjunction of PCRs: "
+               << trunks::GetErrorString(tpm_result);
+    return false;
+  }
+  tpm_result = policy_session->GetDigest(policy_digest);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: "
+               << trunks::GetErrorString(tpm_result);
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
 
 RecoveryCryptoTpm2BackendImpl::RecoveryCryptoTpm2BackendImpl(
     Tpm2Impl* tpm2_impl)
@@ -137,13 +214,30 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     LOG(ERROR) << "Invalid tpm2 curve id";
     return false;
   }
+
+  // Generate policy digest
+  std::unique_ptr<trunks::PolicySession> trial_session =
+      trunks->factory->GetTrialSession();
+  tpm_result = trial_session->StartUnboundSession(
+      /*salted=*/false, /*enable_encryption=*/false);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Start unbound session failed: "
+               << trunks::GetErrorString(tpm_result);
+    return false;
+  }
+  std::string policy_digest;
+  if (!UpdatePolicyPcrOr(obfuscated_username, &policy_digest,
+                         trial_session.get(), tpm2_impl_)) {
+    LOG(ERROR) << "Get policy digest from PCR map failed.";
+    return false;
+  }
+
   // Encrypt its own private key via the TPM2_Import command.
   std::string encrypted_own_priv_key_string;
-  tpm_result = trunks->tpm_utility->ImportECCKey(
+  tpm_result = trunks->tpm_utility->ImportECCKeyWithPolicyDigest(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, tpm_curve_id,
       pub_point_x.to_string(), pub_point_y.to_string(),
-      own_priv_key.to_string(),
-      /*password=*/"", hmac_session->GetDelegate(),
+      own_priv_key.to_string(), policy_digest, hmac_session->GetDelegate(),
       &encrypted_own_priv_key_string);
   if (tpm_result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to import its own private key into TPM: "
@@ -224,12 +318,46 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
   trunks::TPMS_ECC_POINT tpm_others_pub_point = {
       trunks::Make_TPM2B_ECC_PARAMETER(others_pub_point_x.to_string()),
       trunks::Make_TPM2B_ECC_PARAMETER(others_pub_point_y.to_string())};
+
+  // Set PCR value to policy
+  std::unique_ptr<trunks::PolicySession> policy_session =
+      trunks->factory->GetPolicySession();
+  tpm_result = policy_session->StartUnboundSession(
+      /*salted=*/true, /*enable_encryption=*/false);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to start policy session: "
+               << trunks::GetErrorString(tpm_result);
+    return nullptr;
+  }
+  std::string pcr_value;
+  tpm_result = trunks->tpm_utility->ReadPCR(kTpmSingleUserPCR, &pcr_value);
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to read PCR value: "
+               << trunks::GetErrorString(tpm_result);
+    return nullptr;
+  }
+  tpm_result = trunks->tpm_utility->AddPcrValuesToPolicySession(
+      std::map<uint32_t, std::string>({{kTpmSingleUserPCR, pcr_value}}),
+      /*use_auth_value=*/false, policy_session.get());
+  if (tpm_result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to add PCR map: "
+               << trunks::GetErrorString(tpm_result);
+    return nullptr;
+  }
+
+  std::string policy_digest;
+  if (!UpdatePolicyPcrOr(obfuscated_username, &policy_digest,
+                         policy_session.get(), tpm2_impl_)) {
+    LOG(ERROR) << "Get policy digest from PCR map failed.";
+    return nullptr;
+  }
+
   // Perform the multiplication of the destination share and the other party's
   // public point via the TPM2_ECDH_ZGen command.
   trunks::TPM2B_ECC_POINT tpm_point_dh;
   tpm_result = trunks->tpm_utility->ECDHZGen(
       key_handle, trunks::Make_TPM2B_ECC_POINT(tpm_others_pub_point),
-      hmac_session->GetDelegate(), &tpm_point_dh);
+      policy_session->GetDelegate(), &tpm_point_dh);
   if (tpm_result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "ECDH_ZGen failed: " << trunks::GetErrorString(tpm_result);
     return nullptr;

@@ -111,6 +111,14 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       const std::string& password,
                       AuthorizationDelegate* delegate,
                       std::string* key_blob) override;
+  TPM_RC ImportECCKeyWithPolicyDigest(AsymmetricKeyUsage key_type,
+                                      TPMI_ECC_CURVE curve_id,
+                                      const std::string& public_point_x,
+                                      const std::string& public_point_y,
+                                      const std::string& private_value,
+                                      const std::string& policy_digest,
+                                      AuthorizationDelegate* delegate,
+                                      std::string* key_blob) override;
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                           int modulus_bits,
                           uint32_t public_exponent,

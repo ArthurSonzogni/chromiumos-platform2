@@ -18,6 +18,7 @@
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <trunks/mock_authorization_delegate.h>
 #include <trunks/mock_hmac_session.h>
+#include <trunks/mock_policy_session.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_constants.h>
@@ -49,6 +50,8 @@ class RecoveryCryptoTpm2BackendTest : public testing::Test {
   RecoveryCryptoTpm2BackendTest() {
     trunks_factory_.set_tpm_utility(&mock_tpm_utility_);
     trunks_factory_.set_hmac_session(&mock_hmac_session_);
+    trunks_factory_.set_policy_session(&mock_policy_session_);
+    trunks_factory_.set_trial_session(&mock_trial_session_);
     auto hwsec = std::make_unique<hwsec::MockCryptohomeFrontend>();
     hwsec_ = hwsec.get();
     tpm_ = std::make_unique<Tpm2Impl>(std::move(hwsec), &trunks_factory_,
@@ -75,6 +78,8 @@ class RecoveryCryptoTpm2BackendTest : public testing::Test {
   NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
   NiceMock<trunks::MockHmacSession> mock_hmac_session_;
+  NiceMock<trunks::MockPolicySession> mock_policy_session_;
+  NiceMock<trunks::MockPolicySession> mock_trial_session_;
   NiceMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility_;
 
   ScopedBN_CTX context_;
@@ -100,8 +105,18 @@ TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeySuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .WillOnce(Return(&mock_authorization_delegate_));
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(false, false))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
+      .Times(Exactly(2))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trial_session_, PolicyOR(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
   std::string expected_encrypted_own_priv_key("encrypted_private_key");
-  EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_,
+              ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<7>(expected_encrypted_own_priv_key),
                       Return(TPM_RC_SUCCESS)));
 
@@ -124,7 +139,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .Times(Exactly(0));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
-  EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(false, false))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_trial_session_, PolicyOR(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_trial_session_, GetDigest(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_,
+              ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .Times(Exactly(0));
 
   brillo::SecureBlob encrypted_privated_key;
@@ -145,7 +167,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeyWithSessionFailure) {
   EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
-  EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(false, false))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_trial_session_, PolicyOR(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_trial_session_, GetDigest(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_,
+              ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .Times(Exactly(0));
 
   brillo::SecureBlob encrypted_privated_key;
@@ -167,7 +196,17 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .WillOnce(Return(&mock_authorization_delegate_));
-  EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(false, false))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
+      .Times(Exactly(2))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trial_session_, PolicyOR(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_,
+              ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
 
   brillo::SecureBlob encrypted_privated_key;
@@ -203,9 +242,22 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
-      .Times(Exactly(2))
+      .Times(Exactly(1))
       .WillRepeatedly(Return(&mock_authorization_delegate_));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true, false))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, GetDelegate())
+      .Times(Exactly(1))
+      .WillRepeatedly(Return(&mock_authorization_delegate_));
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(_, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, AddPcrValuesToPolicySession(_, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, PolicyOR(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, GetDigest(_))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(trunks::Make_TPM2B_ECC_POINT(
@@ -236,6 +288,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
       .Times(Exactly(0));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _)).Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true, false))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, GetDelegate()).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(_, _)).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, AddPcrValuesToPolicySession(_, _, _))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, PolicyOR(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, GetDigest(_)).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _)).Times(Exactly(0));
 
   // the input key pair is not on the elliptic curve 521
@@ -261,6 +321,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _)).Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true, false))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, GetDelegate()).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(_, _)).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, AddPcrValuesToPolicySession(_, _, _))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, PolicyOR(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, GetDigest(_)).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _)).Times(Exactly(0));
 
   crypto::ScopedEC_POINT shared_secret_point =
@@ -287,6 +355,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
       .WillRepeatedly(Return(&mock_authorization_delegate_));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true, false))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, GetDelegate()).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(_, _)).Times(Exactly(0));
+  EXPECT_CALL(mock_tpm_utility_, AddPcrValuesToPolicySession(_, _, _))
+      .Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, PolicyOR(_)).Times(Exactly(0));
+  EXPECT_CALL(mock_policy_session_, GetDigest(_)).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _)).Times(Exactly(0));
 
   crypto::ScopedEC_POINT shared_secret_point =
@@ -310,9 +386,22 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
-      .Times(Exactly(2))
+      .Times(Exactly(1))
       .WillRepeatedly(Return(&mock_authorization_delegate_));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true, false))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, GetDelegate())
+      .Times(Exactly(1))
+      .WillRepeatedly(Return(&mock_authorization_delegate_));
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(_, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, AddPcrValuesToPolicySession(_, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, PolicyOR(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, GetDigest(_))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));

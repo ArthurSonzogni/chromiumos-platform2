@@ -1025,6 +1025,7 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
   public_area.parameters.rsa_detail.key_bits = modulus.size() * 8;
   public_area.parameters.rsa_detail.exponent = public_exponent;
   public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(modulus);
+  public_area.object_attributes = kUserWithAuth;
 
   TPMT_SENSITIVE in_sensitive;
   in_sensitive.sensitive_type = TPM_ALG_RSA;
@@ -1046,6 +1047,7 @@ TPM_RC TpmUtilityImpl::ImportECCKey(AsymmetricKeyUsage key_type,
   public_area.parameters.ecc_detail.curve_id = curve_id;
   public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(public_point_x);
   public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(public_point_y);
+  public_area.object_attributes = kUserWithAuth;
 
   TPMT_SENSITIVE in_sensitive;
   in_sensitive.sensitive_type = TPM_ALG_ECC;
@@ -1053,6 +1055,38 @@ TPM_RC TpmUtilityImpl::ImportECCKey(AsymmetricKeyUsage key_type,
 
   return ImportKeyInner(key_type, public_area, in_sensitive, password, delegate,
                         key_blob);
+}
+
+TPM_RC TpmUtilityImpl::ImportECCKeyWithPolicyDigest(
+    AsymmetricKeyUsage key_type,
+    TPMI_ECC_CURVE curve_id,
+    const std::string& public_point_x,
+    const std::string& public_point_y,
+    const std::string& private_value,
+    const std::string& policy_digest,
+    AuthorizationDelegate* delegate,
+    std::string* key_blob) {
+  if (policy_digest.empty()) {
+    TPM_RC result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << __func__ << ": This method needs a non-empty policy digest: "
+               << GetErrorString(result);
+    return result;
+  }
+
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
+  public_area.parameters.ecc_detail.curve_id = curve_id;
+  public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(public_point_x);
+  public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(public_point_y);
+  // Set policy digest
+  public_area.auth_policy = Make_TPM2B_DIGEST(policy_digest);
+  public_area.object_attributes = kAdminWithPolicy;
+
+  TPMT_SENSITIVE in_sensitive;
+  in_sensitive.sensitive_type = TPM_ALG_ECC;
+  in_sensitive.sensitive.ecc = Make_TPM2B_ECC_PARAMETER(private_value);
+
+  return ImportKeyInner(key_type, public_area, in_sensitive, /*password=*/"",
+                        delegate, key_blob);
 }
 
 TPM_RC TpmUtilityImpl::ImportKeyInner(AsymmetricKeyUsage key_type,
@@ -1078,7 +1112,10 @@ TPM_RC TpmUtilityImpl::ImportKeyInner(AsymmetricKeyUsage key_type,
     return result;
   }
 
-  public_area.object_attributes = kUserWithAuth | kNoDA;
+  // Fill the rest part of public area of the key
+  // Notice that the |object_attributes| field may be prefilled, so just add
+  // new setting by OR, but don't overwrite it
+  public_area.object_attributes |= kNoDA;
   switch (key_type) {
     case AsymmetricKeyUsage::kDecryptKey:
       public_area.object_attributes |= kDecrypt;
