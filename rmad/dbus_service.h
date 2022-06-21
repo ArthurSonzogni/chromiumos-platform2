@@ -174,8 +174,6 @@ class DBusService : public brillo::DBusServiceDaemon {
       hardware_verification_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<UpdateRoFirmwareStatus>>
       update_ro_firmware_status_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationSetupInstruction>>
-      calibration_setup_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationOverallStatus>>
       calibration_overall_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationComponentStatus>>
