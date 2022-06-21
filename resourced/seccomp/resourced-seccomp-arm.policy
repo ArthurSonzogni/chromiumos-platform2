@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+_llseek: 1
 brk: 1
 clock_getres: 1
 clock_getres_time64: 1
@@ -31,7 +32,6 @@ getresuid32: 1
 getsockname: 1
 gettid: 1
 lseek: 1
-_llseek: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
