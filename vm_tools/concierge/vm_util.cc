@@ -497,14 +497,7 @@ bool ListUsbDevice(std::string socket_path,
 bool CrosvmDiskResize(std::string socket_path,
                       int disk_index,
                       uint64_t new_size) {
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg("disk");
-  crosvm.AddArg("resize");
-  crosvm.AddArg(std::to_string(disk_index));
-  crosvm.AddArg(std::to_string(new_size));
-  crosvm.AddArg(std::move(socket_path));
-  return crosvm.Run() == 0;
+  return crosvm_client_resize_disk(socket_path.c_str(), disk_index, new_size);
 }
 
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
