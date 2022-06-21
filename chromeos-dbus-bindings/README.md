@@ -231,9 +231,9 @@ class DBusAdaptor : public org::chromium::FrobinatorInterface,
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
     RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(cb);
+    dbus_object_.RegisterAsync(std::move(cb));
   }
 
   // org::chromium::FrobinatorInterface overrides.
