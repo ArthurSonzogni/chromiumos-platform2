@@ -1558,6 +1558,8 @@ bool Service::Init(
       {kRegisterVshSessionMethod, &Service::RegisterVshSession},
       {kGetVshSessionMethod, &Service::GetVshSession},
       {kFileSelectedMethod, &Service::FileSelected},
+      {kAttachUsbToContainerMethod, &Service::AttachUsbToContainer},
+      {kDetachUsbFromContainerMethod, &Service::DetachUsbFromContainer},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -3364,6 +3366,113 @@ std::unique_ptr<dbus::Response> Service::CancelUpgradeContainer(
           static_cast<int>(status))) {
     response.set_status(
         static_cast<CancelUpgradeContainerResponse::Status>(status));
+  }
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::AttachUsbToContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received AttachUsbToContainer request";
+
+  auto dbus_response = dbus::Response::FromMethodCall(method_call);
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  AttachUsbToContainerRequest request;
+  AttachUsbToContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    std::string error_reason =
+        "Unable to parse AttachUsbToContainerRequest from message";
+    LOG(ERROR) << error_reason;
+    response.set_status(AttachUsbToContainerResponse::FAILED);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    std::string error_reason = base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str());
+    LOG(ERROR) << error_reason;
+    response.set_status(AttachUsbToContainerResponse::FAILED);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  Container* container = vm->GetContainerForName(request.container_name());
+  if (!container) {
+    std::string error_reason = base::StringPrintf(
+        "requested container %s does not exist on VM %s",
+        request.container_name().c_str(), request.vm_name().c_str());
+    LOG(ERROR) << error_reason;
+    response.set_status(AttachUsbToContainerResponse::NO_SUCH_CONTAINER);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::AttachUsbToContainerStatus status =
+      vm->AttachUsbToContainer(container, request.port_num(), &error_msg);
+
+  response.set_status(AttachUsbToContainerResponse::UNKNOWN);
+  if (AttachUsbToContainerResponse::Status_IsValid(static_cast<int>(status))) {
+    response.set_status(
+        static_cast<AttachUsbToContainerResponse::Status>(status));
+  }
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::DetachUsbFromContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received DetachUsbFromContainer request";
+
+  auto dbus_response = dbus::Response::FromMethodCall(method_call);
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  DetachUsbFromContainerRequest request;
+  DetachUsbFromContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    std::string error_reason =
+        "Unable to parse DetachUsbFromContainerRequest from message";
+    LOG(ERROR) << error_reason;
+    response.set_status(DetachUsbFromContainerResponse::FAILED);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    std::string error_reason = base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str());
+    LOG(ERROR) << error_reason;
+    response.set_status(DetachUsbFromContainerResponse::FAILED);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::DetachUsbFromContainerStatus status =
+      vm->DetachUsbFromContainer(request.port_num(), &error_msg);
+
+  response.set_status(DetachUsbFromContainerResponse::UNKNOWN);
+  if (DetachUsbFromContainerResponse::Status_IsValid(
+          static_cast<int>(status))) {
+    response.set_status(
+        static_cast<DetachUsbFromContainerResponse::Status>(status));
   }
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);

@@ -66,6 +66,7 @@ enum ChromeOSError {
     FailedListUsb,
     FailedMetricsSend { exit_code: Option<i32> },
     FailedOpenPath(dbus::Error),
+    FailedAttachUsbToContainer(AttachUsbToContainerResponse_Status, String),
     FailedSendProblemReport(String, i32),
     FailedSetupContainerUser(SetUpLxdContainerUserResponse_Status, String),
     FailedSharePath(String),
@@ -133,6 +134,13 @@ impl fmt::Display for ChromeOSError {
             }
             FailedGetOpenPath(path) => write!(f, "failed to request OpenPath {}", path.display()),
             FailedGetVmInfo => write!(f, "failed to get vm info"),
+            FailedAttachUsbToContainer(s, reason) => {
+                write!(
+                    f,
+                    "failed to register shared USB device with container: `{:?}`: {}",
+                    s, reason
+                )
+            }
             FailedSendProblemReport(msg, error_code) => {
                 write!(f, "failed to send problem report: {} ({})", msg, error_code)
             }
@@ -1764,6 +1772,7 @@ impl Methods {
         bus: u8,
         device: u8,
         usb_fd: OwnedFd,
+        container_name: Option<&str>,
     ) -> Result<u8, Box<dyn Error>> {
         let mut request = AttachUsbDeviceRequest::new();
         request.owner_id = user_id_hash.to_owned();
@@ -1783,10 +1792,37 @@ impl Methods {
             DEFAULT_TIMEOUT_MS,
         )?;
 
-        if response.success {
-            Ok(response.guest_port as u8)
+        if !response.success {
+            return Err(FailedAttachUsb(response.reason).into());
+        }
+
+        let guest_port: u8 = response.guest_port as u8;
+
+        if let Some(container) = container_name {
+            let mut request = AttachUsbToContainerRequest::new();
+            request.owner_id = user_id_hash.to_owned();
+            request.container_name = container.to_owned();
+            request.vm_name = vm_name.to_owned();
+            request.port_num = guest_port as i32;
+
+            let response: AttachUsbToContainerResponse = self.sync_protobus(
+                Message::new_method_call(
+                    VM_CICERONE_SERVICE_NAME,
+                    VM_CICERONE_SERVICE_PATH,
+                    VM_CICERONE_INTERFACE,
+                    ATTACH_USB_TO_CONTAINER_METHOD,
+                )?,
+                &request,
+            )?;
+
+            match response.status {
+                AttachUsbToContainerResponse_Status::OK => Ok(guest_port),
+                _ => {
+                    Err(FailedAttachUsbToContainer(response.status, response.failure_reason).into())
+                }
+            }
         } else {
-            Err(FailedAttachUsb(response.reason).into())
+            Ok(guest_port)
         }
     }
 
@@ -2340,11 +2376,12 @@ impl Methods {
         user_id_hash: &str,
         bus: u8,
         device: u8,
+        container_name: Option<&str>,
     ) -> Result<u8, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let usb_file_path = format!("/dev/bus/usb/{:03}/{:03}", bus, device);
         let usb_fd = self.permission_broker_open_path(Path::new(&usb_file_path))?;
-        self.attach_usb(vm_name, user_id_hash, bus, device, usb_fd)
+        self.attach_usb(vm_name, user_id_hash, bus, device, usb_fd, container_name)
     }
 
     pub fn usb_detach(

@@ -715,6 +715,14 @@ class Service final {
   // Handles a notification from Chrome in response to a SelectFile() request.
   std::unique_ptr<dbus::Response> FileSelected(dbus::MethodCall* method_call);
 
+  // Handles a request to attach a USB port to a container.
+  std::unique_ptr<dbus::Response> AttachUsbToContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to detach a USB port from a container.
+  std::unique_ptr<dbus::Response> DetachUsbFromContainer(
+      dbus::MethodCall* method_call);
+
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
                            const std::string& vm_name,

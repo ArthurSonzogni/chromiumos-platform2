@@ -128,7 +128,9 @@ impl fmt::Display for VmcError {
             ),
             ExpectedVmAndPath => write!(f, "expected <vm name> <path>"),
             ExpectedVmAndSize => write!(f, "expected <vm name> <size>"),
-            ExpectedVmBusDevice => write!(f, "expected <vm name> <bus>:<device>"),
+            ExpectedVmBusDevice => {
+                write!(f, "expected <vm name> <bus>:<device> [<container name>]")
+            }
             ExpectedNoArgs => write!(f, "expected no arguments"),
             ExpectedU8Bus => write!(f, "expected <bus> to fit into an 8-bit integer"),
             ExpectedU8Device => write!(f, "expected <device> to fit into an 8-bit integer"),
@@ -782,8 +784,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn usb_attach(&mut self) -> VmcResult {
-        let (vm_name, bus_device) = match self.args.len() {
-            2 => (self.args[0], self.args[1]),
+        let (vm_name, bus_device, container_name) = match self.args.len() {
+            3 => (self.args[0], self.args[1], Some(self.args[2])),
+            2 => (self.args[0], self.args[1], None),
             _ => return Err(ExpectedVmBusDevice.into()),
         };
 
@@ -798,12 +801,25 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let user_id_hash = get_user_hash(self.environ)?;
 
-        let guest_port = try_command!(self.methods.usb_attach(vm_name, &user_id_hash, bus, device));
+        let guest_port = try_command!(self.methods.usb_attach(
+            vm_name,
+            &user_id_hash,
+            bus,
+            device,
+            container_name
+        ));
 
-        println!(
-            "usb device at bus={} device={} attached to vm {} at port={}",
-            bus, device, vm_name, guest_port
-        );
+        if let Some(container) = container_name {
+            println!(
+                "usb device at bus={} device={} attached to container {}:{} at port={}",
+                bus, device, vm_name, container, guest_port
+            );
+        } else {
+            println!(
+                "usb device at bus={} device={} attached to vm {} at port={}",
+                bus, device, vm_name, guest_port
+            );
+        }
 
         Ok(())
     }
@@ -898,7 +914,7 @@ const USAGE: &str = r#"
      share <vm name> <path> |
      unshare <vm name> <path> |
      container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [--privileged <true/false>] [--timeout PARAM]
-     usb-attach <vm name> <bus>:<device> |
+     usb-attach <vm name> <bus>:<device> [<container name>] |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
      pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
@@ -1186,6 +1202,7 @@ mod tests {
             &["vmc", "share", "termina", "my-folder"],
             &["vmc", "unshare", "termina", "my-folder"],
             &["vmc", "usb-attach", "termina", "1:2"],
+            &["vmc", "usb-attach", "termina", "1:2", "penguin"],
             &["vmc", "usb-detach", "termina", "5"],
             &["vmc", "usb-detach", "termina", "5"],
             &["vmc", "usb-list", "termina"],
@@ -1285,6 +1302,8 @@ mod tests {
             &["vmc", "usb-attach", "termina"],
             &["vmc", "usb-attach", "termina", "whatever"],
             &["vmc", "usb-attach", "termina", "1:2:1dee:93d2"],
+            &["vmc", "usb-attach", "termina", "whatever", "whatever"],
+            &["vmc", "usb-attach", "termina", "1:2", "penguin", "whatever"],
             &["vmc", "usb-detach"],
             &["vmc", "usb-detach", "not-a-number"],
             &["vmc", "usb-list"],

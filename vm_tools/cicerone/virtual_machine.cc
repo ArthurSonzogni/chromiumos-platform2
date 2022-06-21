@@ -870,6 +870,97 @@ VirtualMachine::CancelUpgradeContainer(Container* container,
   }
 }
 
+VirtualMachine::AttachUsbToContainerStatus VirtualMachine::AttachUsbToContainer(
+    const Container* container, uint32_t port_num, std::string* out_error) {
+  DCHECK(container);
+  DCHECK(out_error);
+
+  if (IsContainerless()) {
+    *out_error = "VM does not host containers";
+    return VirtualMachine::AttachUsbToContainerStatus::FAILED;
+  } else if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::AttachUsbToContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::AttachUsbToContainerRequest request;
+  vm_tools::tremplin::AttachUsbToContainerResponse response;
+
+  request.set_container_name(container->name());
+  request.set_port_num(port_num);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->AttachUsbToContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "AttachUsbToContainer RPC failed: " << status.error_message()
+               << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::AttachUsbToContainerStatus::FAILED;
+  }
+  out_error->assign(response.failure_reason());
+  switch (response.status()) {
+    case tremplin::AttachUsbToContainerResponse::UNKNOWN:
+      return VirtualMachine::AttachUsbToContainerStatus::UNKNOWN;
+    case tremplin::AttachUsbToContainerResponse::OK:
+      return VirtualMachine::AttachUsbToContainerStatus::OK;
+    case tremplin::AttachUsbToContainerResponse::NO_SUCH_CONTAINER:
+      return VirtualMachine::AttachUsbToContainerStatus::NO_SUCH_CONTAINER;
+    case tremplin::AttachUsbToContainerResponse::FAILED:
+      return VirtualMachine::AttachUsbToContainerStatus::FAILED;
+    default:
+      return VirtualMachine::AttachUsbToContainerStatus::UNKNOWN;
+  }
+}
+
+VirtualMachine::DetachUsbFromContainerStatus
+VirtualMachine::DetachUsbFromContainer(uint32_t port_num,
+                                       std::string* out_error) {
+  DCHECK(out_error);
+
+  if (IsContainerless()) {
+    *out_error = "VM does not host containers";
+    return VirtualMachine::DetachUsbFromContainerStatus::FAILED;
+  } else if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::DetachUsbFromContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::DetachUsbFromContainerRequest request;
+  vm_tools::tremplin::DetachUsbFromContainerResponse response;
+
+  request.set_port_num(port_num);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->DetachUsbFromContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "DetachUsbFromContainer RPC failed: "
+               << status.error_message() << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::DetachUsbFromContainerStatus::FAILED;
+  }
+  out_error->assign(response.failure_reason());
+  switch (response.status()) {
+    case tremplin::DetachUsbFromContainerResponse::UNKNOWN:
+      return VirtualMachine::DetachUsbFromContainerStatus::UNKNOWN;
+    case tremplin::DetachUsbFromContainerResponse::OK:
+      return VirtualMachine::DetachUsbFromContainerStatus::OK;
+    case tremplin::DetachUsbFromContainerResponse::FAILED:
+      return VirtualMachine::DetachUsbFromContainerStatus::FAILED;
+    default:
+      return VirtualMachine::DetachUsbFromContainerStatus::UNKNOWN;
+  }
+}
+
 VirtualMachine::StartLxdStatus VirtualMachine::StartLxd(
     bool reset_lxd_db, std::string* out_error) {
   DCHECK(out_error);

@@ -892,6 +892,62 @@ message GetDebugInfoResponse {
   string debug_information = 1;
 }
 
+// Request Tremplin to attach a USB device on a given port to a container.
+message AttachUsbToContainerRequest {
+  // Attach USB devices on this port.
+  int32 port_num = 1;
+
+  // Name of the container to attach to.
+  string container_name = 2;
+}
+
+message AttachUsbToContainerResponse {
+  enum Status {
+    // The status is unknown.
+    UNKNOWN = 0;
+
+    // The USB port will be attached.
+    OK = 1;
+
+    // The container doesn't exist.
+    NO_SUCH_CONTAINER = 2;
+
+    // Failed to attach.
+    FAILED = 3;
+  }
+
+  // The status.
+  Status status = 1;
+
+  // Human-readable failure reason.
+  string failure_reason = 2;
+}
+
+// Request Tremplin to detach a USB device on a given port from its container.
+message DetachUsbFromContainerRequest {
+  // Detach USB devices on this port.
+  int32 port_num = 1;
+}
+
+message DetachUsbFromContainerResponse {
+  enum Status {
+    // The status is unknown.
+    UNKNOWN = 0;
+
+    // The USB port will be detached.
+    OK = 1;
+
+    // Failed to detach.
+    FAILED = 2;
+  }
+
+  // The status.
+  Status status = 1;
+
+  // Human-readable failure reason.
+  string failure_reason = 2;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc StartLxd(StartLxdRequest) returns (StartLxdResponse);
@@ -918,6 +974,10 @@ service Tremplin {
   rpc HostNetworkChanged(HostNetworkChangedRequest)
       returns (HostNetworkChangedResponse);
   rpc GetDebugInfo(GetDebugInfoRequest) returns (GetDebugInfoResponse);
+  rpc AttachUsbToContainer(AttachUsbToContainerRequest)
+      returns (AttachUsbToContainerResponse);
+  rpc DetachUsbFromContainer(DetachUsbFromContainerRequest)
+      returns (DetachUsbFromContainerResponse);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.

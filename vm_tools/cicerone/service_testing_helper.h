@@ -79,6 +79,8 @@ class ServiceTestingHelper {
     kRegisterVshSession,
     kGetVshSession,
     kFileSelected,
+    kAttachUsbToContainer,
+    kDetachUsbFromContainer,
 
     kNumDbusCalls
   };

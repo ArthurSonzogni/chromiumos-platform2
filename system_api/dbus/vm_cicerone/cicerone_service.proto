@@ -1732,3 +1732,71 @@ message FileSelectedSignal {
   // Files selected by user in SelectFile dialog.
   repeated string files = 5;
 }
+
+// Sent by chrome to attach a USB device in a VM to a container.
+message AttachUsbToContainerRequest {
+  // Name of the VM.
+  string vm_name = 1;
+
+  // Name of the container within the VM to attach to.
+  string container_name = 2;
+
+  // The owner of the VM and container.
+  string owner_id = 3;
+
+  // Attach USB devices on to this port.
+  int32 port_num = 4;
+}
+
+message AttachUsbToContainerResponse {
+  enum Status {
+    // The status is unknown.
+    UNKNOWN = 0;
+
+    // The USB port will be attached.
+    OK = 1;
+
+    // The container doesn't exist.
+    NO_SUCH_CONTAINER = 2;
+
+    // Failed to attach.
+    FAILED = 3;
+  }
+
+  // The status.
+  Status status = 1;
+
+  // Human-readable failure reason.
+  string failure_reason = 2;
+}
+
+// Sent by chrome to detach a USB device in a VM from a container.
+message DetachUsbFromContainerRequest {
+  // Name of the VM.
+  string vm_name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+
+  // Detach USB devices on to this port.
+  int32 port_num = 3;
+}
+
+message DetachUsbFromContainerResponse {
+  enum Status {
+    // The status is unknown.
+    UNKNOWN = 0;
+
+    // The USB port will be detached.
+    OK = 1;
+
+    // Failed to detach.
+    FAILED = 2;
+  }
+
+  // The status.
+  Status status = 1;
+
+  // Human-readable failure reason.
+  string failure_reason = 2;
+}

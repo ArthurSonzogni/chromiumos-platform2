@@ -535,6 +535,10 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kRegisterVshSession].method_name = kRegisterVshSessionMethod;
   dbus_callbacks_[kGetVshSession].method_name = kGetVshSessionMethod;
   dbus_callbacks_[kFileSelected].method_name = kFileSelectedMethod;
+  dbus_callbacks_[kAttachUsbToContainer].method_name =
+      kAttachUsbToContainerMethod;
+  dbus_callbacks_[kDetachUsbFromContainer].method_name =
+      kDetachUsbFromContainerMethod;
 
   // Check we didn't forget any.
   for (const auto& callback_info : dbus_callbacks_) {

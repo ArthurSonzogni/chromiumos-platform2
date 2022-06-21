@@ -134,6 +134,19 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class AttachUsbToContainerStatus {
+    UNKNOWN,
+    OK,
+    NO_SUCH_CONTAINER,
+    FAILED,
+  };
+
+  enum class DetachUsbFromContainerStatus {
+    UNKNOWN,
+    OK,
+    FAILED,
+  };
+
   // Info about the LXD container.
   struct LxdContainerInfo {
     // The IPv4 address of the container in network byte order.
@@ -329,6 +342,15 @@ class VirtualMachine {
 
   // Cancels a running container OS upgrade.
   CancelUpgradeContainerStatus CancelUpgradeContainer(Container* container,
+                                                      std::string* out_error);
+
+  // Attaches a USB device on a given port to a container.
+  AttachUsbToContainerStatus AttachUsbToContainer(const Container* container,
+                                                  uint32_t port_num,
+                                                  std::string* out_error);
+
+  // Detaches a USB device on a given port from a container.
+  DetachUsbFromContainerStatus DetachUsbFromContainer(uint32_t port_num,
                                                       std::string* out_error);
 
   // Tells Tremplin to start LXD.
