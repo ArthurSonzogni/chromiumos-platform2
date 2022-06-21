@@ -248,6 +248,8 @@ class ShillClient {
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev);
 std::ostream& operator<<(std::ostream& stream,
                          const ShillClient::Device::Type type);
+std::ostream& operator<<(std::ostream& stream,
+                         const ShillClient::IPConfig& ipconfig);
 
 }  // namespace patchpanel
 

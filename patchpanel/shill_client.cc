@@ -53,6 +53,12 @@ const std::string DeviceTypeName(ShillClient::Device::Type type) {
   return it != enum2str.end() ? it->second : "Unknown";
 }
 
+// Returns |s| if it is not empty, otherwise returns |fallback|.
+// Useful for handling empty IP address literals when logging.
+const std::string& OrDefault(const std::string& s,
+                             const std::string& fallback) {
+  return !s.empty() ? s : fallback;
+}
 }  // namespace
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
@@ -370,8 +376,10 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     }
     const std::string& address = it->second.TryGet<std::string>();
     if (address.empty()) {
-      LOG(WARNING) << "[" << device
-                   << "]: IPConfig Address property was empty.";
+      // On IPv6 only networks, dhcp is expected to fail, nevertheless shill
+      // will still expose a mostly empty IPConfig object. On dual stack
+      // networks, the IPv6 configuration may be available before dhcp has
+      // finished. Avoid logging spurious WARNING messages in these two cases.
       continue;
     }
     auto ip_family = GetIpFamily(address);
@@ -551,6 +559,7 @@ void ShillClient::OnDevicePropertyChange(const std::string& device,
     // There is no IPConfig change, no need to run the handlers.
     return;
   }
+  LOG(INFO) << "[" << device << "]: IPConfig changed: " << ipconfig;
   auto old_ipconfig = old_ipconfig_it != device_ipconfigs_.end()
                           ? old_ipconfig_it->second
                           : IPConfig{};
@@ -582,4 +591,18 @@ std::ostream& operator<<(std::ostream& stream,
   return stream << DeviceTypeName(type);
 }
 
+std::ostream& operator<<(std::ostream& stream,
+                         const ShillClient::IPConfig& ipconfig) {
+  return stream << "{ ipv4_addr: "
+                << OrDefault(ipconfig.ipv4_address, "0.0.0.0") << "/"
+                << ipconfig.ipv4_prefix_length << ", ipv4_gateway: "
+                << OrDefault(ipconfig.ipv4_gateway, "0.0.0.0")
+                << ", ipv4_dns: ["
+                << base::JoinString(ipconfig.ipv4_dns_addresses, ",")
+                << "], ipv6_addr: " << OrDefault(ipconfig.ipv6_address, "::")
+                << "/" << ipconfig.ipv6_prefix_length
+                << ", ipv6_gateway: " << OrDefault(ipconfig.ipv6_gateway, "::")
+                << ", ipv6_dns: ["
+                << base::JoinString(ipconfig.ipv6_dns_addresses, ",") << "]}";
+}
 }  // namespace patchpanel
