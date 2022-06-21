@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <crosvm/crosvm_control.h>
+
 namespace vm_tools {
 namespace concierge {
 
@@ -23,19 +25,12 @@ enum UsbControlResponseType {
   ERROR,                // Format: "error <reason>"
 };
 
-// A device connected to guest kernel.
-struct UsbDevice {
-  uint8_t port;
-  uint16_t vid;
-  uint16_t pid;
-};
-
 // Response type from crosvm usb control commands.
 struct UsbControlResponse {
   UsbControlResponseType type;
-  std::string reason;              // type_ == ERROR
-  std::vector<UsbDevice> devices;  // type_ == DEVICES
-  uint8_t port;                    // type_ == OK
+  std::string reason;                   // type_ == ERROR
+  std::vector<UsbDeviceEntry> devices;  // type_ == DEVICES
+  uint8_t port;                         // type_ == OK
 };
 
 }  // namespace concierge

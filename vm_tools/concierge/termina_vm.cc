@@ -725,7 +725,7 @@ bool TerminaVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
                                               response);
 }
 
-bool TerminaVm::ListUsbDevice(std::vector<UsbDevice>* device) {
+bool TerminaVm::ListUsbDevice(std::vector<UsbDeviceEntry>* device) {
   return vm_tools::concierge::ListUsbDevice(GetVmSocketPath(), device);
 }
 

@@ -561,7 +561,7 @@ const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
   return balloon_policy_;
 }
 
-bool ArcVm::ListUsbDevice(std::vector<UsbDevice>* devices) {
+bool ArcVm::ListUsbDevice(std::vector<UsbDeviceEntry>* devices) {
   return vm_tools::concierge::ListUsbDevice(GetVmSocketPath(), devices);
 }
 

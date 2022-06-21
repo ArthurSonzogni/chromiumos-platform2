@@ -139,7 +139,8 @@ bool DetachUsbDevice(std::string socket_path,
                      UsbControlResponse* response);
 
 // Lists all usb devices attached to guest.
-bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* devices);
+bool ListUsbDevice(std::string socket_path,
+                   std::vector<UsbDeviceEntry>* devices);
 
 // Resizes the disk identified by |disk_index| to |new_size| in bytes.
 bool CrosvmDiskResize(std::string socket_path,

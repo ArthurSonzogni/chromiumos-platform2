@@ -3819,7 +3819,7 @@ std::unique_ptr<dbus::Response> Service::ListUsbDevices(
     return dbus_response;
   }
 
-  std::vector<UsbDevice> usb_list;
+  std::vector<UsbDeviceEntry> usb_list;
   if (!iter->second->ListUsbDevice(&usb_list)) {
     LOG(ERROR) << "Failed to list USB devices";
     writer.AppendProtoAsArrayOfBytes(response);
@@ -3828,8 +3828,8 @@ std::unique_ptr<dbus::Response> Service::ListUsbDevices(
   for (auto usb : usb_list) {
     UsbDeviceMessage* usb_proto = response.add_usb_devices();
     usb_proto->set_guest_port(usb.port);
-    usb_proto->set_vendor_id(usb.vid);
-    usb_proto->set_product_id(usb.pid);
+    usb_proto->set_vendor_id(usb.vendor_id);
+    usb_proto->set_product_id(usb.product_id);
   }
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);

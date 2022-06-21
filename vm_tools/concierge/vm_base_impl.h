@@ -62,7 +62,7 @@ class VmBaseImpl : public VmInterface {
                        int fd,
                        UsbControlResponse* response) override;
   bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
-  bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+  bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   void MakeRtVcpu() override;
 
  protected:

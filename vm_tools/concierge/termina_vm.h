@@ -217,7 +217,7 @@ class TerminaVm final : public VmBaseImpl {
                        int fd,
                        UsbControlResponse* response) override;
   bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
-  bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+  bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;
   vm_tools::concierge::DiskImageStatus ResizeDisk(

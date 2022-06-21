@@ -77,7 +77,7 @@ class PluginVm final : public VmBaseImpl {
                        int fd,
                        UsbControlResponse* response) override;
   bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
-  bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+  bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   bool SetResolvConfig(const std::vector<std::string>& nameservers,
                        const std::vector<std::string>& search_domains) override;
   bool SetTime(std::string* failure_reason) override { return true; }

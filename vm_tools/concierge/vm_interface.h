@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <crosvm/crosvm_control.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
@@ -116,7 +117,7 @@ class VmInterface {
   virtual bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) = 0;
 
   // List all usb devices attached to guest.
-  virtual bool ListUsbDevice(std::vector<UsbDevice>* devices) = 0;
+  virtual bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) = 0;
 
   // Returns true if this VM depends on external signals for suspend and resume.
   // The D-Bus suspend/resume messages from powerd, SuspendImminent and

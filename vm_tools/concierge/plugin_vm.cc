@@ -376,12 +376,12 @@ bool PluginVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
   return true;
 }
 
-bool PluginVm::ListUsbDevice(std::vector<UsbDevice>* device) {
+bool PluginVm::ListUsbDevice(std::vector<UsbDeviceEntry>* device) {
   device->resize(usb_devices_.size());
   std::transform(usb_devices_.begin(), usb_devices_.end(), device->begin(),
                  [](const auto& info) {
-                   UsbDevice d{};
-                   std::tie(d.vid, d.pid, d.port) = info;
+                   UsbDeviceEntry d{};
+                   std::tie(d.vendor_id, d.product_id, d.port) = info;
                    return d;
                  });
   return true;

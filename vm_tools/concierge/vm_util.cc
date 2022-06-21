@@ -112,10 +112,10 @@ bool ParseUsbControlResponse(base::StringPiece s,
       if (port > UINT8_MAX || vid > UINT16_MAX || pid > UINT16_MAX) {
         return false;
       }
-      UsbDevice device;
+      UsbDeviceEntry device;
       device.port = port;
-      device.vid = vid;
-      device.pid = pid;
+      device.vendor_id = vid;
+      device.product_id = pid;
       response->devices.push_back(device);
     }
     return true;
@@ -486,20 +486,21 @@ bool DetachUsbDevice(std::string socket_path,
   return response->type == OK;
 }
 
-bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* device) {
-  auto crosvm = std::make_unique<brillo::ProcessImpl>();
-  crosvm->AddArg(kCrosvmBin);
-  crosvm->AddArg("usb");
-  crosvm->AddArg("list");
-  crosvm->AddArg(std::move(socket_path));
+bool ListUsbDevice(std::string socket_path,
+                   std::vector<UsbDeviceEntry>* device) {
+  // Allocate enough slots for the max number of USB devices
+  // This will never be more than 255
+  const size_t max_usb_devices = crosvm_client_max_usb_devices();
+  device->resize(max_usb_devices);
 
-  UsbControlResponse response;
-  CallUsbControl(std::move(crosvm), &response);
+  ssize_t dev_count = crosvm_client_usb_list(socket_path.c_str(),
+                                             device->data(), max_usb_devices);
 
-  if (response.type != DEVICES)
+  if (dev_count < 0) {
     return false;
+  }
 
-  *device = std::move(response.devices);
+  device->resize(dev_count);
 
   return true;
 }
