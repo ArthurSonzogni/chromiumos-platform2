@@ -185,7 +185,12 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     {"Cryptohome.TimeToAuthSessionRemoveAuthFactorUSS", 0, 6000, 60},
     // Time for User Data Auth class to create a persistent user.
     {"Cryptohome.TimeToCreatePersistentUser", 0, 6000, 60},
-};
+    // Time for overall AuthSession lifetime, which
+    // has a default of 5 minutes but can be optionally extended.
+    {"Cryptohome.AuthSessionTotalLifetime", 0, 3 * 5 * 60 * 1000, 60},
+    // Time AuthSession is alive after it is authenticated, does not
+    // include time AuthSession is initialized but unauthenticated.
+    {"Cryptohome.AuthSessionAuthenticatedLifetime", 0, 3 * 5 * 60 * 1000, 60}};
 
 static_assert(std::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");

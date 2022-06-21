@@ -139,6 +139,8 @@ enum TimerType {
   kAuthSessionRemoveAuthFactorVKTimer = 25,
   kAuthSessionRemoveAuthFactorUSSTimer = 26,
   kCreatePersistentUserTimer = 27,
+  kAuthSessionTotalLifetimeTimer = 28,
+  kAuthSessionAuthenticatedLifetimeTimer = 29,
   kNumTimerTypes  // For the number of timer types.
 };
 

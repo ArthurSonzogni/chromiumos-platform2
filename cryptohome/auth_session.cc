@@ -147,6 +147,7 @@ AuthSession::AuthSession(
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
   start_time_ = base::TimeTicks::Now();
+  auth_session_creation_time_ = base::TimeTicks::Now();
 
   converter_ =
       std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management);
@@ -180,6 +181,14 @@ AuthSession::AuthSession(
   }
 }
 
+AuthSession::~AuthSession() {
+  std::string append_string = is_ephemeral_user_ ? ".Ephemeral" : ".Persistent";
+  ReportTimerDuration(kAuthSessionTotalLifetimeTimer,
+                      auth_session_creation_time_, append_string);
+  ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
+                      authenticated_time_, append_string);
+}
+
 void AuthSession::AuthSessionTimedOut() {
   LOG(INFO) << "AuthSession: timed out.";
   status_ = AuthStatus::kAuthStatusTimedOut;
@@ -203,6 +212,8 @@ void AuthSession::RecordAuthSessionStart() const {
 void AuthSession::SetAuthSessionAsAuthenticated() {
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
     status_ = AuthStatus::kAuthStatusAuthenticated;
+    // Record time of authentication for metric keeping.
+    authenticated_time_ = base::TimeTicks::Now();
     LOG(INFO) << "AuthSession: authenticated.";
   }
   timer_.Start(FROM_HERE, kAuthSessionTimeout,
@@ -1007,7 +1018,7 @@ bool AuthSession::AuthenticateAuthFactor(
     ResetLECredentials();
 
     // Flip the status on the successful authentication.
-    status_ = AuthStatus::kAuthStatusAuthenticated;
+    SetAuthSessionAsAuthenticated();
     ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
     return true;
   }

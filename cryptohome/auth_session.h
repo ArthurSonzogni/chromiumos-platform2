@@ -69,7 +69,7 @@ class AuthSession final {
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage);
-  ~AuthSession() = default;
+  ~AuthSession();
 
   // Returns the full unhashed user name.
   const std::string& username() const { return username_; }
@@ -417,6 +417,8 @@ class AuthSession final {
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::OneShotTimer timer_;
   base::TimeTicks start_time_;
+  base::TimeTicks auth_session_creation_time_;
+  base::TimeTicks authenticated_time_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
 
   std::unique_ptr<AuthFactor> auth_factor_;
