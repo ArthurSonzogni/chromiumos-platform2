@@ -29,6 +29,7 @@ class KeyboardBacklightLogger : public RgbKeyboard {
 
   // Clears log.
   bool ResetLog();
+  bool IsLogEmpty();
 
  private:
   bool InitializeFile();

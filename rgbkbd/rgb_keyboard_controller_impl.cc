@@ -5,9 +5,11 @@
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
 #include <utility>
+#include <vector>
 
 #include "base/check.h"
 #include "base/containers/span.h"
+#include "base/logging.h"
 #include "base/notreached.h"
 
 namespace rgbkbd {
@@ -19,7 +21,11 @@ RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
   if (!capabilities_.has_value()) {
     capabilities_ = keyboard_->GetRgbKeyboardCapabilities();
+    if (capabilities_.value() == RgbKeyboardCapabilities::kIndividualKey) {
+      PopulateRainbowModeMap();
+    }
   }
+
   return static_cast<uint32_t>(capabilities_.value());
 }
 
@@ -34,9 +40,16 @@ void RgbKeyboardControllerImpl::SetAllKeyColors(const Color& color) {
 
 void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
   caps_lock_enabled_ = enabled;
-  const auto color = GetCurrentCapsLockColor();
-  SetKeyColor({kLeftShiftKey, color});
-  SetKeyColor({kRightShiftKey, color});
+  // Per zone keyboards can not independently set left/right shift RGB colors.
+  // TODO(michaelcheco): Prevent this call from happening for per zone keyboards
+  // higher up in the stack.
+  if (IsZonedKeyboard()) {
+    LOG(ERROR) << "Attempted to set caps lock color for a per zone keyboard";
+    return;
+  }
+
+  SetKeyColor({kLeftShiftKey, GetCurrentCapsLockColor(kLeftShiftKey)});
+  SetKeyColor({kRightShiftKey, GetCurrentCapsLockColor(kRightShiftKey)});
 }
 
 void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint8_t r,
@@ -61,13 +74,18 @@ void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
     RgbKeyboardCapabilities capability) {
   DCHECK(!capabilities_.has_value());
   capabilities_ = capability;
+  if (capabilities_.value() == RgbKeyboardCapabilities::kIndividualKey) {
+    PopulateRainbowModeMap();
+  } else {
+    individual_key_rainbow_mode_map_.clear();
+  }
 }
 
 void RgbKeyboardControllerImpl::SetRainbowMode() {
   base::span<const KeyColor> rainbow_mode;
   background_type_ = BackgroundType::kStaticRainbow;
 
-  if (capabilities_ == RgbKeyboardCapabilities::kFiveZone) {
+  if (IsZonedKeyboard()) {
     rainbow_mode = base::span<const KeyColor>(kRainbowModeFiveZone,
                                               std::size(kRainbowModeFiveZone));
   } else {
@@ -90,22 +108,6 @@ void RgbKeyboardControllerImpl::SetAnimationMode(RgbAnimationMode mode) {
   NOTIMPLEMENTED();
 }
 
-Color RgbKeyboardControllerImpl::GetColorForBackgroundType() const {
-  switch (background_type_) {
-    case BackgroundType::kStaticSingleColor:
-      return background_color_;
-    case BackgroundType::kStaticRainbow:
-      // TODO(michaelcheco): Determine colors for caps lock keys when rainbow
-      // mode is enabled.
-      return kCapsLockHighlightDefault;
-  }
-}
-
-Color RgbKeyboardControllerImpl::GetCurrentCapsLockColor() const {
-  return caps_lock_enabled_ ? GetCapsLockHighlightColor()
-                            : GetColorForBackgroundType();
-}
-
 const std::vector<KeyColor>
 RgbKeyboardControllerImpl::GetRainbowModeColorsWithoutShiftKeysForTesting() {
   DCHECK(capabilities_ == RgbKeyboardCapabilities::kIndividualKey);
@@ -119,10 +121,43 @@ RgbKeyboardControllerImpl::GetRainbowModeColorsWithoutShiftKeysForTesting() {
   return vec;
 }
 
+Color RgbKeyboardControllerImpl::GetCurrentCapsLockColor(
+    uint32_t key_idx) const {
+  if (caps_lock_enabled_) {
+    return GetCapsLockHighlightColor();
+  }
+
+  if (background_type_ == BackgroundType::kStaticRainbow) {
+    return GetRainbowColorForKey(key_idx);
+  }
+
+  return background_color_;
+}
+
 Color RgbKeyboardControllerImpl::GetCapsLockHighlightColor() const {
   return (background_color_ == kWhiteBackgroundColor)
              ? kCapsLockHighlightAlternate
              : kCapsLockHighlightDefault;
 }
 
+Color RgbKeyboardControllerImpl::GetRainbowColorForKey(uint32_t key_idx) const {
+  DCHECK(capabilities_ == RgbKeyboardCapabilities::kIndividualKey);
+  return individual_key_rainbow_mode_map_.at(key_idx);
+}
+
+void RgbKeyboardControllerImpl::PopulateRainbowModeMap() {
+  std::vector<std::pair<uint32_t, Color>> vec;
+  vec.reserve(std::size(kRainbowModeIndividualKey));
+  for (auto i = 0; i < std::size(kRainbowModeIndividualKey); i++) {
+    vec.push_back(std::make_pair(kRainbowModeIndividualKey[i].key,
+                                 kRainbowModeIndividualKey[i].color));
+  }
+  individual_key_rainbow_mode_map_ =
+      base::flat_map<uint32_t, Color>(std::move(vec));
+}
+
+bool RgbKeyboardControllerImpl::IsZonedKeyboard() const {
+  DCHECK(capabilities_.has_value());
+  return capabilities_.value() != RgbKeyboardCapabilities::kIndividualKey;
+}
 }  // namespace rgbkbd

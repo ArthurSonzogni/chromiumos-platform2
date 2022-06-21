@@ -10,6 +10,7 @@
 #include <optional>
 #include <vector>
 
+#include <base/containers/flat_map.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "rgbkbd/rgb_keyboard.h"
@@ -193,6 +194,9 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   }
 
   const std::vector<KeyColor> GetRainbowModeColorsWithoutShiftKeysForTesting();
+  const base::flat_map<uint32_t, Color>& GetRainbowModeMapForTesting() const {
+    return individual_key_rainbow_mode_map_;
+  }
 
  private:
   void SetKeyColor(const KeyColor& key_color);
@@ -202,10 +206,13 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
     return key == kLeftShiftKey || key == kRightShiftKey;
   }
 
-  Color GetColorForBackgroundType() const;
-  Color GetCurrentCapsLockColor() const;
+  Color GetCurrentCapsLockColor(uint32_t key_idx) const;
   Color GetCapsLockHighlightColor() const;
+  Color GetRainbowColorForKey(uint32_t key_idx) const;
+  void PopulateRainbowModeMap();
+  bool IsZonedKeyboard() const;
 
+  base::flat_map<uint32_t, Color> individual_key_rainbow_mode_map_;
   std::optional<RgbKeyboardCapabilities> capabilities_;
   RgbKeyboard* keyboard_;
   Color background_color_;

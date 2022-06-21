@@ -83,4 +83,13 @@ bool KeyboardBacklightLogger::ResetLog() {
   return InitializeFile();
 }
 
+bool KeyboardBacklightLogger::IsLogEmpty() {
+  if (!file_) {
+    LOG(ERROR) << "Attempted to check if a non-existant file was empty.";
+    InitializeFile();
+  }
+  DCHECK(file_->IsValid());
+  return file_->GetLength() == 0;
+}
+
 }  // namespace rgbkbd

@@ -13,6 +13,7 @@
 #include "rgbkbd/keyboard_backlight_logger.h"
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
+#include "base/containers/contains.h"
 #include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
@@ -97,6 +98,8 @@ TEST_F(RgbKeyboardControllerTest, SetCapabilityFiveZone) {
 }
 
 TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithDefaultHighlight) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
   // Set the background color to something other than |kWhiteBackgroundColor|
   // to ensure the default caps lock highlight color is selected.
@@ -122,6 +125,8 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithDefaultHighlight) {
 }
 
 TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithAlternateHighlight) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
   EXPECT_TRUE(logger_->ResetLog());
   controller_->SetCapsLockState(/*enabled=*/true);
@@ -157,7 +162,7 @@ TEST_F(RgbKeyboardControllerTest, SetRainbowModeCapsLockEnabled) {
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeWithCapsLock) {
-  controller_->SetCapabilitiesForTesting(
+  controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
   // Simulate enabling caps lock.
   controller_->SetCapsLockState(/*enabled=*/true);
@@ -173,9 +178,8 @@ TEST_F(RgbKeyboardControllerTest, SetRainbowModeWithCapsLock) {
   controller_->SetCapsLockState(/*enabled=*/false);
   // Since rainbow mode was set, expect disabling caps lock reverts to the
   // correct color
-  ValidateLog(
-      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightDefault}) +
-      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightDefault}));
+  ValidateLog(CreateSetKeyColorLogEntry({kLeftShiftKey, kRainbowRed}) +
+              CreateSetKeyColorLogEntry({kRightShiftKey, kRainbowPurple}));
 }
 
 TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColor) {
@@ -190,6 +194,8 @@ TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColor) {
 }
 
 TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
   // Simulate enabling Capslock.
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
   controller_->SetCapsLockState(/*enabled=*/true);
@@ -227,5 +233,37 @@ TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
   // background color.
   ValidateLog(CreateSetKeyColorLogEntry({kLeftShiftKey, expected_color}) +
               CreateSetKeyColorLogEntry({kRightShiftKey, expected_color}));
+}
+
+TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithPerZoneKeyboard) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kFiveZone);
+
+  // Set static background color.
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+  const std::string expected_log =
+      CreateSetAllKeyColorsLogEntry(expected_color);
+  ValidateLog(expected_log);
+  EXPECT_TRUE(logger_->ResetLog());
+
+  // Enable caps lock.
+  controller_->SetCapsLockState(/*enabled=*/true);
+
+  // Expect the log file to be empty since enabling caps lock should not change
+  // the state of the shift keys.
+  EXPECT_TRUE(logger_->IsLogEmpty());
+}
+
+TEST_F(RgbKeyboardControllerTest, RainbowModeMapUpToDate) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  const auto rainbow_mode_map = controller_->GetRainbowModeMapForTesting();
+  EXPECT_EQ(std::size(kRainbowModeIndividualKey), rainbow_mode_map.size());
+  for (size_t i = 0; i < std::size(kRainbowModeIndividualKey); i++) {
+    EXPECT_TRUE(
+        base::Contains(rainbow_mode_map, kRainbowModeIndividualKey[i].key));
+  }
 }
 }  // namespace rgbkbd
