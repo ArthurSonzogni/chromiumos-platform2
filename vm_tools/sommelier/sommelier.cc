@@ -3135,6 +3135,8 @@ static void sl_print_usage() {
       "  --dpi=[DPI[,DPI...]]\t\tDPI buckets\n"
       "  --peer-cmd-prefix=PREFIX\tPeer process command line prefix\n"
       "  --accelerators=ACCELERATORS\tList of keyboard accelerators\n"
+      "  --windowed_accelerators=ACCELERATORS\tList of keyboard accelerators\n"
+      "\tonly while windowed\n"
       "  --application-id=ID\t\tForced application ID for all X11 windows\n"
       "  --vm-identifier=NAME\t\tName of the VM, used to identify X11 "
       "windows.\n"
@@ -3173,6 +3175,58 @@ static const char* sl_arg_value(const char* arg) {
   return s + 1;
 }
 
+// Parse the list of accelerators that should be reserved by the
+// compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
+// list of modifier names (E.g. <Control><Alt>) and KEYSYM is an
+// XKB key symbol name (E.g Delete).
+// Sommelier will exit with EXIT_FAILURE if this returns false.
+static bool sl_parse_accelerators(struct wl_list* accelerator_list,
+                                  const char* accelerators) {
+  if (accelerators) {
+    uint32_t modifiers = 0;
+
+    while (*accelerators) {
+      if (*accelerators == ',') {
+        accelerators++;
+      } else if (*accelerators == '<') {
+        if (strncmp(accelerators, "<Control>", 9) == 0) {
+          modifiers |= CONTROL_MASK;
+          accelerators += 9;
+        } else if (strncmp(accelerators, "<Alt>", 5) == 0) {
+          modifiers |= ALT_MASK;
+          accelerators += 5;
+        } else if (strncmp(accelerators, "<Shift>", 7) == 0) {
+          modifiers |= SHIFT_MASK;
+          accelerators += 7;
+        } else {
+          fprintf(stderr, "error: invalid modifier\n");
+          return false;
+        }
+      } else {
+        const char* end = strchrnul(accelerators, ',');
+        char* name = strndup(accelerators, end - accelerators);
+
+        struct sl_accelerator* accelerator =
+            static_cast<sl_accelerator*>(malloc(sizeof(*accelerator)));
+        accelerator->modifiers = modifiers;
+        accelerator->symbol =
+            xkb_keysym_from_name(name, XKB_KEYSYM_CASE_INSENSITIVE);
+        if (accelerator->symbol == XKB_KEY_NoSymbol) {
+          fprintf(stderr, "error: invalid key symbol\n");
+          return false;
+        }
+
+        wl_list_insert(accelerator_list, &accelerator->link);
+
+        modifiers = 0;
+        accelerators = end;
+        free(name);
+      }
+    }
+  }
+  return true;
+}
+
 int real_main(int argc, char** argv) {
   struct sl_context ctx;
   sl_context_init_default(&ctx);
@@ -3189,6 +3243,7 @@ int real_main(int argc, char** argv) {
   const char* peer_cmd_prefix = getenv("SOMMELIER_PEER_CMD_PREFIX");
   const char* xwayland_cmd_prefix = getenv("SOMMELIER_XWAYLAND_CMD_PREFIX");
   const char* accelerators = getenv("SOMMELIER_ACCELERATORS");
+  const char* windowed_accelerators = getenv("SOMMELIER_WINDOWED_ACCELERATORS");
   const char* xwayland_path = getenv("SOMMELIER_XWAYLAND_PATH");
   const char* xwayland_gl_driver_path =
       getenv("SOMMELIER_XWAYLAND_GL_DRIVER_PATH");
@@ -3244,6 +3299,8 @@ int real_main(int argc, char** argv) {
       dpi = sl_arg_value(arg);
     } else if (strstr(arg, "--accelerators") == arg) {
       accelerators = sl_arg_value(arg);
+    } else if (strstr(arg, "--windowed-accelerators") == arg) {
+      windowed_accelerators = sl_arg_value(arg);
     } else if (strstr(arg, "--vm-identifier") == arg) {
       ctx.vm_id = sl_arg_value(arg);
     } else if (strstr(arg, "--application-id-x11-property") == arg) {
@@ -3439,6 +3496,7 @@ int real_main(int argc, char** argv) {
           if (strstr(arg, "--display") == arg ||
               strstr(arg, "--scale") == arg ||
               strstr(arg, "--accelerators") == arg ||
+              strstr(arg, "--windowed-accelerators") == arg ||
               strstr(arg, "--drm-device") == arg ||
               strstr(arg, "--support-damage-buffer") == arg) {
             args[i++] = arg;
@@ -3586,52 +3644,10 @@ int real_main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  // Parse the list of accelerators that should be reserved by the
-  // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
-  // list of modifier names (E.g. <Control><Alt>) and KEYSYM is an
-  // XKB key symbol name (E.g Delete).
-  if (accelerators) {
-    uint32_t modifiers = 0;
-
-    while (*accelerators) {
-      if (*accelerators == ',') {
-        accelerators++;
-      } else if (*accelerators == '<') {
-        if (strncmp(accelerators, "<Control>", 9) == 0) {
-          modifiers |= CONTROL_MASK;
-          accelerators += 9;
-        } else if (strncmp(accelerators, "<Alt>", 5) == 0) {
-          modifiers |= ALT_MASK;
-          accelerators += 5;
-        } else if (strncmp(accelerators, "<Shift>", 7) == 0) {
-          modifiers |= SHIFT_MASK;
-          accelerators += 7;
-        } else {
-          fprintf(stderr, "error: invalid modifier\n");
-          return EXIT_FAILURE;
-        }
-      } else {
-        const char* end = strchrnul(accelerators, ',');
-        char* name = strndup(accelerators, end - accelerators);
-
-        struct sl_accelerator* accelerator =
-            static_cast<sl_accelerator*>(malloc(sizeof(*accelerator)));
-        accelerator->modifiers = modifiers;
-        accelerator->symbol =
-            xkb_keysym_from_name(name, XKB_KEYSYM_CASE_INSENSITIVE);
-        if (accelerator->symbol == XKB_KEY_NoSymbol) {
-          fprintf(stderr, "error: invalid key symbol\n");
-          return EXIT_FAILURE;
-        }
-
-        wl_list_insert(&ctx.accelerators, &accelerator->link);
-
-        modifiers = 0;
-        accelerators = end;
-        free(name);
-      }
-    }
-  }
+  if (!sl_parse_accelerators(&ctx.accelerators, accelerators))
+    return EXIT_FAILURE;
+  if (!sl_parse_accelerators(&ctx.windowed_accelerators, windowed_accelerators))
+    return EXIT_FAILURE;
 
   ctx.display_event_source.reset(
       wl_event_loop_add_fd(event_loop, wl_display_get_fd(ctx.display),

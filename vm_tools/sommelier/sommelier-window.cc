@@ -250,11 +250,13 @@ static void sl_internal_xdg_toplevel_configure(
   }
 
   window->allow_resize = 1;
+  window->compositor_fullscreen = 0;
   sl_array_for_each(state, states) {
     if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
       window->allow_resize = 0;
       window->next_config.states[i++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
+      window->compositor_fullscreen = 1;
     }
     if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
       window->allow_resize = 0;

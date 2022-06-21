@@ -194,7 +194,12 @@ above (which happens to have XKB keysym `Super_L` on the Chromebook Pixel),
 `--accelerators=Super_L` needs to be passed to sommelier for the this button to
 bring up the application launcher when Linux programs have keyboard focus.
 
-Consistent with other flags, `SOMMELIER_ACCELERATORS` environment variable can
+There is also the `--windowed-accelerators=WINDOWED_ACCELERATORS` flag for
+accelerators that should be handled by the host compositor when the focused
+window is windowed but not while it is fullscreen.
+
+Consistent with other flags, `SOMMELIER_ACCELERATORS` and
+`SOMMELIER_WINDOWED_ACCELERATORS` environment variable can
 be used as an alternative to the command line flag.
 
 ## Examples

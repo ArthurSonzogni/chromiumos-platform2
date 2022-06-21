@@ -53,6 +53,7 @@ struct sl_window {
   int realized = 0;
   int activated = 0;
   int fullscreen = 0;
+  int compositor_fullscreen = 0;
   int maximized = 0;
   int iconified = 0;
   int allow_resize = 1;

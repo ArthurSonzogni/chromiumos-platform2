@@ -414,7 +414,7 @@ static void sl_keyboard_key(void* data,
                             uint32_t state) {
   struct sl_host_keyboard* host =
       static_cast<sl_host_keyboard*>(wl_keyboard_get_user_data(keyboard));
-  int handled = 1;
+  bool handled = true;
 
   if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
     if (host->state) {
@@ -429,16 +429,25 @@ static void sl_keyboard_key(void* data,
         symbol = symbols[0];
 
       wl_list_for_each(accelerator, &host->seat->ctx->accelerators, link) {
-        if (host->modifiers != accelerator->modifiers)
-          continue;
-        if (symbol != accelerator->symbol)
-          continue;
-
-        handled = 0;
-        break;
+        if (host->modifiers == accelerator->modifiers &&
+            symbol == accelerator->symbol) {
+          handled = false;
+          break;
+        }
+      }
+      if (host->seat->ctx->host_focus_window &&
+          !(host->seat->ctx->host_focus_window->fullscreen ||
+            host->seat->ctx->host_focus_window->compositor_fullscreen)) {
+        wl_list_for_each(accelerator, &host->seat->ctx->windowed_accelerators,
+                         link) {
+          if (host->modifiers == accelerator->modifiers &&
+              symbol == accelerator->symbol) {
+            handled = false;
+            break;
+          }
+        }
       }
     }
-
     // Forward key pressed event if it should be handled and not
     // already pressed.
     if (handled) {

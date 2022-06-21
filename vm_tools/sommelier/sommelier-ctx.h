@@ -105,6 +105,7 @@ struct sl_context {
   pid_t peer_pid;
   struct xkb_context* xkb_context;
   struct wl_list accelerators;
+  struct wl_list windowed_accelerators;
   struct wl_list registries;
   struct wl_list globals;
   struct wl_list host_outputs;
