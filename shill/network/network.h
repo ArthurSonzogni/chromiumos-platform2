@@ -14,6 +14,7 @@
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -68,6 +69,21 @@ class Network {
   // shill.
   Connection* connection() const { return connection_.get(); }
 
+  // TODO(b/232177767): This group of getters and setters are only exposed for
+  // the purpose of refactor. New code outside Device should not use these.
+  DHCPController* dhcp_controller() const { return dhcp_controller_.get(); }
+  IPConfig* ipconfig() const { return ipconfig_.get(); }
+  IPConfig* ip6config() const { return ip6config_.get(); }
+  void set_dhcp_controller(std::unique_ptr<DHCPController> controller) {
+    dhcp_controller_ = std::move(controller);
+  }
+  void set_ipconfig(std::unique_ptr<IPConfig> config) {
+    ipconfig_ = std::move(config);
+  }
+  void set_ip6config(std::unique_ptr<IPConfig> config) {
+    ip6config_ = std::move(config);
+  }
+
   // Only used in tests.
   void set_connection_for_testing(std::unique_ptr<Connection> connection) {
     connection_ = std::move(connection);
@@ -79,6 +95,10 @@ class Network {
   const Technology technology_;
 
   std::unique_ptr<Connection> connection_;
+
+  std::unique_ptr<DHCPController> dhcp_controller_;
+  std::unique_ptr<IPConfig> ipconfig_;
+  std::unique_ptr<IPConfig> ip6config_;
 };
 
 }  // namespace shill

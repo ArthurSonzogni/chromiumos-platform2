@@ -209,10 +209,10 @@ class DeviceTest : public testing::Test {
 
   void SetupIPv4DHCPConfig() {
     ipconfig_ = new MockIPConfig(control_interface(), kDeviceName);
-    device_->ipconfig_ = std::unique_ptr<MockIPConfig>(ipconfig_);
+    device_->set_ipconfig(std::unique_ptr<MockIPConfig>(ipconfig_));
     auto controller = CreateDHCPController();
     dhcp_controller_ = controller.get();
-    device_->dhcp_controller_ = std::move(controller);
+    device_->network()->set_dhcp_controller(std::move(controller));
   }
 
   void SetupIPv6Config() {
@@ -223,9 +223,9 @@ class DeviceTest : public testing::Test {
     properties.address = kAddress;
     properties.dns_servers = {kDnsServer1, kDnsServer2};
 
-    device_->ip6config_ = std::make_unique<NiceMock<MockIPConfig>>(
-        control_interface(), kDeviceName);
-    device_->ip6config_->set_properties(properties);
+    device_->set_ip6config(std::make_unique<NiceMock<MockIPConfig>>(
+        control_interface(), kDeviceName));
+    device_->ip6config()->set_properties(properties);
   }
 
   static ManagerProperties MakePortalProperties() {
@@ -295,22 +295,22 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
 }
 
 TEST_F(DeviceTest, DestroyIPConfig) {
-  ASSERT_EQ(nullptr, device_->ipconfig_);
+  ASSERT_EQ(nullptr, device_->ipconfig());
   device_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
   device_->set_ip6config(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
   device_->DestroyIPConfig();
-  ASSERT_EQ(nullptr, device_->ipconfig_);
-  ASSERT_EQ(nullptr, device_->ip6config_);
+  ASSERT_EQ(nullptr, device_->ipconfig());
+  ASSERT_EQ(nullptr, device_->ip6config());
 }
 
 TEST_F(DeviceTest, DestroyIPConfigNULL) {
-  ASSERT_EQ(nullptr, device_->ipconfig_);
-  ASSERT_EQ(nullptr, device_->ip6config_);
+  ASSERT_EQ(nullptr, device_->ipconfig());
+  ASSERT_EQ(nullptr, device_->ip6config());
   device_->DestroyIPConfig();
-  ASSERT_EQ(nullptr, device_->ipconfig_);
-  ASSERT_EQ(nullptr, device_->ip6config_);
+  ASSERT_EQ(nullptr, device_->ipconfig());
+  ASSERT_EQ(nullptr, device_->ip6config());
 }
 
 TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
@@ -332,8 +332,8 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
         return controller;
       }));
   EXPECT_TRUE(device_->AcquireIPConfig());
-  ASSERT_NE(nullptr, device_->ipconfig_);
-  EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
+  ASSERT_NE(nullptr, device_->ipconfig());
+  EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
   device_->dhcp_provider_ = nullptr;
 }
 
@@ -353,8 +353,8 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
         return controller;
       }));
   EXPECT_TRUE(device_->AcquireIPConfig());
-  ASSERT_NE(nullptr, device_->ipconfig_);
-  EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
+  ASSERT_NE(nullptr, device_->ipconfig());
+  EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
   device_->dhcp_provider_ = nullptr;
 }
 
@@ -503,7 +503,7 @@ TEST_F(DeviceTest, DHCPFailure) {
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   // Setup IPv6 configuration.
   SetupIPv6Config();
-  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_NE(device_->ip6config(), nullptr);
 
   // IPv4 configuration failed, fallback to use IPv6 configuration.
   SetupIPv4DHCPConfig();
@@ -515,7 +515,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   EXPECT_CALL(*ipconfig_, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection,
-              UpdateFromIPConfig(Ref(device_->ip6config_->properties())));
+              UpdateFromIPConfig(Ref(device_->ip6config()->properties())));
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -531,7 +531,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
   // Setup IPv6 configuration.
   SetupIPv6Config();
-  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_NE(device_->ip6config(), nullptr);
 
   SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
@@ -776,7 +776,7 @@ TEST_F(DeviceTest, Stop) {
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
-  EXPECT_EQ(nullptr, device_->ipconfig_);
+  EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
@@ -797,7 +797,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
-  EXPECT_EQ(nullptr, device_->ipconfig_);
+  EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
@@ -819,7 +819,7 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
-  EXPECT_EQ(nullptr, device_->ipconfig_);
+  EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
@@ -880,14 +880,14 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
       ByteArray(Tethering::kAndroidVendorEncapsulatedOptions,
                 Tethering::kAndroidVendorEncapsulatedOptions +
                     strlen(Tethering::kAndroidVendorEncapsulatedOptions));
-  device_->ipconfig_->UpdateProperties(properties);
+  device_->ipconfig()->UpdateProperties(properties);
   EXPECT_TRUE(device_->IsConnectedViaTether());
 
   const char kTestVendorEncapsulatedOptions[] = "Some other non-empty value";
   properties.vendor_encapsulated_options = ByteArray(
       kTestVendorEncapsulatedOptions,
       kTestVendorEncapsulatedOptions + sizeof(kTestVendorEncapsulatedOptions));
-  device_->ipconfig_->UpdateProperties(properties);
+  device_->ipconfig()->UpdateProperties(properties);
   EXPECT_FALSE(device_->IsConnectedViaTether());
 }
 
@@ -905,11 +905,11 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   // of them when both IPv6 and IPv4 IPConfigs are available.
   EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
-  device_->ipconfig_ = nullptr;
+  device_->set_ipconfig(nullptr);
   EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
             device_->AvailableIPConfigs(nullptr));
 
-  device_->ip6config_ = nullptr;
+  device_->set_ip6config(nullptr);
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
 }
 
@@ -919,7 +919,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
   device_->OnIPv6AddressChanged(nullptr);
-  EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  EXPECT_EQ(device_->ip6config(), nullptr);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
   IPAddress address0(IPAddress::kFamilyIPv6);
@@ -932,8 +932,8 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address0);
-  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
-  EXPECT_EQ(kAddress0, device_->ip6config_->properties().address);
+  EXPECT_NE(device_->ip6config(), nullptr);
+  EXPECT_EQ(kAddress0, device_->ip6config()->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
   // If the IPv6 address does not change, no signal is emitted.
@@ -941,7 +941,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
   device_->OnIPv6AddressChanged(&address0);
-  EXPECT_EQ(kAddress0, device_->ip6config_->properties().address);
+  EXPECT_EQ(kAddress0, device_->ip6config()->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
   IPAddress address1(IPAddress::kFamilyIPv6);
@@ -954,7 +954,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address1);
-  EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
+  EXPECT_EQ(kAddress1, device_->ip6config()->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
   // If the IPv6 prefix changes, a signal is emitted.
@@ -964,14 +964,14 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address1);
-  EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
+  EXPECT_EQ(kAddress1, device_->ip6config()->properties().address);
 
   // Return the IPv6 address to nullptr.
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
                                             std::vector<RpcIdentifier>()));
   device_->OnIPv6AddressChanged(nullptr);
-  EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  EXPECT_EQ(device_->ip6config(), nullptr);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 }
 
@@ -990,7 +990,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
   device_->OnIPv6DnsServerAddressesChanged();
-  EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  EXPECT_EQ(device_->ip6config(), nullptr);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -1014,9 +1014,9 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
-  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_NE(device_->ip6config(), nullptr);
   EXPECT_EQ(dns_server_addresses_str,
-            device_->ip6config_->properties().dns_servers);
+            device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -1029,10 +1029,10 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address3);
-  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
-  EXPECT_EQ(kAddress3, device_->ip6config_->properties().address);
+  EXPECT_NE(device_->ip6config(), nullptr);
+  EXPECT_EQ(kAddress3, device_->ip6config()->properties().address);
   EXPECT_EQ(dns_server_addresses_str,
-            device_->ip6config_->properties().dns_servers);
+            device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -1046,7 +1046,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
       .Times(0);
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(dns_server_addresses_str,
-            device_->ip6config_->properties().dns_servers);
+            device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -1062,7 +1062,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
-  EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
+  EXPECT_EQ(empty_dns_server, device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -1078,7 +1078,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(dns_server_addresses_str,
-            device_->ip6config_->properties().dns_servers);
+            device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -1091,7 +1091,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
-  EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
+  EXPECT_EQ(empty_dns_server, device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 }
@@ -1104,7 +1104,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
 
   // Setup initial IPv6 configuration.
   SetupIPv6Config();
-  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_NE(device_->ip6config(), nullptr);
 
   // IPv6 configuration update with non-IPv6 connection, no connection update.
   // TODO(b/232177767): Check Network state instead.
@@ -1134,7 +1134,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
   EXPECT_CALL(*connection,
-              UpdateFromIPConfig(Ref(device_->ip6config_->properties())));
+              UpdateFromIPConfig(Ref(device_->ip6config()->properties())));
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType,
                                         device_->technology(),
                                         Metrics::kNetworkConnectionIPTypeIPv6));

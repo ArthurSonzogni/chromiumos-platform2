@@ -293,11 +293,11 @@ bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
 }
 
 bool Device::IsConnectedViaTether() const {
-  if (!ipconfig_)
+  if (!ipconfig())
     return false;
 
   ByteArray vendor_encapsulated_options =
-      ipconfig_->properties().vendor_encapsulated_options;
+      ipconfig()->properties().vendor_encapsulated_options;
   size_t android_vendor_encapsulated_options_len =
       strlen(Tethering::kAndroidVendorEncapsulatedOptions);
 
@@ -390,17 +390,17 @@ void Device::ResetConnection() {
 void Device::DestroyIPConfig() {
   StopIPv6();
   bool ipconfig_changed = false;
-  if (dhcp_controller_) {
-    dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
-    dhcp_controller_ = nullptr;
+  if (dhcp_controller()) {
+    dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
+    network_->set_dhcp_controller(nullptr);
   }
-  if (ipconfig_) {
-    ipconfig_ = nullptr;
+  if (ipconfig()) {
+    set_ipconfig(nullptr);
     ipconfig_changed = true;
   }
-  if (ip6config_) {
+  if (ip6config()) {
     StopIPv6DNSServerTimer();
-    ip6config_ = nullptr;
+    set_ip6config(nullptr);
     ipconfig_changed = true;
   }
   // Emit updated IP configs if there are any changes.
@@ -412,8 +412,8 @@ void Device::DestroyIPConfig() {
 
 void Device::OnIPv6AddressChanged(const IPAddress* address) {
   if (!address) {
-    if (ip6config_) {
-      ip6config_ = nullptr;
+    if (ip6config()) {
+      set_ip6config(nullptr);
       UpdateIPConfigsProperty();
     }
     return;
@@ -445,12 +445,12 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
                  << properties.address;
   }
 
-  if (!ip6config_) {
-    ip6config_ = std::make_unique<IPConfig>(control_interface(), link_name_);
-  } else if (properties.address == ip6config_->properties().address &&
+  if (!ip6config()) {
+    set_ip6config(std::make_unique<IPConfig>(control_interface(), link_name_));
+  } else if (properties.address == ip6config()->properties().address &&
              properties.subnet_prefix ==
-                 ip6config_->properties().subnet_prefix &&
-             properties.gateway == ip6config_->properties().gateway) {
+                 ip6config()->properties().subnet_prefix &&
+             properties.gateway == ip6config()->properties().gateway) {
     SLOG(this, 2) << __func__ << " primary address for " << link_name_
                   << " is unchanged";
     return;
@@ -460,12 +460,12 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   properties.method = kTypeIPv6;
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
-  properties.dns_servers = ip6config_->properties().dns_servers;
+  properties.dns_servers = ip6config()->properties().dns_servers;
   if (ipv6_static_properties_ &&
       !ipv6_static_properties_->dns_servers.empty()) {
     properties.dns_servers = ipv6_static_properties_->dns_servers;
   }
-  ip6config_->set_properties(properties);
+  ip6config()->set_properties(properties);
   UpdateIPConfigsProperty();
   OnIPv6ConfigUpdated();
   OnGetSLAACAddress();
@@ -497,8 +497,8 @@ void Device::OnIPv6DnsServerAddressesChanged() {
     addresses_str.push_back(address_str);
   }
 
-  if (!ip6config_) {
-    ip6config_ = std::make_unique<IPConfig>(control_interface(), link_name_);
+  if (!ip6config()) {
+    set_ip6config(std::make_unique<IPConfig>(control_interface(), link_name_));
   }
 
   if (lifetime != ND_OPT_LIFETIME_INFINITY) {
@@ -508,13 +508,13 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   }
 
   // Done if no change in server addresses.
-  if (ip6config_->properties().dns_servers == addresses_str) {
+  if (ip6config()->properties().dns_servers == addresses_str) {
     SLOG(this, 2) << __func__ << " IPv6 DNS server list for " << link_name_
                   << " is unchanged.";
     return;
   }
 
-  ip6config_->UpdateDNSServers(std::move(addresses_str));
+  ip6config()->UpdateDNSServers(std::move(addresses_str));
   UpdateIPConfigsProperty();
   OnIPv6ConfigUpdated();
 }
@@ -531,10 +531,10 @@ void Device::StopIPv6DNSServerTimer() {
 }
 
 void Device::IPv6DNSServerExpired() {
-  if (!ip6config_) {
+  if (!ip6config()) {
     return;
   }
-  ip6config_->UpdateDNSServers(std::vector<std::string>());
+  ip6config()->UpdateDNSServers(std::vector<std::string>());
   UpdateIPConfigsProperty();
 }
 
@@ -557,16 +557,16 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
 void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
   LOG(INFO) << LoggingTag() << ": " << __func__;
 
-  if (dhcp_controller_) {
+  if (dhcp_controller()) {
     SLOG(this, 3) << "Renewing IPv4 Address";
-    dhcp_controller_->RenewIP();
+    dhcp_controller()->RenewIP();
   }
-  if (ip6config_ && !from_dbus) {
+  if (ip6config() && !from_dbus) {
     SLOG(this, 3) << "Waiting for new IPv6 configuration";
     // Invalidate the old IPv6 configuration, will receive notifications
     // from kernel for new IPv6 configuration if there is one.
     StopIPv6DNSServerTimer();
-    ip6config_ = nullptr;
+    set_ip6config(nullptr);
     UpdateIPConfigsProperty();
   }
 }
@@ -590,35 +590,35 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   DestroyIPConfig();
   StartIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
-  dhcp_controller_ =
+  network_->set_dhcp_controller(
       dhcp_provider_->CreateController(link_name_, lease_name, arp_gateway,
-                                       manager_->dhcp_hostname(), technology_);
+                                       manager_->dhcp_hostname(), technology_));
   const int minimum_mtu = manager()->GetMinimumMTU();
   if (minimum_mtu != IPConfig::kUndefinedMTU) {
-    dhcp_controller_->set_minimum_mtu(minimum_mtu);
+    dhcp_controller()->set_minimum_mtu(minimum_mtu);
   }
 
-  dhcp_controller_->RegisterCallbacks(
+  dhcp_controller()->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));
-  ipconfig_ = std::make_unique<IPConfig>(control_interface(), link_name_,
-                                         IPConfig::kTypeDHCP);
+  set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_,
+                                          IPConfig::kTypeDHCP));
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
-  return dhcp_controller_->RequestIP();
+  return dhcp_controller()->RequestIP();
 }
 
 void Device::UpdateBlackholeUserTraffic() {
   SLOG(this, 2) << __func__;
-  if (ipconfig_) {
+  if (ipconfig()) {
     bool updated;
     if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-      updated = ipconfig_->SetBlackholedUids(manager_->GetUserTrafficUids());
+      updated = ipconfig()->SetBlackholedUids(manager_->GetUserTrafficUids());
     } else {
-      updated = ipconfig_->ClearBlackholedUids();
+      updated = ipconfig()->ClearBlackholedUids();
     }
     if (updated) {
-      SetupConnection(ipconfig_.get());
+      SetupConnection(ipconfig());
     }
   }
 }
@@ -649,8 +649,8 @@ void Device::OnNeighborReachabilityEvent(
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();
   StartIPv6();
-  ipconfig_ = std::make_unique<IPConfig>(control_interface(), link_name_);
-  ipconfig_->set_properties(properties);
+  set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_));
+  ipconfig()->set_properties(properties);
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::OnIPv4ConfigUpdated, AsWeakPtr()));
 }
@@ -707,9 +707,9 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
 
 void Device::ConfigureStaticIPTask() {
   SLOG(this, 2) << __func__ << " selected_service " << selected_service_.get()
-                << " ipconfig " << ipconfig_.get();
+                << " ipconfig " << ipconfig();
 
-  if (!selected_service_ || !ipconfig_) {
+  if (!selected_service_ || !ipconfig()) {
     return;
   }
 
@@ -721,9 +721,9 @@ void Device::ConfigureStaticIPTask() {
     // the static information.
     OnIPv4ConfigUpdated();
   } else {
-    // Either |ipconfig_| has just been created in AcquireIPConfig() or
-    // we're being called by OnIPConfigRefreshed().  In either case a
-    // DHCP client has been started, and will take care of calling
+    // Either |ipconfig()| has just been created in AcquireIPConfig()
+    // or we're being called by OnIPConfigRefreshed().  In either case a DHCP
+    // client has been started, and will take care of calling
     // OnIPv4ConfigUpdated() when it completes.
     SLOG(this, 2) << __func__ << " "
                   << " no static IP address.";
@@ -731,7 +731,7 @@ void Device::ConfigureStaticIPTask() {
 }
 
 void Device::OnIPv6ConfigUpdated() {
-  if (!ip6config_) {
+  if (!ip6config()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << " called but |ip6config_| is empty";
     return;
@@ -741,9 +741,9 @@ void Device::OnIPv6ConfigUpdated() {
   // is ready for connection (contained both IP address and DNS servers), and
   // there is no existing IPv4 connection. We always prefer IPv4
   // configuration over IPv6.
-  if (ip6config_->properties().HasIPAddressAndDNS() &&
+  if (ip6config()->properties().HasIPAddressAndDNS() &&
       (!network_->HasConnectionObject() || network_->IsIPv6())) {
-    SetupConnection(ip6config_.get());
+    SetupConnection(ip6config());
   }
 }
 
@@ -785,7 +785,7 @@ void Device::SetupConnection(IPConfig* ipconfig) {
 
   // Report if device have IPv6 connectivity
   auto ipv6_status =
-      (ip6config_ && ip6config_->properties().HasIPAddressAndDNS())
+      (ip6config() && ip6config()->properties().HasIPAddressAndDNS())
           ? Metrics::kIPv6ConnectivityStatusYes
           : Metrics::kIPv6ConnectivityStatusNo;
   metrics()->SendEnumToUMA(Metrics::kMetricIPv6ConnectivityStatus, technology_,
@@ -825,10 +825,10 @@ void Device::SetupConnection(IPConfig* ipconfig) {
 
 void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
-  // |dhcp_controller_| cannot be empty when the callback is invoked.
-  DCHECK(dhcp_controller_);
-  DCHECK(ipconfig_);
-  ipconfig_->UpdateProperties(properties);
+  // |dhcp_controller()| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller());
+  DCHECK(ipconfig());
+  ipconfig()->UpdateProperties(properties);
   OnIPv4ConfigUpdated();
   if (new_lease_acquired) {
     OnGetDHCPLease();
@@ -845,9 +845,9 @@ void Device::OnNetworkValidationFailure() {}
 void Device::OnIPv4ConfigUpdated() {
   SLOG(this, 2) << __func__;
   if (selected_service_) {
-    ipconfig_->ApplyStaticIPParameters(
+    ipconfig()->ApplyStaticIPParameters(
         selected_service_->mutable_static_ip_parameters());
-    if (IsUsingStaticIP() && dhcp_controller_) {
+    if (IsUsingStaticIP() && dhcp_controller()) {
       // If we are using a statically configured IP address instead
       // of a leased IP address, release any acquired lease so it may
       // be used by others.  This allows us to merge other non-leased
@@ -855,11 +855,11 @@ void Device::OnIPv4ConfigUpdated() {
       // and not overridden by static parameters, but at the same time
       // we avoid taking up a dynamic IP address the DHCP server could
       // assign to someone else who might actually use it.
-      dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
+      dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
     }
   }
 
-  SetupConnection(ipconfig_.get());
+  SetupConnection(ipconfig());
   UpdateIPConfigsProperty();
 }
 
@@ -868,9 +868,9 @@ void Device::OnDHCPFailure() {
 
   OnGetDHCPFailure();
 
-  // |dhcp_controller_| cannot be empty when the callback is invoked.
-  DCHECK(dhcp_controller_);
-  DCHECK(ipconfig_);
+  // |dhcp_controller()| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller());
+  DCHECK(ipconfig());
   if (selected_service_) {
     if (IsUsingStaticIP()) {
       // Consider three cases:
@@ -900,14 +900,14 @@ void Device::OnDHCPFailure() {
     }
   }
 
-  ipconfig_->ResetProperties();
+  ipconfig()->ResetProperties();
   UpdateIPConfigsProperty();
 
   // Fallback to IPv6 if possible.
-  if (ip6config_ && ip6config_->properties().HasIPAddressAndDNS()) {
+  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
     if (!network_->HasConnectionObject() || !network_->IsIPv6()) {
       // Setup IPv6 connection.
-      SetupConnection(ip6config_.get());
+      SetupConnection(ip6config());
     } else {
       // Ignore IPv4 config failure, since IPv6 is up.
     }
@@ -919,22 +919,22 @@ void Device::OnDHCPFailure() {
 }
 
 void Device::OnStaticIPConfigChanged() {
-  if (!ipconfig_ || !selected_service_) {
+  if (!ipconfig() || !selected_service_) {
     LOG(ERROR) << LoggingTag() << ": " << __func__ << " called but "
-               << (!ipconfig_ ? "no IPv4 config" : "no selected service");
+               << (!ipconfig() ? "no IPv4 config" : "no selected service");
     return;
   }
 
   // Clear the previously applied static IP parameters.
-  ipconfig_->RestoreSavedIPParameters(
+  ipconfig()->RestoreSavedIPParameters(
       selected_service_->mutable_static_ip_parameters());
 
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
 
-  if (dhcp_controller_) {
+  if (dhcp_controller()) {
     // Trigger DHCP renew.
-    dhcp_controller_->RenewIP();
+    dhcp_controller()->RenewIP();
   }
 }
 
@@ -1296,11 +1296,11 @@ RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
 
 RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
   RpcIdentifiers identifiers;
-  if (ipconfig_) {
-    identifiers.push_back(ipconfig_->GetRpcIdentifier());
+  if (ipconfig()) {
+    identifiers.push_back(ipconfig()->GetRpcIdentifier());
   }
-  if (ip6config_) {
-    identifiers.push_back(ip6config_->GetRpcIdentifier());
+  if (ip6config()) {
+    identifiers.push_back(ip6config()->GetRpcIdentifier());
   }
   return identifiers;
 }
@@ -1433,10 +1433,10 @@ void Device::SetEnabledUnchecked(bool enable,
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
       BringNetworkInterfaceDown();
     }
-    SLOG(this, 3) << "Device " << link_name_ << " ipconfig_ "
-                  << (ipconfig_ ? "is set." : "is not set.");
-    SLOG(this, 3) << "Device " << link_name_ << " ip6config_ "
-                  << (ip6config_ ? "is set." : "is not set.");
+    SLOG(this, 3) << "Device " << link_name_ << " ipconfig() "
+                  << (ipconfig() ? "is set." : "is not set.");
+    SLOG(this, 3) << "Device " << link_name_ << " ip6config() "
+                  << (ip6config() ? "is set." : "is not set.");
     SLOG(this, 3) << "Device " << link_name_ << " selected_service_ "
                   << (selected_service_ ? "is set." : "is not set.");
     Stop(error, chained_callback);

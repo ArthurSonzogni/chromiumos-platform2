@@ -200,13 +200,18 @@ class Device : public base::RefCounted<Device> {
   // getter should never return nullptr.
   Network* network() const { return network_.get(); }
 
-  IPConfig* ipconfig() const { return ipconfig_.get(); }
-  IPConfig* ip6config() const { return ip6config_.get(); }
+  // TODO(b/232177767): This group of getters and setters are only exposed for
+  // the purpose of refactor. New code outside Device should not use these.
+  DHCPController* dhcp_controller() const {
+    return network()->dhcp_controller();
+  }
+  IPConfig* ipconfig() const { return network()->ipconfig(); }
+  IPConfig* ip6config() const { return network()->ip6config(); }
   void set_ipconfig(std::unique_ptr<IPConfig> config) {
-    ipconfig_ = std::move(config);
+    network()->set_ipconfig(std::move(config));
   }
   void set_ip6config(std::unique_ptr<IPConfig> config) {
-    ip6config_ = std::move(config);
+    network()->set_ip6config(std::move(config));
   }
 
   // Returns a string that is guaranteed to uniquely identify this Device
@@ -331,7 +336,7 @@ class Device : public base::RefCounted<Device> {
 
   void set_dhcp_controller_for_testing(
       std::unique_ptr<DHCPController> dhcp_controller) {
-    dhcp_controller_ = std::move(dhcp_controller);
+    network()->set_dhcp_controller(std::move(dhcp_controller));
   }
 
   void set_network_for_testing(std::unique_ptr<Network> network) {
@@ -541,7 +546,6 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  DHCPController* dhcp_controller() const { return dhcp_controller_.get(); }
   bool fixed_ip_params() const { return fixed_ip_params_; }
 
   virtual void set_mac_address(const std::string& mac_address);
@@ -712,10 +716,7 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
-  std::unique_ptr<DHCPController> dhcp_controller_;
-  std::unique_ptr<IPConfig> ipconfig_;
-  std::unique_ptr<IPConfig> ip6config_;
-  // TODO(b/227563210): We currently use ip6config_ for IPv6 network properties
+  // TODO(b/227563210): We currently use ip6config() for IPv6 network properties
   // from SLAAC and this separated |ipv6_static_properties_| for static
   // configurations from cellular. This is temporary and only works because we
   // always expect a SLAAC configu to be available (which will not be true for
