@@ -3552,9 +3552,6 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   EXPECT_CALL(*cell_device, IsConnectedToService(IsRefPtrTo(cell_service)))
       .WillRepeatedly(Return(true));
 
-  // PortalDetector sends UMA results on completion, ensure it is called twice,
-  // once for wifi and once for cell.
-  EXPECT_CALL(*metrics(), NotifyPortalDetectionMultiProbeResult(_)).Times(2);
   manager()->CreateConnectivityReport(nullptr);
   dispatcher()->DispatchPendingEvents();
 }

@@ -120,10 +120,6 @@ class MockMetrics : public Metrics {
               NotifyConnectionDiagnosticsIssue,
               (const std::string&),
               (override));
-  MOCK_METHOD(void,
-              NotifyPortalDetectionMultiProbeResult,
-              (const PortalDetector::Result&),
-              (override));
 };
 
 }  // namespace shill

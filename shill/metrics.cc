@@ -1178,34 +1178,6 @@ void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
   SendEnumToUMA(kMetricConnectionDiagnosticsIssue, issue_enum);
 }
 
-void Metrics::NotifyPortalDetectionMultiProbeResult(
-    const PortalDetector::Result& result) {
-  // kTimeout is implicitly treated as a failure
-  // kRedirect on HTTPS is unexpected and ignored
-  PortalDetectionMultiProbeResult result_enum;
-  if (result.https_status == PortalDetector::Status::kRedirect) {
-    result_enum = kPortalDetectionMultiProbeResultUndefined;
-  } else if (result.https_status != PortalDetector::Status::kSuccess &&
-             result.http_status == PortalDetector::Status::kSuccess) {
-    result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked;
-  } else if (result.https_status != PortalDetector::Status::kSuccess &&
-             result.http_status == PortalDetector::Status::kRedirect) {
-    result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected;
-  } else if (result.https_status != PortalDetector::Status::kSuccess) {
-    result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked;
-  } else if (result.https_status == PortalDetector::Status::kSuccess &&
-             result.http_status == PortalDetector::Status::kSuccess) {
-    result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked;
-  } else if (result.https_status == PortalDetector::Status::kSuccess &&
-             result.http_status == PortalDetector::Status::kRedirect) {
-    result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected;
-  } else {
-    result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked;
-  }
-
-  SendEnumToUMA(kMetricPortalDetectionMultiProbeResult, result_enum);
-}
-
 void Metrics::NotifyHS20Support(bool hs20_supported, int hs20_version_number) {
   if (!hs20_supported) {
     SendEnumToUMA(kMetricHS20Support, kHS20Unsupported);

@@ -1078,12 +1078,6 @@
         portal.
       </summary>
     </metric>
-    <metric name="PortalDetectionMultiProbeResult" type="int">
-      <summary>
-        Enum |PortalDetectionMultiProbeResult| reporting the results of the HTTP
-        and HTTPS probes during captive portal detection.
-      </summary>
-    </metric>
   </event>
 
   <event name="WiFiConnectionEnd">

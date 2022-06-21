@@ -380,7 +380,6 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_request(), Stop()).Times(1);
   EXPECT_CALL(*https_request(), Stop()).Times(1);
-  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_));
   ExpectRequestSuccessWithStatus(204, true);
 }
 
@@ -402,7 +401,6 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_request(), Stop()).Times(1);
   EXPECT_CALL(*https_request(), Stop()).Times(1);
-  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_));
   ExpectRequestSuccessWithStatus(204, false);
 }
 
@@ -424,7 +422,6 @@ TEST_F(PortalDetectorTest, RequestFail) {
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_request(), Stop()).Times(1);
   EXPECT_CALL(*https_request(), Stop()).Times(1);
-  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_));
   ExpectRequestSuccessWithStatus(123, true);
 }
 
@@ -448,7 +445,6 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   EXPECT_CALL(*https_request(), Stop()).Times(1);
   EXPECT_CALL(*brillo_connection(), GetResponseHeader("Location"))
       .WillOnce(Return(kHttpUrl));
-  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_));
   ExpectRequestSuccessWithStatus(302, true);
 }
 

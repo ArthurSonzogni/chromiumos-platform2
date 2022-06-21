@@ -181,7 +181,6 @@ void PortalDetector::CompleteTrial(Result result) {
             << ". HTTPS probe: phase=" << result.https_phase
             << ", status=" << result.https_status;
   result.num_attempts = attempt_count_;
-  metrics_->NotifyPortalDetectionMultiProbeResult(result);
   CleanupTrial();
   portal_result_callback_.Run(result);
 }
