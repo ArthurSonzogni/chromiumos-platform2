@@ -24,22 +24,37 @@
 
 namespace shill {
 
-// static
-const char StaticIPParameters::kConfigKeyPrefix[] = "StaticIP.";
-// static
-const char StaticIPParameters::kSavedConfigKeyPrefix[] = "SavedIP.";
-// static
-const StaticIPParameters::Property StaticIPParameters::kProperties[] = {
-    {kAddressProperty, Property::kTypeString},
-    {kGatewayProperty, Property::kTypeString},
-    {kMtuProperty, Property::kTypeInt32},
-    {kNameServersProperty, Property::kTypeStrings},
-    {kSearchDomainsProperty, Property::kTypeStrings},
-    {kPeerAddressProperty, Property::kTypeString},
-    {kPrefixlenProperty, Property::kTypeInt32},
-    {kIncludedRoutesProperty, Property::kTypeStrings},
-    {kExcludedRoutesProperty, Property::kTypeStrings},
+namespace {
+
+constexpr char kConfigKeyPrefix[] = "StaticIP.";
+
+struct Property {
+  enum class Type {
+    kInt32,
+    kString,
+    // Properties of type "Strings" are stored as a comma-separated list in the
+    // control interface and in the profile, but are stored as a vector of
+    // strings in the IPConfig properties.
+    kStrings
+  };
+
+  const char* name;
+  Type type;
 };
+
+constexpr Property kProperties[] = {
+    {kAddressProperty, Property::Type::kString},
+    {kGatewayProperty, Property::Type::kString},
+    {kMtuProperty, Property::Type::kInt32},
+    {kNameServersProperty, Property::Type::kStrings},
+    {kSearchDomainsProperty, Property::Type::kStrings},
+    {kPeerAddressProperty, Property::Type::kString},
+    {kPrefixlenProperty, Property::Type::kInt32},
+    {kIncludedRoutesProperty, Property::Type::kStrings},
+    {kExcludedRoutesProperty, Property::Type::kStrings},
+};
+
+}  // namespace
 
 StaticIPParameters::StaticIPParameters() = default;
 
@@ -66,7 +81,7 @@ bool StaticIPParameters::Load(const StoreInterface* storage,
   for (const auto& property : kProperties) {
     const std::string name(std::string(kConfigKeyPrefix) + property.name);
     switch (property.type) {
-      case Property::kTypeInt32: {
+      case Property::Type::kInt32: {
         int32_t value;
         if (storage->GetInt(storage_id, name, &value)) {
           args.Set<int32_t>(property.name, value);
@@ -74,7 +89,7 @@ bool StaticIPParameters::Load(const StoreInterface* storage,
           args.Remove(property.name);
         }
       } break;
-      case Property::kTypeString: {
+      case Property::Type::kString: {
         std::string value;
         if (storage->GetString(storage_id, name, &value)) {
           args.Set<std::string>(property.name, value);
@@ -82,7 +97,7 @@ bool StaticIPParameters::Load(const StoreInterface* storage,
           args.Remove(property.name);
         }
       } break;
-      case Property::kTypeStrings: {
+      case Property::Type::kStrings: {
         // Name servers field is stored in storage as comma separated string.
         // Keep it as is to be backward compatible.
         std::string value;
@@ -108,20 +123,20 @@ void StaticIPParameters::Save(StoreInterface* storage,
     const std::string name(std::string(kConfigKeyPrefix) + property.name);
     bool property_exists = false;
     switch (property.type) {
-      case Property::kTypeInt32:
+      case Property::Type::kInt32:
         if (args_.Contains<int32_t>(property.name)) {
           property_exists = true;
           storage->SetInt(storage_id, name, args_.Get<int32_t>(property.name));
         }
         break;
-      case Property::kTypeString:
+      case Property::Type::kString:
         if (args_.Contains<std::string>(property.name)) {
           property_exists = true;
           storage->SetString(storage_id, name,
                              args_.Get<std::string>(property.name));
         }
         break;
-      case Property::kTypeStrings:
+      case Property::Type::kStrings:
         if (args_.Contains<Strings>(property.name)) {
           property_exists = true;
           // Name servers field is stored in storage as comma separated string.

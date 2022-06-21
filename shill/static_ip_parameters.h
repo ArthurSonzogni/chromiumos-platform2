@@ -23,9 +23,6 @@ class StoreInterface;
 // parameters to an IPConfig object.
 class StaticIPParameters {
  public:
-  static const char kConfigKeyPrefix[];
-  static const char kSavedConfigKeyPrefix[];
-
   StaticIPParameters();
   StaticIPParameters(const StaticIPParameters&) = delete;
   StaticIPParameters& operator=(const StaticIPParameters&) = delete;
@@ -65,22 +62,6 @@ class StaticIPParameters {
  private:
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
-
-  struct Property {
-    enum Type {
-      kTypeInt32,
-      kTypeString,
-      // Properties of type "Strings" are stored as a comma-separated list
-      // in the control interface and in the profile, but are stored as a
-      // vector of strings in the IPConfig properties.
-      kTypeStrings
-    };
-
-    const char* name;
-    Type type;
-  };
-
-  static const Property kProperties[];
 
   // These functions try to retrieve the argument |property| out of the
   // KeyValueStore in |args_|.  If that value exists, overwrite |value_out|
