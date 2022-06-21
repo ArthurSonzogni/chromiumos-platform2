@@ -10,6 +10,7 @@ rseq: 1
 access: 1
 brk: 1
 clock_gettime: 1
+clock_nanosleep: 1
 close: 1
 connect: 1
 epoll_ctl: 1
@@ -20,6 +21,7 @@ exit_group: 1
 flock: 1
 fstat: 1
 fstatfs: 1
+futex: 1
 getpid: 1
 getrandom: 1
 gettid: 1
@@ -40,6 +42,7 @@ rt_sigtimedwait: 1
 sched_getaffinity: 1
 sendto: 1
 statx: 1
+sysinfo: 1
 uname: 1
 
 # Line below needed for logging. This comment is necessary for the linter.
