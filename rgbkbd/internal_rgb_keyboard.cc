@@ -60,6 +60,10 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
     case RgbKeyboardCapabilities::kIndividualKey:
       LOG(INFO) << "Device supports per-key keyboard over USB";
       break;
+    case RgbKeyboardCapabilities::kFourZoneTwelveLed:
+    case RgbKeyboardCapabilities::kFourZoneFifteenLed:
+      NOTIMPLEMENTED();
+      break;
   }
 }
 
