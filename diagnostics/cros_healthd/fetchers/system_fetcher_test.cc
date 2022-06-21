@@ -247,7 +247,7 @@ class SystemUtilsTest : public BaseFileTest {
     base::RunLoop run_loop;
     mojom::SystemResultPtr result;
     system_fetcher_.FetchSystemInfo(
-        base::BindOnce(&OnGetSystemInfoResponse, &result));
+        base::BindOnce(&OnGetSystemInfoResponse, &result), base::DoNothing());
     run_loop.RunUntilIdle();
     return result;
   }

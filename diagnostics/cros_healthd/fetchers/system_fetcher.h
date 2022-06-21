@@ -25,7 +25,8 @@ class SystemFetcher final : public BaseFetcher {
   using BaseFetcher::BaseFetcher;
 
   // DEPRECATED(b/188508561): Use SystemInfoV2 instead.
-  void FetchSystemInfo(FetchSystemInfoCallback callback);
+  void FetchSystemInfo(FetchSystemInfoCallback callback,
+                       FetchSystemInfoV2Callback callback_v2);
   // Returns either a structure with the system information or the error that
   // occurred fetching the information.
   void FetchSystemInfoV2(FetchSystemInfoV2Callback callback);

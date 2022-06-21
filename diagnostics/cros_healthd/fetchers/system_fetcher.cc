@@ -169,11 +169,14 @@ void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoV2Callback callback,
       mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
 }
 
-void HandleSystemInfoV2Response(SystemFetcher::FetchSystemInfoCallback callback,
-                                mojom::SystemResultV2Ptr result) {
+void HandleSystemInfoV2Response(
+    SystemFetcher::FetchSystemInfoCallback callback,
+    SystemFetcher::FetchSystemInfoV2Callback callback_v2,
+    mojom::SystemResultV2Ptr result) {
   if (result->is_error()) {
     std::move(callback).Run(
         mojom::SystemResult::NewError(result->get_error()->Clone()));
+    std::move(callback_v2).Run(std::move(result));
     return;
   }
   CHECK(result->is_system_info_v2());
@@ -181,6 +184,7 @@ void HandleSystemInfoV2Response(SystemFetcher::FetchSystemInfoCallback callback,
       SystemFetcher::ConvertToSystemInfo(result->get_system_info_v2());
   std::move(callback).Run(
       mojom::SystemResult::NewSystemInfo(std::move(system_info)));
+  std::move(callback_v2).Run(std::move(result));
 }
 
 }  // namespace
@@ -289,9 +293,11 @@ mojom::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
   return system_info;
 }
 
-void SystemFetcher::FetchSystemInfo(FetchSystemInfoCallback callback) {
-  FetchSystemInfoV2(
-      base::BindOnce(&HandleSystemInfoV2Response, std::move(callback)));
+void SystemFetcher::FetchSystemInfo(FetchSystemInfoCallback callback,
+                                    FetchSystemInfoV2Callback callback_v2) {
+  FetchSystemInfoV2(base::BindOnce(&HandleSystemInfoV2Response,
+                                   std::move(callback),
+                                   std::move(callback_v2)));
 }
 
 }  // namespace diagnostics
