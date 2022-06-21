@@ -23,11 +23,13 @@ enum class AttestationOpsStatus {
 
 // Attestation-related operations. These are used as suffixes to
 // kAttestationStatusHistogramPrefix defined in the .cc.
-constexpr char kAttestationEncryptDatabase[] = "EncryptDatabase";
-constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
-constexpr char kAttestationActivateAttestationKey[] = "ActivateAttestationKey";
-constexpr char kAttestationVerify[] = "AttestationVerify";
-constexpr char kAttestationPrepareForEnrollment[] = "PrepareForEnrollment";
+inline constexpr char kAttestationEncryptDatabase[] = "EncryptDatabase";
+inline constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
+inline constexpr char kAttestationActivateAttestationKey[] =
+    "ActivateAttestationKey";
+inline constexpr char kAttestationVerify[] = "AttestationVerify";
+inline constexpr char kAttestationPrepareForEnrollment[] =
+    "PrepareForEnrollment";
 
 // This class provides helper functions to report attestation-related
 // metrics.
