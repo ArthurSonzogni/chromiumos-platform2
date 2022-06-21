@@ -6,6 +6,7 @@
 #define CRYPTOHOME_PLATFORM_H_
 
 #include <stdint.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
@@ -33,6 +34,8 @@ extern "C" {
 #include <keyutils.h>
 }
 
+// TODO(b/235960683): Drop this after CrOS upgrades to glibc >= 2.34
+// because MS_NOSYMFOLLOW will be defined in sys/mount.h
 #ifndef MS_NOSYMFOLLOW
 // Added locally in kernels 4.x+.
 #define MS_NOSYMFOLLOW 256

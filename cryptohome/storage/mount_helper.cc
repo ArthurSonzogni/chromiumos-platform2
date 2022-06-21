@@ -4,6 +4,7 @@
 
 #include "cryptohome/storage/mount_helper.h"
 
+#include <sys/mount.h>
 #include <sys/stat.h>
 
 #include <memory>
