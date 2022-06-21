@@ -114,7 +114,7 @@ class VmInterface {
                                UsbControlResponse* response) = 0;
 
   // Detach the usb device at guest port.
-  virtual bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) = 0;
+  virtual bool DetachUsbDevice(uint8_t port) = 0;
 
   // List all usb devices attached to guest.
   virtual bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) = 0;

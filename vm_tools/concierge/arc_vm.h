@@ -103,7 +103,7 @@ class ArcVm final : public VmBaseImpl {
                        uint16_t pid,
                        int fd,
                        UsbControlResponse* response) override;
-  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
+  bool DetachUsbDevice(uint8_t port) override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
       const MemoryMargins& margins, const std::string& vm) override;
   bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;

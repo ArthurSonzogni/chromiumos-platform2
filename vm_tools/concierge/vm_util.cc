@@ -471,19 +471,8 @@ bool AttachUsbDevice(std::string socket_path,
   return response->type == OK;
 }
 
-bool DetachUsbDevice(std::string socket_path,
-                     uint8_t port,
-                     UsbControlResponse* response) {
-  auto crosvm = std::make_unique<brillo::ProcessImpl>();
-  crosvm->AddArg(kCrosvmBin);
-  crosvm->AddArg("usb");
-  crosvm->AddArg("detach");
-  crosvm->AddArg(std::to_string(port));
-  crosvm->AddArg(std::move(socket_path));
-
-  CallUsbControl(std::move(crosvm), response);
-
-  return response->type == OK;
+bool DetachUsbDevice(std::string socket_path, uint8_t port) {
+  return crosvm_client_usb_detach(socket_path.c_str(), port);
 }
 
 bool ListUsbDevice(std::string socket_path,

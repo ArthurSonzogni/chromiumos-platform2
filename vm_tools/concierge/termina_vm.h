@@ -216,7 +216,7 @@ class TerminaVm final : public VmBaseImpl {
                        uint16_t pid,
                        int fd,
                        UsbControlResponse* response) override;
-  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
+  bool DetachUsbDevice(uint8_t port) override;
   bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;

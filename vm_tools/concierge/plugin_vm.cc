@@ -337,12 +337,11 @@ bool PluginVm::AttachUsbDevice(uint8_t bus,
   return true;
 }
 
-bool PluginVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
+bool PluginVm::DetachUsbDevice(uint8_t port) {
   auto iter = std::find_if(
       usb_devices_.begin(), usb_devices_.end(),
       [port](const auto& info) { return std::get<2>(info) == port; });
   if (iter == usb_devices_.end()) {
-    response->type = UsbControlResponseType::NO_SUCH_PORT;
     return true;
   }
 
@@ -371,8 +370,6 @@ bool PluginVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
 
   // TODO(dtor): report status only when plugin responds; requires changes to
   // the VM interface API.
-  response->type = UsbControlResponseType::OK;
-  response->port = port;
   return true;
 }
 

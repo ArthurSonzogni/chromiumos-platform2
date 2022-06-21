@@ -3779,8 +3779,7 @@ std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
     return dbus_response;
   }
 
-  UsbControlResponse usb_response;
-  if (!iter->second->DetachUsbDevice(request.guest_port(), &usb_response)) {
+  if (!iter->second->DetachUsbDevice(request.guest_port())) {
     LOG(ERROR) << "Failed to detach USB device";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;

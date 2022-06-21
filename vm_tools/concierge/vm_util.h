@@ -134,9 +134,7 @@ bool AttachUsbDevice(std::string socket_path,
                      UsbControlResponse* response);
 
 // Detaches the usb device at guest |port|.
-bool DetachUsbDevice(std::string socket_path,
-                     uint8_t port,
-                     UsbControlResponse* response);
+bool DetachUsbDevice(std::string socket_path, uint8_t port);
 
 // Lists all usb devices attached to guest.
 bool ListUsbDevice(std::string socket_path,

@@ -490,9 +490,8 @@ bool ArcVm::AttachUsbDevice(uint8_t bus,
                                               pid, fd, response);
 }
 
-bool ArcVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
-  return vm_tools::concierge::DetachUsbDevice(GetVmSocketPath(), port,
-                                              response);
+bool ArcVm::DetachUsbDevice(uint8_t port) {
+  return vm_tools::concierge::DetachUsbDevice(GetVmSocketPath(), port);
 }
 
 namespace {
