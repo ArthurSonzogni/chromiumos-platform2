@@ -27,10 +27,16 @@ remain = "*"
 regex = "1.0.6"
 rustyline = "7.0.0"
 shell-words = "1.0.0"
-sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
+sys_util = "0.1.0"
 system_api = { path = "../system_api" } # provided by ebuild
 textwrap = "0.11.0"
 tlsdate_dbus = { path = "../../third_party/tlsdate" } # provided by ebuild
 
 [dev-dependencies]
 tempfile = "3.2.0"
+
+[patch.crates-io] # ignored by ebuild
+data_model = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/data_model-0.1.0/" } # ignored by ebuild
+sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" } # ignored by ebuild
+sys_util = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util-0.1.0/" } # ignored by ebuild
+sys_util_core = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util_core-0.1.0/" } # ignored by ebuild

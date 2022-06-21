@@ -25,9 +25,15 @@ openssl = "0.10.36"
 protobuf = "2.3"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
-sync = { path = "../../platform/crosvm/common/sync" } # provided by ebuild
+sync = "0.1.99"
 sys_util = "0.1.0"
 syslog = "4.0.0"
 system_api = { path = "../../platform2/system_api" } # provided by ebuild
 thiserror = "1.0.20"
 zeroize = { version = "1.5.1", features = ["zeroize_derive"] }
+
+[patch.crates-io] # ignored by ebuild
+data_model = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/data_model-0.1.0/" } # ignored by ebuild
+sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" } # ignored by ebuild
+sys_util = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util-0.1.0/" } # ignored by ebuild
+sys_util_core = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util_core-0.1.0/" } # ignored by ebuild
