@@ -38,6 +38,7 @@
 #include "shill/provider_interface.h"
 #include "shill/service.h"
 #include "shill/store/property_store.h"
+#include "shill/tethering_manager.h"
 #include "shill/upstart/upstart.h"
 
 namespace shill {
@@ -569,6 +570,9 @@ class Manager {
                                   const KeyValueStore& properties,
                                   Error* error);
 
+  // Enable or disable a tethering session.
+  bool SetTetheringEnabled(bool enabled, Error* error);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -969,6 +973,10 @@ class Manager {
   // the Connection interface name.
   std::map<std::string, std::unique_ptr<PortalDetector>>
       connectivity_test_portal_detectors_;
+
+  // Tethering manager to manage tethering related state machine, properties
+  // and session.
+  std::unique_ptr<TetheringManager> tethering_manager_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };

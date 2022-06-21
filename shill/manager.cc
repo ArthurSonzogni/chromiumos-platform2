@@ -235,7 +235,8 @@ Manager::Manager(ControlInterface* control_interface,
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
-      should_blackhole_user_traffic_(false) {
+      should_blackhole_user_traffic_(false),
+      tethering_manager_(new TetheringManager()) {
   HelpRegisterConstDerivedRpcIdentifier(
       kActiveProfileProperty, &Manager::GetActiveProfileRpcIdentifier);
   HelpRegisterDerivedString(kAlwaysOnVpnPackageProperty,
@@ -301,6 +302,8 @@ Manager::Manager(ControlInterface* control_interface,
                           &Manager::SetUseSwanctlDriver);
   store_.RegisterString(kDhcpPropertyHostnameProperty, &props_.dhcp_hostname);
 
+  tethering_manager_->InitPropertyStore(&store_);
+
   UpdateProviderMapping();
 
   supported_vpn_ = vpn_provider_->GetSupportedType();
@@ -362,6 +365,8 @@ void Manager::Start() {
   supplicant_manager_->Start();
 #endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
+  tethering_manager_->Start();
+
   power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(
       kTerminationActionsTimeout,
@@ -410,6 +415,8 @@ void Manager::Stop() {
     // only time multiple default profiles are loaded are during autotests.
     profile->Save();
   }
+
+  tethering_manager_->Stop();
 
   Error e;
   for (const auto& service : services_) {
@@ -3311,4 +3318,7 @@ void Manager::ConnectivityTestCallback(const std::string& interface_name,
   connectivity_test_portal_detectors_.erase(interface_name);
 }
 
+bool Manager::SetTetheringEnabled(bool enabled, Error* error) {
+  return tethering_manager_->SetEnabled(enabled, error);
+}
 }  // namespace shill

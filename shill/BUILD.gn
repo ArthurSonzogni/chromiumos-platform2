@@ -308,6 +308,7 @@ static_library("libshill") {
     "store/property_store.cc",
     "technology.cc",
     "tethering.cc",
+    "tethering_manager.cc",
     "throttler.cc",
     "upstart/upstart.cc",
     "virtual_device.cc",

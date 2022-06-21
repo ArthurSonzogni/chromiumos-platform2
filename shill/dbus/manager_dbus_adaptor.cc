@@ -495,4 +495,12 @@ bool ManagerDBusAdaptor::RemovePasspointCredentials(
       &e);
   return !e.ToChromeosError(error);
 }
+
+bool ManagerDBusAdaptor::SetTetheringEnabled(brillo::ErrorPtr* error,
+                                             bool enabled) {
+  SLOG(this, 2) << __func__ << ": " << enabled;
+  Error e;
+  manager_->SetTetheringEnabled(enabled, &e);
+  return !e.ToChromeosError(error);
+}
 }  // namespace shill

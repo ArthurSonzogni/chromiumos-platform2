@@ -140,6 +140,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
       brillo::ErrorPtr* error,
       const dbus::ObjectPath& profile_rpcid,
       const brillo::VariantDictionary& args) override;
+  bool SetTetheringEnabled(brillo::ErrorPtr* error, bool enabled) override;
 
  private:
   friend class ManagerDBusAdaptorTest;
