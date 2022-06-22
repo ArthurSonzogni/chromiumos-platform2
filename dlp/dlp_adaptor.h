@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -67,6 +68,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       const std::vector<uint8_t>& request_blob) override;
 
   void SetFanotifyWatcherStartedForTesting(bool is_started);
+  void SetDownloadsPathForTesting(const base::FilePath& path);
+  void CloseDatabaseForTesting();
 
  private:
   friend class DlpAdaptorTest;
@@ -83,11 +86,16 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeleted);
+  // TODO(crbug.com/1338914): LevelDB doesn't work correctly on ARM yet.
+  FRIEND_TEST(DlpAdaptorTest, DISABLED_GetFilesSourcesFileDeleted);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
 
-  // Opens the database |db_| to store files sources.
-  void InitDatabase(const base::FilePath database_path);
+  // Opens the database |db_| to store files sources, |init_callback| called
+  // after the database is set.
+  void InitDatabase(const base::FilePath database_path,
+                    base::OnceClosure init_callback);
 
   // Initializes |fanotify_watcher_| if not yet started.
   void EnsureFanotifyWatcherStarted();
@@ -142,10 +150,16 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   static ino_t GetInodeValue(const std::string& path);
 
+  // Removes entries from |db| that are not present in |inodes| and sets the
+  // used database to |db|. |callback| is called if this successfully finishes.
+  void CleanupAndSetDatabase(std::unique_ptr<leveldb::DB> db,
+                             base::OnceClosure callback,
+                             std::set<ino64_t> inodes);
+
   // If true, DlpAdaptor won't try to initialise `fanotify_watcher_`.
   bool is_fanotify_watcher_started_for_testing_ = false;
 
-  // Can be nullptr if failed to initialize.
+  // Can be nullptr if failed to initialize or closed during a test.
   std::unique_ptr<leveldb::DB> db_;
 
   std::vector<DlpFilesRule> policy_rules_;

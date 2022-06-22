@@ -5,6 +5,7 @@
 #include "dlp/dlp_adaptor.h"
 
 #include <cstdint>
+#include <set>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -15,16 +16,19 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
+#include <leveldb/write_batch.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "dlp/database.pb.h"
@@ -33,6 +37,9 @@
 namespace dlp {
 
 namespace {
+
+// Override watched directory for tests.
+base::FilePath g_downloads_path_for_testing;
 
 // Serializes |proto| to a vector of bytes. CHECKs for success (should
 // never fail if there are no required proto fields).
@@ -82,10 +89,24 @@ FileEntry ConvertToFileEntryProto(AddFileRequest request) {
 }
 
 base::FilePath GetUserDownloadsPath(const std::string& username) {
+  if (!g_downloads_path_for_testing.empty())
+    return g_downloads_path_for_testing;
   // TODO(crbug.com/1200575): Refactor to not hardcode it.
   return base::FilePath("/home/chronos/")
       .Append("u-" + username)
       .Append("MyFiles/Downloads");
+}
+
+std::set<ino64_t> EnumerateInodes(const base::FilePath& root_path) {
+  std::set<ino64_t> inodes;
+  base::FileEnumerator enumerator(root_path, /*recursive=*/true,
+                                  base::FileEnumerator::FILES);
+  for (base::FilePath entry = enumerator.Next(); !entry.empty();
+       entry = enumerator.Next()) {
+    inodes.insert(enumerator.GetInfo().stat().st_ino);
+  }
+
+  return inodes;
 }
 
 }  // namespace
@@ -110,7 +131,7 @@ void DlpAdaptor::InitDatabaseOnCryptohome() {
   const base::FilePath database_path = base::FilePath("/run/daemon-store/dlp/")
                                            .Append(sanitized_username)
                                            .Append("database");
-  InitDatabase(database_path);
+  InitDatabase(database_path, /*init_callback=*/base::DoNothing());
 }
 
 void DlpAdaptor::RegisterAsync(
@@ -355,20 +376,21 @@ void DlpAdaptor::CheckFilesTransfer(
                      base::Unretained(this), std::move(callbacks.second)));
 }
 
-void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
+void DlpAdaptor::InitDatabase(const base::FilePath database_path,
+                              base::OnceClosure init_callback) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
   options.create_if_missing = true;
   options.paranoid_checks = true;
-  leveldb::DB* db = nullptr;
+  leveldb::DB* db_ptr = nullptr;
   leveldb::Status status =
-      leveldb::DB::Open(options, database_path.value(), &db);
+      leveldb::DB::Open(options, database_path.value(), &db_ptr);
 
   if (!status.ok()) {
     LOG(ERROR) << "Failed to open database: " << status.ToString();
     status = leveldb::RepairDB(database_path.value(), leveldb::Options());
     if (status.ok())
-      status = leveldb::DB::Open(options, database_path.value(), &db);
+      status = leveldb::DB::Open(options, database_path.value(), &db_ptr);
   }
 
   if (!status.ok()) {
@@ -376,7 +398,14 @@ void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
     return;
   }
 
-  db_.reset(db);
+  std::unique_ptr<leveldb::DB> db(db_ptr);
+  base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(
+          &EnumerateInodes,
+          GetUserDownloadsPath(GetSanitizedUsername(dbus_object_.get()))),
+      base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase, base::Unretained(this),
+                     std::move(db), std::move(init_callback)));
 }
 
 void DlpAdaptor::EnsureFanotifyWatcherStarted() {
@@ -549,6 +578,14 @@ void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
   is_fanotify_watcher_started_for_testing_ = is_started;
 }
 
+void DlpAdaptor::SetDownloadsPathForTesting(const base::FilePath& path) {
+  g_downloads_path_for_testing = path;
+}
+
+void DlpAdaptor::CloseDatabaseForTesting() {
+  db_.reset();
+}
+
 int DlpAdaptor::AddLifelineFd(int dbus_fd) {
   int fd = dup(dbus_fd);
   if (fd < 0) {
@@ -598,6 +635,32 @@ ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
     return 0;
   }
   return file_stats.st_ino;
+}
+
+void DlpAdaptor::CleanupAndSetDatabase(std::unique_ptr<leveldb::DB> db,
+                                       base::OnceClosure callback,
+                                       std::set<ino64_t> inodes) {
+  DCHECK(db);
+
+  leveldb::WriteBatch write_batch;
+  leveldb::ReadOptions read_options;
+  ino_t inode;
+  read_options.fill_cache = false;
+  std::unique_ptr<leveldb::Iterator> iter(db->NewIterator(read_options));
+  iter->SeekToFirst();
+  for (; iter->Valid(); iter->Next()) {
+    if (base::StringToUint64(iter->key().ToString(), &inode) &&
+        !base::Contains(inodes, inode)) {
+      write_batch.Delete(iter->key());
+    }
+  }
+  leveldb::Status status = db->Write(leveldb::WriteOptions(), &write_batch);
+  if (!status.ok()) {
+    LOG(ERROR) << "Can't cleanup removed files from database";
+  } else {
+    db_.swap(db);
+    std::move(callback).Run();
+  }
 }
 
 }  // namespace dlp
