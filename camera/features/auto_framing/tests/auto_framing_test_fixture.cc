@@ -354,6 +354,7 @@ bool AutoFramingTestFixture::ProcessCaptureResult(int64_t sensor_timestamp,
       .result = locked_result_metadata,
       .num_output_buffers = 1,
       .output_buffers = &result_buffer,
+      .partial_result = 1,
   });
   if (!auto_framing_stream_manipulator_->ProcessCaptureResult(&result)) {
     LOGF(ERROR) << "Failed to process capture result";

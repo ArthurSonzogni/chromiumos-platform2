@@ -211,7 +211,8 @@ std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
 //
 
 struct AutoFramingStreamManipulator::CaptureContext {
-  bool enable;
+  uint32_t num_pending_buffers = 0;
+  bool metadata_received = false;
   std::vector<camera3_stream_buffer_t> client_buffers;
   std::optional<CameraBufferPool::Buffer> full_frame_buffer;
   std::optional<int64_t> timestamp;
@@ -482,14 +483,12 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     }
   }
 
+  if (!GetEnabled()) {
+    return true;
+  }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
     return false;
-  }
-
-  ctx->enable = GetEnabled();
-  if (!ctx->enable) {
-    return true;
   }
 
   // Separate buffers into |hal_buffers| that will be requested to the HAL, and
@@ -520,6 +519,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   hal_buffers.push_back(full_frame_buffer);
 
   request->SetOutputBuffers(hal_buffers);
+  ctx->num_pending_buffers = request->num_output_buffers();
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number()) << "Request stream buffers to HAL:";
@@ -544,14 +544,11 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
 
   CaptureContext* ctx = GetCaptureContext(result->frame_number());
   if (!ctx) {
-    return false;
-  }
-  if (!ctx->enable) {
-    if (result->partial_result() == partial_result_count_) {
-      capture_contexts_.erase(result->frame_number());
-    }
     return true;
   }
+  CHECK_GE(ctx->num_pending_buffers, result->num_output_buffers());
+  ctx->num_pending_buffers -= result->num_output_buffers();
+  ctx->metadata_received |= result->partial_result() == partial_result_count_;
 
   if (face_tracker_) {
     // Using face detector.
@@ -676,7 +673,9 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   }
   result->SetOutputBuffers(result_buffers);
 
-  capture_contexts_.erase(result->frame_number());
+  if (ctx->num_pending_buffers == 0 && ctx->metadata_received) {
+    capture_contexts_.erase(result->frame_number());
+  }
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers to client:";
@@ -840,7 +839,9 @@ void AutoFramingStreamManipulator::HandleFramingErrorOnThread(
   }
   result->SetOutputBuffers(result_buffers);
 
-  capture_contexts_.erase(result->frame_number());
+  if (ctx->num_pending_buffers == 0 && ctx->metadata_received) {
+    capture_contexts_.erase(result->frame_number());
+  }
 }
 
 void AutoFramingStreamManipulator::ResetOnThread() {
@@ -919,8 +920,8 @@ AutoFramingStreamManipulator::CaptureContext*
 AutoFramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
   auto it = capture_contexts_.find(frame_number);
   if (it == capture_contexts_.end()) {
-    LOGF(ERROR) << "Cannot find capture context with frame number "
-                << frame_number;
+    DVLOGF(2) << "Cannot find capture context with frame number "
+              << frame_number;
     return nullptr;
   }
   return it->second.get();
