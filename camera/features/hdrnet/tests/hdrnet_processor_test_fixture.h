@@ -32,6 +32,28 @@ class HdrNetProcessorTestFixture {
   // input image is populated with a test pattern.
   void LoadInputFile(base::FilePath input_file_path);
 
+  // Loads frame metadata associated with the input image from
+  // |metadata_file_path|. By default we generate fake metadata for testing.
+  //
+  // Loading input image metadata is currently supported on IPU6 platform. The
+  // metadata file must contain a JSON map:
+  //
+  // {
+  //   // A list of 2048 floats specifying the 1024 (max_pixel_value, gain)
+  //   // pairs, same as what the INTEL_VENDOR_CAMERA_TONE_MAP_CURVE vendor tag
+  //   // reports.
+  //   "tonemap_curve": [...]
+  // }
+  void LoadProcessingMetadata(base::FilePath metadata_file_path);
+
+  // Loads the HDRnet processing config from |hdrnet_config_path|.
+  void LoadHdrnetConfig(base::FilePath hdrnet_config_path);
+
+  // Runs the HDRnet processing pipeline. Custom input image, metadata and
+  // processing config must be loaded using the methods above before calling
+  // Run() to have effect.
+  base::ScopedFD Run(int frame_number, HdrnetMetrics& metrics);
+
   // Produces a fake capture result that can be used in the test.
   Camera3CaptureDescriptor ProduceFakeCaptureResult();
 
@@ -56,6 +78,9 @@ class HdrNetProcessorTestFixture {
   ScopedBufferHandle input_buffer_;
   SharedImage input_image_;
   std::vector<ScopedBufferHandle> output_buffers_;
+  HdrNetConfig::Options options_ = {
+      .hdrnet_enable = true,
+  };
 
   // Fake data for testing.
   uint32_t frame_number_ = 0;

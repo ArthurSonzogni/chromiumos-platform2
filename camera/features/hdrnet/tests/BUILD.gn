@@ -48,7 +48,10 @@ executable("hdrnet_processor_benchmark") {
 executable("hdrnet_processor_impl_test") {
   sources = [ "//camera/features/hdrnet/tests/hdrnet_processor_impl_test.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":hdrnet_processor_test_fixture" ]
+  deps = [
+    ":hdrnet_processor_test_fixture",
+    "//camera/features/hdrnet",
+  ]
 }
 
 executable("hdrnet_stream_manipulator_test") {

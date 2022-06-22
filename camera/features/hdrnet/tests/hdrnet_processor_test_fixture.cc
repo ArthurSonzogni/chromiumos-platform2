@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
@@ -26,6 +27,8 @@
 #include "features/third_party/intel/intel_vendor_metadata_tags.h"
 #endif  // USE_IPU6 || USE_IPU6EP
 
+#include "features/hdrnet/hdrnet_config.h"
+#include "common/reloadable_config_file.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/common.h"
 
@@ -64,6 +67,8 @@ vendor_tag_ops_t ipu6ep_vendor_tag_ops = {
       }
       return -1;
     }};
+
+constexpr int kGtmCurveResolution = 1024;
 #endif  // USE_IPU6 || USE_IPU6EP
 
 }  // namespace
@@ -127,17 +132,60 @@ void HdrNetProcessorTestFixture::LoadInputFile(base::FilePath input_file_path) {
   CHECK(ReadFileIntoBuffer(*input_buffer_, input_file_path));
 }
 
+void HdrNetProcessorTestFixture::LoadProcessingMetadata(
+    base::FilePath metadata_file_path) {
+#if USE_IPU6 || USE_IPU6EP
+  ReloadableConfigFile metadata({
+      .default_config_file_path = metadata_file_path,
+  });
+  std::vector<float> gtm_curve;
+  CHECK(LoadIfExist<float>(metadata.CloneJsonValues(), "tonemap_curve",
+                           &gtm_curve));
+  CHECK_EQ(gtm_curve.size(), kGtmCurveResolution * 2);
+  CHECK_EQ(result_metadata_.update(INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,
+                                   gtm_curve.data(), gtm_curve.size()),
+           0)
+      << "Cannot set tonemap curve in vendor tag";
+#else
+  LOGF(ERROR) << "Loading custom image metadata is not supported";
+#endif
+}
+
+void HdrNetProcessorTestFixture::LoadHdrnetConfig(
+    base::FilePath hdrnet_config_path) {
+  ReloadableConfigFile config({
+      .default_config_file_path = hdrnet_config_path,
+  });
+  base::Value json_values = config.CloneJsonValues();
+
+  ParseHdrnetJsonOptions(json_values, options_);
+
+  VLOGF(1) << "HDRnet config:"
+           << " hdrnet_enable=" << options_.hdrnet_enable
+           << " dump_buffer=" << options_.dump_buffer
+           << " hdr_ratio=" << options_.hdr_ratio
+           << " max_gain_blend_threshold=" << options_.max_gain_blend_threshold
+           << " spatial_filter_sigma=" << options_.spatial_filter_sigma
+           << " range_filter_sigma=" << options_.range_filter_sigma
+           << " iir_filter_strength=" << options_.iir_filter_strength;
+}
+
+base::ScopedFD HdrNetProcessorTestFixture::Run(int frame_number,
+                                               HdrnetMetrics& metrics) {
+  return processor_->Run(frame_number, options_, input_image_, base::ScopedFD(),
+                         output_buffers(), &metrics);
+}
+
 Camera3CaptureDescriptor
 HdrNetProcessorTestFixture::ProduceFakeCaptureResult() {
   if (result_metadata_.isEmpty()) {
     result_metadata_ = android::CameraMetadata(/*entryCapacity=*/3,
                                                /*dataCapacity=*/3);
-    constexpr int kCurveResolution = 1024;
-    std::vector<float> gtm_curve(kCurveResolution * 2);
+    std::vector<float> gtm_curve(kGtmCurveResolution * 2);
     // Simple identity curve.
-    for (int i = 0; i < kCurveResolution; ++i) {
+    for (int i = 0; i < kGtmCurveResolution; ++i) {
       int idx = i * 2;
-      gtm_curve[idx] = static_cast<float>(i) / kCurveResolution;
+      gtm_curve[idx] = static_cast<float>(i) / kGtmCurveResolution;
 #if USE_IPU6 || USE_IPU6EP
       // 1.0 means 1x gain.
       gtm_curve[idx + 1] = 1.0;
@@ -172,12 +220,15 @@ HdrNetProcessorTestFixture::ProduceFakeCaptureResult() {
 
 void HdrNetProcessorTestFixture::DumpBuffers(const char* file_prefix) {
   {
-    std::string filename = base::StringPrintf("%sInput.bin", file_prefix);
+    std::string filename =
+        base::StringPrintf("%sInput_%ux%u.yuv", file_prefix,
+                           CameraBufferManager::GetWidth(*input_buffer_),
+                           CameraBufferManager::GetHeight(*input_buffer_));
     CHECK(WriteBufferIntoFile(*input_buffer_, base::FilePath(filename)));
   }
   for (const auto& b : output_buffers_) {
     std::string filename = base::StringPrintf(
-        "%sOutput_%ux%u.bin", file_prefix, CameraBufferManager::GetWidth(*b),
+        "%sOutput_%ux%u.yuv", file_prefix, CameraBufferManager::GetWidth(*b),
         CameraBufferManager::GetHeight(*b));
     CHECK(WriteBufferIntoFile(*b, base::FilePath(filename)));
   }

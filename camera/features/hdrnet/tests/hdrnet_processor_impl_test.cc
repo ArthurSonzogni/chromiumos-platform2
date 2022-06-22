@@ -46,6 +46,8 @@ struct Options {
   bool dump_buffer = false;
   std::optional<base::FilePath> input_image_file;
   uint32_t input_image_format = HAL_PIXEL_FORMAT_YCbCr_420_888;
+  std::optional<base::FilePath> input_metadata_file;
+  std::optional<base::FilePath> hdrnet_config_file;
   bool use_noop_adapter = false;
 } g_args;
 
@@ -101,6 +103,28 @@ void ParseInputImageFormat(std::string argv, Options& opts) {
   VLOGF(1) << "Input image format: " << upper_argv;
 }
 
+void ParseInputMetadataFile(std::string argv, Options& opts) {
+  if (argv.empty()) {
+    VLOGF(1) << "No input metadata given; will use fake metadata";
+    return;
+  }
+  base::FilePath path(argv);
+  CHECK(base::PathExists(path)) << ": Input metadata file does not exist";
+  opts.input_metadata_file = path;
+  VLOGF(1) << "Input metadata file: " << opts.input_metadata_file->value();
+}
+
+void ParseHdrnetConfigFile(std::string argv, Options& opts) {
+  if (argv.empty()) {
+    VLOGF(1) << "No HDRnet config given; will use default config";
+    return;
+  }
+  base::FilePath path(argv);
+  CHECK(base::PathExists(path)) << ": HDRnet config file does not exist";
+  opts.hdrnet_config_file = path;
+  VLOGF(1) << "HDRnet config file: " << opts.hdrnet_config_file->value();
+}
+
 class HdrNetProcessorTest : public testing::Test {
  public:
   HdrNetProcessorTest()
@@ -118,14 +142,17 @@ TEST_F(HdrNetProcessorTest, FullPipelineTest) {
   if (g_args.input_image_file) {
     fixture_.LoadInputFile(*g_args.input_image_file);
   }
+  if (g_args.input_metadata_file) {
+    fixture_.LoadProcessingMetadata(*g_args.input_metadata_file);
+  }
+  if (g_args.hdrnet_config_file) {
+    fixture_.LoadHdrnetConfig(*g_args.hdrnet_config_file);
+  }
   HdrnetMetrics metrics;
-  HdrNetConfig::Options options = {.hdrnet_enable = true};
   for (int i = 0; i < g_args.iterations; ++i) {
     Camera3CaptureDescriptor result = fixture_.ProduceFakeCaptureResult();
     fixture_.processor()->ProcessResultMetadata(&result);
-    base::ScopedFD fence = fixture_.processor()->Run(
-        i, options, fixture_.input_image(), base::ScopedFD(),
-        fixture_.output_buffers(), &metrics);
+    base::ScopedFD fence = fixture_.Run(i, metrics);
     constexpr int kFenceWaitTimeoutMs = 300;
     ASSERT_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
   }
@@ -168,6 +195,10 @@ int main(int argc, char** argv) {
   cros::tests::g_args.dump_buffer = FLAGS_dump_buffer;
   cros::tests::ParseInputImageFile(FLAGS_input_image_file, cros::tests::g_args);
   cros::tests::ParseInputImageFormat(FLAGS_input_image_format,
+                                     cros::tests::g_args);
+  cros::tests::ParseInputMetadataFile(FLAGS_input_metadata_file,
+                                      cros::tests::g_args);
+  cros::tests::ParseHdrnetConfigFile(FLAGS_hdrnet_config_file,
                                      cros::tests::g_args);
   cros::tests::g_args.use_noop_adapter = FLAGS_use_noop_adapter;
 
