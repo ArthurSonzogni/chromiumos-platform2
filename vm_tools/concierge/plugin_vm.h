@@ -75,7 +75,7 @@ class PluginVm final : public VmBaseImpl {
                        uint16_t vid,
                        uint16_t pid,
                        int fd,
-                       UsbControlResponse* response) override;
+                       uint8_t* out_port) override;
   bool DetachUsbDevice(uint8_t port) override;
   bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   bool SetResolvConfig(const std::vector<std::string>& nameservers,

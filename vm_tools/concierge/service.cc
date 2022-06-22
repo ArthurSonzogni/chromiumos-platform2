@@ -3734,17 +3734,17 @@ std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
     return dbus_response;
   }
 
-  UsbControlResponse usb_response;
+  uint8_t guest_port{};
   if (!iter->second->AttachUsbDevice(
           request.bus_number(), request.port_number(), request.vendor_id(),
-          request.product_id(), fd.get(), &usb_response)) {
-    LOG(ERROR) << "Failed to attach USB device: " << usb_response.reason;
-    response.set_reason(std::move(usb_response.reason));
+          request.product_id(), fd.get(), &guest_port)) {
+    LOG(ERROR) << "Failed to attach USB device.";
+    response.set_reason("Error from crosvm");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
   response.set_success(true);
-  response.set_guest_port(usb_response.port);
+  response.set_guest_port(guest_port);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

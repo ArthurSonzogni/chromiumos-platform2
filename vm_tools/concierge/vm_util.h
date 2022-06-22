@@ -20,7 +20,6 @@
 #include <base/values.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
-#include <vm_tools/concierge/usb_control.h>
 #include <vm_tools/concierge/balloon_policy.h>
 
 namespace base {
@@ -131,7 +130,7 @@ bool AttachUsbDevice(std::string socket_path,
                      uint16_t vid,
                      uint16_t pid,
                      int fd,
-                     UsbControlResponse* response);
+                     uint8_t* out_port);
 
 // Detaches the usb device at guest |port|.
 bool DetachUsbDevice(std::string socket_path, uint8_t port);

@@ -296,7 +296,7 @@ bool PluginVm::AttachUsbDevice(uint8_t bus,
                                uint16_t vid,
                                uint16_t pid,
                                int fd,
-                               UsbControlResponse* response) {
+                               uint8_t* out_port) {
   base::ScopedFD dup_fd(dup(fd));
   if (!dup_fd.is_valid()) {
     PLOG(ERROR) << "Unable to duplicate incoming file descriptor";
@@ -330,10 +330,7 @@ bool PluginVm::AttachUsbDevice(uint8_t bus,
   req.DevInfo.pid = pid;
   usb_req_waiting_xmit_.emplace_back(std::move(req), std::move(dup_fd));
 
-  // TODO(dtor): report status only when plugin responds; requires changes to
-  // the VM interface API.
-  response->type = UsbControlResponseType::OK;
-  response->port = usb_last_handle_;
+  *out_port = usb_last_handle_;
   return true;
 }
 

@@ -17,7 +17,6 @@
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
-#include "vm_tools/concierge/usb_control.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -111,7 +110,7 @@ class VmInterface {
                                uint16_t vid,
                                uint16_t pid,
                                int fd,
-                               UsbControlResponse* response) = 0;
+                               uint8_t* out_port) = 0;
 
   // Detach the usb device at guest port.
   virtual bool DetachUsbDevice(uint8_t port) = 0;

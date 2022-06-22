@@ -55,111 +55,6 @@ constexpr char kAndroidGidMap[] =
 constexpr char kFontsSharedDir[] = "/usr/share/fonts";
 constexpr char kFontsSharedDirTag[] = "fonts";
 
-// Examples of the format of the given string can be seen at the enum
-// UsbControlResponseType definition.
-bool ParseUsbControlResponse(base::StringPiece s,
-                             UsbControlResponse* response) {
-  s = base::TrimString(s, base::kWhitespaceASCII, base::TRIM_ALL);
-
-  if (base::StartsWith(s, "ok ")) {
-    response->type = OK;
-    unsigned port;
-    if (!base::StringToUint(s.substr(3), &port))
-      return false;
-    if (port > UINT8_MAX) {
-      return false;
-    }
-    response->port = port;
-    return true;
-  }
-
-  if (base::StartsWith(s, "no_available_port")) {
-    response->type = NO_AVAILABLE_PORT;
-    response->reason = "No available ports in guest's host controller.";
-    return true;
-  }
-  if (base::StartsWith(s, "no_such_device")) {
-    response->type = NO_SUCH_DEVICE;
-    response->reason = "No such host device.";
-    return true;
-  }
-  if (base::StartsWith(s, "no_such_port")) {
-    response->type = NO_SUCH_PORT;
-    response->reason = "No such port in guest's host controller.";
-    return true;
-  }
-  if (base::StartsWith(s, "fail_to_open_device")) {
-    response->type = FAIL_TO_OPEN_DEVICE;
-    response->reason = "Failed to open host device.";
-    return true;
-  }
-  if (base::StartsWith(s, "devices")) {
-    std::vector<base::StringPiece> device_parts = base::SplitStringPiece(
-        s.substr(7), " \t", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if ((device_parts.size() % 3) != 0) {
-      return false;
-    }
-    response->type = DEVICES;
-    for (size_t i = 0; i < device_parts.size(); i += 3) {
-      unsigned port;
-      unsigned vid;
-      unsigned pid;
-      if (!(base::StringToUint(device_parts[i + 0], &port) &&
-            base::HexStringToUInt(device_parts[i + 1], &vid) &&
-            base::HexStringToUInt(device_parts[i + 2], &pid))) {
-        return false;
-      }
-      if (port > UINT8_MAX || vid > UINT16_MAX || pid > UINT16_MAX) {
-        return false;
-      }
-      UsbDeviceEntry device;
-      device.port = port;
-      device.vendor_id = vid;
-      device.product_id = pid;
-      response->devices.push_back(device);
-    }
-    return true;
-  }
-  if (base::StartsWith(s, "error ")) {
-    response->type = ERROR;
-    response->reason = std::string(s.substr(6));
-    return true;
-  }
-
-  return false;
-}
-
-bool CallUsbControl(std::unique_ptr<brillo::ProcessImpl> crosvm,
-                    UsbControlResponse* response) {
-  crosvm->RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
-  int ret = crosvm->Run();
-  if (ret != 0)
-    LOG(ERROR) << "Failed crosvm call returned code " << ret;
-
-  base::ScopedFD read_fd(crosvm->GetPipe(STDOUT_FILENO));
-  std::string crosvm_response;
-  crosvm_response.resize(2048);
-
-  ssize_t response_size =
-      read(read_fd.get(), &crosvm_response[0], crosvm_response.size());
-  if (response_size < 0) {
-    response->reason = "Failed to read USB response from crosvm";
-    return false;
-  }
-  if (response_size == 0) {
-    response->reason = "Empty USB response from crosvm";
-    return false;
-  }
-  crosvm_response.resize(response_size);
-
-  if (!ParseUsbControlResponse(crosvm_response, response)) {
-    response->reason =
-        "Failed to parse USB response from crosvm: " + crosvm_response;
-    return false;
-  }
-  return true;
-}
-
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
   return result;
@@ -455,20 +350,13 @@ bool AttachUsbDevice(std::string socket_path,
                      uint16_t vid,
                      uint16_t pid,
                      int fd,
-                     UsbControlResponse* response) {
-  auto crosvm = std::make_unique<brillo::ProcessImpl>();
-  crosvm->AddArg(kCrosvmBin);
-  crosvm->AddArg("usb");
-  crosvm->AddArg("attach");
-  crosvm->AddArg(base::StringPrintf("%d:%d:%x:%x", bus, addr, vid, pid));
-  crosvm->AddArg("/proc/self/fd/" + std::to_string(fd));
-  crosvm->AddArg(std::move(socket_path));
-  crosvm->BindFd(fd, fd);
+                     uint8_t* out_port) {
+  std::string device_path = "/proc/self/fd/" + std::to_string(fd);
+
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
-  CallUsbControl(std::move(crosvm), response);
-
-  return response->type == OK;
+  return crosvm_client_usb_attach(socket_path.c_str(), bus, addr, vid, pid,
+                                  device_path.c_str(), out_port);
 }
 
 bool DetachUsbDevice(std::string socket_path, uint8_t port) {

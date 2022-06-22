@@ -520,9 +520,9 @@ bool ArcVm::AttachUsbDevice(uint8_t bus,
                             uint16_t vid,
                             uint16_t pid,
                             int fd,
-                            UsbControlResponse* response) {
+                            uint8_t* out_port) {
   return vm_tools::concierge::AttachUsbDevice(GetVmSocketPath(), bus, addr, vid,
-                                              pid, fd, response);
+                                              pid, fd, out_port);
 }
 
 bool ArcVm::DetachUsbDevice(uint8_t port) {
