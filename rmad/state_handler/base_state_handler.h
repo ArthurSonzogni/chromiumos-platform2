@@ -9,6 +9,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
@@ -53,32 +54,19 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual void RegisterSignalSender(
       base::RepeatingCallback<void(bool)> callback) {}
 
-  using HardwareVerificationResultSignalCallback =
-      base::RepeatingCallback<void(const HardwareVerificationResult&)>;
   virtual void RegisterSignalSender(
-      HardwareVerificationResultSignalCallback callback) {}
+      HardwareVerificationSignalCallback callback) {}
 
-  using UpdateRoFirmwareStatusSignalCallback =
-      base::RepeatingCallback<void(UpdateRoFirmwareStatus)>;
-  virtual void RegisterSignalSender(
-      UpdateRoFirmwareStatusSignalCallback callback) {}
+  virtual void RegisterSignalSender(UpdateRoFirmwareSignalCallback callback) {}
 
-  using CalibrationOverallSignalCallback =
-      base::RepeatingCallback<void(CalibrationOverallStatus)>;
   virtual void RegisterSignalSender(CalibrationOverallSignalCallback callback) {
   }
 
-  using CalibrationComponentSignalCallback =
-      base::RepeatingCallback<void(CalibrationComponentStatus)>;
   virtual void RegisterSignalSender(
       CalibrationComponentSignalCallback callback) {}
 
-  using ProvisionSignalCallback =
-      base::RepeatingCallback<void(const ProvisionStatus&)>;
   virtual void RegisterSignalSender(ProvisionSignalCallback callback) {}
 
-  using FinalizeSignalCallback =
-      base::RepeatingCallback<void(const FinalizeStatus&)>;
   virtual void RegisterSignalSender(FinalizeSignalCallback callback) {}
 
   // Return the next RmadState::StateCase in the RMA flow depending on device

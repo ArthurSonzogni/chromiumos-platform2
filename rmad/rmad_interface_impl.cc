@@ -277,7 +277,7 @@ void RmadInterfaceImpl::RegisterSignalSender(
 
 void RmadInterfaceImpl::RegisterSignalSender(
     RmadState::StateCase state_case,
-    HardwareVerificationResultSignalCallback callback) {
+    HardwareVerificationSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
     state_handler->RegisterSignalSender(callback);
@@ -285,8 +285,7 @@ void RmadInterfaceImpl::RegisterSignalSender(
 }
 
 void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    UpdateRoFirmwareStatusSignalCallback callback) {
+    RmadState::StateCase state_case, UpdateRoFirmwareSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
     state_handler->RegisterSignalSender(callback);

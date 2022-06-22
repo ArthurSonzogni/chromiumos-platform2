@@ -25,11 +25,11 @@ class MockRmadInterface : public RmadInterface {
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase, HardwareVerificationResultSignalCallback),
+              (RmadState::StateCase, HardwareVerificationSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase, UpdateRoFirmwareStatusSignalCallback),
+              (RmadState::StateCase, UpdateRoFirmwareSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,

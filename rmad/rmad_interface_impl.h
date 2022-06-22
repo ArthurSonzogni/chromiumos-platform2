@@ -58,11 +58,10 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      HardwareVerificationResultSignalCallback callback) override;
+      HardwareVerificationSignalCallback callback) override;
 
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      UpdateRoFirmwareStatusSignalCallback callback) override;
+  void RegisterSignalSender(RmadState::StateCase state_case,
+                            UpdateRoFirmwareSignalCallback callback) override;
 
   void RegisterSignalSender(RmadState::StateCase state_case,
                             CalibrationOverallSignalCallback callback) override;

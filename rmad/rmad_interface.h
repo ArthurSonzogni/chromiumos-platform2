@@ -8,7 +8,9 @@
 #include <string>
 
 #include <base/callback.h>
-#include <rmad/proto_bindings/rmad.pb.h>
+
+#include "rmad/daemon_callback.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
 
@@ -28,37 +30,25 @@ class RmadInterface {
       RmadState::StateCase state_case,
       base::RepeatingCallback<void(bool)> callback) = 0;
 
-  using HardwareVerificationResultSignalCallback =
-      base::RepeatingCallback<void(const HardwareVerificationResult&)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      HardwareVerificationResultSignalCallback callback) = 0;
+      HardwareVerificationSignalCallback callback) = 0;
 
-  using UpdateRoFirmwareStatusSignalCallback =
-      base::RepeatingCallback<void(UpdateRoFirmwareStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      UpdateRoFirmwareStatusSignalCallback callback) = 0;
+      UpdateRoFirmwareSignalCallback callback) = 0;
 
-  using CalibrationOverallSignalCallback =
-      base::RepeatingCallback<void(CalibrationOverallStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
       CalibrationOverallSignalCallback callback) = 0;
 
-  using CalibrationComponentSignalCallback =
-      base::RepeatingCallback<void(CalibrationComponentStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
       CalibrationComponentSignalCallback callback) = 0;
 
-  using ProvisionSignalCallback =
-      base::RepeatingCallback<void(const ProvisionStatus&)>;
   virtual void RegisterSignalSender(RmadState::StateCase state_case,
                                     ProvisionSignalCallback callback) = 0;
 
-  using FinalizeSignalCallback =
-      base::RepeatingCallback<void(const FinalizeStatus&)>;
   virtual void RegisterSignalSender(RmadState::StateCase state_case,
                                     FinalizeSignalCallback callback) = 0;
 

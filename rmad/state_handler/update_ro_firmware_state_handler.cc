@@ -46,7 +46,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     : BaseStateHandler(json_store),
       is_mocked_(false),
       active_(false),
-      update_ro_firmware_status_signal_sender_(base::DoNothing()) {
+      update_ro_firmware_signal_sender_(base::DoNothing()) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
@@ -66,7 +66,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     : BaseStateHandler(json_store),
       is_mocked_(true),
       active_(false),
-      update_ro_firmware_status_signal_sender_(base::DoNothing()),
+      update_ro_firmware_signal_sender_(base::DoNothing()),
       cmd_utils_(std::move(cmd_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)),
@@ -188,7 +188,7 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() {
 
 void UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  update_ro_firmware_status_signal_sender_.Run(status_);
+  update_ro_firmware_signal_sender_.Run(status_);
 }
 
 void UpdateRoFirmwareStateHandler::WaitUsb() {
@@ -382,8 +382,7 @@ FakeUpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 void FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
-  update_ro_firmware_status_signal_sender_.Run(
-      RMAD_UPDATE_RO_FIRMWARE_COMPLETE);
+  update_ro_firmware_signal_sender_.Run(RMAD_UPDATE_RO_FIRMWARE_COMPLETE);
 }
 
 }  // namespace fake

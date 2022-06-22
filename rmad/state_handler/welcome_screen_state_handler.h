@@ -28,8 +28,8 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   void RegisterSignalSender(
-      HardwareVerificationResultSignalCallback callback) override {
-    hardware_verification_result_signal_sender_ = callback;
+      HardwareVerificationSignalCallback callback) override {
+    hardware_verification_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -44,8 +44,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
 
  private:
   // Signal sender for hardware verification result.
-  HardwareVerificationResultSignalCallback
-      hardware_verification_result_signal_sender_;
+  HardwareVerificationSignalCallback hardware_verification_signal_sender_;
 
   // Helper utilities.
   std::unique_ptr<HardwareVerifierClient> hardware_verifier_client_;
