@@ -17,7 +17,8 @@ StorageInfo::StorageInfo(const std::string& storage_name,
                          const LIBMTP_device_entry_t& device,
                          const LIBMTP_devicestorage_t& storage,
                          const std::string& fallback_vendor,
-                         const std::string& fallback_product)
+                         const std::string& fallback_product,
+                         const std::string& serial_number)
     : storage_name_(storage_name),
       vendor_id_(device.vendor_id),
       product_id_(device.product_id),
@@ -27,7 +28,8 @@ StorageInfo::StorageInfo(const std::string& storage_name,
       access_capability_(storage.AccessCapability),
       max_capacity_(storage.MaxCapacity),
       free_space_in_bytes_(storage.FreeSpaceInBytes),
-      free_space_in_objects_(storage.FreeSpaceInObjects) {
+      free_space_in_objects_(storage.FreeSpaceInObjects),
+      serial_number_(serial_number) {
   vendor_ = device.vendor ? device.vendor : fallback_vendor;
   product_ = device.product ? device.product : fallback_product;
   if (storage.StorageDescription)
@@ -78,6 +80,7 @@ std::vector<uint8_t> StorageInfo::ToDBusFormat() const {
   protobuf.set_free_space_in_objects(free_space_in_objects_);
   protobuf.set_storage_description(storage_description_);
   protobuf.set_volume_identifier(volume_identifier_);
+  protobuf.set_serial_number(serial_number_);
 
   size_t size = protobuf.ByteSizeLong();
   std::vector<uint8_t> serialized_proto;

@@ -18,7 +18,8 @@ class StorageInfo {
               const LIBMTP_device_entry_t& device,
               const LIBMTP_devicestorage_t& storage,
               const std::string& fallback_vendor,
-              const std::string& fallback_product);
+              const std::string& fallback_product,
+              const std::string& serial_number);
   StorageInfo();
   ~StorageInfo();
 
@@ -44,6 +45,9 @@ class StorageInfo {
   uint64_t free_space_in_objects_;
   std::string storage_description_;
   std::string volume_identifier_;
+
+  // From LIBMTP_mtpdevice_t.
+  std::string serial_number_;
 };
 
 }  // namespace mtpd

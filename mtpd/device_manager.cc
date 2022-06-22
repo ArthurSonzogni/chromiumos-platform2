@@ -731,6 +731,11 @@ void DeviceManager::AddOrUpdateDevices(
     if (duplicated_string.get())
       fallback_product = duplicated_string.get();
 
+    duplicated_string.reset(LIBMTP_Get_Serialnumber(mtp_device));
+    std::string serial_number;
+    if (duplicated_string.get())
+      serial_number = duplicated_string.get();
+
     MtpStorageMap new_storage_map;
     MtpStorageMap* storage_map_ptr;
     if (add_update)
@@ -763,7 +768,7 @@ void DeviceManager::AddOrUpdateDevices(
       const std::string storage_name =
           StorageToString(usb_bus_str, storage->id);
       StorageInfo info(storage_name, raw_devices[i].device_entry, *storage,
-                       fallback_vendor, fallback_product);
+                       fallback_vendor, fallback_product, serial_number);
       bool storage_added =
           storage_map_ptr->insert(std::make_pair(storage->id, info)).second;
       CHECK(storage_added);
