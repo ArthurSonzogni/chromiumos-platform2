@@ -90,9 +90,11 @@ bool GetStringByKey(const base::Value& value,
 
 bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
                                            ServicePolicyMap* policy_map) {
+  VLOG(1) << "Searching dir: " << dir;
   base::FileEnumerator e(dir, /*recursive=*/false, base::FileEnumerator::FILES);
   bool res = true;
   for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
+    VLOG(1) << "Load: " << file;
     std::optional<ServicePolicyMap> file_policy_map =
         LoadServicePolicyFile(file);
     if (file_policy_map.has_value()) {

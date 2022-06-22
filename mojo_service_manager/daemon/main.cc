@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include <base/at_exit.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
@@ -66,6 +67,16 @@ int main(int argc, char* argv[]) {
     policy_dir_paths.push_back(
         base::FilePath{kExtraPolicyDirectoryPathInDevMode});
   }
+
+  service_manager::Configuration configuration{};
+  if (FLAGS_permissive) {
+    configuration.is_permissive = true;
+  }
+
+  service_manager::Daemon::Delegate delegate;
+  service_manager::Daemon daemon(&delegate, base::FilePath{kSocketPath},
+                                 policy_dir_paths, std::move(configuration));
+
   if (FLAGS_check_policy) {
     LOG(INFO) << "We are in --check-policy mode, will exit after checking the "
                  "policy.";
@@ -79,13 +90,5 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  service_manager::Configuration configuration{};
-  if (FLAGS_permissive) {
-    configuration.is_permissive = true;
-  }
-
-  service_manager::Daemon::Delegate delegate;
-  service_manager::Daemon daemon(&delegate, base::FilePath{kSocketPath},
-                                 policy_dir_paths, std::move(configuration));
   return daemon.Run();
 }
