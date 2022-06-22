@@ -247,8 +247,6 @@ class ConnectionTest : public Test {
           .WillOnce(Return(true));
       dhcp_classless_static_route_dsts_.push_back(destination_address);
     }
-
-    ipv4_properties_.included_dsts = dhcp_classless_static_route_dsts_;
   }
 
   void AddNonPhysicalRoutingPolicyExpectations(DeviceRefPtr device,

@@ -199,7 +199,17 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
 void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
-  allowed_dsts_ = properties.included_dsts;
+  allowed_dsts_.clear();
+  for (const auto& route : properties.dhcp_classless_static_routes) {
+    IPAddress dst(properties.address_family);
+    if (!dst.SetAddressFromString(route.host)) {
+      LOG(ERROR) << "Failed to parse static route address " << route.host;
+      continue;
+    }
+    dst.set_prefix(route.prefix);
+    allowed_dsts_.push_back(dst);
+  }
+
   use_if_addrs_ =
       properties.use_if_addrs || IsPrimaryConnectivityTechnology(technology_);
 

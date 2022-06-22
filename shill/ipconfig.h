@@ -51,9 +51,6 @@ class IPConfig {
     // Note that presense of this field indicates that this is a p2p interface,
     // and a gateway won't be needed in creating routes on this interface.
     std::string peer_address;
-    // Any egress traffic sent to prefixes listed in |included_dsts| will be
-    // routed through this connection, even if it is not the default connection.
-    std::vector<IPAddress> included_dsts;
     // List of uids that have their traffic blocked.
     std::vector<uint32_t> blackholed_uids;
     // Set the flag to true when the interface should be set as the default
@@ -73,7 +70,9 @@ class IPConfig {
     bool use_if_addrs = false;
     // MTU to set on the interface.  If unset, defaults to |kUndefinedMTU|.
     int32_t mtu = kUndefinedMTU;
-    // Routes configured by the classless static routes option in DHCP.
+    // Routes configured by the classless static routes option in DHCP. Traffic
+    // sent to prefixes in this list will be routed through this connection,
+    // even if it is not the default connection.
     std::vector<Route> dhcp_classless_static_routes;
     // Vendor encapsulated option string gained from DHCP.
     ByteArray vendor_encapsulated_options;
