@@ -37,7 +37,7 @@ class DBusAdaptor {
   ~DBusAdaptor();
 
   // Registers handlers for EasyUnlock service method calls.
-  void Register(const CompletionAction& callback);
+  void Register(CompletionAction callback);
 
  private:
   // Handlers for DBus method calls exported in |ExportDBusMethods|.

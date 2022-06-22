@@ -4,6 +4,8 @@
 
 #include "easy-unlock/dbus_adaptor.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
@@ -79,7 +81,7 @@ DBusAdaptor::DBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 
 DBusAdaptor::~DBusAdaptor() {}
 
-void DBusAdaptor::Register(const CompletionAction& callback) {
+void DBusAdaptor::Register(CompletionAction callback) {
   brillo::dbus_utils::DBusInterface* interface =
       dbus_object_.AddOrGetInterface(kEasyUnlockServiceInterface);
 
@@ -98,7 +100,7 @@ void DBusAdaptor::Register(const CompletionAction& callback) {
   interface->AddSimpleMethodHandler(kUnwrapSecureMessageMethod,
                                     base::Unretained(this),
                                     &DBusAdaptor::UnwrapSecureMessage);
-  dbus_object_.RegisterAsync(callback);
+  dbus_object_.RegisterAsync(std::move(callback));
 }
 
 void DBusAdaptor::GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
