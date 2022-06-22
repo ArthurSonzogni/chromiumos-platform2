@@ -408,18 +408,18 @@ bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
   base::ScopedFD fd_out;
   brillo::ErrorPtr error;
   bool vm_started =
-      AsyncNoReject(
-          dbus_thread_->task_runner(),
-          base::BindOnce(
-              [](org::chromium::ManaTEEInterfaceProxy* manatee_client,
-                 const std::vector<std::string>& args, int32_t* error_code,
-                 base::ScopedFD* fd_in, base::ScopedFD* fd_out,
-                 brillo::ErrorPtr* error) {
-                return manatee_client->StartTEEApplication(
-                    "termina", args, error_code, fd_in, fd_out, error);
-              },
-              manatee_client_.get(), args, &error_code, &fd_in, &fd_out,
-              &error))
+      AsyncNoReject(dbus_thread_->task_runner(),
+                    base::BindOnce(
+                        [](org::chromium::ManaTEEInterfaceProxy* manatee_client,
+                           const std::vector<std::string>& args,
+                           int32_t* error_code, base::ScopedFD* fd_in,
+                           base::ScopedFD* fd_out, brillo::ErrorPtr* error) {
+                          return manatee_client->StartTEEApplication(
+                              "termina", args, false /* allow_unverified */,
+                              error_code, fd_in, fd_out, error);
+                        },
+                        manatee_client_.get(), args, &error_code, &fd_in,
+                        &fd_out, &error))
           .Get()
           .val;
 

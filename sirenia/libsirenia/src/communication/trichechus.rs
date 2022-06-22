@@ -74,7 +74,17 @@ impl FromStr for SystemEvent {
 #[sirenia_rpc(error = "Error")]
 pub trait Trichechus<E> {
     fn start_session(&mut self, app_info: AppInfo, args: Vec<String>) -> StdResult<(), E>;
-    fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> StdResult<(), E>;
+
+    // Loads app `app_id` with the image in 'elf'. If `allow_unverified` is true and developer mode
+    // is enabled, the load will load `elf` even if its SHA mismatches the expected SHA for `app_id`
+    // as per the manifest.
+    fn load_app(
+        &mut self,
+        app_id: String,
+        elf: Vec<u8>,
+        allow_unverified: bool,
+    ) -> StdResult<(), E>;
+
     #[error()]
     fn get_apps(&mut self) -> StdResult<AppManifest, E>;
     #[error()]

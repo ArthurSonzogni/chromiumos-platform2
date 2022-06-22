@@ -410,13 +410,14 @@ impl Trichechus<Error> for TrichechusServerImpl {
         ))?)
     }
 
-    fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> Result<()> {
+    fn load_app(&mut self, app_id: String, elf: Vec<u8>, allow_unverified: bool) -> Result<()> {
         info!("Received load app message: {:?}", &app_id);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(load_app(
             self.state.borrow_mut().deref_mut(),
             &app_id,
             &elf,
+            allow_unverified,
         ))?)
     }
 
@@ -590,7 +591,12 @@ fn lookup_app_info<'a>(
         })
 }
 
-fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), trichechus::Error> {
+fn load_app(
+    state: &TrichechusState,
+    app_id: &str,
+    elf: &[u8],
+    allow_unverified: bool,
+) -> StdResult<(), trichechus::Error> {
     let app_info = lookup_app_info(state, app_id)?;
 
     // Validate digest.
@@ -603,8 +609,16 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), 
     };
     let actual = compute_sha256(elf)
         .map_err(|err| trichechus::Error::from(format!("SHA256 failed: {:?}", err)))?;
-    if expected.deref() != &*actual {
-        return Err(trichechus::Error::DigestMismatch);
+    // Double check if we are indeed in  developer mode to allow unverified apps.
+    let allow_unverified_hypervisor = allow_unverified && is_dev_mode().unwrap_or(false);
+
+    if expected.deref() != actual.deref() {
+        if allow_unverified_hypervisor {
+            info!("ignoring hash mismatch in app: {}", app_id);
+        } else {
+            error!("not loading app: {} due to hash mismatch", app_id);
+            return Err(trichechus::Error::DigestMismatch);
+        }
     }
 
     // Create and write memfd.
@@ -627,8 +641,10 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), 
         .add_seals(seals)
         .map_err(|err| trichechus::Error::from(format!("Failed to seal memfd: {:?}", err)))?;
 
+    // At this point either the SHA of the incoming app matches the stored SHA or we've allowed
+    // unverified apps to run. In either case using |expected| to get the SHA works.
     state.loaded_apps.borrow_mut().insert(
-        Digest::try_from(actual.as_ref()).expect("Digest size mismatch"),
+        Digest::try_from(expected.as_ref()).expect("Digest size mismatch"),
         executable,
     );
     Ok(())

@@ -45,6 +45,7 @@ use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
 use dbus::blocking::Proxy;
 use getopts::Options;
+use libchromeos::chromeos::is_dev_mode;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::cli::VerbosityOption;
@@ -172,6 +173,7 @@ impl OrgChromiumManaTEEInterface for Passthrough {
         &self,
         app_id: &str,
         args: Vec<&str>,
+        _allow_unverified: bool,
     ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus::Error> {
         self.start_teeapplication_impl(app_id, args)
             .map_err(to_dbus_error)
@@ -245,10 +247,11 @@ fn start_manatee_app(
     app_id: &str,
     args: Vec<&str>,
     handler: &dyn Fn(File, File) -> Result<()>,
+    allow_unverified: bool,
 ) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
     let (fd_in, fd_out) = match api
-        .start_teeapplication(app_id, args)
+        .start_teeapplication(app_id, args, allow_unverified)
         .context("failed to call start_teeapplication D-Bus method")?
     {
         (0, fd_in, fd_out) => (fd_in, fd_out),
@@ -301,11 +304,12 @@ fn dbus_start_manatee_app(
     app_id: &str,
     args: Vec<&str>,
     handler: &dyn Fn(File, File) -> Result<()>,
+    allow_unverified: bool,
 ) -> Result<()> {
     info!("Connecting to D-Bus.");
     let connection = Connection::new_system().context("failed to get D-Bus connection")?;
     let conn_path = connect_to_dugong(&connection)?;
-    start_manatee_app(&conn_path, app_id, args, handler)
+    start_manatee_app(&conn_path, app_id, args, handler, allow_unverified)
 }
 
 fn direct_start_manatee_app(
@@ -314,8 +318,13 @@ fn direct_start_manatee_app(
     args: Vec<&str>,
     elf: Option<Vec<u8>>,
     handler: &dyn Fn(File, File) -> Result<()>,
+    allow_unverified: bool,
 ) -> Result<()> {
     let passthrough = Passthrough::new(Some(trichechus_uri), None)?;
+
+    if allow_unverified && !is_dev_mode().unwrap_or(false) {
+        bail!("allow_unverified is only respected in developer mode");
+    }
 
     if let Some(elf) = elf {
         info!("Transmitting TEE app.");
@@ -323,10 +332,12 @@ fn direct_start_manatee_app(
             .client
             .lock()
             .unwrap()
-            .load_app(app_id.to_string(), elf)
+            .load_app(app_id.to_string(), elf, allow_unverified)
             .context("load_app rpc failed")?;
     }
-    start_manatee_app(&passthrough, app_id, args, handler)
+
+    // Allow loading unverified apps when developer mode is enabled to ease testing use cases.
+    start_manatee_app(&passthrough, app_id, args, handler, allow_unverified)
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
@@ -492,6 +503,8 @@ fn main() -> Result<()> {
     const POWEROFF_LONG_NAME: &str = "poweroff";
     const REBOOT_LONG_NAME: &str = "reboot";
 
+    const ALLOW_UNVERIFIED_LONG_NAME: &str = "allow-unverified";
+
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
     options.optflag(
@@ -517,6 +530,11 @@ fn main() -> Result<()> {
         "interactive",
         "Enable or disable readline support. Defaults to false except for 'shell'",
         "true|false",
+    );
+    options.optflag(
+        "",
+        ALLOW_UNVERIFIED_LONG_NAME,
+        "allow app to load if hash doesn't match",
     );
 
     options.optflag("", HALT_LONG_NAME, "Send a halt command to the hypervisor.");
@@ -647,10 +665,16 @@ fn main() -> Result<()> {
     };
 
     let args_ref = args.iter().map(AsRef::<str>::as_ref).collect();
+    let allow_unverified = matches.opt_present(ALLOW_UNVERIFIED_LONG_NAME);
     match trichechus_uri {
-        None => dbus_start_manatee_app(&app_id, args_ref, handler),
-        Some(trichechus_uri) => {
-            direct_start_manatee_app(trichechus_uri, &app_id, args_ref, elf, handler)
-        }
+        None => dbus_start_manatee_app(&app_id, args_ref, handler, allow_unverified),
+        Some(trichechus_uri) => direct_start_manatee_app(
+            trichechus_uri,
+            &app_id,
+            args_ref,
+            elf,
+            handler,
+            allow_unverified,
+        ),
     }
 }

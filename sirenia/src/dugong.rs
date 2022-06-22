@@ -33,6 +33,7 @@ use dbus::message::MatchRule;
 use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
 use getopts::Options;
+use libchromeos::chromeos::is_dev_mode;
 use libchromeos::syslog;
 use libsirenia::app_info::AppManifest;
 use libsirenia::build_info::BUILD_TIMESTAMP;
@@ -106,9 +107,10 @@ impl OrgChromiumManaTEEInterface for DugongState {
         &mut self,
         app_id: String,
         args: Vec<String>,
+        allow_unverified: bool,
     ) -> StdResult<(i32, OwnedFd, OwnedFd), MethodErr> {
         info!("Got request to start up: {}", &app_id);
-        let fds = request_start_tee_app(self, &app_id, args);
+        let fds = request_start_tee_app(self, &app_id, args, allow_unverified);
         match fds {
             Ok(fds) => Ok((0, fds.0, fds.1)),
             Err(e) => Err(MethodErr::failed(&e)),
@@ -135,6 +137,7 @@ fn load_tee_app(
     api_handle: &mut TrichechusClient,
     state: &DugongState,
     app_id: &str,
+    allow_unverified: bool,
 ) -> Result<()> {
     let supported_apps = state.supported_apps().lock().unwrap();
     let elf_path = supported_apps
@@ -151,7 +154,7 @@ fn load_tee_app(
 
     info!("Transmitting TEE app.");
     api_handle
-        .load_app(app_id.to_string(), elf)
+        .load_app(app_id.to_string(), elf, allow_unverified)
         .context("load_app rpc failed")?;
 
     Ok(())
@@ -163,6 +166,7 @@ fn request_start_tee_app(
     state: &DugongState,
     app_id: &str,
     args: Vec<String>,
+    allow_unverified: bool,
 ) -> Result<(OwnedFd, OwnedFd)> {
     let mut transport = state
         .transport_type()
@@ -178,7 +182,7 @@ fn request_start_tee_app(
     if let Err(err) = trichechus_client.start_session(app_info.clone(), args.clone()) {
         match err.downcast() {
             Ok(trichechus::Error::AppNotLoaded) => {
-                load_tee_app(&mut trichechus_client, state, app_id)?;
+                load_tee_app(&mut trichechus_client, state, app_id, allow_unverified)?;
                 trichechus_client
                     .start_session(app_info, args)
                     .context(RPC_FAILURE_CONTEXT)?;
@@ -242,12 +246,13 @@ fn register_dbus_interface_for_app(
     let interface_token = crossroads.register(
         format!("org.chromium.manatee.{}", &app_dbus_identifier),
         |b| {
+            // Allow unverified apps when developer mode is enabled to ease testing use cases.
             b.method(
                 "StartInstance",
                 ("args",),
                 ("error_code", "fd_in", "fd_out"),
                 |_, t: &mut (DugongState, String), args: (Vec<String>,)| {
-                    t.0.start_teeapplication(t.1.clone(), args.0)
+                    t.0.start_teeapplication(t.1.clone(), args.0, is_dev_mode().unwrap_or(false))
                 },
             )
             .annotate("org.chromium.DBus.Method.Kind", "simple");
