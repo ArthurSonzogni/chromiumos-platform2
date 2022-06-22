@@ -9,6 +9,7 @@
 
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/state_handler/base_state_handler.h"
 
 namespace rmad {
@@ -21,8 +22,8 @@ class StateHandlerManager {
   ~StateHandlerManager() = default;
 
   void RegisterStateHandler(scoped_refptr<BaseStateHandler> handler);
-  void RegisterStateHandlers();
-  void RegisterFakeStateHandlers();
+  void RegisterStateHandlers(scoped_refptr<DaemonCallback> daemon_callback);
+  void RegisterFakeStateHandlers(scoped_refptr<DaemonCallback> daemon_callback);
 
   scoped_refptr<BaseStateHandler> GetStateHandler(
       RmadState::StateCase state) const;

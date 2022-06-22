@@ -38,9 +38,12 @@ namespace rmad {
 namespace fake {
 
 FakeWriteProtectDisableRsuStateHandler::FakeWriteProtectDisableRsuStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : WriteProtectDisableRsuStateHandler(
           json_store,
+          daemon_callback,
           working_dir_path,
           std::make_unique<FakeCr50Utils>(working_dir_path),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
@@ -49,8 +52,9 @@ FakeWriteProtectDisableRsuStateHandler::FakeWriteProtectDisableRsuStateHandler(
 }  // namespace fake
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
       reboot_scheduled_(false) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
@@ -61,11 +65,12 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),

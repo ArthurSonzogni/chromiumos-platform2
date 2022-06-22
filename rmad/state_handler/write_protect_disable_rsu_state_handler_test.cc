@@ -87,8 +87,9 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     }
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
-        json_store_, GetTempDirPath(), std::move(mock_cr50_utils),
-        std::move(mock_crossystem_utils), std::move(mock_power_manager_client));
+        json_store_, daemon_callback_, GetTempDirPath(),
+        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
+        std::move(mock_power_manager_client));
   }
 
  protected:

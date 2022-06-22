@@ -27,11 +27,13 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
   explicit WriteProtectDisablePhysicalStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cr50_utils_|, |crossystem_utils_|,
   // and |power_manager_client_| for testing.
   WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
@@ -89,6 +91,7 @@ class FakeWriteProtectDisablePhysicalStateHandler
  public:
   FakeWriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);
 
  protected:

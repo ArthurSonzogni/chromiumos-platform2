@@ -18,10 +18,13 @@ namespace rmad {
 class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableMethodStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cr50_utils_| for testing.
-  WriteProtectDisableMethodStateHandler(scoped_refptr<JsonStore> json_store,
-                                        std::unique_ptr<Cr50Utils> cr50_utils);
+  WriteProtectDisableMethodStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableMethod);
   SET_REPEATABLE;
@@ -46,6 +49,7 @@ class FakeWriteProtectDisableMethodStateHandler
  public:
   explicit FakeWriteProtectDisableMethodStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);
 
  protected:

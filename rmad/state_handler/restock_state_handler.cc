@@ -20,23 +20,29 @@ namespace rmad {
 namespace fake {
 
 FakeRestockStateHandler::FakeRestockStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : RestockStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
 
 }  // namespace fake
 
-RestockStateHandler::RestockStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+RestockStateHandler::RestockStateHandler(
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
 }
 
 RestockStateHandler::RestockStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<PowerManagerClient> power_manager_client)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode RestockStateHandler::InitializeState() {

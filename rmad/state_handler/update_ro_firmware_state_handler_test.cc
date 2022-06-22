@@ -55,7 +55,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
         std::make_unique<NiceMock<MockPowerManagerClient>>();
 
     auto handler = base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
-        json_store_, std::move(mock_cmd_utils),
+        json_store_, daemon_callback_, std::move(mock_cmd_utils),
         std::move(mock_crossystem_utils), std::move(mock_flashrom_utils),
         std::move(mock_cros_disks_client),
         std::move(mock_power_manager_client));

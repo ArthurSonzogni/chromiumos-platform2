@@ -13,8 +13,9 @@ namespace rmad {
 
 class MockStateHandler : public BaseStateHandler {
  public:
-  explicit MockStateHandler(scoped_refptr<JsonStore> json_store)
-      : BaseStateHandler(json_store) {}
+  MockStateHandler(scoped_refptr<JsonStore> json_store,
+                   scoped_refptr<DaemonCallback> daemon_callback)
+      : BaseStateHandler(json_store, daemon_callback) {}
 
   MOCK_METHOD(RmadState::StateCase, GetStateCase, (), (const, override));
   MOCK_METHOD(const RmadState&, GetState, (bool), (const, override));

@@ -18,6 +18,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/constants.h"
+#include "rmad/daemon_callback.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/power_manager_client.h"
@@ -50,7 +51,7 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   ~RmadInterfaceImpl() override = default;
 
-  bool SetUp() override;
+  bool SetUp(scoped_refptr<DaemonCallback> daemon_callback) override;
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
@@ -96,7 +97,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   void SetTestMode() { test_mode_ = true; }
 
  private:
-  void InitializeExternalUtils();
+  void InitializeExternalUtils(scoped_refptr<DaemonCallback> daemon_callback);
   bool WaitForServices();
 
   // Wrapper to trigger D-Bus callbacks.

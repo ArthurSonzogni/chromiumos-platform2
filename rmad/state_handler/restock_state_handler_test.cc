@@ -36,7 +36,7 @@ class RestockStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(true));
     }
     return base::MakeRefCounted<RestockStateHandler>(
-        json_store_, std::move(mock_power_manager_client));
+        json_store_, daemon_callback_, std::move(mock_power_manager_client));
   }
 
  protected:

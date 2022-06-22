@@ -18,7 +18,9 @@ namespace rmad {
 
 class SetupCalibrationStateHandler : public BaseStateHandler {
  public:
-  explicit SetupCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit SetupCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
   ASSIGN_STATE(RmadState::StateCase::kSetupCalibration);
   SET_REPEATABLE;
@@ -44,7 +46,8 @@ namespace fake {
 class FakeSetupCalibrationStateHandler : public SetupCalibrationStateHandler {
  public:
   explicit FakeSetupCalibrationStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
  protected:
   ~FakeSetupCalibrationStateHandler() override = default;

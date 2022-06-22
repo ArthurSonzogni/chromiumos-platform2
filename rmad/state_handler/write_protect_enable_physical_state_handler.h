@@ -26,10 +26,12 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   static constexpr base::TimeDelta kPollInterval = base::Seconds(2);
 
   explicit WriteProtectEnablePhysicalStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |crossystem_utils_| and |flashrom_utils_| for testing.
   WriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<FlashromUtils> flashrom_utils);
 
@@ -66,6 +68,7 @@ class FakeWriteProtectEnablePhysicalStateHandler
  public:
   FakeWriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);
 
  protected:

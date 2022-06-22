@@ -39,8 +39,10 @@ bool ReadFileToInt(const base::FilePath& path, int* value) {
 
 namespace rmad {
 
-BaseStateHandler::BaseStateHandler(scoped_refptr<JsonStore> json_store)
-    : json_store_(json_store) {}
+BaseStateHandler::BaseStateHandler(
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : json_store_(json_store), daemon_callback_(daemon_callback) {}
 
 const RmadState& BaseStateHandler::GetState(bool do_task) const {
   if (do_task) {

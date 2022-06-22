@@ -35,7 +35,7 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
         MetricsUtils::SetMetricsValue(json_store_, kWpDisableMethod,
                                       WpDisableMethod_Name(wp_disable_method)));
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
-        json_store_, std::move(mock_flashrom_utils));
+        json_store_, daemon_callback_, std::move(mock_flashrom_utils));
   }
 };
 

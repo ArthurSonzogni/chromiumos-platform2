@@ -57,7 +57,7 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(enable_swwp_success));
 
     auto handler = base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
-        json_store_, std::move(mock_crossystem_utils),
+        json_store_, daemon_callback_, std::move(mock_crossystem_utils),
         std::move(mock_flashrom_utils));
     auto callback =
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,

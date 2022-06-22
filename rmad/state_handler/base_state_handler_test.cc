@@ -27,8 +27,9 @@ namespace rmad {
 
 class TestBaseStateHandler : public BaseStateHandler {
  public:
-  explicit TestBaseStateHandler(scoped_refptr<JsonStore> json_store)
-      : BaseStateHandler(json_store) {}
+  TestBaseStateHandler(scoped_refptr<JsonStore> json_store,
+                       scoped_refptr<DaemonCallback> daemon_callback)
+      : BaseStateHandler(json_store, daemon_callback) {}
 
   RmadState::StateCase GetStateCase() const override {
     return RmadState::STATE_NOT_SET;
@@ -50,8 +51,10 @@ class TestBaseStateHandler : public BaseStateHandler {
 
 class TestUnrepeatableBaseStateHandler : public BaseStateHandler {
  public:
-  explicit TestUnrepeatableBaseStateHandler(scoped_refptr<JsonStore> json_store)
-      : BaseStateHandler(json_store) {}
+  TestUnrepeatableBaseStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback)
+      : BaseStateHandler(json_store, daemon_callback) {}
 
   RmadState::StateCase GetStateCase() const override {
     return RmadState::STATE_NOT_SET;
@@ -72,12 +75,14 @@ class TestUnrepeatableBaseStateHandler : public BaseStateHandler {
 class BaseStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<TestBaseStateHandler> CreateStateHandler() {
-    return base::MakeRefCounted<TestBaseStateHandler>(json_store_);
+    return base::MakeRefCounted<TestBaseStateHandler>(json_store_,
+                                                      daemon_callback_);
   }
 
   scoped_refptr<TestUnrepeatableBaseStateHandler>
   CreateUnrepeatableStateHandler() {
-    return base::MakeRefCounted<TestUnrepeatableBaseStateHandler>(json_store_);
+    return base::MakeRefCounted<TestUnrepeatableBaseStateHandler>(
+        json_store_, daemon_callback_);
   }
 
  protected:

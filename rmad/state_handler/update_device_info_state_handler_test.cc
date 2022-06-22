@@ -195,9 +195,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
-        json_store_, std::move(cbi_utils), std::move(cros_config_utils),
-        std::move(crossystem_utils), std::move(regions_utils),
-        std::move(vpd_utils));
+        json_store_, daemon_callback_, std::move(cbi_utils),
+        std::move(cros_config_utils), std::move(crossystem_utils),
+        std::move(regions_utils), std::move(vpd_utils));
   }
 
  protected:

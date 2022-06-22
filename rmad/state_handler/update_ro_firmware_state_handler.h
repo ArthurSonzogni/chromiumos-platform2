@@ -31,11 +31,14 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   static constexpr base::TimeDelta kTaskInterval = base::Seconds(2);
   static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
-  explicit UpdateRoFirmwareStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit UpdateRoFirmwareStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cmd_utils_|, |crossystem_utils|, |flashrom_utils|,
   // |cros_disks_client_| and |power_manager_client_| for testing.
   UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<FlashromUtils> flashrom_utils,
@@ -112,7 +115,8 @@ class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
   static constexpr base::TimeDelta kPollInterval = base::Seconds(1);
 
   explicit FakeUpdateRoFirmwareStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
   SET_REPEATABLE;

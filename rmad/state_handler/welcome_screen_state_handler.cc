@@ -21,17 +21,21 @@ namespace rmad {
 namespace fake {
 
 FakeWelcomeScreenStateHandler::FakeWelcomeScreenStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : WelcomeScreenStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<fake::FakeHardwareVerifierClient>(
               working_dir_path)) {}
 
 }  // namespace fake
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       hardware_verification_signal_sender_(base::DoNothing()) {
   hardware_verifier_client_ =
       std::make_unique<HardwareVerifierClientImpl>(GetSystemBus());
@@ -39,8 +43,9 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<HardwareVerifierClient> hardware_verifier_client)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       hardware_verifier_client_(std::move(hardware_verifier_client)) {}
 
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {

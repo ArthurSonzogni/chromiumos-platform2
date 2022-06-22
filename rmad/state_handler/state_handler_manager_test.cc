@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/state_handler/mock_state_handler.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/utils/json_store.h"
@@ -25,6 +26,7 @@ class StateHandlerManagerTest : public testing::Test {
  public:
   StateHandlerManagerTest() {
     json_store_ = base::MakeRefCounted<JsonStore>(base::FilePath(""));
+    daemon_callback_ = base::MakeRefCounted<DaemonCallback>();
     state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   }
 
@@ -32,8 +34,8 @@ class StateHandlerManagerTest : public testing::Test {
       RmadState::StateCase state,
       RmadState::StateCase next_state,
       RmadErrorCode update_error = RMAD_ERROR_OK) {
-    auto handler =
-        base::MakeRefCounted<StrictMock<MockStateHandler>>(json_store_);
+    auto handler = base::MakeRefCounted<StrictMock<MockStateHandler>>(
+        json_store_, daemon_callback_);
     EXPECT_CALL(*handler, GetStateCase()).WillRepeatedly(Return(state));
     EXPECT_CALL(*handler, InitializeState())
         .WillRepeatedly(Return(RMAD_ERROR_OK));
@@ -46,6 +48,7 @@ class StateHandlerManagerTest : public testing::Test {
 
  protected:
   scoped_refptr<JsonStore> json_store_;
+  scoped_refptr<DaemonCallback> daemon_callback_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
 };
 
@@ -85,12 +88,12 @@ TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {
 
 TEST_F(StateHandlerManagerTest, RegisterStateHandlers) {
   base::test::SingleThreadTaskEnvironment task_environment;
-  state_handler_manager_->RegisterStateHandlers();
+  state_handler_manager_->RegisterStateHandlers(daemon_callback_);
 }
 
 TEST_F(StateHandlerManagerTest, RegisterFakeStateHandlers) {
   base::test::SingleThreadTaskEnvironment task_environment;
-  state_handler_manager_->RegisterFakeStateHandlers();
+  state_handler_manager_->RegisterFakeStateHandlers(daemon_callback_);
 }
 
 }  // namespace rmad

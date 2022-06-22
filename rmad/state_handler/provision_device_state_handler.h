@@ -37,11 +37,14 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Wait for 1 second before rebooting.
   static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
 
-  explicit ProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit ProvisionDeviceStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cbi_utils_|, |cros_config_utils_|,
   // |power_manager_client_|, |ssfc_utils_|, and |vpd_utils_| for testing.
   ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
@@ -115,6 +118,7 @@ namespace fake {
 class FakeProvisionDeviceStateHandler : public ProvisionDeviceStateHandler {
  public:
   FakeProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store,
+                                  scoped_refptr<DaemonCallback> daemon_callback,
                                   const base::FilePath& working_dir_path);
 
  protected:

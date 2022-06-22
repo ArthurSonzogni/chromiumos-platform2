@@ -16,11 +16,14 @@ namespace rmad {
 
 class DeviceDestinationStateHandler : public BaseStateHandler {
  public:
-  explicit DeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit DeviceDestinationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cryptohome_client_|, |cr50_utils_| and
   // |crossystem_utils_| for testing.
   DeviceDestinationStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CryptohomeClient> cryptohome_client,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils);
@@ -46,8 +49,10 @@ namespace fake {
 
 class FakeDeviceDestinationStateHandler : public DeviceDestinationStateHandler {
  public:
-  FakeDeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store,
-                                    const base::FilePath& working_dir_path);
+  FakeDeviceDestinationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeDeviceDestinationStateHandler() override = default;

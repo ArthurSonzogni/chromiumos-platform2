@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "rmad/daemon_callback.h"
 #include "rmad/proto_bindings/rmad.pb.h"
@@ -22,7 +23,7 @@ class RmadInterface {
   // Fully set up the interface. To minimize unnecessary initialization when RMA
   // is not required, the D-Bus APIs might be called when the class is
   // initialized by the constructor but not fully set up.
-  virtual bool SetUp() = 0;
+  virtual bool SetUp(scoped_refptr<DaemonCallback> daemon_callback) = 0;
 
   // Register a signal sender for specific states. Virtual functions cannot be
   // declared as template so we need to declare them one by one.

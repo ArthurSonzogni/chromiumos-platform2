@@ -27,9 +27,12 @@ namespace rmad {
 namespace fake {
 
 FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : RepairCompleteStateHandler(
           json_store,
+          daemon_callback,
           working_dir_path,
           working_dir_path,
           std::make_unique<FakePowerManagerClient>(working_dir_path),
@@ -40,8 +43,9 @@ FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
 }  // namespace fake
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
       unencrypted_preserve_path_(kDefaultUnencryptedPreservePath),
       power_cable_signal_sender_(base::DoNothing()),
@@ -55,13 +59,14 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     const base::FilePath& unencrypted_preserve_path,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<SysUtils> sys_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       unencrypted_preserve_path_(unencrypted_preserve_path),
       power_cable_signal_sender_(base::DoNothing()),

@@ -30,7 +30,7 @@ class WriteProtectDisableMethodStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(factory_mode_enabled));
 
     return base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(
-        json_store_, std::move(mock_cr50_utils));
+        json_store_, daemon_callback_, std::move(mock_cr50_utils));
   }
 };
 

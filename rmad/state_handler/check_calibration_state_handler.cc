@@ -55,14 +55,16 @@ RmadState ConvertDictionaryToState(
 namespace fake {
 
 FakeCheckCalibrationStateHandler::FakeCheckCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : CheckCalibrationStateHandler(json_store) {}
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : CheckCalibrationStateHandler(json_store, daemon_callback) {}
 
 }  // namespace fake
 
 CheckCalibrationStateHandler::CheckCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {}
 
 RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
   // The calibration map should be initialized in the provisioning state.

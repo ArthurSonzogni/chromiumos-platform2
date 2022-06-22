@@ -19,11 +19,14 @@ namespace rmad {
 
 class UpdateDeviceInfoStateHandler : public BaseStateHandler {
  public:
-  explicit UpdateDeviceInfoStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit UpdateDeviceInfoStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cbi_utils_|, |cros_config_utils_|,
   // |crossystem_utils_|, |regions_utils_|, and |vpd_utils_| for testing.
   UpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
@@ -54,8 +57,10 @@ namespace fake {
 
 class FakeUpdateDeviceInfoStateHandler : public UpdateDeviceInfoStateHandler {
  public:
-  FakeUpdateDeviceInfoStateHandler(scoped_refptr<JsonStore> json_store,
-                                   const base::FilePath& working_dir_path);
+  FakeUpdateDeviceInfoStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeUpdateDeviceInfoStateHandler() override = default;

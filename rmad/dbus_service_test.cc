@@ -125,7 +125,7 @@ class DBusServiceTest : public testing::Test {
     if (state_file_exist ||
         ro_verification_status == RoVerificationStatus::PASS ||
         ro_verification_status == RoVerificationStatus::UNSUPPORTED_TRIGGERED) {
-      EXPECT_CALL(mock_rmad_service_, SetUp())
+      EXPECT_CALL(mock_rmad_service_, SetUp(_))
           .WillRepeatedly(Return(setup_success));
       EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
           .WillRepeatedly(Return());

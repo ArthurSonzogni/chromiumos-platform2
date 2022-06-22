@@ -23,26 +23,31 @@ namespace rmad {
 namespace fake {
 
 FakeWipeSelectionStateHandler::FakeWipeSelectionStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : WipeSelectionStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<FakeCr50Utils>(working_dir_path),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path)) {}
 
 }  // namespace fake
 
 WipeSelectionStateHandler::WipeSelectionStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)) {}
 

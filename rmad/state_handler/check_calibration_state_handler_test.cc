@@ -47,7 +47,8 @@ namespace rmad {
 class CheckCalibrationStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<CheckCalibrationStateHandler> CreateStateHandler() {
-    return base::MakeRefCounted<CheckCalibrationStateHandler>(json_store_);
+    return base::MakeRefCounted<CheckCalibrationStateHandler>(json_store_,
+                                                              daemon_callback_);
   }
 
  protected:

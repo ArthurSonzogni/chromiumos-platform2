@@ -58,7 +58,8 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
               }
             });
     auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
-        json_store_, std::move(mock_hardware_verifier_client));
+        json_store_, daemon_callback_,
+        std::move(mock_hardware_verifier_client));
     auto callback =
         base::BindRepeating(&SignalSender::SendHardwareVerificationResultSignal,
                             base::Unretained(&signal_sender_));

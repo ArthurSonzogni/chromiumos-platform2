@@ -24,23 +24,27 @@ namespace fake {
 
 FakeWriteProtectDisableCompleteStateHandler::
     FakeWriteProtectDisableCompleteStateHandler(
-        scoped_refptr<JsonStore> json_store)
+        scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback)
     : WriteProtectDisableCompleteStateHandler(
-          json_store, std::make_unique<FakeFlashromUtils>()) {}
+          json_store, daemon_callback, std::make_unique<FakeFlashromUtils>()) {}
 
 }  // namespace fake
 
 WriteProtectDisableCompleteStateHandler::
-    WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    WriteProtectDisableCompleteStateHandler(
+        scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(
         scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback,
         std::unique_ptr<FlashromUtils> flashrom_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {

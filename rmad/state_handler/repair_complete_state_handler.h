@@ -27,12 +27,14 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   // Report power cable state every second.
   static constexpr base::TimeDelta kReportPowerCableInterval = base::Seconds(1);
 
-  explicit RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store);
+  RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store,
+                             scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path_| and |unencrypted_preserve_path|, and
   // mocked |power_manager_client_|, |crossystem_utils_|, |sys_utils_| and
   // |metrics_utils_| for testing.
   RepairCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
       const base::FilePath& unencrypted_preserve_path,
       std::unique_ptr<PowerManagerClient> power_manager_client,
@@ -96,6 +98,7 @@ namespace fake {
 class FakeRepairCompleteStateHandler : public RepairCompleteStateHandler {
  public:
   FakeRepairCompleteStateHandler(scoped_refptr<JsonStore> json_store,
+                                 scoped_refptr<DaemonCallback> daemon_callback,
                                  const base::FilePath& working_dir_path);
 
  protected:

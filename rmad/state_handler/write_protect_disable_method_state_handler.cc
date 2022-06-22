@@ -22,21 +22,28 @@ namespace fake {
 FakeWriteProtectDisableMethodStateHandler::
     FakeWriteProtectDisableMethodStateHandler(
         scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback,
         const base::FilePath& working_dir_path)
     : WriteProtectDisableMethodStateHandler(
-          json_store, std::make_unique<FakeCr50Utils>(working_dir_path)) {}
+          json_store,
+          daemon_callback,
+          std::make_unique<FakeCr50Utils>(working_dir_path)) {}
 
 }  // namespace fake
 
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
 }
 
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
-    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
-    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    std::unique_ptr<Cr50Utils> cr50_utils)
+    : BaseStateHandler(json_store, daemon_callback),
+      cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode WriteProtectDisableMethodStateHandler::InitializeState() {
   if (!state_.has_wp_disable_method()) {

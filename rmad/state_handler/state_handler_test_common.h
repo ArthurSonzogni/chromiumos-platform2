@@ -10,6 +10,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <gtest/gtest.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
@@ -25,6 +26,7 @@ class StateHandlerTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath file_path_;
   scoped_refptr<JsonStore> json_store_;
+  scoped_refptr<DaemonCallback> daemon_callback_;
 };
 
 }  // namespace rmad

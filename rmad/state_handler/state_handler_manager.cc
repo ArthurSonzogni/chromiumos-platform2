@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/state_handler/check_calibration_state_handler.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/device_destination_state_handler.h"
@@ -41,105 +42,111 @@ void StateHandlerManager::RegisterStateHandler(
   CHECK(res.second) << "Registered handlers should have unique RmadStates.";
 }
 
-void StateHandlerManager::RegisterStateHandlers() {
+void StateHandlerManager::RegisterStateHandlers(
+    scoped_refptr<DaemonCallback> daemon_callback) {
   // TODO(gavindodd): Some form of validation of state loaded from the store is
   // needed. e.g. RMA abortable state must match what is expected by the
   // current position in the state flow, but depends on some state in the
   // history.
   // Maybe initializing states in history order would help?
+  RegisterStateHandler(base::MakeRefCounted<WelcomeScreenStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<ComponentsRepairStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<DeviceDestinationStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<WipeSelectionStateHandler>(
+      json_store_, daemon_callback));
   RegisterStateHandler(
-      base::MakeRefCounted<WelcomeScreenStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<ComponentsRepairStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<DeviceDestinationStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<WipeSelectionStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(json_store_));
+      base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(
+          json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
+      json_store_, daemon_callback));
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
-          json_store_));
+          json_store_, daemon_callback));
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
-          json_store_));
+          json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
+      json_store_, daemon_callback));
   RegisterStateHandler(
-      base::MakeRefCounted<UpdateRoFirmwareStateHandler>(json_store_));
-  RegisterStateHandler(base::MakeRefCounted<RestockStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<UpdateDeviceInfoStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<CheckCalibrationStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<SetupCalibrationStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<RunCalibrationStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<ProvisionDeviceStateHandler>(json_store_));
+      base::MakeRefCounted<RestockStateHandler>(json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<CheckCalibrationStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<SetupCalibrationStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<RunCalibrationStateHandler>(
+      json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<ProvisionDeviceStateHandler>(
+      json_store_, daemon_callback));
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
-          json_store_));
-  RegisterStateHandler(base::MakeRefCounted<FinalizeStateHandler>(json_store_));
+          json_store_, daemon_callback));
   RegisterStateHandler(
-      base::MakeRefCounted<RepairCompleteStateHandler>(json_store_));
+      base::MakeRefCounted<FinalizeStateHandler>(json_store_, daemon_callback));
+  RegisterStateHandler(base::MakeRefCounted<RepairCompleteStateHandler>(
+      json_store_, daemon_callback));
 }
 
-void StateHandlerManager::RegisterFakeStateHandlers() {
+void StateHandlerManager::RegisterFakeStateHandlers(
+    scoped_refptr<DaemonCallback> daemon_callback) {
   const base::FilePath test_dir_path =
       base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
   RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWelcomeScreenStateHandler>(json_store_,
-                                                                test_dir_path));
+      base::MakeRefCounted<fake::FakeWelcomeScreenStateHandler>(
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeComponentsRepairStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeDeviceDestinationStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWipeSelectionStateHandler>(json_store_,
-                                                                test_dir_path));
+      base::MakeRefCounted<fake::FakeWipeSelectionStateHandler>(
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableMethodStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableRsuStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisablePhysicalStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableCompleteStateHandler>(
-          json_store_));
+          json_store_, daemon_callback));
   RegisterStateHandler(base::MakeRefCounted<fake::FakeRestockStateHandler>(
-      json_store_, test_dir_path));
+      json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeUpdateRoFirmwareStateHandler>(
-          json_store_));
+          json_store_, daemon_callback));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeUpdateDeviceInfoStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeProvisionDeviceStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeCheckCalibrationStateHandler>(
-          json_store_));
+          json_store_, daemon_callback));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeSetupCalibrationStateHandler>(
-          json_store_));
+          json_store_, daemon_callback));
   RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeRunCalibrationStateHandler>(json_store_));
+      base::MakeRefCounted<fake::FakeRunCalibrationStateHandler>(
+          json_store_, daemon_callback));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectEnablePhysicalStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(base::MakeRefCounted<fake::FakeFinalizeStateHandler>(
-      json_store_, test_dir_path));
+      json_store_, daemon_callback, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeRepairCompleteStateHandler>(
-          json_store_, test_dir_path));
+          json_store_, daemon_callback, test_dir_path));
 }
 
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(

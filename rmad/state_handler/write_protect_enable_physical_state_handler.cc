@@ -23,17 +23,20 @@ namespace fake {
 FakeWriteProtectEnablePhysicalStateHandler::
     FakeWriteProtectEnablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback,
         const base::FilePath& working_dir_path)
     : WriteProtectEnablePhysicalStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<FakeFlashromUtils>()) {}
 
 }  // namespace fake
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       write_protect_signal_sender_(base::DoNothing()) {
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
@@ -41,9 +44,10 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       write_protect_signal_sender_(base::DoNothing()),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}

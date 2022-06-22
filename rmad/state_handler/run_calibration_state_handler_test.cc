@@ -132,8 +132,9 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     testing::Mock::AllowLeak(lid_gyro_utils.get());
 
     auto handler = base::MakeRefCounted<RunCalibrationStateHandler>(
-        json_store_, std::move(base_acc_utils), std::move(lid_acc_utils),
-        std::move(base_gyro_utils), std::move(lid_gyro_utils));
+        json_store_, daemon_callback_, std::move(base_acc_utils),
+        std::move(lid_acc_utils), std::move(base_gyro_utils),
+        std::move(lid_gyro_utils));
 
     auto callback_overall = base::BindRepeating(
         &SignalSender::SendCalibrationOverallSignal,

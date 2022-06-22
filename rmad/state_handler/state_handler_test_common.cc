@@ -30,6 +30,7 @@ void StateHandlerTest::SetUp() {
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   file_path_ = temp_dir_.GetPath().AppendASCII(kTestJsonStoreFileName);
   json_store_ = CreateTestEmptyJsonStore(file_path_);
+  daemon_callback_ = base::MakeRefCounted<DaemonCallback>();
 }
 
 }  // namespace rmad

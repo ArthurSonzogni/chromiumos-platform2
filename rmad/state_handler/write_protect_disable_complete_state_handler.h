@@ -16,10 +16,12 @@ namespace rmad {
 class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableCompleteStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |flashrom_utils_| for testing.
   explicit WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<FlashromUtils> flashrom_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
@@ -41,7 +43,8 @@ class FakeWriteProtectDisableCompleteStateHandler
     : public WriteProtectDisableCompleteStateHandler {
  public:
   FakeWriteProtectDisableCompleteStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
  protected:
   ~FakeWriteProtectDisableCompleteStateHandler() override = default;

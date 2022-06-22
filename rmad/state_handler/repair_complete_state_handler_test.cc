@@ -86,7 +86,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
                              Return(record_metrics_success)));
 
     auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
-        json_store_, GetTempDirPath(), GetTempDirPath(),
+        json_store_, daemon_callback_, GetTempDirPath(), GetTempDirPath(),
         std::move(mock_power_manager_client), std::move(mock_crossystem_utils),
         std::move(mock_sys_utils), std::move(mock_metrics_utils));
     auto callback =

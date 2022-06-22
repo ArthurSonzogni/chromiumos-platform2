@@ -42,8 +42,9 @@ bool IsRootfsPartition(const std::string& path) {
 namespace rmad {
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(false),
       active_(false),
       update_ro_firmware_signal_sender_(base::DoNothing()) {
@@ -58,12 +59,13 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils,
     std::unique_ptr<CrosDisksClient> cros_disks_client,
     std::unique_ptr<PowerManagerClient> power_manager_client)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
       active_(false),
       update_ro_firmware_signal_sender_(base::DoNothing()),
@@ -351,8 +353,9 @@ void UpdateRoFirmwareStateHandler::Reboot() {
 namespace fake {
 
 FakeUpdateRoFirmwareStateHandler::FakeUpdateRoFirmwareStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {}
 
 RmadErrorCode FakeUpdateRoFirmwareStateHandler::InitializeState() {
   if (!state_.has_update_ro_firmware()) {

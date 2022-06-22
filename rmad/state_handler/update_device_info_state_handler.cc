@@ -48,9 +48,12 @@ namespace rmad {
 namespace fake {
 
 FakeUpdateDeviceInfoStateHandler::FakeUpdateDeviceInfoStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : UpdateDeviceInfoStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<FakeCbiUtils>(working_dir_path),
           std::make_unique<FakeCrosConfigUtils>(),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
@@ -60,8 +63,9 @@ FakeUpdateDeviceInfoStateHandler::FakeUpdateDeviceInfoStateHandler(
 }  // namespace fake
 
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback) {
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
@@ -71,12 +75,13 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
 
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<RegionsUtils> regions_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),

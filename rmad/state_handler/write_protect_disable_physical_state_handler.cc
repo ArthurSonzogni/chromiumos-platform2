@@ -27,9 +27,11 @@ namespace fake {
 FakeWriteProtectDisablePhysicalStateHandler::
     FakeWriteProtectDisablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback,
         const base::FilePath& working_dir_path)
     : WriteProtectDisablePhysicalStateHandler(
           json_store,
+          daemon_callback,
           working_dir_path,
           std::make_unique<FakeCr50Utils>(working_dir_path),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
@@ -38,8 +40,10 @@ FakeWriteProtectDisablePhysicalStateHandler::
 }  // namespace fake
 
 WriteProtectDisablePhysicalStateHandler::
-    WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    WriteProtectDisablePhysicalStateHandler(
+        scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
       write_protect_signal_sender_(base::DoNothing()) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
@@ -51,11 +55,12 @@ WriteProtectDisablePhysicalStateHandler::
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
+        scoped_refptr<DaemonCallback> daemon_callback,
         const base::FilePath& working_dir_path,
         std::unique_ptr<Cr50Utils> cr50_utils,
         std::unique_ptr<CrosSystemUtils> crossystem_utils,
         std::unique_ptr<PowerManagerClient> power_manager_client)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       write_protect_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),

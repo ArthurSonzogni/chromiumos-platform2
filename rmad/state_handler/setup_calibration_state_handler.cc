@@ -15,14 +15,16 @@ namespace rmad {
 namespace fake {
 
 FakeSetupCalibrationStateHandler::FakeSetupCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : SetupCalibrationStateHandler(json_store) {}
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : SetupCalibrationStateHandler(json_store, daemon_callback) {}
 
 }  // namespace fake
 
 SetupCalibrationStateHandler::SetupCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       running_setup_instruction_(RMAD_CALIBRATION_INSTRUCTION_UNKNOWN) {}
 
 RmadErrorCode SetupCalibrationStateHandler::InitializeState() {

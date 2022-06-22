@@ -441,7 +441,7 @@ bool DBusService::CheckRmaCriteria() const {
 bool DBusService::SetUpInterface() {
   CHECK(rmad_interface_);
   if (!is_interface_set_up_) {
-    if (!rmad_interface_->SetUp()) {
+    if (!rmad_interface_->SetUp(CreateDaemonCallback())) {
       return false;
     }
     is_interface_set_up_ = true;

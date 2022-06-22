@@ -69,9 +69,12 @@ namespace rmad {
 namespace fake {
 
 FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path)
     : ProvisionDeviceStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<fake::FakePowerManagerClient>(working_dir_path),
           std::make_unique<fake::FakeCbiUtils>(working_dir_path),
           std::make_unique<fake::FakeCrosConfigUtils>(),
@@ -83,8 +86,9 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
 }  // namespace fake
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       provision_signal_sender_(base::DoNothing()),
       should_calibrate_(false),
       sensor_integrity_(false) {
@@ -103,6 +107,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
@@ -110,7 +115,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
     std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       provision_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),

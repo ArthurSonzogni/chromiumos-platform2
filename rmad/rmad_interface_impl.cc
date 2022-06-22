@@ -82,12 +82,13 @@ bool RmadInterfaceImpl::StoreStateHistory() {
   return json_store_->SetValue(kStateHistory, state_history);
 }
 
-void RmadInterfaceImpl::InitializeExternalUtils() {
+void RmadInterfaceImpl::InitializeExternalUtils(
+    scoped_refptr<DaemonCallback> daemon_callback) {
   json_store_ = base::MakeRefCounted<JsonStore>(
       base::FilePath(kDefaultJsonStoreFilePath));
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   if (test_mode_) {
-    state_handler_manager_->RegisterFakeStateHandlers();
+    state_handler_manager_->RegisterFakeStateHandlers(daemon_callback);
     const base::FilePath test_dir_path =
         base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
     runtime_probe_client_ = std::make_unique<fake::FakeRuntimeProbeClient>();
@@ -99,7 +100,7 @@ void RmadInterfaceImpl::InitializeExternalUtils() {
         std::make_unique<PowerManagerClientImpl>(GetSystemBus());
     cmd_utils_ = std::make_unique<fake::FakeCmdUtils>();
   } else {
-    state_handler_manager_->RegisterStateHandlers();
+    state_handler_manager_->RegisterStateHandlers(daemon_callback);
     runtime_probe_client_ =
         std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
     shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
@@ -135,10 +136,10 @@ bool RmadInterfaceImpl::WaitForServices() {
   return false;
 }
 
-bool RmadInterfaceImpl::SetUp() {
+bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
-    InitializeExternalUtils();
+    InitializeExternalUtils(daemon_callback);
     external_utils_initialized_ = true;
     metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
   }

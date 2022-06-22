@@ -126,10 +126,10 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     // Fake |HardwareVerifierUtils|.
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
-        json_store_, std::move(mock_power_manager_client), std::move(cbi_utils),
-        std::move(cros_config_utils), std::move(crossystem_utils),
-        std::move(iio_sensor_probe_utils), std::move(ssfc_utils),
-        std::move(vpd_utils));
+        json_store_, daemon_callback_, std::move(mock_power_manager_client),
+        std::move(cbi_utils), std::move(cros_config_utils),
+        std::move(crossystem_utils), std::move(iio_sensor_probe_utils),
+        std::move(ssfc_utils), std::move(vpd_utils));
     auto callback =
         base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
                             base::Unretained(&signal_sender_));

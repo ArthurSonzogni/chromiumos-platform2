@@ -22,9 +22,11 @@ namespace rmad {
 namespace fake {
 
 FakeRunCalibrationStateHandler::FakeRunCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store)
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
     : RunCalibrationStateHandler(
           json_store,
+          daemon_callback,
           std::make_unique<FakeSensorCalibrationUtils>(),
           std::make_unique<FakeSensorCalibrationUtils>(),
           std::make_unique<FakeSensorCalibrationUtils>(),
@@ -33,8 +35,9 @@ FakeRunCalibrationStateHandler::FakeRunCalibrationStateHandler(
 }  // namespace fake
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store),
+    scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback)
+    : BaseStateHandler(json_store, daemon_callback),
       calibration_overall_signal_sender_(base::DoNothing()),
       calibration_component_signal_sender_(base::DoNothing()) {
   vpd_utils_thread_safe_ = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
@@ -54,11 +57,12 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,
+    scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils)
-    : BaseStateHandler(json_store),
+    : BaseStateHandler(json_store, daemon_callback),
       calibration_overall_signal_sender_(base::DoNothing()),
       calibration_component_signal_sender_(base::DoNothing()) {
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =

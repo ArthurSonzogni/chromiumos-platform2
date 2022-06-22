@@ -27,12 +27,15 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // Poll every 2 seconds.
   static constexpr base::TimeDelta kPollInterval = base::Seconds(2);
 
-  explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit RunCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
   // Used to inject |base_acc_utils|, |lid_acc_utils|, |base_gyro_utils|, and
   // |lid_gyro_utils| to mock |sensor_calibration_utils_map_| for testing.
   RunCalibrationStateHandler(
       scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
       std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
       std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
@@ -99,7 +102,9 @@ namespace fake {
 
 class FakeRunCalibrationStateHandler : public RunCalibrationStateHandler {
  public:
-  explicit FakeRunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit FakeRunCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
  protected:
   ~FakeRunCalibrationStateHandler() override = default;

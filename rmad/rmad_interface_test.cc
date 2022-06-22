@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/metrics/mock_metrics_utils.h"
 #include "rmad/rmad_interface_impl.h"
 #include "rmad/state_handler/mock_state_handler.h"
@@ -77,8 +78,9 @@ class RmadInterfaceImplTest : public testing::Test {
       bool is_repeatable,
       RmadErrorCode initialize_error,
       RmadState::StateCase next_state) {
-    auto mock_handler =
-        base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
+    auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
+    auto mock_handler = base::MakeRefCounted<NiceMock<MockStateHandler>>(
+        json_store, daemon_callback);
     RmadState::StateCase state_case = state.state_case();
     ON_CALL(*mock_handler, GetStateCase()).WillByDefault(Return(state_case));
     ON_CALL(*mock_handler, GetState(_)).WillByDefault(ReturnRef(state));
@@ -228,7 +230,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
       CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   EXPECT_TRUE(cellular_disabled);
 
@@ -253,7 +255,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
       CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   EXPECT_FALSE(cellular_disabled);
 
@@ -278,7 +280,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   EXPECT_FALSE(cellular_disabled);
 
@@ -299,7 +301,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::PASS),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -321,7 +323,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -344,7 +346,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_FALSE(rmad_interface.SetUp());
+  EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
@@ -356,7 +358,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -378,7 +380,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -400,7 +402,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -422,7 +424,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -445,7 +447,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -466,7 +468,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -488,7 +490,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
@@ -508,7 +510,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
   EXPECT_EQ(true, rmad_interface.CanAbort());
 
   TransitionNextStateRequest request;
@@ -543,7 +545,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -564,7 +566,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -587,7 +589,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -609,7 +611,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
@@ -631,7 +633,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
@@ -654,7 +656,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
@@ -676,7 +678,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -701,7 +703,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -726,7 +728,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -750,7 +752,7 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetLogReply& reply, bool quit_daemon) {
     EXPECT_EQ("fake_log", reply.log());
@@ -768,7 +770,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -787,7 +789,7 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp());
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const RecordBrowserActionMetricReply& reply,
                      bool quit_daemon) {

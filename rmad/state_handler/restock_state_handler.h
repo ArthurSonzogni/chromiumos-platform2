@@ -21,9 +21,11 @@ class RestockStateHandler : public BaseStateHandler {
   // Wait for 1 second before shutting down.
   static constexpr base::TimeDelta kShutdownDelay = base::Seconds(1);
 
-  explicit RestockStateHandler(scoped_refptr<JsonStore> json_store);
+  explicit RestockStateHandler(scoped_refptr<JsonStore> json_store,
+                               scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mocked |power_manager_client_| for testing.
   RestockStateHandler(scoped_refptr<JsonStore> json_store,
+                      scoped_refptr<DaemonCallback> daemon_callback,
                       std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kRestock);
@@ -49,6 +51,7 @@ namespace fake {
 class FakeRestockStateHandler : public RestockStateHandler {
  public:
   FakeRestockStateHandler(scoped_refptr<JsonStore> json_store,
+                          scoped_refptr<DaemonCallback> daemon_callback,
                           const base::FilePath& working_dir_path);
 
  protected:

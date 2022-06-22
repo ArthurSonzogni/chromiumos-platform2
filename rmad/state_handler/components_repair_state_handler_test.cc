@@ -65,7 +65,7 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
         .WillByDefault(DoAll(SetArgPointee<1>(hwwp_enabled), Return(true)));
 
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
-        json_store_, std::move(mock_cryptohome_client),
+        json_store_, daemon_callback_, std::move(mock_cryptohome_client),
         std::move(mock_runtime_probe_client), std::move(mock_cr50_utils),
         std::move(mock_crossystem_utils));
   }

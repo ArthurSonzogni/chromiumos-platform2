@@ -89,8 +89,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
     auto handler =
         base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
-            json_store_, GetTempDirPath(), std::move(mock_cr50_utils),
-            std::move(mock_crossystem_utils),
+            json_store_, daemon_callback_, GetTempDirPath(),
+            std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
             std::move(mock_power_manager_client));
     auto callback =
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,

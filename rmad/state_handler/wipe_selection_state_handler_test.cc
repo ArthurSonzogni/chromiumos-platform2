@@ -43,7 +43,7 @@ class WipeSelectionStateHandlerTest : public StateHandlerTest {
         .WillByDefault(DoAll(SetArgPointee<1>(hwwp_enabled), Return(true)));
 
     return base::MakeRefCounted<WipeSelectionStateHandler>(
-        json_store_, std::move(mock_cr50_utils),
+        json_store_, daemon_callback_, std::move(mock_cr50_utils),
         std::move(mock_crossystem_utils));
   }
 
