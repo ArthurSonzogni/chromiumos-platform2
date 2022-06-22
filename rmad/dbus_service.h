@@ -10,6 +10,8 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -17,6 +19,7 @@
 #include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
 
+#include "rmad/daemon_callback.h"
 #include "rmad/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
@@ -83,6 +86,7 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   // Provide callbacks to rmad_interface.
   void SetUpInterfaceCallbacks();
+  scoped_refptr<DaemonCallback> CreateDaemonCallback() const;
 
  private:
   friend class DBusServiceTest;
@@ -205,6 +209,8 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   // Test mode daemon.
   bool test_mode_;
+
+  base::WeakPtrFactory<DBusService> weak_ptr_factory_{this};
 };
 
 }  // namespace rmad

@@ -21,6 +21,7 @@
 #include <dbus/rmad/dbus-constants.h>
 
 #include "rmad/constants.h"
+#include "rmad/daemon_callback.h"
 #include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
@@ -349,34 +350,35 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_->AddOrGetInterface(kRmadInterfaceName);
 
-  dbus_interface->AddMethodHandler(kIsRmaRequiredMethod, base::Unretained(this),
+  dbus_interface->AddMethodHandler(kIsRmaRequiredMethod,
+                                   weak_ptr_factory_.GetWeakPtr(),
                                    &DBusService::HandleIsRmaRequiredMethod);
   dbus_interface->AddMethodHandler(
-      kGetCurrentStateMethod, base::Unretained(this),
+      kGetCurrentStateMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<GetStateReply,
                                         &RmadInterface::GetCurrentState>);
   dbus_interface->AddMethodHandler(
-      kTransitionNextStateMethod, base::Unretained(this),
+      kTransitionNextStateMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<TransitionNextStateRequest,
                                         GetStateReply,
                                         &RmadInterface::TransitionNextState>);
   dbus_interface->AddMethodHandler(
-      kTransitionPreviousStateMethod, base::Unretained(this),
+      kTransitionPreviousStateMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<
           GetStateReply, &RmadInterface::TransitionPreviousState>);
   dbus_interface->AddMethodHandler(
-      kAbortRmaMethod, base::Unretained(this),
+      kAbortRmaMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<AbortRmaReply,
                                         &RmadInterface::AbortRma>);
   dbus_interface->AddMethodHandler(
-      kGetLogMethod, base::Unretained(this),
+      kGetLogMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<GetLogReply, &RmadInterface::GetLog>);
   dbus_interface->AddMethodHandler(
-      kSaveLogMethod, base::Unretained(this),
+      kSaveLogMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<std::string, SaveLogReply,
                                         &RmadInterface::SaveLog>);
   dbus_interface->AddMethodHandler(
-      kRecordBrowserActionMetricMethod, base::Unretained(this),
+      kRecordBrowserActionMetricMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<
           RecordBrowserActionMetricRequest, RecordBrowserActionMetricReply,
           &RmadInterface::RecordBrowserActionMetric>);
@@ -453,39 +455,67 @@ void DBusService::SetUpInterfaceCallbacks() {
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpDisablePhysical,
       base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpEnablePhysical,
       base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWelcome,
       base::BindRepeating(&DBusService::SendHardwareVerificationResultSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kUpdateRoFirmware,
       base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
       base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
       base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kProvisionDevice,
       base::BindRepeating(&DBusService::SendProvisionProgressSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kFinalize,
       base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRepairComplete,
       base::BindRepeating(&DBusService::SendPowerCableStateSignal,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
+}
+
+scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
+  auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
+  daemon_callback->SetHardwareVerificationSignalCallback(
+      base::BindRepeating(&DBusService::SendHardwareVerificationResultSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetUpdateRoFirmwareSignalCallback(
+      base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetCalibrationOverallSignalCallback(
+      base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetCalibrationComponentSignalCallback(
+      base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetProvisionSignalCallback(
+      base::BindRepeating(&DBusService::SendProvisionProgressSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetFinalizeSignalCallback(
+      base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetWriteProtectSignalCallback(
+      base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetPowerCableSignalCallback(base::BindRepeating(
+      &DBusService::SendPowerCableStateSignal, weak_ptr_factory_.GetWeakPtr()));
+  return daemon_callback;
 }
 
 void DBusService::HandleIsRmaRequiredMethod(
@@ -566,7 +596,8 @@ void DBusService::PostQuitTask() {
   if (bus_) {
     VLOG(1) << "Stopping DBus service";
     bus_->GetOriginTaskRunner()->PostTask(
-        FROM_HERE, base::BindOnce(&Daemon::Quit, base::Unretained(this)));
+        FROM_HERE,
+        base::BindOnce(&Daemon::Quit, weak_ptr_factory_.GetWeakPtr()));
   }
 }
 

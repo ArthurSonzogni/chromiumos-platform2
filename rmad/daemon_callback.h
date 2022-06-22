@@ -6,6 +6,8 @@
 #define RMAD_DAEMON_CALLBACK_H_
 
 #include <base/callback.h>
+#include <base/callback_helpers.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 
@@ -25,6 +27,38 @@ using FinalizeSignalCallback =
     base::RepeatingCallback<void(const FinalizeStatus&)>;
 using WriteProtectSignalCallback = base::RepeatingCallback<void(bool)>;
 using PowerCableSignalCallback = base::RepeatingCallback<void(bool)>;
+
+#define DECLARE_CALLBACK(type, var)                 \
+ public:                                            \
+  type Get##type() const { return var; }            \
+  void Set##type(type callback) { var = callback; } \
+                                                    \
+ private:                                           \
+  type var = base::DoNothing()
+
+// A collection of callbacks for state handlers to use.
+class DaemonCallback : public base::RefCounted<DaemonCallback> {
+ public:
+  DaemonCallback() = default;
+
+ protected:
+  friend class base::RefCounted<DaemonCallback>;
+  virtual ~DaemonCallback() = default;
+
+  // Callbacks as private members and their public getter/setter.
+  DECLARE_CALLBACK(HardwareVerificationSignalCallback,
+                   hardware_verification_signal_callback);
+  DECLARE_CALLBACK(UpdateRoFirmwareSignalCallback,
+                   update_ro_firmware_signal_callback_);
+  DECLARE_CALLBACK(CalibrationOverallSignalCallback,
+                   calibration_overall_signal_callback_);
+  DECLARE_CALLBACK(CalibrationComponentSignalCallback,
+                   calibration_component_signal_callback_);
+  DECLARE_CALLBACK(ProvisionSignalCallback, provision_signal_callback_);
+  DECLARE_CALLBACK(FinalizeSignalCallback, finalize_signal_callback_);
+  DECLARE_CALLBACK(WriteProtectSignalCallback, write_protect_signal_callback_);
+  DECLARE_CALLBACK(PowerCableSignalCallback, power_cable_signal_callback_);
+};
 
 }  // namespace rmad
 
