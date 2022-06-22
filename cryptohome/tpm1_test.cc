@@ -183,10 +183,10 @@ TEST_F(TpmImplTest, GetDictionaryAttackInfo) {
 TEST_F(TpmImplTest, ResetDictionaryAttackMitigation) {
   EXPECT_CALL(mock_tpm_manager_utility_, ResetDictionaryAttackLock())
       .WillOnce(Return(false));
-  EXPECT_FALSE(GetTpm()->ResetDictionaryAttackMitigation(Blob{}, Blob{}));
+  EXPECT_FALSE(GetTpm()->ResetDictionaryAttackMitigation());
   EXPECT_CALL(mock_tpm_manager_utility_, ResetDictionaryAttackLock())
       .WillOnce(Return(true));
-  EXPECT_TRUE(GetTpm()->ResetDictionaryAttackMitigation(Blob{}, Blob{}));
+  EXPECT_TRUE(GetTpm()->ResetDictionaryAttackMitigation());
 }
 
 TEST_F(TpmImplTest, SignalCache) {
@@ -318,7 +318,7 @@ TEST_F(TpmImplTest, BadTpmManagerUtility) {
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(GetTpm()->IsEnabled());
   EXPECT_FALSE(GetTpm()->IsOwned());
-  EXPECT_FALSE(GetTpm()->ResetDictionaryAttackMitigation(Blob{}, Blob{}));
+  EXPECT_FALSE(GetTpm()->ResetDictionaryAttackMitigation());
   int result_counter;
   int result_threshold;
   bool result_lockout;

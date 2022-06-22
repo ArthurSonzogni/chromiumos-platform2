@@ -32,8 +32,6 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
               (const brillo::Blob&,
                const std::vector<structure::ChallengeSignatureAlgorithm>&,
                const std::string&,
-               const brillo::Blob&,
-               const brillo::Blob&,
                brillo::SecureBlob*,
                structure::SignatureSealedData*),
               (override));
@@ -45,8 +43,6 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
                const std::vector<structure::ChallengeSignatureAlgorithm>&
                    key_algorithms,
                const std::set<uint32_t>&,
-               const brillo::Blob& delegate_blob,
-               const brillo::Blob& delegate_secret,
                bool locked_to_single_user,
                std::unique_ptr<UnsealingSession>* unsealing_session),
               (override));

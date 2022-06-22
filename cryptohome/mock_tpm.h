@@ -136,10 +136,7 @@ class MockTpm : public Tpm {
               GetDictionaryAttackInfo,
               (int*, int*, bool*, int*),
               (override));
-  MOCK_METHOD(bool,
-              ResetDictionaryAttackMitigation,
-              (const brillo::Blob&, const brillo::Blob&),
-              (override));
+  MOCK_METHOD(bool, ResetDictionaryAttackMitigation, (), (override));
   MOCK_METHOD(void, DeclareTpmFirmwareStable, (), (override));
   MOCK_METHOD(bool,
               RemoveOwnerDependency,

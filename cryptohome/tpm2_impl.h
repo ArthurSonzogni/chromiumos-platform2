@@ -134,9 +134,7 @@ class Tpm2Impl : public Tpm {
                                bool* lockout,
                                int* seconds_remaining) override;
   // Asynchronously resets DA lock in tpm_managerd.
-  bool ResetDictionaryAttackMitigation(
-      const brillo::Blob& /* delegate_blob */,
-      const brillo::Blob& /* delegate_secret */) override;
+  bool ResetDictionaryAttackMitigation() override;
   void DeclareTpmFirmwareStable() override;
   bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;

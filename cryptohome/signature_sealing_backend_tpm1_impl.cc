@@ -149,8 +149,6 @@ class UnsealingSessionTpm1Impl final
                            const Blob& cmk_wrapped_auth_data,
                            const Blob& pcr_bound_secret,
                            const Blob& public_key_spki_der,
-                           const Blob& delegate_blob,
-                           const Blob& delegate_secret,
                            const Blob& cmk_pubkey,
                            const Blob& protection_key_pubkey,
                            crypto::ScopedRSA migration_destination_rsa,
@@ -178,10 +176,6 @@ class UnsealingSessionTpm1Impl final
   const Blob pcr_bound_secret_;
   // The DER-encoded Subject Public Key Info of the protection key.
   const Blob public_key_spki_der_;
-  // The blob for the owner delegation.
-  const Blob delegate_blob_;
-  // The delegate secret for the delegate blob.
-  const Blob delegate_secret_;
   // The TPM_PUBKEY blob of the CMK.
   const Blob cmk_pubkey_;
   // The SHA-1 digest of |cmk_pubkey_|.
@@ -953,8 +947,6 @@ UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
     const Blob& cmk_wrapped_auth_data,
     const Blob& pcr_bound_secret,
     const Blob& public_key_spki_der,
-    const Blob& delegate_blob,
-    const Blob& delegate_secret,
     const Blob& cmk_pubkey,
     const Blob& protection_key_pubkey,
     crypto::ScopedRSA migration_destination_rsa,
@@ -964,8 +956,6 @@ UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
       cmk_wrapped_auth_data_(cmk_wrapped_auth_data),
       pcr_bound_secret_(pcr_bound_secret),
       public_key_spki_der_(public_key_spki_der),
-      delegate_blob_(delegate_blob),
-      delegate_secret_(delegate_secret),
       cmk_pubkey_(cmk_pubkey),
       cmk_pubkey_digest_(Sha1(cmk_pubkey_)),
       protection_key_pubkey_(protection_key_pubkey),
@@ -995,8 +985,7 @@ hwsec::Status UnsealingSessionTpm1Impl::Unseal(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(delegate_blob_, delegate_secret_,
-                                      tpm_context.ptr(), &tpm_handle)) {
+  if (!tpm_->ConnectContextAsDelegate(tpm_context.ptr(), &tpm_handle)) {
     return CreateError<TPMError>("Failed to connect to the TPM",
                                  TPMRetryAction::kNoRetry);
   }
@@ -1131,8 +1120,6 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::string& obfuscated_username,
-    const Blob& delegate_blob,
-    const Blob& delegate_secret,
     SecureBlob* secret_value,
     structure::SignatureSealedData* sealed_secret_data) {
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
@@ -1146,8 +1133,7 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(delegate_blob, delegate_secret,
-                                      tpm_context.ptr(), &tpm_handle)) {
+  if (!tpm_->ConnectContextAsDelegate(tpm_context.ptr(), &tpm_handle)) {
     return CreateError<TPMError>("Failed to connect to the TPM",
                                  TPMRetryAction::kCommunication);
   }
@@ -1274,8 +1260,6 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::set<uint32_t>& /* pcr_set */,
-    const Blob& delegate_blob,
-    const Blob& delegate_secret,
     bool locked_to_single_user,
     std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
         unsealing_session) {
@@ -1331,8 +1315,7 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(delegate_blob, delegate_secret,
-                                      tpm_context.ptr(), &tpm_handle)) {
+  if (!tpm_->ConnectContextAsDelegate(tpm_context.ptr(), &tpm_handle)) {
     return CreateError<TPMError>("Failed to connect to the TPM",
                                  TPMRetryAction::kNoRetry);
   }
@@ -1394,7 +1377,7 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   }
   *unsealing_session = std::make_unique<UnsealingSessionTpm1Impl>(
       tpm_, data.srk_wrapped_cmk, data.cmk_wrapped_auth_data, pcr_bound_secret,
-      public_key_spki_der, delegate_blob, delegate_secret, data.cmk_pubkey,
+      public_key_spki_der, data.cmk_pubkey,
       Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()),
       std::move(migration_destination_rsa),
       Blob(migration_destination_key_pubkey.begin(),

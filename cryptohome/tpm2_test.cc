@@ -224,10 +224,10 @@ TEST_F(Tpm2Test, GetDictionaryAttackInfo) {
 TEST_F(Tpm2Test, ResetDictionaryAttackMitigation) {
   EXPECT_CALL(mock_tpm_manager_utility_, ResetDictionaryAttackLock())
       .WillOnce(Return(false));
-  EXPECT_FALSE(tpm_->ResetDictionaryAttackMitigation(Blob{}, Blob{}));
+  EXPECT_FALSE(tpm_->ResetDictionaryAttackMitigation());
   EXPECT_CALL(mock_tpm_manager_utility_, ResetDictionaryAttackLock())
       .WillOnce(Return(true));
-  EXPECT_TRUE(tpm_->ResetDictionaryAttackMitigation(Blob{}, Blob{}));
+  EXPECT_TRUE(tpm_->ResetDictionaryAttackMitigation());
 }
 
 TEST_F(Tpm2Test, SignalCache) {
@@ -332,7 +332,7 @@ TEST_F(Tpm2Test, BadTpmManagerUtility) {
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(tpm_->IsEnabled());
   EXPECT_FALSE(tpm_->IsOwned());
-  EXPECT_FALSE(tpm_->ResetDictionaryAttackMitigation(Blob{}, Blob{}));
+  EXPECT_FALSE(tpm_->ResetDictionaryAttackMitigation());
   int result_counter;
   int result_threshold;
   bool result_lockout;
@@ -1591,11 +1591,9 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   SecureBlob secret_value;
   structure::SignatureSealedData sealed_data;
   std::string obfuscated_username = "obfuscated_username";
-  EXPECT_EQ(nullptr,
-            signature_sealing_backend()->CreateSealedSecret(
-                key_spki_der_, supported_algorithms(), obfuscated_username,
-                Blob() /* delegate_blob */, Blob() /* delegate_secret */,
-                &secret_value, &sealed_data));
+  EXPECT_EQ(nullptr, signature_sealing_backend()->CreateSealedSecret(
+                         key_spki_der_, supported_algorithms(),
+                         obfuscated_username, &secret_value, &sealed_data));
   EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
   ASSERT_TRUE(
       std::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));
@@ -1649,7 +1647,6 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   EXPECT_EQ(nullptr, signature_sealing_backend()->CreateUnsealingSession(
                          sealed_data, key_spki_der_, supported_algorithms(),
                          /*pcr_set=*/std::set<uint32_t>({kTpmSingleUserPCR}),
-                         /*delegate_blob=*/Blob(), /*delegate_secret=*/Blob(),
                          /*locked_to_single_user=*/false, &unsealing_session));
   ASSERT_TRUE(unsealing_session);
   EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());

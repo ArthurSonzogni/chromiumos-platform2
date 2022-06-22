@@ -269,8 +269,6 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::string& obfuscated_username,
-    const Blob& /* delegate_blob */,
-    const Blob& /* delegate_secret */,
     SecureBlob* secret_value,
     structure::SignatureSealedData* sealed_secret_data) {
   // Choose the algorithm. Respect the input's algorithm prioritization, with
@@ -425,8 +423,6 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::set<uint32_t>& pcr_set,
-    const Blob& /* delegate_blob */,
-    const Blob& /* delegate_secret */,
     bool /* locked_to_single_user */,
     std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
         unsealing_session) {

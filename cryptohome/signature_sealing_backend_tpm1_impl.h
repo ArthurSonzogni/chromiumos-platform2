@@ -43,8 +43,6 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::string& obfuscated_username,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,
       structure::SignatureSealedData* sealed_secret_data) override;
   hwsec::Status CreateUnsealingSession(
@@ -52,8 +50,6 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::set<uint32_t>& pcr_set,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret,
       bool locked_to_single_user,
       std::unique_ptr<UnsealingSession>* unsealing_session) override;
 

@@ -110,9 +110,7 @@ class TpmImpl : public Tpm {
                                int* threshold,
                                bool* lockout,
                                int* seconds_remaining) override;
-  bool ResetDictionaryAttackMitigation(
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override;
+  bool ResetDictionaryAttackMitigation() override;
   void DeclareTpmFirmwareStable() override {}
   bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
@@ -144,11 +142,8 @@ class TpmImpl : public Tpm {
                              TSS_HTPM* tpm_handle);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object authorized by the given delegation.
-  bool ConnectContextAsDelegate(const brillo::Blob& delegate_blob,
-                                const brillo::Blob& delegate_secret,
-                                TSS_HCONTEXT* context,
-                                TSS_HTPM* tpm_handle);
+  // its matching TPM object authorized by the delegation.
+  bool ConnectContextAsDelegate(TSS_HCONTEXT* context, TSS_HTPM* tpm_handle);
 
   // Wrapper for Tspi_GetAttribData.
   hwsec::Status GetDataAttribute(TSS_HCONTEXT context,

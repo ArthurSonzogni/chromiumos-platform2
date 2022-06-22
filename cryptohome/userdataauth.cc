@@ -1698,23 +1698,8 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
   // Lazily create the helper object that manages generation/decryption of
   // credentials for challenge-protected vaults.
 
-  Blob delegate_blob, delegate_secret;
-
-  bool has_reset_lock_permissions = false;
-  // TPM Delegate is required for TPM1.2. For TPM2.0, this is a no-op.
-  if (!tpm_->GetDelegate(&delegate_blob, &delegate_secret,
-                         &has_reset_lock_permissions)) {
-    LOG(ERROR)
-        << "Cannot do challenge-response authentication without TPM delegate";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoDelegateInInitChalRespAuth),
-        ErrorActionSet({ErrorAction::kPowerwash}),
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-  }
-
   default_challenge_credentials_helper_ =
-      std::make_unique<ChallengeCredentialsHelperImpl>(tpm_, delegate_blob,
-                                                       delegate_secret);
+      std::make_unique<ChallengeCredentialsHelperImpl>(tpm_);
   challenge_credentials_helper_ = default_challenge_credentials_helper_.get();
   auth_block_utility_->InitializeForChallengeCredentials(
       challenge_credentials_helper_);
@@ -3948,9 +3933,7 @@ std::string UserDataAuth::GetStatusString() {
 void UserDataAuth::ResetDictionaryAttackMitigation() {
   AssertOnMountThread();
 
-  // The delegate information is not used.
-  brillo::Blob unused_blob;
-  if (!tpm_->ResetDictionaryAttackMitigation(unused_blob, unused_blob)) {
+  if (!tpm_->ResetDictionaryAttackMitigation()) {
     LOG(WARNING) << "Failed to reset DA";
   }
 }

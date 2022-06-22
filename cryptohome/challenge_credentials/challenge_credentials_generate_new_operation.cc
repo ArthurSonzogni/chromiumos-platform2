@@ -59,16 +59,12 @@ ChallengeCredentialsGenerateNewOperation::
     ChallengeCredentialsGenerateNewOperation(
         KeyChallengeService* key_challenge_service,
         Tpm* tpm,
-        const brillo::Blob& delegate_blob,
-        const brillo::Blob& delegate_secret,
         const std::string& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
         const std::string& obfuscated_username,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
-      delegate_blob_(delegate_blob),
-      delegate_secret_(delegate_secret),
       account_id_(account_id),
       public_key_info_(public_key_info),
       obfuscated_username_(obfuscated_username),
@@ -190,8 +186,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
   if (hwsec::Status err = signature_sealing_backend_->CreateSealedSecret(
           public_key_info_.public_key_spki_der,
           public_key_info_.signature_algorithm, obfuscated_username_,
-          delegate_blob_, delegate_secret_, &local_tpm_protected_secret_value,
-          &tpm_sealed_secret_data_);
+          &local_tpm_protected_secret_value, &tpm_sealed_secret_data_);
       !err.ok()) {
     LOG(ERROR) << "Failed to create TPM-protected secret: " << err;
     TPMStatus status = MakeStatus<CryptohomeTPMError>(std::move(err));

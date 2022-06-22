@@ -54,8 +54,6 @@ class ChallengeCredentialsGenerateNewOperation final
   ChallengeCredentialsGenerateNewOperation(
       KeyChallengeService* key_challenge_service,
       Tpm* tpm,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const std::string& obfuscated_username,
@@ -93,8 +91,6 @@ class ChallengeCredentialsGenerateNewOperation final
       const;
 
   Tpm* const tpm_;
-  const brillo::Blob delegate_blob_;
-  const brillo::Blob delegate_secret_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const std::string obfuscated_username_;

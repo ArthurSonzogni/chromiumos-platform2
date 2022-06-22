@@ -78,7 +78,7 @@ structure::SignatureChallengeInfo MakeFakeKeysetChallengeInfo(
 class ChallengeCredentialsHelperImplTestBase : public testing::Test {
  protected:
   ChallengeCredentialsHelperImplTestBase()
-      : challenge_credentials_helper_(&tpm_, kDelegateBlob, kDelegateSecret) {}
+      : challenge_credentials_helper_(&tpm_) {}
 
   void PrepareSignatureSealingBackend(bool enabled) {
     SignatureSealingBackend* const return_value =
@@ -187,8 +187,6 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
     mocker->set_public_key_spki_der(kPublicKeySpkiDer);
     mocker->set_key_algorithms(key_algorithms);
     mocker->set_obfuscated_username(kObfuscatedUsername);
-    mocker->set_delegate_blob(kDelegateBlob);
-    mocker->set_delegate_secret(kDelegateSecret);
     mocker->set_secret_value(kTpmProtectedSecret);
     return mocker;
   }
@@ -202,8 +200,6 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         std::make_unique<SignatureSealedUnsealingMocker>(&sealing_backend_);
     mocker->set_public_key_spki_der(kPublicKeySpkiDer);
     mocker->set_key_algorithms(key_algorithms);
-    mocker->set_delegate_blob(kDelegateBlob);
-    mocker->set_delegate_secret(kDelegateSecret);
     mocker->set_chosen_algorithm(unsealing_algorithm);
     mocker->set_challenge_value(kUnsealingChallengeValue);
     mocker->set_challenge_signature(kUnsealingChallengeSignature);
@@ -283,11 +279,6 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Constants which are passed as fake data inputs to the
   // ChallengeCredentialsHelperImpl methods:
 
-  // Fake TPM delegate. It's supplied to the ChallengeCredentialsHelperImpl
-  // constructor. Then it's verified to be passed into SignatureSealingBackend
-  // methods.
-  const Blob kDelegateBlob{{1, 1, 1}};
-  const Blob kDelegateSecret{{2, 2, 2}};
   // Fake user e-mail. It's supplied to the ChallengeCredentialsHelperImpl
   // operation methods. Then it's verified to be passed alongside challenge
   // requests made via KeyChallengeService, and to be present in the resulting

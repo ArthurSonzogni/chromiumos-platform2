@@ -244,9 +244,7 @@ bool TpmImpl::ConnectContextAsUser(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
   return true;
 }
 
-bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
-                                       const Blob& delegate_secret,
-                                       TSS_HCONTEXT* context,
+bool TpmImpl::ConnectContextAsDelegate(TSS_HCONTEXT* context,
                                        TSS_HTPM* tpm_handle) {
   *context = 0;
   *tpm_handle = 0;
@@ -254,6 +252,15 @@ bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
     LOG(ERROR) << "ConnectContextAsDelegate: TPM is unowned.";
     return false;
   }
+
+  Blob delegate_blob, delegate_secret;
+  bool has_reset_lock_permissions = false;
+  if (!GetDelegate(&delegate_blob, &delegate_secret,
+                   &has_reset_lock_permissions)) {
+    LOG(ERROR) << "Failed to get delegate for TPM";
+    return false;
+  }
+
   if ((*context = ConnectContext()) == 0) {
     LOG(ERROR) << "ConnectContextAsDelegate: Could not open the TPM.";
     return false;
@@ -393,8 +400,7 @@ bool TpmImpl::GetDictionaryAttackInfo(int* counter,
       counter, threshold, lockout, seconds_remaining);
 }
 
-bool TpmImpl::ResetDictionaryAttackMitigation(const brillo::Blob&,
-                                              const brillo::Blob&) {
+bool TpmImpl::ResetDictionaryAttackMitigation() {
   if (!InitializeTpmManagerUtility()) {
     LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;

@@ -39,8 +39,6 @@ namespace cryptohome {
 ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     KeyChallengeService* key_challenge_service,
     Tpm* tpm,
-    const Blob& delegate_blob,
-    const Blob& delegate_secret,
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
@@ -48,8 +46,6 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
-      delegate_blob_(delegate_blob),
-      delegate_secret_(delegate_secret),
       account_id_(account_id),
       public_key_info_(public_key_info),
       keyset_challenge_info_(keyset_challenge_info),
@@ -184,8 +180,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
       signature_sealing_backend_->CreateUnsealingSession(
           keyset_challenge_info_.sealed_secret,
           public_key_info_.public_key_spki_der, key_sealing_algorithms, pcr_set,
-          delegate_blob_, delegate_secret_, locked_to_single_user_,
-          &unsealing_session_));
+          locked_to_single_user_, &unsealing_session_));
   if (!status.ok()) {
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(

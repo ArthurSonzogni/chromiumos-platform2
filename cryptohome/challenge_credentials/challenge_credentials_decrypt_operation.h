@@ -50,8 +50,6 @@ class ChallengeCredentialsDecryptOperation final
   ChallengeCredentialsDecryptOperation(
       KeyChallengeService* key_challenge_service,
       Tpm* tpm,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
@@ -94,8 +92,6 @@ class ChallengeCredentialsDecryptOperation final
       TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
 
   Tpm* const tpm_;
-  const brillo::Blob delegate_blob_;
-  const brillo::Blob delegate_secret_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;

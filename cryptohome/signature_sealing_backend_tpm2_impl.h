@@ -21,9 +21,6 @@ class Tpm2Impl;
 
 // Implementation of signature-sealing operations for TPM 2.0. Based on the
 // TPM2_PolicySigned functionality.
-//
-// Notes on implementation:
-// * |delegate_blob| and |delegate_secret| parameters are ignored.
 class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
  public:
   explicit SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm);
@@ -39,8 +36,6 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::string& obfuscated_username,
-      const brillo::Blob& /* delegate_blob */,
-      const brillo::Blob& /* delegate_secret */,
       brillo::SecureBlob* secret_value,
       structure::SignatureSealedData* sealed_secret_data) override;
   hwsec::Status CreateUnsealingSession(
@@ -48,8 +43,6 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::set<uint32_t>& pcr_set,
-      const brillo::Blob& /* delegate_blob */,
-      const brillo::Blob& /* delegate_secret */,
       bool locked_to_single_user,
       std::unique_ptr<UnsealingSession>* unsealing_session) override;
 

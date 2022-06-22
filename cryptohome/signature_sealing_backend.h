@@ -71,16 +71,12 @@ class SignatureSealingBackend {
   //   obfuscated_username - The obfuscated username; the created secret will be
   //                         protected in a way that decrypting it back is
   //                         possible iff the current user is satisfied.
-  //   delegate_blob - The blob for the owner delegation.
-  //   delegate_secret - The delegate secret for the delegate blob.
   //   secret_value - The created secret value.
   //   sealed_secret_data - Securely sealed representation of the secret value.
   virtual hwsec::Status CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::string& obfuscated_username,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,
       structure::SignatureSealedData* sealed_secret_data) = 0;
 
@@ -98,16 +94,12 @@ class SignatureSealingBackend {
   //                    most preferred); however, the implementation is
   //                    permitted to ignore this order.
   //   pcr_set - The PCR values set; the set would be used to unseal the secret.
-  //   delegate_blob - The blob for the owner delegation.
-  //   delegate_secret - The delegate secret for the delegate blob.
   //   locked_to_single_user - Should use extended PCR to unseal or not.
   virtual hwsec::Status CreateUnsealingSession(
       const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::set<uint32_t>& pcr_set,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret,
       bool locked_to_single_user,
       std::unique_ptr<UnsealingSession>* unsealing_session) = 0;
 };

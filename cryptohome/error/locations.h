@@ -941,7 +941,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthROCAVulnerableInInitChalRespAuth = 557,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoDBusInInitChalRespAuth = 558,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoDelegateInInitChalRespAuth = 559,
   /* ./userdataauth.cc */
   kLocUserDataAuthInitFailedInInitAuthBlockUtilChalResp = 560,

@@ -46,11 +46,8 @@ bool IsOperationFailureTransient(
 
 }  // namespace
 
-ChallengeCredentialsHelperImpl::ChallengeCredentialsHelperImpl(
-    Tpm* tpm, const Blob& delegate_blob, const Blob& delegate_secret)
-    : tpm_(tpm),
-      delegate_blob_(delegate_blob),
-      delegate_secret_(delegate_secret) {
+ChallengeCredentialsHelperImpl::ChallengeCredentialsHelperImpl(Tpm* tpm)
+    : tpm_(tpm) {
   DCHECK(tpm_);
 }
 
@@ -69,8 +66,8 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
   CancelRunningOperation();
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
-      key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, obfuscated_username,
+      key_challenge_service_.get(), tpm_, account_id, public_key_info,
+      obfuscated_username,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnGenerateNewCompleted,
                      base::Unretained(this), std::move(callback)));
   operation_->Start();
@@ -117,8 +114,8 @@ void ChallengeCredentialsHelperImpl::StartDecryptOperation(
     DecryptCallback callback) {
   DCHECK(!operation_);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
-      key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, keyset_challenge_info, locked_to_single_user,
+      key_challenge_service_.get(), tpm_, account_id, public_key_info,
+      keyset_challenge_info, locked_to_single_user,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnDecryptCompleted,
                      base::Unretained(this), account_id, public_key_info,
                      keyset_challenge_info, locked_to_single_user,

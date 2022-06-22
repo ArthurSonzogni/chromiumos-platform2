@@ -456,13 +456,8 @@ class Tpm {
                                        bool* lockout,
                                        int* seconds_remaining) = 0;
 
-  // Resets DA lock. This call requires owner permissions. For TPM 1.2,
-  // |delegate_blob| and |delegate_secret| for an owner delegate must be
-  // provided. For TPM 2.0, everything is handled in tpm_managerd and those 2
-  // args are unused.
-  virtual bool ResetDictionaryAttackMitigation(
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) = 0;
+  // Resets DA lock.
+  virtual bool ResetDictionaryAttackMitigation() = 0;
 
   // For TPMs with updateable firmware: Declate the current firmware
   // version stable and invalidate previous versions, if any.

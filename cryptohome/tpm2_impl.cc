@@ -1037,8 +1037,7 @@ bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
       counter, threshold, lockout, seconds_remaining);
 }
 
-bool Tpm2Impl::ResetDictionaryAttackMitigation(
-    const Blob& /* delegate_blob */, const Blob& /* delegate_secret */) {
+bool Tpm2Impl::ResetDictionaryAttackMitigation() {
   if (!InitializeTpmManagerUtility()) {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;

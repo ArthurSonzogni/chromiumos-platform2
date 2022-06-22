@@ -156,11 +156,7 @@ class StubTpm : public Tpm {
                                int* seconds_remaining) override {
     return false;
   }
-  bool ResetDictionaryAttackMitigation(
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override {
-    return false;
-  }
+  bool ResetDictionaryAttackMitigation() override { return false; }
   void DeclareTpmFirmwareStable() override {}
   bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override {
     return true;

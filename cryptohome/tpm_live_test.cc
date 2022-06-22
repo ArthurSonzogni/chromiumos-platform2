@@ -422,10 +422,6 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error generating the RSA key";
       return false;
     }
-    if (!InitDelegate()) {
-      LOG(ERROR) << "Error creating the delegate";
-      return false;
-    }
     return true;
   }
 
@@ -567,18 +563,11 @@ class SignatureSealedSecretTestCase final {
            key_spki_der->size();
   }
 
-  // Init the delegate.
-  bool InitDelegate() {
-    bool has_reset_lock_permissions;
-    return tpm()->GetDelegate(&delegate_blob_, &delegate_secret_,
-                              &has_reset_lock_permissions);
-  }
-
   bool CreateSecret(SecureBlob* secret_value,
                     structure::SignatureSealedData* sealed_secret_data) {
     if (hwsec::Status err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
-            delegate_blob_, delegate_secret_, secret_value, sealed_secret_data);
+            secret_value, sealed_secret_data);
         !err.ok()) {
       LOG(ERROR) << "Error creating signature-sealed secret: " << err;
       return false;
@@ -591,8 +580,7 @@ class SignatureSealedSecretTestCase final {
     structure::SignatureSealedData sealed_secret_data;
     if (hwsec::Status err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
-            delegate_blob_, delegate_secret_, &secret_value,
-            &sealed_secret_data);
+            &secret_value, &sealed_secret_data);
         !err.ok()) {
       // TODO(b/174816474): check the error message is expected.
       LOG(INFO) << "Successfully failed to create signature-sealed secret: "
@@ -610,7 +598,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_,
+            kPcrIndexes,
             /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
@@ -650,7 +638,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_,
+            kPcrIndexes,
             /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
@@ -671,7 +659,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_,
+            kPcrIndexes,
             /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
@@ -699,7 +687,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_,
+            kPcrIndexes,
             /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       LOG(ERROR) << "Error starting the unsealing session: " << err;
@@ -731,8 +719,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, {wrong_algorithm}, kPcrIndexes,
-            delegate_blob_, delegate_secret_, /*locked_to_single_user=*/false,
-            &unsealing_session);
+            /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       // TODO(b/174816474): check the error message is expected.
       return true;
@@ -755,7 +742,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_,
+            kPcrIndexes,
             /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       // TODO(b/174816474): check the error message is expected.
@@ -772,7 +759,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_,
+            kPcrIndexes,
             /*locked_to_single_user=*/false, &unsealing_session);
         !err.ok()) {
       // TODO(yich): check the error message is expected.
@@ -824,8 +811,6 @@ class SignatureSealedSecretTestCase final {
   }
 
   const SignatureSealedSecretTestCaseParam param_;
-  Blob delegate_blob_;
-  Blob delegate_secret_;
   crypto::ScopedEVP_PKEY pkey_;
   Blob key_spki_der_;
 

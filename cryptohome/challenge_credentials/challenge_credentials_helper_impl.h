@@ -35,12 +35,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
 
   // |tpm| is a non-owned pointer that must stay valid for the whole lifetime of
   // the created object.
-  // |delegate_blob| and |delegate_secret| should correspond to a TPM delegate
-  // that allows doing signature-sealing operations (currently used only on TPM
-  // 1.2).
-  ChallengeCredentialsHelperImpl(Tpm* tpm,
-                                 const brillo::Blob& delegate_blob,
-                                 const brillo::Blob& delegate_secret);
+  explicit ChallengeCredentialsHelperImpl(Tpm* tpm);
   ChallengeCredentialsHelperImpl(const ChallengeCredentialsHelperImpl&) =
       delete;
   ChallengeCredentialsHelperImpl& operator=(
@@ -103,9 +98,6 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
 
   // Non-owned.
   Tpm* const tpm_;
-  // TPM delegate that was passed to the constructor.
-  const brillo::Blob delegate_blob_;
-  const brillo::Blob delegate_secret_;
   // The key challenge service used for the currently running operation, if any.
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
   // The state of the currently running operation, if any.
