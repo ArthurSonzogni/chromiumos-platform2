@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/synchronization/lock.h>
+#include <base/values.h>
 
 namespace cros {
 
@@ -68,6 +69,10 @@ class HdrNetConfig {
     float spatial_strength = 1.5f;
   };
 };
+
+// Helper function to parse general HDRnet options from the give JSON values.
+void ParseHdrnetJsonOptions(const base::Value& json_values,
+                            HdrNetConfig::Options& options);
 
 }  // namespace cros
 

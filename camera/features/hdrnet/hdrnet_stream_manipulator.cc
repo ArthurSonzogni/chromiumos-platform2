@@ -34,15 +34,7 @@ constexpr int kDefaultSyncWaitTimeoutMs = 300;
 
 constexpr char kMetadataDumpPath[] = "/run/camera/hdrnet_frame_metadata.json";
 
-constexpr char kDumpBufferKey[] = "dump_buffer";
-constexpr char kHdrNetEnableKey[] = "hdrnet_enable";
-constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
-
-constexpr char kHdrRatioKey[] = "hdr_ratio";
-constexpr char kMaxGainBlendThresholdKey[] = "max_gain_blend_threshold";
-constexpr char kSpatialFilterSigma[] = "spatial_filter_sigma";
-constexpr char kRangeFilterSigma[] = "range_filter_sigma";
-constexpr char kIirFilterStrength[] = "iir_filter_strength";
+constexpr char kLogFrameMetadata[] = "log_frame_metadata";
 
 constexpr char kDenoiserEnable[] = "denoiser_enable";
 constexpr char kDenoiserIirTemporalConvergence[] =
@@ -1137,14 +1129,7 @@ HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
 }
 
 void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
-  LoadIfExist(json_values, kHdrNetEnableKey, &options_.hdrnet_enable);
-  LoadIfExist(json_values, kDumpBufferKey, &options_.dump_buffer);
-  LoadIfExist(json_values, kHdrRatioKey, &options_.hdr_ratio);
-  LoadIfExist(json_values, kMaxGainBlendThresholdKey,
-              &options_.max_gain_blend_threshold);
-  LoadIfExist(json_values, kSpatialFilterSigma, &options_.spatial_filter_sigma);
-  LoadIfExist(json_values, kRangeFilterSigma, &options_.range_filter_sigma);
-  LoadIfExist(json_values, kIirFilterStrength, &options_.iir_filter_strength);
+  ParseHdrnetJsonOptions(json_values, options_);
 
   bool denoiser_enable;
   if (LoadIfExist(json_values, kDenoiserEnable, &denoiser_enable)) {
@@ -1164,14 +1149,8 @@ void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
   LoadIfExist(json_values, kDenoiserSpatialStrength,
               &options_.spatial_strength);
 
-  DCHECK_GE(options_.hdr_ratio, 1.0f);
-  DCHECK_LE(options_.max_gain_blend_threshold, 1.0f);
-  DCHECK_GE(options_.max_gain_blend_threshold, 0.0f);
-  DCHECK_LE(options_.iir_filter_strength, 1.0f);
-  DCHECK_GE(options_.iir_filter_strength, 0.0f);
-
   bool log_frame_metadata;
-  if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
+  if (LoadIfExist(json_values, kLogFrameMetadata, &log_frame_metadata)) {
     if (options_.log_frame_metadata && !log_frame_metadata) {
       // Dump frame metadata when metadata logging if turned off.
       metadata_logger_.DumpMetadata();
