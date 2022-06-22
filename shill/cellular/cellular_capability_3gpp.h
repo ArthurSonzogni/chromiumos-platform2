@@ -40,7 +40,7 @@ class Metrics;
 
 // CellularCapability3gpp handles modems using the
 // org.freedesktop.ModemManager1 DBUS interface.  This class is used for
-// all types of modems, i.e. CDMA, GSM, and LTE modems.
+// all types of modems, i.e. GSM and LTE modems.
 class CellularCapability3gpp : public CellularCapability {
  public:
   using ScanResults = std::vector<KeyValueStore>;
@@ -124,7 +124,7 @@ class CellularCapability3gpp : public CellularCapability {
 
   virtual void GetProperties();
 
-  // Property change handler. Overridden by the Cdma impl to handle MODEMCDMA.
+  // Property change handler.
   virtual void OnPropertiesChanged(const std::string& interface,
                                    const KeyValueStore& changed_properties);
 
@@ -217,10 +217,8 @@ class CellularCapability3gpp : public CellularCapability {
  private:
   friend class CellularTest;
   friend class CellularCapability3gppTest;
-  friend class CellularCapabilityCdmaTest;
   friend class CellularServiceProviderTest;
   // CellularCapability3gppTimerTest
-  FRIEND_TEST(CellularCapabilityCdmaMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapability3gppTest, GetTypeString);
   FRIEND_TEST(CellularCapability3gppTest, IsMdnValid);

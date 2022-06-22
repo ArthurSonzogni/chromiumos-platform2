@@ -142,10 +142,6 @@ std::string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
        MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT | MM_MODEM_ACCESS_TECHNOLOGY_GSM |
        MM_MODEM_ACCESS_TECHNOLOGY_5GNR))
     return kTechnologyFamilyGsm;
-  if (access_technologies &
-      (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
-       MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT))
-    return kTechnologyFamilyCdma;
   return "";
 }
 
@@ -2122,8 +2118,7 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
   // Technologies whose signal strength will be probed, ordered by priority
   std::vector<std::string> signal_properties_list = {
       MM_MODEM_SIGNAL_PROPERTY_NR5G, MM_MODEM_SIGNAL_PROPERTY_LTE,
-      MM_MODEM_SIGNAL_PROPERTY_UMTS, MM_MODEM_SIGNAL_PROPERTY_GSM,
-      MM_MODEM_SIGNAL_PROPERTY_CDMA, MM_MODEM_SIGNAL_PROPERTY_EVDO};
+      MM_MODEM_SIGNAL_PROPERTY_UMTS, MM_MODEM_SIGNAL_PROPERTY_GSM};
   for (auto signal_property : signal_properties_list) {
     if (props.ContainsVariant(signal_property)) {
       auto tech_props = props.GetVariant(signal_property).Get<KeyValueStore>();

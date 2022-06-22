@@ -48,10 +48,7 @@ class MobileOperatorInfoImpl {
   const std::string& operator_name() const;
   const std::string& country() const;
   const std::string& mccmnc() const;
-  const std::string& sid() const;
-  const std::string& nid() const;
   const std::vector<std::string>& mccmnc_list() const;
-  const std::vector<std::string>& sid_list() const;
   const std::vector<MobileOperatorInfo::LocalizedName>& operator_name_list()
       const;
   const std::vector<MobileOperatorInfo::MobileAPN>& apn_list() const;
@@ -63,8 +60,6 @@ class MobileOperatorInfoImpl {
   void UpdateIMSI(const std::string& imsi);
   void UpdateICCID(const std::string& iccid);
   void UpdateMCCMNC(const std::string& mccmnc);
-  void UpdateSID(const std::string& sid);
-  void UpdateNID(const std::string& nid);
   void UpdateOperatorName(const std::string& operator_name);
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
@@ -123,7 +118,6 @@ class MobileOperatorInfoImpl {
   void ReloadData(const mobile_operator_db::Data& data);
   // Append candidates recognized by |mccmnc| to the candidate list.
   bool AppendToCandidatesByMCCMNC(const std::string& mccmnc);
-  bool AppendToCandidatesBySID(const std::string& sid);
   std::string OperatorCodeString() const;
 
   // Notifies all observers that the operator has changed.
@@ -145,7 +139,6 @@ class MobileOperatorInfoImpl {
   // database.
   void HandleMCCMNCUpdate();
   void HandleOperatorNameUpdate();
-  void HandleSIDUpdate();
   void HandleOnlinePortalUpdate();
   void HandleAPNListUpdate();
 
@@ -171,17 +164,13 @@ class MobileOperatorInfoImpl {
 
   std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;
   StringToMNOListMap mccmnc_to_mnos_;
-  StringToMNOListMap sid_to_mnos_;
   StringToMNOListMap name_to_mnos_;
 
-  // |candidates_by_operator_code| can be determined either using MCCMNC or
-  // using SID.  At any one time, we only expect one of these operator codes to
-  // be updated by the user. We use |operator_code_type_| to keep track of which
-  // update we have received and warn the user if we receive both.
+  // |candidates_by_operator_code| can be determined using MCCMNC. When CDMA
+  // was supported, SID could be used as well.
   enum class OperatorCodeType {
     kUnknown,
     kMCCMNC,
-    kSID,
   };
   OperatorCodeType operator_code_type_;
   std::vector<const mobile_operator_db::MobileNetworkOperator*>
@@ -198,10 +187,7 @@ class MobileOperatorInfoImpl {
   std::string operator_name_;
   std::string country_;
   std::string mccmnc_;
-  std::string sid_;
-  std::string nid_;
   std::vector<std::string> mccmnc_list_;
-  std::vector<std::string> sid_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   bool prioritizes_db_operator_name_;
   std::vector<mobile_operator_db::MobileAPN> raw_apn_list_;
@@ -224,8 +210,6 @@ class MobileOperatorInfoImpl {
   std::string user_imsi_;
   std::string user_iccid_;
   std::string user_mccmnc_;
-  std::string user_sid_;
-  std::string user_nid_;
   std::string user_operator_name_;
   bool user_olp_empty_;
   MobileOperatorInfo::OnlinePortal user_olp_;

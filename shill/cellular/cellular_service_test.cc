@@ -52,7 +52,7 @@ class CellularServiceTest : public testing::Test {
         .WillRepeatedly(Return(&cellular_service_provider_));
 
     device_ = new MockCellular(&manager_, "usb0", kAddress, 3,
-                               Cellular::kTypeCdma, "", RpcIdentifier(""));
+                               Cellular::kType3gpp, "", RpcIdentifier(""));
 
     // CellularService expects an IMSI and SIM ID be set in the Device.
     Cellular::SimProperties sim_properties;
@@ -284,16 +284,6 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnNotRegistered, reason);
   device_->set_state_for_testing(Cellular::State::kRegistered);
-
-  // If we're in a process of activation, don't auto-connect.
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_, _))
-      .WillOnce(Return(PendingActivationStore::kStatePending));
-  EXPECT_FALSE(IsAutoConnectable(&reason));
-  EXPECT_STREQ(CellularService::kAutoConnActivating, reason);
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_, _))
-      .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
 
   // Auto-connect should be suppressed if we're out of credits.
   service_->NotifySubscriptionStateChanged(SubscriptionState::kOutOfCredits);

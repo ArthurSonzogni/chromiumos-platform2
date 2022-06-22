@@ -11,7 +11,6 @@
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
-#include "shill/cellular/cellular_capability_cdma.h"
 #include "shill/error.h"
 
 namespace shill {
@@ -40,10 +39,6 @@ std::unique_ptr<CellularCapability> CellularCapability::Create(
   switch (type) {
     case Cellular::kType3gpp:
       return std::make_unique<CellularCapability3gpp>(
-          cellular, control_interface, metrics, pending_activation_store);
-
-    case Cellular::kTypeCdma:
-      return std::make_unique<CellularCapabilityCdma>(
           cellular, control_interface, metrics, pending_activation_store);
 
     case Cellular::kTypeInvalid:

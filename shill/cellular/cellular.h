@@ -41,7 +41,6 @@ class Cellular : public Device,
  public:
   enum Type {
     kType3gpp,  // ModemManager1
-    kTypeCdma,
     kTypeInvalid,
   };
 
@@ -382,7 +381,6 @@ class Cellular : public Device,
 
  private:
   friend class CellularTest;
-  friend class CellularCapabilityCdmaTest;
   friend class CellularServiceTest;
   friend class CellularServiceProviderTest;
   friend class ModemTest;
@@ -430,7 +428,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartConnected);
-  FRIEND_TEST(CellularTest, StartCdmaRegister);
   FRIEND_TEST(CellularTest, StartGsmRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, StartPPP);
@@ -633,7 +630,6 @@ class Cellular : public Device,
 
   // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.
-  // Properties common to GSM and CDMA modems.
   const std::string dbus_service_;  // org.*.ModemManager*
   RpcIdentifier dbus_path_;         // ModemManager.Modem
   // Used because we currently expose |dbus_path| as a string property.
@@ -658,8 +654,6 @@ class Cellular : public Device,
   bool polling_location_ = false;
   base::CancelableClosure poll_location_task_;
 
-  // GSM only properties.
-  // They are always exposed but are non empty only for GSM technology modems.
   std::string selected_network_;
   Stringmaps found_networks_;
   uint16_t scan_interval_ = 0;

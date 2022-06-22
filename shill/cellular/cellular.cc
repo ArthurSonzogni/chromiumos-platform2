@@ -2440,12 +2440,6 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   SLOG(this, 2) << __func__;
 
   Stringmap home_provider;
-  if (!operator_info->sid().empty()) {
-    home_provider[kOperatorCodeKey] = operator_info->sid();
-  }
-  if (!operator_info->nid().empty()) {
-    home_provider[kOperatorCodeKey] = operator_info->nid();
-  }
   if (!operator_info->mccmnc().empty()) {
     home_provider[kOperatorCodeKey] = operator_info->mccmnc();
   }
@@ -2483,12 +2477,6 @@ void Cellular::UpdateServingOperator(
   }
 
   Stringmap serving_operator;
-  if (!operator_info->sid().empty()) {
-    serving_operator[kOperatorCodeKey] = operator_info->sid();
-  }
-  if (!operator_info->nid().empty()) {
-    serving_operator[kOperatorCodeKey] = operator_info->nid();
-  }
   if (!operator_info->mccmnc().empty()) {
     serving_operator[kOperatorCodeKey] = operator_info->mccmnc();
   }

@@ -224,11 +224,6 @@ class MobileOperatorInfoMainTest
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateSID(const std::string& sid) {
-    operator_info_->UpdateSID(sid);
-    DispatchPendingEventsIfStrict();
-  }
-
   void UpdateIMSI(const std::string& imsi) {
     operator_info_->UpdateIMSI(imsi);
     DispatchPendingEventsIfStrict();
@@ -236,11 +231,6 @@ class MobileOperatorInfoMainTest
 
   void UpdateICCID(const std::string& iccid) {
     operator_info_->UpdateICCID(iccid);
-    DispatchPendingEventsIfStrict();
-  }
-
-  void UpdateNID(const std::string& nid) {
-    operator_info_->UpdateNID(nid);
     DispatchPendingEventsIfStrict();
   }
 
@@ -277,10 +267,7 @@ TEST_P(MobileOperatorInfoMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->operator_name().empty());
   EXPECT_TRUE(operator_info_->country().empty());
   EXPECT_TRUE(operator_info_->mccmnc().empty());
-  EXPECT_TRUE(operator_info_->sid().empty());
-  EXPECT_TRUE(operator_info_->nid().empty());
   EXPECT_TRUE(operator_info_->mccmnc_list().empty());
-  EXPECT_TRUE(operator_info_->sid_list().empty());
   EXPECT_TRUE(operator_info_->operator_name_list().empty());
   EXPECT_TRUE(operator_info_->apn_list().empty());
   EXPECT_TRUE(operator_info_->olp_list().empty());
@@ -576,23 +563,6 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
   UpdateMCCMNC("110001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
-}
-
-TEST_P(MobileOperatorInfoMainTest, MNOUchangedBySecondaryUpdates) {
-  // This test verifies that only some updates affect the MNO.
-  // message: Has MNOs with no MVNO.
-  // match by: First matches the MCCMNC. Later, MNOs with a different MCCMNC
-  //    matchs the given SID, NID, ICCID.
-  // verify: Only one Observer event, on the first MCCMNC match.
-  ExpectEventCount(1);
-  UpdateMCCMNC("111001");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid111001");
-
-  ExpectEventCount(1);  // NID change event.
-  UpdateNID("111202");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid111001");
 }
 
 TEST_P(MobileOperatorInfoMainTest, MNORoamingFilterMCCMNCMatch) {
@@ -897,30 +867,6 @@ TEST_P(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
   VerifyMVNOWithUUID("uuid119002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOSIDMatch) {
-  // message: MNO with one MVNO (sid filter).
-  // match by: MNO matches by SID,
-  //           MVNO fails to match by fist sid update,
-  //           then MVNO matches by sid.
-  // verify: Two Observer events: MNO followed by MVNO.
-  ExpectEventCount(0);
-  UpdateSID("120999");  // No match.
-  VerifyEventCount();
-  VerifyNoMatch();
-
-  ExpectEventCount(1);
-  UpdateSID("120001");  // Only MNO matches.
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid120001");
-  EXPECT_EQ("120001", operator_info_->sid());
-
-  ExpectEventCount(1);
-  UpdateSID("120002");  // MVNO matches as well.
-  VerifyEventCount();
-  VerifyMVNOWithUUID("uuid120002");
-  EXPECT_EQ("120002", operator_info_->sid());
-}
-
 TEST_P(MobileOperatorInfoMainTest, InternationalMVNOMatch) {
   // message: international MVNO (imsi filter).
   // match by: MNO matches by MCCMNC,
@@ -1079,68 +1025,6 @@ TEST_P(MobileOperatorInfoMainTest, APNFilter) {
   EXPECT_STREQ(operator_info_->apn_list()[0].apn.c_str(), "apn_regex");
 }
 
-// Here, we rely on our knowledge about the implementation: The SID and MCCMNC
-// updates follow the same code paths, and so we can get away with not testing
-// all the scenarios we test above for MCCMNC. Instead, we only do basic testing
-// to make sure that SID upates operator as MCCMNC updates do.
-TEST_P(MobileOperatorInfoMainTest, MNOBySID) {
-  // message: Has an MNO with no MVNO.
-  // match by: SID.
-  // verify: Observer event, uuid.
-
-  ExpectEventCount(0);
-  UpdateSID("1229");  // No match.
-  VerifyEventCount();
-  VerifyNoMatch();
-
-  ExpectEventCount(1);
-  UpdateSID("1221");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid1221");
-
-  ExpectEventCount(1);
-  UpdateSID("1229");  // No Match.
-  VerifyEventCount();
-  VerifyNoMatch();
-}
-
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
-  // message: Has an MNO with no MVNO.
-  // match by: SID / MCCMNC alternately.
-  // verify: Observer event, uuid.
-
-  ExpectEventCount(0);
-  UpdateMCCMNC("123999");  // NO match.
-  UpdateSID("1239");       // No match.
-  VerifyEventCount();
-  VerifyNoMatch();
-
-  ExpectEventCount(1);
-  UpdateMCCMNC("123001");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid123001");
-
-  ExpectEventCount(1);
-  operator_info_->Reset();
-  VerifyEventCount();
-  VerifyNoMatch();
-
-  ExpectEventCount(1);
-  UpdateSID("1232");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid1232");
-
-  ExpectEventCount(1);
-  operator_info_->Reset();
-  VerifyEventCount();
-  VerifyNoMatch();
-
-  ExpectEventCount(1);
-  UpdateMCCMNC("123001");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid123001");
-}
-
 class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
  public:
   MobileOperatorInfoDataTest() = default;
@@ -1162,9 +1046,8 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   // expectations stored in the form of data members in this class.
   // This is not a full proof check. In particular:
   //  - It is unspecified in some case which of the values from a list is
-  //    exposed as a property. For example, at best, we can check that |sid| is
-  //    non-empty.
-  //  - It is not robust to "" as property values at times.
+  //    exposed as a property.
+  //  - It is not robust to use "" as property values at times.
   void VerifyDatabaseData() {
     EXPECT_EQ(country_, operator_info_->country());
     EXPECT_EQ(requires_roaming_, operator_info_->requires_roaming());
@@ -1215,23 +1098,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
       EXPECT_EQ(olp.method, olp_rhs.method);
       EXPECT_EQ(olp.post_data, olp_rhs.post_data);
     }
-
-    EXPECT_EQ(sid_list_.size(), operator_info_->sid_list().size());
-    std::set<std::string> sid_set(operator_info_->sid_list().begin(),
-                                  operator_info_->sid_list().end());
-    for (const auto& sid : sid_list_) {
-      EXPECT_TRUE(sid_set.find(sid) != sid_set.end());
-    }
-    if (!sid_list_.empty()) {
-      // It is not specified which entry will be chosen, but |sid()| must be
-      // non-empty.
-      EXPECT_FALSE(operator_info_->sid().empty());
-    }
   }
-
-  // This function does some extra checks for the user data that can not be done
-  // when data is obtained from the database.
-  void VerifyUserData() { EXPECT_EQ(sid_, operator_info_->sid()); }
 
   void VerifyNameListsMatch(
       const std::vector<MobileOperatorInfo::LocalizedName>&
@@ -1270,7 +1137,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn_list_.push_back(std::move(apn));
 
     olp_list_ = {{"some@random.com", "POST", "random_data"}};
-    sid_list_ = {"200123", "200234", "200345"};
   }
 
   // Use this function to pre-populate all the data members of this object with
@@ -1291,7 +1157,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn_list_.push_back(std::move(apn));
 
     olp_list_ = {{"someother@random.com", "GET", ""}};
-    sid_list_ = {"200345"};
   }
 
   // Data to be verified against the database.
@@ -1303,10 +1168,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
-  std::vector<std::string> sid_list_;
-
-  // Extra data to be verified only against user updates.
-  std::string sid_;
 };
 
 TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {
@@ -1357,7 +1218,6 @@ TEST_P(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
   UpdateMCCMNC("200999");            // No match.
   UpdateOperatorName("name200001");  // matches MNO
   UpdateOperatorName("name200101");  // matches MVNO filter.
-  UpdateSID("200999");               // No match.
   VerifyEventCount();
   VerifyNoMatch();
 }
@@ -1396,44 +1256,6 @@ TEST_P(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
-  // message: MVNO.
-  // - First send updates that don't identify an MNO.
-  // - Then identify an MNO and MVNO.
-  // - verify that all the earlier updates are cached, and override the MVNO
-  //   information.
-  std::string imsi{"2009991234512345"};
-  std::string iccid{"200999123456789"};
-  std::string sid{"200999"};
-  std::string olp_url{"url@url.com"};
-  std::string olp_method{"POST"};
-  std::string olp_post_data{"data"};
-
-  // Send updates.
-  ExpectEventCount(0);
-  UpdateSID(sid);
-  UpdateOnlinePortal(olp_url, olp_method, olp_post_data);
-  UpdateIMSI(imsi);
-  UpdateICCID(iccid);
-  VerifyEventCount();
-
-  // Determine MVNO.
-  ExpectEventCount(2);
-  UpdateMCCMNC("200001");
-  UpdateOperatorName("name200101");
-  VerifyEventCount();
-  VerifyMVNOWithUUID("uuid200101");
-
-  // Update our expectations.
-  PopulateMVNOData();
-  sid_ = sid;
-  sid_list_.push_back(sid);
-  olp_list_.push_back({olp_url, olp_method, olp_post_data});
-
-  VerifyDatabaseData();
-  VerifyUserData();
-}
-
 TEST_P(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
   // - match MVNO.
   // - send redundant updates to properties.
@@ -1469,7 +1291,7 @@ TEST_P(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
 
   // Send redundant updates.
   ExpectEventCount(2);
-  UpdateSID(operator_info_->sid());
+  UpdateMCCMNC(operator_info_->mccmnc());
   UpdateOperatorName(operator_info_->operator_name());
   UpdateOnlinePortal("someother@random.com", "GET", "");
 
@@ -1531,7 +1353,6 @@ TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
   ASSERT_EQ(1, operator_info_->olp_list().size());
   // Just check that the filtered OLPs are not in the list.
   EXPECT_NE("olp@mccmnc", operator_info_->olp_list()[0].url);
-  EXPECT_NE("olp@sid", operator_info_->olp_list()[0].url);
 
   // (2) MCCMNC filter matches.
   ExpectEventCount(1);
@@ -1545,31 +1366,11 @@ TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
   VerifyMNOWithUUID("uuid200001");
 
   ASSERT_EQ(2, operator_info_->olp_list().size());
-  EXPECT_NE("olp@sid", operator_info_->olp_list()[0].url);
   bool found_olp_by_mccmnc = false;
   for (const auto& olp : operator_info_->olp_list()) {
     found_olp_by_mccmnc |= ("olp@mccmnc" == olp.url);
   }
   EXPECT_TRUE(found_olp_by_mccmnc);
-
-  // (3) SID filter matches.
-  ExpectEventCount(1);
-  operator_info_->Reset();
-  VerifyEventCount();
-  VerifyNoMatch();
-
-  ExpectEventCount(1);
-  UpdateSID("200345");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid200001");
-
-  ASSERT_EQ(2, operator_info_->olp_list().size());
-  EXPECT_NE("olp@mccmnc", operator_info_->olp_list()[0].url);
-  bool found_olp_by_sid = false;
-  for (const auto& olp : operator_info_->olp_list()) {
-    found_olp_by_sid |= ("olp@sid" == olp.url);
-  }
-  EXPECT_TRUE(found_olp_by_sid);
 }
 
 class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {

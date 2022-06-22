@@ -199,20 +199,8 @@ const std::string& MobileOperatorInfoImpl::mccmnc() const {
   return mccmnc_;
 }
 
-const std::string& MobileOperatorInfoImpl::MobileOperatorInfoImpl::sid() const {
-  return sid_;
-}
-
-const std::string& MobileOperatorInfoImpl::nid() const {
-  return (user_nid_ == "") ? nid_ : user_nid_;
-}
-
 const std::vector<std::string>& MobileOperatorInfoImpl::mccmnc_list() const {
   return mccmnc_list_;
-}
-
-const std::vector<std::string>& MobileOperatorInfoImpl::sid_list() const {
-  return sid_list_;
 }
 
 const std::vector<MobileOperatorInfo::LocalizedName>&
@@ -322,42 +310,6 @@ void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateSID(const std::string& sid) {
-  if (user_sid_ == sid) {
-    return;
-  }
-
-  SLOG(this, 3) << __func__ << ": " << sid;
-  user_sid_ = sid;
-  HandleSIDUpdate();
-  candidates_by_operator_code_.clear();
-  AppendToCandidatesBySID(sid);
-  if (raw_apn_filters_types_.count(
-          mobile_operator_db::Filter_Type::Filter_Type_SID))
-    HandleAPNListUpdate();
-
-  // Always update M[V]NO, even if we found no candidates, since we might have
-  // lost some candidates due to an incorrect SID.
-  bool operator_changed = false;
-  operator_changed |= UpdateMNO();
-  operator_changed |= UpdateMVNO();
-  if (operator_changed || ShouldNotifyPropertyUpdate()) {
-    PostNotifyOperatorChanged();
-  }
-}
-
-void MobileOperatorInfoImpl::UpdateNID(const std::string& nid) {
-  if (user_nid_ == nid) {
-    return;
-  }
-
-  SLOG(this, 3) << __func__ << ": " << nid;
-  user_nid_ = nid;
-  if (UpdateMVNO() || ShouldNotifyPropertyUpdate()) {
-    PostNotifyOperatorChanged();
-  }
-}
-
 void MobileOperatorInfoImpl::UpdateOperatorName(
     const std::string& operator_name) {
   bool operator_changed = false;
@@ -433,8 +385,6 @@ void MobileOperatorInfoImpl::Reset() {
   user_imsi_.clear();
   user_iccid_.clear();
   user_mccmnc_.clear();
-  user_sid_.clear();
-  user_nid_.clear();
   user_operator_name_.clear();
   user_olp_empty_ = true;
   user_olp_.url.clear();
@@ -450,7 +400,6 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
   SLOG(this, 3) << __func__;
 
   mccmnc_to_mnos_.clear();
-  sid_to_mnos_.clear();
   name_to_mnos_.clear();
 
   const auto& mnos = database_->mno();
@@ -462,11 +411,6 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
     const auto& mccmncs = data.mccmnc();
     for (const auto& mccmnc : mccmncs) {
       InsertIntoStringToMNOListMap(&mccmnc_to_mnos_, mccmnc, &mno);
-    }
-
-    const auto& sids = data.sid();
-    for (const auto& sid : sids) {
-      InsertIntoStringToMNOListMap(&sid_to_mnos_, sid, &mno);
     }
 
     const auto& localized_names = data.localized_name();
@@ -491,13 +435,6 @@ void MobileOperatorInfoImpl::InsertIntoStringToMNOListMap(
 
 bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(
     const std::string& mccmnc) {
-  // First check that we haven't determined candidates using SID.
-  if (operator_code_type_ == OperatorCodeType::kSID) {
-    LOG(WARNING) << "SID update will be overridden by the MCCMNC update for "
-                    "determining MNO.";
-    candidates_by_operator_code_.clear();
-  }
-
   operator_code_type_ = OperatorCodeType::kMCCMNC;
   StringToMNOListMap::const_iterator cit = mccmnc_to_mnos_.find(mccmnc);
   if (cit == mccmnc_to_mnos_.end()) {
@@ -513,35 +450,10 @@ bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(
   return true;
 }
 
-bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const std::string& sid) {
-  // First check that we haven't determined candidates using MCCMNC.
-  if (operator_code_type_ == OperatorCodeType::kMCCMNC) {
-    LOG(WARNING) << "MCCMNC update will be overriden by the SID update for "
-                    "determining MNO.";
-    candidates_by_operator_code_.clear();
-  }
-
-  operator_code_type_ = OperatorCodeType::kSID;
-  StringToMNOListMap::const_iterator cit = sid_to_mnos_.find(sid);
-  if (cit == sid_to_mnos_.end()) {
-    LOG(WARNING) << "Unknown SID value [" << sid << "].";
-    return false;
-  }
-
-  // We should never have inserted an empty vector into the map.
-  DCHECK(!cit->second.empty());
-  for (const auto& mno : cit->second) {
-    candidates_by_operator_code_.push_back(mno);
-  }
-  return true;
-}
-
 std::string MobileOperatorInfoImpl::OperatorCodeString() const {
   switch (operator_code_type_) {
     case OperatorCodeType::kMCCMNC:
       return "MCCMNC";
-    case OperatorCodeType::kSID:
-      return "SID";
     case OperatorCodeType::kUnknown:
       return "UnknownOperatorCodeType";
   }
@@ -554,8 +466,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
   // The only way |operator_code_type_| can be |OperatorCodeType::kUnknown| is
   // that we haven't received any operator_code updates yet.
   DCHECK(operator_code_type_ == OperatorCodeType::kMCCMNC ||
-         operator_code_type_ == OperatorCodeType::kSID ||
-         (user_mccmnc_.empty() && user_sid_.empty()));
+         user_mccmnc_.empty());
 
   if (candidates_by_operator_code_.size() == 1) {
     candidate = candidates_by_operator_code_[0];
@@ -568,9 +479,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
         }
       }
       if (!found_match) {
-        const std::string& operator_code =
-            (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_
-                                                               : user_sid_;
+        const std::string& operator_code = user_mccmnc_;
         SLOG(this, 1) << "MNO determined by " << OperatorCodeString() << " ["
                       << operator_code
                       << "] does not match any suggested by name["
@@ -593,9 +502,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
       }
     }
     if (candidate == nullptr) {
-      const std::string& operator_code =
-          (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_
-                                                             : user_sid_;
+      const std::string& operator_code = user_mccmnc_;
       SLOG(this, 1) << "MNOs suggested by " << OperatorCodeString() << " ["
                     << operator_code
                     << "] are multiple and disjoint from those suggested "
@@ -606,9 +513,8 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     // Special case: In case we had a *wrong* operator_code update, we want
     // to override the suggestions from |user_operator_name_|. We should not
     // determine an MNO in this case.
-    if ((operator_code_type_ == OperatorCodeType::kMCCMNC &&
-         !user_mccmnc_.empty()) ||
-        (operator_code_type_ == OperatorCodeType::kSID && !user_sid_.empty())) {
+    if (operator_code_type_ == OperatorCodeType::kMCCMNC &&
+        !user_mccmnc_.empty()) {
       SLOG(this, 1) << "A non-matching " << OperatorCodeString() << " "
                     << "was reported by the user."
                     << "We fail the MNO match in this case.";
@@ -702,9 +608,6 @@ bool MobileOperatorInfoImpl::FilterMatches(
       case mobile_operator_db::Filter_Type_ICCID:
         to_match = user_iccid_;
         break;
-      case mobile_operator_db::Filter_Type_SID:
-        to_match = user_sid_;
-        break;
       case mobile_operator_db::Filter_Type_OPERATOR_NAME:
         to_match = user_operator_name_;
         break;
@@ -791,11 +694,8 @@ void MobileOperatorInfoImpl::RefreshDBInformation() {
 void MobileOperatorInfoImpl::ClearDBInformation() {
   uuid_.clear();
   country_.clear();
-  nid_.clear();
   mccmnc_list_.clear();
   HandleMCCMNCUpdate();
-  sid_list_.clear();
-  HandleSIDUpdate();
   operator_name_list_.clear();
   prioritizes_db_operator_name_ = false;
   HandleOperatorNameUpdate();
@@ -882,14 +782,6 @@ void MobileOperatorInfoImpl::ReloadData(
     HandleAPNListUpdate();
   }
 
-  if (data.sid_size() > 0) {
-    sid_list_.clear();
-    for (const auto& sid : data.sid()) {
-      sid_list_.push_back(sid);
-    }
-    HandleSIDUpdate();
-  }
-
   if (data.has_activation_code()) {
     activation_code_ = data.activation_code();
   }
@@ -941,28 +833,8 @@ void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
       operator_name_list_.empty() ? "" : operator_name_list_[0].name;
 }
 
-void MobileOperatorInfoImpl::HandleSIDUpdate() {
-  if (!user_sid_.empty()) {
-    bool append_user_sid = true;
-    for (const auto& sid : sid_list_) {
-      append_user_sid &= (user_sid_ != sid);
-    }
-    if (append_user_sid) {
-      sid_list_.push_back(user_sid_);
-    }
-  }
-
-  if (!user_sid_.empty()) {
-    sid_ = user_sid_;
-  } else if (!sid_list_.empty()) {
-    sid_ = sid_list_[0];
-  } else {
-    sid_.clear();
-  }
-}
-
-// Warning: Currently, an MCCMNC/SID update by itself does not result into
-// recomputation of the |olp_list_|. This means that if the new MCCMNC/SID
+// Warning: Currently, an MCCMNC update by itself does not result in
+// recomputation of the |olp_list_|. This means that if the new MCCMNC
 // causes an online portal filter to match, we'll miss that.
 // This won't be a problem if either the MNO or the MVNO changes, since data is
 // reloaded then.

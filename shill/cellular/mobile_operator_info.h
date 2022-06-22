@@ -106,7 +106,7 @@ class MobileOperatorInfo {
 
   // Encapsulates information on a mobile access point name. This information
   // is usually necessary for 3GPP networks to be able to connect to a mobile
-  // network. So far, CDMA networks don't use this information.
+  // network.
   struct MobileAPN {
     // The access point url, which is fed to the modemmanager while connecting.
     std::string apn;
@@ -164,26 +164,16 @@ class MobileOperatorInfo {
 
   // The unique identifier of this carrier. This is primarily used to
   // identify the user profile in store for each carrier. This identifier is
-  // access technology agnostic and should be the same across 3GPP and CDMA.
+  // access technology agnostic.
   virtual const std::string& uuid() const;
 
   virtual const std::string& operator_name() const;
   virtual const std::string& country() const;
   virtual const std::string& mccmnc() const;
-  const std::string& sid() const;
-  const std::string& nid() const;
 
   // A given MVNO can be associated with multiple mcc/mnc pairs. A list of all
   // associated mcc/mnc pairs concatenated together.
   const std::vector<std::string>& mccmnc_list() const;
-  // A given MVNO can be associated with multiple sid(s). A list of all
-  // associated sid(s).
-  // There are likely many SID values associated with a CDMA carrier as they
-  // vary across regions and are more fine grained than countries. An important
-  // thing to keep in mind is that, since an SID contains fine grained
-  // information on where a modem is physically located, it should be regarded
-  // as user-sensitive information.
-  const std::vector<std::string>& sid_list() const;
   // All localized names associated with this carrier entry.
   const std::vector<LocalizedName>& operator_name_list() const;
   // All access point names associated with this carrier entry.
@@ -211,15 +201,10 @@ class MobileOperatorInfo {
   // Throw away all information provided to the object, and start from top.
   void Reset();
 
-  // Both MCCMNC and SID correspond to operator code in the different
-  // technologies. They are never to be used together. If you want to use SID
-  // after MCCMNC (or vice-versa), ensure a call to |Reset| to clear state.
   virtual void UpdateMCCMNC(const std::string& mccmnc);
-  virtual void UpdateSID(const std::string& sid);
 
   virtual void UpdateIMSI(const std::string& imsi);
   void UpdateICCID(const std::string& iccid);
-  virtual void UpdateNID(const std::string& nid);
   virtual void UpdateOperatorName(const std::string& operator_name);
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,

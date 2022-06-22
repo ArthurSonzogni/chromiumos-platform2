@@ -40,7 +40,6 @@ extern "C" {
 #include "shill/cellular/mock_mm1_modem_location_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
-#include "shill/cellular/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
 #include "shill/cellular/mock_mm1_modem_signal_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
@@ -245,7 +244,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
     mm1_modem_3gpp_profile_manager_proxy_.reset(
         new mm1::MockModemModem3gppProfileManagerProxy());
-    mm1_modem_cdma_proxy_.reset(new mm1::MockModemModemCdmaProxy());
     mm1_modem_proxy_.reset(new mm1::MockModemProxy());
     mm1_signal_proxy_.reset(new mm1::MockModemSignalProxy());
     mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
@@ -508,14 +506,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->mm1_modem_3gpp_profile_manager_proxy_);
     }
 
-    std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-    CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
-                                 const std::string& service) override {
-      if (!test_->mm1_modem_cdma_proxy_)
-        test_->mm1_modem_cdma_proxy_.reset(new mm1::MockModemModemCdmaProxy());
-      return std::move(test_->mm1_modem_cdma_proxy_);
-    }
-
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
         const RpcIdentifier& path, const std::string& service) override {
       if (!test_->mm1_modem_proxy_)
@@ -616,7 +606,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   std::unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
   std::unique_ptr<mm1::MockModemModem3gppProfileManagerProxy>
       mm1_modem_3gpp_profile_manager_proxy_;
-  std::unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
   std::unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
   std::unique_ptr<mm1::MockModemProxy> mm1_modem_proxy_;
   std::unique_ptr<mm1::MockModemSignalProxy> mm1_signal_proxy_;
@@ -2221,7 +2210,6 @@ TEST_P(CellularTest, CompareApns) {
 
 INSTANTIATE_TEST_SUITE_P(CellularTest,
                          CellularTest,
-                         testing::Values(Cellular::kType3gpp,
-                                         Cellular::kTypeCdma));
+                         testing::Values(Cellular::kType3gpp));
 
 }  // namespace shill

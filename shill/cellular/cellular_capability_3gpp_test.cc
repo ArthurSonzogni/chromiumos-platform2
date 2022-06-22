@@ -910,26 +910,6 @@ TEST_F(CellularCapability3gppTest, PropertiesChanged) {
   EXPECT_EQ(kImei, cellular_->imei());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
-  // Expect to see changes when the family changes
-  modem_properties.Clear();
-  modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
-                                 MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
-  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kTechnologyFamilyProperty,
-                                                  kTechnologyFamilyCdma))
-      .Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
-  Mock::VerifyAndClearExpectations(device_adaptor_);
-
-  // Back to LTE
-  modem_properties.Clear();
-  modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
-                                 MM_MODEM_ACCESS_TECHNOLOGY_LTE);
-  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kTechnologyFamilyProperty,
-                                                  kTechnologyFamilyGsm))
-      .Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
-  Mock::VerifyAndClearExpectations(device_adaptor_);
-
   // LTE & CDMA - the device adaptor should not be called!
   modem_properties.Clear();
   modem_properties.Set<uint32_t>(
@@ -1609,18 +1589,6 @@ TEST_F(CellularCapability3gppTest, GetTypeString) {
     capability_->access_technologies_ = gsm_technology;
     ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyGsm);
   }
-  static const uint32_t kCdmaTechnologies[] = {
-      MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-      MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
-      MM_MODEM_ACCESS_TECHNOLOGY_EVDOA | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-      MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
-      MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-      MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
-  };
-  for (auto cdma_technology : kCdmaTechnologies) {
-    capability_->access_technologies_ = cdma_technology;
-    ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyCdma);
-  }
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   ASSERT_EQ(capability_->GetTypeString(), "");
 }
@@ -1982,12 +1950,7 @@ TEST_F(CellularCapability3gppTest, OnModemCurrentCapabilitiesChanged) {
   EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_LTE);
   EXPECT_FALSE(cellular_->scanning_supported());
-  capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_CDMA_EVDO);
-  EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_GSM_UMTS);
-  EXPECT_TRUE(cellular_->scanning_supported());
-  capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_GSM_UMTS |
-                                                 MM_MODEM_CAPABILITY_CDMA_EVDO);
   EXPECT_TRUE(cellular_->scanning_supported());
 }
 

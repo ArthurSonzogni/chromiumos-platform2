@@ -57,7 +57,6 @@ namespace mm1 {
 class ModemLocationProxyInterface;
 class ModemModem3gppProxyInterface;
 class ModemModem3gppProfileManagerProxyInterface;
-class ModemModemCdmaProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
 class ModemSignalProxyInterface;
@@ -146,10 +145,6 @@ class ControlInterface {
   virtual std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
   CreateMM1ModemModem3gppProfileManagerProxy(const RpcIdentifier& path,
                                              const std::string& service) = 0;
-
-  virtual std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-  CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
-                               const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
       const RpcIdentifier& path, const std::string& service) = 0;

@@ -100,37 +100,12 @@ const std::string& MobileOperatorInfo::mccmnc() const {
   return result;
 }
 
-const std::string& MobileOperatorInfo::sid() const {
-  const auto& result = impl_->sid();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
-}
-
-const std::string& MobileOperatorInfo::nid() const {
-  const auto& result = impl_->nid();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
-}
-
 const std::vector<std::string>& MobileOperatorInfo::mccmnc_list() const {
   const auto& result = impl_->mccmnc_list();
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
     for (const auto& mccmnc : result) {
       pp_result << mccmnc << " ";
-    }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
-                  << "]";
-  }
-  return result;
-}
-
-const std::vector<std::string>& MobileOperatorInfo::sid_list() const {
-  const auto& result = impl_->sid_list();
-  if (SLOG_IS_ON(Cellular, 3)) {
-    std::stringstream pp_result;
-    for (const auto& sid : result) {
-      pp_result << sid << " ";
     }
     SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
                   << "]";
@@ -221,16 +196,6 @@ void MobileOperatorInfo::UpdateICCID(const std::string& iccid) {
 void MobileOperatorInfo::UpdateMCCMNC(const std::string& mccmnc) {
   SLOG(this, 3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
   impl_->UpdateMCCMNC(mccmnc);
-}
-
-void MobileOperatorInfo::UpdateSID(const std::string& sid) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << sid << ")";
-  impl_->UpdateSID(sid);
-}
-
-void MobileOperatorInfo::UpdateNID(const std::string& nid) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << nid << ")";
-  impl_->UpdateNID(nid);
 }
 
 void MobileOperatorInfo::UpdateOperatorName(const std::string& operator_name) {

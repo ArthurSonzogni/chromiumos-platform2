@@ -30,13 +30,6 @@ class PendingActivationStore;
 // a modem manager using the the org.freedesktop.ModemManager1 D-Bus
 // interface.
 //
-// Pictorially:
-//
-// CellularCapability
-//       |
-//       |-- CellularCapability3gpp
-//                    |
-//                    |-- CellularCapabilityCdma
 class CellularCapability {
  public:
   static const int kTimeoutActivate;
@@ -221,7 +214,7 @@ class CellularCapability {
                          const ResultCallback& callback) = 0;
 
   // Returns a KeyValueStore with kSIMLock* properties set if available, or
-  // an empty KeyValueStore if not (e.g. for CDMA).
+  // an empty KeyValueStore if not.
   virtual KeyValueStore SimLockStatusToProperty(Error* error) = 0;
 
   // Sends a request to the modem to set the primary SIM slot to the slot
@@ -248,7 +241,6 @@ class CellularCapability {
 
  private:
   friend class CellularCapability3gppTest;
-  friend class CellularCapabilityCdmaTest;
   friend class CellularTest;
 
   Cellular* cellular_;

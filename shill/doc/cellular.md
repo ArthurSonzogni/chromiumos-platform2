@@ -51,12 +51,9 @@
 ## CellularCapability
 
 *   The [CellularCapability class](../cellular/cellular_capability.h) is owned
-    by the [Cellular](#Cellular) class. It has two subclasses:
+    by the [Cellular](#Cellular) class. It has one subclass:
     *   [CellularCapability3gpp](../cellular/cellular_capability_3gpp.h)
         is the primary implementation class.
-    *   [CellularCapabilityCdma](../cellular/cellular_capability_cdma.h)
-        is a subclass of CellularCapability3gpp and is
-        **not currently maintained**.
 *   `CellularCapability3gpp` owns a number of proxies for communicating with
     `ModemManager1` interfaces (`3gpp`, `Signal`, `Simple`, `Location`) and the
     `ModemManager1.Modem` object.
