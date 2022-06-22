@@ -8,12 +8,16 @@
 #define CAMERA_COMMON_RELOADABLE_CONFIG_FILE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/synchronization/lock.h>
 #include <base/values.h>
+
+#include "cros-camera/common.h"
+#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -22,7 +26,7 @@ namespace cros {
 // filesystem and is read-only. ReloadableConfigFile can be further configured
 // to monitor an override config file and it will reload new configs from the
 // override config file when the file content changes.
-class ReloadableConfigFile {
+class CROS_CAMERA_EXPORT ReloadableConfigFile {
  public:
   struct Options {
     // The path to the default config file. The config is read from
@@ -47,6 +51,7 @@ class ReloadableConfigFile {
 
   void SetCallback(OptionsUpdateCallback callback);
   void UpdateOption(std::string key, base::Value value);
+  base::Value CloneJsonValues() const;
   bool IsValid() const;
 
  private:
@@ -71,11 +76,40 @@ class ReloadableConfigFile {
 // Helper functions to look up |key| in |json_values| and, if key exists, load
 // the corresponding value into |output|. Returns true if |output| is loaded
 // with the value found, false otherwise.
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value& json_values,
+                                    const char* key,
+                                    float* output);
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value& json_values,
+                                    const char* key,
+                                    int* output);
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value& json_values,
+                                    const char* key,
+                                    bool* output);
+
+template <typename T>
 bool LoadIfExist(const base::Value& json_values,
                  const char* key,
-                 float* output);
-bool LoadIfExist(const base::Value& json_values, const char* key, int* output);
-bool LoadIfExist(const base::Value& json_values, const char* key, bool* output);
+                 std::vector<T>* output) {
+  static_assert(std::is_same<T, float>::value ||
+                std::is_same<T, double>::value || std::is_same<T, int>::value);
+  auto value = json_values.FindListKey(key);
+  if (!output) {
+    LOGF(ERROR) << "output cannot be nullptr";
+    return false;
+  }
+  if (!value) {
+    return false;
+  }
+  output->clear();
+  for (const auto& v : value->GetList()) {
+    if (std::is_same<T, double>::value || std::is_same<T, float>::value) {
+      output->push_back(v.GetDouble());
+    } else if (std::is_same<T, int>::value) {
+      output->push_back(v.GetInt());
+    }
+  }
+  return true;
+}
 
 }  // namespace cros
 

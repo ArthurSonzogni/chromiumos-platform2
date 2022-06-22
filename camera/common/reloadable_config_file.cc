@@ -15,8 +15,6 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 
-#include "cros-camera/common.h"
-
 namespace cros {
 
 ReloadableConfigFile::ReloadableConfigFile(const Options& options)
@@ -47,6 +45,10 @@ void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
   base::AutoLock lock(options_lock_);
   json_values_.SetKey(key, std::move(value));
   WriteConfigFileLocked(override_config_file_path_);
+}
+
+base::Value ReloadableConfigFile::CloneJsonValues() const {
+  return json_values_.Clone();
 }
 
 bool ReloadableConfigFile::IsValid() const {
