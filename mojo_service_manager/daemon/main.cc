@@ -26,6 +26,10 @@ constexpr char kSocketPath[] = "/run/mojo/service_manager.sock";
 // The policy directory path.
 constexpr char kPolicyDirectoryPath[] = "/etc/mojo/service_manager/policy";
 
+// The ash policy directory path.
+constexpr char kAshPolicyDirectoryPath[] =
+    "/opt/google/chrome/mojo_service_manager";
+
 // The extra policy directory path which is only used in dev mode.
 constexpr char kExtraPolicyDirectoryPathInDevMode[] =
     "/usr/local/etc/mojo/service_manager/policy";
@@ -60,7 +64,8 @@ int main(int argc, char* argv[]) {
   mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
 
   std::vector<base::FilePath> policy_dir_paths{
-      base::FilePath{kPolicyDirectoryPath}};
+      base::FilePath{kPolicyDirectoryPath},
+      base::FilePath{kAshPolicyDirectoryPath}};
   if (IsDevMode()) {
     LOG(INFO) << "DevMode is enabled, load extra configs from "
               << kExtraPolicyDirectoryPathInDevMode;
