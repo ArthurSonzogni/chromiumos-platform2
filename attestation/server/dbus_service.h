@@ -31,7 +31,7 @@ class DBusService {
   virtual ~DBusService() = default;
 
   // Connects to D-Bus system bus and exports methods.
-  void Register(const CompletionAction& callback);
+  void Register(CompletionAction callback);
 
   // Useful for testing.
   void set_service(AttestationInterface* service) { service_ = service; }

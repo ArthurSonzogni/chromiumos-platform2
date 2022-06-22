@@ -23,7 +23,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
     : dbus_object_(nullptr, bus, dbus::ObjectPath(kAttestationServicePath)),
       service_(service) {}
 
-void DBusService::Register(const CompletionAction& callback) {
+void DBusService::Register(CompletionAction callback) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
@@ -84,7 +84,7 @@ void DBusService::Register(const CompletionAction& callback) {
   dbus_interface->AddMethodHandler(kGetCertifiedNvIndex, base::Unretained(this),
                                    &DBusService::HandleGetCertifiedNvIndex);
 
-  dbus_object_.RegisterAsync(callback);
+  dbus_object_.RegisterAsync(std::move(callback));
 }
 
 void DBusService::HandleGetKeyInfo(
