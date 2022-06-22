@@ -181,11 +181,13 @@ impl ResumeConductor {
         // boot continue. This gets dropped at the end of the function, when
         // resume has either completed (and not returned) or failed (so this
         // boot can continue).
-        let pending_resume_call =
+        let mut pending_resume_call =
             self.read_image(header_file, hiber_file, &mut snap_dev, dbus_connection)?;
         // Explicitly clear out the secret seed before resume is attempted, in
-        // case resume never returns.
-        if let Some(mut pending_resume_call) = pending_resume_call {
+        // case resume never returns. Make sure to use a reference so that
+        // ownership isn't dropped at the end of the if statement (see comment
+        // above).
+        if let Some(ref mut pending_resume_call) = pending_resume_call {
             pending_resume_call.secret_seed.zeroize();
         }
 

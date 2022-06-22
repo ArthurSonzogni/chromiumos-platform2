@@ -40,6 +40,7 @@ struct ResumeRequest {
 
 impl ResumeRequest {
     pub fn complete(&mut self) {
+        info!("Completing the ResumeRequest");
         // The content of the message is ignored, this simply allows the dbus
         // thread to unblock and complete the method. The error is ignored
         // because the best course of action is simply to keep going with
