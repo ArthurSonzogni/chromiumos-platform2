@@ -133,7 +133,11 @@ TEST_F(BackendSealingTpm1Test, Unseal) {
 
   EXPECT_CALL(proxy_->GetMock().overalls,
               Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))
-      .WillOnce(Return(TPM_SUCCESS));
+      .WillOnce([&](auto&&, auto&&, size_t auth_size, uint8_t* auth_ptr) {
+        EXPECT_EQ(kFakeAuthValue,
+                  brillo::SecureBlob(auth_ptr, auth_ptr + auth_size));
+        return TPM_SUCCESS;
+      });
 
   EXPECT_CALL(proxy_->GetMock().overalls,
               Ospi_Policy_AssignToObject(kFakeHPolicy, kFakeEncHandle))

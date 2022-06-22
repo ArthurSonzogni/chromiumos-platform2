@@ -45,7 +45,7 @@ StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
           user_context.tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
       .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
 
-  brillo::SecureBlob mutable_auth_value;
+  brillo::SecureBlob mutable_auth_value = auth_value;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
                       tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
                       mutable_auth_value.size(), mutable_auth_value.data())))
