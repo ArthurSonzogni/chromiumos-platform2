@@ -19,35 +19,6 @@ class MockRmadInterface : public RmadInterface {
   virtual ~MockRmadInterface() = default;
 
   MOCK_METHOD(bool, SetUp, (scoped_refptr<DaemonCallback>), (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, base::RepeatingCallback<void(bool)>),
-              (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, HardwareVerificationSignalCallback),
-              (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, UpdateRoFirmwareSignalCallback),
-              (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, CalibrationOverallSignalCallback),
-              (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, CalibrationComponentSignalCallback),
-              (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, ProvisionSignalCallback),
-              (override));
-  MOCK_METHOD(void,
-              RegisterSignalSender,
-              (RmadState::StateCase, FinalizeSignalCallback),
-              (override));
-
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
   MOCK_METHOD(void, TryTransitionNextStateFromCurrentState, (), (override));
   MOCK_METHOD(void, GetCurrentState, (GetStateCallback), (override));

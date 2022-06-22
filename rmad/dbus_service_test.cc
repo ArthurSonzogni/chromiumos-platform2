@@ -50,41 +50,6 @@ class DBusServiceTest : public testing::Test {
     EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .WillRepeatedly(Return());
     EXPECT_CALL(*mock_exported_object_, Unregister()).WillRepeatedly(Return());
-
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(_, A<base::RepeatingCallback<void(bool)>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(_, A<base::RepeatingCallback<void(
-                                    const HardwareVerificationResult&)>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<base::RepeatingCallback<void(UpdateRoFirmwareStatus)>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<base::RepeatingCallback<void(CalibrationOverallStatus)>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<base::RepeatingCallback<void(CalibrationComponentStatus)>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<base::RepeatingCallback<void(const ProvisionStatus&)>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<base::RepeatingCallback<void(const FinalizeStatus&)>>()))
-        .WillRepeatedly(Return());
   }
   ~DBusServiceTest() override = default;
 

@@ -99,16 +99,6 @@ TEST_F(BaseStateHandlerTest, CleanUpState_Success) {
   handler->CleanUpState();
 }
 
-TEST_F(BaseStateHandlerTest, RegisterSignalSender_Success) {
-  auto handler = CreateStateHandler();
-  handler->RegisterSignalSender(base::RepeatingCallback<void(bool)>());
-  handler->RegisterSignalSender(HardwareVerificationSignalCallback());
-  handler->RegisterSignalSender(CalibrationOverallSignalCallback());
-  handler->RegisterSignalSender(CalibrationComponentSignalCallback());
-  handler->RegisterSignalSender(ProvisionSignalCallback());
-  handler->RegisterSignalSender(FinalizeSignalCallback());
-}
-
 TEST_F(BaseStateHandlerTest, IsRepeatable_RepeatableSuccess) {
   auto handler = CreateStateHandler();
   EXPECT_TRUE(handler->IsRepeatable());

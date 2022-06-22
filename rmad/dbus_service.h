@@ -85,7 +85,6 @@ class DBusService : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   // Provide callbacks to rmad_interface.
-  void SetUpInterfaceCallbacks();
   scoped_refptr<DaemonCallback> CreateDaemonCallback() const;
 
  private:

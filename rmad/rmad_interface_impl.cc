@@ -267,66 +267,6 @@ RmadErrorCode RmadInterfaceImpl::GetInitializedStateHandler(
   return RMAD_ERROR_OK;
 }
 
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    base::RepeatingCallback<void(bool)> callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    HardwareVerificationSignalCallback callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case, UpdateRoFirmwareSignalCallback callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    CalibrationOverallSignalCallback callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    CalibrationComponentSignalCallback callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
-void RmadInterfaceImpl::RegisterSignalSender(RmadState::StateCase state_case,
-                                             ProvisionSignalCallback callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
-void RmadInterfaceImpl::RegisterSignalSender(RmadState::StateCase state_case,
-                                             FinalizeSignalCallback callback) {
-  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
-  if (state_handler) {
-    state_handler->RegisterSignalSender(callback);
-  }
-}
-
 void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
   LOG(INFO) << "Trying a state transition using current state";
   TransitionNextStateInternal(TransitionNextStateRequest(), true);

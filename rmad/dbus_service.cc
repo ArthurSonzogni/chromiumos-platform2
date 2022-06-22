@@ -445,49 +445,9 @@ bool DBusService::SetUpInterface() {
       return false;
     }
     is_interface_set_up_ = true;
-    SetUpInterfaceCallbacks();
     rmad_interface_->TryTransitionNextStateFromCurrentState();
   }
   return true;
-}
-
-void DBusService::SetUpInterfaceCallbacks() {
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kWpDisablePhysical,
-      base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kWpEnablePhysical,
-      base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kWelcome,
-      base::BindRepeating(&DBusService::SendHardwareVerificationResultSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kUpdateRoFirmware,
-      base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kRunCalibration,
-      base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kRunCalibration,
-      base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kProvisionDevice,
-      base::BindRepeating(&DBusService::SendProvisionProgressSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kFinalize,
-      base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kRepairComplete,
-      base::BindRepeating(&DBusService::SendPowerCableStateSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {

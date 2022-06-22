@@ -25,34 +25,6 @@ class RmadInterface {
   // initialized by the constructor but not fully set up.
   virtual bool SetUp(scoped_refptr<DaemonCallback> daemon_callback) = 0;
 
-  // Register a signal sender for specific states. Virtual functions cannot be
-  // declared as template so we need to declare them one by one.
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      base::RepeatingCallback<void(bool)> callback) = 0;
-
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      HardwareVerificationSignalCallback callback) = 0;
-
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      UpdateRoFirmwareSignalCallback callback) = 0;
-
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      CalibrationOverallSignalCallback callback) = 0;
-
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      CalibrationComponentSignalCallback callback) = 0;
-
-  virtual void RegisterSignalSender(RmadState::StateCase state_case,
-                                    ProvisionSignalCallback callback) = 0;
-
-  virtual void RegisterSignalSender(RmadState::StateCase state_case,
-                                    FinalizeSignalCallback callback) = 0;
-
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;
 

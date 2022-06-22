@@ -53,30 +53,6 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   bool SetUp(scoped_refptr<DaemonCallback> daemon_callback) override;
 
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      base::RepeatingCallback<void(bool)> callback) override;
-
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      HardwareVerificationSignalCallback callback) override;
-
-  void RegisterSignalSender(RmadState::StateCase state_case,
-                            UpdateRoFirmwareSignalCallback callback) override;
-
-  void RegisterSignalSender(RmadState::StateCase state_case,
-                            CalibrationOverallSignalCallback callback) override;
-
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      CalibrationComponentSignalCallback callback) override;
-
-  void RegisterSignalSender(RmadState::StateCase state_case,
-                            ProvisionSignalCallback callback) override;
-
-  void RegisterSignalSender(RmadState::StateCase state_case,
-                            FinalizeSignalCallback callback) override;
-
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;
   }

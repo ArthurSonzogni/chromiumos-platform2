@@ -51,25 +51,6 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // Clean up the state. Called when leaving the state.
   virtual void CleanUpState() {}
 
-  // Register a signal sender.
-  virtual void RegisterSignalSender(
-      base::RepeatingCallback<void(bool)> callback) {}
-
-  virtual void RegisterSignalSender(
-      HardwareVerificationSignalCallback callback) {}
-
-  virtual void RegisterSignalSender(UpdateRoFirmwareSignalCallback callback) {}
-
-  virtual void RegisterSignalSender(CalibrationOverallSignalCallback callback) {
-  }
-
-  virtual void RegisterSignalSender(
-      CalibrationComponentSignalCallback callback) {}
-
-  virtual void RegisterSignalSender(ProvisionSignalCallback callback) {}
-
-  virtual void RegisterSignalSender(FinalizeSignalCallback callback) {}
-
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition
   // fails, a corresponding RmadErrorCode is set, and |next_state_case| will be
