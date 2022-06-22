@@ -4270,13 +4270,8 @@ void UserDataAuth::PrepareVaultForMigration(
       PreparePersistentVaultImpl(request.auth_session_id(), options);
   reply.set_sanitized_username(
       SanitizedUserNameForSession(request.auth_session_id()));
-  ReplyWithError(
-      std::move(on_done), reply,
-      MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocUserDataAuthPrepareVaultFailedInPrepareForMigration))
-          .Wrap(std::move(status)));
-}  // namespace cryptohome
+  ReplyWithError(std::move(on_done), reply, status);
+}
 
 void UserDataAuth::CreatePersistentUser(
     user_data_auth::CreatePersistentUserRequest request,
