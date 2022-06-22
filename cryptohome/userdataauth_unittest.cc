@@ -82,6 +82,7 @@ using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
@@ -147,13 +148,10 @@ class UserDataAuthTestBase : public ::testing::Test {
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
 
-    ON_CALL(*tpm_.get_mock_hwsec(), IsEnabled())
-        .WillByDefault(ReturnValue(true));
-    ON_CALL(*tpm_.get_mock_hwsec(), IsReady()).WillByDefault(ReturnValue(true));
-    ON_CALL(*tpm_.get_mock_hwsec(), IsDAMitigationReady())
-        .WillByDefault(ReturnValue(true));
-    ON_CALL(*tpm_.get_mock_pinweaver(), IsEnabled())
-        .WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsDAMitigationReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
 
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
@@ -170,7 +168,8 @@ class UserDataAuthTestBase : public ::testing::Test {
         &user_activity_timestamp_manager_);
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_install_attrs(attrs_.get());
-    userdataauth_->set_tpm(&tpm_);
+    userdataauth_->set_hwsec(&hwsec_);
+    userdataauth_->set_pinweaver(&pinweaver_);
     userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
@@ -260,16 +259,18 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Platform object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockPlatform> platform_;
 
-  // Mock TPM object, will be passed to UserDataAuth for its internal use.
-  NiceMock<MockTpm> tpm_;
+  // Mock HWSec object, will be passed to UserDataAuth for its internal use.
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
+
+  // Mock pinweaver object, will be passed to UserDataAuth for its internal use.
+  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
 
   // Mock Cryptohome Key Loader object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
 
   // Fake Crypto object, will be passed to UserDataAuth for its internal use.
-  Crypto crypto_{tpm_.get_mock_hwsec(), tpm_.get_mock_pinweaver(),
-                 &cryptohome_keys_manager_, nullptr};
+  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
 
   // Mock TPM Manager utility object, will be passed to UserDataAuth for its
   // internal use.
@@ -1367,48 +1368,17 @@ TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectInheritanceFlag) {
       kEnable, kFd, &error));
 }
 
-TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity20) {
+TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
   const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
 
-  // We'll test the TPM 2.0 case.
-  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_2_0));
-
   EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
-  brillo::Blob empty_pcr = brillo::Blob(32, 0);
-  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
-      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
-  brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
-                              kUsername1Obfuscated.end());
-  EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
-      .WillOnce(Return(true));
-
-  EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
-TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity12) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  constexpr char kUsername1[] = "foo@gmail.com";
-  cryptohome::AccountIdentifier account_id;
-  account_id.set_account_id(kUsername1);
-  const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
-
-  // We'll test the TPM 1.2 case.
-  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_1_2));
-
-  EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
-  brillo::Blob empty_pcr = brillo::Blob(32, 0);
-  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
-      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
-  brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
-                              kUsername1Obfuscated.end());
-  extention_blob = Sha1(extention_blob);
-  EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
-      .WillOnce(Return(true));
+  EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(false));
+  EXPECT_CALL(hwsec_, SetCurrentUser(kUsername1Obfuscated))
+      .WillOnce(ReturnOk<TPMError>());
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -1421,7 +1391,8 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
   account_id.set_account_id(kUsername1);
 
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
-  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _)).WillOnce(Return(false));
+  EXPECT_CALL(hwsec_, IsCurrentUserSet())
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR);
@@ -1433,14 +1404,8 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
 
-  // We'll test the TPM 2.0 case.
-  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_2_0));
-
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
-  brillo::Blob empty_pcr =
-      brillo::Blob(32, 0x42);  // Incorrect PCR value, should cause it to fail.
-  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
-      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
+  EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(true));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED);
@@ -1453,17 +1418,10 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
   account_id.set_account_id(kUsername1);
   const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
 
-  // We'll test the TPM 2.0 case.
-  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_2_0));
-
   EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
-  brillo::Blob empty_pcr = brillo::Blob(32, 0);
-  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
-      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
-  brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
-                              kUsername1Obfuscated.end());
-  EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
-      .WillOnce(Return(false));
+  EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(false));
+  EXPECT_CALL(hwsec_, SetCurrentUser(kUsername1Obfuscated))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR);
@@ -2443,12 +2401,10 @@ TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
 
 TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsPinWeaverEnabled())
-      .WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
 
-  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsPinWeaverEnabled())
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_TRUE(userdataauth_->IsLowEntropyCredentialSupported());
 }
 

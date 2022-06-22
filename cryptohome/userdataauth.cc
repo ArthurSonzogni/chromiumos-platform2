@@ -290,7 +290,8 @@ UserDataAuth::UserDataAuth()
     : origin_thread_id_(base::PlatformThread::CurrentId()),
       mount_thread_(nullptr),
       system_salt_(),
-      tpm_(nullptr),
+      hwsec_(nullptr),
+      pinweaver_(nullptr),
       default_cryptohome_keys_manager_(nullptr),
       cryptohome_keys_manager_(nullptr),
       tpm_manager_util_(nullptr),
@@ -364,11 +365,22 @@ bool UserDataAuth::Initialize() {
     mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
   }
 
-  // Note that we check to see if |tpm_| is available here because it may have
-  // been set to an overridden value during unit testing before Initialize() is
-  // called.
-  if (!tpm_) {
-    tpm_ = Tpm::GetSingleton();
+  if (!hwsec_) {
+    // TODO(b/174816474): Get rid of the TPM object after we remove all useages
+    // of it.
+    Tpm* tpm = Tpm::GetSingleton();
+    CHECK(tpm);
+    hwsec_ = tpm->GetHwsec();
+    CHECK(hwsec_);
+  }
+
+  if (!pinweaver_) {
+    // TODO(b/174816474): Get rid of the TPM object after we remove all useages
+    // of it.
+    Tpm* tpm = Tpm::GetSingleton();
+    CHECK(tpm);
+    pinweaver_ = tpm->GetPinWeaver();
+    CHECK(pinweaver_);
   }
 
   // Note that we check to see if |cryptohome_keys_manager_| is available here
@@ -376,27 +388,31 @@ bool UserDataAuth::Initialize() {
   // before Initialize() is called.
   if (!cryptohome_keys_manager_) {
     default_cryptohome_keys_manager_.reset(
-        new CryptohomeKeysManager(tpm_->GetHwsec(), platform_));
+        new CryptohomeKeysManager(hwsec_, platform_));
     cryptohome_keys_manager_ = default_cryptohome_keys_manager_.get();
   }
 
   // Initialize Firmware Management Parameters
   if (!firmware_management_parameters_) {
     default_firmware_management_params_ =
-        FirmwareManagementParameters::CreateInstance(tpm_->GetHwsec());
+        FirmwareManagementParameters::CreateInstance(hwsec_);
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
   if (!install_attrs_) {
-    default_install_attrs_ =
-        std::make_unique<InstallAttributes>(tpm_->GetHwsec());
+    default_install_attrs_ = std::make_unique<InstallAttributes>(hwsec_);
     install_attrs_ = default_install_attrs_.get();
   }
 
   if (!crypto_) {
-    default_crypto_ = std::make_unique<Crypto>(
-        tpm_->GetHwsec(), tpm_->GetPinWeaver(), cryptohome_keys_manager_,
-        tpm_->GetRecoveryCryptoBackend());
+    // TODO(b/174816474): Get rid of the TPM object after we remove all useages
+    // of it.
+    Tpm* tpm = Tpm::GetSingleton();
+    CHECK(tpm);
+
+    default_crypto_ =
+        std::make_unique<Crypto>(hwsec_, pinweaver_, cryptohome_keys_manager_,
+                                 tpm->GetRecoveryCryptoBackend());
     crypto_ = default_crypto_.get();
   }
 
@@ -541,10 +557,6 @@ bool UserDataAuth::Initialize() {
   } else {
     platform_->TouchFileDurable(base::FilePath(kNotFirstBootFilePath));
   }
-
-  // We expect |tpm_| and |cryptohome_keys_manager_| to be available by this
-  // point.
-  DCHECK(tpm_ && cryptohome_keys_manager_);
 
   low_disk_space_handler_->SetUpdateUserActivityTimestampCallback(
       base::BindRepeating(
@@ -1597,17 +1609,18 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
     return OkStatus<CryptohomeError>();
   }
 
-  if (!tpm_) {
-    LOG(ERROR) << "Cannot do challenge-response authentication without TPM";
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsReady();
+  if (!is_ready.ok()) {
+    LOG(ERROR) << "Failed to get the hwsec ready state: " << is_ready.status();
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoTPMInInitChalRespAuth),
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthHwsecNotReadyInInitChalRespAuth),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 
-  if (!tpm_->IsEnabled() || !tpm_->IsOwned()) {
-    LOG(ERROR) << "TPM must be initialized in order to do challenge-response "
+  if (!is_ready.value()) {
+    LOG(ERROR) << "HWSec must be initialized in order to do challenge-response "
                   "authentication";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthTPMNotReadyInInitChalRespAuth),
@@ -1616,28 +1629,28 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 
-  // Fail if the TPM is known to be vulnerable and we're not in a test image.
-  bool is_srk_roca_vulnerable;
-  if (hwsec::Status err = tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable);
-      !err.ok()) {
-    LOG(ERROR) << "Cannot do challenge-response mount: Failed to check for "
-                  "ROCA vulnerability: "
-               << err;
+  // Fail if the security chip is known to be vulnerable and we're not in a test
+  // image.
+  hwsec::StatusOr<bool> is_srk_roca_vulnerable = hwsec_->IsSrkRocaVulnerable();
+  if (!is_srk_roca_vulnerable.ok()) {
+    LOG(ERROR) << "Failed to get the hwsec SRK ROCA vulnerable status: "
+               << is_srk_roca_vulnerable.status();
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthCantQueryROCAVulnInInitChalRespAuth),
         ErrorActionSet({ErrorAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
-  if (is_srk_roca_vulnerable) {
+
+  if (is_srk_roca_vulnerable.value()) {
     if (!IsOsTestImage()) {
       LOG(ERROR)
-          << "Cannot do challenge-response mount: TPM is ROCA vulnerable";
+          << "Cannot do challenge-response mount: HWSec is ROCA vulnerable";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocUserDataAuthROCAVulnerableInInitChalRespAuth),
           ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
           user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED);
     }
-    LOG(WARNING) << "TPM is ROCA vulnerable; ignoring this for "
+    LOG(WARNING) << "HWSec is ROCA vulnerable; ignoring this for "
                     "challenge-response mount due to running in test image";
   }
 
@@ -1654,7 +1667,7 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
   // credentials for challenge-protected vaults.
 
   default_challenge_credentials_helper_ =
-      std::make_unique<ChallengeCredentialsHelperImpl>(tpm_->GetHwsec());
+      std::make_unique<ChallengeCredentialsHelperImpl>(hwsec_);
   challenge_credentials_helper_ = default_challenge_credentials_helper_.get();
   auth_block_utility_->InitializeForChallengeCredentials(
       challenge_credentials_helper_);
@@ -3351,7 +3364,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
 
 bool UserDataAuth::IsLowEntropyCredentialSupported() {
   AssertOnOriginThread();
-  hwsec::StatusOr<bool> is_enabled = tpm_->GetHwsec()->IsPinWeaverEnabled();
+  hwsec::StatusOr<bool> is_enabled = hwsec_->IsPinWeaverEnabled();
   if (!is_enabled.ok()) {
     LOG(ERROR) << "Failed to get pinweaver status";
     return false;
@@ -3789,7 +3802,15 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 
 bool UserDataAuth::GetRsuDeviceId(std::string* rsu_device_id) {
   AssertOnOriginThread();
-  return tpm_->GetRsuDeviceId(rsu_device_id);
+
+  hwsec::StatusOr<brillo::Blob> rsu = hwsec_->GetRsuDeviceId();
+  if (!rsu.ok()) {
+    LOG(INFO) << "Failed to get RSU device ID: " << rsu.status();
+    return false;
+  }
+
+  *rsu_device_id = brillo::BlobToString(rsu.value());
+  return true;
 }
 
 bool UserDataAuth::RequiresPowerwash() {
@@ -3808,23 +3829,23 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
   homedirs_->SetLockedToSingleUser();
   brillo::Blob pcr_value;
 
-  if (!tpm_->ReadPCR(kTpmSingleUserPCR, &pcr_value)) {
-    LOG(ERROR) << "Failed to read PCR for LockToSingleUserMountUntilReboot()";
+  hwsec::StatusOr<bool> is_current_user_set = hwsec_->IsCurrentUserSet();
+  if (!is_current_user_set.ok()) {
+    LOG(ERROR) << "Failed to get current user status for "
+                  "LockToSingleUserMountUntilReboot(): "
+               << is_current_user_set.status();
     return user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR;
   }
 
-  if (pcr_value != brillo::Blob(pcr_value.size(), 0)) {
+  if (is_current_user_set.value()) {
     return user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED;
   }
 
-  brillo::Blob extention_blob(obfuscated_username.begin(),
-                              obfuscated_username.end());
-
-  if (tpm_->GetVersion() == cryptohome::Tpm::TPM_1_2) {
-    extention_blob = Sha1(extention_blob);
-  }
-
-  if (!tpm_->ExtendPCR(kTpmSingleUserPCR, extention_blob)) {
+  if (hwsec::Status status = hwsec_->SetCurrentUser(obfuscated_username);
+      !status.ok()) {
+    LOG(ERROR)
+        << "Failed to set current user for LockToSingleUserMountUntilReboot(): "
+        << status;
     return user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR;
   }
 
@@ -3856,8 +3877,8 @@ std::string UserDataAuth::GetStatusString() {
 void UserDataAuth::ResetDictionaryAttackMitigation() {
   AssertOnMountThread();
 
-  if (!tpm_->ResetDictionaryAttackMitigation()) {
-    LOG(WARNING) << "Failed to reset DA";
+  if (hwsec::Status status = hwsec_->MitigateDACounter(); !status.ok()) {
+    LOG(WARNING) << "Failed to mitigate DA counter: " << status;
   }
 }
 

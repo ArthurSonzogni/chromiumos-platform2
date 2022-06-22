@@ -20,6 +20,8 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/frontend/pinweaver/frontend.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -553,8 +555,13 @@ class UserDataAuth {
   // Override |homedirs_| for testing purpose
   void set_homedirs(cryptohome::HomeDirs* homedirs) { homedirs_ = homedirs; }
 
-  // Override |tpm_| for testing purpose
-  void set_tpm(Tpm* tpm) { tpm_ = tpm; }
+  // Override |hwsec_| for testing purpose
+  void set_hwsec(hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
+
+  // Override |pinweaver_| for testing purpose
+  void set_pinweaver(hwsec::PinWeaverFrontend* pinweaver) {
+    pinweaver_ = pinweaver;
+  }
 
   // Override |cryptohome_keys_manager_| for testing purpose
   void set_cryptohome_keys_manager(
@@ -1018,7 +1025,7 @@ class UserDataAuth {
                                    bool success);
 
   // This is called whenever the OwnershipTaken signal is emitted by
-  // tpm_manager. This will notify |tpm_| about the emitted signal.
+  // tpm_manager.
   // Note: The caller of it may neither origin thread nor mount thread.
   void OnOwnershipTakenSignal();
 
@@ -1164,10 +1171,11 @@ class UserDataAuth {
   // The system salt that is used for obfuscating the username
   brillo::SecureBlob system_salt_;
 
-  // The object for accessing the TPM
-  // Note that TPM doesn't use the unique_ptr for default pattern, since the tpm
-  // is a singleton - we don't want it getting destroyed when we are.
-  Tpm* tpm_;
+  // The object for accessing the HWSec related functions.
+  hwsec::CryptohomeFrontend* hwsec_;
+
+  // The object for accessing the pinweaver related functions.
+  hwsec::PinWeaverFrontend* pinweaver_;
 
   // The default cryptohome key loader object
   std::unique_ptr<CryptohomeKeysManager> default_cryptohome_keys_manager_;

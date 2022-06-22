@@ -931,7 +931,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockNoUsernameInDerive = 552,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInCheckSecret = 553,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoTPMInInitChalRespAuth = 554,
   /* ./userdataauth.cc */
   kLocUserDataAuthTPMNotReadyInInitChalRespAuth = 555,
@@ -1079,6 +1079,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredDecryptUnsealingResponseNoChallenge = 626,
   /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
   kLocChalCredGenRandFailed = 627,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthHwsecNotReadyInInitChalRespAuth = 628,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
