@@ -103,7 +103,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
   }
 
   if (!routes.empty()) {
-    properties->routes.swap(routes);
+    properties->dhcp_classless_static_routes.swap(routes);
     properties->included_dsts.swap(destinations);
   }
 

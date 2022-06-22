@@ -189,58 +189,6 @@ void StaticIPParameters::RestoreStrings(const std::string& property,
   }
 }
 
-void StaticIPParameters::ParseRoutes(const std::vector<std::string>& route_list,
-                                     const std::string& gateway,
-                                     std::vector<IPConfig::Route>* value_out) {
-  IPAddress gateway_ip(gateway);
-  if (gateway_ip.family() == IPAddress::kFamilyUnknown) {
-    return;
-  }
-
-  for (const auto& ip : route_list) {
-    IPAddress dst_ip(gateway_ip.family());
-    if (!dst_ip.SetAddressAndPrefixFromString(ip)) {
-      return;
-    }
-
-    IPConfig::Route route;
-    dst_ip.IntoString(&route.host);
-    route.prefix = dst_ip.prefix();
-    route.gateway = gateway;
-    value_out->push_back(route);
-  }
-}
-
-void StaticIPParameters::ApplyRoutes(IPConfig::Properties* props) {
-  std::vector<std::string> saved_routes;
-  for (const auto& route : props->routes) {
-    saved_routes.push_back(route.host + "/" +
-                           base::NumberToString(route.prefix));
-  }
-  saved_args_.Set<Strings>(kIncludedRoutesProperty, saved_routes);
-
-  if (!args_.Contains<Strings>(kIncludedRoutesProperty)) {
-    return;
-  }
-  props->routes.clear();
-  ParseRoutes(args_.Get<Strings>(kIncludedRoutesProperty), props->gateway,
-              &props->routes);
-  // Remove default route from the connection if kIncludedRoutesProperty is set.
-  props->default_route = false;
-}
-
-void StaticIPParameters::RestoreRoutes(IPConfig::Properties* props) {
-  props->routes.clear();
-  if (saved_args_.Contains<Strings>(kIncludedRoutesProperty)) {
-    ParseRoutes(saved_args_.Get<Strings>(kIncludedRoutesProperty),
-                props->gateway, &props->routes);
-  }
-  // TODO(b/184533440): original props->default_route could be lost after Apply
-  // -> Restore a StaticIPConfig with IncludedRoutes. This only has an impact
-  // when a IPConfig::Refresh is called after applying such a StaticIPConfig,
-  // and is temporary since StaticIPConfig is re-applied right after.
-}
-
 void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
   if (props->address_family == IPAddress::kFamilyUnknown) {
     // In situations where no address is supplied (bad or missing DHCP config)
@@ -262,7 +210,11 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
   ApplyString(kPeerAddressProperty, &props->peer_address);
   ApplyInt(kPrefixlenProperty, &props->subnet_prefix);
   ApplyStrings(kExcludedRoutesProperty, &props->exclusion_list);
-  ApplyRoutes(props);
+  ApplyStrings(kIncludedRoutesProperty, &props->inclusion_list);
+  if (args_.Contains<Strings>(kIncludedRoutesProperty)) {
+    // Remove default route if kIncludedRoutesProperty is set.
+    props->default_route = false;
+  }
 }
 
 void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
@@ -276,7 +228,11 @@ void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
       saved_args_.Lookup<std::string>(kPeerAddressProperty, "");
   props->subnet_prefix = saved_args_.Lookup<int32_t>(kPrefixlenProperty, 0);
   RestoreStrings(kExcludedRoutesProperty, &props->exclusion_list);
-  RestoreRoutes(props);
+  RestoreStrings(kIncludedRoutesProperty, &props->inclusion_list);
+  // TODO(b/184533440): original props->default_route could be lost after Apply
+  // -> Restore a StaticIPConfig with IncludedRoutes. This only has an impact
+  // when a IPConfig::Refresh is called after applying such a StaticIPConfig,
+  // and is temporary since StaticIPConfig is re-applied right after.
   ClearSavedParameters();
 }
 

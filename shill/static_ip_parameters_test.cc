@@ -45,8 +45,9 @@ const char kExcludedRoutes[] = "192.168.1.0/24,192.168.2.0/24";
 const char kExcludedRoute0[] = "192.168.1.0/24";
 const char kExcludedRoute1[] = "192.168.2.0/24";
 
-const char kIncludedRoutes[] = "0.0.0.0/0";
-const IPConfig::Route kIncludedRoute0("0.0.0.0", 0, "10.0.0.254");
+const char kIncludedRoutes[] = "0.0.0.0/0,10.8.0.0/16";
+const char kIncludedRoute0[] = "0.0.0.0/0";
+const char kIncludedRoute1[] = "10.8.0.0/16";
 
 }  // namespace
 
@@ -63,7 +64,7 @@ class StaticIPParametersTest : public Test {
     EXPECT_TRUE(ipconfig_props_.peer_address.empty());
     EXPECT_FALSE(ipconfig_props_.subnet_prefix);
     EXPECT_TRUE(ipconfig_props_.exclusion_list.empty());
-    EXPECT_TRUE(ipconfig_props_.routes.empty());
+    EXPECT_TRUE(ipconfig_props_.inclusion_list.empty());
     EXPECT_TRUE(ipconfig_props_.default_route);
   }
   // Modify an IP address string in some predictable way.  There's no need
@@ -103,15 +104,11 @@ class StaticIPParametersTest : public Test {
     EXPECT_EQ(VersionedAddress(kExcludedRoute1, version),
               ipconfig_props_.exclusion_list[1]);
 
-    // VersionedAddress() increments the final digit of the prefix on
-    // the IncludedRoutes property, and the final digit of the IP address
-    // on the Gateway property.
-    EXPECT_EQ(1, ipconfig_props_.routes.size());
-    EXPECT_EQ(kIncludedRoute0.host, ipconfig_props_.routes[0].host);
-    EXPECT_EQ(kIncludedRoute0.prefix + version,
-              ipconfig_props_.routes[0].prefix);
-    EXPECT_EQ(VersionedAddress(kIncludedRoute0.gateway, version),
-              ipconfig_props_.routes[0].gateway);
+    EXPECT_EQ(2, ipconfig_props_.inclusion_list.size());
+    EXPECT_EQ(VersionedAddress(kIncludedRoute0, version),
+              ipconfig_props_.inclusion_list[0]);
+    EXPECT_EQ(VersionedAddress(kIncludedRoute1, version),
+              ipconfig_props_.inclusion_list[1]);
     EXPECT_FALSE(ipconfig_props_.default_route);
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
@@ -143,7 +140,8 @@ class StaticIPParametersTest : public Test {
          VersionedAddress(kExcludedRoute1, version)});
     EXPECT_EQ(kTestExcludedRoutes, args.Get<Strings>(kExcludedRoutesProperty));
     std::vector<std::string> kTestIncludedRoutes(
-        {VersionedAddress(kIncludedRoutes, version)});
+        {VersionedAddress(kIncludedRoute0, version),
+         VersionedAddress(kIncludedRoute1, version)});
     EXPECT_EQ(kTestIncludedRoutes, args.Get<Strings>(kIncludedRoutesProperty));
   }
   void ExpectProperties(PropertyStore* store,
@@ -159,7 +157,7 @@ class StaticIPParametersTest : public Test {
     ipconfig_props_.peer_address = kPeerAddress;
     ipconfig_props_.subnet_prefix = kPrefixLen;
     ipconfig_props_.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
-    ipconfig_props_.routes = {kIncludedRoute0};
+    ipconfig_props_.inclusion_list = {kIncludedRoute0, kIncludedRoute1};
     ipconfig_props_.default_route = false;
   }
   void SetStaticProperties(PropertyStore* store) {
@@ -185,7 +183,8 @@ class StaticIPParametersTest : public Test {
                       {VersionedAddress(kExcludedRoute0, version),
                        VersionedAddress(kExcludedRoute1, version)});
     args.Set<Strings>(kIncludedRoutesProperty,
-                      {VersionedAddress(kIncludedRoutes, version)});
+                      {VersionedAddress(kIncludedRoute0, version),
+                       VersionedAddress(kIncludedRoute1, version)});
 
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
@@ -274,7 +273,8 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
        VersionedAddress(kExcludedRoute1, version)});
   EXPECT_EQ(kTestExcludedRoutes, static_args()->Get<Strings>("ExcludedRoutes"));
   std::vector<std::string> kTestIncludedRoutes(
-      {VersionedAddress(kIncludedRoutes, version)});
+      {VersionedAddress(kIncludedRoute0, version),
+       VersionedAddress(kIncludedRoute1, version)});
   EXPECT_EQ(kTestIncludedRoutes, static_args()->Get<Strings>("IncludedRoutes"));
 }
 

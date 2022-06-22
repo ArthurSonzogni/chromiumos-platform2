@@ -197,10 +197,34 @@ class ConnectionTest : public Test {
     }
   }
 
-  void AddIncludedRoutes(const std::vector<IPConfig::Route>& routes) {
-    ipv4_properties_.routes = routes;
+  void AddIncludedRoutes(const std::vector<std::string>& included_routes) {
+    ipv4_properties_.inclusion_list = included_routes;
 
-    included_route_dsts_.clear();
+    // Add expectations for the added routes.
+    auto address_family = ipv4_properties_.address_family;
+    for (const auto& prefix_cidr : included_routes) {
+      IPAddress destination_address(address_family);
+      IPAddress source_address(address_family);  // Left as default.
+      if (!destination_address.SetAddressAndPrefixFromString(prefix_cidr)) {
+        continue;
+      }
+      EXPECT_CALL(
+          routing_table_,
+          AddRoute(connection_->interface_index_,
+                   RoutingTableEntry::Create(destination_address,
+                                             source_address, gateway_address_)
+                       .SetMetric(connection_->priority_)
+                       .SetTable(connection_->table_id_)
+                       .SetTag(connection_->interface_index_)))
+          .WillOnce(Return(true));
+    }
+  }
+
+  void AddDHCPClasslessStaticRoutes(
+      const std::vector<IPConfig::Route>& routes) {
+    ipv4_properties_.dhcp_classless_static_routes = routes;
+
+    dhcp_classless_static_route_dsts_.clear();
     // Add expectations for the added routes.
     auto address_family = ipv4_properties_.address_family;
     for (const auto& route : routes) {
@@ -219,9 +243,12 @@ class ConnectionTest : public Test {
                                              source_address, gateway_address)
                        .SetMetric(connection_->priority_)
                        .SetTable(connection_->table_id_)
-                       .SetTag(connection_->interface_index_)));
-      included_route_dsts_.push_back(destination_address);
+                       .SetTag(connection_->interface_index_)))
+          .WillOnce(Return(true));
+      dhcp_classless_static_route_dsts_.push_back(destination_address);
     }
+
+    ipv4_properties_.included_dsts = dhcp_classless_static_route_dsts_;
   }
 
   void AddNonPhysicalRoutingPolicyExpectations(DeviceRefPtr device,
@@ -263,6 +290,14 @@ class ConnectionTest : public Test {
         .Times(testing::AnyNumber());
 
     EXPECT_CALL(routing_table_, FlushRules(device->interface_index()));
+
+    // Verify dst rules for DHCP classless static routes.
+    for (const auto& dst : dhcp_classless_static_route_dsts_) {
+      EXPECT_CALL(routing_table_,
+                  AddRule(device->interface_index(),
+                          IsValidDstRule(dst.family(),
+                                         Connection::kDstRulePriority, dst)));
+    }
 
     // Primary physical interface will create catch-all for IPv4 and v6.
     // It will also add a main routing table rule above its other rules for both
@@ -361,7 +396,7 @@ class ConnectionTest : public Test {
   IPAddress gateway_address_;
   IPAddress default_address_;
   IPAddress local_ipv6_address_;
-  std::vector<IPAddress> included_route_dsts_;
+  std::vector<IPAddress> dhcp_classless_static_route_dsts_;
   StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
@@ -443,7 +478,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_address_, 0), table_id));
-  AddIncludedRoutes({{"1.1.1.1", 10, "2.2.2.2"}, {"3.3.3.3", 5, "2.2.2.2"}});
+  AddIncludedRoutes({"1.1.1.1/10", "3.3.3.3/5"});
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority);
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
@@ -543,7 +578,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_address_, 0), table_id));
-  AddIncludedRoutes({{"1.1.1.1", 10, "2.2.2.2"}});
+  AddIncludedRoutes({"1.1.1.1/10"});
   AddPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority,
                                        false);
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
@@ -574,6 +609,26 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(Connection::kLeastPriority, false);
   EXPECT_FALSE(connection_->IsDefault());
+}
+
+TEST_F(ConnectionTest, AddConfigWithDHCPClasslessStaticRoutes) {
+  auto device = CreateDevice(Technology::kEthernet);
+  connection_ = CreateConnection(device, true);
+
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
+
+  AddIncludedRoutes({"1.1.1.1/10"});
+  AddDHCPClasslessStaticRoutes(
+      {{"2.2.2.2", 24, "3.3.3.3"}, {"4.4.4.4", 16, "5.5.5.5"}});
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(device->interface_index(),
+                              IsIPAddress(gateway_address_, 0), table_id));
+  AddPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority,
+                                       false);
+
+  connection_->UpdateFromIPConfig(ipv4_properties_);
+  Mock::VerifyAndClearExpectations(&routing_table_);
 }
 
 TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {

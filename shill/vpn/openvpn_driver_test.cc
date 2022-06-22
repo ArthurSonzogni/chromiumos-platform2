@@ -482,18 +482,14 @@ TEST_F(OpenVPNDriverTest, SetRoutes) {
   IPConfig::Properties props;
   props.address = kGateway1;
   OpenVPNDriver::SetRoutes(routes, &props);
-  ASSERT_EQ(2, props.routes.size());
-
-  EXPECT_EQ(kGateway1, props.routes[0].gateway);
-  EXPECT_EQ(kPrefix1, props.routes[0].prefix);
-  EXPECT_EQ(kNetwork1, props.routes[0].host);
-  EXPECT_EQ(kGateway1, props.routes[1].gateway);
-  EXPECT_EQ(kPrefix2, props.routes[1].prefix);
-  EXPECT_EQ(kNetwork2, props.routes[1].host);
-
+  ASSERT_EQ(2, props.inclusion_list.size());
+  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork1, kPrefix1),
+            props.inclusion_list[0]);
+  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork2, kPrefix2),
+            props.inclusion_list[1]);
   // Tests that the routes are not reset if no new routes are supplied.
   OpenVPNDriver::SetRoutes(OpenVPNDriver::RouteOptions(), &props);
-  EXPECT_EQ(2, props.routes.size());
+  EXPECT_EQ(2, props.inclusion_list.size());
 }
 
 TEST_F(OpenVPNDriverTest, SplitPortFromHost) {
@@ -615,16 +611,12 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
   EXPECT_EQ("4.4.4.4", props.dns_servers[1]);
   EXPECT_EQ("2.2.2.2", props.dns_servers[2]);
-  ASSERT_EQ(3, props.routes.size());
-  EXPECT_EQ("4.5.6.7", props.routes[0].gateway);
-  EXPECT_EQ(32, props.routes[0].prefix);
-  EXPECT_EQ("33.44.55.66", props.routes[0].host);
-  EXPECT_EQ("4.5.6.7", props.routes[1].gateway);
-  EXPECT_EQ(kPrefix1, props.routes[1].prefix);
-  EXPECT_EQ(kNetwork1, props.routes[1].host);
-  EXPECT_EQ("4.5.6.7", props.routes[2].gateway);
-  EXPECT_EQ(kPrefix2, props.routes[2].prefix);
-  EXPECT_EQ(kNetwork2, props.routes[2].host);
+  ASSERT_EQ(3, props.inclusion_list.size());
+  ASSERT_EQ("33.44.55.66/32", props.inclusion_list[0]);
+  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork1, kPrefix1),
+            props.inclusion_list[1]);
+  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork2, kPrefix2),
+            props.inclusion_list[2]);
   EXPECT_FALSE(props.default_route);
 
   config["redirect_gateway"] = "def1";

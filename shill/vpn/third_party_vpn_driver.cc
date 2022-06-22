@@ -397,16 +397,7 @@ void ThirdPartyVpnDriver::SetParameters(
   ProcessIPArrayCIDR(parameters, kInclusionListParameterThirdPartyVpn,
                      kIPDelimiter, &inclusion_list, true, error_message,
                      warning_message);
-
-  IPAddress ip_address(ip_properties_.address_family);
-  IPConfig::Route route;
-  route.gateway = ip_properties_.gateway;
-  for (const auto& value : inclusion_list) {
-    ip_address.SetAddressAndPrefixFromString(value);
-    ip_address.IntoString(&route.host);
-    route.prefix = ip_address.prefix();
-    ip_properties_.routes.push_back(route);
-  }
+  ip_properties_.inclusion_list = inclusion_list;
 
   if (!error_message->empty()) {
     LOG(ERROR) << __func__ << ": " << error_message;

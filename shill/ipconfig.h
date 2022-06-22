@@ -59,6 +59,9 @@ class IPConfig {
     // Set the flag to true when the interface should be set as the default
     // route.
     bool default_route = true;
+    // A list of IP blocks in CIDR format that should be included on this
+    // network.
+    std::vector<std::string> inclusion_list;
     // A list of IP blocks in CIDR format that should be excluded from VPN.
     std::vector<std::string> exclusion_list;
     // Block IPv6 traffic.  Used if connected to an IPv4-only VPN.
@@ -70,8 +73,8 @@ class IPConfig {
     bool use_if_addrs = false;
     // MTU to set on the interface.  If unset, defaults to |kUndefinedMTU|.
     int32_t mtu = kUndefinedMTU;
-    // A list of (host,prefix,gateway) tuples for this connection.
-    std::vector<Route> routes;
+    // Routes configured by the classless static routes option in DHCP.
+    std::vector<Route> dhcp_classless_static_routes;
     // Vendor encapsulated option string gained from DHCP.
     ByteArray vendor_encapsulated_options;
     // iSNS option data gained from DHCP.

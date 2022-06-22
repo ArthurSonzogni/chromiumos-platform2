@@ -591,21 +591,9 @@ bool WireGuardDriver::PopulateIPProperties() {
     std::string allowed_ips_str = peer[kWireGuardPeerAllowedIPs];
     std::vector<std::string> allowed_ip_list = base::SplitString(
         allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    for (const auto& allowed_ip_str : allowed_ip_list) {
-      IPAddress allowed_ip;
-      // Currently only supports IPv4 addresses.
-      allowed_ip.set_family(IPAddress::kFamilyIPv4);
-      if (!allowed_ip.SetAddressAndPrefixFromString(allowed_ip_str)) {
-        LOG(DFATAL) << "Invalid allowed ip: " << allowed_ip_str;
-        return false;
-      }
-      // We don't need a gateway here, so use the "default" address as the
-      // gateways, and then RoutingTable will skip RTA_GATEWAY when installing
-      // this entry.
-      ip_properties_.routes.push_back({allowed_ip.GetNetworkPart().ToString(),
-                                       static_cast<int>(allowed_ip.prefix()),
-                                       /*gateway=*/"0.0.0.0"});
-    }
+    ip_properties_.inclusion_list.insert(ip_properties_.inclusion_list.end(),
+                                         allowed_ip_list.begin(),
+                                         allowed_ip_list.end());
   }
   ip_properties_.method = kTypeVPN;
   return true;

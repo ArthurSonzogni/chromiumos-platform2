@@ -113,7 +113,32 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
   bool ret = true;
 
   IPAddress::Family address_family = properties.address_family;
-  for (const auto& route : properties.routes) {
+
+  // Merge the routes to be installed from |dhcp_classless_static_routes| and
+  // |inclusion_list|.
+  std::vector<IPConfig::Route> included_routes =
+      properties.dhcp_classless_static_routes;
+  for (const auto& prefix_cidr : properties.inclusion_list) {
+    IPAddress prefix(address_family);
+    if (!prefix.SetAddressAndPrefixFromString(prefix_cidr)) {
+      LOG(ERROR) << "Failed to parse prefix " << prefix_cidr;
+      ret = false;
+      continue;
+    }
+    IPConfig::Route route;
+    prefix.IntoString(&route.host);
+    route.prefix = prefix.prefix();
+    route.gateway = properties.gateway;
+    if (route.gateway.empty()) {
+      // Gateway address with all-zeros indicates this route does not have a
+      // gateway.
+      route.gateway =
+          (address_family == IPAddress::kFamilyIPv4) ? "0.0.0.0" : "::";
+    }
+    included_routes.push_back(route);
+  }
+
+  for (const auto& route : included_routes) {
     SLOG(this, 2) << "Installing route:"
                   << " Destination: " << route.host
                   << " Prefix: " << route.prefix

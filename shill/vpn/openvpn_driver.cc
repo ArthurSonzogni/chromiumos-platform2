@@ -410,7 +410,7 @@ void OpenVPNDriver::ParseIPConfiguration(
   // routes *and* that OpenVPN will not re-provide us with all the needed
   // routing information. Simply re-use the routing information we attained from
   // the initial connection.
-  if (!properties->routes.empty())
+  if (!properties->inclusion_list.empty())
     return;
 
   // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
@@ -508,8 +508,8 @@ void OpenVPNDriver::ParseRouteOption(const std::string& key,
 // static
 void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
                               IPConfig::Properties* properties) {
-  std::vector<IPConfig::Route> new_routes;
-  int32_t max_prefix =
+  std::vector<std::string> included_routes;
+  const int32_t max_prefix =
       IPAddress::GetMaxPrefixLength(properties->address_family);
   if (!properties->peer_address.empty()) {
     // --topology net30 or p2p will set ifconfig_remote
@@ -518,9 +518,8 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
     // in RT_TABLE_MAIN instead of our per-device table.  To avoid this,
     // create an explicit host route here, and clear
     // |properties->peer_address.|
-    IPConfig::Route route(properties->peer_address, max_prefix,
-                          properties->address);
-    new_routes.push_back(route);
+    included_routes.push_back(base::StringPrintf(
+        "%s/%d", properties->peer_address.c_str(), max_prefix));
     properties->peer_address.clear();
   } else if (properties->subnet_prefix != max_prefix) {
     // --topology subnet will set ifconfig_netmask instead
@@ -530,10 +529,10 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
                    << properties->address;
     } else {
       network_addr.set_prefix(properties->subnet_prefix);
-
-      IPConfig::Route route(network_addr.GetNetworkPart().ToString(),
-                            properties->subnet_prefix, properties->address);
-      new_routes.push_back(route);
+      const std::string prefix = base::StringPrintf(
+          "%s/%d", network_addr.GetNetworkPart().ToString().c_str(),
+          properties->subnet_prefix);
+      included_routes.push_back(prefix);
     }
   }
 
@@ -545,12 +544,12 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
       LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
       continue;
     }
-    IPConfig::Route new_route(route.host, route.prefix, properties->address);
-    new_routes.push_back(new_route);
+    included_routes.push_back(
+        base::StringPrintf("%s/%d", route.host.c_str(), route.prefix));
   }
 
-  if (!new_routes.empty()) {
-    properties->routes.swap(new_routes);
+  if (!included_routes.empty()) {
+    properties->inclusion_list.swap(included_routes);
   } else if (!properties->default_route) {
     LOG(WARNING) << "No routes provided.";
   }

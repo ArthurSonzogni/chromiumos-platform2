@@ -359,13 +359,9 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
   EXPECT_EQ(driver_->ip_properties_.exclusion_list[0], "123.211.21.29/31");
   EXPECT_EQ(driver_->ip_properties_.exclusion_list[1], "0.0.0.0/0");
   EXPECT_EQ(driver_->ip_properties_.exclusion_list[2], "123.211.21.1/24");
-  EXPECT_EQ(driver_->ip_properties_.routes.size(), 2);
-  EXPECT_EQ(driver_->ip_properties_.routes[0].host, "123.211.61.29");
-  EXPECT_EQ(driver_->ip_properties_.routes[1].host, "123.211.42.29");
-  EXPECT_EQ(driver_->ip_properties_.routes[0].prefix, 7);
-  EXPECT_EQ(driver_->ip_properties_.routes[1].prefix, 17);
-  EXPECT_EQ(driver_->ip_properties_.routes[0].gateway, parameters["address"]);
-  EXPECT_EQ(driver_->ip_properties_.routes[1].gateway, parameters["address"]);
+  EXPECT_EQ(driver_->ip_properties_.inclusion_list.size(), 2);
+  EXPECT_EQ(driver_->ip_properties_.inclusion_list[0], "123.211.61.29/7");
+  EXPECT_EQ(driver_->ip_properties_.inclusion_list[1], "123.211.42.29/17");
   EXPECT_TRUE(error.empty());
   EXPECT_TRUE(warning.empty());
   EXPECT_TRUE(driver_->parameters_expected_);

@@ -285,13 +285,11 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
 
   // Checks IPProperties.
   const auto& ip_properties = driver_->GetIPProperties();
-  EXPECT_THAT(ip_properties.routes,
+  EXPECT_THAT(ip_properties.inclusion_list,
               testing::UnorderedElementsAre(
                   // We do not dedup so this entry appears twice.
-                  IPConfig::Route("192.168.1.2", 32, "0.0.0.0"),
-                  IPConfig::Route("192.168.1.2", 32, "0.0.0.0"),
-                  IPConfig::Route("192.168.2.0", 24, "0.0.0.0"),
-                  IPConfig::Route("192.168.3.0", 24, "0.0.0.0")));
+                  "192.168.1.2/32", "192.168.1.2/32", "192.168.2.0/24",
+                  "192.168.3.0/24"));
 
   // Disconnect.
   EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));

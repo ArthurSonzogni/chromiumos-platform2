@@ -31,7 +31,7 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   IPConfig::Properties properties;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
                                                         &properties));
-  EXPECT_TRUE(properties.routes.empty());
+  EXPECT_TRUE(properties.dhcp_classless_static_routes.empty());
   EXPECT_TRUE(properties.included_dsts.empty());
   EXPECT_TRUE(properties.gateway.empty());
 
@@ -42,7 +42,7 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
       kBrokenClasslessRoutes0 + " " + kBrokenRouter1;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
                                                         &properties));
-  EXPECT_TRUE(properties.routes.empty());
+  EXPECT_TRUE(properties.dhcp_classless_static_routes.empty());
   EXPECT_TRUE(properties.included_dsts.empty());
   EXPECT_EQ(kRouter0, properties.gateway);
 
@@ -57,14 +57,14 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
 
   // The two routes (including the one which would have otherwise been
   // classified as a default route) are added to the routing table.
-  EXPECT_EQ(2, properties.routes.size());
+  EXPECT_EQ(2, properties.dhcp_classless_static_routes.size());
   EXPECT_EQ(2, properties.included_dsts.size());
-  const IPConfig::Route& route0 = properties.routes[0];
+  const IPConfig::Route& route0 = properties.dhcp_classless_static_routes[0];
   EXPECT_EQ(kDefaultAddress, route0.host);
   EXPECT_EQ(0, route0.prefix);
   EXPECT_EQ(kRouter2, route0.gateway);
 
-  const IPConfig::Route& route1 = properties.routes[1];
+  const IPConfig::Route& route1 = properties.dhcp_classless_static_routes[1];
   EXPECT_EQ(kAddress1, route1.host);
   EXPECT_EQ(24, route1.prefix);
   EXPECT_EQ(kRouter1, route1.gateway);
@@ -72,7 +72,7 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   // A malformed routing table should not affect the current table.
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
                                                         &properties));
-  EXPECT_EQ(2, properties.routes.size());
+  EXPECT_EQ(2, properties.dhcp_classless_static_routes.size());
   EXPECT_EQ(2, properties.included_dsts.size());
   EXPECT_EQ(kRouter0, properties.gateway);
 }
