@@ -109,7 +109,7 @@ network interface.
         *   See also [vpn.md](vpn.md)
     *   [WiFi class](../wifi/wifi.h)
 
-![Device Inheritance](images/device_inheritance.png)
+![Device Inheritance](https://storage.googleapis.com/chromium-website-lob-storage/16d9864a22c27acc9058dab23d8afa7c1ef711d6)
 
 *   `Device` instances are managed by [DeviceInfo](#DeviceInfo).
     *   Exception: `VirtualDevice` instances corresponding to virtual interfaces
@@ -129,7 +129,7 @@ singleton instances owned by [Manager](#Manager).
     *   [EthernetProvider class](../ethernet/ethernet_provider.h)
     *   [VpnProvider class](../vpn/vpn_provider.h)
     *   [WiFiProvider class](../wifi/wifi_provider.h)
-[![Provider Inheritance](images/provider_inheritance.svg)][ProviderInheritance]
+[![Provider Inheritance](https://storage.googleapis.com/chromium-website-lob-storage/1ca5af01448a1f4580b5dacb22bed8d7cffa0f16)][ProviderInheritance]
 *   `ServiceProvider` instances create new `Services` from the persisted state
     in the [Profile](#Profile) and/or properties from the D-Bus interface.
     *   See [CellularServiceProvider](cellular.md#CellularServiceProvider)
@@ -167,7 +167,7 @@ network configuration and a connection through an associated
         *   See also [vpn.md](vpn.md)
     *   [WiFiService class](../wifi/wifi_service.h)
 
-![Service Inheritance](images/service_inheritance.png)
+![Service Inheritance](https://storage.googleapis.com/chromium-website-lob-storage/44c323a47d23b956035c9dd714bb2a1d494a2dd5)
 
 *   A `Service` has an associated `Device` instance, stored as a type specific
     `RefPtr` in the subclass.
@@ -212,7 +212,7 @@ and a per-user Profile when a user is logged in.
     `WiFiService` that was created from a WiFi scan but that the user has never
     attempted to configure or connect to.
 
-![Profile Inheritance](images/profile_inheritance.png)
+![Profile Inheritance](https://storage.googleapis.com/chromium-website-lob-storage/5dba6837e02797273e55a0311bcf9ea99f1a1a53){inl}
 
 *   A `Service` can be "linked" to a different `Profile` through the use of the
     `Service` kProfileProperty D-Bus property, which is how `Service` instances

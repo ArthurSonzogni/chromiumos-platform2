@@ -30,7 +30,7 @@ Each of these types has a corresponding `VPNDriver` child which contains the
 functionality needed on the Shill-side to support that VPN solution (note that
 Shill's involvement varies between different types of VPNs):
 
-![VPNDriver Inheritance](images/vpn_driver_inheritance.png)
+![VPNDriver Inheritance](https://storage.googleapis.com/chromium-website-lob-storage/3c5afd9bada7cc8f1d3bfe735d28824aed309d5c)
 
 When a `VPNService` is created by `VPNProvider` (whether from a `Manager`
 ConfigureService D-Bus call or from a `Profile` containing an already-configured
