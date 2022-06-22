@@ -3643,6 +3643,25 @@ user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
   AssertOnMountThread();
   user_data_auth::GetHibernateSecretReply reply;
 
+  // If there's an auth_session_id, use that to create the hibernate
+  // secret on demand (otherwise it's not available until later).
+  if (!request.auth_session_id().empty()) {
+    CryptohomeStatusOr<AuthSession*> auth_session_status =
+        GetAuthenticatedAuthSession(request.auth_session_id());
+    if (!auth_session_status.ok()) {
+      LOG(ERROR) << "Invalid AuthSession for HibernateSecret.";
+      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+      return reply;
+    }
+
+    std::unique_ptr<brillo::SecureBlob> secret =
+        auth_session_status.value()->GetHibernateSecret();
+
+    reply.set_hibernate_secret(secret->to_string());
+    return reply;
+  }
+
+  LOG(INFO) << "Getting the hibernate secret via legacy account_id";
   if (!request.has_account_id()) {
     LOG(ERROR) << "GetHibernateSecretRequest must have account_id.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);

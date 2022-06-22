@@ -219,6 +219,9 @@ class AuthSession final {
   // Get the time remaining for this AuthSession's life.
   base::TimeDelta GetRemainingTime();
 
+  // Get the hibernate secret, derived from the file system keyset.
+  std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
+
  private:
   AuthSession() = delete;
   // AuthSessionTimedOut is called when the session times out and cleans up

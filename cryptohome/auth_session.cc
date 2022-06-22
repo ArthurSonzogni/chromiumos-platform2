@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
+#include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
@@ -44,6 +45,7 @@ using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::HmacSha256;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -60,6 +62,8 @@ constexpr int kHighTokenOffset = 0;
 constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 // AuthSession will time out if it is active after this time interval.
 constexpr base::TimeDelta kAuthSessionTimeout = base::Minutes(5);
+// Message to use when generating a secret for hibernate.
+constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
@@ -1545,6 +1549,15 @@ base::TimeDelta AuthSession::GetRemainingTime() {
   auto time_passed = base::TimeTicks::Now() - start_time_;
   auto time_left = timer_.GetCurrentDelay() - time_passed;
   return time_left;
+}
+
+std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
+  const FileSystemKeyset& fs_keyset = file_system_keyset();
+  const std::string message(kHibernateSecretHmacMessage);
+
+  return std::make_unique<brillo::SecureBlob>(HmacSha256(
+      brillo::SecureBlob::Combine(fs_keyset.Key().fnek, fs_keyset.Key().fek),
+      brillo::Blob(message.cbegin(), message.cend())));
 }
 
 }  // namespace cryptohome

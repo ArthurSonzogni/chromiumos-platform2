@@ -625,6 +625,41 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
               Eq(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION));
 }
 
+TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
+  AuthSession* auth_session =
+      auth_session_manager_->CreateAuthSession(kUsername, 0);
+
+  // Verify an unauthenticated session fails in producing a hibernate secret.
+  user_data_auth::GetHibernateSecretRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  user_data_auth::GetHibernateSecretReply hs_reply =
+      userdataauth_.GetHibernateSecret(request);
+  ASSERT_NE(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_FALSE(hs_reply.hibernate_secret().length());
+}
+
+TEST_F(AuthSessionInterfaceTest, GetHibernateSecretTest) {
+  AuthSession* auth_session =
+      auth_session_manager_->CreateAuthSession(kUsername, 0);
+  ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
+  ExpectVaultKeyset();
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  base::MockCallback<AuthenticateCallback> on_done;
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+  // Evaluate error returned by callback.
+  ASSERT_EQ(reply.error(), MOUNT_ERROR_NONE);
+
+  // Verify that a successfully authenticated session produces a hibernate
+  // secret.
+  user_data_auth::GetHibernateSecretRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  user_data_auth::GetHibernateSecretReply hs_reply =
+      userdataauth_.GetHibernateSecret(request);
+  ASSERT_EQ(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_TRUE(hs_reply.hibernate_secret().length());
+}
+
 }  // namespace
 
 }  // namespace cryptohome
