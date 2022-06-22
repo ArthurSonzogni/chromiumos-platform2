@@ -39,10 +39,6 @@ class FinalizeStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
 
-  void RegisterSignalSender(FinalizeSignalCallback callback) override {
-    finalize_signal_sender_ = callback;
-  }
-
   RmadErrorCode InitializeState() override;
   void RunState() override;
   void CleanUpState() override;
@@ -60,7 +56,6 @@ class FinalizeStateHandler : public BaseStateHandler {
   void FinalizeTask();
 
   FinalizeStatus status_;
-  FinalizeSignalCallback finalize_signal_sender_;
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;

@@ -48,7 +48,6 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
       unencrypted_preserve_path_(kDefaultUnencryptedPreservePath),
-      power_cable_signal_sender_(base::DoNothing()),
       locked_error_(RMAD_ERROR_NOT_SET) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
@@ -69,7 +68,6 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       unencrypted_preserve_path_(unencrypted_preserve_path),
-      power_cable_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       crossystem_utils_(std::move(crossystem_utils)),
       sys_utils_(std::move(sys_utils)),
@@ -205,7 +203,8 @@ void RepairCompleteStateHandler::Cutoff() {
 }
 
 void RepairCompleteStateHandler::SendPowerCableStateSignal() {
-  power_cable_signal_sender_.Run(sys_utils_->IsPowerSourcePresent());
+  daemon_callback_->GetPowerCableSignalCallback().Run(
+      sys_utils_->IsPowerSourcePresent());
 }
 
 }  // namespace rmad

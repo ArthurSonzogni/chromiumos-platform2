@@ -52,8 +52,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
       bool is_cros_debug,
       bool* factory_mode_toggled = nullptr,
       bool* reboot_toggled = nullptr) {
-    // Mock |Cr50Utils|, |CrosSystemUtils|, |CryptohomeClient| and
-    // |PowerManagerClient|.
+    // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<StrictMock<MockCrosSystemUtils>>();
     {
@@ -71,6 +70,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
       }
     }
 
+    // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
         .WillByDefault(Return(factory_mode_enabled));
@@ -80,6 +80,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
                                Return(enable_factory_mode_success)));
     }
 
+    // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
     if (reboot_toggled) {
@@ -87,16 +88,15 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
           .WillByDefault(DoAll(Assign(reboot_toggled, true), Return(true)));
     }
 
-    auto handler =
-        base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
-            json_store_, daemon_callback_, GetTempDirPath(),
-            std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
-            std::move(mock_power_manager_client));
-    auto callback =
+    // Register signal callback.
+    daemon_callback_->SetWriteProtectSignalCallback(
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
-                            base::Unretained(&signal_sender_));
-    handler->RegisterSignalSender(callback);
-    return handler;
+                            base::Unretained(&signal_sender_)));
+
+    return base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
+        json_store_, daemon_callback_, GetTempDirPath(),
+        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
+        std::move(mock_power_manager_client));
   }
 
  protected:

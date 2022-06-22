@@ -53,6 +53,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, DisableFactoryMode())
         .WillByDefault(Return(disable_factory_mode_success));
+
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<StrictMock<MockCrosSystemUtils>>();
@@ -64,19 +65,20 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
             .WillOnce(DoAll(SetArgPointee<1>(wp_status_list[i]), Return(true)));
       }
     }
+
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
     ON_CALL(*mock_flashrom_utils, EnableSoftwareWriteProtection())
         .WillByDefault(Return(enable_swwp_success));
 
-    auto handler = base::MakeRefCounted<FinalizeStateHandler>(
+    // Register signal callback.
+    daemon_callback_->SetFinalizeSignalCallback(
+        base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
+                            base::Unretained(&signal_sender_)));
+
+    return base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, std::move(mock_cr50_utils),
         std::move(mock_crossystem_utils), std::move(mock_flashrom_utils));
-    auto callback =
-        base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
-                            base::Unretained(&signal_sender_));
-    handler->RegisterSignalSender(callback);
-    return handler;
   }
 
  protected:

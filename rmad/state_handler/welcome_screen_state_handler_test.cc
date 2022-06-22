@@ -32,7 +32,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
   class SignalSender {
    public:
     MOCK_METHOD(void,
-                SendHardwareVerificationResultSignal,
+                SendHardwareVerificationSignal,
                 (const HardwareVerificationResult&),
                 (const));
   };
@@ -57,14 +57,15 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
                 return false;
               }
             });
-    auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
+
+    // Register signal callback.
+    daemon_callback_->SetHardwareVerificationSignalCallback(
+        base::BindRepeating(&SignalSender::SendHardwareVerificationSignal,
+                            base::Unretained(&signal_sender_)));
+
+    return base::MakeRefCounted<WelcomeScreenStateHandler>(
         json_store_, daemon_callback_,
         std::move(mock_hardware_verifier_client));
-    auto callback =
-        base::BindRepeating(&SignalSender::SendHardwareVerificationResultSignal,
-                            base::Unretained(&signal_sender_));
-    handler->RegisterSignalSender(callback);
-    return handler;
   }
 
  protected:
@@ -79,7 +80,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
   auto handler = CreateStateHandler(1);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendHardwareVerificationResultSignal(_))
+  EXPECT_CALL(signal_sender_, SendHardwareVerificationSignal(_))
       .WillOnce(Invoke([](const HardwareVerificationResult& result) {
         EXPECT_EQ(result.is_compliant(), true);
         EXPECT_EQ(result.error_str(), "mock_hardware_verifier_error_string");

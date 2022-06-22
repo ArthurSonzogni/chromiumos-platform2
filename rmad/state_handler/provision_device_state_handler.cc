@@ -89,7 +89,6 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
-      provision_signal_sender_(base::DoNothing()),
       should_calibrate_(false),
       sensor_integrity_(false) {
   power_manager_client_ =
@@ -116,7 +115,6 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      provision_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
@@ -335,7 +333,7 @@ bool ProvisionDeviceStateHandler::CheckSensorStatusIntegrity(
 
 void ProvisionDeviceStateHandler::SendStatusSignal() {
   const ProvisionStatus& status = GetProgress();
-  provision_signal_sender_.Run(status);
+  daemon_callback_->GetProvisionSignalCallback().Run(status);
   if (status.status() != ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS) {
     StopStatusTimer();
   }

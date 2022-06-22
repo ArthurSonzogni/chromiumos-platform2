@@ -41,8 +41,7 @@ FakeFinalizeStateHandler::FakeFinalizeStateHandler(
 FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback),
-      finalize_signal_sender_(base::DoNothing()) {
+    : BaseStateHandler(json_store, daemon_callback) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
@@ -55,7 +54,6 @@ FinalizeStateHandler::FinalizeStateHandler(
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      finalize_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
@@ -122,7 +120,7 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
 }
 
 void FinalizeStateHandler::SendStatusSignal() {
-  finalize_signal_sender_.Run(status_);
+  daemon_callback_->GetFinalizeSignalCallback().Run(status_);
 }
 
 void FinalizeStateHandler::StartStatusTimer() {

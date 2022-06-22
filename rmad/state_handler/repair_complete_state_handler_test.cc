@@ -42,7 +42,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(void, SendPowerCableStateSignal, (bool), (const));
+    MOCK_METHOD(void, SendPowerCableSignal, (bool), (const));
   };
 
   scoped_refptr<RepairCompleteStateHandler> CreateStateHandler(
@@ -68,6 +68,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       ON_CALL(*mock_power_manager_client, Shutdown())
           .WillByDefault(Return(true));
     }
+
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
@@ -75,28 +76,28 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
             GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
         .WillByDefault(
             DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
+
     // Mock |SysUtils|.
     auto mock_sys_utils = std::make_unique<NiceMock<MockSysUtils>>();
     ON_CALL(*mock_sys_utils, IsPowerSourcePresent())
         .WillByDefault(Return(true));
+
     // Mock |MetricsUtils|.
     auto mock_metrics_utils = std::make_unique<NiceMock<MockMetricsUtils>>();
     ON_CALL(*mock_metrics_utils, Record(_, _))
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
 
-    auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
+    // Register signal callback.
+    ON_CALL(signal_sender_, SendPowerCableSignal(_)).WillByDefault(Return());
+    daemon_callback_->SetPowerCableSignalCallback(
+        base::BindRepeating(&SignalSender::SendPowerCableSignal,
+                            base::Unretained(&signal_sender_)));
+
+    return base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(), GetTempDirPath(),
         std::move(mock_power_manager_client), std::move(mock_crossystem_utils),
         std::move(mock_sys_utils), std::move(mock_metrics_utils));
-    auto callback =
-        base::BindRepeating(&SignalSender::SendPowerCableStateSignal,
-                            base::Unretained(&signal_sender_));
-    handler->RegisterSignalSender(std::move(callback));
-
-    ON_CALL(signal_sender_, SendPowerCableStateSignal(_))
-        .WillByDefault(Return());
-    return handler;
   }
 
   base::FilePath GetPowerwashCountFilePath() const {
@@ -142,10 +143,8 @@ TEST_F(RepairCompleteStateHandlerTest,
   handler->RunState();
 
   // Override signal sender mock.
-  EXPECT_CALL(signal_sender_, SendPowerCableStateSignal(_))
-      .WillOnce([](bool is_connected) {
-        EXPECT_TRUE(is_connected);
-      });
+  EXPECT_CALL(signal_sender_, SendPowerCableSignal(_))
+      .WillOnce([](bool is_connected) { EXPECT_TRUE(is_connected); });
   task_environment_.FastForwardBy(
       RepairCompleteStateHandler::kReportPowerCableInterval);
 

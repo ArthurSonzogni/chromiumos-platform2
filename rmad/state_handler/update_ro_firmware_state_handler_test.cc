@@ -39,27 +39,30 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
                                   ro_verified);
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
+
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
     ON_CALL(*mock_crossystem_utils,
             GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(hwwp_status), Return(true)));
+
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
+
     // Mock |CrosDisksClient|.
     auto mock_cros_disks_client =
         std::make_unique<NiceMock<MockCrosDisksClient>>();
+
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
 
-    auto handler = base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
+    return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
         json_store_, daemon_callback_, std::move(mock_cmd_utils),
         std::move(mock_crossystem_utils), std::move(mock_flashrom_utils),
         std::move(mock_cros_disks_client),
         std::move(mock_power_manager_client));
-    return handler;
   }
 
  protected:

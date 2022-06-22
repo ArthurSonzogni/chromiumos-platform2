@@ -42,11 +42,6 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
 
-  void RegisterSignalSender(
-      base::RepeatingCallback<void(bool)> callback) override {
-    write_protect_signal_sender_ = callback;
-  }
-
   RmadErrorCode InitializeState() override;
   void RunState() override;
   void CleanUpState() override;
@@ -77,7 +72,6 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
 
   base::OneShotTimer reboot_timer_;
   base::RepeatingTimer signal_timer_;
-  base::RepeatingCallback<void(bool)> write_protect_signal_sender_;
 
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;

@@ -45,11 +45,6 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kRepairComplete);
   SET_UNREPEATABLE;
 
-  void RegisterSignalSender(
-      base::RepeatingCallback<void(bool)> callback) override {
-    power_cable_signal_sender_ = callback;
-  }
-
   RmadErrorCode InitializeState() override;
   void RunState() override;
   void CleanUpState() override;
@@ -80,7 +75,6 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   base::FilePath unencrypted_preserve_path_;
 
   base::RepeatingTimer power_cable_timer_;
-  base::RepeatingCallback<void(bool)> power_cable_signal_sender_;
 
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;

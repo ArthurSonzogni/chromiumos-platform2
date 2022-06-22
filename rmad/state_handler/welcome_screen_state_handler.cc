@@ -35,8 +35,7 @@ FakeWelcomeScreenStateHandler::FakeWelcomeScreenStateHandler(
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback),
-      hardware_verification_signal_sender_(base::DoNothing()) {
+    : BaseStateHandler(json_store, daemon_callback) {
   hardware_verifier_client_ =
       std::make_unique<HardwareVerifierClientImpl>(GetSystemBus());
 }
@@ -85,7 +84,7 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
 void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   HardwareVerificationResult result;
   if (hardware_verifier_client_->GetHardwareVerificationResult(&result)) {
-    hardware_verification_signal_sender_.Run(result);
+    daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
   } else {
     LOG(ERROR) << "Failed to get hardware verification result";
   }

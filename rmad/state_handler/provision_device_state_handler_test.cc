@@ -87,8 +87,10 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_power_manager_client, Restart())
         .WillByDefault(DoAll(Assign(&reboot_called_, true), Return(true)));
 
+    // Mock |CbiUtils|.
     auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
 
+    // Mock |CrosConfigUtils|.
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
     if (get_model_name) {
       ON_CALL(*cros_config_utils, GetModelName(_))
@@ -98,17 +100,19 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       ON_CALL(*cros_config_utils, GetModelName(_)).WillByDefault(Return(false));
     }
 
+    // Mock |CrosSystemUtils|.
     auto crossystem_utils = std::make_unique<NiceMock<MockCrosSystemUtils>>();
     ON_CALL(*crossystem_utils, GetInt(Eq(kHwwpProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(hw_wp_enabled), Return(true)));
 
+    // Mock |IioSensorProbeUtils|.
     auto iio_sensor_probe_utils =
         std::make_unique<NiceMock<MockIioSensorProbeUtils>>();
     ON_CALL(*iio_sensor_probe_utils, Probe())
         .WillByDefault(Return(probed_components));
 
+    // Mock |SsfcUtils|.
     auto ssfc_utils = std::make_unique<NiceMock<MockSsfcUtils>>();
-
     if (need_update_ssfc) {
       ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
           .WillByDefault(DoAll(SetArgPointee<1>(true),
@@ -119,22 +123,22 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
           .WillByDefault(DoAll(SetArgPointee<1>(false), Return(true)));
     }
 
+    // Mock |VpdUtils|.
     auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
     ON_CALL(*vpd_utils, SetStableDeviceSecret(_))
         .WillByDefault(Return(set_stable_dev_secret));
     ON_CALL(*vpd_utils, FlushOutRoVpdCache()).WillByDefault(Return(flush_vpd));
 
-    // Fake |HardwareVerifierUtils|.
-    auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
+    // Register signal callback.
+    daemon_callback_->SetProvisionSignalCallback(
+        base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
+                            base::Unretained(&signal_sender_)));
+
+    return base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, std::move(mock_power_manager_client),
         std::move(cbi_utils), std::move(cros_config_utils),
         std::move(crossystem_utils), std::move(iio_sensor_probe_utils),
         std::move(ssfc_utils), std::move(vpd_utils));
-    auto callback =
-        base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
-                            base::Unretained(&signal_sender_));
-    handler->RegisterSignalSender(callback);
-    return handler;
   }
 
   void RunHandlerTaskRunner(

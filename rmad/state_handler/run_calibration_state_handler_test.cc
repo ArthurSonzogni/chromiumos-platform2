@@ -75,6 +75,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
       const std::vector<double>& base_gyro_progress,
       bool lid_gyro_calibration,
       const std::vector<double>& lid_gyro_progress) {
+    // Mock |SensorCalibrationUtils|.
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> base_acc_utils =
         std::make_unique<StrictMock<MockSensorCalibrationUtils>>("base", "acc");
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> lid_acc_utils =
@@ -123,7 +124,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     }
 
     // To PostTask into TaskRunner, we ignore the return value of Calibrate.
-    // However, it will cause mock leaksin unittest, we use StrictMock and
+    // However, it will cause mock leaks in unittest. We use StrictMock and
     // EXPEXT_CALL to ensure the results, and then we Use AllowLeak to prevent
     // warnings.
     testing::Mock::AllowLeak(base_acc_utils.get());
@@ -131,22 +132,18 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     testing::Mock::AllowLeak(base_gyro_utils.get());
     testing::Mock::AllowLeak(lid_gyro_utils.get());
 
-    auto handler = base::MakeRefCounted<RunCalibrationStateHandler>(
+    // Register signal callbacks.
+    daemon_callback_->SetCalibrationOverallSignalCallback(base::BindRepeating(
+        &SignalSender::SendCalibrationOverallSignal,
+        base::Unretained(&signal_calibration_overall_sender_)));
+    daemon_callback_->SetCalibrationComponentSignalCallback(base::BindRepeating(
+        &SignalSender::SendCalibrationProgressSignal,
+        base::Unretained(&signal_calibration_component_sender_)));
+
+    return base::MakeRefCounted<RunCalibrationStateHandler>(
         json_store_, daemon_callback_, std::move(base_acc_utils),
         std::move(lid_acc_utils), std::move(base_gyro_utils),
         std::move(lid_gyro_utils));
-
-    auto callback_overall = base::BindRepeating(
-        &SignalSender::SendCalibrationOverallSignal,
-        base::Unretained(&signal_calibration_overall_sender_));
-    handler->RegisterSignalSender(callback_overall);
-
-    auto callback_component = base::BindRepeating(
-        &SignalSender::SendCalibrationProgressSignal,
-        base::Unretained(&signal_calibration_component_sender_));
-    handler->RegisterSignalSender(callback_component);
-
-    return handler;
   }
 
   void QueueProgress(CalibrationComponentStatus progress) {

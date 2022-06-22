@@ -44,8 +44,7 @@ WriteProtectDisablePhysicalStateHandler::
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
-      working_dir_path_(kDefaultWorkingDirPath),
-      write_protect_signal_sender_(base::DoNothing()) {
+      working_dir_path_(kDefaultWorkingDirPath) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   power_manager_client_ =
@@ -62,7 +61,6 @@ WriteProtectDisablePhysicalStateHandler::
         std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
-      write_protect_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       power_manager_client_(std::move(power_manager_client)) {}
@@ -145,7 +143,7 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
   if (IsHwwpDisabled()) {
     signal_timer_.Stop();
     if (CanSkipEnablingFactoryMode()) {
-      write_protect_signal_sender_.Run(false);
+      daemon_callback_->GetWriteProtectSignalCallback().Run(false);
     } else {
       reboot_timer_.Start(
           FROM_HERE, kRebootDelay, this,

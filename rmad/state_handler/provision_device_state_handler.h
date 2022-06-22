@@ -56,10 +56,6 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kProvisionDevice);
   SET_REPEATABLE;
 
-  void RegisterSignalSender(ProvisionSignalCallback callback) override {
-    provision_signal_sender_ = callback;
-  }
-
   RmadErrorCode InitializeState() override;
   void RunState() override;
   void CleanUpState() override;
@@ -97,7 +93,6 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   bool IsHwwpDisabled() const;
 
   ProvisionStatus status_;
-  ProvisionSignalCallback provision_signal_sender_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;

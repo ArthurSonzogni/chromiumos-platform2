@@ -36,8 +36,7 @@ FakeWriteProtectEnablePhysicalStateHandler::
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback),
-      write_protect_signal_sender_(base::DoNothing()) {
+    : BaseStateHandler(json_store, daemon_callback) {
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
@@ -48,7 +47,6 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      write_protect_signal_sender_(base::DoNothing()),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
 
@@ -108,7 +106,7 @@ void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
     return;
   }
   if (hwwp_status == 1) {
-    write_protect_signal_sender_.Run(true);
+    daemon_callback_->GetWriteProtectSignalCallback().Run(true);
     timer_.Stop();
   }
 }

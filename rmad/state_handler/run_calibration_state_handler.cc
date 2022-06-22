@@ -37,9 +37,7 @@ FakeRunCalibrationStateHandler::FakeRunCalibrationStateHandler(
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback),
-      calibration_overall_signal_sender_(base::DoNothing()),
-      calibration_component_signal_sender_(base::DoNothing()) {
+    : BaseStateHandler(json_store, daemon_callback) {
   vpd_utils_thread_safe_ = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::make_unique<AccelerometerCalibrationUtilsImpl>(
@@ -62,9 +60,7 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils)
-    : BaseStateHandler(json_store, daemon_callback),
-      calibration_overall_signal_sender_(base::DoNothing()),
-      calibration_component_signal_sender_(base::DoNothing()) {
+    : BaseStateHandler(json_store, daemon_callback) {
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
@@ -191,7 +187,7 @@ RunCalibrationStateHandler::TryGetNextStateCaseAtBoot() {
 
 bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
   if (!GetCalibrationMap(json_store_, &calibration_map_)) {
-    calibration_overall_signal_sender_.Run(
+    daemon_callback_->GetCalibrationOverallSignalCallback().Run(
         RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     LOG(ERROR) << "Failed to read calibration variables";
     return false;
@@ -199,14 +195,15 @@ bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
 
   running_instruction_ = GetCurrentSetupInstruction(calibration_map_);
   if (running_instruction_ == RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK) {
-    calibration_overall_signal_sender_.Run(
+    daemon_callback_->GetCalibrationOverallSignalCallback().Run(
         RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     return true;
   }
 
   if (running_instruction_ ==
       RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-    calibration_overall_signal_sender_.Run(RMAD_CALIBRATION_OVERALL_COMPLETE);
+    daemon_callback_->GetCalibrationOverallSignalCallback().Run(
+        RMAD_CALIBRATION_OVERALL_COMPLETE);
     return true;
   }
 
@@ -296,19 +293,20 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
     if (!in_progress) {
       failed |= (vpd_utils_thread_safe_.get() &&
                  !vpd_utils_thread_safe_->FlushOutRoVpdCache());
+      CalibrationOverallStatus overall_status;
       if (failed) {
-        calibration_overall_signal_sender_.Run(
-            CalibrationOverallStatus::
-                RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
+        overall_status = CalibrationOverallStatus::
+            RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED;
       } else if (GetCurrentSetupInstruction(calibration_map_) ==
                  RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-        calibration_overall_signal_sender_.Run(
-            CalibrationOverallStatus::RMAD_CALIBRATION_OVERALL_COMPLETE);
+        overall_status =
+            CalibrationOverallStatus::RMAD_CALIBRATION_OVERALL_COMPLETE;
       } else {
-        calibration_overall_signal_sender_.Run(
-            CalibrationOverallStatus::
-                RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
+        overall_status = CalibrationOverallStatus::
+            RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE;
       }
+      daemon_callback_->GetCalibrationOverallSignalCallback().Run(
+          overall_status);
     }
   }
 
@@ -316,7 +314,8 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
   component_status.set_component(component);
   component_status.set_status(status);
   component_status.set_progress(progress);
-  calibration_component_signal_sender_.Run(std::move(component_status));
+  daemon_callback_->GetCalibrationComponentSignalCallback().Run(
+      std::move(component_status));
 
   if (status != CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS) {
     progress_timer_map_[component]->Stop();

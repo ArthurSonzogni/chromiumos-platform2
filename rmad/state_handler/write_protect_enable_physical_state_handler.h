@@ -35,11 +35,6 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<FlashromUtils> flashrom_utils);
 
-  void RegisterSignalSender(
-      base::RepeatingCallback<void(bool)> callback) override {
-    write_protect_signal_sender_ = callback;
-  }
-
   ASSIGN_STATE(RmadState::StateCase::kWpEnablePhysical);
   SET_UNREPEATABLE;
 
@@ -55,7 +50,6 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   void CheckWriteProtectOnTask();
 
   base::RepeatingTimer timer_;
-  base::RepeatingCallback<void(bool)> write_protect_signal_sender_;
 
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;

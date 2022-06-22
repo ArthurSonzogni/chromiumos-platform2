@@ -51,19 +51,20 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
             .WillOnce(DoAll(SetArgPointee<1>(wp_status_list[i]), Return(true)));
       }
     }
+
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
     ON_CALL(*mock_flashrom_utils, EnableSoftwareWriteProtection())
         .WillByDefault(Return(enable_swwp_success));
 
-    auto handler = base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
+    // Register signal callback.
+    daemon_callback_->SetWriteProtectSignalCallback(
+        base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
+                            base::Unretained(&signal_sender_)));
+
+    return base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
         json_store_, daemon_callback_, std::move(mock_crossystem_utils),
         std::move(mock_flashrom_utils));
-    auto callback =
-        base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
-                            base::Unretained(&signal_sender_));
-    handler->RegisterSignalSender(callback);
-    return handler;
   }
 
  protected:
