@@ -89,7 +89,8 @@ bool ValidateRule(const std::string& rule);
 void UMALogDeviceAttached(MetricsLibrary* metrics,
                           const std::string& rule,
                           UMADeviceRecognized recognized,
-                          UMAEventTiming timing);
+                          UMAEventTiming timing,
+                          bool isExternal = false);
 
 // Returns the path where the user DB should be written if there is a user
 // signed in and CrOS is unlocked. Otherwise, returns an empty path. In the

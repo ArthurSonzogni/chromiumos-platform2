@@ -144,6 +144,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
 
   std::string global_key = Hash(devpath);
   EntryMap* global_map = global_db_.Get().mutable_entries();
+  auto global_devpaths = global_db_.Get().mutable_devpaths();
 
   switch (action) {
     case UdevAction::kAdd: {
@@ -184,15 +185,30 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
         if (user_db_read_only_) {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLocked);
+          if (IsExternalDevice(devpath)) {
+            UMALogDeviceAttached(&metrics_, rule, new_entry,
+                                 UMAEventTiming::kLocked, true);
+          }
         } else {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLoggedIn);
+          if (IsExternalDevice(devpath)) {
+            UMALogDeviceAttached(&metrics_, rule, new_entry,
+                                 UMAEventTiming::kLoggedIn, true);
+          }
           (*user_db_.Get().mutable_entries())[user_key] = entry;
         }
       }
+
+      (*global_devpaths)[global_key] = devpath;
       return PersistChanges();
     }
     case UdevAction::kRemove: {
+      auto itr_devpath = global_devpaths->find(global_key);
+      if (itr_devpath != global_devpaths->end()) {
+        global_devpaths->erase(itr_devpath);
+      }
+
       // We only remove entries from the global db here because it represents
       // allow-list rules for the current state of the system. These entries
       // cannot be generated on-the-fly because of mode switching devices, and
@@ -231,9 +247,18 @@ bool EntryManager::HandleUserLogin() {
           user_entries->find(user_key) == user_entries->end()
               ? UMADeviceRecognized::kUnrecognized
               : UMADeviceRecognized::kRecognized;
+
+      const auto& global_key = entry.first;
+      const auto& devpaths = global_db_.Get().devpaths();
+
       for (const auto& rule : entry.second.rules()) {
         UMALogDeviceAttached(&metrics_, rule, new_entry,
                              UMAEventTiming::kLoggedOut);
+        if (devpaths.find(global_key) != devpaths.end() &&
+            IsExternalDevice(devpaths.find(global_key)->second)) {
+          UMALogDeviceAttached(&metrics_, rule, new_entry,
+                               UMAEventTiming::kLoggedOut, true);
+        }
       }
       (*user_entries)[user_key] = entry.second;
     }
@@ -290,6 +315,18 @@ bool EntryManager::PersistChanges() {
     success = false;
   }
   return success;
+}
+
+bool EntryManager::IsExternalDevice(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+  std::string panel;
+  if (!base::ReadFileToString(
+          normalized_devpath.Append("physical_location/panel"), &panel)) {
+    return false;
+  }
+  base::TrimWhitespaceASCII(panel, base::TRIM_TRAILING, &panel);
+  return (panel != "unknown");
 }
 
 }  // namespace usb_bouncer

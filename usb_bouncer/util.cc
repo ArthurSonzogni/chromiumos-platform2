@@ -55,6 +55,8 @@ constexpr char kSysFSAuthorized[] = "authorized";
 constexpr char kSysFSEnabled[] = "1";
 
 constexpr char kUmaDeviceAttachedHistogram[] = "ChromeOS.USB.DeviceAttached";
+constexpr char kUmaExternalDeviceAttachedHistogram[] =
+    "ChromeOS.USB.ExternalDeviceAttached";
 
 constexpr int kMaxWriteAttempts = 10;
 constexpr int kAttemptDelayMicroseconds = 10000;
@@ -461,7 +463,8 @@ bool ValidateRule(const std::string& rule) {
 void UMALogDeviceAttached(MetricsLibrary* metrics,
                           const std::string& rule,
                           UMADeviceRecognized recognized,
-                          UMAEventTiming timing) {
+                          UMAEventTiming timing,
+                          bool isExternal) {
   usbguard::Rule parsed_rule = GetRuleFromString(rule);
   if (!parsed_rule) {
     return;
@@ -475,6 +478,14 @@ void UMALogDeviceAttached(MetricsLibrary* metrics,
                          to_string(recognized).c_str(),
                          to_string(GetClassFromRule(parsed_rule)).c_str()),
       static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
+
+  if (isExternal) {
+    metrics->SendEnumToUMA(
+        base::StringPrintf("%s.%s.%s", kUmaExternalDeviceAttachedHistogram,
+                           to_string(recognized).c_str(),
+                           to_string(GetClassFromRule(parsed_rule)).c_str()),
+        static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
+  }
 }
 
 base::FilePath GetUserDBDir() {

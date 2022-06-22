@@ -42,4 +42,9 @@ message RuleDB{
   // determine there was no mode-switch these entries expire and are removed on
   // the next call to `usb_bouncer::EntryManager::GarbageCollect`.
   map<string, RuleEntry> trash = 2;
+
+  // Used by the global_db only. Given a global_db key, map to the devpath. A
+  // new entry is added when an udev event occurs. This is used to refer to
+  // device sysfs even without udev event.
+  map<string, string> devpaths = 3;
 }

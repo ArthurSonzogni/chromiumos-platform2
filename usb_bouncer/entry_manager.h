@@ -91,6 +91,8 @@ class EntryManager {
 
   bool PersistChanges();
 
+  bool IsExternalDevice(const std::string& devpath);
+
   // Represents whether the lock screen is being shown.
   bool user_db_read_only_;
 
