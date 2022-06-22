@@ -33,7 +33,7 @@ UserSecretStash is a universal key store which each credential wraps.
 
 The user storage APIs are now split into two operations: Create and Prepare,
 with Create being available for persistent users. All the users (Guest,
-Ephemeral and Persistent) will call Prepare<type>Vault. The Prepare<type> calls
+Ephemeral and Persistent) will call Prepare&lt;type&gt;Vault. The Prepare&lt;type&gt; calls
 used to be called Mount, but Prepare better reflects that the call is doing many
 things (setting up device mappers, registering file system keys, bind mounting)
 and not only a mount.
