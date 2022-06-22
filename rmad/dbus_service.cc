@@ -404,6 +404,8 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       dbus_interface->RegisterSignal<bool>(kHardwareWriteProtectionStateSignal);
   power_cable_signal_ =
       dbus_interface->RegisterSignal<bool>(kPowerCableStateSignal);
+  external_disk_signal_ =
+      dbus_interface->RegisterSignal<bool>(kExternalDiskDetectedSignal);
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
@@ -475,6 +477,8 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
                           weak_ptr_factory_.GetWeakPtr()));
   daemon_callback->SetPowerCableSignalCallback(base::BindRepeating(
       &DBusService::SendPowerCableStateSignal, weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetExternalDiskSignalCallback(base::BindRepeating(
+      &DBusService::SendExternalDiskSignal, weak_ptr_factory_.GetWeakPtr()));
   return daemon_callback;
 }
 
@@ -549,6 +553,13 @@ void DBusService::SendPowerCableStateSignal(bool plugged_in) {
   auto signal = power_cable_signal_.lock();
   if (signal) {
     signal->Send(plugged_in);
+  }
+}
+
+void DBusService::SendExternalDiskSignal(bool detected) {
+  auto signal = external_disk_signal_.lock();
+  if (signal) {
+    signal->Send(detected);
   }
 }
 

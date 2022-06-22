@@ -27,6 +27,7 @@ using FinalizeSignalCallback =
     base::RepeatingCallback<void(const FinalizeStatus&)>;
 using WriteProtectSignalCallback = base::RepeatingCallback<void(bool)>;
 using PowerCableSignalCallback = base::RepeatingCallback<void(bool)>;
+using ExternalDiskSignalCallback = base::RepeatingCallback<void(bool)>;
 
 #define DECLARE_CALLBACK(type, var)                 \
  public:                                            \
@@ -58,6 +59,7 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
   DECLARE_CALLBACK(FinalizeSignalCallback, finalize_signal_callback_);
   DECLARE_CALLBACK(WriteProtectSignalCallback, write_protect_signal_callback_);
   DECLARE_CALLBACK(PowerCableSignalCallback, power_cable_signal_callback_);
+  DECLARE_CALLBACK(ExternalDiskSignalCallback, external_disk_signal_callback_);
 };
 
 }  // namespace rmad

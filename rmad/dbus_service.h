@@ -75,6 +75,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   void SendFinalizeProgressSignal(const FinalizeStatus& status);
   void SendHardwareWriteProtectionStateSignal(bool enabled);
   void SendPowerCableStateSignal(bool plugged_in);
+  void SendExternalDiskSignal(bool detected);
 
   void SetTestMode() { test_mode_ = true; }
 
@@ -187,6 +188,7 @@ class DBusService : public brillo::DBusServiceDaemon {
       finalize_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> external_disk_signal_;
 
   // RMA interface for handling most of the D-Bus requests.
   RmadInterface* rmad_interface_;

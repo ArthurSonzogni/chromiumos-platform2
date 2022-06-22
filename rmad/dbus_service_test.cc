@@ -194,6 +194,10 @@ class DBusServiceTest : public testing::Test {
     dbus_service_->SendPowerCableStateSignal(plugged_in);
   }
 
+  void SignalExternalDisk(bool detected) {
+    dbus_service_->SendExternalDiskSignal(detected);
+  }
+
   dbus::MockExportedObject* GetMockExportedObject() {
     return mock_exported_object_.get();
   }
@@ -522,6 +526,20 @@ TEST_F(DBusServiceTest, SignalPowerCableState) {
         EXPECT_TRUE(plugged_in);
       }));
   SignalPowerCableState(true);
+}
+
+TEST_F(DBusServiceTest, SignalExternalDisk) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillOnce(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "ExternalDiskDetected");
+        dbus::MessageReader reader(signal);
+        bool detected;
+        EXPECT_TRUE(reader.PopBool(&detected));
+        EXPECT_TRUE(detected);
+      }));
+  SignalExternalDisk(true);
 }
 
 }  // namespace rmad
