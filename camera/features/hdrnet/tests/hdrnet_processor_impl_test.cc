@@ -13,7 +13,9 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/test/test_timeouts.h>
+#include <brillo/flag_helper.h>
 #pragma push_macro("None")
 #pragma push_macro("Bool")
 #undef None
@@ -35,101 +37,77 @@
 
 namespace cros {
 
-struct Options {
-  static constexpr const char kBenchmarkIterationsSwitch[] = "iterations";
-  static constexpr const char kInputSizeSwitch[] = "input-size";
-  static constexpr const char kOutputSizeSwitch[] = "output-sizes";
-  static constexpr const char kDumpBufferSwitch[] = "dump-buffer";
-  static constexpr const char kInputFile[] = "input-file";
-  static constexpr const char kInputFormat[] = "input-format";
-  // Use the default device processor to measure the latency of the core HDRnet
-  // linear RGB pipeline.
-  static constexpr const char kUseDefaulProcessorDeviceAdapter[] =
-      "use-default-processor-device-adapter";
+namespace tests {
 
+struct Options {
   int iterations = 1000;
   Size input_size{1920, 1080};
   std::vector<Size> output_sizes{{1920, 1080}, {1280, 720}};
   bool dump_buffer = false;
-  std::optional<base::FilePath> input_file;
-  bool use_default_processor_device_adapter = false;
-  uint32_t input_format = HAL_PIXEL_FORMAT_YCbCr_420_888;
-};
+  std::optional<base::FilePath> input_image_file;
+  uint32_t input_image_format = HAL_PIXEL_FORMAT_YCbCr_420_888;
+  bool use_noop_adapter = false;
+} g_args;
 
-Options g_args;
+cros::Size ParseSize(std::string size_str) {
+  CHECK(!size_str.empty());
+  std::vector<std::string> arg_split = base::SplitString(
+      size_str, "x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  CHECK_EQ(arg_split.size(), 2);
+  Size ret;
+  CHECK(base::StringToUint(arg_split[0], &ret.width));
+  CHECK(base::StringToUint(arg_split[1], &ret.height));
+  return ret;
+}
 
-void ParseCommandLine(int argc, char** argv) {
-  base::CommandLine command_line(argc, argv);
-  {
-    std::string arg =
-        command_line.GetSwitchValueASCII(Options::kBenchmarkIterationsSwitch);
-    if (!arg.empty()) {
-      CHECK(base::StringToInt(arg, &g_args.iterations));
-    }
+void ParseInputSize(std::string argv, Options& opts) {
+  opts.input_size = ParseSize(argv);
+  VLOGF(1) << "Input buffer size: " << opts.input_size.ToString();
+}
+
+void ParseOutputSizes(std::string argv, Options& opts) {
+  opts.output_sizes.clear();
+  for (auto s : base::SplitString(argv, ",", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)) {
+    opts.output_sizes.push_back(ParseSize(s));
   }
-  {
-    std::string arg =
-        command_line.GetSwitchValueASCII(Options::kInputSizeSwitch);
-    if (!arg.empty()) {
-      std::vector<std::string> arg_split = base::SplitString(
-          arg, "x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-      CHECK_EQ(arg_split.size(), 2);
-      CHECK(base::StringToUint(arg_split[0], &g_args.input_size.width));
-      CHECK(base::StringToUint(arg_split[1], &g_args.input_size.height));
-    }
+  for (auto s : opts.output_sizes) {
+    VLOGF(1) << "Output buffer size: " << s.ToString();
   }
-  {
-    std::string arg =
-        command_line.GetSwitchValueASCII(Options::kOutputSizeSwitch);
-    if (!arg.empty()) {
-      g_args.output_sizes.clear();
-      for (auto size : base::SplitString(arg, ",", base::TRIM_WHITESPACE,
-                                         base::SPLIT_WANT_NONEMPTY)) {
-        std::vector<std::string> arg_split = base::SplitString(
-            size, "x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-        CHECK_EQ(arg_split.size(), 2);
-        uint32_t width, height;
-        CHECK(base::StringToUint(arg_split[0], &width));
-        CHECK(base::StringToUint(arg_split[1], &height));
-        g_args.output_sizes.push_back({width, height});
-      }
-    }
+}
+
+void ParseInputImageFile(std::string argv, Options& opts) {
+  if (argv.empty()) {
+    VLOGF(1) << "No input image file given; will use generated image";
+    return;
   }
-  if (command_line.HasSwitch(Options::kDumpBufferSwitch)) {
-    g_args.dump_buffer = true;
+  base::FilePath path(argv);
+  CHECK(base::PathExists(path)) << ": Input image file does not exist";
+  opts.input_image_file = path;
+  VLOGF(1) << "Input image file: " << opts.input_image_file->value();
+}
+
+void ParseInputImageFormat(std::string argv, Options& opts) {
+  CHECK(!argv.empty());
+  std::string upper_argv = base::ToUpperASCII(argv);
+
+  CHECK(upper_argv == "NV12" || upper_argv == "P010")
+      << "Unrecognized input format: " << argv;
+  if (upper_argv == "NV12") {
+    opts.input_image_format = HAL_PIXEL_FORMAT_YCBCR_420_888;
+  } else {  // upper_argv == "P010"
+    opts.input_image_format = HAL_PIXEL_FORMAT_YCBCR_P010;
   }
-  {
-    std::string arg = command_line.GetSwitchValueASCII(Options::kInputFile);
-    if (!arg.empty()) {
-      base::FilePath path(arg);
-      CHECK(base::PathExists(path)) << ": Input file does not exist";
-      g_args.input_file = path;
-    }
-  }
-  {
-    std::string arg = command_line.GetSwitchValueASCII(Options::kInputFormat);
-    if (!arg.empty()) {
-      CHECK(arg == "nv12" || arg == "p010")
-          << "Unrecognized input format: " << arg;
-      if (arg == "nv12") {
-        g_args.input_format = HAL_PIXEL_FORMAT_YCBCR_420_888;
-      } else {  // arg == "p010"
-        g_args.input_format = HAL_PIXEL_FORMAT_YCBCR_P010;
-      }
-    }
-  }
-  if (command_line.HasSwitch(Options::kUseDefaulProcessorDeviceAdapter)) {
-    g_args.use_default_processor_device_adapter = true;
-  }
+  VLOGF(1) << "Input image format: " << upper_argv;
 }
 
 class HdrNetProcessorTest : public testing::Test {
  public:
   HdrNetProcessorTest()
       : fixture_(g_args.input_size,
-                 g_args.input_format,
+                 g_args.input_image_format,
                  g_args.output_sizes,
-                 g_args.use_default_processor_device_adapter) {}
+                 g_args.use_noop_adapter) {}
   ~HdrNetProcessorTest() = default;
 
  protected:
@@ -137,15 +115,16 @@ class HdrNetProcessorTest : public testing::Test {
 };
 
 TEST_F(HdrNetProcessorTest, FullPipelineTest) {
-  if (g_args.input_file) {
-    fixture_.LoadInputFile(*g_args.input_file);
+  if (g_args.input_image_file) {
+    fixture_.LoadInputFile(*g_args.input_image_file);
   }
   HdrnetMetrics metrics;
+  HdrNetConfig::Options options = {.hdrnet_enable = true};
   for (int i = 0; i < g_args.iterations; ++i) {
     Camera3CaptureDescriptor result = fixture_.ProduceFakeCaptureResult();
     fixture_.processor()->ProcessResultMetadata(&result);
     base::ScopedFD fence = fixture_.processor()->Run(
-        i, HdrNetConfig::Options(), fixture_.input_image(), base::ScopedFD(),
+        i, options, fixture_.input_image(), base::ScopedFD(),
         fixture_.output_buffers(), &metrics);
     constexpr int kFenceWaitTimeoutMs = 300;
     ASSERT_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
@@ -157,13 +136,40 @@ TEST_F(HdrNetProcessorTest, FullPipelineTest) {
   }
 }
 
+}  // namespace tests
+
 }  // namespace cros
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
+  ::testing::InitGoogleTest(&argc, argv);
   base::CommandLine::Init(argc, argv);
   TestTimeouts::Initialize();
-  cros::ParseCommandLine(argc, argv);
-  ::testing::InitGoogleTest(&argc, argv);
+  LOG_ASSERT(logging::InitLogging(logging::LoggingSettings()));
+
+  DEFINE_int32(iterations, 1000, "number of iterations to run in the test");
+  DEFINE_string(input_size, "1920x1080", "[width]x[height] of the input image");
+  DEFINE_string(
+      output_sizes, "1920x1080,1280x720",
+      "comma separated [width]x[height] of the output images to produce");
+  DEFINE_bool(dump_buffer, false, "dump all the buffers used in the test");
+  DEFINE_string(input_image_file, "", "path to the input image");
+  DEFINE_string(input_image_format, "nv12", "pixel format of the input image");
+  DEFINE_string(input_metadata_file, "", "path to the input metadata");
+  DEFINE_string(hdrnet_config_file, "", "path to the HDRnet config file");
+  DEFINE_bool(use_noop_adapter, false,
+              "use the default no-op HDRnet device adapter to test only the "
+              "core HDRnet pipeline");
+  brillo::FlagHelper::Init(argc, argv, "HDRnet processor test.");
+
+  cros::tests::g_args.iterations = FLAGS_iterations;
+  cros::tests::ParseInputSize(FLAGS_input_size, cros::tests::g_args);
+  cros::tests::ParseOutputSizes(FLAGS_output_sizes, cros::tests::g_args);
+  cros::tests::g_args.dump_buffer = FLAGS_dump_buffer;
+  cros::tests::ParseInputImageFile(FLAGS_input_image_file, cros::tests::g_args);
+  cros::tests::ParseInputImageFormat(FLAGS_input_image_format,
+                                     cros::tests::g_args);
+  cros::tests::g_args.use_noop_adapter = FLAGS_use_noop_adapter;
+
   return RUN_ALL_TESTS();
 }
