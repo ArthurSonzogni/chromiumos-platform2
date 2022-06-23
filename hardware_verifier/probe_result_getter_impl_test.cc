@@ -11,7 +11,6 @@
 #include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
-#include <runtime_probe-client/runtime_probe/dbus-constants.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/probe_result_getter_impl.h"

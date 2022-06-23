@@ -13,10 +13,10 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/dbus/dbus_connection.h>
-#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <google/protobuf/text_format.h>
-#include <runtime_probe-client/runtime_probe/dbus-constants.h>
+#include <runtime_probe/dbus-proxies.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/log_utils.h"
@@ -96,22 +96,11 @@ std::optional<runtime_probe::ProbeResult> ProbeResultGetterImpl::GetFromFile(
 bool RuntimeProbeProxy::ProbeCategories(
     const runtime_probe::ProbeRequest& req,
     runtime_probe::ProbeResult* resp) const {
-  VLOG(1) << "Invoking the D-Bus method ("
-          << runtime_probe::kRuntimeProbeInterfaceName
-          << "::" << runtime_probe::kProbeCategoriesMethod
-          << ") on the service (" << runtime_probe::kRuntimeProbeServiceName
-          << ").";
   brillo::DBusConnection dbus_connection;
   auto bus = dbus_connection.Connect();
-  auto object_proxy = bus->GetObjectProxy(
-      runtime_probe::kRuntimeProbeServiceName,
-      dbus::ObjectPath(runtime_probe::kRuntimeProbeServicePath));
+  org::chromium::RuntimeProbeProxy runtime_probe_proxy{bus};
   brillo::ErrorPtr error;
-  auto dbus_resp = brillo::dbus_utils::CallMethodAndBlock(
-      object_proxy, runtime_probe::kRuntimeProbeInterfaceName,
-      runtime_probe::kProbeCategoriesMethod, &error, req);
-  if (!dbus_resp || !brillo::dbus_utils::ExtractMethodCallResults(
-                        dbus_resp.get(), &error, resp)) {
+  if (!runtime_probe_proxy.ProbeCategories(req, resp, &error)) {
     LOG(ERROR) << "Failed to invoke |runtime_probe| via D-Bus interface ("
                << "code=" << error->GetCode()
                << ", message=" << error->GetMessage() << ").";
