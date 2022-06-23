@@ -1266,24 +1266,35 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
 
   Service::ConnectState state = result.GetConnectionState();
   if (state == Service::kStateOnline) {
-    SetServiceConnectedState(state);
+    LOG(INFO) << LoggingTag() << ": Portal detection finished";
+    StopPortalDetection();
+    SetServiceState(state);
     OnNetworkValidationSuccess();
     metrics()->SendToUMA(Metrics::kMetricPortalAttemptsToOnline, technology(),
                          result.num_attempts);
-  } else {
-    // Set failure phase and status.
-    selected_service_->SetPortalDetectionFailure(
-        PortalDetector::PhaseToString(result.http_phase),
-        PortalDetector::StatusToString(result.http_status),
-        result.http_status_code);
-    SetServiceConnectedState(state);
-    OnNetworkValidationFailure();
-    // If portal detection was not conclusive, also start additional connection
-    // diagnostics for the current network connection.
-    if (state == Service::kStateNoConnectivity ||
-        state == Service::kStatePortalSuspected) {
-      StartConnectionDiagnosticsAfterPortalDetection();
-    }
+    return;
+  }
+
+  if (!Service::IsPortalledState(state)) {
+    LOG(ERROR) << LoggingTag() << ": unexpected Service state " << state
+               << " from portal detection result";
+    StopPortalDetection();
+    SetServiceState(Service::kStateOnline);
+    return;
+  }
+
+  // Set failure phase and status.
+  selected_service_->SetPortalDetectionFailure(
+      PortalDetector::PhaseToString(result.http_phase),
+      PortalDetector::StatusToString(result.http_status),
+      result.http_status_code);
+  SetServiceConnectedState(state);
+  OnNetworkValidationFailure();
+  // If portal detection was not conclusive, also start additional connection
+  // diagnostics for the current network connection.
+  if (state == Service::kStateNoConnectivity ||
+      state == Service::kStatePortalSuspected) {
+    StartConnectionDiagnosticsAfterPortalDetection();
   }
 }
 
