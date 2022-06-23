@@ -207,7 +207,7 @@ impl ResumeConductor {
             redirect_log(HiberlogOut::BufferInMemory);
             Ok(())
         } else {
-            self.launch_resume_image(meta_file, frozen_userspace)
+            self.launch_resume_image(meta_file, frozen_userspace, pending_resume_call)
         }
     }
 
@@ -473,11 +473,15 @@ impl ResumeConductor {
         Ok(())
     }
 
-    /// Jump into the already-loaded resume image.
+    /// Jump into the already-loaded resume image. The PendingResumeCall isn't
+    /// actually used, but is received to enforce the lifetime of the object.
+    /// This prevents bugs where it accidentally gets dropped by the caller too
+    /// soon, allowing normal boot to proceed while resume is also in progress.
     fn launch_resume_image(
         &mut self,
         mut meta_file: BouncedDiskFile,
         mut frozen_userspace: FrozenUserspaceTicket,
+        _pending_resume: Option<PendingResumeCall>,
     ) -> Result<()> {
         // Clear the valid flag and set the resume flag to indicate this image
         // was resumed into.
