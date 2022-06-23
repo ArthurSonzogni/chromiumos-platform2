@@ -1376,7 +1376,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
     // UTC time of 2122-01-01T00:00:00Z since Unix epoch 1970-01-01T00:00:00Z in
     // microseconds
-    constexpr uint64_t kTime2122 = 4796668800000000U;
+    static constexpr int64_t kTime2122 = 4'796'668'800'000'000;
     // Log an error if the timestamp is larger than 2122-01-01T00:00:00Z. This
     // is the latest spot in the code before a record is compressed or
     // encrypted.
