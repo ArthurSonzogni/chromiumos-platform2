@@ -599,9 +599,10 @@ Client::IPConfig Client::ParseIPConfigsProperty(
     std::string addr = brillo::GetVariantValueOrDefault<std::string>(
         properties, kAddressProperty);
     if (addr.empty()) {
-      LOG(WARNING) << "Empty property [" << kAddressProperty
-                   << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "]";
+      // On IPv6 only network, dhcp is expected to fail, nevertheless shill
+      // will still expose a mostly empty IPConfig object, On dual stack
+      // networks, the IPv6 configuration may be available before dhcp has
+      // finished. Avoid logging spurious WARNING messages in these two cases.
       continue;
     }
 
