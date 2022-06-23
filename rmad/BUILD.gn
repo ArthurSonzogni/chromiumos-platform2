@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -18,142 +18,10 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  # Manually add the include path so that the generated hardware_verifier.pb.h
-  # can include runtime_probe.pb.h properly.
-  cflags = [ "-I${sysroot}/usr/include/runtime_probe/proto_bindings" ]
-
-  # NOSORT
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libcros_config",
-    "libmems",
     "libminijail",
-    "libshill-client",
-    "libtpm_manager-client",
-    "libuser_data_auth-client",
-    "re2",
-    "vboot_host",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "openssl",
-    "protobuf",
-  ]
-}
-
-static_library("libcommon") {
-  sources = [ "common/types.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libsystem") {
-  sources = [
-    "system/cros_disks_client_impl.cc",
-    "system/cryptohome_client_impl.cc",
-    "system/fake_cryptohome_client.cc",
-    "system/fake_hardware_verifier_client.cc",
-    "system/fake_power_manager_client.cc",
-    "system/fake_runtime_probe_client.cc",
-    "system/fake_tpm_manager_client.cc",
-    "system/hardware_verifier_client_impl.cc",
-    "system/power_manager_client_impl.cc",
-    "system/runtime_probe_client_impl.cc",
-    "system/shill_client_impl.cc",
-    "system/tpm_manager_client_impl.cc",
-  ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libutils") {
-  sources = [
-    "utils/accelerometer_calibration_utils_impl.cc",
-    "utils/calibration_utils.cc",
-    "utils/cbi_utils_impl.cc",
-    "utils/cmd_utils_impl.cc",
-    "utils/component_utils.cc",
-    "utils/cr50_utils_impl.cc",
-    "utils/cros_config_utils_impl.cc",
-    "utils/crossystem_utils_impl.cc",
-    "utils/dbus_utils.cc",
-    "utils/fake_cbi_utils.cc",
-    "utils/fake_cr50_utils.cc",
-    "utils/fake_cros_config_utils.cc",
-    "utils/fake_crossystem_utils.cc",
-    "utils/fake_iio_sensor_probe_utils.cc",
-    "utils/fake_regions_utils.cc",
-    "utils/fake_ssfc_utils.cc",
-    "utils/fake_sys_utils.cc",
-    "utils/fake_vpd_utils.cc",
-    "utils/flashrom_utils_impl.cc",
-    "utils/gyroscope_calibration_utils_impl.cc",
-    "utils/iio_ec_sensor_utils_impl.cc",
-    "utils/iio_sensor_probe_utils_impl.cc",
-    "utils/json_store.cc",
-    "utils/regions_utils_impl.cc",
-    "utils/ssfc_utils_impl.cc",
-    "utils/sys_utils_impl.cc",
-    "utils/type_conversions.cc",
-    "utils/vpd_utils_impl.cc",
-    "utils/vpd_utils_impl_thread_safe.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
-}
-
-static_library("libmetrics") {
-  sources = [
-    "metrics/fake_metrics_utils.cc",
-    "metrics/metrics_utils_impl.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = [ "//metrics/structured:libstructuredmetrics" ]
-}
-
-static_library("libstate_handler") {
-  sources = [
-    "state_handler/base_state_handler.cc",
-    "state_handler/check_calibration_state_handler.cc",
-    "state_handler/components_repair_state_handler.cc",
-    "state_handler/device_destination_state_handler.cc",
-    "state_handler/finalize_state_handler.cc",
-    "state_handler/provision_device_state_handler.cc",
-    "state_handler/repair_complete_state_handler.cc",
-    "state_handler/restock_state_handler.cc",
-    "state_handler/run_calibration_state_handler.cc",
-    "state_handler/setup_calibration_state_handler.cc",
-    "state_handler/state_handler_manager.cc",
-    "state_handler/update_device_info_state_handler.cc",
-    "state_handler/update_ro_firmware_state_handler.cc",
-    "state_handler/welcome_screen_state_handler.cc",
-    "state_handler/wipe_selection_state_handler.cc",
-    "state_handler/write_protect_disable_complete_state_handler.cc",
-    "state_handler/write_protect_disable_method_state_handler.cc",
-    "state_handler/write_protect_disable_physical_state_handler.cc",
-    "state_handler/write_protect_disable_rsu_state_handler.cc",
-    "state_handler/write_protect_enable_physical_state_handler.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":libcommon",
-    ":libmetrics",
-    ":libsystem",
-    ":libutils",
-  ]
-}
-
-static_library("librmad") {
-  sources = [
-    "daemon/dbus_service.cc",
-    "interface/rmad_interface_impl.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":libmetrics",
-    ":libstate_handler",
-    ":libutils",
   ]
 }
 
@@ -161,7 +29,11 @@ executable("rmad") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
-  deps = [ ":librmad" ]
+  deps = [
+    "daemon:libdaemon",
+    "interface:libinterface",
+    "utils:libutils",
+  ]
 }
 
 # Install upstart configs and scripts.
@@ -190,72 +62,15 @@ install_config("install_seccomp_policy") {
 }
 
 if (use.test) {
-  pkg_config("rmad_test_config") {
-    pkg_deps = [
-      "libmems_test_support",
-      "libshill-client-test",
-      "libtpm_manager-client-test",
-      "libuser_data_auth-client-test",
-    ]
-  }
-
   executable("rmad_test") {
-    sources = [
-      "daemon/dbus_service_test.cc",
-      "interface/rmad_interface_test.cc",
-      "metrics/metrics_utils_test.cc",
-      "state_handler/base_state_handler_test.cc",
-      "state_handler/check_calibration_state_handler_test.cc",
-      "state_handler/components_repair_state_handler_test.cc",
-      "state_handler/device_destination_state_handler_test.cc",
-      "state_handler/finalize_state_handler_test.cc",
-      "state_handler/provision_device_state_handler_test.cc",
-      "state_handler/repair_complete_state_handler_test.cc",
-      "state_handler/restock_state_handler_test.cc",
-      "state_handler/run_calibration_state_handler_test.cc",
-      "state_handler/setup_calibration_state_handler_test.cc",
-      "state_handler/state_handler_manager_test.cc",
-      "state_handler/state_handler_test_common.cc",
-      "state_handler/update_device_info_state_handler_test.cc",
-      "state_handler/update_ro_firmware_state_handler_test.cc",
-      "state_handler/welcome_screen_state_handler_test.cc",
-      "state_handler/wipe_selection_state_handler_test.cc",
-      "state_handler/write_protect_disable_complete_state_handler_test.cc",
-      "state_handler/write_protect_disable_method_state_handler_test.cc",
-      "state_handler/write_protect_disable_physical_state_handler_test.cc",
-      "state_handler/write_protect_disable_rsu_state_handler_test.cc",
-      "state_handler/write_protect_enable_physical_state_handler_test.cc",
-      "system/cros_disks_client_test.cc",
-      "system/cryptohome_client_test.cc",
-      "system/hardware_verifier_client_test.cc",
-      "system/power_manager_client_test.cc",
-      "system/runtime_probe_client_test.cc",
-      "system/shill_client_test.cc",
-      "system/tpm_manager_client_test.cc",
-      "utils/cbi_utils_test.cc",
-      "utils/cmd_utils_test.cc",
-      "utils/component_utils_test.cc",
-      "utils/cr50_utils_test.cc",
-      "utils/cros_config_utils_test.cc",
-      "utils/crossystem_utils_test.cc",
-      "utils/dbus_utils_test.cc",
-      "utils/flashrom_utils_test.cc",
-      "utils/iio_sensor_probe_utils_test.cc",
-      "utils/json_store_test.cc",
-      "utils/regions_utils_test.cc",
-      "utils/ssfc_utils_test.cc",
-      "utils/sys_utils_test.cc",
-      "utils/type_conversions_test.cc",
-      "utils/vpd_utils_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":rmad_test_config",
-    ]
     run_test = true
     deps = [
-      ":librmad",
+      "daemon:libdaemon_test",
+      "interface:libinterface_test",
+      "metrics:libmetrics_test",
+      "state_handler:libstate_handler_test",
+      "system:libsystem_test",
+      "utils:libutils_test",
       "//common-mk/testrunner",
     ]
   }
