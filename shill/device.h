@@ -655,10 +655,6 @@ class Device : public base::RefCounted<Device> {
   // down or changing network connection on the device.
   void StopAllActivities();
 
-  // Set the state of the selected service, with checks to make sure
-  // the service is already in a connected state before doing so.
-  void SetServiceConnectedState(Service::ConnectState state);
-
   // Specifies whether an ARP gateway should be used for the
   // device technology.
   virtual bool ShouldUseArpGateway() const;

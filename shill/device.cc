@@ -1198,38 +1198,6 @@ std::optional<base::TimeDelta> Device::TimeToNextDHCPLeaseRenewal() {
   return dhcp_controller()->TimeToLeaseExpiry();
 }
 
-void Device::SetServiceConnectedState(Service::ConnectState state) {
-  DCHECK(selected_service_.get());
-  SLOG(this, 2) << __func__ << " Service: " << selected_service_->log_name()
-                << " State: " << Service::ConnectStateToString(state);
-
-  if (Service::IsPortalledState(state)) {
-    CHECK(portal_detector_.get());
-    CHECK(network_->HasConnectionObject());
-    const auto next_delay = portal_detector_->GetNextAttemptDelay();
-    if (!portal_detector_->Start(manager_->GetProperties(),
-                                 network_->interface_name(), network_->local(),
-                                 network_->dns_servers(), LoggingTag(),
-                                 next_delay)) {
-      LOG(ERROR) << LoggingTag() << ": Portal detection failed to restart";
-      SetServiceState(Service::kStateOnline);
-      StopPortalDetection();
-      return;
-    }
-    LOG(INFO) << LoggingTag() << ": Portal detection retrying in "
-              << next_delay;
-    // TODO(b/216351118): this ignores the portal detection retry delay. The
-    // callback should be triggered when the next attempt starts, not when it
-    // is scheduled.
-    OnNetworkValidationStart();
-  } else {
-    LOG(INFO) << LoggingTag() << ": Portal detection finished";
-    StopPortalDetection();
-  }
-
-  SetServiceState(state);
-}
-
 void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   SLOG(this, 2) << __func__ << " Device: " << link_name() << " Service: "
                 << GetSelectedServiceRpcIdentifier(nullptr).value()
@@ -1288,8 +1256,27 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
       PortalDetector::PhaseToString(result.http_phase),
       PortalDetector::StatusToString(result.http_status),
       result.http_status_code);
-  SetServiceConnectedState(state);
   OnNetworkValidationFailure();
+
+  const auto next_delay = portal_detector_->GetNextAttemptDelay();
+  if (!portal_detector_->Start(manager_->GetProperties(),
+                               network_->interface_name(), network_->local(),
+                               network_->dns_servers(), LoggingTag(),
+                               next_delay)) {
+    LOG(ERROR) << LoggingTag() << ": Portal detection failed to restart";
+    SetServiceState(Service::kStateOnline);
+    StopPortalDetection();
+    return;
+  }
+
+  LOG(INFO) << LoggingTag() << ": Portal detection retrying in " << next_delay;
+  // TODO(b/216351118): this ignores the portal detection retry delay. The
+  // callback should be triggered when the next attempt starts, not when it
+  // is scheduled.
+  OnNetworkValidationStart();
+
+  SetServiceState(state);
+
   // If portal detection was not conclusive, also start additional connection
   // diagnostics for the current network connection.
   if (state == Service::kStateNoConnectivity ||
