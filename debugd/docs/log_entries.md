@@ -100,6 +100,10 @@ btadapterd.
 
 Frame timings from apps running in the Borealis VM. 16 KiB.
 
+## borealis_frames_summary
+
+Summarization of borealis frame timings. 2 KiB.
+
 ## borealis_proton_crash_reports
 
 Contains the most recent Proton crash dump containing debug info. ~11 KiB.

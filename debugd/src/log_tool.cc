@@ -505,6 +505,8 @@ const std::array kFeedbackLogs {
     kRoot, kRoot},
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
+  Log{kCommand, "borealis_frames_summary", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/get-frame-summary.sh", kRoot, kRoot},
   Log{kCommand, "borealis_proton_crash_reports", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/get_proton_crash_reports.sh",
     kRoot, kRoot},
