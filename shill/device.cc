@@ -1200,23 +1200,6 @@ std::optional<base::TimeDelta> Device::TimeToNextDHCPLeaseRenewal() {
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
-
-  if (!selected_service_) {
-    // A race can happen if the Service has disconnected in the meantime.
-    LOG(WARNING)
-        << LoggingTag() << ": "
-        << "Portal detection completed but no selected service exists.";
-    return;
-  }
-
-  if (!selected_service_->IsConnected()) {
-    // A race can happen if the Service is currently disconnecting.
-    LOG(WARNING) << LoggingTag() << ": "
-                 << "Portal detection completed but selected service is in "
-                    "non-connected state.";
-    return;
-  }
-
   SLOG(this, 2) << __func__ << " Service: " << selected_service_->log_name()
                 << " State: " << Service::ConnectStateToString(state);
 
@@ -1256,11 +1239,32 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   metrics()->SendEnumToUMA(Metrics::kMetricPortalResult, technology(),
                            portal_status);
 
-  Service::ConnectState state = result.GetConnectionState();
-  if (selected_service_) {
-    // Set the probe URL. It should be empty if there is no redirect.
-    selected_service_->SetProbeUrl(result.probe_url_string);
+  if (!selected_service_) {
+    // A race can happen if the Service has disconnected in the meantime.
+    LOG(WARNING)
+        << LoggingTag() << ": "
+        << "Portal detection completed but no selected service exists.";
+    return;
   }
+
+  if (!network_->HasConnectionObject()) {
+    LOG(INFO) << LoggingTag()
+                 << ": Portal detection completed but there is no Connecttion";
+    return;
+  }
+
+  if (!selected_service_->IsConnected()) {
+    // A race can happen if the Service is currently disconnecting.
+    LOG(WARNING) << LoggingTag() << ": "
+                 << "Portal detection completed but selected service is in "
+                    "non-connected state.";
+    return;
+  }
+
+  // Set the probe URL. It should be empty if there is no redirect.
+  selected_service_->SetProbeUrl(result.probe_url_string);
+
+  Service::ConnectState state = result.GetConnectionState();
   if (state == Service::kStateOnline) {
     SetServiceConnectedState(state);
     OnNetworkValidationSuccess();
@@ -1268,12 +1272,10 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
                          result.num_attempts);
   } else {
     // Set failure phase and status.
-    if (selected_service_) {
-      selected_service_->SetPortalDetectionFailure(
-          PortalDetector::PhaseToString(result.http_phase),
-          PortalDetector::StatusToString(result.http_status),
-          result.http_status_code);
-    }
+    selected_service_->SetPortalDetectionFailure(
+        PortalDetector::PhaseToString(result.http_phase),
+        PortalDetector::StatusToString(result.http_status),
+        result.http_status_code);
     SetServiceConnectedState(state);
     OnNetworkValidationFailure();
     // If portal detection was not conclusive, also start additional connection
