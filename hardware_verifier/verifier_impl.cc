@@ -90,9 +90,7 @@ bool IsModelComponent(const ComponentInfo& comp_info,
 }  // namespace
 
 VerifierImpl::VerifierImpl() {
-  auto config = std::make_unique<brillo::CrosConfig>();
-  CHECK(config->Init());
-  cros_config_ = std::move(config);
+  cros_config_ = std::make_unique<brillo::CrosConfig>();
   // Resolve |comp_category_infos_| in the constructor.
   const auto* category_enum_desc =
       runtime_probe::ProbeRequest_SupportCategory_descriptor();
