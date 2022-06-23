@@ -42,6 +42,7 @@
 namespace cryptohome {
 
 using ::testing::_;
+using ::testing::An;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
@@ -61,6 +62,8 @@ using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 using AuthenticateCallback = base::OnceCallback<void(
     const user_data_auth::AuthenticateAuthSessionReply&)>;
+using AddCredentialCallback =
+    base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>;
 
 namespace {
 constexpr char kUsername[] = "foo@example.com";
@@ -153,10 +156,11 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     return userdataauth_.CreatePersistentUserImpl(auth_session_id);
   }
 
-  user_data_auth::CryptohomeErrorCode HandleAddCredentialForEphemeralVault(
-      AuthorizationRequest request, const AuthSession* auth_session) {
-    return userdataauth_.HandleAddCredentialForEphemeralVault(request,
-                                                              auth_session);
+  void AddCredentials(
+      user_data_auth::AddCredentialsRequest request,
+      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+          on_done) {
+    userdataauth_.AddCredentials(request, std::move(on_done));
   }
 
   void GetAuthSessionStatusImpl(
@@ -288,6 +292,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // Auth session is authed for ephemeral users.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+
   // User authed and exists.
   scoped_refptr<MockUserSession> user_session =
       base::MakeRefCounted<MockUserSession>();
@@ -296,20 +302,26 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session, SetCredentials(An<const Credentials&>()));
+  EXPECT_CALL(*user_session, GetPkcs11Token()).WillRepeatedly(Return(nullptr));
+  EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountEphemeral(kUsername))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
   ASSERT_TRUE(PrepareEphemeralVaultImpl(auth_session->serialized_token()).ok());
-  ExpectVaultKeyset();
 
-  // Set up expectation for Authenticate callback success.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
+  // Set up expectation for add credential callback success.
+  user_data_auth::AddCredentialsRequest request;
+  user_data_auth::AddCredentialsReply reply;
+  request.set_auth_session_id(auth_session->serialized_token());
+  AuthorizationRequest auth_req = CreateAuthorization(kPassword);
+  request.mutable_authorization()->Swap(&auth_req);
+  base::MockCallback<AddCredentialCallback> on_done;
   EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+  AddCredentials(request, on_done.Get());
 
   // Evaluate error returned by callback.
-  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
+  ASSERT_THAT(reply.error(), Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
   // Trying to mount again will yield busy.
   status = PrepareEphemeralVaultImpl(auth_session->serialized_token());
@@ -324,6 +336,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // But ephemeral succeeds ...
+  AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
+      kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   scoped_refptr<MockUserSession> user_session2 =
       base::MakeRefCounted<MockUserSession>();
   EXPECT_CALL(user_session_factory_, New(kUsername2, _, _))
@@ -331,26 +345,27 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session2, SetCredentials(An<const Credentials&>()))
+      .Times(1);
+  EXPECT_CALL(*user_session2, GetPkcs11Token()).WillRepeatedly(nullptr);
   EXPECT_CALL(*user_session2, IsEphemeral()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
       .WillOnce(ReturnError<CryptohomeMountError>());
 
-  AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
-      kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   ASSERT_TRUE(
       PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
   // Set up expectation in callback for success.
-  base::MockCallback<AuthenticateCallback> on_done_second;
-  EXPECT_CALL(on_done_second, Run(testing::_))
-      .WillOnce(testing::SaveArg<0>(&reply));
+  user_data_auth::AddCredentialsRequest request2;
+  user_data_auth::AddCredentialsReply reply2;
 
-  auth_session2->Authenticate(CreateAuthorization(kPassword2),
-                              on_done_second.Get());
-  ASSERT_THAT(HandleAddCredentialForEphemeralVault(
-                  CreateAuthorization(kPassword3), auth_session2),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
-  // Evaluate error returned by callback.
-  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
+  request2.set_auth_session_id(auth_session2->serialized_token());
+  AuthorizationRequest auth_req2 = CreateAuthorization(kPassword2);
+  request2.mutable_authorization()->Swap(&auth_req2);
+
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply2));
+  AddCredentials(request2, on_done.Get());
+
+  ASSERT_THAT(reply2.error(), Eq(MOUNT_ERROR_NONE));
 
   // ... and so regular.
   scoped_refptr<MockUserSession> user_session3 =
@@ -368,17 +383,19 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
+  ExpectVaultKeyset();
 
+  user_data_auth::AuthenticateAuthSessionReply reply3;
   // Set up expectation in callback for success.
   base::MockCallback<AuthenticateCallback> on_done_third;
   EXPECT_CALL(on_done_third, Run(testing::_))
-      .WillOnce(testing::SaveArg<0>(&reply));
+      .WillOnce(testing::SaveArg<0>(&reply3));
   auth_session3->Authenticate(CreateAuthorization(kPassword3),
                               on_done_third.Get());
   ASSERT_TRUE(
       PreparePersistentVaultImpl(auth_session3->serialized_token(), {}).ok());
   // Evaluate error returned by callback.
-  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
+  ASSERT_THAT(reply3.error(), Eq(MOUNT_ERROR_NONE));
 }
 
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {

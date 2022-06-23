@@ -99,7 +99,7 @@ class RealUserSession : public UserSession {
 
   // Sets credentials current session can be re-authenticated with.
   // Returns false in case anything went wrong in setting up new re-auth state.
-  bool SetCredentials(const Credentials& credentials) override;
+  void SetCredentials(const Credentials& credentials) override;
 
   // Sets credentials current session can be re-authenticated with.
   void SetCredentials(AuthSession* auth_session) override;

@@ -85,8 +85,8 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   virtual std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() = 0;
 
   // Sets credentials current session can be re-authenticated with.
-  // Returns false in case anything went wrong in setting up new re-auth state.
-  virtual bool SetCredentials(const Credentials& credentials) = 0;
+  // Logs warning in case anything went wrong in setting up new re-auth state.
+  virtual void SetCredentials(const Credentials& credentials) = 0;
 
   // Sets credentials current session can be re-authenticated with.
   virtual void SetCredentials(AuthSession* auth_session) = 0;

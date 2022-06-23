@@ -61,7 +61,7 @@ class MockUserSession : public UserSession {
               GetHibernateSecret,
               (),
               (override));
-  MOCK_METHOD(bool, SetCredentials, (const Credentials&), (override));
+  MOCK_METHOD(void, SetCredentials, (const Credentials&), (override));
   MOCK_METHOD(void, SetCredentials, (AuthSession*), (override));
   MOCK_METHOD(bool, HasCredentialVerifier, (), (const, override));
   MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));

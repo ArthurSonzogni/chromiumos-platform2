@@ -458,7 +458,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyUser) {
   scoped_refptr<RealUserSession> session =
       base::MakeRefCounted<RealUserSession>("username", nullptr, nullptr,
                                             nullptr, nullptr, nullptr);
-  EXPECT_TRUE(session->SetCredentials(credentials));
+  session->SetCredentials(credentials);
 
   EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername()));
   EXPECT_FALSE(session->VerifyUser("other"));
@@ -474,7 +474,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
         base::MakeRefCounted<RealUserSession>(credentials_1.username(), nullptr,
                                               nullptr, nullptr, nullptr,
                                               nullptr);
-    EXPECT_TRUE(session->SetCredentials(credentials_1));
+    session->SetCredentials(credentials_1);
     EXPECT_TRUE(session->VerifyCredentials(credentials_1));
     EXPECT_FALSE(session->VerifyCredentials(credentials_2));
     EXPECT_FALSE(session->VerifyCredentials(credentials_3));
@@ -485,7 +485,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
         base::MakeRefCounted<RealUserSession>(credentials_2.username(), nullptr,
                                               nullptr, nullptr, nullptr,
                                               nullptr);
-    EXPECT_TRUE(session->SetCredentials(credentials_2));
+    session->SetCredentials(credentials_2);
     EXPECT_FALSE(session->VerifyCredentials(credentials_1));
     EXPECT_TRUE(session->VerifyCredentials(credentials_2));
     EXPECT_FALSE(session->VerifyCredentials(credentials_3));
@@ -496,7 +496,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
         base::MakeRefCounted<RealUserSession>(credentials_3.username(), nullptr,
                                               nullptr, nullptr, nullptr,
                                               nullptr);
-    EXPECT_TRUE(session->SetCredentials(credentials_3));
+    session->SetCredentials(credentials_3);
     EXPECT_FALSE(session->VerifyCredentials(credentials_1));
     EXPECT_FALSE(session->VerifyCredentials(credentials_2));
     EXPECT_TRUE(session->VerifyCredentials(credentials_3));

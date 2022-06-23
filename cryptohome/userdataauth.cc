@@ -3106,9 +3106,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
 
   scoped_refptr<UserSession> session = GetUserSession(account_id);
   if (session.get()) {
-    if (!session->SetCredentials(credentials)) {
-      LOG(WARNING) << "Failed to set new creds";
-    }
+    session->SetCredentials(credentials);
   }
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

@@ -449,13 +449,12 @@ void AuthSession::AddCredentials(
               user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
       return;
     }
+  } else if (is_ephemeral_user_) {
+    // If AuthSession is configured as an ephemeral user, then we do not save
+    // the key to the disk.
+    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+    return;
   } else {  // AddInitialKeyset
-    // If AuthSession is not configured as an ephemeral user, then we save the
-    // key to the disk.
-    if (is_ephemeral_user_) {
-      ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-      return;
-    }
     DCHECK(!vault_keyset_);
     if (!file_system_keyset_.has_value()) {
       // Creating file_system_keyset to the prepareVault call next.

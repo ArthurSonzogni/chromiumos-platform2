@@ -259,16 +259,18 @@ std::unique_ptr<brillo::SecureBlob> RealUserSession::GetHibernateSecret() {
   return std::move(hibernate_secret_);
 }
 
-bool RealUserSession::SetCredentials(const Credentials& credentials) {
+void RealUserSession::SetCredentials(const Credentials& credentials) {
   if (obfuscated_username_ != credentials.GetObfuscatedUsername()) {
     NOTREACHED() << "SetCredentials username mismatch.";
-    return false;
+    return;
   }
 
   key_data_ = credentials.key_data();
 
   credential_verifier_.reset(new ScryptVerifier());
-  return credential_verifier_->Set(credentials.passkey());
+  if (!credential_verifier_->Set(credentials.passkey())) {
+    LOG(WARNING) << "CredentialVerifier could not be set";
+  }
 }
 
 void RealUserSession::SetCredentials(AuthSession* auth_session) {
