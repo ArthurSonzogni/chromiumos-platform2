@@ -11,6 +11,7 @@
 
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
+#include "shill/network/network_config.h"
 #include "shill/routing_policy_entry.h"
 #include "shill/store/property_store.h"
 
@@ -38,6 +39,12 @@ class IPConfig {
     // to be used for network connection.
     bool HasIPAddressAndDNS() const;
 
+    NetworkConfig ToNetworkConfig() const;
+
+    // Applies all non-empty properties in |network_config| to this object. This
+    // function assumes that |this| is an IPv4 config.
+    void UpdateFromNetworkConfig(const NetworkConfig& network_config);
+
     IPAddress::Family address_family = IPAddress::kFamilyUnknown;
     std::string address;
     int32_t subnet_prefix = 0;
@@ -54,7 +61,7 @@ class IPConfig {
     // List of uids that have their traffic blocked.
     std::vector<uint32_t> blackholed_uids;
     // Set the flag to true when the interface should be set as the default
-    // route.
+    // route. This flag only affects IPv4.
     bool default_route = true;
     // A list of IP blocks in CIDR format that should be included on this
     // network.
