@@ -115,10 +115,6 @@ int main(int argc, char* argv[]) {
 
   // Check if model supports fingerprint
   brillo::CrosConfig cros_config;
-  if (!cros_config.Init()) {
-    LOG(WARNING) << "Cros config is not supported on this model, continuing "
-                    "with legacy update.";
-  }
   if (biod::FingerprintUnsupported(&cros_config)) {
     LOG(INFO) << "Fingerprint is not supported on this model, exiting.";
     return EXIT_SUCCESS;

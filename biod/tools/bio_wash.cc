@@ -34,15 +34,7 @@ constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
 
 bool IsFingerprintUnsupported() {
   brillo::CrosConfig cros_config;
-  if (!cros_config.Init()) {
-    LOG(WARNING) << "Cros config is not supported on this model, continuing "
-                    "in legacy mode.";
-    return false;
-  }
-  if (biod::FingerprintUnsupported(&cros_config)) {
-    return true;
-  }
-  return false;
+  return biod::FingerprintUnsupported(&cros_config);
 }
 
 int DoBioWash(const bool factory_init = false) {
