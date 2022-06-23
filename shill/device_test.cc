@@ -1239,9 +1239,6 @@ class DevicePortalDetectionTest : public DeviceTest {
     device_->PortalDetectorCallback(result);
   }
   bool RequestPortalDetection() { return device_->RequestPortalDetection(); }
-  void SetServiceConnectedState(Service::ConnectState state) {
-    device_->SetServiceConnectedState(state);
-  }
   void ExpectPortalEnabled() {
     EXPECT_CALL(*service_, IsPortalDetectionDisabled())
         .WillRepeatedly(Return(false));
@@ -1449,60 +1446,78 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
   EXPECT_TRUE(RequestPortalDetection());
 }
 
-TEST_F(DevicePortalDetectionTest, NotConnected) {
-  EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(false));
-  device_->SetMockPortalDetector();
-  SetServiceConnectedState(Service::kStateNoConnectivity);
-  // We don't check for the portal detector to be reset here, because
-  // it would have been reset as a part of disconnection.
-}
-
-TEST_F(DevicePortalDetectionTest, NotPortal) {
-  EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
-  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  device_->SetMockPortalDetector();
-  SetServiceConnectedState(Service::kStateOnline);
-  EXPECT_FALSE(GetPortalDetector());
-}
-
-TEST_F(DevicePortalDetectionTest, NotDefault) {
+// The first portal detection attempt is inconclusive and the next portal
+// detection attempt fails, causing the Service State to be set to 'online'
+// since portal detection did not run.
+TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
   const IPAddress ip_addr = IPAddress("1.2.3.4");
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto props = MakePortalProperties();
   const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
-  EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
+  // If portal detection attempts fail, default to optimistically assuming that
+  // the Service is 'online'.
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetPortalDetectionFailure(
+                             StrEq(kPortalDetectionPhaseDns),
+                             StrEq(kPortalDetectionStatusTimeout), 0));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_, dns_servers()).WillRepeatedly(ReturnRef(dns_list));
   MockPortalDetector* portal_detector = device_->SetMockPortalDetector();
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillOnce(Return(attempt_delay));
+  // The second portal detection attempt fails immediately, forcing the Device
+  // to assume the Service state is 'online'.
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay));
-  SetServiceConnectedState(Service::kStateNoConnectivity);
-  EXPECT_FALSE(GetPortalDetector());
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
+      .WillOnce(Return(false));
+
+  // First result indicating no connectivity and triggering a new portal
+  // detection attempt.
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kDNS,
+  result.http_status = PortalDetector::Status::kTimeout;
+  result.https_phase = PortalDetector::Phase::kDNS;
+  result.https_status = PortalDetector::Status::kTimeout;
+  PortalDetectorCallback(result);
 }
 
 TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
   const IPAddress ip_addr = IPAddress("1.2.3.4");
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
-  const auto attempt_delay = base::Milliseconds(13450);
   const auto props = MakePortalProperties();
-  EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
-  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
-  EXPECT_CALL(*connection_, dns_servers()).WillRepeatedly(ReturnRef(dns_list));
-  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  const auto attempt_delay = base::Milliseconds(13450);
+
   EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
+  EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
+  // If portal detection attempts run successfully and do not validate the
+  // network, the Service state does not become 'online'.
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(*service_, SetPortalDetectionFailure(
+                             StrEq(kPortalDetectionPhaseDns),
+                             StrEq(kPortalDetectionStatusTimeout), 0));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection_, dns_servers()).WillRepeatedly(ReturnRef(dns_list));
   MockPortalDetector* portal_detector = device_->SetMockPortalDetector();
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillOnce(Return(attempt_delay));
+  // The second portal detection attempt succeeds.
   EXPECT_CALL(*portal_detector,
               Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillOnce(Return(true));
-  SetServiceConnectedState(Service::kStateNoConnectivity);
+
+  // First result indicating no connectivity and triggering a new portal
+  // detection attempt.
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kDNS,
+  result.http_status = PortalDetector::Status::kTimeout;
+  result.https_phase = PortalDetector::Phase::kDNS;
+  result.https_status = PortalDetector::Status::kTimeout;
+  PortalDetectorCallback(result);
 }
 
 TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
@@ -1510,23 +1525,33 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   const std::vector<std::string> kDNSServers = {"8.8.8.8", "8.8.4.4"};
   auto attempt_delay = base::Milliseconds(13450);
   const auto props = MakePortalProperties();
+
+  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
+  EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   MockPortalDetector* portal_detector = device_->SetMockPortalDetector();
   for (int i = 0; i < 10; i++) {
-    EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
-    EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
     EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
         .WillOnce(Return(attempt_delay));
     EXPECT_CALL(*portal_detector,
                 Start(_, kDeviceName, ip_addr, kDNSServers, _, attempt_delay))
         .WillOnce(Return(true));
     EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-    SetServiceConnectedState(Service::kStateNoConnectivity);
+    EXPECT_CALL(*service_, SetPortalDetectionFailure(
+                               StrEq(kPortalDetectionPhaseDns),
+                               StrEq(kPortalDetectionStatusTimeout), 0));
+
+    PortalDetector::Result result;
+    result.http_phase = PortalDetector::Phase::kDNS,
+    result.http_status = PortalDetector::Status::kTimeout;
+    result.https_phase = PortalDetector::Phase::kDNS;
+    result.https_status = PortalDetector::Status::kTimeout;
+    PortalDetectorCallback(result);
+
     attempt_delay += base::Milliseconds(5678);
   }
-  EXPECT_TRUE(GetPortalDetector());
 }
 
 TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
