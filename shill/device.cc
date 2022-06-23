@@ -1111,7 +1111,7 @@ bool Device::StartPortalDetection(bool restart) {
   if (selected_service_->IsPortalDetectionDisabled()) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this service";
-    SetServiceConnectedState(Service::kStateOnline);
+    SetServiceState(Service::kStateOnline);
     return false;
   }
 
@@ -1121,7 +1121,7 @@ bool Device::StartPortalDetection(bool restart) {
       !manager_->IsPortalDetectionEnabled(technology())) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this technology";
-    SetServiceConnectedState(Service::kStateOnline);
+    SetServiceState(Service::kStateOnline);
     return false;
   }
 
@@ -1133,7 +1133,7 @@ bool Device::StartPortalDetection(bool restart) {
     // web proxy configurations.
     LOG(INFO) << LoggingTag()
               << ": Service has proxy config; marking it online.";
-    SetServiceConnectedState(Service::kStateOnline);
+    SetServiceState(Service::kStateOnline);
     return false;
   }
 
@@ -1144,7 +1144,8 @@ bool Device::StartPortalDetection(bool restart) {
                                network_->interface_name(), network_->local(),
                                network_->dns_servers(), LoggingTag())) {
     LOG(ERROR) << LoggingTag() << ": Portal detection failed to start";
-    SetServiceConnectedState(Service::kStateOnline);
+    SetServiceState(Service::kStateOnline);
+    portal_detector_.reset();
     return false;
   }
 
