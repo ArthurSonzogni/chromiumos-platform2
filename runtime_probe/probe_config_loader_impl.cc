@@ -58,10 +58,7 @@ std::optional<ProbeConfigData> LoadProbeConfig(
 }  // namespace
 
 ProbeConfigLoaderImpl::ProbeConfigLoaderImpl() : root_("/") {
-  auto config = std::make_unique<brillo::CrosConfig>();
-  if (config->Init()) {
-    cros_config_ = std::move(config);
-  }
+  cros_config_ = std::make_unique<brillo::CrosConfig>();
   system_property_ = std::make_unique<SystemPropertyImpl>();
 }
 
