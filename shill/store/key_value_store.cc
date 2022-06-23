@@ -19,7 +19,7 @@ void KeyValueStore::Clear() {
   properties_.clear();
 }
 
-bool KeyValueStore::IsEmpty() {
+bool KeyValueStore::IsEmpty() const {
   return properties_.empty();
 }
 

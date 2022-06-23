@@ -752,11 +752,13 @@ TEST_F(ServiceTest, StaticIPConfigs) {
 TEST_F(ServiceTest, StaticIPConfigsChanged) {
   constexpr char kTestIpAddress1[] = "1.2.3.4";
   constexpr char kTestIpAddress2[] = "1.2.3.5";
+  constexpr int kTestPrefix = 24;
   KeyValueStore static_ip_configs;
   FakeStore storage;
 
   const auto update_address = [&](const std::string& ip_addr) {
     static_ip_configs.Set(kAddressProperty, ip_addr);
+    static_ip_configs.Set(kPrefixlenProperty, kTestPrefix);
     service_->mutable_store()->SetKeyValueStoreProperty(
         kStaticIPConfigProperty, static_ip_configs, /*error=*/nullptr);
   };

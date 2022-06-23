@@ -553,9 +553,10 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  service->static_ip_parameters_.args_.Set<std::string>(kAddressProperty,
-                                                        "1.1.1.1");
-  service->static_ip_parameters_.args_.Set<int32_t>(kPrefixlenProperty, 16);
+  KeyValueStore kvs;
+  kvs.Set<std::string>(kAddressProperty, "1.1.1.1");
+  kvs.Set<int32_t>(kPrefixlenProperty, 16);
+  ASSERT_TRUE(service->static_ip_parameters_.SetStaticIP(kvs, nullptr));
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);

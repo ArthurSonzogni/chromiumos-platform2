@@ -87,21 +87,22 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
 
   config->ike_version = IPsecConnection::Config::IKEVersion::kV1;
   config->remote = remote_ip;
-  config->psk = args.GetOptionalValue<std::string>(kL2TPIPsecPskProperty);
+  config->psk =
+      args.GetOptionalValueWithoutEmpty<std::string>(kL2TPIPsecPskProperty);
   config->ca_cert_pem_strings =
-      args.GetOptionalValue<Strings>(kL2TPIPsecCaCertPemProperty);
-  config->client_cert_id =
-      args.GetOptionalValue<std::string>(kL2TPIPsecClientCertIdProperty);
-  config->client_cert_slot =
-      args.GetOptionalValue<std::string>(kL2TPIPsecClientCertSlotProperty);
+      args.GetOptionalValueWithoutEmpty<Strings>(kL2TPIPsecCaCertPemProperty);
+  config->client_cert_id = args.GetOptionalValueWithoutEmpty<std::string>(
+      kL2TPIPsecClientCertIdProperty);
+  config->client_cert_slot = args.GetOptionalValueWithoutEmpty<std::string>(
+      kL2TPIPsecClientCertSlotProperty);
 
-  config->xauth_user =
-      args.GetOptionalValue<std::string>(kL2TPIPsecXauthUserProperty);
-  config->xauth_password =
-      args.GetOptionalValue<std::string>(kL2TPIPsecXauthPasswordProperty);
+  config->xauth_user = args.GetOptionalValueWithoutEmpty<std::string>(
+      kL2TPIPsecXauthUserProperty);
+  config->xauth_password = args.GetOptionalValueWithoutEmpty<std::string>(
+      kL2TPIPsecXauthPasswordProperty);
 
-  config->tunnel_group =
-      args.GetOptionalValue<std::string>(kL2TPIPsecTunnelGroupProperty);
+  config->tunnel_group = args.GetOptionalValueWithoutEmpty<std::string>(
+      kL2TPIPsecTunnelGroupProperty);
 
   // 17 = UDP, 1701 = L2TP.
   config->local_proto_port =

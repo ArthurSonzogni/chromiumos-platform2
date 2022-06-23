@@ -74,7 +74,7 @@ class KeyValueStore {
 
   void Clear();
   void CopyFrom(const KeyValueStore& b);
-  bool IsEmpty();
+  bool IsEmpty() const;
 
   void Remove(const std::string& name);
 
@@ -145,10 +145,31 @@ class KeyValueStore {
   }
 
   // Gets a value from KeyValueStore in std::optional. Returns std::nullopt if
+  // the key does not exist
+  template <typename T, typename = brillo::EnableIfIsOneOf<T, KeyValueTypes>>
+  std::optional<T> GetOptionalValue(const std::string& key) const {
+    if (!Contains<T>(key)) {
+      return std::nullopt;
+    }
+    return Get<T>(key);
+  }
+
+  // If |value| is not std::nullopt, updates the value for |key| to |value|;
+  // otherwise, clears the value for |key|.
+  template <typename T, typename = brillo::EnableIfIsOneOf<T, KeyValueTypes>>
+  void SetFromOptionalValue(const std::string& key, std::optional<T> value) {
+    if (value.has_value()) {
+      Set<T>(key, value.value());
+    } else {
+      Remove(key);
+    }
+  }
+
+  // Gets a value from KeyValueStore in std::optional. Returns std::nullopt if
   // the key does not exist or the value is empty.
   using ContainerTypes = brillo::TypeList<std::string, Strings>;
   template <typename T, typename = brillo::EnableIfIsOneOf<T, ContainerTypes>>
-  std::optional<T> GetOptionalValue(const std::string& key) const {
+  std::optional<T> GetOptionalValueWithoutEmpty(const std::string& key) const {
     if (Lookup<T>(key, T{}).empty()) {
       return std::nullopt;
     }

@@ -12,6 +12,7 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/mock_ipconfig.h"
+#include "shill/network/network_config.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 
@@ -188,8 +189,12 @@ class StaticIPParametersTest : public Test {
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
   }
-  KeyValueStore* static_args() { return &static_params_.args_; }
-  KeyValueStore* saved_args() { return &static_params_.saved_args_; }
+  KeyValueStore static_args() {
+    return static_params_.GetStaticIPConfig(nullptr);
+  }
+  KeyValueStore saved_args() {
+    return static_params_.GetSavedIPConfig(nullptr);
+  }
 
  protected:
   StaticIPParameters static_params_;
@@ -221,10 +226,13 @@ TEST_F(StaticIPParametersTest, DefaultRoute) {
   SetStaticProperties(&store);
   static_params_.ApplyTo(&props);
   EXPECT_FALSE(props.default_route);
+  static_params_.RestoreTo(&props);
+  EXPECT_TRUE(props.default_route);
 }
 
 TEST_F(StaticIPParametersTest, ControlInterface) {
   PropertyStore store;
+  Error unused_error;
   int version = 0;
   static_params_.PlumbPropertyStore(&store);
   SetStaticProperties(&store);
@@ -233,9 +241,13 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
 
   EXPECT_TRUE(static_params_.ContainsAddress());
   EXPECT_TRUE(store.Contains("StaticIPConfig"));
-  static_args()->Remove("Address");
+  auto current_args = static_args();
+  current_args.Remove("Address");
+  store.SetKeyValueStoreProperty("StaticIPConfig", current_args, &unused_error);
   EXPECT_FALSE(static_params_.ContainsAddress());
-  static_args()->Remove("Mtu");
+  current_args = static_args();
+  current_args.Remove("Mtu");
+  store.SetKeyValueStoreProperty("StaticIPConfig", current_args, &unused_error);
   IPConfig::Properties props;
   const std::string kTestAddress("test_address");
   props.address = kTestAddress;
@@ -245,26 +257,27 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   EXPECT_EQ(kTestAddress, props.address);
   EXPECT_EQ(kTestMtu, props.mtu);
 
-  EXPECT_FALSE(static_args()->Contains<std::string>("Address"));
-  EXPECT_EQ(kGateway, static_args()->Get<std::string>("Gateway"));
-  EXPECT_FALSE(static_args()->Contains<int32_t>("Mtu"));
+  current_args = static_args();
+  EXPECT_FALSE(current_args.Contains<std::string>("Address"));
+  EXPECT_FALSE(current_args.Contains<int32_t>("PrefixLen"));
+  EXPECT_EQ(kGateway, current_args.Get<std::string>("Gateway"));
+  EXPECT_FALSE(current_args.Contains<int32_t>("Mtu"));
   std::vector<std::string> kTestNameServers(
       {VersionedAddress(kNameServer0, version),
        VersionedAddress(kNameServer1, version)});
-  EXPECT_EQ(kTestNameServers, static_args()->Get<Strings>("NameServers"));
+  EXPECT_EQ(kTestNameServers, current_args.Get<Strings>("NameServers"));
   std::vector<std::string> kTestSearchDomains(
       {VersionedAddress(kSearchDomain0, version),
        VersionedAddress(kSearchDomain1, version)});
-  EXPECT_EQ(kTestSearchDomains, static_args()->Get<Strings>("SearchDomains"));
-  EXPECT_EQ(kPrefixLen + version, static_args()->Get<int32_t>("Prefixlen"));
+  EXPECT_EQ(kTestSearchDomains, current_args.Get<Strings>("SearchDomains"));
   std::vector<std::string> kTestExcludedRoutes(
       {VersionedAddress(kExcludedRoute0, version),
        VersionedAddress(kExcludedRoute1, version)});
-  EXPECT_EQ(kTestExcludedRoutes, static_args()->Get<Strings>("ExcludedRoutes"));
+  EXPECT_EQ(kTestExcludedRoutes, current_args.Get<Strings>("ExcludedRoutes"));
   std::vector<std::string> kTestIncludedRoutes(
       {VersionedAddress(kIncludedRoute0, version),
        VersionedAddress(kIncludedRoute1, version)});
-  EXPECT_EQ(kTestIncludedRoutes, static_args()->Get<Strings>("IncludedRoutes"));
+  EXPECT_EQ(kTestIncludedRoutes, current_args.Get<Strings>("IncludedRoutes"));
 }
 
 TEST_F(StaticIPParametersTest, Profile) {
@@ -312,6 +325,8 @@ TEST_F(StaticIPParametersTest, Profile) {
 }
 
 TEST_F(StaticIPParametersTest, SavedParameters) {
+  Error unused_error;
+
   // Calling RestoreTo() when no parameters are set should not crash or
   // add any entries.
   static_params_.RestoreTo(&ipconfig_props_);
@@ -330,7 +345,8 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   ExpectPopulatedIPConfigWithVersion(1);
 
   // Clear all "StaticIP" parameters.
-  static_args()->Clear();
+  static_params_props.SetKeyValueStoreProperty("StaticIPConfig",
+                                               KeyValueStore(), &unused_error);
 
   // Another ApplyTo() call rotates the version 1 properties in
   // |ipconfig_props_| over to SavedIP.*.  Since there are no StaticIP
@@ -350,7 +366,7 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   ExpectPopulatedIPConfigWithVersion(1);
 
   // All "SavedIP" parameters should be cleared.
-  EXPECT_TRUE(saved_args()->IsEmpty());
+  EXPECT_TRUE(saved_args().IsEmpty());
 
   // Static IP parameters should be unchanged.
   ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);

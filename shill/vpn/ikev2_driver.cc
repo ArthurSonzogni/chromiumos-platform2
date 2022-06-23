@@ -34,26 +34,27 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
 
   config->ike_version = IPsecConnection::Config::IKEVersion::kV2;
   config->remote = args.Lookup<std::string>(kProviderHostProperty, "");
-  config->local_id =
-      args.GetOptionalValue<std::string>(kIKEv2LocalIdentityProperty);
-  config->remote_id =
-      args.GetOptionalValue<std::string>(kIKEv2RemoteIdentityProperty);
+  config->local_id = args.GetOptionalValueWithoutEmpty<std::string>(
+      kIKEv2LocalIdentityProperty);
+  config->remote_id = args.GetOptionalValueWithoutEmpty<std::string>(
+      kIKEv2RemoteIdentityProperty);
   config->ca_cert_pem_strings =
-      args.GetOptionalValue<Strings>(kIKEv2CaCertPemProperty);
+      args.GetOptionalValueWithoutEmpty<Strings>(kIKEv2CaCertPemProperty);
 
   const std::string auth_type =
       args.Lookup<std::string>(kIKEv2AuthenticationTypeProperty, "");
   if (auth_type == kIKEv2AuthenticationTypePSK) {
-    config->psk = args.GetOptionalValue<std::string>(kIKEv2PskProperty);
+    config->psk =
+        args.GetOptionalValueWithoutEmpty<std::string>(kIKEv2PskProperty);
     if (!config->psk.has_value()) {
       LOG(ERROR) << "Auth type is PSK but no PSK value found.";
       return nullptr;
     }
   } else if (auth_type == kIKEv2AuthenticationTypeCert) {
-    config->client_cert_id =
-        args.GetOptionalValue<std::string>(kIKEv2ClientCertIdProperty);
-    config->client_cert_slot =
-        args.GetOptionalValue<std::string>(kIKEv2ClientCertSlotProperty);
+    config->client_cert_id = args.GetOptionalValueWithoutEmpty<std::string>(
+        kIKEv2ClientCertIdProperty);
+    config->client_cert_slot = args.GetOptionalValueWithoutEmpty<std::string>(
+        kIKEv2ClientCertSlotProperty);
     if (!config->client_cert_id.has_value() ||
         !config->client_cert_slot.has_value()) {
       LOG(ERROR) << "Auth type is emtpy but empty cert id or slot found.";

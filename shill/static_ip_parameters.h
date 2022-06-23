@@ -11,6 +11,7 @@
 #include <base/logging.h>
 
 #include "shill/ipconfig.h"
+#include "shill/network/network_config.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"
 
@@ -63,22 +64,12 @@ class StaticIPParameters {
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
 
-  // These functions try to retrieve the argument |property| out of the
-  // KeyValueStore in |args_|.  If that value exists, overwrite |value_out|
-  // with its contents, and save the previous value into |saved_args_|.
-  void ApplyInt(const std::string& property, int32_t* value_out);
-  void ApplyString(const std::string& property, std::string* value_out);
-  void ApplyStrings(const std::string& property,
-                    std::vector<std::string>* value_out);
-  void RestoreStrings(const std::string& property,
-                      std::vector<std::string>* value_out);
-
   KeyValueStore GetSavedIPConfig(Error* error);
   KeyValueStore GetStaticIPConfig(Error* error);
   bool SetStaticIP(const KeyValueStore& value, Error* error);
 
-  KeyValueStore args_;
-  KeyValueStore saved_args_;
+  NetworkConfig config_;
+  NetworkConfig saved_config_;
 };
 
 }  // namespace shill
