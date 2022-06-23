@@ -74,11 +74,6 @@ std::string ToOnOffString(bool b) {
 // constant if it fails to read it from chromeos-config or nothing is specified.
 base::TimeDelta GetModemWedgeCheckDelay() {
   brillo::CrosConfig config;
-  if (!config.Init()) {
-    LOG(WARNING) << "Failed to load Chrome OS configuration";
-    return kWedgeCheckDelay;
-  }
-
   std::string delay_ms;
   if (!config.GetString("/modem", "wedge-reboot-delay-ms", &delay_ms)) {
     return kWedgeCheckDelay;
