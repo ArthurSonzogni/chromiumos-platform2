@@ -137,8 +137,6 @@ int main(int argc, char* argv[]) {
   // Set things up for running Chrome.
   std::unique_ptr<brillo::CrosConfig> cros_config =
       std::make_unique<brillo::CrosConfig>();
-  if (!cros_config->Init())
-    cros_config = nullptr;
   bool is_developer_end_user = false;
   map<string, string> env_var_map;
   vector<string> args, env_vars;
