@@ -63,16 +63,7 @@ std::string EfiDescription(
     std::unique_ptr<brillo::CrosConfigInterface> config = nullptr) {
   // If not passed a CrosConfig, make one.
   if (!config) {
-    // Temporarily hold in a `CrosConfig` object, because `Init` isn't available
-    // on `CrosConfigInterface`.
-    auto cros_config = std::make_unique<brillo::CrosConfig>();
-
-    if (cros_config->Init()) {
-      config = std::move(cros_config);
-    } else {
-      LOG(WARNING) << "Can't initialize CrosConfig, using default entry name";
-      return kCrosEfiDefaultDescription;
-    }
+    config = std::make_unique<brillo::CrosConfig>();
   }
 
   std::string description;
