@@ -97,12 +97,7 @@ std::unique_ptr<Context> Context::Create(
   context->chromium_data_collector_relay_.InitNewPipeAndWaitForIncomingRemote();
 
   // Create others.
-  auto cros_config = std::make_unique<brillo::CrosConfig>();
-  if (!cros_config->Init()) {
-    LOG(ERROR) << "Unable to initialize cros_config";
-    return nullptr;
-  }
-  context->cros_config_ = std::move(cros_config);
+  context->cros_config_ = std::make_unique<brillo::CrosConfig>();
 
   context->system_config_ = std::make_unique<SystemConfig>(
       context->cros_config_.get(), context->debugd_proxy_.get());
