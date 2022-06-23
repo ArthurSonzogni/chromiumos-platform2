@@ -119,11 +119,6 @@ int CameraHal::Init() {
   }
 
   brillo::CrosConfig config;
-  if (!config.Init()) {
-    LOGF(ERROR) << "Unable to initialize CrosConfig";
-    return -EBUSY;
-  }
-
   std::string has_poe_peripheral_support;
   if (!config.GetString("/hardware-properties", "has-poe-peripheral-support",
                         &has_poe_peripheral_support) ||

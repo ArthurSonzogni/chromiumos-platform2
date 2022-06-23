@@ -356,11 +356,6 @@ bool DeviceConfig::PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf) {
   CHECK(dev_conf);
   brillo::CrosConfig cros_config;
 
-  if (!cros_config.Init()) {
-    LOGF(ERROR) << "Failed to initialize CrOS config";
-    return false;
-  }
-
   if (!cros_config.GetString("/", "name", &dev_conf->model_name_)) {
     LOGF(ERROR) << "Failed to get model name of CrOS device";
     return false;
