@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_MOCK_RMAD_INTERFACE_H_
-#define RMAD_MOCK_RMAD_INTERFACE_H_
+#ifndef RMAD_INTERFACE_MOCK_RMAD_INTERFACE_H_
+#define RMAD_INTERFACE_MOCK_RMAD_INTERFACE_H_
 
-#include "rmad/rmad_interface.h"
+#include "rmad/interface/rmad_interface.h"
 
 #include <string>
 
@@ -40,4 +40,4 @@ class MockRmadInterface : public RmadInterface {
 
 }  // namespace rmad
 
-#endif  // RMAD_MOCK_RMAD_INTERFACE_H_
+#endif  // RMAD_INTERFACE_MOCK_RMAD_INTERFACE_H_

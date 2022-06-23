@@ -9,7 +9,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"

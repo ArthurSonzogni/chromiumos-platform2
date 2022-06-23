@@ -27,6 +27,8 @@ CryptohomeClientImpl::CryptohomeClientImpl(
         install_attributes_proxy)
     : install_attributes_proxy_(std::move(install_attributes_proxy)) {}
 
+CryptohomeClientImpl::~CryptohomeClientImpl() = default;
+
 bool CryptohomeClientImpl::IsCcdBlocked() {
   uint32_t fwmp_flags;
   if (!GetFwmp(&fwmp_flags)) {

@@ -9,7 +9,7 @@
 
 #include <base/memory/scoped_refptr.h>
 
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/state_handler/base_state_handler.h"
 
 namespace rmad {

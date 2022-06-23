@@ -51,6 +51,8 @@ TpmManagerClientImpl::TpmManagerClientImpl(
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy)
     : tpm_manager_proxy_(std::move(tpm_manager_proxy)) {}
 
+TpmManagerClientImpl::~TpmManagerClientImpl() = default;
+
 bool TpmManagerClientImpl::GetRoVerificationStatus(
     RoVerificationStatus* ro_verification_status) {
   tpm_manager::GetRoVerificationStatusRequest request;

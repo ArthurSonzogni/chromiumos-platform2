@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_RMAD_INTERFACE_IMPL_H_
-#define RMAD_RMAD_INTERFACE_IMPL_H_
+#ifndef RMAD_INTERFACE_RMAD_INTERFACE_IMPL_H_
+#define RMAD_INTERFACE_RMAD_INTERFACE_IMPL_H_
 
-#include "rmad/rmad_interface.h"
+#include "rmad/interface/rmad_interface.h"
 
 #include <algorithm>
 #include <memory>
@@ -18,7 +18,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/constants.h"
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/power_manager_client.h"
@@ -137,4 +137,4 @@ class RmadInterfaceImpl final : public RmadInterface {
 
 }  // namespace rmad
 
-#endif  // RMAD_RMAD_INTERFACE_IMPL_H_
+#endif  // RMAD_INTERFACE_RMAD_INTERFACE_IMPL_H_

@@ -12,8 +12,8 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
-#include "rmad/dbus_service.h"
-#include "rmad/rmad_interface_impl.h"
+#include "rmad/daemon/dbus_service.h"
+#include "rmad/interface/rmad_interface_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 
 namespace {

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/dbus_service.h"
+#include "rmad/daemon/dbus_service.h"
 
 #include <sysexits.h>
 
@@ -21,7 +21,7 @@
 #include <dbus/rmad/dbus-constants.h>
 
 #include "rmad/constants.h"
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"

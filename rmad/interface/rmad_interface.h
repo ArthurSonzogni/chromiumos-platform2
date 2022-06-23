@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_RMAD_INTERFACE_H_
-#define RMAD_RMAD_INTERFACE_H_
+#ifndef RMAD_INTERFACE_RMAD_INTERFACE_H_
+#define RMAD_INTERFACE_RMAD_INTERFACE_H_
 
 #include <string>
 
 #include <base/callback.h>
 #include <base/memory/scoped_refptr.h>
 
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
@@ -71,4 +71,4 @@ class RmadInterface {
 
 }  // namespace rmad
 
-#endif  // RMAD_RMAD_INTERFACE_H_
+#endif  // RMAD_INTERFACE_RMAD_INTERFACE_H_

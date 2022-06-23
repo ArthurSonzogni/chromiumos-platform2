@@ -24,6 +24,8 @@ ShillClientImpl::ShillClientImpl(
         flimflam_manager_proxy)
     : flimflam_manager_proxy_(std::move(flimflam_manager_proxy)) {}
 
+ShillClientImpl::~ShillClientImpl() = default;
+
 bool ShillClientImpl::DisableCellular() const {
   brillo::ErrorPtr error;
   if (!flimflam_manager_proxy_->DisableTechnology(shill::kTypeCellular,

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/daemon/dbus_service.h"
+
 #include <sysexits.h>
 
 #include <string>
@@ -16,8 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "rmad/dbus_service.h"
-#include "rmad/mock_rmad_interface.h"
+#include "rmad/interface/mock_rmad_interface.h"
 #include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"

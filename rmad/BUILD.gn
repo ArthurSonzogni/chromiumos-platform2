@@ -146,8 +146,8 @@ static_library("libstate_handler") {
 
 static_library("librmad") {
   sources = [
-    "dbus_service.cc",
-    "rmad_interface_impl.cc",
+    "daemon/dbus_service.cc",
+    "interface/rmad_interface_impl.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
@@ -201,9 +201,9 @@ if (use.test) {
 
   executable("rmad_test") {
     sources = [
-      "dbus_service_test.cc",
-      "metrics/metrics_utils_impl_test.cc",
-      "rmad_interface_test.cc",
+      "daemon/dbus_service_test.cc",
+      "interface/rmad_interface_test.cc",
+      "metrics/metrics_utils_test.cc",
       "state_handler/base_state_handler_test.cc",
       "state_handler/check_calibration_state_handler_test.cc",
       "state_handler/components_repair_state_handler_test.cc",

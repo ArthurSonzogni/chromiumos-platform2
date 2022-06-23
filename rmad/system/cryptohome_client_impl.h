@@ -14,7 +14,12 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
-#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
+
+namespace org {
+namespace chromium {
+class InstallAttributesInterfaceProxyInterface;
+}  // namespace chromium
+}  // namespace org
 
 namespace rmad {
 
@@ -27,7 +32,7 @@ class CryptohomeClientImpl : public CryptohomeClient {
   CryptohomeClientImpl(const CryptohomeClientImpl&) = delete;
   CryptohomeClientImpl& operator=(const CryptohomeClientImpl&) = delete;
 
-  ~CryptohomeClientImpl() override = default;
+  ~CryptohomeClientImpl() override;
 
   bool IsCcdBlocked() override;
 

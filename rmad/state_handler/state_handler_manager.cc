@@ -9,7 +9,7 @@
 #include <base/check.h>
 #include <base/memory/scoped_refptr.h>
 
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/state_handler/check_calibration_state_handler.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/device_destination_state_handler.h"

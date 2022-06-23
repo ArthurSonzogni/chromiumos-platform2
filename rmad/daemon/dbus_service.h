@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_DBUS_SERVICE_H_
-#define RMAD_DBUS_SERVICE_H_
+#ifndef RMAD_DAEMON_DBUS_SERVICE_H_
+#define RMAD_DAEMON_DBUS_SERVICE_H_
 
 #include <memory>
 #include <string>
@@ -19,8 +19,8 @@
 #include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
 
-#include "rmad/daemon_callback.h"
-#include "rmad/rmad_interface.h"
+#include "rmad/daemon/daemon_callback.h"
+#include "rmad/interface/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/crossystem_utils.h"
@@ -216,4 +216,4 @@ class DBusService : public brillo::DBusServiceDaemon {
 
 }  // namespace rmad
 
-#endif  // RMAD_DBUS_SERVICE_H_
+#endif  // RMAD_DAEMON_DBUS_SERVICE_H_

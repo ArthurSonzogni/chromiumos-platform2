@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_DAEMON_CALLBACK_H_
-#define RMAD_DAEMON_CALLBACK_H_
+#ifndef RMAD_DAEMON_DAEMON_CALLBACK_H_
+#define RMAD_DAEMON_DAEMON_CALLBACK_H_
 
 #include <base/callback.h>
 #include <base/callback_helpers.h>
@@ -64,4 +64,4 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
 
 }  // namespace rmad
 
-#endif  // RMAD_DAEMON_CALLBACK_H_
+#endif  // RMAD_DAEMON_DAEMON_CALLBACK_H_

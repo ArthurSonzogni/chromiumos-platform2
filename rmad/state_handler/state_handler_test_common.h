@@ -10,7 +10,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <gtest/gtest.h>
 
-#include "rmad/daemon_callback.h"
+#include "rmad/daemon/daemon_callback.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
