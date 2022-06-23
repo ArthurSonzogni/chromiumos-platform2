@@ -887,7 +887,6 @@ void ArcSetup::ApplyPerBoardConfigurations() {
 void ArcSetup::ApplyPerBoardConfigurationsInternal(
     const base::FilePath& oem_mount_directory) {
   auto config = std::make_unique<brillo::CrosConfig>();
-  config->Init();
 
   base::FilePath media_profile_xml =
       base::FilePath(arc_paths_->camera_profile_dir)
