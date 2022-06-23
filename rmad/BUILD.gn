@@ -21,7 +21,6 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libminijail",
   ]
 }
 
@@ -33,6 +32,7 @@ executable("rmad") {
     "daemon:libdaemon",
     "executor:libexecutor",
     "interface:libinterface",
+    "minijail:libminijail",
     "utils:libutils",
   ]
 }
