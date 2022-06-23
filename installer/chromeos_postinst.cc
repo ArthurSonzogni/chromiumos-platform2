@@ -329,9 +329,9 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             int* exit_code) {
   // Extract External ENVs
-  bool is_factory_install = getenv("IS_FACTORY_INSTALL");
-  bool is_recovery_install = getenv("IS_RECOVERY_INSTALL");
-  bool is_install = getenv("IS_INSTALL");
+  bool is_factory_install = getenv(kEnvIsFactoryInstall);
+  bool is_recovery_install = getenv(kEnvIsRecoveryInstall);
+  bool is_install = getenv(kEnvIsInstall);
   bool is_update = !is_factory_install && !is_recovery_install && !is_install &&
                    !IsRunningMiniOS();
 

@@ -10,6 +10,10 @@
 
 #include <base/files/file_path.h>
 
+extern const char kEnvIsInstall[];
+extern const char kEnvIsFactoryInstall[];
+extern const char kEnvIsRecoveryInstall[];
+
 enum partition_nums_t {
   PART_NUM_KERN_A = 2,
   PART_NUM_ROOT_A = 3,
