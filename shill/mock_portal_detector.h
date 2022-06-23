@@ -32,6 +32,7 @@ class MockPortalDetector : public PortalDetector {
                const std::string& ifname,
                const IPAddress&,
                const std::vector<std::string>&,
+               const std::string& logging_tag,
                base::TimeDelta),
               (override));
   MOCK_METHOD(void, Stop, (), (override));

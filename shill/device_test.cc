@@ -1369,7 +1369,7 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillOnce(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillOnce(Return(true));
 
   PortalDetectorCallback(result);
@@ -1481,7 +1481,7 @@ TEST_F(DevicePortalDetectionTest, NotDefault) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillOnce(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay));
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay));
   SetServiceConnectedState(Service::kStateNoConnectivity);
   EXPECT_FALSE(GetPortalDetector());
 }
@@ -1500,7 +1500,7 @@ TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillOnce(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillOnce(Return(true));
   SetServiceConnectedState(Service::kStateNoConnectivity);
 }
@@ -1520,7 +1520,7 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
     EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
         .WillOnce(Return(attempt_delay));
     EXPECT_CALL(*portal_detector,
-                Start(_, kDeviceName, ip_addr, kDNSServers, attempt_delay))
+                Start(_, kDeviceName, ip_addr, kDNSServers, _, attempt_delay))
         .WillOnce(Return(true));
     EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
     SetServiceConnectedState(Service::kStateNoConnectivity);
@@ -1569,7 +1569,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillRepeatedly(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillRepeatedly(Return(true));
 
   PortalDetectorCallback(result);
@@ -1603,7 +1603,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillRepeatedly(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillRepeatedly(Return(true));
 
   PortalDetectorCallback(result);
@@ -1639,7 +1639,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillRepeatedly(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillRepeatedly(Return(true));
 
   PortalDetectorCallback(result);
@@ -1673,7 +1673,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillRepeatedly(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillRepeatedly(Return(true));
 
   PortalDetectorCallback(result);
@@ -1707,7 +1707,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillRepeatedly(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillRepeatedly(Return(true));
 
   PortalDetectorCallback(result);
@@ -1741,7 +1741,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   EXPECT_CALL(*portal_detector, GetNextAttemptDelay())
       .WillRepeatedly(Return(attempt_delay));
   EXPECT_CALL(*portal_detector,
-              Start(_, kDeviceName, ip_addr, dns_list, attempt_delay))
+              Start(_, kDeviceName, ip_addr, dns_list, _, attempt_delay))
       .WillRepeatedly(Return(true));
 
   PortalDetectorCallback(result);

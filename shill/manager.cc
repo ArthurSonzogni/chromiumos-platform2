@@ -2280,7 +2280,7 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
   connectivity_test_portal_detectors_.clear();
 
   for (const auto& device : devices_) {
-    StartConnectivityTest(device->network());
+    StartConnectivityTest(device);
   }
 }
 
@@ -3285,34 +3285,37 @@ const std::vector<uint32_t>& Manager::GetUserTrafficUids() {
   return user_traffic_uids_;
 }
 
-void Manager::StartConnectivityTest(Network* network) {
-  // TODO(b/232177767): Check Network state instead.
-  if (!network->HasConnectionObject()) {
+void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
+  if (!device->network()->HasConnectionObject()) {
+    LOG(INFO) << device->LoggingTag()
+              << ": Skipping connectivity test: no Network connection";
     return;
   }
-  std::string interface_name = network->interface_name();
+
   auto portal_detector = std::make_unique<PortalDetector>(
       dispatcher(), metrics_,
       base::BindRepeating(&Manager::ConnectivityTestCallback,
-                          weak_factory_.GetWeakPtr(), interface_name));
-  auto iter =
-      connectivity_test_portal_detectors_
-          .insert(std::make_pair(interface_name, std::move(portal_detector)))
-          .first;
-  if (!iter->second->Start(GetProperties(), interface_name, network->local(),
-                           network->dns_servers())) {
-    LOG(WARNING) << "Failed to start connectivity test for interface: "
-                 << interface_name;
+                          weak_factory_.GetWeakPtr(), device->link_name(),
+                          device->LoggingTag()));
+  auto iter = connectivity_test_portal_detectors_
+                  .insert(std::make_pair(device->link_name(),
+                                         std::move(portal_detector)))
+                  .first;
+  if (!iter->second->Start(
+          GetProperties(), device->link_name(), device->network()->local(),
+          device->network()->dns_servers(), device->LoggingTag())) {
+    LOG(WARNING) << device->LoggingTag()
+                 << ": Failed to start connectivity test";
   } else {
-    LOG(INFO) << "Started connectivity test for interface: " << interface_name;
+    LOG(INFO) << device->LoggingTag() << ": Started connectivity test";
   }
 }
 
 void Manager::ConnectivityTestCallback(const std::string& interface_name,
+                                       const std::string& logging_tag,
                                        const PortalDetector::Result& result) {
-  LOG(INFO) << "Completed connectivity test for: " << interface_name
-            << ". HTTP probe phase=" << result.http_phase
-            << ", status=" << result.http_status
+  LOG(INFO) << logging_tag << ": Completed connectivity test. HTTP probe phase="
+            << result.http_phase << ", status=" << result.http_status
             << ". HTTPS probe phase=" << result.https_phase
             << ", status=" << result.https_status;
   connectivity_test_portal_detectors_.erase(interface_name);

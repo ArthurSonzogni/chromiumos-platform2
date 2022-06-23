@@ -256,8 +256,7 @@ void Device::SetIsMultiHomed(bool is_multi_homed) {
   if (is_multi_homed == is_multi_homed_) {
     return;
   }
-  LOG(INFO) << "Device " << link_name() << " multi-home state is now "
-            << is_multi_homed;
+  LOG(INFO) << LoggingTag() << ": multi-home state is now " << is_multi_homed;
   is_multi_homed_ = is_multi_homed;
   if (is_multi_homed) {
     EnableArpFiltering();
@@ -423,7 +422,8 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   CHECK_EQ(address->family(), IPAddress::kFamilyIPv6);
   IPConfig::Properties properties;
   if (!address->IntoString(&properties.address)) {
-    LOG(ERROR) << "Unable to convert IPv6 address into a string";
+    LOG(ERROR) << LoggingTag()
+               << ": Unable to convert IPv6 address into a string";
     return;
   }
   properties.subnet_prefix = address->prefix();
@@ -432,14 +432,16 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
                                                 &default_route)) {
     if (!default_route.gateway.IntoString(&properties.gateway)) {
-      LOG(ERROR) << "Unable to convert IPv6 gateway into a string";
+      LOG(ERROR) << LoggingTag()
+                 << ": Unable to convert IPv6 gateway into a string";
       return;
     }
   } else {
     // The kernel normally populates the default route before it performs
     // a neighbor solicitation for the new address, so it shouldn't be
     // missing at this point.
-    LOG(WARNING) << "No default route for global IPv6 address "
+    LOG(WARNING) << LoggingTag()
+                 << ": No default route for global IPv6 address "
                  << properties.address;
   }
 
@@ -487,7 +489,8 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   for (const auto& ip : server_addresses) {
     std::string address_str;
     if (!ip.IntoString(&address_str)) {
-      LOG(ERROR) << "Unable to convert IPv6 address into a string!";
+      LOG(ERROR) << LoggingTag()
+                 << ": Unable to convert IPv6 address into a string!";
       IPv6DNSServerExpired();
       return;
     }
@@ -552,7 +555,7 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
 }
 
 void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
-  LOG(INFO) << __func__;
+  LOG(INFO) << LoggingTag() << ": " << __func__;
 
   if (dhcp_controller_) {
     SLOG(this, 3) << "Renewing IPv4 Address";
@@ -736,7 +739,8 @@ void Device::ConfigureStaticIPTask() {
 
 void Device::OnIPv6ConfigUpdated() {
   if (!ip6config_) {
-    LOG(WARNING) << __func__ << " called but |ip6config_| is empty";
+    LOG(WARNING) << LoggingTag() << ": " << __func__
+                 << " called but |ip6config_| is empty";
     return;
   }
 
@@ -756,8 +760,8 @@ void Device::ConfigureStaticIPv6Address() {
   }
   IPAddress local(IPAddress::kFamilyIPv6);
   if (!local.SetAddressFromString(ipv6_static_properties_->address)) {
-    LOG(ERROR) << "Local address " << ipv6_static_properties_->address
-               << " is invalid";
+    LOG(ERROR) << LoggingTag() << ": Local address "
+               << ipv6_static_properties_->address << " is invalid";
     return;
   }
   local.set_prefix(ipv6_static_properties_->subnet_prefix);
@@ -923,7 +927,7 @@ void Device::OnDHCPFailure() {
 
 void Device::OnStaticIPConfigChanged() {
   if (!ipconfig_ || !selected_service_) {
-    LOG(ERROR) << __func__ << " called but "
+    LOG(ERROR) << LoggingTag() << ": " << __func__ << " called but "
                << (!ipconfig_ ? "no IPv4 config" : "no selected service");
     return;
   }
@@ -981,11 +985,11 @@ void Device::GetTrafficCountersPatchpanelCallback(
     unsigned int id, const std::vector<patchpanel::TrafficCounter>& counters) {
   auto iter = traffic_counters_callback_map_.find(id);
   if (iter == traffic_counters_callback_map_.end() || iter->second.is_null()) {
-    LOG(ERROR) << "No callback found for ID " << id;
+    LOG(ERROR) << LoggingTag() << ": No callback found for ID " << id;
     return;
   }
   if (counters.empty()) {
-    LOG(WARNING) << "No counters found for " << link_name_;
+    LOG(WARNING) << LoggingTag() << ": No counters found";
   }
   auto callback = std::move(iter->second);
   traffic_counters_callback_map_.erase(iter);
@@ -1061,7 +1065,7 @@ bool Device::SetIPFlag(IPAddress::Family family,
         base::Contains(written_flags_, flag_file.value())) {
       SLOG(this, 2) << message << " (device is no longer present?)";
     } else {
-      LOG(ERROR) << message;
+      LOG(ERROR) << LoggingTag() << ": " << message;
     }
     return false;
   } else {
@@ -1077,25 +1081,25 @@ bool Device::RestartPortalDetection() {
 
 bool Device::RequestPortalDetection() {
   if (!selected_service_) {
-    LOG(INFO) << link_name() << ": Skipping portal detection: no Service";
+    LOG(INFO) << LoggingTag() << ": Skipping portal detection: no Service";
     return false;
   }
 
   if (!network_->HasConnectionObject()) {
-    LOG(INFO) << link_name() << ": Skipping portal detection: no Connection";
+    LOG(INFO) << LoggingTag() << ": Skipping portal detection: no Connection";
     return false;
   }
 
   // Do not run portal detection unless in a connected state (i.e. connected,
   // online, or portalled).
   if (!selected_service_->IsConnected()) {
-    LOG(INFO) << link_name()
+    LOG(INFO) << LoggingTag()
               << ": Skipping portal detection: Service is not connected";
     return false;
   }
 
   if (portal_detector_.get() && portal_detector_->IsInProgress()) {
-    LOG(INFO) << link_name() << ": Portal detection is already running.";
+    LOG(INFO) << LoggingTag() << ": Portal detection is already running.";
     return true;
   }
 
@@ -1114,8 +1118,8 @@ bool Device::StartPortalDetection() {
   SLOG(this, 1) << __func__ << " for: " << selected_service_->log_name();
 
   if (selected_service_->IsPortalDetectionDisabled()) {
-    LOG(INFO) << link_name() << ": Portal detection is disabled for service "
-              << selected_service_->log_name();
+    LOG(INFO) << LoggingTag()
+              << ": Portal detection is disabled for this service";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -1124,7 +1128,7 @@ bool Device::StartPortalDetection() {
   // the service state to "Online".
   if (selected_service_->IsPortalDetectionAuto() &&
       !manager_->IsPortalDetectionEnabled(technology())) {
-    LOG(INFO) << link_name()
+    LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this technology";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
@@ -1136,8 +1140,8 @@ bool Device::StartPortalDetection() {
     // arbitrary proxy configs and their possible credentials.
     // TODO(b/207657239) Make PortalDetector proxy-aware and compatible with
     // web proxy configurations.
-    LOG(INFO) << link_name() << ": Service " << selected_service_->log_name()
-              << " has proxy config; marking it online.";
+    LOG(INFO) << LoggingTag()
+              << ": Service has proxy config; marking it online.";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -1148,20 +1152,20 @@ bool Device::StartPortalDetection() {
   DCHECK(network_->HasConnectionObject());
   if (!portal_detector_->Start(manager_->GetProperties(),
                                network_->interface_name(), network_->local(),
-                               network_->dns_servers())) {
-    LOG(ERROR) << link_name() << ": Portal detection failed to start";
+                               network_->dns_servers(), LoggingTag())) {
+    LOG(ERROR) << LoggingTag() << ": Portal detection failed to start";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
 
-  SLOG(this, 2) << link_name() << ": Portal detection has started.";
+  SLOG(this, 2) << LoggingTag() << ": Portal detection has started.";
   OnNetworkValidationStart();
 
   return true;
 }
 
 void Device::StopPortalDetection() {
-  SLOG(this, 2) << link_name() << ": Portal detection stopping.";
+  SLOG(this, 2) << LoggingTag() << ": Portal detection stopping.";
   portal_detector_.reset();
 }
 
@@ -1178,7 +1182,7 @@ void Device::StartConnectionDiagnosticsAfterPortalDetection() {
 }
 
 void Device::StopConnectionDiagnostics() {
-  SLOG(this, 2) << link_name() << ": Connection diagnostics stopping.";
+  SLOG(this, 2) << LoggingTag() << ": Connection diagnostics stopping.";
   connection_diagnostics_.reset();
 }
 
@@ -1209,17 +1213,16 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   if (!selected_service_) {
     // A race can happen if the Service has disconnected in the meantime.
     LOG(WARNING)
-        << link_name() << ": "
+        << LoggingTag() << ": "
         << "Portal detection completed but no selected service exists.";
     return;
   }
 
   if (!selected_service_->IsConnected()) {
     // A race can happen if the Service is currently disconnecting.
-    LOG(WARNING) << link_name() << ": "
-                 << "Portal detection completed but selected service "
-                 << selected_service_->log_name()
-                 << " is in non-connected state.";
+    LOG(WARNING) << LoggingTag() << ": "
+                 << "Portal detection completed but selected service is in "
+                    "non-connected state.";
     return;
   }
 
@@ -1232,19 +1235,21 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     const auto next_delay = portal_detector_->GetNextAttemptDelay();
     if (!portal_detector_->Start(manager_->GetProperties(),
                                  network_->interface_name(), network_->local(),
-                                 network_->dns_servers(), next_delay)) {
-      LOG(ERROR) << link_name() << ": Portal detection failed to restart";
+                                 network_->dns_servers(), LoggingTag(),
+                                 next_delay)) {
+      LOG(ERROR) << LoggingTag() << ": Portal detection failed to restart";
       SetServiceState(Service::kStateOnline);
       StopPortalDetection();
       return;
     }
-    LOG(INFO) << link_name() << ": Portal detection retrying in " << next_delay;
+    LOG(INFO) << LoggingTag() << ": Portal detection retrying in "
+              << next_delay;
     // TODO(b/216351118): this ignores the portal detection retry delay. The
     // callback should be triggered when the next attempt starts, not when it
     // is scheduled.
     OnNetworkValidationStart();
   } else {
-    LOG(INFO) << link_name() << ": Portal detection finished";
+    LOG(INFO) << LoggingTag() << ": Portal detection finished";
     StopPortalDetection();
   }
 
@@ -1496,6 +1501,11 @@ EventDispatcher* Device::dispatcher() const {
 
 Metrics* Device::metrics() const {
   return manager_->metrics();
+}
+
+std::string Device::LoggingTag() const {
+  return link_name_ + " " +
+         (selected_service_ ? selected_service_->log_name() : "no_service");
 }
 
 }  // namespace shill

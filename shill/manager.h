@@ -121,8 +121,8 @@ struct ManagerProperties {
   std::string dhcp_hostname;
 
 #if !defined(DISABLE_WIFI)
-    std::optional<bool> ft_enabled;
-    bool scan_allow_roam = true;
+  std::optional<bool> ft_enabled;
+  bool scan_allow_roam = true;
 #endif  // !DISABLE_WIFI
 };
 
@@ -813,8 +813,9 @@ class Manager {
   // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
   std::vector<std::string> ClaimedDevices(Error* error);
 
-  void StartConnectivityTest(Network* network);
+  void StartConnectivityTest(const DeviceRefPtr& device);
   void ConnectivityTestCallback(const std::string& interface_name,
+                                const std::string& logging_tag,
                                 const PortalDetector::Result& result);
 
   EventDispatcher* dispatcher_;

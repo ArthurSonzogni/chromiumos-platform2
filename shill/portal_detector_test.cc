@@ -147,8 +147,9 @@ class PortalDetectorTest : public Test {
 
   bool StartPortalRequest(const ManagerProperties& props,
                           base::TimeDelta delay = base::TimeDelta()) {
-    bool ret = portal_detector_->Start(props, kInterfaceName, kIpAddress,
-                                       {kDNSServer0, kDNSServer1}, delay);
+    bool ret =
+        portal_detector_->Start(props, kInterfaceName, kIpAddress,
+                                {kDNSServer0, kDNSServer1}, "tag", delay);
     if (ret) {
       AssignHttpRequest();
     }
@@ -347,7 +348,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     EXPECT_TRUE(last_delay < delay);
     last_delay = delay;
     portal_detector()->Start(props, kInterfaceName, kIpAddress,
-                             {kDNSServer0, kDNSServer1});
+                             {kDNSServer0, kDNSServer1}, "tag");
 
     EXPECT_NE(
         expected_retry_http_urls.find(portal_detector()->http_url_string_),

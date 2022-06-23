@@ -78,9 +78,10 @@ bool PortalDetector::Start(const ManagerProperties& props,
                            const std::string& ifname,
                            const IPAddress& src_address,
                            const std::vector<std::string>& dns_list,
+                           const std::string& logging_tag,
                            base::TimeDelta delay) {
   logging_tag_ =
-      ifname + " " + IPAddress::GetAddressFamilyName(src_address.family());
+      logging_tag + " " + IPAddress::GetAddressFamilyName(src_address.family());
 
   SLOG(this, 3) << "In " << __func__;
 

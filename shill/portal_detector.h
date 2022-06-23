@@ -177,6 +177,7 @@ class PortalDetector {
                      const std::string& ifname,
                      const IPAddress& src_address,
                      const std::vector<std::string>& dns_list,
+                     const std::string& logging_tag,
                      base::TimeDelta delay = kZeroTimeDelta);
 
   // End the current portal detection process if one exists, and do not call

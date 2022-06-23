@@ -321,6 +321,10 @@ class Device : public base::RefCounted<Device> {
   // active connection.
   std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
+  // Returns a string formatted as "$ifname $service_log_name", or
+  // "$ifname no_service" if |selected_service_| is currently not defined.
+  std::string LoggingTag() const;
+
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
   }
