@@ -629,8 +629,17 @@ class Device : public base::RefCounted<Device> {
   // states can override this method in order to do so.
   void PortalDetectorCallback(const PortalDetector::Result& result);
 
-  // Initiate portal detection, if enabled for this device type.
-  bool StartPortalDetection();
+  // Initiate portal detection if all the following conditions are met:
+  //   - There is currently a |selected_service_| for this Device.
+  //   - Portal detection is enabled for this Device type and for the current
+  //   |selected_service_|.
+  //   - The Device has an active Network connection and |selected_service_| is
+  //   in a connected state.
+  //   - There is no proxy configuration defined on |selected_service_|.
+  //   - Portal detection was not already running. If |restart| is true this
+  //   check is ignored. This allows the caller to force the creation of a new
+  //   PortalDetector instance with the latest network layer properties.
+  bool StartPortalDetection(bool restart);
 
   // Stop portal detection if it is running.
   void StopPortalDetection();

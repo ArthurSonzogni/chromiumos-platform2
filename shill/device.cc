@@ -818,8 +818,13 @@ void Device::SetupConnection(IPConfig* ipconfig) {
 
     // Subtle: Start portal detection after transitioning the service
     // to the Connected state because this call may immediately transition
-    // to the Online state.
-    StartPortalDetection();
+    // to the Online state. Always ignore any on-going portal detection such
+    // that the latest network layer properties are used to restart portal
+    // detection. This ensures that network validation over IPv4 is prioritized
+    // on dual stack networks when IPv4 provisioning completes after IPv6
+    // provisioning. Note that currently SetupConnection() is never called a
+    // second time if IPv6 provisioning completes after IPv4 provisioning.
+    StartPortalDetection(/*restart=*/true);
   }
 }
 
@@ -1069,10 +1074,17 @@ bool Device::SetIPFlag(IPAddress::Family family,
 
 bool Device::RestartPortalDetection() {
   StopPortalDetection();
-  return StartPortalDetection();
+  return StartPortalDetection(/*restart=*/false);
 }
 
 bool Device::RequestPortalDetection() {
+  SLOG(this, 1) << LoggingTag() << ": " << __func__;
+  return StartPortalDetection(/*restart=*/false);
+}
+
+bool Device::StartPortalDetection(bool restart) {
+  SLOG(this, 1) << LoggingTag() << ": " << __func__ << " restart=" << restart;
+
   if (!selected_service_) {
     LOG(INFO) << LoggingTag() << ": Skipping portal detection: no Service";
     return false;
@@ -1091,24 +1103,10 @@ bool Device::RequestPortalDetection() {
     return false;
   }
 
-  if (portal_detector_.get() && portal_detector_->IsInProgress()) {
+  if (!restart && portal_detector_.get() && portal_detector_->IsInProgress()) {
     LOG(INFO) << LoggingTag() << ": Portal detection is already running.";
     return true;
   }
-
-  SLOG(this, 1) << __func__ << " for: " << selected_service_->log_name();
-
-  return StartPortalDetection();
-}
-
-// Start portal detection for |selected_service_| if enabled.
-// Note: This method used to also check for a proxy configuration, however a
-// proxy may or may not return a portal response depending on how it is
-// configured. We run additional portal detection in Chrome if a proxy is
-// configured, but still run Shill portal detection first.
-bool Device::StartPortalDetection() {
-  DCHECK(selected_service_);
-  SLOG(this, 1) << __func__ << " for: " << selected_service_->log_name();
 
   if (selected_service_->IsPortalDetectionDisabled()) {
     LOG(INFO) << LoggingTag()
@@ -1142,7 +1140,6 @@ bool Device::StartPortalDetection() {
   portal_detector_.reset(new PortalDetector(
       dispatcher(),
       base::BindRepeating(&Device::PortalDetectorCallback, AsWeakPtr())));
-  DCHECK(network_->HasConnectionObject());
   if (!portal_detector_->Start(manager_->GetProperties(),
                                network_->interface_name(), network_->local(),
                                network_->dns_servers(), LoggingTag())) {
