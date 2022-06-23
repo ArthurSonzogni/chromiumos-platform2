@@ -13,7 +13,6 @@ namespace typecd {
 
 CrosConfigUtil::CrosConfigUtil() {
   config_ = std::make_unique<brillo::CrosConfig>();
-  config_->Init();
 }
 
 bool CrosConfigUtil::APModeEntryDPOnly() {
