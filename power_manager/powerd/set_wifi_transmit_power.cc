@@ -133,7 +133,6 @@ std::map<enum Ath10kSARBand, uint8_t> GetAth10kChromeosConfigPowerTable(
     bool tablet) {
   std::map<enum Ath10kSARBand, uint8_t> power_table = {};
   auto config = std::make_unique<brillo::CrosConfig>();
-  CHECK(config->Init()) << "Could not find config";
   std::string wifi_power_table_path =
       tablet ? "/wifi/tablet-mode-power-table-ath10k"
              : "/wifi/non-tablet-mode-power-table-ath10k";
@@ -228,7 +227,6 @@ std::map<enum RealtekVndcmdSARBand, uint8_t> GetRtw88ChromeosConfigPowerTable(
     bool tablet, power_manager::WifiRegDomain domain) {
   std::map<enum RealtekVndcmdSARBand, uint8_t> power_table = {};
   auto config = std::make_unique<brillo::CrosConfig>();
-  CHECK(config->Init()) << "Could not find config";
   std::string wifi_power_table_path =
       tablet ? "/wifi/tablet-mode-power-table-rtw"
              : "/wifi/non-tablet-mode-power-table-rtw";
@@ -301,7 +299,6 @@ std::map<enum Rtw89SARBand, uint8_t> GetRtw89ChromeosConfigPowerTable(
     bool tablet, power_manager::WifiRegDomain domain) {
   std::map<enum Rtw89SARBand, uint8_t> power_table = {};
   auto config = std::make_unique<brillo::CrosConfig>();
-  CHECK(config->Init()) << "Could not find config";
   std::string wifi_power_table_path =
       tablet ? "/wifi/tablet-mode-power-table-rtw"
              : "/wifi/non-tablet-mode-power-table-rtw";
@@ -534,7 +531,6 @@ std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
     bool tablet, power_manager::WifiRegDomain domain) {
   std::map<enum MtkSARBand, uint8_t> power_table = {};
   auto config = std::make_unique<brillo::CrosConfig>();
-  CHECK(config->Init()) << "Could not find config";
   std::string wifi_power_table_path =
       tablet ? "/wifi/tablet-mode-power-table-mtk"
              : "/wifi/non-tablet-mode-power-table-mtk";
