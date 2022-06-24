@@ -39,6 +39,7 @@ constexpr char kDebugKey[] = "debug";
 constexpr char kDetectorKey[] = "detector";
 constexpr char kMotionModelKey[] = "motion_model";
 constexpr char kOutputFilterModeKey[] = "output_filter_mode";
+constexpr char kDetectionRateKey[] = "detection_rate";
 
 constexpr int32_t kRequiredFrameRate = 30;
 constexpr uint32_t kFramingBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
@@ -484,6 +485,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   }
 
   if (!GetEnabled()) {
+    auto_framing_client_.ResetDetectionTimer();
     return true;
   }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
@@ -712,6 +714,7 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
               .frame_rate = static_cast<double>(kRequiredFrameRate),
               .target_aspect_ratio_x = target_aspect_ratio_x,
               .target_aspect_ratio_y = target_aspect_ratio_y,
+              .detection_rate = options_.detection_rate,
           })) {
         return false;
       }
@@ -867,6 +870,7 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   DCHECK(thread_.IsCurrentThread());
 
   int detector, motion_model, filter_mode;
+  float detection_rate;
   if (LoadIfExist(json_values, kDetectorKey, &detector)) {
     options_.detector = static_cast<Detector>(detector);
   }
@@ -876,6 +880,9 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   if (LoadIfExist(json_values, kOutputFilterModeKey, &filter_mode)) {
     options_.output_filter_mode = static_cast<FilterMode>(filter_mode);
   }
+  if (LoadIfExist(json_values, kDetectionRateKey, &detection_rate)) {
+    options_.detection_rate = std::max(detection_rate, 0.0f);
+  }
   options_.enable = json_values.FindBoolKey(kEnableKey);
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
@@ -883,7 +890,8 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
            << " detector=" << static_cast<int>(options_.detector)
            << " motion_model=" << static_cast<int>(options_.motion_model)
            << " output_filter_mode="
-           << static_cast<int>(options_.output_filter_mode) << " enable="
+           << static_cast<int>(options_.output_filter_mode)
+           << " detection_rate=" << options_.detection_rate << " enable="
            << (options_.enable ? base::NumberToString(*options_.enable)
                                : "(not set)")
            << " debug=" << options_.debug;

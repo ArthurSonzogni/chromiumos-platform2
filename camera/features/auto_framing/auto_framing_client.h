@@ -17,6 +17,8 @@
 #include <base/callback.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
+#include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 
 #include "cros-camera/auto_framing_cros.h"
 #include "cros-camera/common_types.h"
@@ -32,6 +34,7 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
     double frame_rate = 0.0;
     uint32_t target_aspect_ratio_x = 0;
     uint32_t target_aspect_ratio_y = 0;
+    float detection_rate = 0.0f;
   };
 
   AutoFramingClient() : crop_window_received_cv_(&lock_) {}
@@ -49,6 +52,10 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
 
   // Gets the crop window calculated by the full auto-framing pipeline.
   Rect<float> GetCropWindow(int64_t timestamp);
+
+  // Resets the timer that controls detection rate. This forces detecting the
+  // next frame when the pipeline is not queued.
+  void ResetDetectionTimer();
 
   // Tear down the pipeline and clear states.
   void TearDown();
@@ -73,6 +80,8 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   std::optional<int64_t> detector_input_buffer_timestamp_ GUARDED_BY(lock_);
   std::optional<Rect<float>> region_of_interest_ GUARDED_BY(lock_);
   std::map<int64_t, Rect<float>> crop_windows_ GUARDED_BY(lock_);
+  base::TimeDelta min_detection_interval_ GUARDED_BY(lock_);
+  std::optional<base::ElapsedTimer> detection_timer_ GUARDED_BY(lock_);
 };
 
 }  // namespace cros

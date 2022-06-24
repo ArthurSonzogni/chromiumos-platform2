@@ -61,6 +61,11 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     // The filtering algorithm to scale the cropped region into output frames.
     FilterMode output_filter_mode = FilterMode::kBicubic;
 
+    // Number of frames per second to run detection. The actual rate is capped
+    // by the detection speed. Setting zero means one-shot detection for each
+    // auto-framing enabled period.
+    float detection_rate = 0.1f;
+
     // Whether the CrOS Auto Framing is enabled.
     std::optional<bool> enable;
 

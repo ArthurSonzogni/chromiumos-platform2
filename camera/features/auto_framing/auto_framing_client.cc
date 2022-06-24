@@ -9,6 +9,7 @@
 #include <hardware/gralloc.h>
 #include <libyuv.h>
 
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -75,6 +76,11 @@ bool AutoFramingClient::SetUp(const Options& options) {
                            options.target_aspect_ratio_y),
       image_size_);
 
+  constexpr float kMaxDetectionInterval = std::numeric_limits<float>::max();
+  min_detection_interval_ = base::Seconds(options.detection_rate > 0.0f
+                                              ? 1.0f / options.detection_rate
+                                              : kMaxDetectionInterval);
+
   return true;
 }
 
@@ -89,10 +95,14 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
     return false;
   }
 
-  // Skip detecting this frame if there's an inflight detection.
-  if (detector_input_buffer_timestamp_.has_value()) {
+  // Skip detecting this frame if there's an inflight detection or limited by
+  // the detection rate.
+  if (detector_input_buffer_timestamp_.has_value() ||
+      (detection_timer_ &&
+       detection_timer_->Elapsed() < min_detection_interval_)) {
     return true;
   }
+  detection_timer_ = base::ElapsedTimer();
 
   ScopedMapping mapping(buffer);
   libyuv::ScalePlane(
@@ -136,6 +146,11 @@ Rect<float> AutoFramingClient::GetCropWindow(int64_t timestamp) {
   const Rect<float> crop_window = crop_windows_.at(timestamp);
   crop_windows_.erase(timestamp);
   return crop_window;
+}
+
+void AutoFramingClient::ResetDetectionTimer() {
+  base::AutoLock lock(lock_);
+  detection_timer_ = std::nullopt;
 }
 
 void AutoFramingClient::TearDown() {
