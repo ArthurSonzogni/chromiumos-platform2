@@ -67,7 +67,7 @@ _mojom_bindings_generator_wrapper =
     "${platform2_root}/common-mk/mojom_bindings_generator_wrapper.py"
 
 # Should be kept in sync with the templates (module*.tmpl) listed here:
-# src/aosp/external/libchrome/mojo/public/tools/bindings/generators/cpp_templates/
+# src/platform/libchrome/mojo/public/tools/bindings/generators/cpp_templates/
 _mojom_bindings_headers_suffixes = [
   "-forward.h",
   "-import-headers.h",

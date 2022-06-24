@@ -175,7 +175,7 @@ config("test") {
   # Specifically, libchrome for host is linked. For host, it is built with
   # -DNDEBUG, but the target built without, which causes a link error.
   # cf) BaseInitLoggingImpl definition in
-  #     aosp/external/libchrome/base/logging.h
+  #     chromiumos/platform/libchrome/base/logging.h
   # gtest-config and gmock-config are not installed by gtest-1.8.1.
   ldflags = [
     "-pthread",

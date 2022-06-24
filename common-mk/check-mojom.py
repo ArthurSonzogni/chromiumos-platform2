@@ -9,6 +9,7 @@ import json
 import os
 import sys
 
+
 TOP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 # Find chromite!
@@ -19,10 +20,12 @@ from chromite.lib import commandline
 from chromite.lib import constants
 from chromite.lib import cros_build_lib
 from chromite.lib import git
+
+
 # pylint: enable=wrong-import-position
 
 CHECK_STABLE_MOJOM_COMPATIBILITY = os.path.join(
-    constants.SOURCE_ROOT, 'src', 'aosp', 'external', 'libchrome', 'mojo',
+    constants.SOURCE_ROOT, 'src', 'platform', 'libchrome', 'mojo',
     'public', 'tools', 'mojom', 'check_stable_mojom_compatibility.py')
 
 

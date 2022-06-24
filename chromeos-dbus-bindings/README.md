@@ -353,8 +353,8 @@ To use this tool:
 [best practices]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/dbus_best_practices.md
 [type signatures]: https://dbus.freedesktop.org/doc/dbus-specification.html#type-system
 [brillo::dbus_utils::FileDescriptor]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/HEAD/brillo/dbus/file_descriptor.h
-[base::ScopedFD]: https://chromium.googlesource.com/aosp/platform/external/libchrome/+/HEAD/base/files/scoped_file.h
-[dbus::ObjectPath]: https://chromium.googlesource.com/aosp/platform/external/libchrome/+/HEAD/dbus/object_path.h
+[base::ScopedFD]: https://chromium.googlesource.com/chromiumos/platform/libchrome/+/HEAD/base/files/scoped_file.h
+[dbus::ObjectPath]: https://chromium.googlesource.com/chromiumos/platform/libchrome/+/HEAD/dbus/object_path.h
 [brillo::Any]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/HEAD/brillo/any.h
 [brillo::VariantDictionary]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/HEAD/brillo/variant_dictionary.h
 [DBusMethodResponse]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/HEAD/brillo/dbus/dbus_method_response.h
