@@ -28,7 +28,6 @@
 namespace shill {
 
 class EventDispatcher;
-class Metrics;
 struct ManagerProperties;
 
 // The PortalDetector class implements the portal detection facility in shill,
@@ -141,7 +140,6 @@ class PortalDetector {
   };
 
   PortalDetector(EventDispatcher* dispatcher,
-                 Metrics* metrics,
                  base::Callback<void(const Result&)> callback);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
@@ -244,7 +242,6 @@ class PortalDetector {
   int attempt_count_;
   base::Time last_attempt_start_time_;
   EventDispatcher* dispatcher_;
-  Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
   base::Callback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;

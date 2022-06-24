@@ -3293,7 +3293,7 @@ void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
   }
 
   auto portal_detector = std::make_unique<PortalDetector>(
-      dispatcher(), metrics_,
+      dispatcher(),
       base::BindRepeating(&Manager::ConnectivityTestCallback,
                           weak_factory_.GetWeakPtr(), device->link_name(),
                           device->LoggingTag()));

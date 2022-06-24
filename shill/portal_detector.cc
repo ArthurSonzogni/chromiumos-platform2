@@ -21,7 +21,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/metrics.h"
 
 namespace {
 constexpr char kLinuxUserAgent[] =
@@ -50,12 +49,10 @@ static std::string ObjectID(const PortalDetector* pd) {
 }  // namespace Logging
 
 PortalDetector::PortalDetector(EventDispatcher* dispatcher,
-                               Metrics* metrics,
                                base::Callback<void(const Result&)> callback)
     : attempt_count_(0),
       last_attempt_start_time_(),
       dispatcher_(dispatcher),
-      metrics_(metrics),
       weak_ptr_factory_(this),
       portal_result_callback_(callback),
       is_active_(false) {}

@@ -1147,8 +1147,8 @@ bool Device::StartPortalDetection() {
   }
 
   portal_detector_.reset(new PortalDetector(
-      dispatcher(), metrics(),
-      base::Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
+      dispatcher(),
+      base::BindRepeating(&Device::PortalDetectorCallback, AsWeakPtr())));
   DCHECK(network_->HasConnectionObject());
   if (!portal_detector_->Start(manager_->GetProperties(),
                                network_->interface_name(), network_->local(),

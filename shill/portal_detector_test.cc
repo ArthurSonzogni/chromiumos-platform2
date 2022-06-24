@@ -19,7 +19,6 @@
 
 #include "shill/manager.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_metrics.h"
 
 using testing::_;
 using testing::Mock;
@@ -87,7 +86,7 @@ class PortalDetectorTest : public Test {
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
         portal_detector_(new PortalDetector(
-            &dispatcher_, &metrics_, callback_target_.result_callback())),
+            &dispatcher_, callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
         http_request_(nullptr),
@@ -169,7 +168,6 @@ class PortalDetectorTest : public Test {
   PortalDetector* portal_detector() { return portal_detector_.get(); }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
-  MockMetrics& metrics() { return metrics_; }
   brillo::http::MockConnection* brillo_connection() {
     return brillo_connection_.get();
   }
@@ -204,7 +202,6 @@ class PortalDetectorTest : public Test {
  protected:
   StrictMock<MockEventDispatcher> dispatcher_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
-  NiceMock<MockMetrics> metrics_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   CallbackTarget callback_target_;
   std::unique_ptr<PortalDetector> portal_detector_;
