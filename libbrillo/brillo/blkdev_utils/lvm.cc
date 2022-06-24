@@ -54,7 +54,10 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
   }
 
   const std::string* pv_name = pv_dictionary->FindStringKey("pv_name");
-  if (!pv_name && *pv_name != device_path.value()) {
+  if (!pv_name) {
+    LOG(ERROR) << "Missing value \"pv_name\".";
+    return false;
+  } else if (*pv_name != device_path.value()) {
     LOG(ERROR) << "Mismatched value: expected: " << device_path
                << " actual: " << *pv_name;
     return false;
@@ -111,7 +114,10 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
   }
 
   const std::string* output_lv_name = lv_dictionary->FindStringKey("lv_name");
-  if (!output_lv_name && *output_lv_name != lv_name) {
+  if (!output_lv_name) {
+    LOG(ERROR) << "Missing value \"lv_name\".";
+    return false;
+  } else if (*output_lv_name != lv_name) {
     LOG(ERROR) << "Mismatched value: expected: " << lv_name
                << " actual: " << *output_lv_name;
     return false;
