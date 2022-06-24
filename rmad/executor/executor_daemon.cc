@@ -13,6 +13,7 @@
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
+#include "rmad/constants.h"
 #include "rmad/executor/mojom/executor.mojom.h"
 
 namespace rmad {
@@ -27,8 +28,8 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint) {
   // Accept invitation from rmad.
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(std::move(endpoint));
-  // Always use 0 as the default pipe name.
-  mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
+  mojo::ScopedMessagePipeHandle pipe =
+      invitation.ExtractMessagePipe(kRmadInternalMojoPipeName);
 
   mojo_service_ = std::make_unique<Executor>(
       mojo::PendingReceiver<::chromeos::rmad::mojom::Executor>(

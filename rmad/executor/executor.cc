@@ -44,6 +44,7 @@ namespace rmad {
 Executor::Executor(
     mojo::PendingReceiver<chromeos::rmad::mojom::Executor> receiver)
     : receiver_{this, std::move(receiver)} {
+  // Quit the executor when the communication disconnects.
   receiver_.set_disconnect_handler(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
 }

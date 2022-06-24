@@ -17,6 +17,9 @@ inline constexpr std::array<const char*, 8> kAllowedModels = {
     "fleex",  "bobba",     "bobba360", "blooguard",
     "phaser", "phaser360", "garg",     "garg360"};
 
+// Pipe name for internal mojo connection between D-Bus daemon and executor.
+inline constexpr char kRmadInternalMojoPipeName[] = "rmad_internal";
+
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 inline constexpr char kDefaultJsonStoreFilePath[] =
     "/mnt/stateful_partition/unencrypted/rma-data/state";

@@ -16,7 +16,10 @@ namespace {
 
 constexpr char kRmadUser[] = "rmad";
 constexpr char kRmadGroup[] = "rmad";
-constexpr char kSeccompFilterPath[] = "/usr/share/policy/rmad-seccomp.policy";
+constexpr char kRmadSeccompFilterPath[] =
+    "/usr/share/policy/rmad-seccomp.policy";
+constexpr char kRmadExecutorSeccompFilterPath[] =
+    "/usr/share/policy/rmad-executor-seccomp.policy";
 
 }  // namespace
 
@@ -95,7 +98,37 @@ void EnterMinijail(bool set_admin_caps) {
   }
 
   minijail_use_seccomp_filter(j.get());
-  minijail_parse_seccomp_filters(j.get(), kSeccompFilterPath);
+  minijail_parse_seccomp_filters(j.get(), kRmadSeccompFilterPath);
+
+  minijail_enter(j.get());
+}
+
+void NewMountNamespace() {
+  // Create a minimalistic mount namespace with just the bare minimum required.
+  // Reference: debugd/src/main.cc
+  ScopedMinijail j(minijail_new());
+
+  minijail_namespace_vfs(j.get());
+  minijail_mount_tmp(j.get());
+  minijail_enter_pivot_root(j.get(), "/mnt/empty");
+
+  minijail_bind(j.get(), "/", "/", 0);
+
+  minijail_mount_with_data(j.get(), "none", "/proc", "proc",
+                           MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr);
+  minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
+                           MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr);
+  // Mount /sys and /dev to be able to inspect devices.
+  minijail_mount_with_data(j.get(), "/dev", "/dev", "bind", MS_BIND | MS_REC,
+                           nullptr);
+  minijail_mount_with_data(j.get(), "/sys", "/sys", "bind", MS_BIND | MS_REC,
+                           nullptr);
+  // Mount /var to access rmad working directory.
+  minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
+  minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
+
+  minijail_use_seccomp_filter(j.get());
+  minijail_parse_seccomp_filters(j.get(), kRmadExecutorSeccompFilterPath);
 
   minijail_enter(j.get());
 }

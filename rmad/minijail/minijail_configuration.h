@@ -10,6 +10,10 @@ namespace rmad {
 // Configures minijail for the RMA daemon, then enters it.
 void EnterMinijail(bool set_admin_caps);
 
+// Enters a new mount namespace. We don't want anyone other than our descendants
+// to see our tmpfs.
+void NewMountNamespace();
+
 }  // namespace rmad
 
 #endif  // RMAD_MINIJAIL_MINIJAIL_CONFIGURATION_H_

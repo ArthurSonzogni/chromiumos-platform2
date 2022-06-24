@@ -21,6 +21,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmojo",
   ]
 }
 
@@ -57,9 +58,20 @@ install_config("install_dbus_activation") {
 
 # Install seccomp policy file.
 install_config("install_seccomp_policy") {
-  sources = [ "seccomp/rmad-seccomp-" + getenv("ARCH") + ".policy" ]
+  _arch = getenv("ARCH")
+
+  # NOSORT
+  sources = [
+    "seccomp/rmad-seccomp-${_arch}.policy",
+    "seccomp/rmad-executor-seccomp-${_arch}.policy",
+  ]
   install_path = "/usr/share/policy"
-  outputs = [ "rmad-seccomp.policy" ]
+
+  # NOSORT
+  outputs = [
+    "rmad-seccomp.policy",
+    "rmad-executor-seccomp.policy",
+  ]
 }
 
 if (use.test) {

@@ -15,10 +15,15 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/data_serialization.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/rmad/dbus-constants.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/platform/platform_channel_endpoint.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "rmad/constants.h"
 #include "rmad/daemon/daemon_callback.h"
@@ -26,6 +31,13 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+
+namespace {
+
+// We don't need a minimal Mojo version. Set it to 0.
+constexpr uint32_t kMojoVersion = 0;
+
+}  // namespace
 
 namespace brillo {
 namespace dbus_utils {
@@ -292,12 +304,29 @@ namespace rmad {
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
 
-DBusService::DBusService(RmadInterface* rmad_interface)
+DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
+                         RmadInterface* rmad_interface)
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
       state_file_path_(kDefaultJsonStoreFilePath),
       is_external_utils_initialized_(false),
-      is_interface_set_up_(false) {}
+      is_interface_set_up_(false) {
+  // Establish connection to the executor process.
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+  // Send invitation to the executor process.
+  mojo::OutgoingInvitation invitation;
+  mojo::ScopedMessagePipeHandle pipe =
+      invitation.AttachMessagePipe(kRmadInternalMojoPipeName);
+  mojo::OutgoingInvitation::Send(std::move(invitation),
+                                 base::kNullProcessHandle, std::move(endpoint));
+  executor_.Bind(mojo::PendingRemote<chromeos::rmad::mojom::Executor>(
+      std::move(pipe), kMojoVersion));
+  // Quit the daemon when the communication disconnects.
+  executor_.set_disconnect_handler(base::BindOnce(
+      &DBusService::OnExecutorDisconnected, weak_ptr_factory_.GetWeakPtr()));
+}
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          RmadInterface* rmad_interface,
@@ -553,6 +582,11 @@ void DBusService::SendExternalDiskSignal(bool detected) {
   if (signal) {
     signal->Send(detected);
   }
+}
+
+void DBusService::OnExecutorDisconnected() {
+  VLOG(1) << "Executor disconnected";
+  PostQuitTask();
 }
 
 void DBusService::PostQuitTask() {

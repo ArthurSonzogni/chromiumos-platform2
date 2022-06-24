@@ -18,8 +18,12 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "rmad/daemon/daemon_callback.h"
+#include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/interface/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
@@ -52,7 +56,8 @@ namespace rmad {
 
 class DBusService : public brillo::DBusServiceDaemon {
  public:
-  explicit DBusService(RmadInterface* rmad_interface);
+  DBusService(mojo::PlatformChannelEndpoint endpoint,
+              RmadInterface* rmad_interface);
   // Used to inject a mock bus.
   explicit DBusService(const scoped_refptr<dbus::Bus>& bus,
                        RmadInterface* rmad_interface,
@@ -165,6 +170,9 @@ class DBusService : public brillo::DBusServiceDaemon {
     }
   }
 
+  // Handler when executor connection is disconnected.
+  void OnExecutorDisconnected();
+
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();
 
@@ -187,6 +195,10 @@ class DBusService : public brillo::DBusServiceDaemon {
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> external_disk_signal_;
+
+  // Necessary to establish Mojo communication with the executor.
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  mojo::Remote<chromeos::rmad::mojom::Executor> executor_;
 
   // RMA interface for handling most of the D-Bus requests.
   RmadInterface* rmad_interface_;

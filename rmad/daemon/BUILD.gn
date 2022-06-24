@@ -8,6 +8,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmojo",
     "protobuf",
     "system_api",
   ]
@@ -17,6 +18,7 @@ source_set("libdaemon") {
   sources = [ "dbus_service.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//rmad/executor/mojom:executor_mojo_bindings",
     "//rmad/system:libsystem",
     "//rmad/utils:libutils",
   ]
