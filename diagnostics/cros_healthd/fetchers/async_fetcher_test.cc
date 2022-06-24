@@ -107,7 +107,7 @@ TEST_F(AsyncFetcherTest, FetchMultiple) {
 
 TEST_F(AsyncFetcherTest, FetchDropCallback) {
   fetcher_.Fetch(ExpectResultIsErrorCallback());
-  std::move(FakeAsyncFetcher::callbacks[0]);
+  FakeAsyncFetcher::callbacks[0].Reset();
 }
 
 }  // namespace
