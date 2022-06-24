@@ -30,9 +30,7 @@ class ObjectStoreImpl : public ObjectStore {
 
   ~ObjectStoreImpl() override;
 
-  // Initializes the object store with the given database path. The magic file
-  // name ":memory:" will cause the store to create a memory-only database which
-  // is suitable for testing.
+  // Initializes the object store with the given database path.
   bool Init(const base::FilePath& database_path, ChapsMetrics* chaps_metrics);
 
   // ObjectStore methods.

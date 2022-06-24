@@ -4,13 +4,15 @@
 
 #include <fuzzer/FuzzedDataProvider.h>
 
+#include <vector>
+
+#include <base/command_line.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <trunks/fuzzed_command_transceiver.h>
 #include <trunks/trunks_factory_impl.h>
-#include <vector>
-#include <base/command_line.h>
-#include <base/test/test_timeouts.h>
 
 #include "chaps/chaps_interface.h"
 #include "chaps/fuzzers/fuzzed_chaps_factory.h"
@@ -91,6 +93,7 @@ class SlotManagerFuzzer {
   }
 
   void Run() {
+    CHECK(tmp_dir_.CreateUniqueTempDir());
     int rounds = 0;
     while (data_provider_->remaining_bytes() > 0 && rounds < kMaxIterations) {
       if (data_provider_->ConsumeBool()) {
@@ -229,7 +232,7 @@ class SlotManagerFuzzer {
         break;
       }
       case TokenManagerInterfaceRequest::kLoadToken: {
-        auto path = base::FilePath(ConsumeLowEntropyRandomLengthString(10));
+        auto path = tmp_dir_.GetPath();
         auto auth_data =
             brillo::SecureBlob(ConsumeLowEntropyRandomLengthString(10));
         std::string label = ConsumeLowEntropyRandomLengthString(10);
@@ -242,12 +245,12 @@ class SlotManagerFuzzer {
         break;
       }
       case TokenManagerInterfaceRequest::kUnloadToken: {
-        auto path = base::FilePath(ConsumeLowEntropyRandomLengthString(10));
+        auto path = tmp_dir_.GetPath();
         slot_manager_->UnloadToken(isolate_credential, path);
         break;
       }
       case TokenManagerInterfaceRequest::kChangeTokenAuthData: {
-        auto path = base::FilePath(ConsumeLowEntropyRandomLengthString(10));
+        auto path = tmp_dir_.GetPath();
         auto old_auth_data =
             brillo::SecureBlob(ConsumeLowEntropyRandomLengthString(10));
         auto new_auth_data =
@@ -288,6 +291,7 @@ class SlotManagerFuzzer {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::vector<std::string> generated_isolate_credentials_;
   std::vector<int> generated_slot_ids_;
+  base::ScopedTempDir tmp_dir_;
 };
 
 }  // namespace

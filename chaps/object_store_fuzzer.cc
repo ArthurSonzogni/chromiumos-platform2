@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
@@ -24,7 +25,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider data_provider(data, size);
   chaps::ObjectStoreImpl store;
   chaps::ChapsMetrics metrics;
-  store.Init(base::FilePath(":memory:"), &metrics);
+  base::ScopedTempDir tmp_dir;
+  CHECK(tmp_dir.CreateUniqueTempDir());
+  store.Init(tmp_dir.GetPath(), &metrics);
   std::string encryption_key = data_provider.ConsumeBytesAsString(32);
   if (encryption_key.size() < 32) {
     // We won't have any data to fuzz further, so no reason to even continue.

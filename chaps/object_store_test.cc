@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
@@ -133,17 +134,17 @@ TEST(TestObjectStore, DBInitFail) {
   ASSERT_FALSE(store.Init(FilePath(database), &chaps_metrics));
 }
 
-#ifndef NO_MEMENV
 TEST(TestObjectStore, InsertLoad) {
   ObjectStoreImpl store;
-  const char database[] = ":memory:";
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
   EXPECT_CALL(mock_metrics_library,
               SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
-  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
+  ASSERT_TRUE(store.Init(tmp_dir.GetPath(), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -184,14 +185,15 @@ TEST(TestObjectStore, InsertLoad) {
 
 TEST(TestObjectStore, UpdateDelete) {
   ObjectStoreImpl store;
-  const char database[] = ":memory:";
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
   EXPECT_CALL(mock_metrics_library,
               SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
-  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
+  ASSERT_TRUE(store.Init(tmp_dir.GetPath(), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -216,14 +218,15 @@ TEST(TestObjectStore, UpdateDelete) {
 
 TEST(TestObjectStore, InternalBlobs) {
   ObjectStoreImpl store;
-  const char database[] = ":memory:";
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
   EXPECT_CALL(mock_metrics_library,
               SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
-  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
+  ASSERT_TRUE(store.Init(tmp_dir.GetPath(), &chaps_metrics));
   string blob;
   EXPECT_FALSE(store.GetInternalBlob(1, &blob));
   EXPECT_TRUE(store.SetInternalBlob(1, "blob"));
@@ -233,14 +236,15 @@ TEST(TestObjectStore, InternalBlobs) {
 
 TEST(TestObjectStore, DeleteAll) {
   ObjectStoreImpl store;
-  const char database[] = ":memory:";
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
   EXPECT_CALL(mock_metrics_library,
               SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
-  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
+  ASSERT_TRUE(store.Init(tmp_dir.GetPath(), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -262,7 +266,6 @@ TEST(TestObjectStore, DeleteAll) {
   EXPECT_TRUE(store.GetInternalBlob(1, &internal));
   EXPECT_EQ("internal", internal);
 }
-#endif
 
 }  // namespace chaps
 

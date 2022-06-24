@@ -170,7 +170,6 @@ source_set("chaps_common") {
   libs = [
     "dl",
     "leveldb",
-    "memenv",
   ]
 
   configs += [ ":target_defaults" ]

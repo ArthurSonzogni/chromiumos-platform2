@@ -19,10 +19,6 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <leveldb/db.h>
-#include <leveldb/env.h>
-#ifndef NO_MEMENV
-#include <leveldb/helpers/memenv.h>
-#endif
 
 #include "chaps/chaps_metrics.h"
 #include "chaps/chaps_utility.h"
@@ -119,17 +115,6 @@ bool ObjectStoreImpl::Init(const FilePath& database_path,
   leveldb::Options options;
   options.create_if_missing = true;
   options.paranoid_checks = true;
-  if (database_path.value() == ":memory:") {
-#ifndef NO_MEMENV
-    // Memory only environment, useful for testing.
-    LOG(INFO) << "Using memory-only environment.";
-    env_.reset(leveldb::NewMemEnv(leveldb::Env::Default()));
-    options.env = env_.get();
-#else
-    LOG(ERROR) << "Compiled without memory-only environment support.";
-    return false;
-#endif
-  }
   FilePath database_name = database_path.Append(kDatabaseDirectory);
   database_name_ = database_name;
   // TODO(https://crbug.com/844537): Remove or decrease log level when root
