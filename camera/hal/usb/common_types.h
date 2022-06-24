@@ -42,10 +42,6 @@ struct DeviceInfo {
   // Some cameras need to wait several frames to output correct images.
   uint32_t frames_to_skip_after_streamon = 0;
 
-  // Power line frequency supported by device, which will be filled according to
-  // the current location instead of camera_characteristics.conf.
-  PowerLineFrequency power_line_frequency = PowerLineFrequency::FREQ_DEFAULT;
-
   // The camera doesn't support constant frame rate. That means HAL cannot set
   // V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 to have constant frame rate in low
   // light environment.

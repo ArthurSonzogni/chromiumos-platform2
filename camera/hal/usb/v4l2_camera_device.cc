@@ -285,16 +285,9 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     return -errno;
   }
 
-  // Only set power line frequency when the value is correct.
-  if (device_info_.power_line_frequency != PowerLineFrequency::FREQ_ERROR) {
-    ret = SetPowerLineFrequency(device_info_.power_line_frequency);
-    if (ret < 0) {
-      if (IsExternalCamera()) {
-        VLOGF(2) << "Ignore SetPowerLineFrequency error for external camera";
-      } else {
-        return -EINVAL;
-      }
-    }
+  ret = SetPowerLineFrequency();
+  if (ret < 0 && !IsExternalCamera()) {
+    return -EINVAL;
   }
 
   // Initial autofocus state.
@@ -1450,49 +1443,6 @@ clockid_t V4L2CameraDevice::GetUvcClock() {
 }
 
 // static
-PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(
-    const std::string& device_path) {
-  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
-  if (!fd.is_valid()) {
-    PLOGF(ERROR) << "Failed to open " << device_path;
-    return PowerLineFrequency::FREQ_ERROR;
-  }
-
-  ControlInfo info;
-  if (QueryControl(fd.get(), kControlPowerLineFrequency, &info) < 0) {
-    LOGF(ERROR) << "Power line frequency should support auto or 50/60Hz";
-    return PowerLineFrequency::FREQ_ERROR;
-  }
-
-  PowerLineFrequency frequency = GetPowerLineFrequencyForLocation();
-  if (frequency == PowerLineFrequency::FREQ_DEFAULT) {
-    switch (info.range.default_value) {
-      case V4L2_CID_POWER_LINE_FREQUENCY_50HZ:
-        frequency = PowerLineFrequency::FREQ_50HZ;
-        break;
-      case V4L2_CID_POWER_LINE_FREQUENCY_60HZ:
-        frequency = PowerLineFrequency::FREQ_60HZ;
-        break;
-      case V4L2_CID_POWER_LINE_FREQUENCY_AUTO:
-        frequency = PowerLineFrequency::FREQ_AUTO;
-        break;
-      default:
-        break;
-    }
-  }
-
-  // Prefer auto setting if camera module supports auto mode.
-  if (info.range.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) {
-    frequency = PowerLineFrequency::FREQ_AUTO;
-  } else if (info.range.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
-    // TODO(shik): Handle this more gracefully for external camera
-    LOGF(ERROR) << "Camera module should at least support 50/60Hz";
-    return PowerLineFrequency::FREQ_ERROR;
-  }
-  return frequency;
-}
-
-// static
 bool V4L2CameraDevice::IsFocusDistanceSupported(
     const std::string& device_path, ControlRange* focus_distance_range) {
   DCHECK(focus_distance_range != nullptr);
@@ -1546,33 +1496,52 @@ bool V4L2CameraDevice::IsManualExposureTimeSupported(
   return true;
 }
 
-int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
-  int v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_DISABLED;
-  switch (setting) {
-    case PowerLineFrequency::FREQ_50HZ:
-      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_50HZ;
-      break;
-    case PowerLineFrequency::FREQ_60HZ:
-      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_60HZ;
-      break;
-    case PowerLineFrequency::FREQ_AUTO:
-      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_AUTO;
-      break;
-    default:
-      LOGF(ERROR) << "Invalid setting for power line frequency: "
-                  << static_cast<int>(setting);
-      return -EINVAL;
-  }
-
-  if (SetControlValue(device_fd_.get(), kControlPowerLineFrequency,
-                      v4l2_freq_setting) < 0) {
-    LOGF(ERROR) << "Error setting power line frequency to "
-                << v4l2_freq_setting;
+int V4L2CameraDevice::SetPowerLineFrequency() {
+  ControlInfo info;
+  if (QueryControl(device_fd_.get(), kControlPowerLineFrequency, &info) < 0) {
+    LOGF(ERROR) << "Failed to query power line frequency";
     return -EINVAL;
   }
-  VLOGF(1) << "Set power line frequency(" << static_cast<int>(setting)
-           << ") successfully";
-  return 0;
+
+  // Prefer auto setting if camera module supports auto mode.
+  if (info.range.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO &&
+      SetControlValue(device_fd_.get(), kControlPowerLineFrequency,
+                      V4L2_CID_POWER_LINE_FREQUENCY_AUTO) == 0) {
+    LOGF(INFO) << "Set power line frequency("
+               << static_cast<int>(V4L2_CID_POWER_LINE_FREQUENCY_AUTO)
+               << ") successfully";
+    return 0;
+  }
+  if (info.range.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
+    // TODO(shik): Handle this more gracefully for external camera
+    LOGF(ERROR) << "Camera module should at least support 50/60Hz";
+    return -EINVAL;
+  }
+
+  // Set power line frequency for location.
+  std::optional<v4l2_power_line_frequency> location_frequency =
+      GetPowerLineFrequencyForLocation();
+  if (location_frequency.has_value() &&
+      SetControlValue(device_fd_.get(), kControlPowerLineFrequency,
+                      location_frequency.value()) == 0) {
+    LOGF(INFO) << "Set power line frequency(" << location_frequency.value()
+               << ") successfully";
+    return 0;
+  }
+
+  // Set device default power line frequency.
+  if ((!location_frequency.has_value() ||
+       info.range.default_value != location_frequency.value()) &&
+      SetControlValue(device_fd_.get(), kControlPowerLineFrequency,
+                      info.range.default_value) == 0) {
+    LOGF(INFO) << "Set power line frequency("
+               << static_cast<int>(info.range.default_value)
+               << ") successfully";
+    return 0;
+  }
+
+  LOGF(ERROR) << "Error setting power line frequency";
+  return -EINVAL;
 }
 
 bool V4L2CameraDevice::IsExternalCamera() {

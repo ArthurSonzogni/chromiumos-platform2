@@ -141,7 +141,9 @@ GcamAeControllerImpl::GcamAeControllerImpl(
   ae_compensation_range_ =
       Range<float>(ae_compensation_range[0], ae_compensation_range[1]);
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
-  powerline_freq_ = GetPowerLineFrequencyForLocation();
+
+  powerline_freq_ = GetPowerLineFrequencyForLocation().value_or(
+      V4L2_CID_POWER_LINE_FREQUENCY_DISABLED);
 
   ae_compensation_step_delta_range_ =
       Range<float>(kAeCompensationDeltaStopRange[0] / ae_compensation_step_,
@@ -743,9 +745,9 @@ void GcamAeControllerImpl::SetManualSensorControls(
         return kExpTimeMs60HzRounding;
       case ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO:
         switch (powerline_freq_) {
-          case PowerLineFrequency::FREQ_50HZ:
+          case V4L2_CID_POWER_LINE_FREQUENCY_50HZ:
             return kExpTimeMs50HzRounding;
-          case PowerLineFrequency::FREQ_60HZ:
+          case V4L2_CID_POWER_LINE_FREQUENCY_60HZ:
             return kExpTimeMs60HzRounding;
           default:
             NOTREACHED() << "Powerline frequency not set";

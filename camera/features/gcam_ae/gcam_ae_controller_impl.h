@@ -83,7 +83,7 @@ class GcamAeControllerImpl : public GcamAeController {
   float ae_compensation_step_;
   Range<float> ae_compensation_range_;
   Size active_array_dimension_;
-  PowerLineFrequency powerline_freq_;
+  v4l2_power_line_frequency powerline_freq_;
 
   // Ring buffer for the per-frame AE metadata.
   static constexpr size_t kAeFrameInfoRingBufferSize = 12;

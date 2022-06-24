@@ -180,10 +180,6 @@ class V4L2CameraDevice {
   static const SupportedFormats GetDeviceSupportedFormats(
       const std::string& device_path);
 
-  // Get power frequency supported from device.
-  static PowerLineFrequency GetPowerLineFrequency(
-      const std::string& device_path);
-
   // If the device supports manual focus distance, returns the focus distance
   // range to |focus_distance_range|.
   static bool IsFocusDistanceSupported(const std::string& device_path,
@@ -256,7 +252,7 @@ class V4L2CameraDevice {
   int QueryControl(ControlType type, ControlInfo* info);
 
   // Set power frequency supported from device.
-  int SetPowerLineFrequency(PowerLineFrequency setting);
+  int SetPowerLineFrequency();
 
   // Returns true if the current connected device is an external camera.
   bool IsExternalCamera();

@@ -628,7 +628,6 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   info.usb_vid = vid;
   info.usb_pid = pid;
   info.is_vivid = is_vivid;
-  info.power_line_frequency = V4L2CameraDevice::GetPowerLineFrequency(path);
   info.constant_framerate_unsupported |=
       !V4L2CameraDevice::IsControlSupported(path, kControlExposureAutoPriority);
   RoiControl roi_control;

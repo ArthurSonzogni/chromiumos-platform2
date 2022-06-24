@@ -628,10 +628,10 @@ std::string CountryCodeForCurrentTimezone() {
   return TimezoneMap::GetInstance()->CountryCodeForTimezone(olson_code);
 }
 
-PowerLineFrequency GetPowerLineFrequencyForLocation() {
+std::optional<v4l2_power_line_frequency> GetPowerLineFrequencyForLocation() {
   const std::string current_country = CountryCodeForCurrentTimezone();
   if (current_country.empty())
-    return PowerLineFrequency::FREQ_DEFAULT;
+    return std::nullopt;
   LOGF(INFO) << "Country: " << current_country;
   // Sorted out list of countries with 60Hz power line frequency, from
   // http://en.wikipedia.org/wiki/Mains_electricity_by_country
@@ -644,9 +644,9 @@ PowerLineFrequency GetPowerLineFrequencyForLocation() {
       countries_using_60Hz + std::size(countries_using_60Hz);
   if (std::find(countries_using_60Hz, countries_using_60Hz_end,
                 current_country) == countries_using_60Hz_end) {
-    return PowerLineFrequency::FREQ_50HZ;
+    return V4L2_CID_POWER_LINE_FREQUENCY_50HZ;
   }
-  return PowerLineFrequency::FREQ_60HZ;
+  return V4L2_CID_POWER_LINE_FREQUENCY_60HZ;
 }
 
 }  // namespace cros
