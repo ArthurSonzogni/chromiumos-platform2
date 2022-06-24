@@ -310,7 +310,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
   if (USE_CROSVM_SIBLINGS) {
-    auto cmds = vm_builder.BuildSiblingCmds(GetVvuDevicesInfo());
+    auto cmds = vm_builder.BuildSiblingCmds(GetVvuDevicesInfo(), runtime_dir_);
     if (!cmds) {
       LOG(ERROR) << "Failed to build sibling VM commands";
       return false;

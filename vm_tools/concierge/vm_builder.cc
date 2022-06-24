@@ -8,8 +8,10 @@
 #include <string>
 #include <utility>
 
+#include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/logging.h>
+#include <base/values.h>
 #include <re2/re2.h>
 
 #include "base/files/file_path.h"
@@ -25,6 +27,8 @@ constexpr char kValidWaylandSocketRegex[] =
 
 constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
 constexpr char kVvuProxySocketPathFormat[] = "/run/crosvm-vvu%02d.sock";
+
+constexpr char kResourceBridgeNameFormat[] = "resource_bridge%02zu.sock";
 
 // Returns the common part of the command line for invoking different type of
 // VVU devices. This will be like "crosvm device --vfio <pci address>".
@@ -76,6 +80,17 @@ std::optional<VvuDeviceInfo> TakeNextVvuDevice(
   auto ret = std::make_optional(info->back());
   info->pop_back();
   return ret;
+}
+
+// Allocates the next resource bridge path, returning the path string.
+std::string AllocateResourceBridgePath(
+    const base::FilePath& runtime_dir,
+    std::vector<std::string>* resource_bridges) {
+  auto bridge_name =
+      base::StringPrintf(kResourceBridgeNameFormat, resource_bridges->size());
+  auto bridge_path = runtime_dir.Append(bridge_name).value();
+  resource_bridges->push_back(bridge_path);
+  return bridge_path;
 }
 
 }  // namespace
@@ -463,10 +478,12 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 }
 
 std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
-    std::vector<VvuDeviceInfo> vvu_devices_info) const {
+    std::vector<VvuDeviceInfo> vvu_devices_info,
+    const base::ScopedTempDir& runtime_dir) const {
   size_t num_vvu_devices = vvu_devices_info.size();
   VmBuilder::SiblingStartCommands cmds;
   cmds.sibling_cmd_args = BuildBaseSiblingArgs();
+  std::vector<std::string> resource_bridges;
 
   // Console VVU device.
   for (size_t i = 0; i < serial_devices_.size(); ++i) {
@@ -593,11 +610,31 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     for (const auto& w : wayland_sockets_) {
       cmd.emplace_back("--wayland-sock", w);
     }
+
+    if (enable_gpu_) {
+      cmd.emplace_back(
+          "--resource-bridge",
+          AllocateResourceBridgePath(runtime_dir.GetPath(), &resource_bridges));
+    }
+
     cmds.vvu_cmds.emplace_back(cmd);
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-wl",
          BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
+  }
+
+  // GPU device
+  if (enable_gpu_) {
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
+      return std::nullopt;
+    }
+
+    if (!AddGpuSiblingCmd(*vvu_device_info, resource_bridges, &cmds)) {
+      return std::nullopt;
+    }
   }
 
   // TODO(morg): Refactor shared parameter logic with BuildVmArgs
@@ -638,6 +675,38 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
   cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(), "--strict-balloon");
 
   return cmds;
+}
+
+bool VmBuilder::AddGpuSiblingCmd(
+    const VvuDeviceInfo& vvu_device_info,
+    const std::vector<std::string>& resource_bridges,
+    SiblingStartCommands* cmds) const {
+  base::StringPairs cmd = BuildVvuBaseCmd("gpu", vvu_device_info.proxy_device);
+
+  base::Value params(base::Value::Type::DICTIONARY);
+  params.SetKey("vulkan", base::Value(enable_vulkan_));
+  params.SetKey("gles", base::Value(!enable_big_gl_));
+  if (!gpu_cache_path_.empty()) {
+    params.SetKey("cache-path", base::Value(gpu_cache_path_.value()));
+  }
+  if (!gpu_cache_size_str_.empty()) {
+    params.SetKey("cache-size", base::Value(gpu_cache_size_str_));
+  }
+
+  std::string params_str;
+  base::JSONWriter::Write(params, &params_str);
+  cmd.emplace_back("--params", params_str);
+
+  for (auto bridge : resource_bridges) {
+    cmd.emplace_back("--resource-bridge", bridge);
+  }
+
+  cmds->vvu_cmds.emplace_back(cmd);
+  cmds->sibling_cmd_args.insert(
+      cmds->sibling_cmd_args.end(),
+      {"--vhost-user-gpu",
+       BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
+  return true;
 }
 
 namespace {

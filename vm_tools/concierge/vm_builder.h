@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
 #include <dbus/object_proxy.h>
 
@@ -112,15 +113,24 @@ class VmBuilder {
   // the vm args are invalid.
   base::StringPairs BuildVmArgs() const;
 
-  // Returns the command line arguments to start a sibling VM as well as the VVU
-  // devices associated with it. Returns std::nullopt in case of any error.
+  // Given the VVU device info and the runtime directory which VVU device
+  // processes should use, returns the command line arguments to start a sibling
+  // VM as well as the VVU devices associated with it. Returns std::nullopt in
+  // case of any error.
   std::optional<SiblingStartCommands> BuildSiblingCmds(
-      std::vector<VvuDeviceInfo> vvu_devices_info) const;
+      std::vector<VvuDeviceInfo> vvu_devices_info,
+      const base::ScopedTempDir& runtime_dir) const;
 
   static void SetValidWaylandRegexForTesting(char* regex);
 
  private:
   bool HasValidWaylandSockets() const;
+
+  // Given the VVU device info to use and the resource bridge paths, adds
+  // command line arguments for the sibling VM to use a GPU.
+  bool AddGpuSiblingCmd(const VvuDeviceInfo& vvu_device_info,
+                        const std::vector<std::string>& resource_bridges,
+                        SiblingStartCommands* cmds) const;
 
   base::FilePath kernel_;
   base::FilePath initrd_;
