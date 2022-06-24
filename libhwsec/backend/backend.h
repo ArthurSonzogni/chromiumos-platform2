@@ -292,8 +292,8 @@ class Backend {
     ~Signing() = default;
   };
 
-  // KeyManagerment provide the functions to manager key.
-  class KeyManagerment {
+  // KeyManagement provide the functions to manager key.
+  class KeyManagement {
    public:
     enum class PersistentKeyType {
       kStorageRootKey,
@@ -354,12 +354,12 @@ class Backend {
     virtual StatusOr<uint32_t> GetKeyHandle(Key key) = 0;
 
    protected:
-    KeyManagerment() = default;
-    ~KeyManagerment() = default;
+    KeyManagement() = default;
+    ~KeyManagement() = default;
   };
 
-  // KeyManagerment provide the functions to manager session.
-  class SessionManagerment {
+  // KeyManagement provide the functions to manager session.
+  class SessionManagement {
    public:
     struct CreateSessionOptions {};
 
@@ -376,8 +376,8 @@ class Backend {
         uint32_t session_handle) = 0;
 
    protected:
-    SessionManagerment() = default;
-    ~SessionManagerment() = default;
+    SessionManagement() = default;
+    ~SessionManagement() = default;
   };
 
   // Config provide the functions to change settings and policies.
@@ -696,10 +696,10 @@ class Backend {
       return GetEncryption();
     else if constexpr (std::is_same_v<SubClass, Signing>)
       return GetSigning();
-    else if constexpr (std::is_same_v<SubClass, KeyManagerment>)
-      return GetKeyManagerment();
-    else if constexpr (std::is_same_v<SubClass, SessionManagerment>)
-      return GetSessionManagerment();
+    else if constexpr (std::is_same_v<SubClass, KeyManagement>)
+      return GetKeyManagement();
+    else if constexpr (std::is_same_v<SubClass, SessionManagement>)
+      return GetSessionManagement();
     else if constexpr (std::is_same_v<SubClass, Config>)
       return GetConfig();
     else if constexpr (std::is_same_v<SubClass, Random>)
@@ -733,8 +733,8 @@ class Backend {
   virtual Deriving* GetDeriving() = 0;
   virtual Encryption* GetEncryption() = 0;
   virtual Signing* GetSigning() = 0;
-  virtual KeyManagerment* GetKeyManagerment() = 0;
-  virtual SessionManagerment* GetSessionManagerment() = 0;
+  virtual KeyManagement* GetKeyManagement() = 0;
+  virtual SessionManagement* GetSessionManagement() = 0;
   virtual Config* GetConfig() = 0;
   virtual Random* GetRandom() = 0;
   virtual PinWeaver* GetPinWeaver() = 0;

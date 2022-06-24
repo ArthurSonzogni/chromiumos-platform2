@@ -89,7 +89,7 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
 StatusOr<std::optional<ScopedKey>> SealingTpm2::PreloadSealedData(
     const OperationPolicy& policy, const brillo::Blob& sealed_data) {
   ASSIGN_OR_RETURN(ScopedKey key,
-                   backend_.key_managerment_.LoadKey(policy, sealed_data),
+                   backend_.key_management_.LoadKey(policy, sealed_data),
                    _.WithStatus<TPMError>("Failed to load sealed data"));
   return std::move(key);
 }
@@ -113,7 +113,7 @@ StatusOr<brillo::SecureBlob> SealingTpm2::Unseal(
   if (options.preload_data.has_value()) {
     ASSIGN_OR_RETURN(
         const KeyTpm2& key_data,
-        backend_.key_managerment_.GetKeyData(options.preload_data.value()),
+        backend_.key_management_.GetKeyData(options.preload_data.value()),
         _.WithStatus<TPMError>("Failed to get preload data"));
 
     RETURN_IF_ERROR(

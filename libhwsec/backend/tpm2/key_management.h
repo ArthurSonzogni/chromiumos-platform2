@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBHWSEC_BACKEND_TPM2_KEY_MANAGERMENT_H_
-#define LIBHWSEC_BACKEND_TPM2_KEY_MANAGERMENT_H_
+#ifndef LIBHWSEC_BACKEND_TPM2_KEY_MANAGEMENT_H_
+#define LIBHWSEC_BACKEND_TPM2_KEY_MANAGEMENT_H_
 
 #include <memory>
 #include <optional>
@@ -41,4 +41,4 @@ struct KeyTpm2 {
 
 }  // namespace hwsec
 
-#endif  // LIBHWSEC_BACKEND_TPM2_KEY_MANAGERMENT_H_
+#endif  // LIBHWSEC_BACKEND_TPM2_KEY_MANAGEMENT_H_

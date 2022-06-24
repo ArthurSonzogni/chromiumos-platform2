@@ -55,7 +55,7 @@ StatusOr<SchemaDetail> GetSchemaDetail(
 StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
     Key key, const brillo::SecureBlob& plaintext, EncryptionOptions options) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.key_managerment_.GetKeyData(key));
+                   backend_.key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const SchemaDetail& schema, GetSchemaDetail(options));
 
@@ -80,7 +80,7 @@ StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
 StatusOr<brillo::SecureBlob> EncryptionTpm2::Decrypt(
     Key key, const brillo::Blob& ciphertext, EncryptionOptions options) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.key_managerment_.GetKeyData(key));
+                   backend_.key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const SchemaDetail& schema, GetSchemaDetail(options));
 

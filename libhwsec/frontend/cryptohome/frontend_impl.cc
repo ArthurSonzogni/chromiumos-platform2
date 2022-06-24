@@ -30,14 +30,14 @@ StatusOr<bool> CryptohomeFrontendImpl::IsDAMitigationReady() {
 
 StatusOr<absl::flat_hash_set<KeyAlgoType>>
 CryptohomeFrontendImpl::GetSupportedAlgo() {
-  return middleware_.CallSync<&Backend::KeyManagerment::GetSupportedAlgo>();
+  return middleware_.CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
 }
 
 StatusOr<CryptohomeFrontend::CreateKeyResult>
 CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) {
-  return middleware_.CallSync<&Backend::KeyManagerment::CreateAutoReloadKey>(
+  return middleware_.CallSync<&Backend::KeyManagement::CreateAutoReloadKey>(
       OperationPolicySetting{}, key_algo,
-      Backend::KeyManagerment::CreateKeyOptions{
+      Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
           .allow_sign = false,
@@ -46,21 +46,20 @@ CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) {
 
 StatusOr<ScopedKey> CryptohomeFrontendImpl::LoadKey(
     const brillo::Blob& key_blob) {
-  return middleware_.CallSync<&Backend::KeyManagerment::LoadAutoReloadKey>(
+  return middleware_.CallSync<&Backend::KeyManagement::LoadAutoReloadKey>(
       OperationPolicy{}, key_blob);
 }
 
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetPubkeyHash(Key key) {
-  return middleware_.CallSync<&Backend::KeyManagerment::GetPubkeyHash>(key);
+  return middleware_.CallSync<&Backend::KeyManagement::GetPubkeyHash>(key);
 }
 
 StatusOr<ScopedKey> CryptohomeFrontendImpl::SideLoadKey(uint32_t key_handle) {
-  return middleware_.CallSync<&Backend::KeyManagerment::SideLoadKey>(
-      key_handle);
+  return middleware_.CallSync<&Backend::KeyManagement::SideLoadKey>(key_handle);
 }
 
 StatusOr<uint32_t> CryptohomeFrontendImpl::GetKeyHandle(Key key) {
-  return middleware_.CallSync<&Backend::KeyManagerment::GetKeyHandle>(key);
+  return middleware_.CallSync<&Backend::KeyManagement::GetKeyHandle>(key);
 }
 
 Status CryptohomeFrontendImpl::SetCurrentUser(const std::string& current_user) {

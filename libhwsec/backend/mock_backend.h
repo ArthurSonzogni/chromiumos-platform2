@@ -146,7 +146,7 @@ class MockBackend : public Backend {
                 (override));
   };
 
-  class MockKeyManagerment : public KeyManagerment {
+  class MockKeyManagement : public KeyManagement {
    public:
     MOCK_METHOD(StatusOr<absl::flat_hash_set<KeyAlgoType>>,
                 GetSupportedAlgo,
@@ -186,7 +186,7 @@ class MockBackend : public Backend {
     MOCK_METHOD(StatusOr<uint32_t>, GetKeyHandle, (Key key), (override));
   };
 
-  class MockSessionManagerment : public SessionManagerment {
+  class MockSessionManagement : public SessionManagement {
    public:
     MOCK_METHOD(StatusOr<ScopedSession>,
                 CreateSession,
@@ -314,8 +314,8 @@ class MockBackend : public Backend {
     MockDeriving deriving;
     MockEncryption encryption;
     MockSigning signing;
-    MockKeyManagerment key_managerment;
-    MockSessionManagerment session_managerment;
+    MockKeyManagement key_management;
+    MockSessionManagement session_management;
     MockConfig config;
     MockRandom random;
     MockPinWeaver pinweaver;
@@ -339,11 +339,11 @@ class MockBackend : public Backend {
   Deriving* GetDeriving() override { return &mock_data_.deriving; }
   Encryption* GetEncryption() override { return &mock_data_.encryption; }
   Signing* GetSigning() override { return &mock_data_.signing; }
-  KeyManagerment* GetKeyManagerment() override {
-    return &mock_data_.key_managerment;
+  KeyManagement* GetKeyManagement() override {
+    return &mock_data_.key_management;
   }
-  SessionManagerment* GetSessionManagerment() override {
-    return &mock_data_.session_managerment;
+  SessionManagement* GetSessionManagement() override {
+    return &mock_data_.session_management;
   }
   Config* GetConfig() override { return &mock_data_.config; }
   Random* GetRandom() override { return &mock_data_.random; }

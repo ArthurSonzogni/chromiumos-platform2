@@ -20,7 +20,7 @@
 #include <trunks/trunks_factory.h>
 
 #include "libhwsec/backend/backend.h"
-#include "libhwsec/backend/tpm2/key_managerment.h"
+#include "libhwsec/backend/tpm2/key_management.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy.h"
 
@@ -97,11 +97,11 @@ class BackendTpm2 : public Backend {
                                          EncryptionOptions options) override;
   };
 
-  class KeyManagermentTpm2 : public KeyManagerment,
-                             public SubClassHelper<BackendTpm2> {
+  class KeyManagementTpm2 : public KeyManagement,
+                            public SubClassHelper<BackendTpm2> {
    public:
     using SubClassHelper::SubClassHelper;
-    ~KeyManagermentTpm2();
+    ~KeyManagementTpm2();
 
     StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
     StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
@@ -286,8 +286,8 @@ class BackendTpm2 : public Backend {
   Deriving* GetDeriving() override { return &deriving_; }
   Encryption* GetEncryption() override { return &encryption_; }
   Signing* GetSigning() override { return nullptr; }
-  KeyManagerment* GetKeyManagerment() override { return &key_managerment_; }
-  SessionManagerment* GetSessionManagerment() override { return nullptr; }
+  KeyManagement* GetKeyManagement() override { return &key_management_; }
+  SessionManagement* GetSessionManagement() override { return nullptr; }
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
@@ -303,7 +303,7 @@ class BackendTpm2 : public Backend {
   SealingTpm2 sealing_{*this};
   DerivingTpm2 deriving_{*this};
   EncryptionTpm2 encryption_{*this};
-  KeyManagermentTpm2 key_managerment_{*this};
+  KeyManagementTpm2 key_management_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
   PinWeaverTpm2 pinweaver_{*this};

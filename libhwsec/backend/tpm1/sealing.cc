@@ -69,11 +69,11 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
     const brillo::SecureBlob& unsealed_data) {
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_managerment_.GetPersistentKey(
-          Backend::KeyManagerment::PersistentKeyType::kStorageRootKey));
+      backend_.key_management_.GetPersistentKey(
+          Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_managerment_.GetKeyData(srk.GetKey()));
+                   backend_.key_management_.GetKeyData(srk.GetKey()));
 
   ASSIGN_OR_RETURN(const TssTpmContext& user_context,
                    backend_.GetTssUserContext());
@@ -148,11 +148,11 @@ StatusOr<brillo::SecureBlob> SealingTpm1::Unseal(
 
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_managerment_.GetPersistentKey(
-          Backend::KeyManagerment::PersistentKeyType::kStorageRootKey));
+      backend_.key_management_.GetPersistentKey(
+          Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_managerment_.GetKeyData(srk.GetKey()));
+                   backend_.key_management_.GetKeyData(srk.GetKey()));
 
   ASSIGN_OR_RETURN(const TssTpmContext& user_context,
                    backend_.GetTssUserContext());

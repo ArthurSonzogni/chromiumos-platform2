@@ -21,7 +21,7 @@ namespace hwsec {
 
 class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
  public:
-  using CreateKeyResult = Backend::KeyManagerment::CreateKeyResult;
+  using CreateKeyResult = Backend::KeyManagement::CreateKeyResult;
   using StorageState = Backend::Storage::ReadyState;
 
   ~CryptohomeFrontend() override = default;

@@ -172,7 +172,7 @@ class Middleware {
   template <typename Arg>
   static bool ReloadKeyHandler(hwsec::Backend* backend, const Arg& key) {
     if constexpr (std::is_same_v<Arg, Key>) {
-      auto* key_mgr = backend->Get<Backend::KeyManagerment>();
+      auto* key_mgr = backend->Get<Backend::KeyManagement>();
       if (Status status = key_mgr->ReloadIfPossible(key); !status.ok()) {
         LOG(WARNING) << "Failed to reload key parameter: " << status.status();
         return false;

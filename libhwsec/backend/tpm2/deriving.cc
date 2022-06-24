@@ -98,7 +98,7 @@ StatusOr<Blob> DerivingTpm2::Derive(Key key, const Blob& blob) {
 StatusOr<SecureBlob> DerivingTpm2::SecureDerive(Key key,
                                                 const SecureBlob& blob) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.key_managerment_.GetKeyData(key));
+                   backend_.key_management_.GetKeyData(key));
 
   switch (key_data.cache.public_area.type) {
     case trunks::TPM_ALG_RSA:

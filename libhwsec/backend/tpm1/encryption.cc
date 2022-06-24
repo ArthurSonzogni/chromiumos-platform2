@@ -30,7 +30,7 @@ StatusOr<brillo::Blob> EncryptionTpm1::Encrypt(
   }
 
   ASSIGN_OR_RETURN(const KeyTpm1& key_data,
-                   backend_.key_managerment_.GetKeyData(key));
+                   backend_.key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const TssTpmContext& user_context,
                    backend_.GetTssUserContext());
@@ -70,7 +70,7 @@ StatusOr<brillo::SecureBlob> EncryptionTpm1::Decrypt(
   }
 
   ASSIGN_OR_RETURN(const KeyTpm1& key_data,
-                   backend_.key_managerment_.GetKeyData(key));
+                   backend_.key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const TssTpmContext& user_context,
                    backend_.GetTssUserContext());

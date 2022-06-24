@@ -28,7 +28,7 @@ void ScopedKey::Invalidate() {
     Key key = GetKey();
     key_ = std::nullopt;
     RETURN_IF_ERROR(Middleware(middleware_derivative_)
-                        .CallSync<&hwsec::Backend::KeyManagerment::Flush>(key))
+                        .CallSync<&hwsec::Backend::KeyManagement::Flush>(key))
         .With([](auto linker) {
           return linker.LogError() << "Failed to flush scoped key";
         })

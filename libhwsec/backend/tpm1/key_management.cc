@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "libhwsec/backend/tpm1/backend.h"
-#include "libhwsec/backend/tpm1/key_managerment.h"
+#include "libhwsec/backend/tpm1/key_management.h"
 
 #include <functional>
 #include <string>
@@ -29,7 +29,7 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using KeyManagermentTpm1 = BackendTpm1::KeyManagermentTpm1;
+using KeyManagementTpm1 = BackendTpm1::KeyManagementTpm1;
 
 namespace {
 
@@ -40,7 +40,7 @@ constexpr uint32_t kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 
 }  // namespace
 
-KeyManagermentTpm1::~KeyManagermentTpm1() {
+KeyManagementTpm1::~KeyManagementTpm1() {
   std::vector<Key> key_list;
   for (auto& [token, data] : key_map_) {
     key_list.push_back(Key{.token = token});
@@ -53,13 +53,13 @@ KeyManagermentTpm1::~KeyManagermentTpm1() {
 }
 
 StatusOr<absl::flat_hash_set<KeyAlgoType>>
-KeyManagermentTpm1::GetSupportedAlgo() {
+KeyManagementTpm1::GetSupportedAlgo() {
   return absl::flat_hash_set<KeyAlgoType>({
       KeyAlgoType::kRsa,
   });
 }
 
-StatusOr<KeyManagermentTpm1::CreateKeyResult> KeyManagermentTpm1::CreateKey(
+StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(
     const OperationPolicySetting& policy,
     KeyAlgoType key_algo,
     CreateKeyOptions options) {
@@ -72,10 +72,10 @@ StatusOr<KeyManagermentTpm1::CreateKeyResult> KeyManagermentTpm1::CreateKey(
   }
 }
 
-StatusOr<KeyManagermentTpm1::CreateKeyResult>
-KeyManagermentTpm1::CreateAutoReloadKey(const OperationPolicySetting& policy,
-                                        KeyAlgoType key_algo,
-                                        CreateKeyOptions options) {
+StatusOr<KeyManagementTpm1::CreateKeyResult>
+KeyManagementTpm1::CreateAutoReloadKey(const OperationPolicySetting& policy,
+                                       KeyAlgoType key_algo,
+                                       CreateKeyOptions options) {
   switch (key_algo) {
     case KeyAlgoType::kRsa:
       return CreateRsaKey(policy, options, /*auto_reload=*/true);
@@ -85,7 +85,7 @@ KeyManagermentTpm1::CreateAutoReloadKey(const OperationPolicySetting& policy,
   }
 }
 
-StatusOr<KeyManagermentTpm1::CreateKeyResult> KeyManagermentTpm1::CreateRsaKey(
+StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     bool auto_reload) {
@@ -212,11 +212,10 @@ StatusOr<KeyManagermentTpm1::CreateKeyResult> KeyManagermentTpm1::CreateRsaKey(
   };
 }
 
-StatusOr<KeyManagermentTpm1::CreateKeyResult>
-KeyManagermentTpm1::CreateSoftwareGenRsaKey(
-    const OperationPolicySetting& policy,
-    const CreateKeyOptions& options,
-    bool auto_reload) {
+StatusOr<KeyManagementTpm1::CreateKeyResult>
+KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
+                                           const CreateKeyOptions& options,
+                                           bool auto_reload) {
   brillo::SecureBlob public_modulus;
   brillo::SecureBlob prime_factor;
   if (!hwsec_foundation::CreateRsaKey(kDefaultTpmRsaKeyBits, &public_modulus,
@@ -332,8 +331,8 @@ KeyManagermentTpm1::CreateSoftwareGenRsaKey(
   };
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm1::LoadKey(const OperationPolicy& policy,
-                                                const brillo::Blob& key_blob) {
+StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
+                                               const brillo::Blob& key_blob) {
   ASSIGN_OR_RETURN(ScopedTssKey key, LoadKeyBlob(policy, key_blob),
                    _.WithStatus<TPMError>("Failed to load key blob"));
 
@@ -342,7 +341,7 @@ StatusOr<ScopedKey> KeyManagermentTpm1::LoadKey(const OperationPolicy& policy,
                          std::move(key), /*reload_data=*/std::nullopt);
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm1::LoadAutoReloadKey(
+StatusOr<ScopedKey> KeyManagementTpm1::LoadAutoReloadKey(
     const OperationPolicy& policy, const brillo::Blob& key_blob) {
   ASSIGN_OR_RETURN(ScopedTssKey key, LoadKeyBlob(policy, key_blob),
                    _.WithStatus<TPMError>("Failed to load key blob"));
@@ -356,7 +355,7 @@ StatusOr<ScopedKey> KeyManagermentTpm1::LoadAutoReloadKey(
                          });
 }
 
-StatusOr<ScopedTssKey> KeyManagermentTpm1::LoadKeyBlob(
+StatusOr<ScopedTssKey> KeyManagementTpm1::LoadKeyBlob(
     const OperationPolicy& policy, const brillo::Blob& key_blob) {
   ASSIGN_OR_RETURN(ScopedKey srk,
                    GetPersistentKey(PersistentKeyType::kStorageRootKey));
@@ -379,7 +378,7 @@ StatusOr<ScopedTssKey> KeyManagermentTpm1::LoadKeyBlob(
   return local_key_handle;
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm1::GetPersistentKey(
+StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);
   if (it != persistent_key_map_.end()) {
@@ -409,25 +408,25 @@ StatusOr<ScopedKey> KeyManagermentTpm1::GetPersistentKey(
   return key;
 }
 
-StatusOr<brillo::Blob> KeyManagermentTpm1::GetPubkeyHash(Key key) {
+StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyHash(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
 
   return Sha1(key_data.cache.pubkey_blob);
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm1::SideLoadKey(uint32_t key_handle) {
+StatusOr<ScopedKey> KeyManagementTpm1::SideLoadKey(uint32_t key_handle) {
   return LoadKeyInternal(KeyTpm1::Type::kPersistentKey, key_handle,
                          /*scoped_key=*/std::nullopt,
                          /*reload_data=*/std::nullopt);
 }
 
-StatusOr<uint32_t> KeyManagermentTpm1::GetKeyHandle(Key key) {
+StatusOr<uint32_t> KeyManagementTpm1::GetKeyHandle(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
 
   return key_data.key_handle;
 }
 
-StatusOr<brillo::Blob> KeyManagermentTpm1::GetPubkeyBlob(uint32_t key_handle) {
+StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyBlob(uint32_t key_handle) {
   ASSIGN_OR_RETURN(const TssTpmContext& user_context,
                    backend_.GetTssUserContext());
 
@@ -442,7 +441,7 @@ StatusOr<brillo::Blob> KeyManagermentTpm1::GetPubkeyBlob(uint32_t key_handle) {
   return brillo::Blob(public_blob.value(), public_blob.value() + size);
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm1::LoadKeyInternal(
+StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
     KeyTpm1::Type key_type,
     uint32_t key_handle,
     std::optional<ScopedTssKey> scoped_key,
@@ -465,7 +464,7 @@ StatusOr<ScopedKey> KeyManagermentTpm1::LoadKeyInternal(
   return ScopedKey(Key{.token = token}, backend_.middleware_derivative_);
 }
 
-Status KeyManagermentTpm1::Flush(Key key) {
+Status KeyManagementTpm1::Flush(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
 
   switch (key_data.type) {
@@ -483,7 +482,7 @@ Status KeyManagermentTpm1::Flush(Key key) {
   }
 }
 
-StatusOr<std::reference_wrapper<KeyTpm1>> KeyManagermentTpm1::GetKeyData(
+StatusOr<std::reference_wrapper<KeyTpm1>> KeyManagementTpm1::GetKeyData(
     Key key) {
   auto it = key_map_.find(key.token);
   if (it == key_map_.end()) {
@@ -492,7 +491,7 @@ StatusOr<std::reference_wrapper<KeyTpm1>> KeyManagermentTpm1::GetKeyData(
   return it->second;
 }
 
-Status KeyManagermentTpm1::ReloadIfPossible(Key key) {
+Status KeyManagementTpm1::ReloadIfPossible(Key key) {
   ASSIGN_OR_RETURN(KeyTpm1 & key_data, GetKeyData(key));
 
   if (key_data.type != KeyTpm1::Type::kReloadableTransientKey) {
@@ -515,7 +514,7 @@ Status KeyManagermentTpm1::ReloadIfPossible(Key key) {
   return OkStatus();
 }
 
-StatusOr<uint32_t> KeyManagermentTpm1::GetSrk() {
+StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
   if (srk_cache_.has_value()) {
     return srk_cache_->value();
   }

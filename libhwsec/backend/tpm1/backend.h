@@ -21,7 +21,7 @@
 #include <trousers/tss.h>
 
 #include "libhwsec/backend/backend.h"
-#include "libhwsec/backend/tpm1/key_managerment.h"
+#include "libhwsec/backend/tpm1/key_management.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/tss_utils/scoped_tss_type.h"
@@ -97,12 +97,12 @@ class BackendTpm1 : public Backend {
                                          EncryptionOptions options) override;
   };
 
-  class KeyManagermentTpm1 : public KeyManagerment,
-                             public SubClassHelper<BackendTpm1> {
+  class KeyManagementTpm1 : public KeyManagement,
+                            public SubClassHelper<BackendTpm1> {
    public:
     using SubClassHelper::SubClassHelper;
 
-    ~KeyManagermentTpm1();
+    ~KeyManagementTpm1();
     StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
     StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
                                         KeyAlgoType key_algo,
@@ -267,8 +267,8 @@ class BackendTpm1 : public Backend {
   Deriving* GetDeriving() override { return &deriving_; }
   Encryption* GetEncryption() override { return &encryption_; }
   Signing* GetSigning() override { return nullptr; }
-  KeyManagerment* GetKeyManagerment() override { return &key_managerment_; }
-  SessionManagerment* GetSessionManagerment() override { return nullptr; }
+  KeyManagement* GetKeyManagement() override { return &key_management_; }
+  SessionManagement* GetSessionManagement() override { return nullptr; }
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
@@ -287,7 +287,7 @@ class BackendTpm1 : public Backend {
   SealingTpm1 sealing_{*this};
   DerivingTpm1 deriving_{*this};
   EncryptionTpm1 encryption_{*this};
-  KeyManagermentTpm1 key_managerment_{*this};
+  KeyManagementTpm1 key_management_{*this};
   ConfigTpm1 config_{*this};
   RandomTpm1 random_{*this};
   PinWeaverTpm1 pinweaver_{*this};

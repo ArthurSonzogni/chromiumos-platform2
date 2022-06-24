@@ -21,18 +21,18 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendKeyManagermentTpm1Test : public BackendTpm1TestBase {};
+class BackendKeyManagementTpm1Test : public BackendTpm1TestBase {};
 
-TEST_F(BackendKeyManagermentTpm1Test, GetSupportedAlgo) {
+TEST_F(BackendKeyManagementTpm1Test, GetSupportedAlgo) {
   auto result =
-      middleware_->CallSync<&Backend::KeyManagerment::GetSupportedAlgo>();
+      middleware_->CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
 
   ASSERT_TRUE(result.ok());
   EXPECT_TRUE(result->count(KeyAlgoType::kRsa));
   EXPECT_FALSE(result->count(KeyAlgoType::kEcc));
 }
 
-TEST_F(BackendKeyManagermentTpm1Test, GetPersistentKey) {
+TEST_F(BackendKeyManagementTpm1Test, GetPersistentKey) {
   const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
   const uint32_t kFakeKeyHandle = 0x1337;
   const uint32_t kFakeSrkAuthUsage = 0x9876;
@@ -75,26 +75,26 @@ TEST_F(BackendKeyManagermentTpm1Test, GetPersistentKey) {
 
   {
     auto result =
-        middleware_->CallSync<&Backend::KeyManagerment::GetPersistentKey>(
-            Backend::KeyManagerment::PersistentKeyType::kStorageRootKey);
+        middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
+            Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
     ASSERT_TRUE(result.ok());
 
     auto result2 =
-        middleware_->CallSync<&Backend::KeyManagerment::GetPersistentKey>(
-            Backend::KeyManagerment::PersistentKeyType::kStorageRootKey);
+        middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
+            Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
     ASSERT_TRUE(result2.ok());
   }
 
   auto result3 =
-      middleware_->CallSync<&Backend::KeyManagerment::GetPersistentKey>(
-          Backend::KeyManagerment::PersistentKeyType::kStorageRootKey);
+      middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
+          Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
   ASSERT_TRUE(result3.ok());
 }
 
-TEST_F(BackendKeyManagermentTpm1Test, CreateSoftwareGenRsaKey) {
+TEST_F(BackendKeyManagementTpm1Test, CreateSoftwareGenRsaKey) {
   const OperationPolicySetting kFakePolicy{};
   const KeyAlgoType kFakeAlgo = KeyAlgoType::kRsa;
   const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
@@ -168,9 +168,9 @@ TEST_F(BackendKeyManagermentTpm1Test, CreateSoftwareGenRsaKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagerment::CreateKey>(
+  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
       kFakePolicy, kFakeAlgo,
-      Backend::KeyManagerment::CreateKeyOptions{
+      Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
           .allow_sign = true,
@@ -180,7 +180,7 @@ TEST_F(BackendKeyManagermentTpm1Test, CreateSoftwareGenRsaKey) {
   EXPECT_EQ(result->key_blob, kFakeKeyBlob);
 }
 
-TEST_F(BackendKeyManagermentTpm1Test, CreateRsaKey) {
+TEST_F(BackendKeyManagementTpm1Test, CreateRsaKey) {
   const OperationPolicySetting kFakePolicy{
       .device_config_settings =
           DeviceConfigSettings{
@@ -246,9 +246,9 @@ TEST_F(BackendKeyManagermentTpm1Test, CreateRsaKey) {
                       Return(TPM_SUCCESS)));
 
   auto result =
-      middleware_->CallSync<&Backend::KeyManagerment::CreateAutoReloadKey>(
+      middleware_->CallSync<&Backend::KeyManagement::CreateAutoReloadKey>(
           kFakePolicy, kFakeAlgo,
-          Backend::KeyManagerment::CreateKeyOptions{
+          Backend::KeyManagement::CreateKeyOptions{
               .allow_software_gen = true,
               .allow_decrypt = true,
               .allow_sign = true,
@@ -258,7 +258,7 @@ TEST_F(BackendKeyManagermentTpm1Test, CreateRsaKey) {
   EXPECT_EQ(result->key_blob, kFakeKeyBlob);
 }
 
-TEST_F(BackendKeyManagermentTpm1Test, LoadKey) {
+TEST_F(BackendKeyManagementTpm1Test, LoadKey) {
   const OperationPolicy kFakePolicy{};
   const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
   const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
@@ -278,25 +278,25 @@ TEST_F(BackendKeyManagermentTpm1Test, LoadKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagerment::LoadKey>(
+  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, kFakeKeyBlob);
 
   ASSERT_TRUE(result.ok());
 
   auto result2 =
-      middleware_->CallSync<&Backend::KeyManagerment::ReloadIfPossible>(
+      middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
           result->GetKey());
 
   ASSERT_TRUE(result2.ok());
 
-  auto result3 = middleware_->CallSync<&Backend::KeyManagerment::GetKeyHandle>(
+  auto result3 = middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
       result->GetKey());
 
   ASSERT_TRUE(result3.ok());
   EXPECT_EQ(*result3, kFakeKeyHandle);
 }
 
-TEST_F(BackendKeyManagermentTpm1Test, LoadAutoReloadKey) {
+TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
   const OperationPolicy kFakePolicy{};
   const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
   const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
@@ -319,25 +319,25 @@ TEST_F(BackendKeyManagermentTpm1Test, LoadAutoReloadKey) {
                       Return(TPM_SUCCESS)));
 
   auto result =
-      middleware_->CallSync<&Backend::KeyManagerment::LoadAutoReloadKey>(
+      middleware_->CallSync<&Backend::KeyManagement::LoadAutoReloadKey>(
           kFakePolicy, kFakeKeyBlob);
 
   ASSERT_TRUE(result.ok());
 
   auto result2 =
-      middleware_->CallSync<&Backend::KeyManagerment::ReloadIfPossible>(
+      middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
           result->GetKey());
 
   ASSERT_TRUE(result2.ok());
 
-  auto result3 = middleware_->CallSync<&Backend::KeyManagerment::GetKeyHandle>(
+  auto result3 = middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
       result->GetKey());
 
   ASSERT_TRUE(result3.ok());
   EXPECT_EQ(*result3, kFakeKeyHandle2);
 }
 
-TEST_F(BackendKeyManagermentTpm1Test, SideLoadKey) {
+TEST_F(BackendKeyManagementTpm1Test, SideLoadKey) {
   const OperationPolicy kFakePolicy{};
   const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
   const uint32_t kFakeKeyHandle = 0x1337;
@@ -349,12 +349,12 @@ TEST_F(BackendKeyManagermentTpm1Test, SideLoadKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagerment::SideLoadKey>(
+  auto result = middleware_->CallSync<&Backend::KeyManagement::SideLoadKey>(
       kFakeKeyHandle);
 
   ASSERT_TRUE(result.ok());
 
-  auto result2 = middleware_->CallSync<&Backend::KeyManagerment::GetKeyHandle>(
+  auto result2 = middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
       result->GetKey());
 
   ASSERT_TRUE(result2.ok());

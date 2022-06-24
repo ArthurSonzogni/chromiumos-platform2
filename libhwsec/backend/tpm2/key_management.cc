@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "libhwsec/backend/tpm2/backend.h"
-#include "libhwsec/backend/tpm2/key_managerment.h"
+#include "libhwsec/backend/tpm2/key_management.h"
 
 #include <functional>
 #include <string>
@@ -26,7 +26,7 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using KeyManagermentTpm2 = BackendTpm2::KeyManagermentTpm2;
+using KeyManagementTpm2 = BackendTpm2::KeyManagementTpm2;
 
 namespace {
 
@@ -36,7 +36,7 @@ constexpr uint32_t kDefaultTpmPublicExponent = 0x10001;
 constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
 
 StatusOr<trunks::TpmUtility::AsymmetricKeyUsage> GetKeyUsage(
-    const KeyManagermentTpm2::CreateKeyOptions& options) {
+    const KeyManagementTpm2::CreateKeyOptions& options) {
   if (options.allow_decrypt == true && options.allow_sign == true) {
     return trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey;
   } else if (options.allow_decrypt == true && options.allow_sign == false) {
@@ -50,7 +50,7 @@ StatusOr<trunks::TpmUtility::AsymmetricKeyUsage> GetKeyUsage(
 
 }  // namespace
 
-KeyManagermentTpm2::~KeyManagermentTpm2() {
+KeyManagementTpm2::~KeyManagementTpm2() {
   std::vector<Key> key_list;
   for (auto& [token, data] : key_map_) {
     key_list.push_back(Key{.token = token});
@@ -63,14 +63,14 @@ KeyManagermentTpm2::~KeyManagermentTpm2() {
 }
 
 StatusOr<absl::flat_hash_set<KeyAlgoType>>
-KeyManagermentTpm2::GetSupportedAlgo() {
+KeyManagementTpm2::GetSupportedAlgo() {
   return absl::flat_hash_set<KeyAlgoType>({
       KeyAlgoType::kRsa,
       KeyAlgoType::kEcc,
   });
 }
 
-StatusOr<KeyManagermentTpm2::CreateKeyResult> KeyManagermentTpm2::CreateKey(
+StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateKey(
     const OperationPolicySetting& policy,
     KeyAlgoType key_algo,
     CreateKeyOptions options) {
@@ -85,10 +85,10 @@ StatusOr<KeyManagermentTpm2::CreateKeyResult> KeyManagermentTpm2::CreateKey(
   }
 }
 
-StatusOr<KeyManagermentTpm2::CreateKeyResult>
-KeyManagermentTpm2::CreateAutoReloadKey(const OperationPolicySetting& policy,
-                                        KeyAlgoType key_algo,
-                                        CreateKeyOptions options) {
+StatusOr<KeyManagementTpm2::CreateKeyResult>
+KeyManagementTpm2::CreateAutoReloadKey(const OperationPolicySetting& policy,
+                                       KeyAlgoType key_algo,
+                                       CreateKeyOptions options) {
   switch (key_algo) {
     case KeyAlgoType::kRsa:
       return CreateRsaKey(policy, options, /*auto_reload=*/true);
@@ -100,7 +100,7 @@ KeyManagermentTpm2::CreateAutoReloadKey(const OperationPolicySetting& policy,
   }
 }
 
-StatusOr<KeyManagermentTpm2::CreateKeyResult> KeyManagermentTpm2::CreateRsaKey(
+StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     bool auto_reload) {
@@ -177,11 +177,10 @@ StatusOr<KeyManagermentTpm2::CreateKeyResult> KeyManagermentTpm2::CreateRsaKey(
   };
 }
 
-StatusOr<KeyManagermentTpm2::CreateKeyResult>
-KeyManagermentTpm2::CreateSoftwareGenRsaKey(
-    const OperationPolicySetting& policy,
-    const CreateKeyOptions& options,
-    bool auto_reload) {
+StatusOr<KeyManagementTpm2::CreateKeyResult>
+KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
+                                           const CreateKeyOptions& options,
+                                           bool auto_reload) {
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
@@ -238,7 +237,7 @@ KeyManagermentTpm2::CreateSoftwareGenRsaKey(
   };
 }
 
-StatusOr<KeyManagermentTpm2::CreateKeyResult> KeyManagermentTpm2::CreateEccKey(
+StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     bool auto_reload) {
@@ -310,8 +309,8 @@ StatusOr<KeyManagermentTpm2::CreateKeyResult> KeyManagermentTpm2::CreateEccKey(
   };
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm2::LoadKey(const OperationPolicy& policy,
-                                                const brillo::Blob& key_blob) {
+StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(const OperationPolicy& policy,
+                                               const brillo::Blob& key_blob) {
   TrunksClientContext& context = backend_.trunks_context_;
 
   uint32_t key_handle;
@@ -326,7 +325,7 @@ StatusOr<ScopedKey> KeyManagermentTpm2::LoadKey(const OperationPolicy& policy,
                          /*reload_data=*/std::nullopt);
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm2::LoadAutoReloadKey(
+StatusOr<ScopedKey> KeyManagementTpm2::LoadAutoReloadKey(
     const OperationPolicy& policy, const brillo::Blob& key_blob) {
   TrunksClientContext& context = backend_.trunks_context_;
 
@@ -345,7 +344,7 @@ StatusOr<ScopedKey> KeyManagermentTpm2::LoadAutoReloadKey(
                          });
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm2::GetPersistentKey(
+StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);
   if (it != persistent_key_map_.end()) {
@@ -374,7 +373,7 @@ StatusOr<ScopedKey> KeyManagermentTpm2::GetPersistentKey(
   return key;
 }
 
-StatusOr<brillo::Blob> KeyManagermentTpm2::GetPubkeyHash(Key key) {
+StatusOr<brillo::Blob> KeyManagementTpm2::GetPubkeyHash(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
 
   const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
@@ -392,18 +391,18 @@ StatusOr<brillo::Blob> KeyManagermentTpm2::GetPubkeyHash(Key key) {
                               TPMRetryAction::kNoRetry);
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm2::SideLoadKey(uint32_t key_handle) {
+StatusOr<ScopedKey> KeyManagementTpm2::SideLoadKey(uint32_t key_handle) {
   return LoadKeyInternal(KeyTpm2::Type::kPersistentKey, key_handle,
                          /*reload_data=*/std::nullopt);
 }
 
-StatusOr<uint32_t> KeyManagermentTpm2::GetKeyHandle(Key key) {
+StatusOr<uint32_t> KeyManagementTpm2::GetKeyHandle(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
 
   return key_data.key_handle;
 }
 
-StatusOr<ScopedKey> KeyManagermentTpm2::LoadKeyInternal(
+StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
     KeyTpm2::Type key_type,
     uint32_t key_handle,
     std::optional<KeyReloadDataTpm2> reload_data) {
@@ -428,7 +427,7 @@ StatusOr<ScopedKey> KeyManagermentTpm2::LoadKeyInternal(
   return ScopedKey(Key{.token = token}, backend_.middleware_derivative_);
 }
 
-Status KeyManagermentTpm2::Flush(Key key) {
+Status KeyManagementTpm2::Flush(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
 
   TrunksClientContext& context = backend_.trunks_context_;
@@ -451,7 +450,7 @@ Status KeyManagermentTpm2::Flush(Key key) {
   }
 }
 
-StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagermentTpm2::GetKeyData(
+StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagementTpm2::GetKeyData(
     Key key) {
   auto it = key_map_.find(key.token);
   if (it == key_map_.end()) {
@@ -460,7 +459,7 @@ StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagermentTpm2::GetKeyData(
   return it->second;
 }
 
-Status KeyManagermentTpm2::ReloadIfPossible(Key key) {
+Status KeyManagementTpm2::ReloadIfPossible(Key key) {
   ASSIGN_OR_RETURN(KeyTpm2 & key_data, GetKeyData(key));
 
   if (key_data.type != KeyTpm2::Type::kReloadableTransientKey) {
