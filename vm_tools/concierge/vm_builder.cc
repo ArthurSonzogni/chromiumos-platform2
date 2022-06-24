@@ -580,6 +580,26 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
          BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
+  // Wayland device.
+  if (!wayland_sockets_.empty()) {
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
+      return std::nullopt;
+    }
+
+    base::StringPairs cmd =
+        BuildVvuBaseCmd("wl", vvu_device_info->proxy_device);
+    for (const auto& w : wayland_sockets_) {
+      cmd.emplace_back("--wayland-sock", w);
+    }
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-wl",
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
+  }
+
   // TODO(morg): Refactor shared parameter logic with BuildVmArgs
   cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(),
                                {"--cpus", std::to_string(cpus_)});
