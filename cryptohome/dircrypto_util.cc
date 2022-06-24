@@ -132,6 +132,7 @@ static bool AddKeyToSessionKeyring(const brillo::SecureBlob& key,
                                               key_reference->reference.size()));
   key_serial_t key_serial = add_key(kKeyType, key_name.c_str(), &fs_key,
                                     sizeof(fscrypt_key), keyring);
+  brillo::SecureClearObject(fs_key);
   if (key_serial == kInvalidKeySerial) {
     PLOG(ERROR) << "Failed to insert key into keyring";
     return false;

@@ -36,8 +36,10 @@ bool AddEcryptfsAuthToken(  // NOLINT(runtime/int)
                    const_cast<char*>(salt.char_data()),
                    const_cast<char*>(key.char_data()));
 
-  return ecryptfs_add_auth_tok_to_keyring(
-             &auth_token, const_cast<char*>(key_sig.c_str())) >= 0;
+  bool ret = ecryptfs_add_auth_tok_to_keyring(
+                 &auth_token, const_cast<char*>(key_sig.c_str())) >= 0;
+  brillo::SecureClearObject(auth_token);
+  return ret;
 }
 
 bool RemoveEcryptfsAuthToken(const std::string& key_sig) {
