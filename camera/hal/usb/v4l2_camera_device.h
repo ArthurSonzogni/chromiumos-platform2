@@ -65,6 +65,7 @@ enum ControlType {
   kControlZoom,
   kControlWhiteBalanceTemperature,
   kControlPrivacy,
+  kControlPowerLineFrequency
 };
 
 constexpr uint32_t kColorTemperatureAuto = 0;

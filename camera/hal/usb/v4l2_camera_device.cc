@@ -99,6 +99,9 @@ const int ControlTypeToCid(ControlType type) {
     case kControlPrivacy:
       return V4L2_CID_PRIVACY;
 
+    case kControlPowerLineFrequency:
+      return V4L2_CID_POWER_LINE_FREQUENCY;
+
     default:
       NOTREACHED() << "Unexpected control type " << type;
       return -1;
@@ -155,6 +158,9 @@ const std::string ControlTypeToString(ControlType type) {
     case kControlPrivacy:
       return "privacy";
 
+    case kControlPowerLineFrequency:
+      return "power line frequency";
+
     default:
       NOTREACHED() << "Unexpected control type " << type;
       return "N/A";
@@ -210,6 +216,9 @@ const std::string CidToString(int cid) {
 
     case V4L2_CID_PRIVACY:
       return "V4L2_CID_PRIVACY";
+
+    case V4L2_CID_POWER_LINE_FREQUENCY:
+      return "V4L2_CID_POWER_LINE_FREQUENCY";
 
     default:
       NOTREACHED() << "Unexpected cid " << cid;
@@ -1449,16 +1458,15 @@ PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(
     return PowerLineFrequency::FREQ_ERROR;
   }
 
-  struct v4l2_queryctrl query = {};
-  query.id = V4L2_CID_POWER_LINE_FREQUENCY;
-  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query)) < 0) {
+  ControlInfo info;
+  if (QueryControl(fd.get(), kControlPowerLineFrequency, &info) < 0) {
     LOGF(ERROR) << "Power line frequency should support auto or 50/60Hz";
     return PowerLineFrequency::FREQ_ERROR;
   }
 
   PowerLineFrequency frequency = GetPowerLineFrequencyForLocation();
   if (frequency == PowerLineFrequency::FREQ_DEFAULT) {
-    switch (query.default_value) {
+    switch (info.range.default_value) {
       case V4L2_CID_POWER_LINE_FREQUENCY_50HZ:
         frequency = PowerLineFrequency::FREQ_50HZ;
         break;
@@ -1474,9 +1482,9 @@ PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(
   }
 
   // Prefer auto setting if camera module supports auto mode.
-  if (query.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) {
+  if (info.range.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) {
     frequency = PowerLineFrequency::FREQ_AUTO;
-  } else if (query.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
+  } else if (info.range.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
     // TODO(shik): Handle this more gracefully for external camera
     LOGF(ERROR) << "Camera module should at least support 50/60Hz";
     return PowerLineFrequency::FREQ_ERROR;
@@ -1556,11 +1564,8 @@ int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
       return -EINVAL;
   }
 
-  struct v4l2_control control = {};
-  control.id = V4L2_CID_POWER_LINE_FREQUENCY;
-  control.value = v4l2_freq_setting;
-  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_CTRL, &control)) <
-      0) {
+  if (SetControlValue(device_fd_.get(), kControlPowerLineFrequency,
+                      v4l2_freq_setting) < 0) {
     LOGF(ERROR) << "Error setting power line frequency to "
                 << v4l2_freq_setting;
     return -EINVAL;
