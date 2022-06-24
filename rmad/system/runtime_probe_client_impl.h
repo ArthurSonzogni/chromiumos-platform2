@@ -7,28 +7,39 @@
 
 #include "rmad/system/runtime_probe_client.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
 #include <rmad/proto_bindings/rmad.pb.h>
 
+namespace org {
+namespace chromium {
+class RuntimeProbeProxyInterface;
+}  // namespace chromium
+}  // namespace org
+
 namespace rmad {
 
 class RuntimeProbeClientImpl : public RuntimeProbeClient {
  public:
   explicit RuntimeProbeClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  explicit RuntimeProbeClientImpl(
+      std::unique_ptr<org::chromium::RuntimeProbeProxyInterface>
+          runtime_probe_proxy);
   RuntimeProbeClientImpl(const RuntimeProbeClientImpl&) = delete;
   RuntimeProbeClientImpl& operator=(const RuntimeProbeClientImpl&) = delete;
 
-  ~RuntimeProbeClientImpl() override = default;
+  ~RuntimeProbeClientImpl() override;
 
   bool ProbeCategories(const std::vector<RmadComponent>& categories,
                        ComponentsWithIdentifier* components) override;
 
  private:
-  // Owned by external D-Bus bus.
-  dbus::ObjectProxy* proxy_;
+  // The proxy object for runtime_probe dbus service.
+  std::unique_ptr<org::chromium::RuntimeProbeProxyInterface>
+      runtime_probe_proxy_;
 };
 
 }  // namespace rmad

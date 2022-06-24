@@ -4,19 +4,21 @@
 
 #include "rmad/system/runtime_probe_client_impl.h"
 
-#include <memory>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <brillo/errors/error.h>
 #include <dbus/bus.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
-#include <dbus/runtime_probe/dbus-constants.h>
 #include <rmad/proto_bindings/rmad.pb.h>
+
+// Include the protobuf before generated D-Bus headers to ensure the protobuf
+// message classes are defined before adaptor/proxy classes.
+// TODO(crbug.com/1255584): Includes headers in alphabetical order.
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+#include <runtime_probe/dbus-proxies.h>  // NOLINT(build/include_alpha)
 
 #include "rmad/utils/component_utils.h"
 
@@ -74,17 +76,20 @@ namespace rmad {
 
 RuntimeProbeClientImpl::RuntimeProbeClientImpl(
     const scoped_refptr<dbus::Bus>& bus) {
-  proxy_ = bus->GetObjectProxy(
-      runtime_probe::kRuntimeProbeServiceName,
-      dbus::ObjectPath(runtime_probe::kRuntimeProbeServicePath));
+  runtime_probe_proxy_ =
+      std::make_unique<org::chromium::RuntimeProbeProxy>(bus);
 }
+
+RuntimeProbeClientImpl::RuntimeProbeClientImpl(
+    std::unique_ptr<org::chromium::RuntimeProbeProxyInterface>
+        runtime_probe_proxy)
+    : runtime_probe_proxy_(std::move(runtime_probe_proxy)) {}
+
+RuntimeProbeClientImpl::~RuntimeProbeClientImpl() = default;
 
 bool RuntimeProbeClientImpl::ProbeCategories(
     const std::vector<RmadComponent>& categories,
     ComponentsWithIdentifier* component_list) {
-  dbus::MethodCall method_call(runtime_probe::kRuntimeProbeInterfaceName,
-                               runtime_probe::kProbeCategoriesMethod);
-  dbus::MessageWriter writer(&method_call);
   runtime_probe::ProbeRequest request;
   if (categories.size()) {
     request.set_probe_default_category(false);
@@ -95,24 +100,15 @@ bool RuntimeProbeClientImpl::ProbeCategories(
   } else {
     request.set_probe_default_category(true);
   }
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode runtime_probe protobuf request";
-    return false;
-  }
-
-  std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!response.get()) {
-    LOG(ERROR) << "Failed to call runtime_probe D-Bus service";
-    return false;
-  }
-
+  brillo::ErrorPtr error;
   runtime_probe::ProbeResult reply;
-  dbus::MessageReader reader(response.get());
-  if (!reader.PopArrayOfBytesAsProto(&reply)) {
-    LOG(ERROR) << "Failed to decode runtime_probe protobuf response";
+  if (!runtime_probe_proxy_->ProbeCategories(request, &reply, &error)) {
+    LOG(ERROR) << "Failed to call runtime_probe D-Bus service. "
+               << "code=" << error->GetCode()
+               << ", message=" << error->GetMessage() << "";
     return false;
   }
+
   if (reply.error() != runtime_probe::RUNTIME_PROBE_ERROR_NOT_SET) {
     LOG(ERROR) << "runtime_probe returns error code " << reply.error();
     return false;

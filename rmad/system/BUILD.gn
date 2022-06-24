@@ -12,6 +12,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libruntime_probe-client",
     "libshill-client",
     "libtpm_manager-client",
     "libuser_data_auth-client",
@@ -41,6 +42,7 @@ source_set("libsystem") {
 if (use.test) {
   pkg_config("test_pkg_deps") {
     pkg_deps = [
+      "libruntime_probe-client-test",
       "libshill-client-test",
       "libtpm_manager-client-test",
       "libuser_data_auth-client-test",
