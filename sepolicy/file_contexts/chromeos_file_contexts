@@ -196,6 +196,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/parted                u:object_r:cros_parted_exec:s0
 /usr/sbin/pca_agentd            u:object_r:cros_pca_agentd_exec:s0
 /usr/sbin/pciguard              u:object_r:cros_pciguard_exec:s0
+/usr/sbin/rgbkbd                u:object_r:cros_rgbkbd_exec:s0
 /usr/sbin/rmad                  u:object_r:cros_rmad_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/secanomalyd           u:object_r:cros_secanomalyd_exec:s0
