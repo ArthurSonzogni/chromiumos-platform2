@@ -366,6 +366,13 @@ void CrosHealthdRoutineService::RunRoutine(
       mojo_ipc::RunRoutineResponse::New(id, active_routines_[id]->GetStatus()));
 }
 
+void CrosHealthdRoutineService::HandleNvmeSelfTestSupportedResponse(
+    bool supported) {
+  if (supported) {
+    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
+  }
+}
+
 void CrosHealthdRoutineService::PopulateAvailableRoutines() {
   // Routines that are supported on all devices.
   available_routines_ = {
@@ -406,10 +413,9 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines() {
       available_routines_.insert(
           mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel);
     }
-    if (context_->system_config()->NvmeSelfTestSupported()) {
-      available_routines_.insert(
-          mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
-    }
+    context_->system_config()->NvmeSelfTestSupported(base::BindOnce(
+        &CrosHealthdRoutineService::HandleNvmeSelfTestSupportedResponse,
+        weak_ptr_factory_.GetWeakPtr()));
   }
 
   if (context_->system_config()->SmartCtlSupported()) {

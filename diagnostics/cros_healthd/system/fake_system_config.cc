@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 
 #include <optional>
+#include <utility>
 
 namespace diagnostics {
 
@@ -35,8 +36,9 @@ bool FakeSystemConfig::NvmeSupported() {
   return nvme_supported_;
 }
 
-bool FakeSystemConfig::NvmeSelfTestSupported() {
-  return nvme_self_test_supported_;
+void FakeSystemConfig::NvmeSelfTestSupported(
+    NvmeSelfTestSupportedCallback callback) {
+  std::move(callback).Run(nvme_self_test_supported_);
 }
 
 bool FakeSystemConfig::SmartCtlSupported() {

@@ -3,10 +3,17 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 
+#include <base/callback.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/run_loop.h>
+#include <base/test/bind.h>
 #include <base/test/scoped_chromeos_version_info.h>
+#include <base/test/task_environment.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
+#include <dbus/mock_object_proxy.h>
+#include <dbus/object_path.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,9 +24,8 @@
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
 
 using ::testing::_;
-using ::testing::DoAll;
 using ::testing::Return;
-using ::testing::SetArgPointee;
+using ::testing::WithArg;
 
 namespace diagnostics {
 namespace {
@@ -37,6 +43,33 @@ class SystemConfigTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     system_config_ = std::make_unique<SystemConfig>(
         &fake_cros_config_, &debugd_proxy_, temp_dir_.GetPath());
+    debugd_object_proxy_ =
+        new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/"));
+    ON_CALL(debugd_proxy_, GetObjectProxy())
+        .WillByDefault(Return(debugd_object_proxy_.get()));
+  }
+
+  void TearDown() override { task_environment_.RunUntilIdle(); }
+
+  bool NvmeSelfTestSupportedSync() {
+    base::RunLoop run_loop;
+    bool result;
+    system_config()->NvmeSelfTestSupported(
+        base::BindLambdaForTesting([&](bool response) {
+          result = response;
+          run_loop.Quit();
+        }));
+    run_loop.Run();
+    return result;
+  }
+
+  void SetDebugdAvailability(bool available) {
+    EXPECT_CALL(*debugd_object_proxy_.get(), DoWaitForServiceToBeAvailable(_))
+        .WillOnce(WithArg<0>(
+            [available](dbus::ObjectProxy::WaitForServiceToBeAvailableCallback*
+                            callback) {
+              std::move(*callback).Run(available);
+            }));
   }
 
   brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
@@ -45,9 +78,11 @@ class SystemConfigTest : public ::testing::Test {
 
   const base::FilePath& GetTempPath() const { return temp_dir_.GetPath(); }
 
-  testing::StrictMock<org::chromium::debugdProxyMock> debugd_proxy_;
+  testing::NiceMock<org::chromium::debugdProxyMock> debugd_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> debugd_object_proxy_;
 
  private:
+  base::test::SingleThreadTaskEnvironment task_environment_;
   brillo::FakeCrosConfig fake_cros_config_;
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<SystemConfig> system_config_;
@@ -143,18 +178,29 @@ TEST_F(SystemConfigTest, NvmeSupportedFalse) {
 
 TEST_F(SystemConfigTest, NvmeSelfTestSupportedTrue) {
   constexpr char kResult[] = "test      : 0x100\noacs      : 0x17 ";
-  EXPECT_CALL(debugd_proxy_, Nvme(kNvmeIdentityOption, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kResult), SetArgPointee<2>(nullptr),
-                      Return(true)));
-  EXPECT_TRUE(system_config()->NvmeSelfTestSupported());
+  EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeIdentityOption, _, _, _))
+      .WillOnce(WithArg<1>(
+          [&](base::OnceCallback<void(const std::string&)> callback) {
+            std::move(callback).Run(kResult);
+          }));
+  SetDebugdAvailability(true);
+  EXPECT_TRUE(NvmeSelfTestSupportedSync());
 }
 
 TEST_F(SystemConfigTest, NvmeSelfTestSupportedFalse) {
   constexpr char kResult[] = "test      : 0x100\noacs      : 0x27 ";
-  EXPECT_CALL(debugd_proxy_, Nvme(kNvmeIdentityOption, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kResult), SetArgPointee<2>(nullptr),
-                      Return(true)));
-  EXPECT_FALSE(system_config()->NvmeSelfTestSupported());
+  EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeIdentityOption, _, _, _))
+      .WillOnce(WithArg<1>(
+          [&](base::OnceCallback<void(const std::string&)> callback) {
+            std::move(callback).Run(kResult);
+          }));
+  SetDebugdAvailability(true);
+  EXPECT_FALSE(NvmeSelfTestSupportedSync());
+}
+
+TEST_F(SystemConfigTest, NvmeSelfTestSupportedDebugdUnavailable) {
+  SetDebugdAvailability(false);
+  EXPECT_FALSE(NvmeSelfTestSupportedSync());
 }
 
 TEST_F(SystemConfigTest, SmartCtlSupportedTrue) {

@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
+#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -33,6 +35,46 @@ constexpr char kNvmeSelfTestCtrlField[] = "oacs";
 // Bitmask for the bit that shows if the device supports the self test feature.
 // 4th bit zero index.
 constexpr uint8_t kNvmeSelfTestBitmask = 16;
+
+bool NvmeSelfTestSupportedFromIdentity(const std::string& nvmeIdentity) {
+  // Example output:
+  // oacs      : 0x17
+  // acl       : 3
+  // aerl      : 7
+  // frmw      : 0x16
+  base::StringPairs pairs;
+  base::SplitStringIntoKeyValuePairs(nvmeIdentity, ':', '\n', &pairs);
+  for (auto& p : pairs) {
+    if (base::TrimWhitespaceASCII(p.first,
+                                  base::TrimPositions::TRIM_TRAILING) !=
+        kNvmeSelfTestCtrlField) {
+      continue;
+    }
+
+    u_int32_t value;
+    if (!base::HexStringToUInt(
+            base::TrimWhitespaceASCII(p.second, base::TrimPositions::TRIM_ALL),
+            &value)) {
+      return false;
+    }
+
+    // Check to see if the device-self-test support bit is set
+    return ((value & kNvmeSelfTestBitmask) == kNvmeSelfTestBitmask);
+  }
+
+  return false;
+}
+
+void NvmeSelfTestSupportedByDebugd(
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    SystemConfig::NvmeSelfTestSupportedCallback callback) {
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
+  debugd_proxy->NvmeAsync(
+      kNvmeIdentityOption,
+      base::BindOnce(&NvmeSelfTestSupportedFromIdentity).Then(std::move(cb1)),
+      base::BindOnce([](brillo::Error* error) {
+      }).Then(base::BindOnce(std::move(cb2), false)));
+}
 
 }  // namespace
 
@@ -107,39 +149,25 @@ bool SystemConfig::NvmeSupported() {
               .empty();
 }
 
-bool SystemConfig::NvmeSelfTestSupported() {
-  std::string nvmeIdentity;
-  brillo::ErrorPtr error;
-  debugd_proxy_->Nvme(kNvmeIdentityOption, &nvmeIdentity, &error);
-  if (error.get())
-    return false;
+void SystemConfig::NvmeSelfTestSupported(
+    NvmeSelfTestSupportedCallback callback) {
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
+  auto available_cb = base::BindOnce(&NvmeSelfTestSupportedByDebugd,
+                                     debugd_proxy_, std::move(cb1));
+  auto unavailable_cb = base::BindOnce(std::move(cb2), false);
 
-  // Example output:
-  // oacs      : 0x17
-  // acl       : 3
-  // aerl      : 7
-  // frmw      : 0x16
-  base::StringPairs pairs;
-  base::SplitStringIntoKeyValuePairs(nvmeIdentity, ':', '\n', &pairs);
-  for (auto& p : pairs) {
-    if (base::TrimWhitespaceASCII(p.first,
-                                  base::TrimPositions::TRIM_TRAILING) !=
-        kNvmeSelfTestCtrlField) {
-      continue;
-    }
-
-    u_int32_t value;
-    if (!base::HexStringToUInt(
-            base::TrimWhitespaceASCII(p.second, base::TrimPositions::TRIM_ALL),
-            &value)) {
-      return false;
-    }
-
-    // Check to see if the device-self-test support bit is set
-    return ((value & kNvmeSelfTestBitmask) == kNvmeSelfTestBitmask);
-  }
-
-  return false;
+  auto wait_service_cb = base::BindOnce(
+      [](base::OnceClosure available_cb, base::OnceClosure unavailable_cb,
+         bool service_is_available) {
+        if (service_is_available) {
+          std::move(available_cb).Run();
+        } else {
+          std::move(unavailable_cb).Run();
+        }
+      },
+      std::move(available_cb), std::move(unavailable_cb));
+  debugd_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+      std::move(wait_service_cb));
 }
 
 bool SystemConfig::SmartCtlSupported() {

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -120,6 +121,9 @@ class CrosHealthdRoutineService final
       base::OnceCallback<
           void(chromeos::cros_healthd::mojom::RunRoutineResponsePtr)> callback);
 
+  // Callback for checking whether nvme-self-test is supported.
+  void HandleNvmeSelfTestSupportedResponse(bool supported);
+
   // Checks what routines are supported on the device and populates the member
   // available_routines_.
   void PopulateAvailableRoutines();
@@ -139,6 +143,9 @@ class CrosHealthdRoutineService final
   // Responsible for making the routines. Unowned pointer that should outlive
   // this instance.
   CrosHealthdRoutineFactory* routine_factory_ = nullptr;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<CrosHealthdRoutineService> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

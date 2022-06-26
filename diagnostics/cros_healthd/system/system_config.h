@@ -40,7 +40,7 @@ class SystemConfig final : public SystemConfigInterface {
   bool HasSmartBattery() override;
   bool HasSkuNumber() override;
   bool NvmeSupported() override;
-  bool NvmeSelfTestSupported() override;
+  void NvmeSelfTestSupported(NvmeSelfTestSupportedCallback callback) override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
   std::optional<std::string> GetMarketingName() override;

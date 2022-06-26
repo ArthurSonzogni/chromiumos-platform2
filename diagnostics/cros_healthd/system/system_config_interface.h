@@ -8,10 +8,14 @@
 #include <optional>
 #include <string>
 
+#include <base/callback.h>
+
 namespace diagnostics {
 
 class SystemConfigInterface {
  public:
+  using NvmeSelfTestSupportedCallback = base::OnceCallback<void(bool)>;
+
   virtual ~SystemConfigInterface() = default;
 
   // Returns if the device has the fio utility.
@@ -32,8 +36,11 @@ class SystemConfigInterface {
   // Returns if the device has an Nvme drive and the associated utilities.
   virtual bool NvmeSupported() = 0;
 
-  // Returns if the device can run the Nvme device-self-test command.
-  virtual bool NvmeSelfTestSupported() = 0;
+  // Get whether the device can run the Nvme device-self-test command and pass
+  // the result to |callback|. It will wait until debugd to be available before
+  // it queries debugd.
+  virtual void NvmeSelfTestSupported(
+      NvmeSelfTestSupportedCallback callback) = 0;
 
   // Returns if the device has support for smartctl.
   virtual bool SmartCtlSupported() = 0;
