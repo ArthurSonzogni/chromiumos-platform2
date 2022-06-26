@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipp/ipp.h"
+#include "libipp/attribute.h"
+#include "libipp/frame.h"
 
 #include <cstdint>
 #include <string>
@@ -77,136 +78,91 @@ struct BinaryContent {
 };
 
 // function comparing if two collections have the same content
-void CompareCollections(ipp::Collection* c1, ipp::Collection* c2) {
-  std::vector<ipp::Attribute*> a1 = c1->GetAllAttributes();
-  std::vector<ipp::Attribute*> a2 = c2->GetAllAttributes();
+void CompareCollections(const ipp::Collection* c1, const ipp::Collection* c2) {
+  std::vector<const ipp::Attribute*> a1 = c1->GetAllAttributes();
+  std::vector<const ipp::Attribute*> a2 = c2->GetAllAttributes();
   ASSERT_EQ(a1.size(), a2.size());
   for (size_t i = 0; i < a1.size(); ++i) {
-    EXPECT_EQ(a1[i]->GetName(), a2[i]->GetName());
-    EXPECT_EQ(a1[i]->GetType(), a2[i]->GetType());
-    EXPECT_EQ(a1[i]->IsASet(), a2[i]->IsASet());
-    EXPECT_EQ(a1[i]->GetState(), a2[i]->GetState());
-    ASSERT_EQ(a1[i]->GetSize(), a2[i]->GetSize());
-    for (size_t j = 0; j < a1[i]->GetSize(); ++j) {
+    EXPECT_EQ(a1[i]->Name(), a2[i]->Name());
+    EXPECT_EQ(a1[i]->Tag(), a2[i]->Tag());
+    ASSERT_EQ(a1[i]->Size(), a2[i]->Size());
+    for (size_t j = 0; j < a1[i]->Size(); ++j) {
       std::string s1, s2;
       ipp::DateTime d1, d2;
       ipp::Resolution r1, r2;
       ipp::RangeOfInteger i1, i2;
       ipp::StringWithLanguage l1, l2;
-      switch (a1[i]->GetType()) {
-        case ipp::AttrType::text:
-        case ipp::AttrType::name:
+      switch (a1[i]->Tag()) {
+        case ipp::ValueTag::textWithLanguage:
+        case ipp::ValueTag::nameWithLanguage:
           a1[i]->GetValue(&l1, j);
           a2[i]->GetValue(&l2, j);
           EXPECT_EQ(l1.value, l2.value);
           EXPECT_EQ(l1.language, l2.language);
           break;
-        case ipp::AttrType::integer:
-        case ipp::AttrType::boolean:
-        case ipp::AttrType::enum_:
-        case ipp::AttrType::octetString:
-        case ipp::AttrType::keyword:
-        case ipp::AttrType::uri:
-        case ipp::AttrType::uriScheme:
-        case ipp::AttrType::charset:
-        case ipp::AttrType::naturalLanguage:
-        case ipp::AttrType::mimeMediaType:
+        case ipp::ValueTag::integer:
+        case ipp::ValueTag::boolean:
+        case ipp::ValueTag::enum_:
+        case ipp::ValueTag::octetString:
+        case ipp::ValueTag::keyword:
+        case ipp::ValueTag::uri:
+        case ipp::ValueTag::uriScheme:
+        case ipp::ValueTag::charset:
+        case ipp::ValueTag::naturalLanguage:
+        case ipp::ValueTag::mimeMediaType:
+        case ipp::ValueTag::nameWithoutLanguage:
+        case ipp::ValueTag::textWithoutLanguage:
           a1[i]->GetValue(&s1, j);
           a2[i]->GetValue(&s2, j);
           EXPECT_EQ(s1, s2);
           break;
-        case ipp::AttrType::dateTime:
+        case ipp::ValueTag::dateTime:
           a1[i]->GetValue(&d1, j);
           a2[i]->GetValue(&d2, j);
           EXPECT_EQ(d1, d2);
           break;
-        case ipp::AttrType::resolution:
+        case ipp::ValueTag::resolution:
           a1[i]->GetValue(&r1, j);
           a2[i]->GetValue(&r2, j);
           EXPECT_EQ(r1, r2);
           break;
-        case ipp::AttrType::rangeOfInteger:
+        case ipp::ValueTag::rangeOfInteger:
           a1[i]->GetValue(&i1, j);
           a2[i]->GetValue(&i2, j);
           EXPECT_EQ(i1, i2);
           break;
-        case ipp::AttrType::collection:
+        case ipp::ValueTag::collection:
           CompareCollections(a1[i]->GetCollection(j), a2[i]->GetCollection(j));
           break;
+        default:
+          // This is unexpected. All Out-of-Band values have size == 0.
+          // All other tags should be listed in the switch.
+          EXPECT_FALSE(true);
       }
     }
   }
 }
 
-// checks if given frame is a binary representation of given Request
-void CheckRequest(const BinaryContent& frame,
-                  ipp::Request* req,
-                  const int32_t request_no = 1) {
+// checks if given frame is a binary representation of given Request/Response
+void CheckFrame(const BinaryContent& frame, const ipp::Frame& req) {
   // build output frame from Request and compare with the given frame
-  ipp::Client client(ipp::Version::_1_1, request_no - 1);
-  client.BuildRequestFrom(req);
-  EXPECT_TRUE(client.GetErrorLog().empty());
-  std::vector<uint8_t> bin_data;
-  ASSERT_TRUE(client.WriteRequestFrameTo(&bin_data));
-  EXPECT_TRUE(client.GetErrorLog().empty());
-  EXPECT_EQ(client.GetFrameLength(), bin_data.size());
+  std::vector<uint8_t> bin_data = req.SaveToBuffer();
+  EXPECT_EQ(req.GetLength(), bin_data.size());
   EXPECT_EQ(bin_data, frame.data);
   // parse the given frame and compare obtained object with the given Request
-  ipp::Server server(ipp::Version::_1_1, request_no);
-  auto req2 = ipp::Request::NewRequest(req->GetOperationId());
-  ASSERT_TRUE(server.ReadRequestFrameFrom(bin_data));
-  EXPECT_TRUE(server.GetErrorLog().empty());
-  ASSERT_TRUE(server.ParseRequestAndSaveTo(req2.get()));
-  EXPECT_TRUE(server.GetErrorLog().empty());
-  // ... compares two request objects
-  std::vector<ipp::Group*> groups1 = req->GetAllGroups();
-  std::vector<ipp::Group*> groups2 = req2->GetAllGroups();
-  ASSERT_EQ(groups1.size(), groups2.size());
-  for (size_t i = 0; i < groups1.size(); ++i) {
-    ipp::Group* g1 = groups1[i];
-    ipp::Group* g2 = groups2[i];
-    EXPECT_EQ(g1->GetName(), g2->GetName());
-    ASSERT_EQ(g1->GetSize(), g2->GetSize());
-    for (size_t j = 0; j < g1->GetSize(); ++j)
-      CompareCollections(g1->GetCollection(j), g2->GetCollection(j));
+  ipp::ParsingResults log;
+  ipp::Frame req2(bin_data.data(), bin_data.size(), &log);
+  EXPECT_TRUE(log.whole_buffer_was_parsed);
+  EXPECT_TRUE(log.errors.empty());
+  for (ipp::GroupTag grp_tag : ipp::kGroupTags) {
+    std::vector<const ipp::Collection*> groups1 = req.GetGroups(grp_tag);
+    std::vector<ipp::Collection*> groups2 = req2.GetGroups(grp_tag);
+    ASSERT_EQ(groups1.size(), groups2.size());
+    for (size_t i = 0; i < groups1.size(); ++i) {
+      CompareCollections(groups1[i], groups2[i]);
+    }
   }
-  EXPECT_EQ(req->Data(), req2->Data());
-}
-
-// checks if given frame is a binary representation of given Response
-void CheckResponse(const BinaryContent& frame,
-                   ipp::Response* res,
-                   const int32_t request_no = 1) {
-  // build output frame from Response and compare with the given frame
-  ipp::Server server(ipp::Version::_1_1, request_no);
-  server.BuildResponseFrom(res);
-  EXPECT_TRUE(server.GetErrorLog().empty());
-  std::vector<uint8_t> bin_data;
-  ASSERT_TRUE(server.WriteResponseFrameTo(&bin_data));
-  EXPECT_TRUE(server.GetErrorLog().empty());
-  EXPECT_EQ(server.GetFrameLength(), bin_data.size());
-  EXPECT_EQ(bin_data, frame.data);
-  // parse the given frame and compare obtained object with the given Response
-  ipp::Client client(ipp::Version::_1_1, request_no - 1);
-  auto res2 = ipp::Response::NewResponse(res->GetOperationId());
-  ASSERT_TRUE(client.ReadResponseFrameFrom(bin_data));
-  EXPECT_TRUE(client.GetErrorLog().empty());
-  ASSERT_TRUE(client.ParseResponseAndSaveTo(res2.get()));
-  EXPECT_TRUE(client.GetErrorLog().empty());
-  // ... compares two response objects
-  EXPECT_EQ(res->StatusCode(), res2->StatusCode());
-  std::vector<ipp::Group*> groups1 = res->GetAllGroups();
-  std::vector<ipp::Group*> groups2 = res2->GetAllGroups();
-  ASSERT_EQ(groups1.size(), groups2.size());
-  for (size_t i = 0; i < groups1.size(); ++i) {
-    ipp::Group* g1 = groups1[i];
-    ipp::Group* g2 = groups2[i];
-    EXPECT_EQ(g1->GetName(), g2->GetName());
-    ASSERT_EQ(g1->GetSize(), g2->GetSize());
-    for (size_t j = 0; j < g1->GetSize(); ++j)
-      CompareCollections(g1->GetCollection(j), g2->GetCollection(j));
-  }
-  EXPECT_EQ(res->Data(), res2->Data());
+  EXPECT_EQ(req.Data(), req2.Data());
 }
 
 TEST(rfc8010, example1) {
@@ -269,17 +225,19 @@ TEST(rfc8010, example1) {
                                   // attributes-tag
   c.s("%!PDF...");                // <PDF Document>       data
 
-  ipp::Request_Print_Job r;
-  r.operation_attributes->printer_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree");
-  r.operation_attributes->job_name.Set("foobar");
-  r.operation_attributes->ipp_attribute_fidelity.Set(1);
-  r.job_attributes->copies.Set(20);
-  r.job_attributes->sides.Set(ipp::E_sides::two_sided_long_edge);
-  for (char c : std::string("%!PDF..."))
-    r.Data().push_back(static_cast<uint8_t>(c));
+  ipp::Frame r(ipp::Operation::Print_Job);
+  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  grp->AddAttr("printer-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree");
+  grp->AddAttr("job-name", ipp::ValueTag::nameWithoutLanguage, "foobar");
+  grp->AddAttr("ipp-attribute-fidelity", true);
+  EXPECT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  grp->AddAttr("copies", 20);
+  grp->AddAttr("sides", ipp::ValueTag::keyword, "two-sided-long-edge");
+  const std::string payload = "%!PDF...";
+  r.SetData(std::vector<uint8_t>(payload.begin(), payload.end()));
 
-  CheckRequest(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example2) {
@@ -334,13 +292,16 @@ TEST(rfc8010, example2) {
   c.u1(0x03u);                              // end-of-attributes  end-of-
                                             // attributes-tag
 
-  ipp::Response_Print_Job r;
-  r.job_attributes->job_id.Set(147);
-  r.job_attributes->job_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree/147");
-  r.job_attributes->job_state.Set(ipp::E_job_state::pending);
+  ipp::Frame r(ipp::Status::successful_ok);
+  ipp::Collection* grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  grp->AddAttr("job-id", 147);
+  grp->AddAttr("job-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree/147");
+  grp->AddAttr("job-state", ipp::ValueTag::enum_,
+               static_cast<int>(ipp::E_job_state::pending));
 
-  CheckResponse(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example3) {
@@ -395,17 +356,14 @@ TEST(rfc8010, example3) {
                       // attributes-
                       // tag
 
-  ipp::Response_Print_Job r;
-  r.StatusCode() =
-      ipp::E_status_code::client_error_attributes_or_values_not_supported;
-  ipp::Attribute* a = r.unsupported_attributes->AddUnknownAttribute(
-      "copies", true, ipp::AttrType::integer);
-  a->SetValue(20);
-  a = r.unsupported_attributes->AddUnknownAttribute("sides", true,
-                                                    ipp::AttrType::integer);
-  a->SetState(ipp::AttrState::unsupported);
+  ipp::Frame r(ipp::Status::client_error_attributes_or_values_not_supported);
+  ipp::Collection* grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::unsupported_attributes, &grp),
+            ipp::Code::kOK);
+  grp->AddAttr("copies", ipp::ValueTag::integer, 20);
+  grp->AddAttr("sides", ipp::ValueTag::unsupported);
 
-  CheckResponse(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example4) {
@@ -478,21 +436,20 @@ TEST(rfc8010, example4) {
   c.u1(0x03u);       // end-of-attributes           end-of-
                      // attributes-tag
 
-  ipp::Response_Print_Job r;
-  r.StatusCode() =
-      ipp::E_status_code::successful_ok_ignored_or_substituted_attributes;
-  ipp::Attribute* a = r.unsupported_attributes->AddUnknownAttribute(
-      "copies", true, ipp::AttrType::integer);
-  a->SetValue(20);
-  a = r.unsupported_attributes->AddUnknownAttribute("sides", true,
-                                                    ipp::AttrType::integer);
-  a->SetState(ipp::AttrState::unsupported);
-  r.job_attributes->job_id.Set(147);
-  r.job_attributes->job_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree/147");
-  r.job_attributes->job_state.Set(ipp::E_job_state::pending);
+  ipp::Frame r(ipp::Status::successful_ok_ignored_or_substituted_attributes);
+  ipp::Collection* grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::unsupported_attributes, &grp),
+            ipp::Code::kOK);
+  grp->AddAttr("copies", ipp::ValueTag::integer, 20);
+  grp->AddAttr("sides", ipp::ValueTag::unsupported);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  grp->AddAttr("job-id", 147);
+  grp->AddAttr("job-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree/147");
+  grp->AddAttr("job-state", ipp::ValueTag::enum_,
+               static_cast<int>(ipp::E_job_state::pending));
 
-  CheckResponse(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example5) {
@@ -546,14 +503,16 @@ TEST(rfc8010, example5) {
   c.u1(0x03u);                       // end-of-attributes    end-of-
                                      // attributes-tag
 
-  ipp::Request_Print_URI r;
-  r.operation_attributes->printer_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree");
-  r.operation_attributes->document_uri.Set("ftp://foo.example.com/foo");
-  r.operation_attributes->job_name.Set("foobar");
-  r.job_attributes->copies.Set(1);
+  ipp::Frame r(ipp::Operation::Print_URI);
+  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  grp->AddAttr("printer-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree");
+  grp->AddAttr("document-uri", ipp::ValueTag::uri, "ftp://foo.example.com/foo");
+  grp->AddAttr("job-name", ipp::ValueTag::nameWithoutLanguage, "foobar");
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  grp->AddAttr("copies", 1);
 
-  CheckRequest(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example6) {
@@ -588,11 +547,12 @@ TEST(rfc8010, example6) {
   c.u1(0x03u);  // end-of-attributes    end-of-
                 // attributes-tag
 
-  ipp::Request_Create_Job r;
-  r.operation_attributes->printer_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree");
+  ipp::Frame r(ipp::Operation::Create_Job);
+  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  grp->AddAttr("printer-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree");
 
-  CheckRequest(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example7) {
@@ -678,14 +638,20 @@ TEST(rfc8010, example7) {
   c.u1(0x03u);         // end-of-attributes    end-of-
                        // attributes-tag
 
-  ipp::Request_Create_Job r;
-  r.operation_attributes->printer_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree");
-  r.job_attributes->media_col->media_size->x_dimension.Set(21000);
-  r.job_attributes->media_col->media_size->y_dimension.Set(29700);
-  r.job_attributes->media_col->media_type.Set(ipp::E_media_type::stationery);
+  ipp::Frame r(ipp::Operation::Create_Job);
+  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  grp->AddAttr("printer-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree");
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ipp::Collection* coll;
+  ASSERT_EQ(grp->AddAttr("media-col", coll), ipp::Code::kOK);
+  ipp::Collection* coll2;
+  ASSERT_EQ(coll->AddAttr("media-size", coll2), ipp::Code::kOK);
+  coll->AddAttr("media-type", ipp::ValueTag::keyword, "stationery");
+  coll2->AddAttr("x-dimension", 21000);
+  coll2->AddAttr("y-dimension", 29700);
 
-  CheckRequest(c, &r);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example8) {
@@ -738,14 +704,15 @@ TEST(rfc8010, example8) {
   c.u1(0x03u);                  // end-of-attributes    end-of-
                                 // attributes-tag
 
-  ipp::Request_Get_Jobs r;
-  r.operation_attributes->printer_uri.Set(
-      "ipp://printer.example.com/ipp/print/pinetree");
-  r.operation_attributes->limit.Set(50);
-  r.operation_attributes->requested_attributes.Set(
-      {"job-id", "job-name", "document-format"});
+  ipp::Frame r(ipp::Operation::Get_Jobs, ipp::Version::_1_1, 123);
+  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  grp->AddAttr("printer-uri", ipp::ValueTag::uri,
+               "ipp://printer.example.com/ipp/print/pinetree");
+  grp->AddAttr("limit", 50);
+  grp->AddAttr("requested-attributes", ipp::ValueTag::keyword,
+               {"job-id", "job-name", "document-format"});
 
-  CheckRequest(c, &r, 123);
+  CheckFrame(c, r);
 }
 
 TEST(rfc8010, example9) {
@@ -812,14 +779,19 @@ TEST(rfc8010, example9) {
   c.s("isch guet");            // isch guet               name
   c.u1(0x03u);                 // end-of-attributes       end-of-attributes-tag
 
-  ipp::Response_Get_Jobs r;
-  r.job_attributes[0].job_id.Set(147);
-  r.job_attributes[0].job_name.Set(ipp::StringWithLanguage("fou", "fr-ca"));
-  r.job_attributes[2].job_id.Set(149);
-  r.job_attributes[2].job_name.Set(
-      ipp::StringWithLanguage("isch guet", "de-CH"));
+  ipp::Frame r(ipp::Status::successful_ok, ipp::Version::_1_1, 123);
+  ipp::Collection* grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  grp->AddAttr("job-id", 147);
+  grp->AddAttr("job-name", ipp::ValueTag::nameWithLanguage,
+               ipp::StringWithLanguage("fou", "fr-ca"));
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  grp->AddAttr("job-id", 149);
+  grp->AddAttr("job-name", ipp::ValueTag::nameWithLanguage,
+               ipp::StringWithLanguage("isch guet", "de-CH"));
 
-  CheckResponse(c, &r, 123);
+  CheckFrame(c, r);
 }
 
 }  // namespace
