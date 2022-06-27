@@ -364,6 +364,9 @@ message StartArcVmRequest {
   // 'ro.surface_flinger.primary_display_orientation' property to tell the
   // orientation to surfaceflinger.
   DisplayOrientation panel_orientation = 17;
+
+  // Whether to lock guest memory (for the purpose of disabling host swap).
+  bool lock_guest_memory = 18;
 }
 
 enum VmStatus {
