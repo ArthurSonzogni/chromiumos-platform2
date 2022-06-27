@@ -230,6 +230,27 @@ void UnmountEncryptedStateful() {
   PLOG(ERROR) << "Failed to unmount encrypted stateful.";
 }
 
+void UnmountStateful(const base::FilePath& stateful) {
+  LOG(INFO) << "Unmounting stateful partition";
+  for (int attempts = 0; attempts < 10; ++attempts) {
+    int ret = umount(stateful.value().c_str());
+    if (ret) {
+      // Disambiguate failures from busy or already unmounted stateful partition
+      // from other generic failures.
+      if (errno == EBUSY) {
+        PLOG(ERROR) << "Failed to unmount busy stateful partition";
+        base::PlatformThread::Sleep(base::Milliseconds(200));
+        continue;
+      } else if (errno != EINVAL) {
+        PLOG(ERROR) << "Unable to unmount " << stateful;
+      } else {
+        PLOG(INFO) << "Stateful partition already unmounted";
+      }
+    }
+    return;
+  }
+}
+
 void MoveRollbackFileToPstore() {
   const base::FilePath file_for_pstore(kRollbackFileForPstorePath);
 
@@ -1311,19 +1332,7 @@ int ClobberState::Run() {
   AttemptSwitchToFastWipe(is_rotational);
 
   // Make sure the stateful partition has been unmounted.
-  LOG(INFO) << "Unmounting stateful partition";
-  ret = umount(stateful_.value().c_str());
-  if (ret) {
-    // Disambiguate failures from busy or already unmounted stateful partition
-    // from other generic failures.
-    if (errno == EBUSY) {
-      PLOG(ERROR) << "Failed to unmount busy stateful partition";
-    } else if (errno != EINVAL) {
-      PLOG(ERROR) << "Unable to unmount " << stateful_.value();
-    } else {
-      PLOG(INFO) << "Stateful partition already unmounted";
-    }
-  }
+  UnmountStateful(stateful_);
 
   // Attempt to remove the logical volume stack unconditionally: this covers the
   // situation where a device may rollback to a version that doesn't support
