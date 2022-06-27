@@ -6,6 +6,7 @@
 #define LIBBRILLO_BRILLO_SECURE_STRING_H_
 
 #include <cstddef>
+#include <iterator>
 #include <memory>
 #include <type_traits>
 
