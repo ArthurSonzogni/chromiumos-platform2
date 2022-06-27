@@ -260,6 +260,7 @@ type cache_backup_file, file_type, android_file_type;
 type cache_private_backup_file, file_type, android_file_type;
 type cache_recovery_file, file_type, android_file_type;
 type credstore_data_file, file_type, android_file_type;
+type cros_arc_jemalloc_config_file, file_type, android_file_type;
 type dalvikcache_data_file, file_type, android_file_type;
 type dhcp_data_file, file_type, android_file_type;
 type drm_data_file, file_type, android_file_type;

@@ -79,6 +79,11 @@ constexpr char kTestHarnessSharedDirTag[] = "testharness";
 constexpr char kApkCacheSharedDir[] = "/run/arcvm/apkcache";
 constexpr char kApkCacheSharedDirTag[] = "apkcache";
 
+constexpr char kJemallocConfigFile[] = "/run/arcvm/jemalloc/je_malloc.conf";
+constexpr char kJemallocSharedDirTag[] = "jemalloc";
+constexpr char kJemallocHighMemDeviceConfig[] =
+    "narenas:12,tcache:true,lg_tcache_max:16";
+
 #if defined(__x86_64__) || defined(__aarch64__)
 constexpr char kLibSharedDir[] = "/lib64";
 constexpr char kUsrLibSharedDir[] = "/usr/lib64";
@@ -97,6 +102,12 @@ constexpr char kUsrBinSharedDirTag[] = "usr_bin";
 
 constexpr char kUsrLocalBinSharedDir[] = "/usr/local/bin";
 constexpr char kUsrLocalBinSharedDirTag[] = "usr_local_bin";
+
+// We treat 6GB+ devices as high-memory devices.
+// The threshold is in MB and slightly less than 6000
+// because the physical memory size of 6GB devices is
+// usually slightly less than 6000MB.
+constexpr int kHighMemDeviceThreshold = 5500;
 
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
@@ -302,6 +313,27 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath apkcache_dir(kApkCacheSharedDir);
   std::string shared_apkcache = CreateSharedDataParam(
       apkcache_dir, kApkCacheSharedDirTag, true, false, true, {});
+
+  const base::FilePath jemalloc_config_file(kJemallocConfigFile);
+  std::string shared_jemalloc =
+      CreateSharedDataParam(jemalloc_config_file.DirName(),
+                            kJemallocSharedDirTag, true, false, true, {});
+
+  // Create a config symlink for memory-rich devices.
+  int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
+  // jemalloc_config_file might have been created on the
+  // previous ARCVM boot. If the file already exists we do nothing.
+  if (sys_memory_mb >= kHighMemDeviceThreshold &&
+      !base::IsLink(jemalloc_config_file)) {
+    const base::FilePath jemalloc_setting(kJemallocHighMemDeviceConfig);
+    // This symbolic link does not point to any file. It is used as a string
+    // which contains the allocator config.
+    if (!base::CreateSymbolicLink(jemalloc_setting, jemalloc_config_file)) {
+      LOG(ERROR) << "Could not create a jemalloc config";
+      return false;
+    }
+  }
+
   std::string shared_fonts = CreateFontsSharedDataParam();
   const base::FilePath lib_dir(kLibSharedDir);
   std::string shared_lib =
@@ -345,6 +377,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(shared_usr_lib)
       .AppendSharedDir(shared_sbin)
       .AppendSharedDir(shared_usr_bin)
+      .AppendSharedDir(shared_jemalloc)
       .EnableBattery(true /* enable */)
       .EnableDelayRt(true /* enable */);
 
