@@ -655,9 +655,6 @@ class Device : public base::RefCounted<Device> {
   // device technology.
   virtual bool ShouldUseArpGateway() const;
 
-  // Indicates if the selected service is configured with static nameservers.
-  bool IsUsingStaticNameServers() const;
-
   // Atomically update the counters of the old service and the snapshot of the
   // new service. |GetTrafficCountersPatchpanelCallback| calls
   // |GetTrafficCountersCallback| using the |get_traffic_counters_callback_|
