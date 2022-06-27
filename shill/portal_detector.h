@@ -140,7 +140,7 @@ class PortalDetector {
   };
 
   PortalDetector(EventDispatcher* dispatcher,
-                 base::Callback<void(const Result&)> callback);
+                 base::RepeatingCallback<void(const Result&)> callback);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
 
@@ -191,6 +191,11 @@ class PortalDetector {
 
   // Return |logging_tag_| appended with the |attempt_count_|.
   std::string LoggingTag() const;
+
+ protected:
+  base::RepeatingCallback<void(const Result&)>& portal_result_callback() {
+    return portal_result_callback_;
+  }
 
  private:
   friend class PortalDetectorTest;
@@ -243,7 +248,7 @@ class PortalDetector {
   base::Time last_attempt_start_time_;
   EventDispatcher* dispatcher_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
-  base::Callback<void(const Result&)> portal_result_callback_;
+  base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   std::unique_ptr<Result> result_;

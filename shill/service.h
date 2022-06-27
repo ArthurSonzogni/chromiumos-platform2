@@ -817,6 +817,7 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnRecentBadPassphraseFailure[];
 
  private:
+  friend class DevicePortalDetectorTest;
   friend class EthernetEapServiceTest;
   friend class EthernetServiceTest;
   friend class MetricsTest;

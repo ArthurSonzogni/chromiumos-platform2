@@ -1059,9 +1059,7 @@ bool Device::StartPortalDetection(bool restart) {
     return false;
   }
 
-  portal_detector_.reset(new PortalDetector(
-      dispatcher(),
-      base::BindRepeating(&Device::PortalDetectorCallback, AsWeakPtr())));
+  portal_detector_ = CreatePortalDetector();
   if (!portal_detector_->Start(manager_->GetProperties(),
                                network_->interface_name(), network_->local(),
                                network_->dns_servers(), LoggingTag())) {
@@ -1092,6 +1090,12 @@ void Device::StartConnectionDiagnosticsAfterPortalDetection() {
           manager_->GetProperties().portal_http_url)) {
     connection_diagnostics_.reset();
   }
+}
+
+std::unique_ptr<PortalDetector> Device::CreatePortalDetector() {
+  return std::make_unique<PortalDetector>(
+      dispatcher(),
+      base::BindRepeating(&Device::PortalDetectorCallback, AsWeakPtr()));
 }
 
 void Device::StopConnectionDiagnostics() {

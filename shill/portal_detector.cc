@@ -48,8 +48,9 @@ static std::string ObjectID(const PortalDetector* pd) {
 }
 }  // namespace Logging
 
-PortalDetector::PortalDetector(EventDispatcher* dispatcher,
-                               base::Callback<void(const Result&)> callback)
+PortalDetector::PortalDetector(
+    EventDispatcher* dispatcher,
+    base::RepeatingCallback<void(const Result&)> callback)
     : attempt_count_(0),
       last_attempt_start_time_(),
       dispatcher_(dispatcher),

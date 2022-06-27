@@ -531,6 +531,11 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Indicates if the selected service is configured with a static IP address.
   bool IsUsingStaticIP() const;
 
+  // Called by the Portal Detector whenever a trial completes.  Device
+  // subclasses that choose unique mappings from portal results to connected
+  // states can override this method in order to do so.
+  void PortalDetectorCallback(const PortalDetector::Result& result);
+
   void HelpRegisterConstDerivedString(const std::string& name,
                                       std::string (Device::*get)(Error*));
 
@@ -548,6 +553,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
+  PortalDetector* portal_detector() { return portal_detector_.get(); }
 
   virtual void set_mac_address(const std::string& mac_address);
 
@@ -561,6 +567,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   friend class DeviceByteCountTest;
   friend class DevicePortalDetectionTest;
   friend class DeviceTest;
+  friend class DevicePortalDetectorTest;
   friend class EthernetTest;
   friend class OpenVPNDriverTest;
   friend class TestDevice;
@@ -614,11 +621,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Remove connection state
   void DestroyConnection();
 
-  // Called by the Portal Detector whenever a trial completes.  Device
-  // subclasses that choose unique mappings from portal results to connected
-  // states can override this method in order to do so.
-  void PortalDetectorCallback(const PortalDetector::Result& result);
-
   // Initiate portal detection if all the following conditions are met:
   //   - There is currently a |selected_service_| for this Device.
   //   - Portal detection is enabled for this Device type and for the current
@@ -636,7 +638,11 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
-  mockable void StartConnectionDiagnosticsAfterPortalDetection();
+  virtual void StartConnectionDiagnosticsAfterPortalDetection();
+
+  // Constructs and returns a PortalDetector instance. May be overridden in
+  // test or mock implementations.
+  virtual std::unique_ptr<PortalDetector> CreatePortalDetector();
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();

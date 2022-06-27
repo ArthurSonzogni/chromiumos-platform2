@@ -1204,6 +1204,7 @@ class DevicePortalDetectionTest : public DeviceTest {
 
   void SetUp() override {
     DeviceTest::SetUp();
+    EXPECT_CALL(*service_, SetProbeUrl(_)).Times(AnyNumber());
     SelectService(service_);
     SetConnection(std::unique_ptr<Connection>(connection_));
   }
