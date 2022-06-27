@@ -897,7 +897,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
     EXPECT_EQ("fake_path", reply.save_path());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.SaveLog("", base::BindOnce(callback));
+  rmad_interface.SaveLog(base::BindOnce(callback));
 
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(

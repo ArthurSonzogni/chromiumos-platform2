@@ -526,8 +526,7 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
-void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
-                                SaveLogCallback callback) {
+void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
   SaveLogReply reply;
   reply.set_error(RMAD_ERROR_OK);
   reply.set_save_path("fake_path");

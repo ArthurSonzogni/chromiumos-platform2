@@ -29,7 +29,7 @@ class MockRmadInterface : public RmadInterface {
   MOCK_METHOD(void, TransitionPreviousState, (GetStateCallback), (override));
   MOCK_METHOD(void, AbortRma, (AbortRmaCallback), (override));
   MOCK_METHOD(void, GetLog, (GetLogCallback), (override));
-  MOCK_METHOD(void, SaveLog, (const std::string&, SaveLogCallback), (override));
+  MOCK_METHOD(void, SaveLog, (SaveLogCallback), (override));
   MOCK_METHOD(void,
               RecordBrowserActionMetric,
               (const RecordBrowserActionMetricRequest&,

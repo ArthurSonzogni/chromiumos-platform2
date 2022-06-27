@@ -64,8 +64,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   void TransitionPreviousState(GetStateCallback callback) override;
   void AbortRma(AbortRmaCallback callback) override;
   void GetLog(GetLogCallback callback) override;
-  void SaveLog(const std::string& diagnostics_log_path,
-               SaveLogCallback callback) override;
+  void SaveLog(SaveLogCallback callback) override;
   void RecordBrowserActionMetric(
       const RecordBrowserActionMetricRequest& browser_action,
       RecordBrowserActionMetricCallback callback) override;

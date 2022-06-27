@@ -362,18 +362,16 @@ TEST_F(DBusServiceTest, GetLog) {
 
 TEST_F(DBusServiceTest, SaveLog) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
-  EXPECT_CALL(mock_rmad_service_, SaveLog(_, _))
-      .WillOnce(Invoke([](const std::string& diagnostics_log_path,
-                          RmadInterface::SaveLogCallback callback) {
+  EXPECT_CALL(mock_rmad_service_, SaveLog(_))
+      .WillOnce(Invoke([](RmadInterface::SaveLogCallback callback) {
         SaveLogReply reply;
         reply.set_error(RMAD_ERROR_OK);
         reply.set_save_path("/save/path");
         std::move(callback).Run(reply, false);
       }));
 
-  std::string request = "/diagnostics/log/path";
   SaveLogReply reply;
-  ExecuteMethod(kSaveLogMethod, request, &reply);
+  ExecuteMethod(kSaveLogMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_OK, reply.error());
   EXPECT_EQ("/save/path", reply.save_path());
 }
