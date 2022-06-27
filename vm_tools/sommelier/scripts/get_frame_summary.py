@@ -6,11 +6,14 @@
 
 import argparse
 from enum import Enum
+import statistics
 from typing import NamedTuple
 
 
-_MS_IN_SEC = 1000
-_US_IN_SEC = 1000000
+_MS_PER_SEC = 1000
+_US_PER_SEC = 1000000
+# Floating point error bounds
+_FP_ERROR = 0.01
 
 
 class EventType(Enum):
@@ -27,6 +30,7 @@ class EventInfo(NamedTuple):
     surface_id: int
     buffer_id: int
     time: float
+
 
 def parse_event_type(event_type):
     EVENT_MAP = {
@@ -65,7 +69,7 @@ class FrameLog():
                 # Skip parsing line that is improperly formatted
                 if len(line) != 4:
                     continue
-                total_delta_time += float(line[3]) / _US_IN_SEC
+                total_delta_time += float(line[3]) / _US_PER_SEC
                 surface_id = int(line[1])
                 info = EventInfo(
                     event_type=parse_event_type(line[0]),
@@ -76,16 +80,18 @@ class FrameLog():
                 self.frame_log.append(info)
                 self.surfaces.add(surface_id)
 
-    def output_fps(self, windows):
+    def output_fps(self, windows, ft_target_ms, max_ft_ms):
         """Outputs the summarized fps information based on frame log.
 
         Args:
             windows: List of time windows (in seconds) to summarize.
+            ft_target_ms: Tuple (start, end) ms range of target frame times.
+            max_ft_ms: Max frame time threshold (ms).
         """
         for surface in self.surfaces:
             print(f'Summary for surface {surface}')
-            max_frame_time = 0
-            win = windows[:]
+            print('-------------------------------')
+            max_frame_ms = 0
             # only check for commit events on the given surface
             # events are in reverse chronological order
             events = [e for e in self.frame_log if e.surface_id ==
@@ -93,28 +99,49 @@ class FrameLog():
             if not events:
                 print(f'No commit events found for surface {surface}\n')
                 continue
-            prev_time = self.end_time
-            for i, event in enumerate(events):
-                max_frame_time = max(
-                    max_frame_time, prev_time - event.time)
-                for w in win:
-                    if self.end_time - event.time > w:
+            total_sec = self.end_time - events[-1].time
+            for w_sec in windows + [total_sec]:
+                # num frames in acceptable range
+                target_frames = 0
+                # num frames exceeding max_ft_ms
+                max_ft_events = 0
+                prev_sec = self.end_time
+                frame_count = 0
+                frames_ms = []
+                for event in events:
+                    frame_ms = (prev_sec - event.time) * _MS_PER_SEC
+                    frames_ms.append(frame_ms)
+                    max_frame_ms = max(max_frame_ms, frame_ms)
+                    if ft_target_ms[0] < frame_ms < ft_target_ms[1]:
+                        target_frames += 1
+                    if frame_ms > max_ft_ms:
+                        max_ft_events += 1
+                    current_sec = self.end_time - event.time
+                    frame_count += 1
+                    if current_sec > w_sec -_FP_ERROR:
                         print(
-                            f'FPS (last {w}s): '
-                            f'{(i+1) / (self.end_time - event.time)}')
+                            f'FPS (last {w_sec}s): '
+                            f'{frame_count / current_sec}')
                         print(
-                            f'Max frame time (last {w}s): '
-                            f'{max_frame_time * _MS_IN_SEC}')
-                        print(f'Frame count (last {w}s): {i+1}')
-                win = [w for w in win if self.end_time - event.time <= w]
-                prev_time = event.time
-            print(
-                f'FPS (all time): '
-                f'{len(events) / (self.end_time - events[-1].time)}')
-            print(
-                f'Max frame time (all time): {max_frame_time * _MS_IN_SEC}')
-            print(f'Total frame count: {len(events)}\n')
-
+                            f'Max frame time (last {w_sec}s): '
+                            f'{max_frame_ms} ms')
+                        print(f'Frame count (last {w_sec}s):'
+                              f' {frame_count} frames')
+                        print(f'Percentage frames within acceptable target '
+                              f'{ft_target_ms} ms (last {w_sec}s): '
+                              f'{target_frames * 100/frame_count}%')
+                        if len(frames_ms) > 1:
+                            c_var = (statistics.stdev(
+                                frames_ms) / statistics.mean(frames_ms))
+                            print(f'Coefficient of variation (last {w_sec}s):'
+                                  f' {c_var}')
+                        print(f'Frames exceeding max frame time threshold'
+                              f' {max_ft_ms} ms (last {w_sec}s):'
+                              f' {max_ft_events} frames')
+                        print()
+                        break
+                    prev_sec = event.time
+            print()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -124,6 +151,16 @@ if __name__ == '__main__':
     parser.add_argument('--windows', action='extend', type=int,
                         nargs='+', help='Time windows for summary (in seconds)',
                         default=[10, 60, 300])
+    # default values selected based on Battlestar metrics for 60 FPS (16.6 ms
+    # frame times), representing a range from 13-19 ms.
+    parser.add_argument('--frame-time-target', type=float,
+                        nargs=2, help='Frame time targets (in milliseconds)',
+                        default=(13, 19))
+    parser.add_argument('--max-frame-time', type=float,
+                        help='Max frame time threshold (in milliseconds)',
+                        default=200)
     args = parser.parse_args()
     log = FrameLog(args.file)
-    log.output_fps(windows=sorted(args.windows))
+    log.output_fps(windows=sorted(args.windows),
+                   ft_target_ms=args.frame_time_target,
+                   max_ft_ms=args.max_frame_time)
