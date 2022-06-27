@@ -14,7 +14,7 @@ use serde::Serialize;
 use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
 
-use crate::communication::ExecutableInfo;
+use crate::app_info::AppManifest;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ThisError)]
 pub enum Error {
@@ -75,7 +75,7 @@ pub trait Trichechus<E> {
     fn start_session(&mut self, app_info: AppInfo, args: Vec<String>) -> StdResult<(), E>;
     fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> StdResult<(), E>;
     #[error()]
-    fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, E>;
+    fn get_apps(&mut self) -> StdResult<AppManifest, E>;
     #[error()]
     fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, E>;
 

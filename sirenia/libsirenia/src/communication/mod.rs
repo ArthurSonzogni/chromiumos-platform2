@@ -218,16 +218,6 @@ impl fmt::Display for Digest {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum ExecutableInfo {
-    // Hypervisor initramfs path
-    Path(String),
-    // Only digest, location unspecified
-    Digest(Digest),
-    // Host (Chrome OS) path and digest
-    CrosPath(String, Option<Digest>),
-}
-
 #[cfg(test)]
 mod test {
     use std::io::Cursor;

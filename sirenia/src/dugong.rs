@@ -6,15 +6,16 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use std::collections::BTreeMap as Map;
 use std::env;
 use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fs::File;
 use std::io::Read;
+use std::mem::drop;
+use std::mem::replace;
+use std::ops::DerefMut;
 use std::os::unix::net::UnixDatagram;
-use std::path::PathBuf;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -32,7 +33,7 @@ use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
 use getopts::Options;
 use libchromeos::syslog;
-use libsirenia::app_info::ExecutableInfo;
+use libsirenia::app_info::AppManifest;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
 use libsirenia::communication::trichechus;
@@ -59,7 +60,7 @@ const IDENT: &str = "dugong";
 struct DugongStateInternal {
     transport_type: TransportType,
     trichechus_client: Mutex<TrichechusClient>,
-    supported_apps: Mutex<Map<String, Option<PathBuf>>>,
+    supported_apps: Mutex<AppManifest>,
 }
 
 #[derive(Clone)]
@@ -74,18 +75,9 @@ impl DugongState {
         }))
     }
 
-    fn register_supported_apps<
-        S: Into<String>,
-        P: Into<PathBuf>,
-        I: IntoIterator<Item = (S, Option<P>)>,
-    >(
-        &mut self,
-        i: I,
-    ) {
+    fn register_supported_apps(&mut self, manifest: AppManifest) {
         let mut supported_apps = self.0.supported_apps.lock().unwrap();
-        for (app_id, path) in i.into_iter() {
-            supported_apps.insert(app_id.into(), path.map(Into::<PathBuf>::into));
-        }
+        drop(replace(supported_apps.deref_mut(), manifest));
     }
 
     fn transport_type(&self) -> &TransportType {
@@ -96,7 +88,7 @@ impl DugongState {
         &self.0.trichechus_client
     }
 
-    fn supported_apps(&self) -> &Mutex<Map<String, Option<PathBuf>>> {
+    fn supported_apps(&self) -> &Mutex<AppManifest> {
         &self.0.supported_apps
     }
 }
@@ -144,13 +136,13 @@ fn load_tee_app(
 ) -> Result<()> {
     let supported_apps = state.supported_apps().lock().unwrap();
     let elf_path = supported_apps
-        .get(app_id)
-        .unwrap_or(&None)
-        .as_ref()
+        .get_app_manifest_entry(app_id)
+        .context("app not found")?
+        .cros_path()
         .ok_or_else(|| anyhow!("no entry for loading app '{0}'", app_id))?;
 
     let mut elf = Vec::<u8>::new();
-    File::open(elf_path)
+    File::open(&elf_path)
         .with_context(|| format!("failed to open app path '{}'", &elf_path.display()))?
         .read_to_end(&mut elf)
         .with_context(|| format!("failed to read app path '{}'", &elf_path.display()))?;
@@ -288,8 +280,8 @@ fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
         .lock()
         .unwrap()
         .iter()
-        .for_each(|(app_id, _)| {
-            register_dbus_interface_for_app(&mut crossroads, dugong_state.clone(), app_id)
+        .for_each(|entry| {
+            register_dbus_interface_for_app(&mut crossroads, dugong_state.clone(), entry.app_id())
         });
     c.start_receive(
         MatchRule::new_method_call(),
@@ -363,15 +355,7 @@ fn main() -> Result<()> {
     } else {
         let apps = client.get_apps().context("failed to fetch app list")?;
         let mut dugong_state = DugongState::new(client, transport_type);
-        dugong_state.register_supported_apps(apps.iter().map(|(name, exec_info)| {
-            (
-                name,
-                match exec_info {
-                    ExecutableInfo::CrosPath(p, _) => Some(PathBuf::from(&p)),
-                    ExecutableInfo::Digest(_) | ExecutableInfo::Path(_) => None,
-                },
-            )
-        }));
+        dugong_state.register_supported_apps(apps);
         start_dbus_handler(dugong_state).unwrap();
         unreachable!()
     }

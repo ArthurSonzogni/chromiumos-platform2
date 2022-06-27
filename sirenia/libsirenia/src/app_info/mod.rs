@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io;
 use std::io::BufReader;
 use std::io::Read;
+use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::result::Result as StdResult;
@@ -22,7 +23,6 @@ use thiserror::Error as ThisError;
 
 use crate::communication::persistence::Scope;
 pub use crate::communication::Digest;
-pub use crate::communication::ExecutableInfo;
 
 pub const DEFAULT_APP_CONFIG_PATH: &str = "/usr/share/manatee";
 pub const JSON_EXTENSION: &str = ".json";
@@ -54,8 +54,18 @@ pub enum Error {
 /// The result of an operation in this crate.
 pub type Result<T> = StdResult<T, Error>;
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(from = "Vec<AppManifestEntry>", into = "Vec<AppManifestEntry>")]
 pub struct AppManifest {
     entries: Map<String, AppManifestEntry>,
+}
+
+impl Deref for AppManifest {
+    type Target = Map<String, AppManifestEntry>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.entries
+    }
 }
 
 /// Defines the type of isolation given to the TEE app instance.
@@ -81,7 +91,17 @@ pub struct SecretsParameters {
     pub encryption_key_version: usize,
 }
 
-/// Defines parameters for use with the secrets API.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum ExecutableInfo {
+    // Hypervisor initramfs path
+    Path(String),
+    // Only digest, location unspecified
+    Digest(Digest),
+    // Host (Chrome OS) path and digest
+    CrosPath(String, Option<Digest>),
+}
+
+/// Specify how to handle the TEE app instance's stderr.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum StdErrBehavior {
     MergeWithStdout,
@@ -114,6 +134,19 @@ pub struct AppManifestEntry {
     #[serde(default)]
     pub stderr_behavior: StdErrBehavior,
     pub storage_parameters: Option<StorageParameters>,
+}
+
+impl AppManifestEntry {
+    pub fn app_id(&self) -> &str {
+        self.app_name.as_str()
+    }
+
+    pub fn cros_path(&self) -> Option<PathBuf> {
+        match &self.exec_info {
+            ExecutableInfo::CrosPath(p, _) => Some(PathBuf::from(p)),
+            ExecutableInfo::Digest(_) | ExecutableInfo::Path(_) => None,
+        }
+    }
 }
 
 /// Provides a lookup for registered AppManifestEntries that represent which
@@ -202,6 +235,12 @@ impl<I: IntoIterator<Item = AppManifestEntry>> From<I> for AppManifest {
         };
         manifest.append(entries);
         manifest
+    }
+}
+
+impl From<AppManifest> for Vec<AppManifestEntry> {
+    fn from(manifest: AppManifest) -> Self {
+        manifest.entries.into_values().collect()
     }
 }
 

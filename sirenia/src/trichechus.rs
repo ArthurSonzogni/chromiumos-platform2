@@ -415,15 +415,9 @@ impl Trichechus<Error> for TrichechusServerImpl {
         ))?)
     }
 
-    fn get_apps(&mut self) -> Result<Vec<(String, ExecutableInfo)>> {
+    fn get_apps(&mut self) -> Result<AppManifest> {
         info!("Received get apps message");
-        Ok(self
-            .state
-            .borrow()
-            .app_manifest
-            .iter()
-            .map(|e| (e.app_name.clone(), e.exec_info.clone()))
-            .collect())
+        Ok(self.state.borrow().app_manifest.clone())
     }
 
     fn get_logs(&mut self) -> Result<Vec<Vec<u8>>> {
