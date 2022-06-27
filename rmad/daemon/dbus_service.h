@@ -6,6 +6,7 @@
 #define RMAD_DAEMON_DBUS_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -81,6 +82,12 @@ class DBusService : public brillo::DBusServiceDaemon {
   void SendHardwareWriteProtectionStateSignal(bool enabled);
   void SendPowerCableStateSignal(bool plugged_in);
   void SendExternalDiskSignal(bool detected);
+  void ExecuteMountAndWriteLog(
+      uint8_t device_id,
+      const std::string& log_string,
+      base::OnceCallback<void(const std::optional<std::string>&)> callback);
+  void ExecuteMountAndCopyFirmwareUpdater(
+      uint8_t device_id, base::OnceCallback<void(bool)> callback);
 
  protected:
   // brillo::DBusServiceDaemon overrides.

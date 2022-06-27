@@ -8,6 +8,7 @@
 #include "rmad/interface/rmad_interface.h"
 
 #include <algorithm>
+#include <list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -21,6 +22,7 @@
 #include "rmad/daemon/daemon_callback.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
+#include "rmad/system/cros_disks_client.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/system/runtime_probe_client.h"
 #include "rmad/system/shill_client.h"
@@ -37,7 +39,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadInterfaceImpl();
   // Used to inject mocked |json_store_|, |state_handler_manager_|,
   // |runtime_probe_client_|, |shill_client_|, |tpm_manager_client_|,
-  // |power_manager_client_|, |cmd_utils_| and |metrics_utils_|.
+  // |power_manager_client_|, |cros_disks_client_|, |cmd_utils_| and
+  // |metrics_utils_|.
   explicit RmadInterfaceImpl(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<StateHandlerManager> state_handler_manager,
@@ -45,6 +48,7 @@ class RmadInterfaceImpl final : public RmadInterface {
       std::unique_ptr<ShillClient> shill_client,
       std::unique_ptr<TpmManagerClient> tpm_manager_client,
       std::unique_ptr<PowerManagerClient> power_manager_client,
+      std::unique_ptr<CrosDisksClient> cros_disks_client,
       std::unique_ptr<CmdUtils> cmd_utils_,
       std::unique_ptr<MetricsUtils> metrics_utils);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
@@ -74,6 +78,16 @@ class RmadInterfaceImpl final : public RmadInterface {
   void InitializeExternalUtils(scoped_refptr<DaemonCallback> daemon_callback);
   bool WaitForServices();
   bool StartFromInitialState();
+
+  void SaveLogToFirstMountableDevice(
+      std::unique_ptr<std::list<std::string>> devices,
+      const std::string& log_string,
+      SaveLogCallback callback);
+  void SaveLogExecutorCompleteCallback(
+      std::unique_ptr<std::list<std::string>> devices,
+      const std::string& log_string,
+      SaveLogCallback callback,
+      const std::optional<std::string>& file_name);
 
   // Wrapper to trigger D-Bus callbacks.
   template <typename ReplyProtobufType>
@@ -116,8 +130,12 @@ class RmadInterfaceImpl final : public RmadInterface {
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+  std::unique_ptr<CrosDisksClient> cros_disks_client_;
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<MetricsUtils> metrics_utils_;
+
+  // External Callbacks.
+  scoped_refptr<DaemonCallback> daemon_callback_;
 
   // Internal states.
   bool external_utils_initialized_;

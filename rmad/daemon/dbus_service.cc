@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -500,6 +501,11 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
       &DBusService::SendPowerCableStateSignal, weak_ptr_factory_.GetWeakPtr()));
   daemon_callback->SetExternalDiskSignalCallback(base::BindRepeating(
       &DBusService::SendExternalDiskSignal, weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetExecuteMountAndWriteLogCallback(base::BindRepeating(
+      &DBusService::ExecuteMountAndWriteLog, weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetExecuteMountAndCopyFirmwareUpdaterCallback(
+      base::BindRepeating(&DBusService::ExecuteMountAndCopyFirmwareUpdater,
+                          weak_ptr_factory_.GetWeakPtr()));
   return daemon_callback;
 }
 
@@ -582,6 +588,18 @@ void DBusService::SendExternalDiskSignal(bool detected) {
   if (signal) {
     signal->Send(detected);
   }
+}
+
+void DBusService::ExecuteMountAndWriteLog(
+    uint8_t device_id,
+    const std::string& log_string,
+    base::OnceCallback<void(const std::optional<std::string>&)> callback) {
+  executor_->MountAndWriteLog(device_id, log_string, std::move(callback));
+}
+
+void DBusService::ExecuteMountAndCopyFirmwareUpdater(
+    uint8_t device_id, base::OnceCallback<void(bool)> callback) {
+  executor_->MountAndCopyFirmwareUpdater(device_id, std::move(callback));
 }
 
 void DBusService::OnExecutorDisconnected() {

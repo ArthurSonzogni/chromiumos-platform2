@@ -5,6 +5,9 @@
 #ifndef RMAD_DAEMON_DAEMON_CALLBACK_H_
 #define RMAD_DAEMON_DAEMON_CALLBACK_H_
 
+#include <optional>
+#include <string>
+
 #include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
@@ -28,6 +31,12 @@ using FinalizeSignalCallback =
 using WriteProtectSignalCallback = base::RepeatingCallback<void(bool)>;
 using PowerCableSignalCallback = base::RepeatingCallback<void(bool)>;
 using ExternalDiskSignalCallback = base::RepeatingCallback<void(bool)>;
+using ExecuteMountAndWriteLogCallback = base::RepeatingCallback<void(
+    uint8_t,
+    const std::string&,
+    base::OnceCallback<void(const std::optional<std::string>&)>)>;
+using ExecuteMountAndCopyFirmwareUpdaterCallback =
+    base::RepeatingCallback<void(uint8_t, base::OnceCallback<void(bool)>)>;
 
 #define DECLARE_CALLBACK(type, var)                 \
  public:                                            \
@@ -60,6 +69,10 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
   DECLARE_CALLBACK(WriteProtectSignalCallback, write_protect_signal_callback_);
   DECLARE_CALLBACK(PowerCableSignalCallback, power_cable_signal_callback_);
   DECLARE_CALLBACK(ExternalDiskSignalCallback, external_disk_signal_callback_);
+  DECLARE_CALLBACK(ExecuteMountAndWriteLogCallback,
+                   execute_mount_and_write_log_callback_);
+  DECLARE_CALLBACK(ExecuteMountAndCopyFirmwareUpdaterCallback,
+                   execute_mount_and_copy_firmware_updater_callback_);
 };
 
 }  // namespace rmad

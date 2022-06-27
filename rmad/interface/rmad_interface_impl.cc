@@ -4,7 +4,9 @@
 
 #include "rmad/interface/rmad_interface_impl.h"
 
+#include <cctype>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,10 +18,12 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <re2/re2.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/system/cros_disks_client_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
@@ -42,6 +46,18 @@ const int kWaitServicesRetries = 10;
 
 constexpr char kMetricsSummaryDivider[] = "\n====================\n\n";
 
+bool GetDeviceIdFromDeviceFile(const std::string& device_file,
+                               char* device_id) {
+  re2::StringPiece string_piece(device_file);
+  re2::RE2 regexp("/dev/sd([[:lower:]])([[:digit:]]*)");
+  std::string device_id_string;
+  if (RE2::FullMatch(string_piece, regexp, &device_id_string)) {
+    *device_id = device_id_string[0];
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 RmadInterfaceImpl::RmadInterfaceImpl()
@@ -56,6 +72,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<TpmManagerClient> tpm_manager_client,
     std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<CrosDisksClient> cros_disks_client,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
     : RmadInterface(),
@@ -65,6 +82,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
       power_manager_client_(std::move(power_manager_client)),
+      cros_disks_client_(std::move(cros_disks_client)),
       cmd_utils_(std::move(cmd_utils)),
       metrics_utils_(std::move(metrics_utils)),
       external_utils_initialized_(true),
@@ -90,6 +108,7 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  cros_disks_client_ = std::make_unique<CrosDisksClientImpl>(GetSystemBus());
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }
 
@@ -134,6 +153,7 @@ bool RmadInterfaceImpl::StartFromInitialState() {
 }
 
 bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
+  daemon_callback_ = daemon_callback;
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
     InitializeExternalUtils(daemon_callback);
@@ -498,17 +518,75 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
 }
 
 void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
-  SaveLogReply reply;
-  reply.set_error(RMAD_ERROR_OK);
-  reply.set_save_path("fake_path");
-
-  if (!MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_,
-                                                 current_state_case_)) {
-    // TODO(genechang): Add error replies when failed to update state metrics
-    //                  in |json_store| -> |metrics| -> |state_metrics|.
-    LOG(ERROR) << "SaveLog: Failed to update state metrics.";
+  if (std::vector<std::string> sysfs_paths;
+      cros_disks_client_->EnumerateDevices(&sysfs_paths)) {
+    auto devices = std::make_unique<std::list<std::string>>();
+    for (const std::string& sysfs_path : sysfs_paths) {
+      if (DeviceProperties device_properties;
+          cros_disks_client_->GetDeviceProperties(sysfs_path,
+                                                  &device_properties)) {
+        devices->push_back(device_properties.device_file);
+      }
+    }
+    SaveLogToFirstMountableDevice(std::move(devices), "test",
+                                  std::move(callback));
+    return;
   }
+  // No detected external storage.
+  SaveLogReply reply;
+  reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
   ReplyCallback(std::move(callback), reply);
+}
+
+void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
+    std::unique_ptr<std::list<std::string>> devices,
+    const std::string& log_string,
+    SaveLogCallback callback) {
+  if (devices->empty()) {
+    // No devices left to try.
+    SaveLogReply reply;
+    reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
+    ReplyCallback(std::move(callback), reply);
+    return;
+  }
+  if (char device_id; GetDeviceIdFromDeviceFile(devices->front(), &device_id)) {
+    daemon_callback_->GetExecuteMountAndWriteLogCallback().Run(
+        static_cast<uint8_t>(device_id), log_string,
+        base::BindOnce(&RmadInterfaceImpl::SaveLogExecutorCompleteCallback,
+                       base::Unretained(this), std::move(devices), log_string,
+                       std::move(callback)));
+  } else {
+    // Try next device.
+    devices->pop_front();
+    SaveLogToFirstMountableDevice(std::move(devices), log_string,
+                                  std::move(callback));
+  }
+}
+
+void RmadInterfaceImpl::SaveLogExecutorCompleteCallback(
+    std::unique_ptr<std::list<std::string>> devices,
+    const std::string& log_string,
+    SaveLogCallback callback,
+    const std::optional<std::string>& file_name) {
+  CHECK(!devices->empty());
+  if (file_name.has_value()) {
+    // Save file succeeds.
+    if (!MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_,
+                                                   current_state_case_)) {
+      // TODO(genechang): Add error replies when failed to update state metrics
+      //                  in |json_store| -> |metrics| -> |state_metrics|.
+      LOG(ERROR) << "SaveLog: Failed to update state metrics.";
+    }
+    SaveLogReply reply;
+    reply.set_error(RMAD_ERROR_OK);
+    reply.set_save_path(file_name.value());
+    ReplyCallback(std::move(callback), reply);
+  } else {
+    // Failed to save file. Try next device.
+    devices->pop_front();
+    SaveLogToFirstMountableDevice(std::move(devices), log_string,
+                                  std::move(callback));
+  }
 }
 
 void RmadInterfaceImpl::RecordBrowserActionMetric(
