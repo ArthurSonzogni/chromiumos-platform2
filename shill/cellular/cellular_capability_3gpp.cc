@@ -226,6 +226,17 @@ std::string RegistrationStateToString(MMModem3gppRegistrationState state) {
   }
 }
 
+std::string MaskApnValue(const Stringmap& apn_info, const std::string& value) {
+  // Masking is not needed if LOG_LEVEL >= 3, or the APN is from the modem
+  // or the MODB.
+  bool print_value =
+      SLOG_IS_ON(Cellular, 3) ||
+      (base::Contains(apn_info, cellular::kApnSource) &&
+       (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
+        apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem));
+  return print_value ? value : "*****";
+}
+
 }  // namespace
 
 CellularCapability3gpp::CellularCapability3gpp(
@@ -787,7 +798,8 @@ bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
     return false;
   }
   const std::string& apn = apn_info.at(kApnProperty);
-  SLOG(this, 2) << __func__ << ": Using APN " << apn;
+  LOG(INFO) << __func__ << ": Using APN '" << MaskApnValue(apn_info, apn)
+            << "'";
   properties->Set<std::string>(kConnectApn, apn);
   if (base::Contains(apn_info, kApnUsernameProperty)) {
     properties->Set<std::string>(kConnectUser,
@@ -898,9 +910,9 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   const auto& apn_info = attach_apn_try_list_.front();
   // Store the last Attach APN we tried.
   last_attach_apn_ = apn_info;
-
-  SLOG(this, 2) << __func__ << ": Using Attach APN '"
-                << GetStringmapValue(apn_info, kApnProperty) << "'";
+  LOG(INFO) << __func__ << ": Using Attach APN '"
+            << MaskApnValue(apn_info, GetStringmapValue(apn_info, kApnProperty))
+            << "'";
   if (base::Contains(apn_info, kApnProperty))
     properties->Set<std::string>(kConnectApn, apn_info.at(kApnProperty));
   if (base::Contains(apn_info, kApnUsernameProperty))

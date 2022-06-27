@@ -349,7 +349,7 @@ void Cellular::HelpRegisterConstDerivedString(
 void Cellular::Start(Error* error,
                      const EnabledStateChangedCallback& callback) {
   DCHECK(error);
-  SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
+  LOG(INFO) << __func__ << ": " << GetStateString(state_);
 
   if (!capability_) {
     // Report success, even though a connection will not succeed until a Modem
@@ -366,7 +366,7 @@ void Cellular::Start(Error* error,
 }
 
 void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
-  SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
+  LOG(INFO) << __func__ << ": " << GetStateString(state_);
   DCHECK(!stop_step_.has_value()) << "Already stopping. Unexpected Stop call.";
   stop_step_ = StopSteps::kStopModem;
   StopStep(error, callback, Error());
