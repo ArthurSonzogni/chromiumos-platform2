@@ -575,9 +575,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // state shouldn't be changed.
   void BringNetworkInterfaceDown();
 
-  // Configure static IP address parameters if the service provides them.
-  void ConfigureStaticIPTask();
-
   // Configure static IP address received from cellular bearer.
   void ConfigureStaticIPv6Address();
 
@@ -611,10 +608,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Callback invoked on DHCP failures.
   void OnDHCPFailure();
-
-  // Callback invoked when the static IP properties configured on the selected
-  // service changed.
-  void OnStaticIPConfigChanged();
 
   // Remove connection state
   void DestroyConnection();

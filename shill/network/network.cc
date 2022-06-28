@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "shill/connection.h"
+#include "shill/event_dispatcher.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -17,13 +18,15 @@ Network::Network(int interface_index,
                  Technology technology,
                  bool fixed_ip_params,
                  EventHandler* event_handler,
-                 DeviceInfo* device_info)
+                 DeviceInfo* device_info,
+                 EventDispatcher* dispatcher)
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
       fixed_ip_params_(fixed_ip_params),
       event_handler_(event_handler),
-      device_info_(device_info) {}
+      device_info_(device_info),
+      dispatcher_(dispatcher) {}
 
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
@@ -64,6 +67,41 @@ void Network::OnIPv4ConfigUpdated() {
   }
   SetupConnection(ipconfig());
   event_handler_->OnIPConfigsPropertyUpdated();
+}
+
+void Network::ConfigureStaticIPTask() {
+  auto* selected_service = event_handler_->GetSelectedService();
+  if (!selected_service || !ipconfig()) {
+    return;
+  }
+  if (!selected_service->HasStaticIPAddress()) {
+    return;
+  }
+  // If the parameters contain an IP address, apply them now and bring
+  // the interface up.  When DHCP information arrives, it will supplement
+  // the static information.
+  OnIPv4ConfigUpdated();
+}
+
+void Network::OnStaticIPConfigChanged() {
+  auto* selected_service = event_handler_->GetSelectedService();
+  if (!ipconfig() || !selected_service) {
+    LOG(ERROR) << __func__ << " called but "
+               << (!ipconfig() ? "no IPv4 config" : "no selected service");
+    return;
+  }
+
+  // Clear the previously applied static IP parameters.
+  ipconfig()->RestoreSavedIPParameters(
+      selected_service->mutable_static_ip_parameters());
+
+  dispatcher_->PostTask(
+      FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPTask, AsWeakPtr()));
+
+  if (dhcp_controller()) {
+    // Trigger DHCP renew.
+    dhcp_controller()->RenewIP();
+  }
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {

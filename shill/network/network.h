@@ -20,6 +20,7 @@
 namespace shill {
 
 class DeviceInfo;
+class EventDispatcher;
 class Service;
 
 // An object of Network class represents a network interface in the kernel, and
@@ -60,7 +61,8 @@ class Network {
                    Technology technology,
                    bool fixed_ip_params,
                    EventHandler* event_handler,
-                   DeviceInfo* device_info);
+                   DeviceInfo* device_info,
+                   EventDispatcher* dispatcher);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network() = default;
@@ -77,6 +79,13 @@ class Network {
 
   // Triggers a reconfiguration on connection for an IPv4 config change.
   void OnIPv4ConfigUpdated();
+
+  // Configure static IP address parameters if the service provides them.
+  void ConfigureStaticIPTask();
+
+  // Callback invoked when the static IP properties configured on the selected
+  // service changed.
+  void OnStaticIPConfigChanged();
 
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
@@ -147,6 +156,7 @@ class Network {
 
   // Other dependencies.
   DeviceInfo* device_info_;
+  EventDispatcher* dispatcher_;
 
   base::WeakPtrFactory<Network> weak_factory_{this};
 };

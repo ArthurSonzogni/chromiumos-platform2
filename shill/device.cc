@@ -107,7 +107,8 @@ Device::Device(Manager* manager,
                            technology,
                            fixed_ip_params,
                            this,
-                           manager->device_info())),
+                           manager->device_info(),
+                           manager->dispatcher())),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
@@ -605,7 +606,8 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_,
                                           IPConfig::kTypeDHCP));
   dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
+      FROM_HERE,
+      base::BindOnce(&Network::ConfigureStaticIPTask, network_->AsWeakPtr()));
   return dhcp_controller()->RequestIP();
 }
 
@@ -707,31 +709,6 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
       Uint64Accessor(new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
 }
 
-void Device::ConfigureStaticIPTask() {
-  SLOG(this, 2) << __func__ << " selected_service " << selected_service_.get()
-                << " ipconfig " << ipconfig();
-
-  if (!selected_service_ || !ipconfig()) {
-    return;
-  }
-
-  if (IsUsingStaticIP()) {
-    SLOG(this, 2) << __func__ << " "
-                  << " configuring static IP parameters.";
-    // If the parameters contain an IP address, apply them now and bring
-    // the interface up.  When DHCP information arrives, it will supplement
-    // the static information.
-    network_->OnIPv4ConfigUpdated();
-  } else {
-    // Either |ipconfig()| has just been created in AcquireIPConfig()
-    // or we're being called by OnIPConfigRefreshed().  In either case a DHCP
-    // client has been started, and will take care of calling
-    // OnIPv4ConfigUpdated() when it completes.
-    SLOG(this, 2) << __func__ << " "
-                  << " no static IP address.";
-  }
-}
-
 void Device::OnIPv6ConfigUpdated() {
   if (!ip6config()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__
@@ -786,8 +763,8 @@ void Device::OnConnectionUpdated(IPConfig* ipconfig) {
   if (selected_service_) {
     selected_service_->SetIPConfig(
         ipconfig->GetRpcIdentifier(),
-        base::BindRepeating(&Device::OnStaticIPConfigChanged,
-                            weak_ptr_factory_.GetWeakPtr()));
+        base::BindRepeating(&Network::OnStaticIPConfigChanged,
+                            network()->AsWeakPtr()));
 
     // If the service is already in a Connected state (this happens during a
     // roam or DHCP renewal), transitioning back to Connected isn't productive.
@@ -899,26 +876,6 @@ void Device::OnDHCPFailure() {
 
   OnIPConfigFailure();
   DestroyConnection();
-}
-
-void Device::OnStaticIPConfigChanged() {
-  if (!ipconfig() || !selected_service_) {
-    LOG(ERROR) << LoggingTag() << ": " << __func__ << " called but "
-               << (!ipconfig() ? "no IPv4 config" : "no selected service");
-    return;
-  }
-
-  // Clear the previously applied static IP parameters.
-  ipconfig()->RestoreSavedIPParameters(
-      selected_service_->mutable_static_ip_parameters());
-
-  dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
-
-  if (dhcp_controller()) {
-    // Trigger DHCP renew.
-    dhcp_controller()->RenewIP();
-  }
 }
 
 void Device::OnIPConfigFailure() {
