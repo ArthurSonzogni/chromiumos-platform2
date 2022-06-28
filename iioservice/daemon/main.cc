@@ -16,7 +16,6 @@ int main() {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
-  LOGF(INFO) << "Daemon started";
   iioservice::Daemon daemon;
   daemon.Run();
   LOGF(INFO) << "Daemon stopped";
