@@ -439,6 +439,7 @@ inline constexpr char kAttestationPrepareForEnrollment[] =
 
 // Various counts for ReportVaultKeysetMetrics.
 struct VaultKeysetMetrics {
+  int missing_key_data_count = 0;
   int empty_label_count = 0;
   int empty_label_le_cred_count = 0;
   int le_cred_count = 0;

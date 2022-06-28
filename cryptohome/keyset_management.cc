@@ -1081,21 +1081,18 @@ void KeysetManagement::RecordAllVaultKeysetMetrics(
     if (!vk) {
       continue;
     } else {
-      if (!RecordVaultKeysetMetrics(*vk.get(), keyset_metrics)) {
-        LOG(ERROR) << "Metrics not recorded for " << vk->GetLabel();
-      }
+      RecordVaultKeysetMetrics(*vk.get(), keyset_metrics);
     }
   }
   ReportVaultKeysetMetrics(keyset_metrics);
 }
 
-bool KeysetManagement::RecordVaultKeysetMetrics(
+void KeysetManagement::RecordVaultKeysetMetrics(
     const VaultKeyset& vk, VaultKeysetMetrics& keyset_metrics) const {
   if (!vk.HasKeyData()) {
-    LOG(ERROR) << "VaultKeyset doesn't have a valid KeyData field.";
-    return false;
-  }
-  if (vk.GetKeyData().label().empty()) {
+    // Some legacy keysets were created without any key_data at all.
+    keyset_metrics.missing_key_data_count++;
+  } else if (vk.GetKeyData().label().empty()) {
     // VaultKeyset label is empty.
     if (vk.IsLECredential()) {
       keyset_metrics.empty_label_le_cred_count++;
@@ -1133,7 +1130,6 @@ bool KeysetManagement::RecordVaultKeysetMetrics(
         break;
     }
   }
-  return true;
 }
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.

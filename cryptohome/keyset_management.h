@@ -299,7 +299,7 @@ class KeysetManagement {
 
   // Records various metrics about the VaultKeyset into the VaultKeysetMetrics
   // struct.
-  bool RecordVaultKeysetMetrics(const VaultKeyset& vk,
+  void RecordVaultKeysetMetrics(const VaultKeyset& vk,
                                 VaultKeysetMetrics& keyset_metrics) const;
 
   Platform* platform_;

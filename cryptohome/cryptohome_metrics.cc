@@ -174,9 +174,11 @@ static_assert(
 
 // List of strings for a patterned histogram for vault keyset metrics.
 const char* kVaultKeysetMetricType[] = {
-    ".EmptyLabelCount",  ".EmptyLabelPINCount", ".PINCount",
-    ".SmartUnlockCount", ".PasswordCount",      ".SmartCardCount",
-    ".FingerprintCount", ".KioskCount",         ".UnclassifedKeysetCount"};
+    ".MissingKeyDataCount", ".EmptyLabelCount",
+    ".EmptyLabelPINCount",  ".PINCount",
+    ".SmartUnlockCount",    ".PasswordCount",
+    ".SmartCardCount",      ".FingerprintCount",
+    ".KioskCount",          ".UnclassifedKeysetCount"};
 
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
     "Cryptohome.DeprecatedApiCalled";
@@ -693,30 +695,33 @@ void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics) {
   constexpr int kMin = 1, kMax = 99, kNumBuckets = 100;
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[0]),
-      keyset_metrics.empty_label_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.missing_key_data_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[1]),
-      keyset_metrics.empty_label_le_cred_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.empty_label_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[2]),
-      keyset_metrics.le_cred_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.empty_label_le_cred_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[3]),
-      keyset_metrics.smart_unlock_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.le_cred_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[4]),
-      keyset_metrics.password_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.smart_unlock_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[5]),
-      keyset_metrics.smartcard_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.password_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[6]),
-      keyset_metrics.fingerprint_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.smartcard_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[7]),
-      keyset_metrics.kiosk_count, kMin, kMax, kNumBuckets);
+      keyset_metrics.fingerprint_count, kMin, kMax, kNumBuckets);
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[8]),
+      keyset_metrics.kiosk_count, kMin, kMax, kNumBuckets);
+  g_metrics->SendToUMA(
+      std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[9]),
       keyset_metrics.unclassified_count, kMin, kMax, kNumBuckets);
 }
 
