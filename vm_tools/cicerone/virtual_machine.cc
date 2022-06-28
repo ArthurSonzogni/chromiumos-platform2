@@ -173,12 +173,9 @@ bool VirtualMachine::RegisterContainer(const std::string& container_token,
   if (GetType() == VmType::PLUGIN_VM) {
     garcon_addr = base::StringPrintf("unix:///run/vm_cicerone/client/%s.sock",
                                      container_token.c_str());
-  } else if (garcon_vsock_port != 0) {
+  } else {
     garcon_addr = base::StringPrintf("vsock:%" PRIu32 ":%" PRIu32, vsock_cid_,
                                      garcon_vsock_port);
-  } else {
-    garcon_addr = base::StringPrintf("%s:%d", container_ip.c_str(),
-                                     vm_tools::kGarconPort);
   }
 
   iter->second->ConnectToGarcon(garcon_addr);
