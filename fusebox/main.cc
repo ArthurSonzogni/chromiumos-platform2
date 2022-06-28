@@ -614,7 +614,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     if (device.mode == "ro") {
-      errno = request->ReplyError(EACCES);
+      errno = request->ReplyError(EROFS);
       PLOG(ERROR) << "open";
       return;
     }
