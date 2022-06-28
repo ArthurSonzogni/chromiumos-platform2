@@ -123,6 +123,7 @@ _IUSE = [
     'power_management',
     'prjquota',
     'profiling',
+    'protected_av1',
     'qrtr',
     'report_requisition',
     'selinux',
