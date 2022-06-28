@@ -1659,6 +1659,65 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
   EXPECT_FALSE(auth_block.ok());
 }
 
+// Test that PrepareAuthBlockForRemoval succeeds for
+// CryptohomeRecoveryAuthBlock.
+TEST_F(AuthBlockUtilityImplTest,
+       RemoveCryptohomeRecoveryWithoutRevocationAuthBlock) {
+  CryptohomeRecoveryAuthBlockState recovery_state = {
+      .hsm_payload = brillo::SecureBlob("hsm_payload"),
+      .salt = brillo::SecureBlob("salt"),
+      .encrypted_destination_share =
+          brillo::SecureBlob("encrypted_destination_share"),
+      .channel_pub_key = brillo::SecureBlob("channel_pub_key"),
+      .encrypted_channel_priv_key =
+          brillo::SecureBlob("encrypted_channel_priv_key"),
+  };
+  AuthBlockState auth_state = {.state = recovery_state};
+
+  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
+      keyset_management_.get(), &crypto_, &platform_);
+
+  EXPECT_TRUE(
+      auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
+}
+
+// Test that PrepareAuthBlockForRemoval succeeds for CryptohomeRecoveryAuthBlock
+// with credentials revocation enabled.
+TEST_F(AuthBlockUtilityImplTest,
+       RemoveCryptohomeRecoveryWithRevocationAuthBlock) {
+  ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
+  MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
+  uint64_t fake_label = 11;
+  EXPECT_CALL(*le_cred_manager, RemoveCredential(fake_label))
+      .WillOnce(ReturnError<CryptohomeLECredError>());
+  crypto_.set_le_manager_for_testing(
+      std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
+  crypto_.Init();
+
+  CryptohomeRecoveryAuthBlockState recovery_state = {
+      .hsm_payload = brillo::SecureBlob("hsm_payload"),
+      .salt = brillo::SecureBlob("salt"),
+      .encrypted_destination_share =
+          brillo::SecureBlob("encrypted_destination_share"),
+      .channel_pub_key = brillo::SecureBlob("channel_pub_key"),
+      .encrypted_channel_priv_key =
+          brillo::SecureBlob("encrypted_channel_priv_key"),
+  };
+  RevocationState revocation_state = {
+      .le_label = fake_label,
+  };
+  AuthBlockState auth_state = {
+      .state = recovery_state,
+      .revocation_state = revocation_state,
+  };
+
+  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
+      keyset_management_.get(), &crypto_, &platform_);
+
+  EXPECT_TRUE(
+      auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
+}
+
 class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
  public:
   AuthBlockUtilityImplRecoveryTest() = default;

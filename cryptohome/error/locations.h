@@ -155,7 +155,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType = 164,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType = 165,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilCHUnsupportedInGetAsyncAuthBlockWithType = 166,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilMaxValueUnsupportedInGetAsyncAuthBlockWithType = 167,
@@ -1013,6 +1013,18 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManRetrieveLabelFailedInGetDelayInSeconds = 593,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetDelayInSeconds = 594,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilUnsupportedInPrepareAuthBlockForRemoval = 595,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilNoAsyncAuthBlockInPrepareForRemoval = 596,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockInvalidStateInPrepareForRemoval = 597,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockNoRevocationInPrepareForRemoval = 598,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockNoLEManagerInPrepareForRemoval = 599,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockRevocationFailedInPrepareForRemoval = 600,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

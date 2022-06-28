@@ -30,6 +30,10 @@ class SyncToAsyncAuthBlockAdapter : public AuthBlock {
               const AuthBlockState& state,
               DeriveCallback callback) override;
 
+  // Calls the AuthBlock::PrepareForRemoval() on delegate_. AuthBlockState
+  // must be the one returned from Create().
+  CryptoStatus PrepareForRemoval(const AuthBlockState& state) override;
+
  private:
   // The synchronous auth block to be called.
   std::unique_ptr<SyncAuthBlock> delegate_;

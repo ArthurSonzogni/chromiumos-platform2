@@ -61,6 +61,13 @@ class AuthBlock {
                       const AuthBlockState& state,
                       DeriveCallback callback) = 0;
 
+  // This is implemented by concrete auth factor methods which need to execute
+  // additional steps before removal of the AuthFactor from disk.
+  virtual CryptoStatus PrepareForRemoval(const AuthBlockState& state) {
+    // By default, do nothing. Subclasses can provide custom behavior.
+    return hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>();
+  }
+
   DerivationType derivation_type() const { return derivation_type_; }
 
  protected:
@@ -92,6 +99,13 @@ class SyncAuthBlock {
   virtual CryptoStatus Derive(const AuthInput& auth_input,
                               const AuthBlockState& state,
                               KeyBlobs* key_blobs) = 0;
+
+  // This is implemented by concrete auth factor methods which need to execute
+  // additional steps before removal of the AuthFactor from disk.
+  virtual CryptoStatus PrepareForRemoval(const AuthBlockState& state) {
+    // By default, do nothing. Subclasses can provide custom behavior.
+    return hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>();
+  }
 
   DerivationType derivation_type() const { return derivation_type_; }
 

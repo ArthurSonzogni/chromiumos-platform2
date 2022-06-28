@@ -430,14 +430,10 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
           std::make_unique<ScryptAuthBlock>());
 
     case AuthBlockType::kCryptohomeRecovery:
-      LOG(ERROR)
-          << "CryptohomeRecovery is not a supported AuthBlockType for now.";
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilCHUnsupportedInGetAsyncAuthBlockWithType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          CryptoError::CE_OTHER_CRYPTO);
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<CryptohomeRecoveryAuthBlock>(
+              crypto_->GetHwsec(), crypto_->GetRecoveryCryptoBackend(),
+              crypto_->le_manager()));
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
@@ -609,6 +605,31 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
       GetAuthBlockWithType(auth_block_type);
   return auth_block.value()->Derive(auth_input, auth_block_state,
                                     &out_key_blobs);
+}
+
+CryptoStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
+    const AuthBlockState& auth_block_state) {
+  AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Unsupported auth factor type.";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthBlockUtilUnsupportedInPrepareAuthBlockForRemoval),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      GetAsyncAuthBlockWithType(auth_block_type);
+  if (!auth_block.ok()) {
+    LOG(ERROR) << "Failed to retrieve auth block.";
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthBlockUtilNoAsyncAuthBlockInPrepareForRemoval))
+        .Wrap(std::move(auth_block).status());
+  }
+
+  return auth_block.value()->PrepareForRemoval(auth_block_state);
 }
 
 CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(

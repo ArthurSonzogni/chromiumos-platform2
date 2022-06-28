@@ -49,6 +49,8 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
                       const AuthBlockState& state,
                       KeyBlobs* key_blobs) override;
 
+  CryptoStatus PrepareForRemoval(const AuthBlockState& state) override;
+
  private:
   hwsec::CryptohomeFrontend* const hwsec_;
   cryptorecovery::RecoveryCryptoTpmBackend* const tpm_backend_;

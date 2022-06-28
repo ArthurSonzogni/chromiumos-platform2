@@ -109,6 +109,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                               const AuthBlockState& auth_block_state,
                               KeyBlobs& out_key_blobs) const override;
 
+  CryptoStatus PrepareAuthBlockForRemoval(
+      const AuthBlockState& auth_block_state) override;
+
   CryptoStatus GenerateRecoveryRequest(
       const std::string& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,

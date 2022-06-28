@@ -94,6 +94,10 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                KeyBlobs& out_key_blobs),
               (const, override));
   MOCK_METHOD(CryptoStatus,
+              PrepareAuthBlockForRemoval,
+              (const AuthBlockState& auth_block_state),
+              (override));
+  MOCK_METHOD(CryptoStatus,
               GenerateRecoveryRequest,
               (const std::string& obfuscated_username,
                const cryptorecovery::RequestMetadata& request_metadata,

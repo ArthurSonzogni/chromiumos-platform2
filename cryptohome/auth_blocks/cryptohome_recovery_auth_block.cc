@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hkdf.h>
@@ -302,6 +303,59 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
     }
   }
 
+  return OkStatus<CryptohomeCryptoError>();
+}
+
+CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
+    const AuthBlockState& state) {
+  if (!std::holds_alternative<CryptohomeRecoveryAuthBlockState>(state.state)) {
+    NOTREACHED() << "Invalid AuthBlockState";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockInvalidStateInPrepareForRemoval),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  if (!state.revocation_state.has_value()) {
+    // No revocation state means that credentials revocation wasn't used in
+    // Create(), so there is nothing to do here. This happens when
+    // `revocation::IsRevocationSupported()` is `false`.
+    return OkStatus<CryptohomeCryptoError>();
+  }
+
+  if (!revocation::IsRevocationSupported(hwsec_)) {
+    LOG(ERROR)
+        << "Revocation is not supported during recovery auth block removal";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockNoRevocationInPrepareForRemoval),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  if (!le_manager_) {
+    LOG(ERROR) << "No LE manager during recovery auth block removal";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockNoLEManagerInPrepareForRemoval),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  CryptoError crypto_err =
+      revocation::Revoke(le_manager_, state.revocation_state.value());
+  if (crypto_err != CryptoError::CE_NONE) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockRevocationFailedInPrepareForRemoval),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        crypto_err);
+  }
   return OkStatus<CryptohomeCryptoError>();
 }
 
