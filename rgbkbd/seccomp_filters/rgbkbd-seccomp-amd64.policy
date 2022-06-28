@@ -7,7 +7,7 @@ arch_prctl: 1
 bind: 1
 brk: 1
 chdir: 1
-chwon: 1
+chown: 1
 chroot: 1
 clone: 1
 close: 1
@@ -34,14 +34,17 @@ getresuid: 1
 getsockname: 1
 gettid: 1
 getuid: 1
-ioctl:
-       arg1 == USBDEVFS_REAPURBNDELAY || \
-       arg1 == TCGETS || \
-       arg1 == CROS_EC_DEV_IOCXCMD || \
-       arg1 == USBDEVFS_CLAIMINTERFACE || \
-       arg1 == USBDEVFS_GET_CAPABILITIES || \
-       arg1 == USBDEVFS_SUBMITURB || \
-       arg1 == USBDEVFS_RELEASEINTERFACE
+# CROS_EC_DEV_IOCXCMD: 0xc0283a00
+# CROS_EC_DEV_IOCXCMD_V2  = 0xc014ec00
+# USBDEVFS_CLAIMINTERFACE: 0x8004550f
+# USBDEVFS_GET_CAPABILITIES: 0x8004551a
+# USBDEVFS_REAPURBNDELAY: 0x4008550d
+# USBDEVFS_RELEASEINTERFACE: 0x80045510
+# USBDEVFS_SUBMITURB: 0x8038550a
+ioctl: arg1 == 0x8004551a || arg1 == SIOCSIFFLAGS || arg1 == 0x4008550d || \
+       arg1 == TCGETS || arg1 == 0x8004550f || arg1 == SIOCGIFFLAGS || \
+       arg1 == 0x80045510 || arg1 == 0x8038550a || arg1 == 0xc0283a00 || \
+       arg1 == 0xc014ec00
 lseek: 1
 madvise: 1
 mkdir: 1
@@ -51,6 +54,7 @@ mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mount: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
+name_to_handle_at: 1
 newfstatat: 1
 openat: 1
 pipe: 1
