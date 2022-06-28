@@ -18,8 +18,6 @@ class CrosConfigTest : public testing::Test {};
 
 TEST_F(CrosConfigTest, CheckName) {
   brillo::CrosConfig cros_config;
-  EXPECT_TRUE(cros_config.Init());
-
   std::string name;
   EXPECT_TRUE(cros_config.GetString("/", "name", &name));
   EXPECT_NE(name, "");

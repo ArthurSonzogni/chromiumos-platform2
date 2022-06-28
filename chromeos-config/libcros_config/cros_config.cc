@@ -25,11 +25,6 @@ CrosConfig::CrosConfig() {}
 
 CrosConfig::~CrosConfig() {}
 
-bool CrosConfig::Init() {
-  // Nothing to do, we're just reading from ConfigFS.
-  return true;
-}
-
 bool CrosConfig::GetString(const std::string& path,
                            const std::string& property,
                            std::string* val_out) {

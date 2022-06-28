@@ -35,9 +35,6 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(-3);
 
   brillo::CrosConfig cros_config;
-  if (!cros_config.Init()) {
-    return 1;
-  }
 
   base::CommandLine::StringVector args =
       base::CommandLine::ForCurrentProcess()->GetArgs();

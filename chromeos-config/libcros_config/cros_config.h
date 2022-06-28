@@ -23,12 +23,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
   ~CrosConfig() override;
 
-  // Prepare the configuration system for access to the configuration for
-  // the model this is running on. This reads the configuration file into
-  // memory.
-  // @return true if OK, false on error.
-  bool Init();
-
   // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& property,

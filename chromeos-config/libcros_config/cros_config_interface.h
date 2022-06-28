@@ -20,8 +20,7 @@ class CrosConfigInterface {
   virtual ~CrosConfigInterface() {}
 
   // Obtain a config property.
-  // This returns a property for the current board model. This can only be
-  // called if Init() was called.
+  // This returns a property for the current board model.
   // @path: Path to property ("/" for a property at the top of the model
   // hierarchy). The path specifies the node that contains the property to be
   // accessed.
