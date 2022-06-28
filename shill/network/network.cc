@@ -15,20 +15,26 @@ Network::Network(int interface_index,
                  const std::string& interface_name,
                  Technology technology,
                  bool fixed_ip_params,
+                 EventHandler* event_handler,
                  DeviceInfo* device_info)
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
       fixed_ip_params_(fixed_ip_params),
+      event_handler_(event_handler),
       device_info_(device_info) {}
 
-void Network::CreateConnection() {
-  if (connection_ != nullptr) {
-    return;
+void Network::SetupConnection(IPConfig* ipconfig) {
+  DCHECK(ipconfig);
+  if (connection_ == nullptr) {
+    connection_ = std::make_unique<Connection>(
+        interface_index_, interface_name_, fixed_ip_params_, technology_,
+        device_info_);
   }
-  connection_ =
-      std::make_unique<Connection>(interface_index_, interface_name_,
-                                   fixed_ip_params_, technology_, device_info_);
+  const auto& blackhole_uids = event_handler_->GetBlackholedUids();
+  ipconfig->SetBlackholedUids(blackhole_uids);
+  connection_->UpdateFromIPConfig(ipconfig->properties());
+  event_handler_->OnConnectionUpdated(ipconfig);
 }
 
 void Network::DestroyConnection() {
@@ -37,11 +43,6 @@ void Network::DestroyConnection() {
 
 bool Network::HasConnectionObject() const {
   return connection_ != nullptr;
-}
-
-void Network::UpdateFromIPConfig(const IPConfig::Properties& config) {
-  CHECK(connection_) << __func__ << " called but no connection exists";
-  connection_->UpdateFromIPConfig(config);
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {

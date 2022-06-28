@@ -106,6 +106,7 @@ Device::Device(Manager* manager,
                            link_name,
                            technology,
                            fixed_ip_params,
+                           this,
                            manager->device_info())),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
@@ -618,7 +619,7 @@ void Device::UpdateBlackholeUserTraffic() {
       updated = ipconfig()->ClearBlackholedUids();
     }
     if (updated) {
-      SetupConnection(ipconfig());
+      network_->SetupConnection(ipconfig());
     }
   }
 }
@@ -743,7 +744,7 @@ void Device::OnIPv6ConfigUpdated() {
   // configuration over IPv6.
   if (ip6config()->properties().HasIPAddressAndDNS() &&
       (!network_->HasConnectionObject() || network_->IsIPv6())) {
-    SetupConnection(ip6config());
+    network_->SetupConnection(ip6config());
   }
 }
 
@@ -763,17 +764,7 @@ void Device::ConfigureStaticIPv6Address() {
                                      IPAddress(IPAddress::kFamilyIPv6));
 }
 
-void Device::SetupConnection(IPConfig* ipconfig) {
-  DCHECK(ipconfig);
-  SLOG(this, 2) << __func__;
-  network_->CreateConnection();
-  if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-    ipconfig->SetBlackholedUids(manager_->GetUserTrafficUids());
-  } else {
-    ipconfig->ClearBlackholedUids();
-  }
-
-  network_->UpdateFromIPConfig(ipconfig->properties());
+void Device::OnConnectionUpdated(IPConfig* ipconfig) {
   ConfigureStaticIPv6Address();
 
   // Report connection type.
@@ -828,6 +819,13 @@ void Device::SetupConnection(IPConfig* ipconfig) {
   }
 }
 
+std::vector<uint32_t> Device::GetBlackholedUids() {
+  if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
+    return manager_->GetUserTrafficUids();
+  }
+  return {};
+}
+
 void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
   // |dhcp_controller()| cannot be empty when the callback is invoked.
@@ -864,7 +862,7 @@ void Device::OnIPv4ConfigUpdated() {
     }
   }
 
-  SetupConnection(ipconfig());
+  network_->SetupConnection(ipconfig());
   UpdateIPConfigsProperty();
 }
 
@@ -912,7 +910,7 @@ void Device::OnDHCPFailure() {
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
     if (!network_->HasConnectionObject() || !network_->IsIPv6()) {
       // Setup IPv6 connection.
-      SetupConnection(ip6config());
+      network_->SetupConnection(ip6config());
     } else {
       // Ignore IPv4 config failure, since IPv6 is up.
     }

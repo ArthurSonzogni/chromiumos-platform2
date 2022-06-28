@@ -49,7 +49,7 @@ class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public base::RefCounted<Device> {
+class Device : public base::RefCounted<Device>, Network::EventHandler {
  public:
   // A constructor for the Device object
   Device(Manager* manager,
@@ -324,6 +324,11 @@ class Device : public base::RefCounted<Device> {
   // Returns a string formatted as "$ifname $service_log_name", or
   // "$ifname no_service" if |selected_service_| is currently not defined.
   std::string LoggingTag() const;
+
+  // Overrides for Network::EventHandler. See the comments for
+  // Network::EventHandler for more details.
+  void OnConnectionUpdated(IPConfig* ipconfig) override;
+  std::vector<uint32_t> GetBlackholedUids() override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
@@ -613,13 +618,6 @@ class Device : public base::RefCounted<Device> {
   // Callback invoked when the static IP properties configured on the selected
   // service changed.
   void OnStaticIPConfigChanged();
-
-  // Setup network connection with given IP configuration, and start portal
-  // detection on that connection.
-  void SetupConnection(IPConfig* ipconfig);
-
-  // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
-  void CreateConnection();
 
   // Remove connection state
   void DestroyConnection();
