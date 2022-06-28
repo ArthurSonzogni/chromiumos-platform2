@@ -136,11 +136,6 @@ class DeviceTest : public testing::Test {
  public:
   DeviceTest()
       : manager_(control_interface(), dispatcher(), metrics()),
-        device_(new NiceMock<TestDevice>(manager(),
-                                         kDeviceName,
-                                         kDeviceAddress,
-                                         kDeviceInterfaceIndex,
-                                         Technology::kUnknown)),
         device_info_(manager()) {
     manager()->set_mock_device_info(&device_info_);
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
@@ -149,6 +144,10 @@ class DeviceTest : public testing::Test {
     auto client = std::make_unique<patchpanel::FakeClient>();
     patchpanel_client_ = client.get();
     manager_.patchpanel_client_ = std::move(client);
+
+    device_ =
+        new NiceMock<TestDevice>(manager(), kDeviceName, kDeviceAddress,
+                                 kDeviceInterfaceIndex, Technology::kUnknown);
   }
   ~DeviceTest() override = default;
 
@@ -781,7 +780,7 @@ TEST_F(DeviceTest, Stop) {
 }
 
 TEST_F(DeviceTest, StopWithFixedIpParams) {
-  device_->SetFixedIpParams(true);
+  device_->network()->set_fixed_ip_params_for_testing(true);
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   device_->set_ipconfig(

@@ -24,7 +24,8 @@ class VirtualDevice : public Device {
   VirtualDevice(Manager* manager,
                 const std::string& link_name,
                 int interface_index,
-                Technology technology);
+                Technology technology,
+                bool fixed_ip_params = false);
   VirtualDevice(const VirtualDevice&) = delete;
   VirtualDevice& operator=(const VirtualDevice&) = delete;
 

@@ -99,9 +99,6 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
     SetErrorDetails(Service::kErrorDetailsNone);
     return;
   }
-  if (driver_->GetProviderType() == std::string(kProviderArcVpn)) {
-    device_->SetFixedIpParams(true);
-  }
 
   SetState(ConnectState::kStateConfiguring);
   ConfigureDevice();
@@ -136,7 +133,10 @@ bool VPNService::CreateDevice(const std::string& if_name, int if_index) {
   // Resets af first to avoid crashing shill in some cases. See
   // b/172228079#comment6.
   device_ = nullptr;
-  device_ = new VirtualDevice(manager(), if_name, if_index, Technology::kVPN);
+  const bool fixed_ip_params =
+      driver_->GetProviderType() == std::string(kProviderArcVpn);
+  device_ = new VirtualDevice(manager(), if_name, if_index, Technology::kVPN,
+                              fixed_ip_params);
   return device_ != nullptr;
 }
 

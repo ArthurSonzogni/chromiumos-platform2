@@ -56,7 +56,8 @@ class Device : public base::RefCounted<Device> {
          const std::string& link_name,
          const std::string& mac_address,
          int interface_index,
-         Technology technology);
+         Technology technology,
+         bool fixed_ip_params = false);
   Device(const Device&) = delete;
   Device& operator=(const Device&) = delete;
 
@@ -181,12 +182,6 @@ class Device : public base::RefCounted<Device> {
   // the default Linux ARP transmit / reply behavior.  See
   // http://linux-ip.net/html/ether-arp.html for more details on this effect.
   mockable void SetIsMultiHomed(bool is_multi_homed);
-
-  // Used for devices that are managed by an entity other than shill.
-  // If true, shill will not attempt to change the device's IP
-  // address, subnet mask, broadcast address, or manipulate the interface
-  // state.  This setting is disabled by default.
-  void SetFixedIpParams(bool fixed_ip_params);
 
   const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }
@@ -546,7 +541,6 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  bool fixed_ip_params() const { return fixed_ip_params_; }
 
   virtual void set_mac_address(const std::string& mac_address);
 
@@ -571,8 +565,9 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagAcceptDuplicateAddressDetection[];
   static const char kStoragePowered[];
 
-  // Brings the associated network interface down unless |fixed_ip_params_| is
-  // true, which indicates that the interface state shouldn't be changed.
+  // Brings the associated network interface down unless
+  // network->fixed_ip_params() is true, which indicates that the interface
+  // state shouldn't be changed.
   void BringNetworkInterfaceDown();
 
   // Configure static IP address parameters if the service provides them.
@@ -742,9 +737,6 @@ class Device : public base::RefCounted<Device> {
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;
-
-  // If true, IP parameters should not be modified.
-  bool fixed_ip_params_;
 
   // Remember which flag files were previously successfully written.
   std::set<std::string> written_flags_;

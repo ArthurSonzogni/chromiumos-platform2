@@ -15,6 +15,10 @@ namespace shill {
 MockNetwork::MockNetwork(int interface_index,
                          const std::string& interface_name,
                          Technology technology)
-    : Network(interface_index, interface_name, technology) {}
+    : Network(interface_index,
+              interface_name,
+              technology,
+              /*fixed_ip_params=*/false,
+              /*device_info=*/nullptr) {}
 
 }  // namespace shill

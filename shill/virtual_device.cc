@@ -31,12 +31,14 @@ const char kHardwareAddressEmpty[] = "";
 VirtualDevice::VirtualDevice(Manager* manager,
                              const std::string& link_name,
                              int interface_index,
-                             Technology technology)
+                             Technology technology,
+                             bool fixed_ip_params)
     : Device(manager,
              link_name,
              kHardwareAddressEmpty,
              interface_index,
-             technology) {}
+             technology,
+             fixed_ip_params) {}
 
 VirtualDevice::~VirtualDevice() = default;
 
@@ -52,7 +54,7 @@ bool VirtualDevice::Save(StoreInterface* /*storage*/) {
 
 void VirtualDevice::Start(Error* error,
                           const EnabledStateChangedCallback& /*callback*/) {
-  if (!fixed_ip_params()) {
+  if (!network()->fixed_ip_params()) {
     rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   }
   // TODO(crbug.com/1030324) We should call OnEnabledStateChanged, as for other

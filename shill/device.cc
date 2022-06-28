@@ -93,7 +93,8 @@ Device::Device(Manager* manager,
                const std::string& link_name,
                const std::string& mac_address,
                int interface_index,
-               Technology technology)
+               Technology technology,
+               bool fixed_ip_params)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
@@ -101,14 +102,17 @@ Device::Device(Manager* manager,
       interface_index_(interface_index),
       link_name_(link_name),
       manager_(manager),
-      network_(new Network(interface_index, link_name, technology)),
+      network_(new Network(interface_index,
+                           link_name,
+                           technology,
+                           fixed_ip_params,
+                           manager->device_info())),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       is_multi_homed_(false),
-      fixed_ip_params_(false),
       traffic_counter_callback_id_(0),
       weak_ptr_factory_(this) {
   store_.RegisterConstString(kAddressProperty, &mac_address_);
@@ -263,10 +267,6 @@ void Device::SetIsMultiHomed(bool is_multi_homed) {
   } else {
     DisableArpFiltering();
   }
-}
-
-void Device::SetFixedIpParams(bool fixed_ip_params) {
-  fixed_ip_params_ = fixed_ip_params;
 }
 
 void Device::DisableArpFiltering() {
@@ -766,7 +766,7 @@ void Device::ConfigureStaticIPv6Address() {
 void Device::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
   SLOG(this, 2) << __func__;
-  network_->CreateConnection(fixed_ip_params_, manager_->device_info());
+  network_->CreateConnection();
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
     ipconfig->SetBlackholedUids(manager_->GetUserTrafficUids());
   } else {
@@ -1479,8 +1479,8 @@ bool Device::ShouldBringNetworkInterfaceDownAfterDisabled() const {
 }
 
 void Device::BringNetworkInterfaceDown() {
-  // If |fixed_ip_params_| is true, we don't manipulate the interface state.
-  if (!fixed_ip_params_)
+  // If fixed_ip_params is true, we don't manipulate the interface state.
+  if (!network_->fixed_ip_params())
     rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 

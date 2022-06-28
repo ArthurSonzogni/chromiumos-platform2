@@ -29,13 +29,15 @@ class Network {
  public:
   explicit Network(int interface_index,
                    const std::string& interface_name,
-                   Technology technology);
+                   Technology technology,
+                   bool fixed_ip_params,
+                   DeviceInfo* device_info);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network() = default;
 
   // Creates the associated Connection object if not exists.
-  void CreateConnection(bool fixed_ip_params, const DeviceInfo* device_info);
+  void CreateConnection();
   // Destroys the associated Connection object if exists.
   void DestroyConnection();
   // Returns if the associated Connection object exist. Note that the return
@@ -83,22 +85,31 @@ class Network {
   void set_ip6config(std::unique_ptr<IPConfig> config) {
     ip6config_ = std::move(config);
   }
+  bool fixed_ip_params() const { return fixed_ip_params_; }
 
   // Only used in tests.
   void set_connection_for_testing(std::unique_ptr<Connection> connection) {
     connection_ = std::move(connection);
   }
+  void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
 
  private:
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;
 
+  // If true, IP parameters should not be modified. This should not be changed
+  // after a Network object is created. Make it modifiable just for unit tests.
+  bool fixed_ip_params_;
+
   std::unique_ptr<Connection> connection_;
 
   std::unique_ptr<DHCPController> dhcp_controller_;
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;
+
+  // Other dependencies.
+  DeviceInfo* device_info_;
 };
 
 }  // namespace shill

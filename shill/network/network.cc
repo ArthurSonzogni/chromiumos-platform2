@@ -1,4 +1,3 @@
-
 // Copyright 2022 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -14,19 +13,22 @@ namespace shill {
 
 Network::Network(int interface_index,
                  const std::string& interface_name,
-                 Technology technology)
+                 Technology technology,
+                 bool fixed_ip_params,
+                 DeviceInfo* device_info)
     : interface_index_(interface_index),
       interface_name_(interface_name),
-      technology_(technology) {}
+      technology_(technology),
+      fixed_ip_params_(fixed_ip_params),
+      device_info_(device_info) {}
 
-void Network::CreateConnection(bool fixed_ip_params,
-                               const DeviceInfo* device_info) {
+void Network::CreateConnection() {
   if (connection_ != nullptr) {
     return;
   }
   connection_ =
       std::make_unique<Connection>(interface_index_, interface_name_,
-                                   fixed_ip_params, technology_, device_info);
+                                   fixed_ip_params_, technology_, device_info_);
 }
 
 void Network::DestroyConnection() {
