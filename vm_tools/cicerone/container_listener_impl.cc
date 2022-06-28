@@ -361,6 +361,8 @@ grpc::Status ContainerListenerImpl::ApplyAnsiblePlaybookProgress(
       static_cast<ApplyAnsiblePlaybookProgressSignal::Status>(
           request->status()));
   progress_signal.set_failure_details(request->failure_details());
+  for (auto line : request->status_string())
+    progress_signal.add_status_string(line);
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;

@@ -8,6 +8,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
@@ -29,6 +30,9 @@ class AnsiblePlaybookApplication {
    public:
     virtual void OnApplyAnsiblePlaybookCompletion(
         bool success, const std::string& failure_reason) = 0;
+
+    virtual void OnApplyAnsiblePlaybookProgress(
+        const std::vector<std::string>& status_string) = 0;
   };
 
   AnsiblePlaybookApplication();

@@ -186,7 +186,7 @@ void AnsiblePlaybookApplication::SetUpStdIOWatchers(base::WaitableEvent* event,
 }
 
 void AnsiblePlaybookApplication::OnStdoutReadable() {
-  char buffer[100];
+  char buffer[1000];
   ssize_t count = read(read_stdout_.get(), buffer, sizeof(buffer));
   if (count <= 0) {
     stdout_watcher_.reset();
@@ -194,11 +194,25 @@ void AnsiblePlaybookApplication::OnStdoutReadable() {
     return;
   }
   stdout_.write(buffer, count);
-  return;
+  int index = 0;
+  std::vector<std::string> lines;
+  for (int i = 0; i < count; i++) {
+    if (buffer[i] == '\n') {
+      lines.push_back(std::string(buffer, index, i));
+      index = i;
+    }
+  }
+  if (index != count)
+    lines.push_back(std::string(buffer, index, count));
+  for (auto& observer : observers_) {
+    observer.OnApplyAnsiblePlaybookProgress(lines);
+  }
 }
 
 void AnsiblePlaybookApplication::OnStderrReadable() {
-  char buffer[100];
+  char buffer[1000];
+  int index = 0;
+  std::vector<std::string> lines;
   ssize_t count = read(read_stderr_.get(), buffer, sizeof(buffer));
   if (count <= 0) {
     stderr_watcher_.reset();
@@ -206,7 +220,17 @@ void AnsiblePlaybookApplication::OnStderrReadable() {
     return;
   }
   stderr_.write(buffer, count);
-  return;
+  for (int i = 0; i < count; i++) {
+    if (buffer[i] == '\n') {
+      lines.push_back(std::string(buffer, index, i));
+      index = i;
+    }
+  }
+  if (index != count)
+    lines.push_back(std::string(buffer, index, count));
+  for (auto& observer : observers_) {
+    observer.OnApplyAnsiblePlaybookProgress(lines);
+  }
 }
 
 void AnsiblePlaybookApplication::OnStdIOProcessed(bool is_stderr) {

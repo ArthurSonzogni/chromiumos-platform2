@@ -1290,6 +1290,9 @@ message ApplyAnsiblePlaybookProgressSignal {
 
   // Contains a textual reason for the failure in case of a FAILED status.
   string failure_details = 5;
+
+  // Displays details of the current progress of the Ansible process.
+  repeated string status_string = 6;
 }
 
 message ConfigureForArcSideloadRequest {

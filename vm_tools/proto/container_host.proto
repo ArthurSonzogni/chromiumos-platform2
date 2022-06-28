@@ -197,6 +197,9 @@ message ApplyAnsiblePlaybookProgressInfo {
 
   // Details relating to the failure state.
   string failure_details = 3;
+
+  // Details on the current progress of the Ansible process.
+  repeated string status_string = 4;
 }
 
 // Request protobuf for opening a new terminal in the container.

@@ -91,6 +91,8 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // vm_tools::garcon::AnsiblePlaybookApplication::Observer overrides.
   void OnApplyAnsiblePlaybookCompletion(
       bool success, const std::string& failure_reason) override;
+  void OnApplyAnsiblePlaybookProgress(
+      const std::vector<std::string>& status_string) override;
   void CreateAnsiblePlaybookApplication(
       base::WaitableEvent* event,
       AnsiblePlaybookApplication** ansible_playbook_application_ptr);

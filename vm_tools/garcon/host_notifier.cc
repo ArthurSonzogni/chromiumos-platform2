@@ -423,6 +423,24 @@ void HostNotifier::OnApplyAnsiblePlaybookCompletion(
                      base::Unretained(stub_.get()), std::move(info)));
 }
 
+void HostNotifier::OnApplyAnsiblePlaybookProgress(
+    const std::vector<std::string>& status_lines) {
+  LOG(INFO) << "Got HostNotifier::OnApplyAnsaiblePlaybookProgress: "
+            << status_lines[0];
+
+  vm_tools::container::ApplyAnsiblePlaybookProgressInfo info;
+  info.set_token(token_);
+  info.set_status(
+      vm_tools::container::ApplyAnsiblePlaybookProgressInfo::IN_PROGRESS);
+  for (auto line : status_lines)
+    info.add_status_string(line);
+
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SendApplyAnsiblePlaybookStatusToHost,
+                     base::Unretained(stub_.get()), std::move(info)));
+}
+
 void HostNotifier::CreateAnsiblePlaybookApplication(
     base::WaitableEvent* event,
     AnsiblePlaybookApplication** ansible_playbook_application_ptr) {
