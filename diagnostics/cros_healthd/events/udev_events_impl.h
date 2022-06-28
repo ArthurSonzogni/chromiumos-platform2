@@ -24,7 +24,7 @@ class UdevEventsImpl final : public UdevEvents {
   UdevEventsImpl& operator=(const UdevEventsImpl&) = delete;
   ~UdevEventsImpl() override = default;
 
-  void Initialize() override;
+  bool Initialize() override;
   void AddThunderboltObserver(
       mojo::PendingRemote<
           chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>

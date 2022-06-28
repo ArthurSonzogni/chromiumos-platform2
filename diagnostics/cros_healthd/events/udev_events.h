@@ -19,7 +19,9 @@ class UdevEvents {
   UdevEvents& operator=(const UdevEvents&) = delete;
   virtual ~UdevEvents() = default;
 
-  virtual void Initialize() = 0;
+  // Set up the subscription for udev events. Returns whether the
+  // initialization is successful.
+  virtual bool Initialize() = 0;
   // Adds a new observer to be notified when thunderbolt related events occur.
   virtual void AddThunderboltObserver(
       mojo::PendingRemote<

@@ -77,16 +77,16 @@ UdevEventsImpl::UdevEventsImpl(Context* context) : context_(context) {
   DCHECK(context_);
 }
 
-void UdevEventsImpl::Initialize() {
+bool UdevEventsImpl::Initialize() {
   if (!context_->udev_monitor()->EnableReceiving()) {
     LOG(ERROR) << "Failed to enable receiving for udev monitor.";
-    return;
+    return false;
   }
 
   int fd = context_->udev_monitor()->GetFileDescriptor();
   if (fd == brillo::UdevMonitor::kInvalidFileDescriptor) {
     LOG(ERROR) << "Failed to get udev monitor fd.";
-    return;
+    return false;
   }
 
   udev_monitor_watcher_ = base::FileDescriptorWatcher::WatchReadable(
@@ -95,8 +95,10 @@ void UdevEventsImpl::Initialize() {
 
   if (!udev_monitor_watcher_) {
     LOG(ERROR) << "Failed to start watcher for udev monitor fd.";
-    return;
+    return false;
   }
+
+  return true;
 }
 
 void UdevEventsImpl::OnUdevEvent() {
