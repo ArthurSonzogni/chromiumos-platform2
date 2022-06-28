@@ -563,7 +563,7 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
                                     &out_key_blobs);
 }
 
-AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerive(
+AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
   AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
   if (const auto* state = std::get_if<TpmNotBoundToPcrAuthBlockState>(
@@ -599,7 +599,7 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobs(
     const AuthInput& auth_input,
     const AuthBlockState& auth_block_state,
     KeyBlobs& out_key_blobs) const {
-  AuthBlockType auth_block_type = GetAuthBlockTypeForDerive(auth_block_state);
+  AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
   if (auth_block_type == AuthBlockType::kMaxValue ||
       auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";

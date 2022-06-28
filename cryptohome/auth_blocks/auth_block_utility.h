@@ -91,9 +91,8 @@ class AuthBlockUtility {
       const bool is_challenge_credential,
       const AuthFactorStorageType auth_factor_storage_type) const = 0;
 
-  // This function returns the AuthBlock type for
-  // AuthBlock::Derive() based on AutBlockState.
-  virtual AuthBlockType GetAuthBlockTypeForDerive(
+  // This function returns the AuthBlock type based on AutBlockState.
+  virtual AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
 
   // This function returns the AuthBlock type for AuthBlock::Derive()

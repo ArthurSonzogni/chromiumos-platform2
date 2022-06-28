@@ -83,7 +83,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   // This function returns the AuthBlock type for
   // AuthBlock::Derive() based on AutBlockState.
-  AuthBlockType GetAuthBlockTypeForDerive(
+  AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
   AuthBlockType GetAuthBlockTypeForDerivation(
