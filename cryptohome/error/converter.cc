@@ -213,6 +213,12 @@ void PopulateReplyWithError(
 template void PopulateReplyWithError(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
     user_data_auth::UnmountReply* reply);
+template void PopulateReplyWithError(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
+    user_data_auth::RemoveReply* reply);
+template void PopulateReplyWithError(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
+    user_data_auth::ListKeysReply* reply);
 
 template <typename ReplyType>
 void ReplyWithError(

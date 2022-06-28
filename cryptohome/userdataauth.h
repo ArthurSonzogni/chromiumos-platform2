@@ -231,12 +231,10 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode MassRemoveKeys(
       const user_data_auth::MassRemoveKeysRequest request);
 
-  // List the keys stored in |homedirs_|. If CRYPTOHOME_ERROR_NOT_SET is
-  // returned, then |labels_out| contains the label of the keys. Otherwise, the
-  // content of |labels_out| is undefined.
-  user_data_auth::CryptohomeErrorCode ListKeys(
-      const user_data_auth::ListKeysRequest& request,
-      std::vector<std::string>* labels_out);
+  // List the keys stored in |homedirs_|.
+  // See definition of ListKeysReply for what is returned.
+  user_data_auth::ListKeysReply ListKeys(
+      const user_data_auth::ListKeysRequest& request);
 
   // Get the KeyData associated with key that have the label specified in
   // |request.key.data.label|. If there's an error processing this request, then
@@ -260,9 +258,8 @@ class UserDataAuth {
       const user_data_auth::MigrateKeyRequest& request);
 
   // Remove the cryptohome (user's home directory) specified in
-  // |request.identifier|. If removed successfully, then return
-  // CRYPTOHOME_ERROR_NOT_SET, otherwise, some error code is returned.
-  user_data_auth::CryptohomeErrorCode Remove(
+  // |request.identifier|. See definition of RemoveReply for what is returned.
+  user_data_auth::RemoveReply Remove(
       const user_data_auth::RemoveRequest& request);
 
   // Return true if we support low entropy credential.

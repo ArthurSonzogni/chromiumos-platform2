@@ -3891,39 +3891,43 @@ TEST_F(UserDataAuthExTest, ListKeysValidity) {
         return true;
       }));
 
-  std::vector<std::string> labels;
-  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  user_data_auth::ListKeysReply reply =
+      userdataauth_->ListKeys(*list_keys_req_);
+  EXPECT_EQ(reply.error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
-  EXPECT_THAT(labels, ElementsAre(ListKeysValidityTest_label1,
-                                  ListKeysValidityTest_label2));
+  EXPECT_THAT(reply.labels(), ElementsAre(ListKeysValidityTest_label1,
+                                          ListKeysValidityTest_label2));
 
   // Test for account not found case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
-            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+  EXPECT_NE(
+      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Test for key not found case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
-            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  EXPECT_NE(
+      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
-  std::vector<std::string> labels;
 
   // No Email.
-  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_NE(
+      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Empty email.
   list_keys_req_->mutable_account_id()->set_account_id("");
-  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_NE(
+      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, GetKeyDataExNoMatch) {
@@ -4080,14 +4084,16 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
   // Test for successful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_EQ(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Test for unsuccessful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED);
+  EXPECT_NE(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
@@ -4096,8 +4102,9 @@ TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
   SetupMount(kUser);
   remove_homedir_req_->mutable_identifier()->set_account_id(kUser);
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  EXPECT_NE(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
@@ -4105,13 +4112,15 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   PrepareArguments();
 
   // No account_id and AuthSession ID
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_NE(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Empty account_id
   remove_homedir_req_->mutable_identifier()->set_account_id("");
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_NE(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
@@ -4121,8 +4130,9 @@ TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
   remove_homedir_req_->set_auth_session_id(invalid_token);
 
   // Test.
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  EXPECT_NE(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
@@ -4153,8 +4163,9 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
       auth_session_reply.auth_session_id());
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_EQ(
+      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
+      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Verify
   EXPECT_EQ(userdataauth_->auth_session_manager_->FindAuthSession(

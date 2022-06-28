@@ -3128,33 +3128,60 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::ListKeys(
-    const user_data_auth::ListKeysRequest& request,
-    std::vector<std::string>* labels_out) {
+user_data_auth::ListKeysReply UserDataAuth::ListKeys(
+    const user_data_auth::ListKeysRequest& request) {
   AssertOnMountThread();
-  DCHECK(labels_out);
+  user_data_auth::ListKeysReply reply;
 
   if (!request.has_account_id()) {
-    LOG(ERROR) << "ListKeysRequest must have account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    // ListKeysRequest must have account_id.
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInListKeys),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
   }
 
   const std::string& account_id = GetAccountId(request.account_id());
   if (account_id.empty()) {
-    LOG(ERROR) << "ListKeysRequest must have valid account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    // ListKeysRequest must have valid account_id.
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthInvalidIDInListKeys),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
   }
 
   const std::string obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
-    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserNonexistentInListKeys),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND),
+        &reply);
+    return reply;
   }
 
+  std::vector<std::string> labels_out;
   if (!keyset_management_->GetVaultKeysetLabels(
-          obfuscated_username, /*include_le_labels*/ true, labels_out)) {
-    return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+          obfuscated_username, /*include_le_labels*/ true, &labels_out)) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthListFailedInListKeys),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND),
+        &reply);
+    return reply;
   }
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  *reply.mutable_labels() = {labels_out.begin(), labels_out.end()};
+  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+  return reply;
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
@@ -3229,13 +3256,20 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
+user_data_auth::RemoveReply UserDataAuth::Remove(
     const user_data_auth::RemoveRequest& request) {
   AssertOnMountThread();
 
+  user_data_auth::RemoveReply reply;
   if (!request.has_identifier() && request.auth_session_id().empty()) {
-    LOG(ERROR) << "RemoveRequest must have identifier or an AuthSession Id";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    // RemoveRequest must have identifier or an AuthSession Id
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInRemove),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
   }
 
   AuthSession* auth_session = nullptr;
@@ -3243,28 +3277,55 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
     auth_session =
         auth_session_manager_->FindAuthSession(request.auth_session_id());
     if (!auth_session) {
-      return user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
+      PopulateReplyWithError(
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthInvalidAuthSessionInRemove),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                              ErrorAction::kReboot}),
+              user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN),
+          &reply);
+      return reply;
     }
   }
 
   std::string account_id = auth_session ? auth_session->username()
                                         : GetAccountId(request.identifier());
   if (account_id.empty()) {
-    LOG(ERROR) << "RemoveRequest must have valid account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    // RemoveRequest must have valid account_id.
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoAccountIdWithAuthSessionInRemove),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
   }
 
   std::string obfuscated = SanitizeUserName(account_id);
 
   scoped_refptr<UserSession> session = GetUserSession(account_id);
   if (session.get() && session->IsActive()) {
-    LOG(ERROR) << "Can't remove active user";
-    return user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+    // Can't remove active user
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserActiveInRemove),
+            ErrorActionSet({ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
+        &reply);
+    return reply;
   }
 
   if (!homedirs_->Remove(obfuscated)) {
-    LOG(ERROR) << "User vault removal failed";
-    return user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED;
+    // User vault removal failed.
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveFailedInRemove),
+            ErrorActionSet({ErrorAction::kPowerwash, ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED),
+        &reply);
+    return reply;
   }
 
   // Since the user is now removed, any further operations require a fresh
@@ -3273,7 +3334,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
     auth_session_manager_->RemoveAuthSession(request.auth_session_id());
   }
 
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+  return reply;
 }
 
 void UserDataAuth::StartMigrateToDircrypto(
