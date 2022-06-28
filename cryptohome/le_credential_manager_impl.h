@@ -43,20 +43,23 @@ class LECredentialManagerImpl : public LECredentialManager {
       const DelaySchedule& delay_sched,
       uint64_t* ret_label) override;
 
-  LECredStatus CheckCredential(const uint64_t& label,
+  LECredStatus CheckCredential(uint64_t label,
                                const brillo::SecureBlob& le_secret,
                                brillo::SecureBlob* he_secret,
                                brillo::SecureBlob* reset_secret) override;
 
-  LECredStatus ResetCredential(const uint64_t& label,
+  LECredStatus ResetCredential(uint64_t label,
                                const brillo::SecureBlob& reset_secret) override;
 
-  LECredStatus RemoveCredential(const uint64_t& label) override;
+  LECredStatus RemoveCredential(uint64_t label) override;
 
   // Returns the number of wrong authentication attempts done since the label
   // was reset or created. Returns -1 if |label| is not present in the tree or
   // the tree is corrupted.
-  int GetWrongAuthAttempts(const uint64_t& label) override;
+  int GetWrongAuthAttempts(uint64_t label) override;
+
+  // Returns the delay in seconds.
+  LECredStatusOr<uint32_t> GetDelayInSeconds(uint64_t label) override;
 
  private:
   // Since the CheckCredential() and ResetCredential() functions are very
@@ -79,7 +82,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   // - LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
   // values, in which case only reboot will allow this user to authenticate.
-  LECredStatus CheckSecret(const uint64_t& label,
+  LECredStatus CheckSecret(uint64_t label,
                            const brillo::SecureBlob& secret,
                            brillo::SecureBlob* he_secret,
                            brillo::SecureBlob* reset_secret,

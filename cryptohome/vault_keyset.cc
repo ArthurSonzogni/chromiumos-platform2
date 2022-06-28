@@ -322,8 +322,8 @@ CryptoStatus VaultKeyset::Decrypt(const SecureBlob& key,
 
   if (CryptoStatus status = DecryptVaultKeyset(key, locked_to_single_user);
       !status.ok()) {
-    if (IsLECredential() &&
-        status->local_crypto_error() == CryptoError::CE_TPM_DEFEND_LOCK) {
+    if (status->local_crypto_error() == CryptoError::CE_CREDENTIAL_LOCKED &&
+        !auth_locked_) {
       // For LE credentials, if decrypting the keyset failed due to too many
       // attempts, set auth_locked=true in the keyset. Then save it for future
       // callers who can Load it w/o Decrypt'ing to check that flag.

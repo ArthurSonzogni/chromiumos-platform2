@@ -689,6 +689,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
           LECredError::LE_CRED_ERROR_INVALID_LE_SECRET));
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
+  EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_)).WillOnce(ReturnValue(0));
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
@@ -765,6 +766,8 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
       .WillOnce(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LE_CRED_ERROR_PCR_NOT_MATCH));
+  EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_))
+      .WillRepeatedly(ReturnValue(0));
 
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);

@@ -9,6 +9,7 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
 
+#include <limits>
 #include <map>
 #include <string>
 #include <utility>
@@ -60,7 +61,7 @@ void LogLERetCode(int le_error) {
 
 // String used as vector in HMAC operation to derive vkk_seed from High Entropy
 // secret.
-const char kHESecretHmacData[] = "vkk_seed";
+constexpr char kHESecretHmacData[] = "vkk_seed";
 
 // A default delay schedule to be used for LE Credentials.
 // The format for a delay schedule entry is as follows:
@@ -69,11 +70,13 @@ const char kHESecretHmacData[] = "vkk_seed";
 //
 // The default schedule is for the first 5 incorrect attempts to have no delay,
 // and no further attempts allowed.
-const struct {
+constexpr uint32_t kAttemptsLimit = 5;
+constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
+constexpr struct {
   uint32_t attempts;
   uint32_t delay;
 } kDefaultDelaySchedule[] = {
-    {5, UINT32_MAX},
+    {kAttemptsLimit, kInfiniteDelay},
 };
 
 }  // namespace
@@ -286,6 +289,18 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
       &key_blobs->reset_secret.value());
 
   if (!ret.ok()) {
+    // Replace the error with CE_CREDENTIAL_LOCKED if it is caused by invalid LE
+    // secret and locked.
+    if (ret->local_lecred_error() == LE_CRED_ERROR_INVALID_LE_SECRET &&
+        IsLocked(auth_state->le_label.value())) {
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocPinWeaverAuthBlockCheckCredLockedInDerive),
+                 ErrorActionSet({ErrorAction::kAuth}),
+                 CryptoError::CE_CREDENTIAL_LOCKED)
+          .Wrap(std::move(ret));
+    }
+
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocPinWeaverAuthBlockCheckCredFailedInDerive))
@@ -297,6 +312,23 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   key_blobs->vkk_key = HmacSha256(kdf_skey, vkk_seed);
 
   return OkStatus<CryptohomeCryptoError>();
+}
+
+bool PinWeaverAuthBlock::IsLocked(uint64_t label) {
+  LECredStatusOr<uint32_t> delay = le_manager_->GetDelayInSeconds(label);
+  if (!delay.ok()) {
+    LOG(ERROR)
+        << "Failed to obtain the delay in seconds in pinweaver auth block: "
+        << std::move(delay).status();
+    return false;
+  }
+
+  // The pin is locked forever.
+  if (delay.value() == kInfiniteDelay) {
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace cryptohome

@@ -27,6 +27,9 @@ enum class CryptoError {
   // The LE secret provided during decryption is invalid.
   CE_LE_INVALID_SECRET,
   CE_LE_FLAGS_AND_POLICY_MISMATCH,
+  // The LE credential had been locked, and this error will take priority over
+  // the |CE_LE_INVALID_SECRET|.
+  CE_CREDENTIAL_LOCKED,
 };
 
 // Enum classes are not implicitly converted for log statements.

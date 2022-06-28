@@ -1012,9 +1012,8 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
   EXPECT_FALSE(serialized.key_data().policy().auth_locked());
 }
 
-TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
-  // Test to have LECredential fail Decrypt because CE_TPM_DEFEND_LOCK
-  // Setup
+TEST_F(LeCredentialsManagerTest, DecryptLocked) {
+  // Test to have LECredential fail to decrypt and be locked.
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
@@ -1038,14 +1037,30 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
 
   // Test
   ASSERT_FALSE(new_keyset.GetAuthLocked());
-  // Have le_cred_manager inject a
-  // CryptoError::CE_TPM_DEFEND_LOCK error
+
+  // Have le_cred_manager inject a CryptoError::LE_CRED_ERROR_INVALID_LE_SECRET
+  // error.
+  EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_INVALID_LE_SECRET));
+  EXPECT_CALL(*le_cred_manager_, GetDelayInSeconds(_))
+      .WillOnce(ReturnValue(UINT32_MAX));
+
+  CryptoStatus status = new_keyset.Decrypt(key, false);
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_CREDENTIAL_LOCKED);
+  ASSERT_TRUE(new_keyset.GetAuthLocked());
+
+  // Try to decrypt again.
+  // Have le_cred_manager inject a CryptoError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS
+  // error.
   EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
 
-  CryptoStatus status = new_keyset.Decrypt(key, false);
+  status = new_keyset.Decrypt(key, false);
   ASSERT_FALSE(status.ok());
   ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_DEFEND_LOCK);
   ASSERT_TRUE(new_keyset.GetAuthLocked());

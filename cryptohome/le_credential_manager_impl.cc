@@ -165,7 +165,7 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
 }
 
 LECredStatus LECredentialManagerImpl::CheckCredential(
-    const uint64_t& label,
+    uint64_t label,
     const brillo::SecureBlob& le_secret,
     brillo::SecureBlob* he_secret,
     brillo::SecureBlob* reset_secret) {
@@ -173,11 +173,11 @@ LECredStatus LECredentialManagerImpl::CheckCredential(
 }
 
 LECredStatus LECredentialManagerImpl::ResetCredential(
-    const uint64_t& label, const brillo::SecureBlob& reset_secret) {
+    uint64_t label, const brillo::SecureBlob& reset_secret) {
   return CheckSecret(label, reset_secret, nullptr, nullptr, false);
 }
 
-LECredStatus LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
+LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInRemoveCred),
@@ -236,7 +236,7 @@ LECredStatus LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
 }
 
 LECredStatus LECredentialManagerImpl::CheckSecret(
-    const uint64_t& label,
+    uint64_t label,
     const brillo::SecureBlob& secret,
     brillo::SecureBlob* he_secret,
     brillo::SecureBlob* reset_secret,
@@ -344,7 +344,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
       .Wrap(std::move(converted));
 }
 
-int LECredentialManagerImpl::GetWrongAuthAttempts(const uint64_t& label) {
+int LECredentialManagerImpl::GetWrongAuthAttempts(uint64_t label) {
   if (!hash_tree_->IsValid()) {
     return -1;
   }
@@ -353,16 +353,58 @@ int LECredentialManagerImpl::GetWrongAuthAttempts(const uint64_t& label) {
   brillo::Blob orig_cred, orig_mac;
   std::vector<brillo::Blob> h_aux;
   bool metadata_lost;
+
   LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
                                        &h_aux, &metadata_lost);
-  if (!ret.ok())
+  if (!ret.ok()) {
+    LOG(ERROR) << "Failed to retrieve label info: " << std::move(ret);
     return -1;
+  }
 
   hwsec::StatusOr<int> result = pinweaver_->GetWrongAuthAttempts(orig_cred);
   if (!result.ok()) {
     LOG(ERROR) << "Failed to get wrong auth attempts: "
                << std::move(result).status();
     return -1;
+  }
+
+  return result.value();
+}
+
+LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
+    uint64_t label) {
+  if (!hash_tree_->IsValid()) {
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetDelayInSeconds),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+
+  LECredStatus status = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                          &h_aux, &metadata_lost);
+  if (!status.ok()) {
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManRetrieveLabelFailedInGetDelayInSeconds))
+        .Wrap(std::move(status));
+  }
+
+  hwsec::StatusOr<uint32_t> result = pinweaver_->GetDelayInSeconds(orig_cred);
+  if (!result.ok()) {
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManPinWeaverFailedInGetDelayInSeconds),
+               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               LECredError::LE_CRED_ERROR_HASH_TREE)
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
   }
 
   return result.value();

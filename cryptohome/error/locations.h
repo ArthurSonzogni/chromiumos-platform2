@@ -1005,6 +1005,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthUserActiveInRemove = 589,
   /* ./userdataauth.cc */
   kLocUserDataAuthRemoveFailedInRemove = 590,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockCheckCredLockedInDerive = 591,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidTreeInGetDelayInSeconds = 592,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManRetrieveLabelFailedInGetDelayInSeconds = 593,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManPinWeaverFailedInGetDelayInSeconds = 594,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

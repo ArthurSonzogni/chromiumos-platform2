@@ -98,7 +98,7 @@ constexpr char kNewPasskey[] = "new pass";
 constexpr char kNewLabel[] = "new_label";
 constexpr char kSalt[] = "salt";
 
-constexpr int kWrongAuthAttempts = 6;
+constexpr int kWrongAuthAttempts = 5;
 
 const brillo::SecureBlob kInitialBlob64(64, 'A');
 const brillo::SecureBlob kInitialBlob32(32, 'A');
@@ -1595,15 +1595,13 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
 
   // Test
   // Manually trigger attempts to set auth_locked to true.
-  // Note: Yes there are 6 wrong attempts, on the 6th attempt
-  // wrong_auth_attempts stops incrementing and sets auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < kWrongAuthAttempts; iter++) {
     EXPECT_FALSE(le_vk_status.value()->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
-            (kWrongAuthAttempts - 1));
+            kWrongAuthAttempts);
   EXPECT_TRUE(le_vk_status.value()->GetAuthLocked());
 
   // Have a correct attempt that will reset the credentials.
@@ -1709,15 +1707,13 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
               SerializedVaultKeyset::LE_CREDENTIAL);
 
   // Manually trigger attempts to set auth_locked to true.
-  // Note: Yes there are 6 wrong attempts, on the 6th attempt
-  // wrong_auth_attempts stops incrementing and sets auth_locked to true.
   brillo::SecureBlob wrong_key(kWrongPasskey);
   for (int iter = 0; iter < kWrongAuthAttempts; iter++) {
     EXPECT_FALSE(le_vk_status.value()->Decrypt(wrong_key, false).ok());
   }
 
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
-            (kWrongAuthAttempts - 1));
+            kWrongAuthAttempts);
   EXPECT_TRUE(le_vk_status.value()->GetAuthLocked());
 
   // Have an attempt that will fail to reset the credentials.
@@ -1725,7 +1721,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   keyset_management_->ResetLECredentials(wrong_credentials,
                                          users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk_status.value()->GetLELabel()),
-            (kWrongAuthAttempts - 1));
+            kWrongAuthAttempts);
   le_vk_status =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
   EXPECT_TRUE(le_vk_status.value()->GetFlags() &

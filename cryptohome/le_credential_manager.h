@@ -60,7 +60,7 @@ class LECredentialManager {
   // LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   // LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
   // values, in which case only reboot will allow this user to authenticate.
-  virtual LECredStatus CheckCredential(const uint64_t& label,
+  virtual LECredStatus CheckCredential(uint64_t label,
                                        const brillo::SecureBlob& le_secret,
                                        brillo::SecureBlob* he_secret,
                                        brillo::SecureBlob* reset_secret) = 0;
@@ -76,7 +76,7 @@ class LECredentialManager {
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   virtual LECredStatus ResetCredential(
-      const uint64_t& label, const brillo::SecureBlob& reset_secret) = 0;
+      uint64_t label, const brillo::SecureBlob& reset_secret) = 0;
 
   // Remove a credential at node with label |label|.
   //
@@ -84,12 +84,15 @@ class LECredentialManager {
   // On failure, returns status with:
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_HASH_TREE for hash tree error.
-  virtual LECredStatus RemoveCredential(const uint64_t& label) = 0;
+  virtual LECredStatus RemoveCredential(uint64_t label) = 0;
 
   // Returns the number of wrong authentication attempts done since the label
   // was reset or created. Returns -1 if |label| is not present in the tree or
   // the tree is corrupted.
-  virtual int GetWrongAuthAttempts(const uint64_t& label) = 0;
+  virtual int GetWrongAuthAttempts(uint64_t label) = 0;
+
+  // Returns the delay in seconds.
+  virtual LECredStatusOr<uint32_t> GetDelayInSeconds(uint64_t label) = 0;
 };
 
 };  // namespace cryptohome

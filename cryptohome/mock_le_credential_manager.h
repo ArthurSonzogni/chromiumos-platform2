@@ -29,7 +29,7 @@ class MockLECredentialManager : public LECredentialManager {
 
   MOCK_METHOD(LECredStatus,
               CheckCredential,
-              (const uint64_t&,
+              (uint64_t,
                const brillo::SecureBlob&,
                brillo::SecureBlob*,
                brillo::SecureBlob*),
@@ -37,12 +37,17 @@ class MockLECredentialManager : public LECredentialManager {
 
   MOCK_METHOD(LECredStatus,
               ResetCredential,
-              (const uint64_t& label, const brillo::SecureBlob& reset_secret),
+              (uint64_t label, const brillo::SecureBlob& reset_secret),
               (override));
 
-  MOCK_METHOD(LECredStatus, RemoveCredential, (const uint64_t&), (override));
+  MOCK_METHOD(LECredStatus, RemoveCredential, (uint64_t), (override));
 
-  MOCK_METHOD(int, GetWrongAuthAttempts, (const uint64_t& label), (override));
+  MOCK_METHOD(int, GetWrongAuthAttempts, (uint64_t label), (override));
+
+  MOCK_METHOD(LECredStatusOr<uint32_t>,
+              GetDelayInSeconds,
+              (uint64_t label),
+              (override));
 };
 
 }  // namespace cryptohome
