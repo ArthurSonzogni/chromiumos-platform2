@@ -79,7 +79,8 @@ bool Crypto::Init() {
     hwsec::StatusOr<bool> is_enabled = pinweaver_->IsEnabled();
     if (!is_enabled.ok()) {
       LOG(ERROR) << "Failed to get pinweaver status: " << is_enabled.status();
-      return false;
+      // The initialization should not fail due to the pinweaver error.
+      return true;
     }
 
     if (is_enabled.value()) {

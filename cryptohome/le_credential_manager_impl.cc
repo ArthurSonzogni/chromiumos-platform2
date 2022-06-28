@@ -65,6 +65,7 @@ LECredentialManagerImpl::LECredentialManagerImpl(
         pinweaver_->Reset(kBitsPerLevel, kLengthLabels);
     if (!result.ok()) {
       LOG(ERROR) << "Failed to reset pinweaver: " << result.status();
+      return;
     }
     root_hash_ = result->new_root;
 
