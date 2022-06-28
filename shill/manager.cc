@@ -1033,8 +1033,7 @@ ServiceRefPtr Manager::GetServiceWithGUID(const std::string& guid,
 
 ServiceRefPtr Manager::GetDefaultService() const {
   SLOG(this, 2) << __func__;
-  // TODO(b/182777518): Check the connection state instead.
-  if (services_.empty() || !FindActiveNetworkFromService(services_[0])) {
+  if (services_.empty() || !services_[0]->IsConnected()) {
     SLOG(this, 2) << "In " << __func__ << ": No default connection exists.";
     return nullptr;
   }
@@ -2712,7 +2711,7 @@ DeviceRefPtr Manager::FindDeviceFromService(
 
 Network* Manager::FindActiveNetworkFromService(
     const ServiceRefPtr& service) const {
-  if (!service || !service->HasActiveConnection()) {
+  if (!service || !service->IsConnected()) {
     return nullptr;
   }
   auto device = FindDeviceFromService(service);

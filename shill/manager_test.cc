@@ -345,7 +345,7 @@ class ManagerTest : public PropertyStoreTest {
     manager()->RegisterDevice(device);
     device->set_selected_service_for_testing(service);
     if (service) {
-      EXPECT_CALL(*service, HasActiveConnection())
+      EXPECT_CALL(*service, IsConnected(_))
           .WillRepeatedly(Return(device->network()->HasConnectionObject()));
     }
   }
@@ -3057,7 +3057,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   EXPECT_CALL(*mock_service, state())
       .WillOnce(Return(Service::kStateNoConnectivity));
-  EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*manager_adaptor_, EmitStringChanged(kConnectionStateProperty,
                                                    kStateNoConnectivity));
   RefreshConnectionState();

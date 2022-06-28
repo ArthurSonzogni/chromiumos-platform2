@@ -1080,10 +1080,6 @@ void Service::SetIPConfig(
   }
 }
 
-bool Service::HasActiveConnection() const {
-  return !ipconfig_rpc_identifier_.value().empty();
-}
-
 void Service::NotifyStaticIPConfigChanged() {
   if (!static_ipconfig_changed_callback_.is_null()) {
     static_ipconfig_changed_callback_.Run();

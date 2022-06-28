@@ -76,7 +76,6 @@ class MockService : public Service {
               SetIPConfig,
               (RpcIdentifier, base::RepeatingClosure),
               (override));
-  MOCK_METHOD(bool, HasActiveConnection, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(const EapCredentials*, eap, (), (const, override));

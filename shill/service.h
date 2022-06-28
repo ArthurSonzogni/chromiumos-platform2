@@ -410,10 +410,6 @@ class Service : public base::RefCounted<Service> {
       RpcIdentifier ipconfig_rpc_id,
       base::RepeatingClosure static_ipconfig_changed_callback);
 
-  // Whether this service is connected to an active connection. It is
-  // implemented by checking whether this service has a valid IPConfig now.
-  mockable bool HasActiveConnection() const;
-
   // Returns the virtual device associated with this service. Currently this
   // will return a Device pointer only for a connected VPN service.
   virtual VirtualDeviceRefPtr GetVirtualDevice() const;
