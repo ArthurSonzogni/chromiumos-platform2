@@ -39,8 +39,9 @@ static_assert(!std::is_copy_assignable<RgbkbdSetColorCommand>::value,
               "EcCommands are not copy-assignable by default");
 
 class BRILLO_EXPORT RgbkbdCommand
-    : public EcCommand<struct ec_params_rgbkbd, EmptyParam> {
+    : public EcCommand<struct ec_params_rgbkbd, struct ec_response_rgbkbd> {
  public:
+  RgbkbdCommand() : EcCommand(EC_CMD_RGBKBD, 0) {}
   template <typename T = RgbkbdCommand>
   static std::unique_ptr<T> Create(enum ec_rgbkbd_subcmd subcmd,
                                    struct rgb_s color) {
@@ -54,13 +55,32 @@ class BRILLO_EXPORT RgbkbdCommand
     return base::WrapUnique(new T(subcmd, color));
   }
 
+  template <typename T = RgbkbdCommand>
+  static std::unique_ptr<T> Create(enum ec_rgbkbd_subcmd subcmd) {
+    static_assert(std::is_base_of<RgbkbdCommand, T>::value,
+                  "Only classes derived from RgbkbdCommand can use Create");
+
+    if (subcmd != EC_RGBKBD_SUBCMD_GET_CONFIG) {
+      return nullptr;
+    }
+
+    return base::WrapUnique(new T(subcmd));
+  }
+
   ~RgbkbdCommand() override = default;
+
+  uint8_t GetConfig() const { return Resp()->rgbkbd_type; }
 
  protected:
   RgbkbdCommand(enum ec_rgbkbd_subcmd subcmd, struct rgb_s color)
       : EcCommand(EC_CMD_RGBKBD, 0) {
     Req()->subcmd = subcmd;
     Req()->color = color;
+  }
+
+  explicit RgbkbdCommand(enum ec_rgbkbd_subcmd subcmd)
+      : EcCommand(EC_CMD_RGBKBD, 0) {
+    Req()->subcmd = subcmd;
   }
 };
 

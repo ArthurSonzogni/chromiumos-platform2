@@ -8,6 +8,8 @@
 #include <cstring>
 #include <vector>
 
+#include <base/test/task_environment.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "libec/ec_command.h"
@@ -15,6 +17,8 @@
 
 namespace ec {
 namespace {
+
+using ::testing::Return;
 
 TEST(RgbkbdSetColorCommand, HeaderSize) {
   EXPECT_EQ(sizeof(rgb_keyboard::Header), sizeof(ec_params_rgbkbd_set_color));
@@ -75,6 +79,34 @@ TEST(RgbkbdCommand, RgbkbdClearCommand) {
 
   cmd = RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_COUNT, color);
   EXPECT_FALSE(cmd);
+}
+
+TEST(RgbkbdCommand, RgbkbdGetConfigCommand) {
+  auto cmd = RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_GET_CONFIG);
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Command(), EC_CMD_RGBKBD);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->Req()->subcmd, EC_RGBKBD_SUBCMD_GET_CONFIG);
+}
+
+// Mock the underlying EcCommand to test.
+class RgbkbdCommandTest : public testing::Test {
+ public:
+  class MockRgbkbdCommand : public RgbkbdCommand {
+   public:
+    using RgbkbdCommand::RgbkbdCommand;
+    MOCK_METHOD(struct ec_response_rgbkbd*, Resp, (), (const, override));
+  };
+};
+
+TEST_F(RgbkbdCommandTest, RgbkbdGetConfigResponse) {
+  auto mock_cmd =
+      RgbkbdCommand::Create<MockRgbkbdCommand>(EC_RGBKBD_SUBCMD_GET_CONFIG);
+
+  struct ec_response_rgbkbd response = {.rgbkbd_type = 2};
+
+  EXPECT_CALL(*mock_cmd, Resp).WillRepeatedly(Return(&response));
+  EXPECT_EQ(mock_cmd->GetConfig(), 2);
 }
 
 }  // namespace
