@@ -77,7 +77,7 @@ void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
     set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name()));
   }
   ipconfig()->set_properties(properties);
-  OnIPv4ConfigUpdated();
+  network()->OnIPv4ConfigUpdated();
 }
 
 void VirtualDevice::DropConnection() {

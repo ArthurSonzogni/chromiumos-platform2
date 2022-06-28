@@ -20,6 +20,7 @@
 namespace shill {
 
 class DeviceInfo;
+class Service;
 
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
@@ -39,11 +40,17 @@ class Network {
     // state to a connected state.
     virtual void OnConnectionUpdated(IPConfig* ipconfig) = 0;
 
+    // The IPConfig object lists held by this Network has changed.
+    virtual void OnIPConfigsPropertyUpdated() = 0;
+
     // TODO(b/232177767): Get the list of uids whose traffic should be blocked
     // on this connection. This is not a signal or callback. Put it here just to
     // avoid introducing Manager dependency on Network. Find a better solution
     // later.
     virtual std::vector<uint32_t> GetBlackholedUids() = 0;
+    // TODO(b/232177767): This will be removed once we finish refactoring the
+    // interaction between Service and Network.
+    virtual Service* GetSelectedService() = 0;
   };
 
   // Note that |event_handler| should live longer than the created Network
@@ -68,8 +75,14 @@ class Network {
   // finally be removed.
   mockable bool HasConnectionObject() const;
 
+  // Triggers a reconfiguration on connection for an IPv4 config change.
+  void OnIPv4ConfigUpdated();
+
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
+
+  // Returns a WeakPtr of the Network.
+  base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
   // TODO(b/232177767): Wrappers for the corresponding functions in the
   // Connection class. This is a temporary solution. The caller should guarantee
@@ -134,6 +147,8 @@ class Network {
 
   // Other dependencies.
   DeviceInfo* device_info_;
+
+  base::WeakPtrFactory<Network> weak_factory_{this};
 };
 
 }  // namespace shill

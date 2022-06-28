@@ -406,7 +406,7 @@ void Device::DestroyIPConfig() {
   }
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
-    UpdateIPConfigsProperty();
+    OnIPConfigsPropertyUpdated();
   }
   DestroyConnection();
 }
@@ -415,7 +415,7 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   if (!address) {
     if (ip6config()) {
       set_ip6config(nullptr);
-      UpdateIPConfigsProperty();
+      OnIPConfigsPropertyUpdated();
     }
     return;
   }
@@ -467,7 +467,7 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
     properties.dns_servers = ipv6_static_properties_->dns_servers;
   }
   ip6config()->set_properties(properties);
-  UpdateIPConfigsProperty();
+  OnIPConfigsPropertyUpdated();
   OnIPv6ConfigUpdated();
   OnGetSLAACAddress();
 }
@@ -516,7 +516,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   }
 
   ip6config()->UpdateDNSServers(std::move(addresses_str));
-  UpdateIPConfigsProperty();
+  OnIPConfigsPropertyUpdated();
   OnIPv6ConfigUpdated();
 }
 
@@ -536,7 +536,7 @@ void Device::IPv6DNSServerExpired() {
     return;
   }
   ip6config()->UpdateDNSServers(std::vector<std::string>());
-  UpdateIPConfigsProperty();
+  OnIPConfigsPropertyUpdated();
 }
 
 void Device::StopAllActivities() {
@@ -568,7 +568,7 @@ void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
     // from kernel for new IPv6 configuration if there is one.
     StopIPv6DNSServerTimer();
     set_ip6config(nullptr);
-    UpdateIPConfigsProperty();
+    OnIPConfigsPropertyUpdated();
   }
 }
 
@@ -653,7 +653,8 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_));
   ipconfig()->set_properties(properties);
   dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&Device::OnIPv4ConfigUpdated, AsWeakPtr()));
+      FROM_HERE,
+      base::BindOnce(&Network::OnIPv4ConfigUpdated, network_->AsWeakPtr()));
 }
 
 void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
@@ -670,7 +671,7 @@ void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
   dispatcher()->PostTask(
       FROM_HERE,
       base::BindOnce(&Device::ConfigureStaticIPv6Address, AsWeakPtr()));
-  // UpdateIPConfigsProperty() will be called later when SLAAC finishes, that
+  // OnIPConfigsPropertyUpdated() will be called later when SLAAC finishes, that
   // is also where static DNS configuration will be applied.
 }
 
@@ -720,7 +721,7 @@ void Device::ConfigureStaticIPTask() {
     // If the parameters contain an IP address, apply them now and bring
     // the interface up.  When DHCP information arrives, it will supplement
     // the static information.
-    OnIPv4ConfigUpdated();
+    network_->OnIPv4ConfigUpdated();
   } else {
     // Either |ipconfig()| has just been created in AcquireIPConfig()
     // or we're being called by OnIPConfigRefreshed().  In either case a DHCP
@@ -832,7 +833,7 @@ void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   DCHECK(dhcp_controller());
   DCHECK(ipconfig());
   ipconfig()->UpdateProperties(properties);
-  OnIPv4ConfigUpdated();
+  network_->OnIPv4ConfigUpdated();
   if (new_lease_acquired) {
     OnGetDHCPLease();
   }
@@ -845,27 +846,6 @@ void Device::OnNetworkValidationStart() {}
 void Device::OnNetworkValidationSuccess() {}
 void Device::OnNetworkValidationFailure() {}
 
-void Device::OnIPv4ConfigUpdated() {
-  SLOG(this, 2) << __func__;
-  if (selected_service_) {
-    ipconfig()->ApplyStaticIPParameters(
-        selected_service_->mutable_static_ip_parameters());
-    if (IsUsingStaticIP() && dhcp_controller()) {
-      // If we are using a statically configured IP address instead
-      // of a leased IP address, release any acquired lease so it may
-      // be used by others.  This allows us to merge other non-leased
-      // parameters (like DNS) when they're available from a DHCP server
-      // and not overridden by static parameters, but at the same time
-      // we avoid taking up a dynamic IP address the DHCP server could
-      // assign to someone else who might actually use it.
-      dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
-    }
-  }
-
-  network_->SetupConnection(ipconfig());
-  UpdateIPConfigsProperty();
-}
-
 void Device::OnDHCPFailure() {
   SLOG(this, 2) << __func__;
 
@@ -875,7 +855,7 @@ void Device::OnDHCPFailure() {
   DCHECK(dhcp_controller());
   DCHECK(ipconfig());
   if (selected_service_) {
-    if (IsUsingStaticIP()) {
+    if (selected_service_->HasStaticIPAddress()) {
       // Consider three cases:
       //
       // 1. We're here because DHCP failed while starting up. There
@@ -904,7 +884,7 @@ void Device::OnDHCPFailure() {
   }
 
   ipconfig()->ResetProperties();
-  UpdateIPConfigsProperty();
+  OnIPConfigsPropertyUpdated();
 
   // Fallback to IPv6 if possible.
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
@@ -1439,7 +1419,7 @@ void Device::SetEnabledUnchecked(bool enable,
   }
 }
 
-void Device::UpdateIPConfigsProperty() {
+void Device::OnIPConfigsPropertyUpdated() {
   adaptor_->EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
                                           AvailableIPConfigs(nullptr));
 }

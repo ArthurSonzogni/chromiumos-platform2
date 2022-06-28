@@ -328,7 +328,10 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
   void OnConnectionUpdated(IPConfig* ipconfig) override;
+  // Emit a property change signal for the "IPConfigs" property of this device.
+  void OnIPConfigsPropertyUpdated() override;
   std::vector<uint32_t> GetBlackholedUids() override;
+  Service* GetSelectedService() override { return selected_service_.get(); }
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
@@ -499,9 +502,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // later time.
   virtual void OnNetworkValidationFailure();
 
-  // Callback invoked on successful IPv4 configuration updates.
-  void OnIPv4ConfigUpdated();
-
   // Called when IPv6 configuration changes.
   virtual void OnIPv6ConfigUpdated();
 
@@ -601,9 +601,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
-
-  // Emit a property change signal for the "IPConfigs" property of this device.
-  void UpdateIPConfigsProperty();
 
   // Timer function for monitoring IPv6 DNS server's lifetime.
   void StartIPv6DNSServerTimer(base::TimeDelta lifetime);

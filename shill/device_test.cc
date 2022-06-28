@@ -153,7 +153,7 @@ class DeviceTest : public testing::Test {
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
 
-  void OnIPv4ConfigUpdated() { device_->OnIPv4ConfigUpdated(); }
+  void OnIPv4ConfigUpdated() { device_->network()->OnIPv4ConfigUpdated(); }
 
   void OnDHCPFailure() { device_->OnDHCPFailure(); }
 

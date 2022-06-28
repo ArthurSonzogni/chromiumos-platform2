@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "shill/connection.h"
+#include "shill/service.h"
 
 namespace shill {
 
@@ -43,6 +44,26 @@ void Network::DestroyConnection() {
 
 bool Network::HasConnectionObject() const {
   return connection_ != nullptr;
+}
+
+void Network::OnIPv4ConfigUpdated() {
+  auto* selected_service = event_handler_->GetSelectedService();
+  if (selected_service) {
+    ipconfig()->ApplyStaticIPParameters(
+        selected_service->mutable_static_ip_parameters());
+    if (selected_service->HasStaticIPAddress() && dhcp_controller()) {
+      // If we are using a statically configured IP address instead
+      // of a leased IP address, release any acquired lease so it may
+      // be used by others.  This allows us to merge other non-leased
+      // parameters (like DNS) when they're available from a DHCP server
+      // and not overridden by static parameters, but at the same time
+      // we avoid taking up a dynamic IP address the DHCP server could
+      // assign to someone else who might actually use it.
+      dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
+    }
+  }
+  SetupConnection(ipconfig());
+  event_handler_->OnIPConfigsPropertyUpdated();
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {
