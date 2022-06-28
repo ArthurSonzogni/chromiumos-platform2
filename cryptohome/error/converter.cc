@@ -209,6 +209,11 @@ void PopulateReplyWithError(
   }
 }
 
+// Instantiate PopulateReplyWithError and export them for types actually used.
+template void PopulateReplyWithError(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
+    user_data_auth::UnmountReply* reply);
+
 template <typename ReplyType>
 void ReplyWithError(
     base::OnceCallback<void(const ReplyType&)> on_done,

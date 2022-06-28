@@ -64,13 +64,7 @@ void UserDataAuthAdaptor::DoUnmount(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<user_data_auth::UnmountReply>>
         response) {
-  bool unmount_ok = service_->Unmount();
-
-  user_data_auth::UnmountReply reply;
-  if (!unmount_ok) {
-    reply.set_error(
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
-  }
+  user_data_auth::UnmountReply reply = service_->Unmount();
   response->Return(reply);
 }
 

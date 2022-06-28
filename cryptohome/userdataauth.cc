@@ -1036,7 +1036,7 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   return skipped;
 }
 
-bool UserDataAuth::Unmount() {
+user_data_auth::UnmountReply UserDataAuth::Unmount() {
   AssertOnMountThread();
 
   bool unmount_ok = RemoveAllMounts();
@@ -1053,7 +1053,16 @@ bool UserDataAuth::Unmount() {
     homedirs_->RemoveNonOwnerCryptohomes();
   }
 
-  return unmount_ok;
+  CryptohomeStatus result;
+  if (!unmount_ok) {
+    result = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveAllMountsFailedInUnmount),
+        ErrorActionSet({ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
+  }
+  user_data_auth::UnmountReply reply;
+  PopulateReplyWithError(result, &reply);
+  return reply;
 }
 
 void UserDataAuth::InitializePkcs11(UserSession* session) {

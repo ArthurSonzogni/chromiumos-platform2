@@ -112,9 +112,9 @@ class UserDataAuth {
                         bool* is_ephemeral_out = nullptr);
 
   // Calling this function will unmount all mounted cryptohomes. It'll return
-  // true if all mounts are cleanly unmounted.
+  // a reply without error if all mounts are cleanly unmounted.
   // Note: This must only be called on mount thread
-  bool Unmount();
+  user_data_auth::UnmountReply Unmount();
 
   // This function will attempt to mount the requested user's home directory, as
   // specified in |request|. Once that's done, it'll call |on_done| to notify

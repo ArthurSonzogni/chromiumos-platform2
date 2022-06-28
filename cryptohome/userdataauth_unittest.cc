@@ -887,7 +887,8 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(0);
 
   // Unmount should be successful.
-  EXPECT_TRUE(userdataauth_->Unmount());
+  EXPECT_EQ(userdataauth_->Unmount().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // It should be unmounted in the end.
   EXPECT_FALSE(userdataauth_->IsMounted());
@@ -905,7 +906,8 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(0);
 
   // Unmount should be honest about failures.
-  EXPECT_FALSE(userdataauth_->Unmount());
+  EXPECT_NE(userdataauth_->Unmount().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Unmount will remove all mounts even if it failed.
   EXPECT_FALSE(userdataauth_->IsMounted());
@@ -930,7 +932,8 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
   EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(1);
 
   // Unmount should be successful.
-  EXPECT_TRUE(userdataauth_->Unmount());
+  EXPECT_EQ(userdataauth_->Unmount().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // It should be unmounted in the end.
   EXPECT_FALSE(userdataauth_->IsMounted());
@@ -948,7 +951,8 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
   EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(1);
 
   // Unmount should be honest about failures.
-  EXPECT_FALSE(userdataauth_->Unmount());
+  EXPECT_NE(userdataauth_->Unmount().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Unmount will remove all mounts even if it failed.
   EXPECT_FALSE(userdataauth_->IsMounted());

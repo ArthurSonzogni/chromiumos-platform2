@@ -985,6 +985,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthMountFailedInContinueMountWithCred = 579,
   /* ./userdataauth.cc */
   kLocUserDataAuthInitChalRespFailedInAddCredentials = 580,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthRemoveAllMountsFailedInUnmount = 581,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
