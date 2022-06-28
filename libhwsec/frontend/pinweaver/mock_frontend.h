@@ -71,6 +71,10 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
               GetWrongAuthAttempts,
               (const brillo::Blob& cred_metadata),
               (override));
+  MOCK_METHOD(StatusOr<DelaySchedule>,
+              GetDelaySchedule,
+              (const brillo::Blob& cred_metadata),
+              (override));
 };
 
 }  // namespace hwsec

@@ -276,6 +276,10 @@ class MockBackend : public Backend {
                 GetWrongAuthAttempts,
                 (const brillo::Blob& cred_metadata),
                 (override));
+    MOCK_METHOD(StatusOr<DelaySchedule>,
+                GetDelaySchedule,
+                (const brillo::Blob& cred_metadata),
+                (override));
   };
 
   class MockVendor : public Vendor {

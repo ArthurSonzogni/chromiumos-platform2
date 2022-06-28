@@ -93,4 +93,10 @@ StatusOr<int> PinWeaverFrontendImpl::GetWrongAuthAttempts(
       cred_metadata);
 }
 
+StatusOr<DelaySchedule> PinWeaverFrontendImpl::GetDelaySchedule(
+    const brillo::Blob& cred_metadata) {
+  return middleware_.CallSync<&Backend::PinWeaver::GetDelaySchedule>(
+      cred_metadata);
+}
+
 }  // namespace hwsec

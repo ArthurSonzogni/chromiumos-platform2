@@ -227,6 +227,8 @@ class BackendTpm2 : public Backend {
         const brillo::Blob& orig_cred_metadata) override;
     StatusOr<int> GetWrongAuthAttempts(
         const brillo::Blob& cred_metadata) override;
+    StatusOr<DelaySchedule> GetDelaySchedule(
+        const brillo::Blob& cred_metadata) override;
 
    private:
     // The protocol version used by pinweaver.

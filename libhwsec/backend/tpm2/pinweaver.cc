@@ -378,9 +378,10 @@ StatusOr<int> PinWeaverTpm2::GetWrongAuthAttempts(
     const brillo::Blob& cred_metadata) {
   // The assumption is that leaf_public_data_t structure will have the existing
   // part immutable in the future.
-  if (cred_metadata.size() < offsetof(unimported_leaf_data_t, payload) +
-                                 offsetof(leaf_public_data_t, attempt_count) +
-                                 sizeof(struct attempt_count_t)) {
+  if (cred_metadata.size() <
+      offsetof(unimported_leaf_data_t, payload) +
+          offsetof(leaf_public_data_t, attempt_count) +
+          sizeof(std::declval<leaf_public_data_t>().attempt_count)) {
     return MakeStatus<TPMError>("GetWrongAuthAttempts metadata too short",
                                 TPMRetryAction::kNoRetry);
   }
@@ -407,6 +408,70 @@ StatusOr<int> PinWeaverTpm2::GetWrongAuthAttempts(
   memcpy(&count, ptr, sizeof(count));
 
   return base::ByteSwapToLE32(count);
+}
+
+StatusOr<PinWeaverTpm2::DelaySchedule> PinWeaverTpm2::GetDelaySchedule(
+    const brillo::Blob& cred_metadata) {
+  // The assumption is that leaf_public_data_t structure will have the existing
+  // part immutable in the future.
+  if (cred_metadata.size() <
+      offsetof(unimported_leaf_data_t, payload) +
+          offsetof(leaf_public_data_t, delay_schedule) +
+          sizeof(std::declval<leaf_public_data_t>().delay_schedule)) {
+    return MakeStatus<TPMError>("GetDelaySchedule metadata too short",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // The below should equal to this:
+  //
+  // reinterpret_cast<struct delay_schedule_entry_t*>(
+  //   reinterpret_cast<struct unimported_leaf_data_t*>(
+  //     cred_metadata.data()
+  //   )->payload
+  // )->delay_schedule;
+  //
+  // But we should use memcpy to prevent misaligned accesses and endian issue.
+
+  DelaySchedule delay_schedule;
+
+  static_assert(sizeof(std::declval<leaf_public_data_t>().delay_schedule) ==
+                sizeof(delay_schedule_entry_t) * PW_SCHED_COUNT);
+
+  for (size_t i = 0; i < PW_SCHED_COUNT; i++) {
+    uint32_t attempt_count = 0;
+    uint32_t time_diff = 0;
+
+    static_assert(sizeof(std::declval<attempt_count_t>().v) ==
+                  sizeof(attempt_count));
+    static_assert(sizeof(std::declval<time_diff_t>().v) == sizeof(time_diff));
+
+    const uint8_t* entry_ptr = cred_metadata.data() +
+                               offsetof(unimported_leaf_data_t, payload) +
+                               offsetof(leaf_public_data_t, delay_schedule) +
+                               sizeof(delay_schedule_entry_t) * i;
+
+    const uint8_t* attempt_count_ptr =
+        entry_ptr + offsetof(delay_schedule_entry_t, attempt_count) +
+        offsetof(attempt_count_t, v);
+
+    memcpy(&attempt_count, attempt_count_ptr, sizeof(attempt_count));
+    attempt_count = base::ByteSwapToLE32(attempt_count);
+
+    const uint8_t* time_diff_ptr = entry_ptr +
+                                   offsetof(delay_schedule_entry_t, time_diff) +
+                                   offsetof(time_diff_t, v);
+
+    memcpy(&time_diff, time_diff_ptr, sizeof(time_diff));
+    time_diff = base::ByteSwapToLE32(time_diff);
+
+    if (attempt_count == 0 && time_diff == 0) {
+      break;
+    }
+
+    delay_schedule[attempt_count] = time_diff;
+  }
+
+  return delay_schedule;
 }
 
 }  // namespace hwsec

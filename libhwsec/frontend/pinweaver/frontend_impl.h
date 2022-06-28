@@ -57,6 +57,8 @@ class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
       const brillo::Blob& orig_cred_metadata) override;
   StatusOr<int> GetWrongAuthAttempts(
       const brillo::Blob& cred_metadata) override;
+  StatusOr<DelaySchedule> GetDelaySchedule(
+      const brillo::Blob& cred_metadata) override;
 };
 
 }  // namespace hwsec

@@ -141,6 +141,10 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
   // attempts.
   virtual StatusOr<int> GetWrongAuthAttempts(
       const brillo::Blob& cred_metadata) = 0;
+
+  // Looks into the metadata and retrieves the delay schedule.
+  virtual StatusOr<DelaySchedule> GetDelaySchedule(
+      const brillo::Blob& cred_metadata) = 0;
 };
 
 }  // namespace hwsec

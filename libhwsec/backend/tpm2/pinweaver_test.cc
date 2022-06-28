@@ -684,4 +684,29 @@ TEST_F(BackendPinweaverTpm2Test, GetWrongAuthAttemptsEmpty) {
   EXPECT_FALSE(result.ok());
 }
 
+TEST_F(BackendPinweaverTpm2Test, GetDelaySchedule) {
+  brillo::Blob header(sizeof(unimported_leaf_data_t));
+  brillo::Blob leaf(sizeof(leaf_public_data_t));
+
+  struct leaf_public_data_t* leaf_data =
+      reinterpret_cast<struct leaf_public_data_t*>(leaf.data());
+  leaf_data->delay_schedule[0].attempt_count.v = 5;
+  leaf_data->delay_schedule[0].time_diff.v = UINT32_MAX;
+
+  auto result = middleware_->CallSync<&Backend::PinWeaver::GetDelaySchedule>(
+      brillo::CombineBlobs({header, leaf}));
+
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(result.value().size(), 1);
+  EXPECT_EQ(result.value().begin()->first, 5);
+  EXPECT_EQ(result.value().begin()->second, UINT32_MAX);
+}
+
+TEST_F(BackendPinweaverTpm2Test, GetDelayScheduleEmpty) {
+  auto result = middleware_->CallSync<&Backend::PinWeaver::GetDelaySchedule>(
+      brillo::Blob());
+
+  EXPECT_FALSE(result.ok());
+}
+
 }  // namespace hwsec
