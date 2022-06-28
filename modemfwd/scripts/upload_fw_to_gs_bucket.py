@@ -49,6 +49,23 @@ FM350_MISC_PREFIXES = ['OEM_OTA_', 'DEV_OTA_', 'OP_OTA_']
 OEM_FW_PREFIX = 'OEM_cust.'
 OEM_FW_POSTFIX = '_signed.fls3.xz'
 
+class TempDir(object):
+    """Context manager to make sure temporary directories are cleaned up."""
+
+    def __init__(self, keep_tmp_files):
+        self._keep_tmp_files = keep_tmp_files
+        self._tempdir = None
+
+    def __enter__(self):
+        self._tempdir = tempfile.mkdtemp()
+        return self._tempdir
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self._keep_tmp_files:
+            logging.info('Removing temporary files')
+            shutil.rmtree(self._tempdir)
+        return False
+
 
 class FwUploader(object):
     """Class to verify the files and upload the tarball to a gs bucket."""
@@ -63,36 +80,37 @@ class FwUploader(object):
         if not self.validate():
             return os.EX_USAGE
 
-        tempdir = tempfile.mkdtemp()
-        path_to_package = os.path.join(tempdir, self.tarball_dir_name)
-        os.mkdir(path_to_package)
+        with TempDir(keep_tmp_files) as tempdir:
+            path_to_package = os.path.join(tempdir, self.tarball_dir_name)
+            os.mkdir(path_to_package)
 
-        if not self.prepare_files(self.path, path_to_package):
-            logging.error('Failed to prepare files for packaging')
-            return os.EX_OSFILE
+            if not self.prepare_files(self.path, path_to_package):
+                logging.error('Failed to prepare files for packaging')
+                return os.EX_OSFILE
 
-        os.chdir(tempdir)
-        tarball_name = f'{self.tarball_dir_name}.tar.xz'
-        subprocess.run(['tar', '-Ipixz', '-cf', f'{tarball_name}',
-                        f'{self.tarball_dir_name}/'],
-                       stderr=subprocess.DEVNULL, check=False)
-        tarball_path = os.path.join(tempdir, tarball_name)
-        logging.info('Tarball created: %s', tarball_path)
+            os.chdir(tempdir)
+            tarball_name = f'{self.tarball_dir_name}.tar.xz'
+            subprocess.run(['tar', '-Ipixz', '-cf', f'{tarball_name}',
+                            f'{self.tarball_dir_name}/'],
+                           stderr=subprocess.DEVNULL, check=True)
+            tarball_path = os.path.join(tempdir, tarball_name)
+            logging.info('Tarball created: %s', tarball_path)
 
-        gs_bucket_path = os.path.join(MIRROR_PATH, tarball_name)
-        if self.upload:
-            logging.info('Uploading file %s to %s', tarball_path,
-                         gs_bucket_path)
-            subprocess.run(['gsutil', 'cp', '-n', '-a', 'public-read',
-                            f'{tarball_path}', f'{gs_bucket_path}'],
-                           stderr=subprocess.DEVNULL, check=False)
-        else:
-            logging.info('Use --upload flag to upload file %s to %s',
-                         tarball_path, gs_bucket_path)
-
-        if not keep_tmp_files:
-            logging.info('Removing temporary files')
-            shutil.rmtree(tempdir)
+            gs_bucket_path = os.path.join(MIRROR_PATH, tarball_name)
+            if self.upload:
+                logging.info('Uploading file %s to %s', tarball_path,
+                             gs_bucket_path)
+                subprocess.run(['gsutil', 'cp', '-n', '-a', 'public-read',
+                                f'{tarball_path}', f'{gs_bucket_path}'],
+                               stderr=subprocess.DEVNULL, check=True)
+                logging.info('Setting ACLs on %s', gs_bucket_path)
+                subprocess.run(['gsutil', 'acl', 'ch', '-g',
+                                'mdb.croscellular@google.com:O',
+                                f'{gs_bucket_path}'],
+                               stderr=subprocess.DEVNULL, check=True)
+            else:
+                logging.info('Use --upload flag to upload file %s to %s',
+                             tarball_path, gs_bucket_path)
 
         return os.EX_OK
 
