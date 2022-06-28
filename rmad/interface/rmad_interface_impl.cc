@@ -44,7 +44,7 @@ const std::vector<std::string> kWaitServices = {"system-services"};
 const int kWaitServicesPollInterval = 1;  // 1 second.
 const int kWaitServicesRetries = 10;
 
-constexpr char kMetricsSummaryDivider[] = "\n====================\n\n";
+constexpr char kSummaryDivider[] = "\n====================\n\n";
 
 bool GetDeviceIdFromDeviceFile(const std::string& device_file,
                                char* device_id) {
@@ -495,14 +495,24 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
+std::string RmadInterfaceImpl::GetLogSummary() const {
+  return MetricsUtils::GetMetricsSummaryAsString(json_store_);
+}
+
+bool RmadInterfaceImpl::GetLogString(std::string* log_string) const {
+  std::string raw_log;
+  if (!cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &raw_log)) {
+    return false;
+  }
+  *log_string = GetLogSummary() + kSummaryDivider + raw_log;
+  return true;
+}
+
 void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   GetLogReply reply;
-  std::string metrics_string =
-      MetricsUtils::GetMetricsSummaryAsString(json_store_);
-  std::string log_string;
-  if (cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
+  if (std::string log_string; GetLogString(&log_string)) {
     reply.set_error(RMAD_ERROR_OK);
-    reply.set_log(metrics_string + kMetricsSummaryDivider + log_string);
+    reply.set_log(log_string);
     if (!MetricsUtils::UpdateStateMetricsOnGetLog(json_store_,
                                                   current_state_case_)) {
       // TODO(genechang): Add error replies when failed to update state metrics
@@ -528,9 +538,11 @@ void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
         devices->push_back(device_properties.device_file);
       }
     }
-    SaveLogToFirstMountableDevice(std::move(devices), "test",
-                                  std::move(callback));
-    return;
+    if (std::string log_string; GetLogString(&log_string)) {
+      SaveLogToFirstMountableDevice(std::move(devices), log_string,
+                                    std::move(callback));
+      return;
+    }
   }
   // No detected external storage.
   SaveLogReply reply;

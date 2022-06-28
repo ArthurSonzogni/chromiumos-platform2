@@ -98,6 +98,7 @@ constexpr char kStateHistoryWithMetricsJson[] =
       }
     })";
 
+constexpr char kFakeRawLog[] = "fake_log";
 constexpr char kExpectedLog[] = R"({
    "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
    "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
@@ -329,6 +330,11 @@ class RmadInterfaceImplTest : public testing::Test {
       const std::vector<std::string>& statuses = {},
       const std::vector<std::string>& logs = {}) {
     auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+    ON_CALL(*mock_cmd_utils,
+            GetOutput(std::vector<std::string>(
+                          {"/usr/sbin/croslog", "--identifier=rmad"}),
+                      _))
+        .WillByDefault(DoAll(SetArgPointee<1>(kFakeRawLog), Return(true)));
     {
       InSequence seq;
       for (std::string status : statuses) {
