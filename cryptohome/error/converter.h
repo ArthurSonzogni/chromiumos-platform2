@@ -31,9 +31,20 @@ user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
     user_data_auth::CryptohomeErrorCode* legacy_ec);
 
+// PopulateReplyWithError() is a helper utility that takes the information in
+// CryptohomeERror and populates the relevant fields in the reply, with the
+// assumption that it is for responding to dbus calls. As in, it'll report the
+// relevant UMAs as well. This is usually used for responding to a sync dbus
+// call.
+template <typename ReplyType>
+void PopulateReplyWithError(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
+    ReplyType* reply);
+
 // ReplyWithError() is a helper utility that takes the information in
 // CryptohomeError and populates the relevant fields in the reply then call the
 // on_done helper function.
+// This is usually used for responding to an async dbus call.
 template <typename ReplyType>
 void ReplyWithError(
     base::OnceCallback<void(const ReplyType&)> on_done,

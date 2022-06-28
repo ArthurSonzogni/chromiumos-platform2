@@ -191,29 +191,35 @@ user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
 }
 
 template <typename ReplyType>
-void ReplyWithError(
-    base::OnceCallback<void(const ReplyType&)> on_done,
-    const ReplyType& reply,
-    const hwsec_foundation::status::StatusChain<CryptohomeError>& err) {
+void PopulateReplyWithError(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
+    ReplyType* reply) {
   bool success = err.ok();
-
-  ReplyType actual_reply;
-  // Unfortunately, we've to copy the reply protobuf, this is because the coding
-  // style demands that an input argument be const ref.
-  actual_reply.CopyFrom(reply);
-
   if (!success) {
     user_data_auth::CryptohomeErrorCode legacy_ec;
     auto info = CryptohomeErrorToUserDataAuthError(err, &legacy_ec);
     ReportCryptohomeError(err, info);
 
-    actual_reply.mutable_error_info()->CopyFrom(info);
-    actual_reply.set_error(legacy_ec);
+    reply->mutable_error_info()->CopyFrom(info);
+    reply->set_error(legacy_ec);
   } else {
-    actual_reply.clear_error_info();
-    actual_reply.set_error(
+    reply->clear_error_info();
+    reply->set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET);
   }
+}
+
+template <typename ReplyType>
+void ReplyWithError(
+    base::OnceCallback<void(const ReplyType&)> on_done,
+    const ReplyType& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err) {
+  ReplyType actual_reply;
+  // Unfortunately, we've to copy the reply protobuf, this is because the coding
+  // style demands that an input argument be const ref.
+  actual_reply.CopyFrom(reply);
+
+  PopulateReplyWithError(err, &actual_reply);
 
   std::move(on_done).Run(actual_reply);
 }
