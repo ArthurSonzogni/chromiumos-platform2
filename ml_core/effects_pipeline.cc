@@ -4,12 +4,12 @@
 
 #include "ml_core/effects_pipeline.h"
 
-#include <utility>
 #include <optional>
+#include <utility>
 
-#include <base/scoped_native_library.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/scoped_native_library.h>
 
 namespace {
 
@@ -44,6 +44,11 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
     return false;
   }
 
+  // TODO(b:237964122) Consider converting effects_config to a protobuf
+  virtual void SetEffect(cros::EffectsConfig* effects_config) {
+    set_effect_fn_(pipeline_, effects_config);
+  }
+
  protected:
   EffectsPipelineImpl() {}
   bool Initialize() {
@@ -70,10 +75,13 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
         reinterpret_cast<cros_ml_effects_SetRenderedImageObserverFn>(
             library_->GetFunctionPointer(
                 "cros_ml_effects_SetRenderedImageObserver"));
+    set_effect_fn_ = reinterpret_cast<cros_ml_effects_SetEffectFn>(
+        library_->GetFunctionPointer("cros_ml_effects_SetEffect"));
 
     bool load_ok = (create_fn_ != nullptr) && (delete_fn_ != nullptr) &&
                    (process_frame_fn_ != nullptr) && (wait_fn_ != nullptr) &&
-                   (set_rendered_image_observer_fn_ != nullptr);
+                   (set_rendered_image_observer_fn_ != nullptr) &&
+                   (set_effect_fn_ != nullptr);
 
     if (!load_ok) {
       LOG(ERROR) << "create_fn_" << create_fn_;
@@ -82,6 +90,7 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       LOG(ERROR) << "wait_fn_" << wait_fn_;
       LOG(ERROR) << "set_rendered_image_observer_fn_"
                  << set_rendered_image_observer_fn_;
+      LOG(ERROR) << "set_effect_fn_" << set_effect_fn_;
       LOG(ERROR) << "Pipeline cannot load the expected functions";
       return false;
     }
@@ -115,6 +124,7 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   cros_ml_effects_WaitFn wait_fn_ = nullptr;
   cros_ml_effects_SetRenderedImageObserverFn set_rendered_image_observer_fn_ =
       nullptr;
+  cros_ml_effects_SetEffectFn set_effect_fn_ = nullptr;
   void* pipeline_ = nullptr;
   bool frames_started_ = false;
 

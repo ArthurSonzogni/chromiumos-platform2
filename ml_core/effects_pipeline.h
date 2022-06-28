@@ -7,8 +7,9 @@
 
 #include <brillo/brillo_export.h>
 
-#include <memory>
 #include <stdint.h>
+#include <memory>
+#include <string>
 
 #include "bindings/effects_pipeline_bindings.h"
 
@@ -30,7 +31,7 @@ class BRILLO_EXPORT ProcessedFrameObserver {
 // from the libcros_ml_core_internal.so.
 class BRILLO_EXPORT EffectsPipeline {
  public:
-  virtual ~EffectsPipeline();
+  virtual ~EffectsPipeline() = default;
 
   // Create an instance of the Pipeline.
   static std::unique_ptr<EffectsPipeline> Create();
@@ -49,6 +50,9 @@ class BRILLO_EXPORT EffectsPipeline {
   // before ProcessFrame. Takes ownership of the observer.
   virtual bool SetRenderedImageObserver(
       std::unique_ptr<ProcessedFrameObserver> observer) = 0;
+
+  // Select effect to apply
+  virtual void SetEffect(EffectsConfig* effects_config) = 0;
 };
 
 }  // namespace cros
