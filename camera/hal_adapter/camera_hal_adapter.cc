@@ -266,6 +266,16 @@ void CameraHalAdapter::SetAutoFramingState(
   stream_manipulator_runtime_options_.auto_framing_state = state;
 }
 
+mojom::CameraPrivacySwitchState
+CameraHalAdapter::GetCameraSWPrivacySwitchState() {
+  return stream_manipulator_runtime_options_.sw_privacy_switch_state;
+}
+
+void CameraHalAdapter::SetCameraSWPrivacySwitchState(
+    mojom::CameraPrivacySwitchState state) {
+  stream_manipulator_runtime_options_.sw_privacy_switch_state = state;
+}
+
 int32_t CameraHalAdapter::GetNumberOfCameras() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());

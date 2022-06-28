@@ -39,6 +39,12 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // The state of auto framing. Can be either off, single person mode or
     // multi people mode.
     mojom::CameraAutoFramingState auto_framing_state;
+
+    // The state of camera software privacy switch state. When a user session
+    // starts, it will be UNKNOWN until it is set by the Mojo API
+    // SetCameraSWPrivacySwitchState.
+    mojom::CameraPrivacySwitchState sw_privacy_switch_state =
+        mojom::CameraPrivacySwitchState::OFF;
   };
 
   // Callback for the StreamManipulator to return capture results to the client

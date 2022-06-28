@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next min version: 8
+// Next min version: 9
 
 module cros.mojom;
 
@@ -126,6 +126,14 @@ interface CameraHalServer {
   // Enable or disable auto framing.
   [MinVersion=7]
   SetAutoFramingState@2(CameraAutoFramingState state);
+
+  // Get the current camera software privacy switch state.
+  [MinVersion=8]
+  GetCameraSWPrivacySwitchState@3() => (CameraPrivacySwitchState state);
+
+  // Enable or disable the camera software privacy switch.
+  [MinVersion=8]
+  SetCameraSWPrivacySwitchState@4(CameraPrivacySwitchState state);
 };
 
 // CameraHalServerCallbacks is an interface for CameraHalServer to notify
@@ -146,6 +154,10 @@ interface CameraHalServerCallbacks {
   // current status when the callbacks are registered.
   [MinVersion=5]
   CameraPrivacySwitchStateChange@1(CameraPrivacySwitchState state);
+
+  // Fired when the camera software privacy switch status is changed.
+  [MinVersion=8]
+  CameraSWPrivacySwitchStateChange@2(CameraPrivacySwitchState state);
 };
 
 // The CrOS camera HAL v3 Mojo client.

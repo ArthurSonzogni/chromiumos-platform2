@@ -153,6 +153,16 @@ void CameraHalServerImpl::IPCBridge::SetAutoFramingState(
   camera_hal_adapter_->SetAutoFramingState(state);
 }
 
+void CameraHalServerImpl::IPCBridge::GetCameraSWPrivacySwitchState(
+    mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback) {
+  std::move(callback).Run(camera_hal_adapter_->GetCameraSWPrivacySwitchState());
+}
+
+void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
+    mojom::CameraPrivacySwitchState state) {
+  camera_hal_adapter_->SetCameraSWPrivacySwitchState(state);
+}
+
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(
     int32_t camera_id, bool opened, mojom::CameraClientType type) {
   VLOGF_ENTER();

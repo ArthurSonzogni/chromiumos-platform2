@@ -72,6 +72,11 @@ class CameraHalServerImpl final {
 
     void SetAutoFramingState(mojom::CameraAutoFramingState state);
 
+    void GetCameraSWPrivacySwitchState(
+        mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback);
+
+    void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,
                                     mojom::CameraClientType type);

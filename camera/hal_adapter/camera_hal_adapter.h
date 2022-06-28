@@ -114,6 +114,10 @@ class CameraHalAdapter {
 
   void SetAutoFramingState(mojom::CameraAutoFramingState enabled);
 
+  mojom::CameraPrivacySwitchState GetCameraSWPrivacySwitchState();
+
+  void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+
  protected:
   // Convert the unified public |camera_id| into the corresponding camera
   // module and its internal id. Returns (nullptr, 0) if not found.
