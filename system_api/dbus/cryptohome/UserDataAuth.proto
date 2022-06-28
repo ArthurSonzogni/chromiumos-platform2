@@ -292,6 +292,12 @@ message UnmountRequest {
 message UnmountReply {
   // Indicates an error if |error| is not empty.
   CryptohomeErrorCode error = 1;
+
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
 }
 
 // Input parameters to Mount()
@@ -357,6 +363,11 @@ message RemoveRequest {
 message RemoveReply {
   // Indicate an error when |error| is not empty.
   CryptohomeErrorCode error = 1;
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
 }
 
 // Input parameters to ListKeys()
@@ -376,6 +387,11 @@ message ListKeysReply {
   CryptohomeErrorCode error = 1;
   // The labels of the Vault Keyset. This will be empty on error.
   repeated string labels = 2;
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 3;
 }
 
 // Input parameters to GetKeyData()
