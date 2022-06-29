@@ -115,9 +115,9 @@ TYPED_TEST_SUITE(PcaRequestTest, ReplyTypes);
 TYPED_TEST(PcaRequestTest, SuccessNoProxy) {
   this->expected_attestation_status_ = STATUS_SUCCESS;
   this->fake_trasport_factory_.get_fake_transport(brillo::http::kDirectProxy)
-      ->AddHandler(
-          kFakeUrl, brillo::http::request_type::kPost,
-          base::Bind(FakeMethodHandler, brillo::http::status_code::Ok));
+      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
+                   base::BindRepeating(FakeMethodHandler,
+                                       brillo::http::status_code::Ok));
   this->request_->SendRequest();
 }
 
@@ -125,9 +125,9 @@ TYPED_TEST(PcaRequestTest, SuccessFailedToGetProxy) {
   this->expected_attestation_status_ = STATUS_SUCCESS;
   this->proxy_success_ = false;
   this->fake_trasport_factory_.get_fake_transport(brillo::http::kDirectProxy)
-      ->AddHandler(
-          kFakeUrl, brillo::http::request_type::kPost,
-          base::Bind(FakeMethodHandler, brillo::http::status_code::Ok));
+      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
+                   base::BindRepeating(FakeMethodHandler,
+                                       brillo::http::status_code::Ok));
   this->request_->SendRequest();
 }
 
@@ -135,20 +135,21 @@ TYPED_TEST(PcaRequestTest, SuccessSecondProxy) {
   this->expected_attestation_status_ = STATUS_SUCCESS;
   this->set_proxy_servers({kFakeProxy1, kFakeProxy2, kFakeProxy3});
   this->fake_trasport_factory_.get_fake_transport(kFakeProxy1)
-      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
-                   base::Bind(FakeMethodHandler,
-                              brillo::http::status_code::InternalServerError));
-  this->fake_trasport_factory_.get_fake_transport(kFakeProxy2)
       ->AddHandler(
           kFakeUrl, brillo::http::request_type::kPost,
-          base::Bind(FakeMethodHandler, brillo::http::status_code::Ok));
+          base::BindRepeating(FakeMethodHandler,
+                              brillo::http::status_code::InternalServerError));
+  this->fake_trasport_factory_.get_fake_transport(kFakeProxy2)
+      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
+                   base::BindRepeating(FakeMethodHandler,
+                                       brillo::http::status_code::Ok));
   auto not_reached = [](const brillo::http::fake::ServerRequest& request,
                         brillo::http::fake::ServerResponse* response) {
     ASSERT_FALSE("Should not be reached.");
   };
   this->fake_trasport_factory_.get_fake_transport(kFakeProxy3)
       ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
-                   base::Bind(not_reached));
+                   base::BindRepeating(not_reached));
   this->request_->SendRequest();
 }
 
@@ -165,16 +166,18 @@ TYPED_TEST(PcaRequestTest, FailedAllProxies) {
   this->expected_attestation_status_ = STATUS_CA_NOT_AVAILABLE;
   this->set_proxy_servers({kFakeProxy1, kFakeProxy2, kFakeProxy3});
   this->fake_trasport_factory_.get_fake_transport(kFakeProxy1)
-      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
-                   base::Bind(FakeMethodHandler,
+      ->AddHandler(
+          kFakeUrl, brillo::http::request_type::kPost,
+          base::BindRepeating(FakeMethodHandler,
                               brillo::http::status_code::InternalServerError));
   brillo::ErrorPtr error;
   brillo::Error::AddTo(&error, FROM_HERE, "", "", kFakeErrMessage);
   this->fake_trasport_factory_.get_fake_transport(kFakeProxy2)
       ->SetCreateConnectionError(std::move(error));
   this->fake_trasport_factory_.get_fake_transport(kFakeProxy3)
-      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
-                   base::Bind(FakeMethodHandler,
+      ->AddHandler(
+          kFakeUrl, brillo::http::request_type::kPost,
+          base::BindRepeating(FakeMethodHandler,
                               brillo::http::status_code::InternalServerError));
   this->request_->SendRequest();
 }
@@ -184,9 +187,9 @@ TYPED_TEST(PcaRequestTest, FailedNotSupported) {
   // Sets the status code to partial to 'Partial`, which should recognized as an
   // unsupported HTTP status code.
   this->fake_trasport_factory_.get_fake_transport(brillo::http::kDirectProxy)
-      ->AddHandler(
-          kFakeUrl, brillo::http::request_type::kPost,
-          base::Bind(FakeMethodHandler, brillo::http::status_code::Partial));
+      ->AddHandler(kFakeUrl, brillo::http::request_type::kPost,
+                   base::BindRepeating(FakeMethodHandler,
+                                       brillo::http::status_code::Partial));
   this->request_->SendRequest();
 }
 

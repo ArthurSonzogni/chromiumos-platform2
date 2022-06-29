@@ -4,6 +4,7 @@
 
 #include "attestation/server/enrollment_queue.h"
 
+#include <base/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -27,8 +28,7 @@ class EnrollmentQueueTest : public testing::TestWithParam<ACAType> {
   std::shared_ptr<AttestationFlowData> MakeAttestationFlowDataForTesting() {
     GetCertificateRequest request;
     request.set_aca_type(GetParam());
-    AttestationInterface::GetCertificateCallback callback;
-    return std::make_shared<AttestationFlowData>(request, callback);
+    return std::make_shared<AttestationFlowData>(request, base::DoNothing());
   }
 };
 

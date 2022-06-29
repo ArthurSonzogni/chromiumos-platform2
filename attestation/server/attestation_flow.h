@@ -48,10 +48,9 @@ class AttestationFlowData {
 
  public:
   AttestationFlowData() = delete;
-  AttestationFlowData(const EnrollRequest& request,
-                      const EnrollCallback& callback);
+  AttestationFlowData(const EnrollRequest& request, EnrollCallback callback);
   AttestationFlowData(const GetCertificateRequest& request,
-                      const GetCertificateCallback& callback);
+                      GetCertificateCallback callback);
 
   // Derived information from the static data.
   ACAType aca_type() const;
@@ -90,9 +89,9 @@ class AttestationFlowData {
 
  private:
   const std::optional<EnrollRequest> enroll_request_;
-  const std::optional<EnrollCallback> enroll_callback_;
+  EnrollCallback enroll_callback_;
   const std::optional<GetCertificateRequest> get_certificate_request_;
-  const std::optional<GetCertificateCallback> get_certificate_callback_;
+  GetCertificateCallback get_certificate_callback_;
   AttestationFlowAction action_{AttestationFlowAction::kUnknown};
   AttestationStatus status_{STATUS_SUCCESS};
   std::string result_request_;

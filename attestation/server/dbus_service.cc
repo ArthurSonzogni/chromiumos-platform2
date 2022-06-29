@@ -331,7 +331,7 @@ void DBusService::HandleEnroll(
                      const EnrollReply& reply) { response->Return(reply); };
   service_->Enroll(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleCreateCertificateRequest(
@@ -387,7 +387,7 @@ void DBusService::HandleGetCertificate(
   };
   service_->GetCertificate(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleSignEnterpriseChallenge(

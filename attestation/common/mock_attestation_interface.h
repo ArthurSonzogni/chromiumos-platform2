@@ -66,10 +66,7 @@ class MockAttestationInterface : public AttestationInterface {
               CreateEnrollRequest,
               (const CreateEnrollRequestRequest&, CreateEnrollRequestCallback),
               (override));
-  MOCK_METHOD(void,
-              Enroll,
-              (const EnrollRequest&, const EnrollCallback&),
-              (override));
+  MOCK_METHOD(void, Enroll, (const EnrollRequest&, EnrollCallback), (override));
   MOCK_METHOD(void,
               FinishEnroll,
               (const FinishEnrollRequest&, FinishEnrollCallback),
@@ -86,7 +83,7 @@ class MockAttestationInterface : public AttestationInterface {
               (override));
   MOCK_METHOD(void,
               GetCertificate,
-              (const GetCertificateRequest&, const GetCertificateCallback&),
+              (const GetCertificateRequest&, GetCertificateCallback),
               (override));
   MOCK_METHOD(void,
               SignEnterpriseChallenge,

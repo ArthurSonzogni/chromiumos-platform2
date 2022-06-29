@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -27,8 +28,7 @@ constexpr char kKeyLabel2[] = "label2";
 // Makes an |AttestationFlowData| with |request| and a callback.
 std::shared_ptr<AttestationFlowData> MakeAttestationFlowData(
     const GetCertificateRequest& request) {
-  AttestationInterface::GetCertificateCallback callback;
-  return std::make_shared<AttestationFlowData>(request, callback);
+  return std::make_shared<AttestationFlowData>(request, base::DoNothing());
 }
 
 // Makes a |GetCertificateRequest| with |username| and |key_label|, and makes an
@@ -41,8 +41,7 @@ std::shared_ptr<AttestationFlowData> MakeAttestationFlowData(
   request.set_aca_type(aca_type);
   request.set_username(username);
   request.set_key_label(key_label);
-  AttestationInterface::GetCertificateCallback callback;
-  return std::make_shared<AttestationFlowData>(request, callback);
+  return std::make_shared<AttestationFlowData>(request, base::DoNothing());
 }
 
 std::shared_ptr<AttestationFlowData> MakeAttestationFlowDataForTesting() {

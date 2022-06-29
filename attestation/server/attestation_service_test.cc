@@ -2701,7 +2701,7 @@ TEST_P(AttestationServiceTest, EnrollSuccess) {
 
   EnrollRequest request;
   request.set_aca_type(aca_type_);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2720,7 +2720,7 @@ TEST_P(AttestationServiceTest, EnrollSuccessNoop) {
   EXPECT_CALL(fake_pca_agent_proxy_, EnrollAsync(_, _, _, _)).Times(0);
   EnrollRequest request;
   request.set_aca_type(aca_type_);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2742,7 +2742,7 @@ TEST_P(AttestationServiceTest, EnrollSuccessForced) {
   EnrollRequest request;
   request.set_aca_type(aca_type_);
   request.set_forced(true);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2755,7 +2755,7 @@ TEST_P(AttestationServiceTest, EnrollFailureNoIdentity) {
   EXPECT_CALL(fake_pca_agent_proxy_, EnrollAsync(_, _, _, _)).Times(0);
   EnrollRequest request;
   request.set_aca_type(aca_type_);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2772,7 +2772,7 @@ TEST_P(AttestationServiceTest, EnrollFailureBadPcaAgentStatus) {
 
   EnrollRequest request;
   request.set_aca_type(aca_type_);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2788,7 +2788,7 @@ TEST_P(AttestationServiceTest, EnrollFailureBadPcaAgentResponse) {
 
   EnrollRequest request;
   request.set_aca_type(aca_type_);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2805,7 +2805,7 @@ TEST_P(AttestationServiceTest, EnrollFailureBadPcaServerResponse) {
 
   EnrollRequest request;
   request.set_aca_type(aca_type_);
-  service_->Enroll(request, base::Bind(callback, QuitClosure()));
+  service_->Enroll(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2829,7 +2829,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccess) {
 
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2853,7 +2853,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessNoop) {
       .WillOnce(DoAll(SetArgPointee<2>(GenerateSerializedFakeCertifiedKey()),
                       Return(true)));
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(0);
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2877,7 +2877,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessSavedBadPublicKey) {
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(0);
   EXPECT_CALL(mock_crypto_utility_, GetRSASubjectPublicKeyInfo(_, _))
       .WillOnce(Return(false));
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2902,7 +2902,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessForced) {
 
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2919,7 +2919,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureNoIdentity) {
   request.set_request_origin("origin");
   request.set_key_label("label");
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(0);
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2943,7 +2943,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaAgentStatus) {
   fake_pca_agent_proxy_.SetGetCertificateDBusError();
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2968,7 +2968,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaAgentResponse) {
   fake_pca_agent_proxy_.SetBadGetCertificateStatus(STATUS_NOT_AVAILABLE);
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -2992,7 +2992,7 @@ TEST_P(AttestationServiceTest, GetCertificateFailureBadPcaServerResponse) {
   fake_pca_agent_proxy_.SetBadGetCertificatePcaResponse();
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -3018,7 +3018,7 @@ TEST_P(AttestationServiceTest, AttestationFlowSuccess) {
   EXPECT_CALL(fake_pca_agent_proxy_, EnrollAsync(_, _, _, _)).Times(1);
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -3044,7 +3044,7 @@ TEST_P(AttestationServiceTest, AttestationFlowBadPublicKey) {
   EXPECT_CALL(mock_crypto_utility_, GetRSASubjectPublicKeyInfo(_, _))
       .WillOnce(Return(false));
 
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -3063,7 +3063,7 @@ TEST_P(AttestationServiceTest, AttestationFlowFailureNotEnrolled) {
   request.set_key_label("label");
   EXPECT_CALL(fake_pca_agent_proxy_, EnrollAsync(_, _, _, _)).Times(0);
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(0);
-  service_->GetCertificate(request, base::Bind(callback, QuitClosure()));
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
   Run();
 }
 
@@ -3103,10 +3103,10 @@ TEST_P(AttestationServiceTest, EnrollSuccessQueued) {
   request.set_forced(true);
   for (int i = 0; i < request_count; ++i) {
     service_->Enroll(request,
-                     base::Bind(callback, &request_count, QuitClosure()));
+                     base::BindOnce(callback, &request_count, QuitClosure()));
   }
   // Reaching the limit, this request should get error.
-  service_->Enroll(request, base::Bind(failure_callback));
+  service_->Enroll(request, base::BindOnce(failure_callback));
   Run();
   ASSERT_EQ(request_count, 0);
 }
@@ -3144,10 +3144,10 @@ TEST_P(AttestationServiceTest, EnrollFailureQueued) {
   request.set_forced(true);
   for (int i = 0; i < request_count; ++i) {
     service_->Enroll(request,
-                     base::Bind(callback, &request_count, QuitClosure()));
+                     base::BindOnce(callback, &request_count, QuitClosure()));
   }
   // Reaching the limit, this request should get error.
-  service_->Enroll(request, base::Bind(failure_callback));
+  service_->Enroll(request, base::BindOnce(failure_callback));
   Run();
   ASSERT_EQ(request_count, 0);
 }
@@ -3184,10 +3184,10 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessQueued) {
 
   for (int i = 0; i < request_count; ++i) {
     service_->GetCertificate(
-        request, base::Bind(callback, &request_count, QuitClosure()));
+        request, base::BindOnce(callback, &request_count, QuitClosure()));
   }
   // This should due to alias contention.
-  service_->GetCertificate(request, base::Bind(failure_callback));
+  service_->GetCertificate(request, base::BindOnce(failure_callback));
   Run();
   ASSERT_EQ(request_count, 0);
 }
@@ -3225,10 +3225,10 @@ TEST_P(AttestationServiceTest, GetCertificateFailureQueued) {
 
   for (int i = 0; i < request_count; ++i) {
     service_->GetCertificate(
-        request, base::Bind(callback, &request_count, QuitClosure()));
+        request, base::BindOnce(callback, &request_count, QuitClosure()));
   }
   // This should due to alias contention.
-  service_->GetCertificate(request, base::Bind(failure_callback));
+  service_->GetCertificate(request, base::BindOnce(failure_callback));
   Run();
   ASSERT_EQ(request_count, 0);
 }

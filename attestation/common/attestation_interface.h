@@ -113,9 +113,9 @@ class AttestationInterface {
 
   // Processes a EnrollRequest and responds with a
   // EnrollReply.
-  using EnrollCallback = base::Callback<void(const EnrollReply&)>;
+  using EnrollCallback = base::OnceCallback<void(const EnrollReply&)>;
   virtual void Enroll(const EnrollRequest& request,
-                      const EnrollCallback& callback) = 0;
+                      EnrollCallback callback) = 0;
 
   // Processes a CreateCertificateRequestRequest and responds with a
   // CreateCertificateRequestReply.
@@ -136,9 +136,9 @@ class AttestationInterface {
   // Processes a GetCertificateRequest and responds with a
   // GetCertificateReply.
   using GetCertificateCallback =
-      base::Callback<void(const GetCertificateReply&)>;
+      base::OnceCallback<void(const GetCertificateReply&)>;
   virtual void GetCertificate(const GetCertificateRequest& request,
-                              const GetCertificateCallback& callback) = 0;
+                              GetCertificateCallback callback) = 0;
 
   // Processes a SignEnterpriseChallengeRequest and responds with a
   // SignEnterpriseChallengeReply.

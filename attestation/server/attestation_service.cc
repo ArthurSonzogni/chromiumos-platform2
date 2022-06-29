@@ -2554,8 +2554,9 @@ void AttestationService::PostStartEnrollTask(
 }
 
 void AttestationService::Enroll(const EnrollRequest& request,
-                                const EnrollCallback& callback) {
-  PostStartEnrollTask(std::make_shared<AttestationFlowData>(request, callback));
+                                EnrollCallback callback) {
+  PostStartEnrollTask(
+      std::make_shared<AttestationFlowData>(request, std::move(callback)));
 }
 
 void AttestationService::SendEnrollRequest(
@@ -2985,10 +2986,10 @@ void AttestationService::FinishCertificateRequestTask(
   }
 }
 
-void AttestationService::GetCertificate(
-    const GetCertificateRequest& request,
-    const GetCertificateCallback& callback) {
-  PostStartEnrollTask(std::make_shared<AttestationFlowData>(request, callback));
+void AttestationService::GetCertificate(const GetCertificateRequest& request,
+                                        GetCertificateCallback callback) {
+  PostStartEnrollTask(
+      std::make_shared<AttestationFlowData>(request, std::move(callback)));
 }
 
 void AttestationService::SendGetCertificateRequest(

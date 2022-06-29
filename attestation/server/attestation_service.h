@@ -121,8 +121,7 @@ class AttestationService : public AttestationInterface {
                            CreateEnrollRequestCallback callback) override;
   void FinishEnroll(const FinishEnrollRequest& request,
                     FinishEnrollCallback callback) override;
-  void Enroll(const EnrollRequest& request,
-              const EnrollCallback& callback) override;
+  void Enroll(const EnrollRequest& request, EnrollCallback callback) override;
   void CreateCertificateRequest(
       const CreateCertificateRequestRequest& request,
       CreateCertificateRequestCallback callback) override;
@@ -130,7 +129,7 @@ class AttestationService : public AttestationInterface {
       const FinishCertificateRequestRequest& request,
       FinishCertificateRequestCallback callback) override;
   void GetCertificate(const GetCertificateRequest& request,
-                      const GetCertificateCallback& callback) override;
+                      GetCertificateCallback callback) override;
   void SignEnterpriseChallenge(
       const SignEnterpriseChallengeRequest& request,
       SignEnterpriseChallengeCallback callback) override;
