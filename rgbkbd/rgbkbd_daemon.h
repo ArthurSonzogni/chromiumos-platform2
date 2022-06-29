@@ -28,7 +28,7 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   ~DBusAdaptor() override = default;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   uint32_t GetRgbKeyboardCapabilities() override;
   void SetCapsLockState(bool enabled) override;

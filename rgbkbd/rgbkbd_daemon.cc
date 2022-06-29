@@ -30,9 +30,9 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       rgb_keyboard_controller_(internal_keyboard_.get()) {}
 
 void DBusAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 uint32_t DBusAdaptor::GetRgbKeyboardCapabilities() {
