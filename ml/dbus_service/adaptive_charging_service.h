@@ -26,9 +26,8 @@ class AdaptiveChargingService
   ~AdaptiveChargingService();
 
   // Register DBus object and interfaces.
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
+                         completion_callback);
 
   // org::chromium::MachineLearning::AdaptiveCharging: (see
   // dbus_bindings/org.chromium.MachineLearning.AdaptiveCharging.xml).
