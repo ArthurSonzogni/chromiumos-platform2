@@ -83,7 +83,22 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   AuthSessionInterfaceTest(const AuthSessionInterfaceTest&) = delete;
   AuthSessionInterfaceTest& operator=(const AuthSessionInterfaceTest&) = delete;
 
+  void SetUpHWSecExpectations() {
+    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsDAMitigationReady())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, GetManufacturer())
+        .WillRepeatedly(ReturnValue(0x43524f53));
+    EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+        .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
+    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+        .WillRepeatedly(ReturnValue(brillo::Blob()));
+    EXPECT_CALL(hwsec_, GetPubkeyHash(_))
+        .WillRepeatedly(ReturnValue(brillo::Blob()));
+  }
   void SetUp() override {
+    SetUpHWSecExpectations();
     MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
@@ -174,10 +189,6 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     req.mutable_key()->set_secret(secret);
     req.mutable_key()->mutable_data()->set_label("test-label");
     req.mutable_key()->mutable_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
-    req.mutable_key()
-        ->mutable_data()
-        ->mutable_policy()
-        ->set_low_entropy_credential(true);
     return req;
   }
 
@@ -540,17 +551,6 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
       .WillOnce(ReturnValue(false));
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
-  ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-
-  ExpectVaultKeyset();
-
-  // Set up expectation in callback for success.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
-
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
-
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
@@ -564,16 +564,6 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserVaultExists) {
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
-  ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-  ExpectVaultKeyset();
-
-  // Set up expectation in callback for success.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
-
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
-
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(true));
   ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token())
@@ -588,41 +578,61 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
       .WillOnce(ReturnValue(false));
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
-  ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-
-  ExpectVaultKeyset();
-
-  // Set up expectation in callback for success.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
-
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
-
+  EXPECT_FALSE(auth_session->user_exists());
+  // User doesn't exist and created.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
+  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+
+  // Set UserSession expectations for upcoming mount.
+  // Auth and prepare.
+  scoped_refptr<MockUserSession> user_session =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(user_session));
+  EXPECT_CALL(*user_session, IsActive())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
+      .WillOnce(ReturnError<CryptohomeMountError>());
+
+  // User authed and exists.
+  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
+      .WillRepeatedly(Return(true));
+  ASSERT_TRUE(
+      PreparePersistentVaultImpl(auth_session->serialized_token(), {}).ok());
+
+  // Set expectations for credential verifier.
+  EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session, SetCredentials(auth_session));
+  // Set up expectation for add credential callback success.
+  user_data_auth::AddCredentialsRequest request;
+  user_data_auth::AddCredentialsReply reply;
+  request.set_auth_session_id(auth_session->serialized_token());
+  AuthorizationRequest auth_req = CreateAuthorization(kPassword);
+  request.mutable_authorization()->Swap(&auth_req);
+  base::MockCallback<AddCredentialCallback> on_done;
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  AddCredentials(request, on_done.Get());
+
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 }
 
-// Test CreatePersistentUserImpl to ensure that repeat call does not work.
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRepeatCall) {
   EXPECT_CALL(keyset_management_, UserExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
-  ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-
-  ExpectVaultKeyset();
-
-  // Set up expectation in callback for success.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
-
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
 
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
@@ -630,8 +640,9 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRepeatCall) {
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
+  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
-  // User exists but vault doesn't.
+  // Called again. User exists, vault should not be created again.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
