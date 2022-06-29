@@ -115,9 +115,6 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   // the timer.
   void PostponeShutdown();
 
-  // Daemon will automatically shutdown after this length of idle time.
-  static const int kShutdownTimeoutMilliseconds;
-
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   ImageLoaderImpl impl_;
   std::unique_ptr<HelperProcessProxy> helper_process_proxy_;
