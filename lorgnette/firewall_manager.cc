@@ -123,6 +123,8 @@ void FirewallManager::RequestAllPortsAccess() {
 }
 
 void FirewallManager::SendPortAccessRequest(uint16_t port) {
+  LOG(INFO) << "Received port access request for UDP port " << port;
+
   if (!permission_broker_proxy_) {
     LOG(INFO) << "Permission broker does not exist (yet); adding request for "
               << "port " << port << " to queue.";
