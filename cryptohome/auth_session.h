@@ -437,6 +437,7 @@ class AuthSession final {
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
 
   friend class AuthSessionTest;
+  friend class AuthSessionInterfaceTest;
   friend class AuthSessionManagerTest;
   FRIEND_TEST(AuthSessionManagerTest, CreateExpire);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
