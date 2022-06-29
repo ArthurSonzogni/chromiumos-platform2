@@ -52,7 +52,7 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
 
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Registers a mount manager.
   void RegisterMountManager(MountManager* mount_manager);

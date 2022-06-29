@@ -48,9 +48,9 @@ CrosDisksServer::CrosDisksServer(scoped_refptr<dbus::Bus> bus,
 }
 
 void CrosDisksServer::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
