@@ -510,8 +510,11 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   virtual void OnIPConfigFailure();
 
   // Selects a service to be "current" -- i.e. link-state or configuration
-  // events that happen to the device are attributed to this service.
-  void SelectService(const ServiceRefPtr& service);
+  // events that happen to the device are attributed to this service. Also reset
+  // old service state to Idle if its current state is not Failure and
+  // |reset_old_service_state| is true.
+  void SelectService(const ServiceRefPtr& service,
+                     bool reset_old_service_state = true);
 
   // Set the state of the |selected_service_|.
   virtual void SetServiceState(Service::ConnectState state);

@@ -376,17 +376,7 @@ void Device::DropConnection() {
 void Device::ResetConnection() {
   SLOG(this, 2) << __func__;
   DestroyIPConfig();
-  if (!selected_service_) {
-    return;
-  }
-
-  // Refresh traffic counters before deselecting the service.
-  FetchTrafficCounters(selected_service_, /*new_service=*/nullptr);
-  const ServiceRefPtr old_service = selected_service_;
-  selected_service_ = nullptr;
-  OnSelectedServiceChanged(old_service);
-  adaptor_->EmitRpcIdentifierChanged(kSelectedServiceProperty,
-                                     GetSelectedServiceRpcIdentifier(nullptr));
+  SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
 }
 
 void Device::DestroyIPConfig() {
@@ -924,7 +914,8 @@ void Device::GetTrafficCountersPatchpanelCallback(
   std::move(callback).Run(counters);
 }
 
-void Device::SelectService(const ServiceRefPtr& service) {
+void Device::SelectService(const ServiceRefPtr& service,
+                           bool reset_old_service_state) {
   SLOG(this, 2) << __func__ << ": service "
                 << (service ? service->log_name() : "*reset*") << " on "
                 << link_name_;
@@ -938,7 +929,8 @@ void Device::SelectService(const ServiceRefPtr& service) {
   ServiceRefPtr old_service;
   if (selected_service_) {
     old_service = selected_service_;
-    if (selected_service_->state() != Service::kStateFailure) {
+    if (reset_old_service_state &&
+        selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);
     }
     selected_service_->SetIPConfig(RpcIdentifier(),

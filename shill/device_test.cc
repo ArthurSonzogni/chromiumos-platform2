@@ -52,6 +52,7 @@
 #include "shill/tethering.h"
 
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::HasSubstr;
@@ -463,7 +464,7 @@ TEST_F(DeviceTest, ResetConnection) {
   // ResetConnection() should drop the connection and the selected service,
   // but should not change the service state.
   EXPECT_CALL(*service, SetState(_)).Times(0);
-  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _));
+  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _)).Times(AnyNumber());
   device_->ResetConnection();
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
