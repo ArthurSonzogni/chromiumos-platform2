@@ -30,6 +30,8 @@ std::optional<FeatureProfile::FeatureType> GetFeatureType(
     return FeatureProfile::FeatureType::kGcamAe;
   } else if (feature_key == "hdrnet") {
     return FeatureProfile::FeatureType::kHdrnet;
+  } else if (feature_key == "effects") {
+    return FeatureProfile::FeatureType::kEffects;
   }
   return std::nullopt;
 }
@@ -69,6 +71,16 @@ bool FeatureProfile::IsEnabled(FeatureType feature) const {
       }
       if (base::PathExists(
               base::FilePath(constants::kForceEnableAutoFramingPath))) {
+        return true;
+      }
+      break;
+    case FeatureType::kEffects:
+      if (base::PathExists(
+              base::FilePath(constants::kForceDisableEffectsPath))) {
+        return false;
+      }
+      if (base::PathExists(
+              base::FilePath(constants::kForceEnableEffectsPath))) {
         return true;
       }
       break;

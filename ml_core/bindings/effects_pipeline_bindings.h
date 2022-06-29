@@ -19,7 +19,7 @@ namespace cros {
 // Used by EffectsConfig to indicate which effect the g3 shared library
 // should be applying. Needs to be kept in sync with g3 version found in
 // chromeos/ml/effects_pipeline/effects_pipeline.h
-enum class EffectsType { kNone, kBgBlur, kRelight, kCount };
+enum class EffectsType { kNone, kBgBlur, kBgReplace, kRelight, kCount };
 
 // EffectsConfig is intended to be extended and used by the
 // EffectsLibrary to build effects that would like more configurable

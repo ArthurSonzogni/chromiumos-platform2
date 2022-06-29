@@ -41,6 +41,7 @@ _IUSE = [
     "biometrics_dev",
     "bluetooth_suspend_management",
     "camera_feature_auto_framing",
+    "camera_feature_effects",
     "camera_feature_face_detection",
     "camera_feature_frame_annotator",
     "camera_feature_hdrnet",

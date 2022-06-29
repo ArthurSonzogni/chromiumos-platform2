@@ -36,6 +36,9 @@ class CROS_CAMERA_EXPORT FeatureProfile {
 
     // CrOS HDRnet with key "hdrnet".
     kHdrnet,
+
+    // CrOS Effect with key "effects".
+    kEffects,
   };
 
   // Creates a FeatureProfile instance with the given |feature_config| JSON data

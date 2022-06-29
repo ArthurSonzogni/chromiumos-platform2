@@ -26,6 +26,10 @@
 #include "features/auto_framing/auto_framing_stream_manipulator.h"
 #endif
 
+#if USE_CAMERA_FEATURE_EFFECTS
+#include "features/effects/effects_stream_manipulator.h"
+#endif
+
 #if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
 #include "features/face_detection/face_detection_stream_manipulator.h"
 #endif
@@ -138,6 +142,15 @@ StreamManipulator::GetEnabledStreamManipulators(
 
   MaybeEnableHdrNetStreamManipulator(feature_profile, options,
                                      &stream_manipulators);
+
+#if USE_CAMERA_FEATURE_EFFECTS
+  if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {
+    stream_manipulators.emplace_back(std::make_unique<EffectsStreamManipulator>(
+        feature_profile.GetConfigFilePath(
+            FeatureProfile::FeatureType::kEffects)));
+    LOGF(INFO) << "EffectsStreamManipulator enabled";
+  }
+#endif
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   if (options.enable_cros_zsl) {

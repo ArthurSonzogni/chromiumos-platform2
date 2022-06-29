@@ -35,6 +35,10 @@ const char kForceEnableAutoFramingPath[] =
 const char kForceDisableAutoFramingPath[] =
     "/run/camera/force_disable_auto_framing";
 
+// Special files to force control effects
+const char kForceEnableEffectsPath[] = "/run/camera/force_enable_effects";
+const char kForceDisableEffectsPath[] = "/run/camera/force_disable_effects";
+
 // ------Configuration for |kCrosCameraTestConfigPathString|-------
 // boolean value used in test mode for forcing hardware jpeg encode/decode in
 // USB HAL (won't fallback to SW encode/decode).

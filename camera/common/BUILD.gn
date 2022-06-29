@@ -278,6 +278,9 @@ shared_library("libcros_camera") {
   if (use.camera_feature_portrait_mode) {
     deps += [ ":camera_gpu_algorithm" ]
   }
+  if (use.camera_feature_effects) {
+    deps += [ "//camera/features/effects" ]
+  }
 }
 
 generate_pkg_config("libcros_camera_pkg_config") {
