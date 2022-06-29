@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <wayland-client.h>
 #include <xcb/composite.h>
+#include <xcb/xcb.h>
 #include <xcb/xfixes.h>
 #include <xcb/xproto.h>
 
@@ -2679,6 +2680,51 @@ static void sl_set_supported(struct sl_context* ctx) {
                       supported_atoms);
 }
 
+// The window manager is responsible for setting the default cursor on the root
+// window, which will be used by applications that do not try to set their own
+// cursor. If we do not do this, the cursor will be invisible, see b/204724669
+// for details.
+static void sl_initialize_cursor(struct sl_context* ctx) {
+  xcb_generic_error_t* err;
+  xcb_void_cookie_t cookie;
+
+  // Load the "cursor" font, which is a built-in set of fonts, documented at
+  // https://tronche.com/gui/x/xlib/appendix/b/.
+  xcb_font_t font_id = xcb_generate_id(ctx->connection);
+  cookie = xcb_open_font_checked(ctx->connection, font_id, strlen("cursor"),
+                                 "cursor");
+  err = xcb_request_check(ctx->connection, cookie);
+  assert(!err);
+
+  // Create the standard "left ptr" cursor. The below call is a bit technical,
+  // but it means:
+  //  - font_id appears twice because we use a mask (background) whose font is
+  //    the same as the source.
+  //  - the mask is the source + 1, because the inbuilt cursor font has
+  //    even-numbered foreground glyphs and odd-numbered backgrounds.
+  //  - The numbers are 16-bit RGB for the foreground and background, so this
+  //    has a black foreground and a white background.
+  constexpr int left_ptr_cursor_id = 68;
+  xcb_cursor_t cursor_id = xcb_generate_id(ctx->connection);
+  cookie = xcb_create_glyph_cursor_checked(
+      ctx->connection, cursor_id, font_id, font_id, left_ptr_cursor_id,
+      left_ptr_cursor_id + 1, 0, 0, 0, 65535, 65535, 65535);
+  err = xcb_request_check(ctx->connection, cookie);
+  assert(!err);
+
+  // Set the cursor for the root window.
+  cookie = xcb_change_window_attributes_checked(
+      ctx->connection, ctx->screen->root, XCB_CW_CURSOR, &cursor_id);
+  err = xcb_request_check(ctx->connection, cookie);
+  assert(!err);
+
+  // Free the cursor and the fonts, since we no-longer need them.
+  xcb_free_cursor(ctx->connection, cursor_id);
+  cookie = xcb_close_font_checked(ctx->connection, font_id);
+  err = xcb_request_check(ctx->connection, cookie);
+  assert(!err);
+}
+
 static void sl_connect(struct sl_context* ctx) {
   TRACE_EVENT("other", "sl_connect");
   const char wm_name[] = "Sommelier";
@@ -2834,6 +2880,8 @@ static void sl_connect(struct sl_context* ctx) {
   xcb_set_input_focus(ctx->connection, XCB_INPUT_FOCUS_NONE, XCB_NONE,
                       XCB_CURRENT_TIME);
   xcb_flush(ctx->connection);
+
+  sl_initialize_cursor(ctx);
 }
 
 static void sl_sd_notify(const char* state) {
