@@ -59,7 +59,8 @@ do_upgrade() {
   # When conflicting configuration files exist between the local system and the
   # upstream package, prefer the default option. If there is no default option,
   # default to keeping the local version. This is required along with setting
-  # DEBIAN_FRONTEND above for a truly noninteractive upgrade experience.
+  # DEBIAN_FRONTEND above and passing -y --allow-releaseinfo-change for apt to
+  # hopefully really be noninteractive.
   APT_OPTIONS="-o Dpkg::Options::=--force-confdef
    -o Dpkg::Options::=--force-confold"
 
@@ -68,7 +69,7 @@ do_upgrade() {
   dpkg --configure -a || true
 
   # Upgrade everything.
-  apt-get ${APT_OPTIONS} update -y
+  apt-get ${APT_OPTIONS} update -y --allow-releaseinfo-change
   apt-get ${APT_OPTIONS} upgrade -y
   apt-get ${APT_OPTIONS} dist-upgrade -y
 }
