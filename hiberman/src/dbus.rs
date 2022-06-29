@@ -35,6 +35,7 @@ pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 /// ResumeFromHibernate d-bus method is called.
 struct ResumeRequest {
     account_id: String,
+    auth_session_id: Vec<u8>,
     completion_tx: Sender<u32>,
 }
 
@@ -72,13 +73,14 @@ impl HibernateDbusStateInternal {
         }
     }
 
-    /// D-bus method called by login_manager to let the hibernate service
+    /// D-bus method called by Chrome to let the hibernate service
     /// know a user session is about to be started.
-    fn resume_from_hibernate(&mut self, account_id: &str) {
+    fn resume_from_hibernate(&mut self, account_id: &str, auth_session_id: &[u8]) {
         self.call_count += 1;
         let (completion_tx, completion_rx) = channel();
         let _ = self.resume_tx.send(ResumeRequest {
             account_id: account_id.to_string(),
+            auth_session_id: auth_session_id.to_vec(),
             completion_tx,
         });
 
@@ -86,6 +88,18 @@ impl HibernateDbusStateInternal {
         // It doesn't matter what it is, and on error, just keep going.
         info!("ResumeFromHibernate: waiting on main thread");
         let _ = completion_rx.recv();
+    }
+
+    /// D-bus method called by Chrome to initiate resume from hibernation, given
+    /// an account ID.
+    fn resume_from_hibernate_acct(&mut self, account_id: &str) {
+        self.resume_from_hibernate(account_id, &[])
+    }
+
+    /// D-bus method called by Chrome to initiate resume from hibernation within
+    /// an auth session.
+    fn resume_from_hibernate_auth(&mut self, auth_session_id: &[u8]) {
+        self.resume_from_hibernate("", auth_session_id)
     }
 }
 
@@ -130,11 +144,28 @@ impl HiberDbusConnectionInternal {
                       (account_id,): (String,)| {
                     // Here's what happens when the method is called.
                     let mut internal_state = state.0.lock();
-                    internal_state.resume_from_hibernate(&account_id);
+                    internal_state.resume_from_hibernate_acct(&account_id);
                     // This is currently the only thing the dbus thread is alive
                     // for, so shut it down after this method call.
                     internal_state.stop = true;
                     info!("ResumeFromHibernate completing");
+                    Ok(())
+                },
+            );
+
+            b.method(
+                "ResumeFromHibernateAS",
+                ("auth_session_id",),
+                (),
+                move |_ctx: &mut Context,
+                      state: &mut HibernateDbusState,
+                      (auth_session_id,): (Vec<u8>,)| {
+                    // Here's what happens when the method is called.
+                    let mut internal_state = state.0.lock();
+                    internal_state.resume_from_hibernate_auth(&auth_session_id);
+                    // Shut down the dbus thread since resume is committed.
+                    internal_state.stop = true;
+                    info!("ResumeFromHibernateAS completing");
                     Ok(())
                 },
             );
@@ -260,6 +291,7 @@ impl HiberDbusConnection {
 
         get_secret_seed(
             &pending_call._resume_request.account_id,
+            &pending_call._resume_request.auth_session_id,
             &mut pending_call.secret_seed.value,
         )?;
         let length = pending_call.secret_seed.value.len();
@@ -280,7 +312,7 @@ impl HiberDbusConnection {
 /// works once, then cryptohome forgets the secret. The vector receiving the
 /// secret is passed in rather than being returned so its memory location can be
 /// accounted for and explicitly zeroed out when no longer needed.
-fn get_secret_seed(account_id: &str, seed: &mut Vec<u8>) -> Result<()> {
+fn get_secret_seed(account_id: &str, auth_session_id: &[u8], seed: &mut Vec<u8>) -> Result<()> {
     let conn = Connection::new_system().context("Failed to connect to dbus for secret seed")?;
     let conn_path = conn.with_proxy(
         "org.chromium.UserDataAuth",
@@ -292,6 +324,7 @@ fn get_secret_seed(account_id: &str, seed: &mut Vec<u8>) -> Result<()> {
     let mut account_identifier = AccountIdentifier::new();
     account_identifier.set_account_id(account_id.to_string());
     proto.account_id = SingularPtrField::some(account_identifier);
+    proto.auth_session_id = auth_session_id.to_vec();
     let mut response = conn_path
         .get_hibernate_secret(proto.write_to_bytes().unwrap())
         .context("Failed to call GetHibernateSecret dbus method")?;
