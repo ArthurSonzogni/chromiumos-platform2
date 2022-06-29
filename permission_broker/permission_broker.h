@@ -39,7 +39,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
  private:
   // D-Bus methods.

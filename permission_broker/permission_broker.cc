@@ -93,9 +93,9 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
 PermissionBroker::~PermissionBroker() = default;
 
 void PermissionBroker::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
