@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -50,9 +51,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
   virtual ~FuseBoxClient() = default;
 
   void RegisterDBusObjectsAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
     RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(cb);
+    dbus_object_.RegisterAsync(std::move(cb));
 
     const auto path = dbus::ObjectPath(kFuseBoxServicePath);
     dbus_proxy_ = bus_->GetObjectProxy(kFuseBoxServiceName, path);
