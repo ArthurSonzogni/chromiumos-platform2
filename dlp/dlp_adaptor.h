@@ -47,9 +47,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void InitDatabaseOnCryptohome();
 
   // Registers the D-Bus object and interfaces.
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
+                         completion_callback);
 
   // org::chromium::DlpInterface: (see org.chromium.Dlp.xml).
   std::vector<uint8_t> SetDlpFilesPolicy(
