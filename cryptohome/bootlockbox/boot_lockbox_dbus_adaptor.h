@@ -27,7 +27,7 @@ class BootLockboxDBusAdaptor
 
   // Registers dbus objects.
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Stores a digest in bootlockbox.
   void StoreBootLockbox(
