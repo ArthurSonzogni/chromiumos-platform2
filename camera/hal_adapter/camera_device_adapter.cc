@@ -84,8 +84,8 @@ bool CameraMonitor::HasBeenKicked() {
 
 void CameraMonitor::Detach() {
   thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&base::OneShotTimer::Stop, base::Unretained(this)));
+      FROM_HERE, base::BindOnce(&base::OneShotTimer::AbandonAndStop,
+                                base::Unretained(this)));
   thread_.Stop();
 }
 
