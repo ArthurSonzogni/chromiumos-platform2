@@ -31,8 +31,8 @@ class BluezBattery {
                const dbus::ObjectPath& device_path);
 
   // Exports this object to D-Bus.
-  void Export(const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-                  callback);
+  void Export(
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction callback);
 
   // Unexports this object from D-Bus.
   void Unexport();

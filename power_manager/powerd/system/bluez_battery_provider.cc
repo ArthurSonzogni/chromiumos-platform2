@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -56,12 +57,12 @@ BluezBattery::BluezBattery(
 }
 
 void BluezBattery::Export(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& callback) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction callback) {
   brillo::dbus_utils::DBusInterface* iface = dbus_object_.AddOrGetInterface(
       bluetooth_battery::kBluetoothBatteryProviderInterface);
   iface->AddProperty(bluetooth_battery::kDeviceProperty, &device_);
   iface->AddProperty(bluetooth_battery::kPercentageProperty, &percentage_);
-  dbus_object_.RegisterAsync(callback);
+  dbus_object_.RegisterAsync(std::move(callback));
 }
 
 void BluezBattery::Unexport() {
