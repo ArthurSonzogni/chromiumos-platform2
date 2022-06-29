@@ -1597,6 +1597,8 @@ class Metrics : public DefaultServiceObserver {
                          Technology tech,
                          int sample);
 
+  void SetLibraryForTesting(MetricsLibraryInterface* library);
+
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
@@ -1669,7 +1671,6 @@ class Metrics : public DefaultServiceObserver {
   DeviceMetrics* GetDeviceMetrics(int interface_index) const;
 
   // For unit test purposes.
-  void set_library(MetricsLibraryInterface* library);
   void set_time_online_timer(chromeos_metrics::Timer* timer) {
     time_online_timer_.reset(timer);  // Passes ownership
   }

@@ -748,7 +748,10 @@ if (use.test) {
       ":shill_unittest_config",
       ":target_defaults",
     ]
-    deps = [ ":libshill" ]
+    deps = [
+      ":libshill",
+      "//metrics:metrics_test_support",
+    ]
 
     if (use.cellular) {
       sources += [

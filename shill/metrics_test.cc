@@ -68,7 +68,7 @@ class MetricsTest : public Test {
   ~MetricsTest() override = default;
 
   void SetUp() override {
-    metrics_.set_library(&library_);
+    metrics_.SetLibraryForTesting(&library_);
 #if !defined(DISABLE_WIFI)
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
 #endif                                    // DISABLE_WIFI

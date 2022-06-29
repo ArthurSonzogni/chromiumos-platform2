@@ -1548,7 +1548,7 @@ std::string Metrics::GetBootId() {
   return boot_id;
 }
 
-void Metrics::set_library(MetricsLibraryInterface* library) {
+void Metrics::SetLibraryForTesting(MetricsLibraryInterface* library) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library);
   library_ = library;
 }

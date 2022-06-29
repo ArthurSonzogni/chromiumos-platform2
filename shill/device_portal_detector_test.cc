@@ -14,12 +14,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "metrics/fake_metrics_library.h"
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
-#include "shill/mock_metrics.h"
 #include "shill/portal_detector.h"
 #include "shill/routing_table.h"
 #include "shill/service_under_test.h"
@@ -184,6 +185,7 @@ class DevicePortalDetectorTest : public testing::Test {
   DevicePortalDetectorTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_) {
+    metrics_.SetLibraryForTesting(&fake_metrics_library_);
     manager_.set_mock_device_info(&device_info_);
     device_ = new TestDevice(&manager_, kDeviceName, kDeviceAddress,
                              kDeviceInterfaceIndex, kTestTechnology);
@@ -228,6 +230,24 @@ class DevicePortalDetectorTest : public testing::Test {
 
   std::string GetServiceProbeUrlString() { return service_->probe_url_string_; }
 
+  int NumHistogramCalls(
+      const Metrics::HistogramMetric<Metrics::NameByTechnology>& metric) {
+    return fake_metrics_library_.NumCalls(
+        Metrics::GetFullMetricName(metric.n.suffix, kTestTechnology));
+  }
+
+  int NumEnumMetricsCalls(
+      const Metrics::EnumMetric<Metrics::NameByTechnology>& metric) {
+    return fake_metrics_library_.NumCalls(
+        Metrics::GetFullMetricName(metric.n.suffix, kTestTechnology));
+  }
+
+  int LastEnumMetricsCall(
+      const Metrics::EnumMetric<Metrics::NameByTechnology>& metric) {
+    return fake_metrics_library_.GetLast(
+        Metrics::GetFullMetricName(metric.n.suffix, kTestTechnology));
+  }
+
  protected:
   std::unique_ptr<MockConnection> CreateMockConnection() {
     auto connection = std::make_unique<NiceMock<MockConnection>>(&device_info_);
@@ -253,7 +273,8 @@ class DevicePortalDetectorTest : public testing::Test {
 
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
-  NiceMock<MockMetrics> metrics_;
+  Metrics metrics_;
+  FakeMetricsLibrary fake_metrics_library_;
   NiceMock<MockManager> manager_;
   NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<TestDevice> device_;
@@ -276,6 +297,10 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultDNSFailure);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
+
   // Portal detection should be started again.
   portal_detector = GetPortalDetector();
   ASSERT_TRUE(portal_detector);
@@ -291,6 +316,10 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   portal_detector->SetDNSResult(PortalDetector::Status::kTimeout);
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
+
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultDNSTimeout);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
   portal_detector = GetPortalDetector();
@@ -310,6 +339,10 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   EXPECT_EQ(GetServiceProbeUrlString(),
             portal_detector->result().probe_url_string);
 
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultContentRedirect);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
+
   // Portal detection should be started again.
   portal_detector = GetPortalDetector();
   ASSERT_TRUE(portal_detector);
@@ -327,6 +360,10 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultContentRedirect);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
+
   // Portal detection should be started again.
   portal_detector = GetPortalDetector();
   ASSERT_TRUE(portal_detector);
@@ -342,6 +379,12 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
   portal_detector->SetPortalSuspectedResult();
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
+
+  // NOTE: Since we only report on the HTTP phase, a portal-suspected result
+  // reports 'success'. This will be addressed when the metrics are updated.
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultSuccess);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
   portal_detector = GetPortalDetector();
@@ -370,6 +413,11 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kMetricPortalResult), 2);
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultSuccess);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 1);
+
   // Portal detection should be completed and the PortalDetector destroyed.
   EXPECT_FALSE(GetPortalDetector());
 }
@@ -382,6 +430,10 @@ TEST_F(DevicePortalDetectorTest, Online) {
   portal_detector->SetOnlineResult();
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
+
+  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
+            Metrics::kPortalResultSuccess);
+  EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 1);
 
   // Portal detection should be completed and the PortalDetector destroyed.
   EXPECT_FALSE(GetPortalDetector());
