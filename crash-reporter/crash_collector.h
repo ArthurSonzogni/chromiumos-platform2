@@ -161,6 +161,11 @@ class CrashCollector {
   // GetUptime().
   void set_current_uptime_for_test(base::TimeDelta uptime);
 
+  // Get the complete set of extra metadata (as a string with newline-separated
+  // key-value pairs, exactly as it will be written to the .meta file). For
+  // testing purposes.
+  std::string get_extra_metadata_for_test() const { return extra_metadata_; }
+
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
   void Initialize(bool early);

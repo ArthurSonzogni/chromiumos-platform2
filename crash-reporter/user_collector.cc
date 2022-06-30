@@ -67,6 +67,17 @@ constexpr char kCrashHandlingEnabledFlagFile[] = "crash-handling-enabled";
 // the same executable name.
 constexpr char kChromeExecName[] = "chrome";
 
+// The crash key used by Chrome to record its process type (browser, renderer,
+// gpu-process, etc). Must match the key of the |ptype_key| variable inside
+// InitializeCrashpadImpl() in
+// https://source.chromium.org/chromium/chromium/src/+/main:components/crash/core/app/crashpad.cc
+constexpr char kChromeProcessTypeKey[] = "ptype";
+
+// The value of ptype for Chrome's browser process.  Must match the value of
+// |ptype_key| if browser_process is true inside InitializeCrashpadImpl() in
+// https://source.chromium.org/chromium/chromium/src/+/main:components/crash/core/app/crashpad.cc
+constexpr char kChromeProcessTypeBrowserValue[] = "browser";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string& exec);
@@ -631,6 +642,12 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
     std::string product_key = GuessChromeProductName(exec_directory);
     AddCrashMetaUploadData(constants::kUploadDataKeyProductKey, product_key);
     AddCrashMetaUploadData("early_chrome_crash", "true");
+
+    // Add the "ptype=browser" normally added by InitializeCrashpadImpl(). Since
+    // we reject any process with a "--type" flag, this should always be a
+    // browser process.
+    AddCrashMetaUploadData(kChromeProcessTypeKey,
+                           kChromeProcessTypeBrowserValue);
 
     // TODO(b/234500620): We should also check for crash-loop mode and activate
     // it here if appropriate. Otherwise we risk losing crashes if there's an

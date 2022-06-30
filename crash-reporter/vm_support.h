@@ -19,6 +19,11 @@ class VmSupport {
   // otherwise returns nullptr.
   static VmSupport* Get();
 
+  // For testing, override the value returned by VmSupport::Get(). Does not
+  // take ownership of the supplied pointer. Call with nullptr to restore the
+  // default behavior.
+  static void SetForTesting(VmSupport* vm_support);
+
   virtual ~VmSupport();
 
   // Add vm-specific info, such as the container OS and vm board, to

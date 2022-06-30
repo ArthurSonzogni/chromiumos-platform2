@@ -24,9 +24,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 #include "crash-reporter/vm_support.h"
+#include "crash-reporter/vm_support_mock.h"
 
 using base::FilePath;
 using brillo::FindLog;
@@ -35,6 +37,7 @@ using ::testing::AllOf;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::StartsWith;
@@ -910,6 +913,9 @@ class ShouldCaptureEarlyChromeCrashTest : public UserCollectorTest {
          "--crashpad-handler-pid=402", "--type=renderer"},
         UserCollector::kChromeSubprocessCmdlineSeparator,
         base::Milliseconds(80));
+    CreateFakeProcess(kShillProcessID, 1, {"/usr/bin/shill", "--log-level=0"},
+                      UserCollector::kNormalCmdlineSeparator,
+                      base::Milliseconds(90));
   }
 
   base::FilePath GetProcessPath(pid_t pid) {
@@ -1082,6 +1088,8 @@ class ShouldCaptureEarlyChromeCrashTest : public UserCollectorTest {
   // The fake pid of the renderer process, which is the child of the 'normal'
   // browser.
   static constexpr pid_t kNormalRendererProcessID = 407;
+  // The fake pid of a shill process which has nothing to do with Chrome
+  static constexpr pid_t kShillProcessID = 501;
 
   // The commandline we use for all the browser processes. The tests give all
   // our browser processes the same commandline so that the difference in test
@@ -1180,4 +1188,89 @@ TEST_F(ShouldCaptureEarlyChromeCrashTest, FalseIfNotChrome) {
       "chrome_crashpad", kEarlyBrowserProcessID));
   EXPECT_FALSE(collector_.ShouldCaptureEarlyChromeCrash(
       "supplied_chrome_crashpad", kEarlyBrowserProcessID));
+  EXPECT_FALSE(
+      collector_.ShouldCaptureEarlyChromeCrash("shill", kShillProcessID));
+}
+
+class BeginHandlingCrashTest : public ShouldCaptureEarlyChromeCrashTest {
+ public:
+  void SetUp() override {
+    ShouldCaptureEarlyChromeCrashTest::SetUp();
+
+#if USE_KVM_GUEST
+    // Since we're not testing the VM support, just have the VM always return
+    // true from ShouldDump.
+    VmSupport::SetForTesting(&vm_support_mock_);
+    ON_CALL(vm_support_mock_, ShouldDump(_, _)).WillByDefault(Return(true));
+#endif
+  }
+
+  void TearDown() override {
+    ShouldCaptureEarlyChromeCrashTest::TearDown();
+#if USE_KVM_GUEST
+    VmSupport::SetForTesting(nullptr);
+#endif
+  }
+
+#if USE_KVM_GUEST
+  VmSupportMock vm_support_mock_;
+#endif
+};
+
+TEST_F(BeginHandlingCrashTest,
+#if USE_FORCE_BREAKPAD
+       DISABLED_SetsUpForEarlyChromeCrashes
+#else
+       SetsUpForEarlyChromeCrashes
+#endif
+) {
+  collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
+                                paths::Get("/opt/google/chrome"));
+
+  // Ignored but we need something for ShouldDump().
+  constexpr uid_t kUserUid = 1000;
+
+  // We should be in early-chrome-crash mode, so ShouldDump should return true
+  // even for a chrome executable.
+  std::string reason;
+  EXPECT_TRUE(collector_.ShouldDump(kEarlyBrowserProcessID, kUserUid, "chrome",
+                                    &reason))
+      << reason;
+
+  EXPECT_THAT(collector_.get_extra_metadata_for_test(),
+              AllOf(HasSubstr("upload_var_prod=Chrome_ChromeOS\n"),
+                    HasSubstr("upload_var_early_chrome_crash=true\n"),
+                    HasSubstr("upload_var_ptype=browser\n")));
+}
+
+TEST_F(BeginHandlingCrashTest, IgnoresNonEarlyBrowser) {
+  collector_.BeginHandlingCrash(kNormalBrowserProcessID, "chrome",
+                                paths::Get("/opt/google/chrome"));
+
+  // Ignored but we need something for ShouldDump().
+  constexpr uid_t kUserUid = 1000;
+
+  std::string reason;
+  EXPECT_FALSE(collector_.ShouldDump(kNormalBrowserProcessID, kUserUid,
+                                     "chrome", &reason));
+
+  EXPECT_THAT(collector_.get_extra_metadata_for_test(),
+              AllOf(Not(HasSubstr("upload_var_prod=Chrome_ChromeOS\n")),
+                    Not(HasSubstr("upload_var_early_chrome_crash=true\n")),
+                    Not(HasSubstr("upload_var_ptype=browser\n"))));
+}
+
+TEST_F(BeginHandlingCrashTest, NoEffectIfNotChrome) {
+  collector_.BeginHandlingCrash(kShillProcessID, "shill",
+                                paths::Get("/usr/bin"));
+
+  std::string reason;
+  EXPECT_TRUE(collector_.ShouldDump(kShillProcessID, constants::kRootUid,
+                                    "shill", &reason))
+      << reason;
+
+  EXPECT_THAT(collector_.get_extra_metadata_for_test(),
+              AllOf(Not(HasSubstr("upload_var_prod=Chrome_ChromeOS\n")),
+                    Not(HasSubstr("upload_var_early_chrome_crash=true\n")),
+                    Not(HasSubstr("upload_var_ptype=browser\n"))));
 }

@@ -104,6 +104,10 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfNotChrome);
   friend class CopyStdinToCoreFileTest;
   FRIEND_TEST(CopyStdinToCoreFileTest, Test);
+  FRIEND_TEST(BeginHandlingCrashTest, SetsUpForEarlyChromeCrashes);
+  FRIEND_TEST(BeginHandlingCrashTest, DISABLED_SetsUpForEarlyChromeCrashes);
+  FRIEND_TEST(BeginHandlingCrashTest, IgnoresNonEarlyBrowser);
+  FRIEND_TEST(BeginHandlingCrashTest, NoEffectIfNotChrome);
 
   // Returns true if we want to try to capture a crash of Chrome because we
   // think it may have happened early -- specifically, before crashpad was
