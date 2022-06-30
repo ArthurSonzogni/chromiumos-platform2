@@ -38,7 +38,6 @@ const char kSearchDomains[] = "example.com,chromium.org";
 const char kSearchDomain0[] = "example.com";
 const char kSearchDomain1[] = "chromium.org";
 
-const char kPeerAddress[] = "10.0.0.2";
 const int32_t kPrefixLen = 24;
 
 const char kExcludedRoutes[] = "192.168.1.0/24,192.168.2.0/24";
@@ -61,7 +60,6 @@ class StaticIPParametersTest : public Test {
     EXPECT_EQ(IPConfig::kUndefinedMTU, ipconfig_props_.mtu);
     EXPECT_TRUE(ipconfig_props_.dns_servers.empty());
     EXPECT_TRUE(ipconfig_props_.domain_search.empty());
-    EXPECT_TRUE(ipconfig_props_.peer_address.empty());
     EXPECT_FALSE(ipconfig_props_.subnet_prefix);
     EXPECT_TRUE(ipconfig_props_.exclusion_list.empty());
     EXPECT_TRUE(ipconfig_props_.inclusion_list.empty());
@@ -94,8 +92,6 @@ class StaticIPParametersTest : public Test {
     EXPECT_EQ(VersionedAddress(kSearchDomain1, version),
               ipconfig_props_.domain_search[1]);
 
-    EXPECT_EQ(VersionedAddress(kPeerAddress, version),
-              ipconfig_props_.peer_address);
     EXPECT_EQ(kPrefixLen + version, ipconfig_props_.subnet_prefix);
 
     EXPECT_EQ(2, ipconfig_props_.exclusion_list.size());
@@ -132,8 +128,6 @@ class StaticIPParametersTest : public Test {
         {VersionedAddress(kSearchDomain0, version),
          VersionedAddress(kSearchDomain1, version)});
     EXPECT_EQ(kTestSearchDomains, args.Get<Strings>(kSearchDomainsProperty));
-    EXPECT_EQ(VersionedAddress(kPeerAddress, version),
-              args.Get<std::string>(kPeerAddressProperty));
     EXPECT_EQ(kPrefixLen + version, args.Get<int32_t>(kPrefixlenProperty));
     std::vector<std::string> kTestExcludedRoutes(
         {VersionedAddress(kExcludedRoute0, version),
@@ -154,7 +148,6 @@ class StaticIPParametersTest : public Test {
     ipconfig_props_.mtu = kMtu;
     ipconfig_props_.dns_servers = {kNameServer0, kNameServer1};
     ipconfig_props_.domain_search = {kSearchDomain0, kSearchDomain1};
-    ipconfig_props_.peer_address = kPeerAddress;
     ipconfig_props_.subnet_prefix = kPrefixLen;
     ipconfig_props_.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
     ipconfig_props_.inclusion_list = {kIncludedRoute0, kIncludedRoute1};
@@ -176,8 +169,6 @@ class StaticIPParametersTest : public Test {
     args.Set<Strings>(kSearchDomainsProperty,
                       {VersionedAddress(kSearchDomain0, version),
                        VersionedAddress(kSearchDomain1, version)});
-    args.Set<std::string>(kPeerAddressProperty,
-                          VersionedAddress(kPeerAddress, version));
     args.Set<int32_t>(kPrefixlenProperty, kPrefixLen + version);
     args.Set<Strings>(kExcludedRoutesProperty,
                       {VersionedAddress(kExcludedRoute0, version),
@@ -265,8 +256,6 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
       {VersionedAddress(kSearchDomain0, version),
        VersionedAddress(kSearchDomain1, version)});
   EXPECT_EQ(kTestSearchDomains, static_args()->Get<Strings>("SearchDomains"));
-  EXPECT_EQ(VersionedAddress(kPeerAddress, version),
-            static_args()->Get<std::string>("PeerAddress"));
   EXPECT_EQ(kPrefixLen + version, static_args()->Get<int32_t>("Prefixlen"));
   std::vector<std::string> kTestExcludedRoutes(
       {VersionedAddress(kExcludedRoute0, version),
@@ -286,7 +275,6 @@ TEST_F(StaticIPParametersTest, Profile) {
   store.SetInt(kID, "StaticIP.Mtu", kMtu);
   store.SetString(kID, "StaticIP.NameServers", kNameServers);
   store.SetString(kID, "StaticIP.SearchDomains", kSearchDomains);
-  store.SetString(kID, "StaticIP.PeerAddress", kPeerAddress);
   store.SetInt(kID, "StaticIP.Prefixlen", kPrefixLen);
   store.SetString(kID, "StaticIP.ExcludedRoutes", kExcludedRoutes);
   store.SetString(kID, "StaticIP.IncludedRoutes", kIncludedRoutes);
@@ -312,9 +300,6 @@ TEST_F(StaticIPParametersTest, Profile) {
   std::string searchdomains;
   EXPECT_TRUE(store.GetString(kID, "StaticIP.SearchDomains", &searchdomains));
   EXPECT_EQ(searchdomains, kSearchDomains);
-  std::string peeraddress;
-  EXPECT_TRUE(store.GetString(kID, "StaticIP.PeerAddress", &peeraddress));
-  EXPECT_EQ(peeraddress, kPeerAddress);
   int prefixlen;
   EXPECT_TRUE(store.GetInt(kID, "StaticIP.Prefixlen", &prefixlen));
   EXPECT_EQ(prefixlen, kPrefixLen);

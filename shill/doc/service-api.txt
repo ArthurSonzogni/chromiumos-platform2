@@ -1785,7 +1785,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 				int32 Mtu
 				array{string} NameServers
 				array{string} SearchDomains
-				string PeerAddress
 				int32 Prefixlen
 				array{string} ExcludedRoutes
 				array{string} IncludedRoutes
@@ -1804,7 +1803,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 				int32 Mtu
 				array{string} NameServers
 				array{string} SearchDomains
-				string PeerAddress
 				int32 Prefixlen
 				array{string} ExcludedRoutes
 				array{string} IncludedRoutes

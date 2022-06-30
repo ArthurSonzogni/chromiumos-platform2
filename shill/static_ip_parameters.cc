@@ -48,7 +48,6 @@ constexpr Property kProperties[] = {
     {kMtuProperty, Property::Type::kInt32},
     {kNameServersProperty, Property::Type::kStrings},
     {kSearchDomainsProperty, Property::Type::kStrings},
-    {kPeerAddressProperty, Property::Type::kString},
     {kPrefixlenProperty, Property::Type::kInt32},
     {kIncludedRoutesProperty, Property::Type::kStrings},
     {kExcludedRoutesProperty, Property::Type::kStrings},
@@ -207,7 +206,6 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
   ApplyInt(kMtuProperty, &props->mtu);
   ApplyStrings(kNameServersProperty, &props->dns_servers);
   ApplyStrings(kSearchDomainsProperty, &props->domain_search);
-  ApplyString(kPeerAddressProperty, &props->peer_address);
   ApplyInt(kPrefixlenProperty, &props->subnet_prefix);
   ApplyStrings(kExcludedRoutesProperty, &props->exclusion_list);
   ApplyStrings(kIncludedRoutesProperty, &props->inclusion_list);
@@ -224,8 +222,6 @@ void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
       saved_args_.Lookup<int32_t>(kMtuProperty, IPConfig::kUndefinedMTU);
   RestoreStrings(kNameServersProperty, &props->dns_servers);
   RestoreStrings(kSearchDomainsProperty, &props->domain_search);
-  props->peer_address =
-      saved_args_.Lookup<std::string>(kPeerAddressProperty, "");
   props->subnet_prefix = saved_args_.Lookup<int32_t>(kPrefixlenProperty, 0);
   RestoreStrings(kExcludedRoutesProperty, &props->exclusion_list);
   RestoreStrings(kIncludedRoutesProperty, &props->inclusion_list);
