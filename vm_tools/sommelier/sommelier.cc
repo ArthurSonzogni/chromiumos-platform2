@@ -669,12 +669,12 @@ void sl_registry_handler(void* data,
     assert(!ctx->gaming_input_manager);
     ctx->gaming_input_manager = gaming_input_manager;
 #endif
-  } else if (strcmp(interface, "zxdg_output_manager_v1") == 0) {
-    // TODO(mrisaacb): This code is disabled for now. It will be
-    // enabled in a subsequent patch which lands direct scaling
-    // support. This path will be enabled ONLY when direct scaling
-    // mode is enabled.
-#if 0
+  } else if (strcmp(interface, "zxdg_output_manager_v1") == 0 &&
+             ctx->use_direct_scale) {
+    // This protocol cannot be bound unconditionally as doing so
+    // causes issues under Crostini. For this reason we will only
+    // bind it when we need to do so (direct mode enabled).
+
     struct sl_xdg_output_manager* output_manager =
         static_cast<sl_xdg_output_manager*>(
             malloc(sizeof(struct sl_xdg_output_manager)));
@@ -686,7 +686,6 @@ void sl_registry_handler(void* data,
         static_cast<zxdg_output_manager_v1*>(wl_registry_bind(
             registry, id, &zxdg_output_manager_v1_interface, MIN(3, version)));
     ctx->xdg_output_manager = output_manager;
-#endif
   }
 }
 
@@ -2979,32 +2978,33 @@ static void sl_execvp(const char* file,
 static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
   struct sl_host_output* output;
   double default_scale_factor = 1.0;
-  double scale;
+  double scale = ctx->desired_scale;
 
-  // Find internal output and determine preferred scale factor.
-  wl_list_for_each(output, &ctx->host_outputs, link) {
-    if (output->internal) {
-      double preferred_scale =
-          sl_output_aura_scale_factor_to_double(output->preferred_scale);
+  if (!ctx->use_direct_scale) {
+    // Find internal output and determine preferred scale factor.
+    wl_list_for_each(output, &ctx->host_outputs, link) {
+      if (output->internal) {
+        double preferred_scale =
+            sl_output_aura_scale_factor_to_double(output->preferred_scale);
 
-      if (ctx->aura_shell) {
-        double device_scale_factor =
-            sl_output_aura_scale_factor_to_double(output->device_scale_factor);
+        if (ctx->aura_shell) {
+          double device_scale_factor = sl_output_aura_scale_factor_to_double(
+              output->device_scale_factor);
 
-        default_scale_factor = device_scale_factor * preferred_scale;
+          default_scale_factor = device_scale_factor * preferred_scale;
+        }
+        break;
       }
-      break;
     }
+    // We use the default scale factor multiplied by desired scale set by the
+    // user. This gives us HiDPI support by default but the user can still
+    // adjust it if higher or lower density is preferred.
+    scale = ctx->desired_scale * default_scale_factor;
+
+    // Round to integer scale if wp_viewporter interface is not present.
+    if (!ctx->viewporter)
+      scale = round(scale);
   }
-
-  // We use the default scale factor multipled by desired scale set by the
-  // user. This gives us HiDPI support by default but the user can still
-  // adjust it if higher or lower density is preferred.
-  scale = ctx->desired_scale * default_scale_factor;
-
-  // Round to integer scale if wp_viewporter interface is not present.
-  if (!ctx->viewporter)
-    scale = round(scale);
 
   // Clamp and set scale.
   ctx->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, scale));
@@ -3158,6 +3158,7 @@ static void sl_print_usage() {
       "  --drm-device=DEVICE\t\tDRM device to use\n"
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
       "  --timing-filename=PATH\tPath to timing output log\n"
+      "  --direct-scale\t\tEnable direct scaling mode\n"
 #ifdef PERFETTO_TRACING
       "  --trace-filename=PATH\t\tPath to Perfetto trace filename\n"
       "  --trace-system\t\tPerfetto trace to system daemon\n"
@@ -3293,6 +3294,8 @@ int real_main(int argc, char** argv) {
       xwayland_cmd_prefix = sl_arg_value(arg);
     } else if (strstr(arg, "--client-fd") == arg) {
       client_fd = atoi(sl_arg_value(arg));
+    } else if (strstr(arg, "--direct-scale") == arg) {
+      ctx.use_direct_scale = true;
     } else if (strstr(arg, "--scale") == arg) {
       scale = sl_arg_value(arg);
     } else if (strstr(arg, "--dpi") == arg) {
@@ -3495,6 +3498,7 @@ int real_main(int argc, char** argv) {
           char* arg = argv[j];
           if (strstr(arg, "--display") == arg ||
               strstr(arg, "--scale") == arg ||
+              strstr(arg, "--direct-scale") == arg ||
               strstr(arg, "--accelerators") == arg ||
               strstr(arg, "--windowed-accelerators") == arg ||
               strstr(arg, "--drm-device") == arg ||
@@ -3533,7 +3537,13 @@ int real_main(int argc, char** argv) {
   if (scale) {
     ctx.desired_scale = atof(scale);
     // Round to integer scale until we detect wp_viewporter support.
-    ctx.scale = MIN(MAX_SCALE, MAX(MIN_SCALE, round(ctx.desired_scale)));
+    // In direct scale mode, take the scale value as is.
+
+    if (ctx.use_direct_scale) {
+      ctx.scale = ctx.desired_scale;
+    } else {
+      ctx.scale = MIN(MAX_SCALE, MAX(MIN_SCALE, round(ctx.desired_scale)));
+    }
   }
 
   if (!frame_color)

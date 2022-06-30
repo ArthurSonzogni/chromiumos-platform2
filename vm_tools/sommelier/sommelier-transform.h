@@ -7,6 +7,66 @@
 
 #include "sommelier-ctx.h"  // NOLINT(build/include_directory)
 
+// Direct Scaling Mode Explained:
+//
+// It will be helpful to define the 3 coordinate spaces that we need to
+// manage:
+//
+// 1. Physical Coordinate Space: This refers to the actual physical dimensions
+//    of the devices display. Typical sizes would be 3840x2160, 1920x1080, etc.
+//
+// 2. Virtual Coordinate Space: This refers to the coordinate space that is
+//    formed by multiplying the scale factor with the physical dimensions.
+//    (Example: scale = 1.0, physical = 3840x2160, virtual = 3840x2160)
+//    (Example: scale = 0.5, physical = 3840x2160, virtual = 1920x1080)
+//    The scale factor will come from the "--scale" command line parameter or
+//    from the associated environment variable.
+//
+// 3. Host Logical Space: The dimensions of this space are defined
+//    entirely by the host. The exact dimensions are retrieved through
+//    the xdg_output interface. It is assumed that there is a direct, linear
+//    relationship between the logical space and the physical space on the
+//    host. As an example:
+//     a) A 1600x900 logical space
+//     b) A 3840x2160 physical space
+//
+//     If we place a 1600x900 dimensioned object at the origin of the logical
+//     space, it should appear as a 3840x2160 object within the physical space
+//     (also at the origin).
+//
+// The product of the desired scale factor and the physical dimensions may
+// result in non-integer values. In these cases, the result
+// is rounded down towards zero (truncate). This slight modification
+// will require recomputation of the scale factors to maintain consistency
+// between the two coordinate spaces. For this reason, the (single) scale
+// factor provided as input from the user is used to generate the virtual
+// coordinates. Then once those have been computed (and rounded), the scale
+// factors for each axis will then be recalculated using the virtual and
+// logical dimensions. Each axis is given its own scale factor because
+// it is possible for only one axis to require rounding.
+//
+// The logical coordinates come to us from the host. This is the
+// coordinate space that the host is operating in. This can change
+// based on the users scale settings.
+//
+// The physical coordinate space is no longer necessary once the virtual
+// coordinate space has been formed, so no scaling factors are needed to
+// convert to that space.
+//
+// Xwayland operates within the virtual coordinate space and the
+// host is operating within its logical space. Sommelier only needs to
+// facilitate translations between these two coordinate spaces.
+//
+// The virtual to logical scale factors are derived from the ratios between
+// the virtual coordinate spaces dimensions and the logical coordinate spaces
+// dimensions.
+//
+// In this mode, a buffer that is full screen sized within Xwayland (virtual)
+// will also be full screen sized in the logical coordinate space. The same
+// pattern holds with a quarter resolution sized image. With a scale factor
+// of 1.0, it is expected that there will be no scaling done to present the
+// image onto the screen.
+
 // Coordinate transform functions
 //
 // In general, the transformation functions fall under one of these
@@ -74,5 +134,14 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
 void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
                                       wl_fixed_t* coord,
                                       uint32_t axis);
+
+// This function performs the physical to virtual transformation
+// based on the scale factor provided by the command line/env.
+// This function is called in response to the physical dimensions being sent
+// by the host. The virtual dimensions are calculated by this function and
+// then relayed to the guest.
+void sl_transform_output_dimensions(struct sl_context* ctx,
+                                    int32_t* width,
+                                    int32_t* height);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_TRANSFORM_H_
