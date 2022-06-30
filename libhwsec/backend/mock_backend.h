@@ -280,6 +280,10 @@ class MockBackend : public Backend {
                 GetDelaySchedule,
                 (const brillo::Blob& cred_metadata),
                 (override));
+    MOCK_METHOD(StatusOr<uint32_t>,
+                GetDelayInSeconds,
+                (const brillo::Blob& cred_metadata),
+                (override));
   };
 
   class MockVendor : public Vendor {

@@ -59,6 +59,8 @@ class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
       const brillo::Blob& cred_metadata) override;
   StatusOr<DelaySchedule> GetDelaySchedule(
       const brillo::Blob& cred_metadata) override;
+  StatusOr<uint32_t> GetDelayInSeconds(
+      const brillo::Blob& cred_metadata) override;
 };
 
 }  // namespace hwsec

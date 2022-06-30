@@ -79,4 +79,8 @@ StatusOr<PinWeaverTpm1::DelaySchedule> PinWeaverTpm1::GetDelaySchedule(
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
+StatusOr<uint32_t> PinWeaverTpm1::GetDelayInSeconds(
+    const brillo::Blob& cred_metadata) {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
 }  // namespace hwsec

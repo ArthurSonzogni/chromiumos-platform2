@@ -99,4 +99,10 @@ StatusOr<DelaySchedule> PinWeaverFrontendImpl::GetDelaySchedule(
       cred_metadata);
 }
 
+StatusOr<uint32_t> PinWeaverFrontendImpl::GetDelayInSeconds(
+    const brillo::Blob& cred_metadata) {
+  return middleware_.CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
+      cred_metadata);
+}
+
 }  // namespace hwsec

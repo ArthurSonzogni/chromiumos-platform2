@@ -622,6 +622,10 @@ class Backend {
     virtual StatusOr<DelaySchedule> GetDelaySchedule(
         const brillo::Blob& cred_metadata) = 0;
 
+    // Get the remaining delay in seconds.
+    virtual StatusOr<uint32_t> GetDelayInSeconds(
+        const brillo::Blob& cred_metadata) = 0;
+
    protected:
     PinWeaver() = default;
     ~PinWeaver() = default;

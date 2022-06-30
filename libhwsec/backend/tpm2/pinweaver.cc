@@ -474,4 +474,29 @@ StatusOr<PinWeaverTpm2::DelaySchedule> PinWeaverTpm2::GetDelaySchedule(
   return delay_schedule;
 }
 
+StatusOr<uint32_t> PinWeaverTpm2::GetDelayInSeconds(
+    const brillo::Blob& cred_metadata) {
+  ASSIGN_OR_RETURN(DelaySchedule delay_schedule,
+                   GetDelaySchedule(cred_metadata));
+  ASSIGN_OR_RETURN(int wrong_attempts, GetWrongAuthAttempts(cred_metadata));
+
+  // The format for a delay schedule entry is as follows:
+  // (number_of_incorrect_attempts, delay_before_next_attempt)
+
+  // Find the matching delay from delay_schedule.
+  // We want to find the field that is the last one less or equal to
+  // wrong_attempts. Use upper bound to find the first field that is greater
+  // than wrong_attempts, and the previous one of it is the field we want.
+  auto iter = delay_schedule.upper_bound(wrong_attempts);
+  if (iter == delay_schedule.begin()) {
+    // Zero delay for this case.
+    return 0;
+  }
+  --iter;
+
+  // TODO(b/234715681): Calculate the more accurate delay if we need it in the
+  // future.
+  return iter->second;
+}
+
 }  // namespace hwsec

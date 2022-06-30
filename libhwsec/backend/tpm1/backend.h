@@ -211,6 +211,8 @@ class BackendTpm1 : public Backend {
         const brillo::Blob& cred_metadata) override;
     StatusOr<DelaySchedule> GetDelaySchedule(
         const brillo::Blob& cred_metadata) override;
+    StatusOr<uint32_t> GetDelayInSeconds(
+        const brillo::Blob& cred_metadata) override;
   };
 
   class VendorTpm1 : public Vendor, public SubClassHelper<BackendTpm1> {

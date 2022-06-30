@@ -145,6 +145,10 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
   // Looks into the metadata and retrieves the delay schedule.
   virtual StatusOr<DelaySchedule> GetDelaySchedule(
       const brillo::Blob& cred_metadata) = 0;
+
+  // Get the remaining delay in seconds.
+  virtual StatusOr<uint32_t> GetDelayInSeconds(
+      const brillo::Blob& cred_metadata) = 0;
 };
 
 }  // namespace hwsec
