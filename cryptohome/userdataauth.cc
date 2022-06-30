@@ -4022,23 +4022,22 @@ void UserDataAuth::AddCredentials(
 
 void UserDataAuth::SetCredentialVerifierForUserSession(
     AuthSession* auth_session, bool override_existing_credential_verifier) {
+  DCHECK(auth_session);
+
   scoped_refptr<UserSession> session = GetUserSession(auth_session->username());
-  // Check the user is already mounted and the session is ephemeral.
+  // Ensure valid session.
   if (!session) {
     LOG(WARNING) << "SetCredential failed as user session does not exist";
     return;
   }
-  // Check the user is already mounted and the session is ephemeral.
+
+  // Check the user is already mounted.
   if (!session->IsActive()) {
     LOG(WARNING) << "SetCredential failed as user session is not active.";
     return;
   }
 
-  if (!auth_session) {
-    LOG(WARNING) << "SetCredential failed as auth_session does not exist";
-    return;
-  }
-
+  // Check if both UserSession and AuthSession match.
   if (session->IsEphemeral() != auth_session->ephemeral_user()) {
     LOG(WARNING) << "SetCredential failed as user session does not match "
                     "auth_session ephemeral status user: "
@@ -4046,6 +4045,7 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
     return;
   }
 
+  // Ensure AuthSession is authenticated.
   if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
     LOG(WARNING) << "SetCredential failed as auth session is not authenticated "
                     "for user: "
@@ -4064,18 +4064,6 @@ void UserDataAuth::OnAddCredentialFinished(
     AuthSession* auth_session,
     base::OnceCallback<void(const AddKeyReply&)> on_done,
     const AddKeyReply& reply) {
-  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    SetCredentialVerifierForUserSession(
-        auth_session, /*override_existing_credential_verifier=*/false);
-  }
-  std::move(on_done).Run(reply);
-}
-
-template <typename AuthenticateReply>
-void UserDataAuth::OnAuthenticateFinished(
-    AuthSession* auth_session,
-    base::OnceCallback<void(const AuthenticateReply&)> on_done,
-    const AuthenticateReply& reply) {
   if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     SetCredentialVerifierForUserSession(
         auth_session, /*override_existing_credential_verifier=*/false);
@@ -4162,12 +4150,7 @@ void UserDataAuth::AuthenticateAuthSession(
 
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
-  auto on_authenticate =
-      base::BindOnce(&UserDataAuth::OnAuthenticateFinished<
-                         user_data_auth::AuthenticateAuthSessionReply>,
-                     base::Unretained(this), auth_session, std::move(on_done));
-  auth_session->Authenticate(request.authorization(),
-                             std::move(on_authenticate));
+  auth_session->Authenticate(request.authorization(), std::move(on_done));
 }
 
 void UserDataAuth::InvalidateAuthSession(
@@ -4544,6 +4527,10 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
                    kLocUserDataAuthMountFailedInPreparePersistentVault))
         .Wrap(std::move(mount_status).status());
   }
+
+  SetCredentialVerifierForUserSession(
+      auth_session_status.value(),
+      /*override_existing_credential_verifier=*/false);
   return OkStatus<CryptohomeError>();
 }
 

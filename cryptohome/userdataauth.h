@@ -1131,15 +1131,6 @@ class UserDataAuth {
       base::OnceCallback<void(const AddKeyReply&)> on_done,
       const AddKeyReply& reply);
 
-  // OnAuthenticateFinished when AuthSession::Authenticate is finished. The
-  // function will set credential in user_session for user to do unlock. The
-  // credential verifier will not be overridden if it is already set once.
-  template <typename AuthenticateReply>
-  void OnAuthenticateFinished(
-      AuthSession* auth_session,
-      base::OnceCallback<void(const AuthenticateReply&)> on_done,
-      const AuthenticateReply& reply);
-
   // OnUpdateCredentialFinished when AuthSession::UpdateCredentials is finished.
   // The function will set credential in user_session for user to do unlock. The
   // credential verifier will be overridden if it is already set once.
