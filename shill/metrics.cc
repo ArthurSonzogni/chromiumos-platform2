@@ -1339,6 +1339,7 @@ void Metrics::NotifyWiFiConnectionAttemptResult(NetworkServiceError result_code,
   // review.
   SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
       << __func__ << ": Session Tag 0x" << std::hex << session_tag;
+  SLOG(this, 2) << __func__ << ": ResultCode " << result_code;
   metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
