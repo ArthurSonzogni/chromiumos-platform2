@@ -31,12 +31,14 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_ipconfig.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/net/mock_time.h"
+#include "shill/network/mock_network.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
@@ -766,29 +768,26 @@ TEST_F(ServiceTest, StaticIPConfigsChanged) {
   update_address(kTestIpAddress1);
   ASSERT_TRUE(service_->Save(&storage));
 
-  int cb_invoked_times = 0;
-  const auto static_ip_change_cb =
-      base::BindLambdaForTesting([&cb_invoked_times]() { cb_invoked_times++; });
-  service_->SetIPConfig({}, static_ip_change_cb);
+  auto network =
+      std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
+  service_->SetAttachedNetwork(network->AsWeakPtr());
   SetStateField(Service::kStateConnected);
 
-  // Changes the address, callback should be invoked.
+  // Changes the address, network should be notified.
+  EXPECT_CALL(*network, OnStaticIPConfigChanged());
   update_address(kTestIpAddress2);
-  EXPECT_EQ(cb_invoked_times, 1);
-  // Address is not changed, callback should not be invoked.
+  // Address is not changed, network should not be notified.
   update_address(kTestIpAddress2);
-  EXPECT_EQ(cb_invoked_times, 1);
-  // Reloads the service, callback should be invoked since address is changed.
+  // Reloads the service, network should be notified since address is changed.
+  EXPECT_CALL(*network, OnStaticIPConfigChanged());
   ASSERT_TRUE(service_->Load(&storage));
-  EXPECT_EQ(cb_invoked_times, 2);
-  // Persists the service and reloads again, callback should not be invoked
+
+  // Persists the service and reloads again, network should not be notified
   // since address is not changed.
   ASSERT_TRUE(service_->Save(&storage));
-  EXPECT_EQ(cb_invoked_times, 2);
-  // Deregisters the callback, it should not be invoked anymore.
-  service_->SetIPConfig({}, {});
+  // Detaches the network, it should not be notified anymore.
+  service_->SetAttachedNetwork(nullptr);
   update_address(kTestIpAddress2);
-  EXPECT_EQ(cb_invoked_times, 2);
 }
 
 TEST_F(ServiceTest, State) {
@@ -1525,6 +1524,7 @@ INSTANTIATE_TEST_SUITE_P(
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
+  const std::string kIfName = "test_ifname";
   {
     Error error;
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
@@ -1534,16 +1534,23 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
 
   {
     Error error;
-    const RpcIdentifier nonempty_rpcid("/ipconfig/path");
-    service_->SetIPConfig(nonempty_rpcid, {});
-    EXPECT_EQ(nonempty_rpcid, service_->GetIPConfigRpcIdentifier(&error));
+    auto network =
+        std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+    service_->SetAttachedNetwork(network->AsWeakPtr());
+    auto ipconfig =
+        std::make_unique<MockIPConfig>(control_interface(), kIfName);
+    EXPECT_CALL(*network, GetCurrentIPConfig())
+        .WillOnce(Return(ipconfig.get()));
+    EXPECT_EQ(ipconfig->GetRpcIdentifier(),
+              service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_TRUE(error.IsSuccess());
   }
 
   {
     Error error;
-    const RpcIdentifier empty_rpcid;
-    service_->SetIPConfig(empty_rpcid, {});
+    auto network =
+        std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+    service_->SetAttachedNetwork(network->AsWeakPtr());
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());

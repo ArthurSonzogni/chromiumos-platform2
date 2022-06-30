@@ -8,8 +8,10 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <gmock/gmock.h>
 
+#include "shill/ipconfig.h"
 #include "shill/network/network.h"
 #include "shill/technology.h"
 
@@ -27,6 +29,12 @@ class MockNetwork : public Network {
   ~MockNetwork() override = default;
 
   MOCK_METHOD(bool, HasConnectionObject, (), (const, override));
+  MOCK_METHOD(void, OnStaticIPConfigChanged, (), (override));
+  MOCK_METHOD(void,
+              RegisterCurrentIPConfigChangeHandler,
+              (base::RepeatingClosure),
+              (override));
+  MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
   MOCK_METHOD(bool, IsDefault, (), (const, override));
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));

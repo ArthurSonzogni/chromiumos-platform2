@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback.h>
+
 #include "shill/connection.h"
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
@@ -85,10 +87,18 @@ class Network {
 
   // Callback invoked when the static IP properties configured on the selected
   // service changed.
-  void OnStaticIPConfigChanged();
+  mockable void OnStaticIPConfigChanged();
 
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
+
+  // Register a callback that gets called when the |current_ipconfig_| changed.
+  // This should only be used by Service.
+  mockable void RegisterCurrentIPConfigChangeHandler(
+      base::RepeatingClosure handler);
+  // Returns the IPConfig object which is used to setup the Connection of this
+  // Network. Returns nullptr if there is no such IPConfig.
+  mockable IPConfig* GetCurrentIPConfig() const;
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
@@ -151,6 +161,12 @@ class Network {
   std::unique_ptr<DHCPController> dhcp_controller_;
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;
+
+  base::RepeatingClosure current_ipconfig_change_handler_;
+  // If not empty, |current_ipconfig_| should points to either |ipconfig_| or
+  // |ip6config_| which is used to setup the connection. GetCurrentIPConfig()
+  // should be used to get this property so that its validity can be checked.
+  IPConfig* current_ipconfig_ = nullptr;
 
   EventHandler* event_handler_;
 

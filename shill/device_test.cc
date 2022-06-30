@@ -69,6 +69,12 @@ using ::testing::StrictMock;
 
 namespace shill {
 
+namespace {
+MATCHER_P(IsWeakPtrTo, address, "") {
+  return arg.get() == address;
+}
+}  // namespace
+
 class TestDevice : public Device {
  public:
   TestDevice(Manager* manager,
@@ -173,7 +179,11 @@ class DeviceTest : public testing::Test {
     return counter;
   }
 
-  void SelectService(const ServiceRefPtr service) {
+  void SelectService(scoped_refptr<MockService> service) {
+    if (service) {
+      EXPECT_CALL(*service,
+                  SetAttachedNetwork(IsWeakPtrTo(device_->network())));
+    }
     device_->SelectService(service);
   }
 
@@ -444,13 +454,13 @@ TEST_F(DeviceTest, SelectedService) {
   // Service should be returned to "Idle" state
   EXPECT_CALL(*service, state()).WillOnce(Return(Service::kStateUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
-  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _));
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   SelectService(nullptr);
 
   // A service in the "Failure" state should not be reset to "Idle"
   SelectService(service);
   EXPECT_CALL(*service, state()).WillOnce(Return(Service::kStateFailure));
-  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _));
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   SelectService(nullptr);
 }
 
@@ -464,7 +474,7 @@ TEST_F(DeviceTest, ResetConnection) {
   // ResetConnection() should drop the connection and the selected service,
   // but should not change the service state.
   EXPECT_CALL(*service, SetState(_)).Times(0);
-  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _)).Times(AnyNumber());
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   device_->ResetConnection();
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
@@ -475,7 +485,6 @@ TEST_F(DeviceTest, DHCPFailure) {
   SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
                                               HasSubstr("OnIPConfigFailure")));
-  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _));
   EXPECT_CALL(*ipconfig_, ResetProperties());
   OnDHCPFailure();
 }
@@ -503,7 +512,6 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service, SetIPConfig(ipconfig_->GetRpcIdentifier(), _));
   OnDHCPFailure();
 }
 
@@ -522,7 +530,6 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
   EXPECT_CALL(*ipconfig_, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
-  EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _)).Times(0);
   OnDHCPFailure();
   // Verify connection not teardown.
   // TODO(b/232177767): Check Network state instead.
@@ -540,7 +547,6 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
-  EXPECT_CALL(*service, SetIPConfig(_, _)).Times(0);
   // The IPConfig should retain the previous values.
   EXPECT_CALL(*ipconfig_, ResetProperties()).Times(0);
   OnDHCPFailure();
@@ -550,7 +556,6 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   SetupIPv4DHCPConfig();
-  base::RepeatingClosure static_ip_cb;
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -565,10 +570,6 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, HasStaticNameServers()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service, SetIPConfig(ipconfig_->GetRpcIdentifier(), _))
-      .WillOnce([&static_ip_cb](RpcIdentifier, base::RepeatingClosure cb) {
-        static_ip_cb = cb;
-      });
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
@@ -578,7 +579,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
 
   // Verify static IP config change callback.
   EXPECT_CALL(*dhcp_controller_, RenewIP());
-  static_ip_cb.Run();
+  device_->network()->OnStaticIPConfigChanged();
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
@@ -602,7 +603,6 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
 
   // Successful portal (non-)detection forces the service Online.
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service, SetIPConfig(ipconfig->GetRpcIdentifier(), _));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
@@ -753,6 +753,7 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
@@ -774,6 +775,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
@@ -795,6 +797,7 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitBoolChanged(kPoweredProperty, false));
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   device_->SetEnabled(false);
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->OnEnabledStateChanged(ResultCallback(), Error());
@@ -1097,7 +1100,6 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service, SetIPConfig(_, _)).Times(0);
   device_->OnIPv6AddressChanged(&address1);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
@@ -1128,8 +1130,6 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service,
-              SetIPConfig(device_->ip6config()->GetRpcIdentifier(), _));
   device_->OnIPv6AddressChanged(&address2);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
@@ -1181,6 +1181,7 @@ TEST_F(DeviceTest, FetchTrafficCounters) {
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   scoped_refptr<MockService> service1(new NiceMock<MockService>(manager()));
+  EXPECT_CALL(*service0, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   SelectService(service1);
   EXPECT_EQ(service1, device_->selected_service_);
   for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
@@ -1634,7 +1635,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
   SetMockPortalDetector();
   EXPECT_CALL(*service_, state()).WillOnce(Return(Service::kStateIdle));
   EXPECT_CALL(*service_, SetState(_));
-  EXPECT_CALL(*service_, SetIPConfig(_, _));
+  EXPECT_CALL(*service_, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   SelectService(nullptr);
   EXPECT_FALSE(GetPortalDetector());
 }
@@ -1867,7 +1868,6 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
 
   // Ensure that the DestroyConnection method removes all connection references
   // except the one left in this scope.
-  EXPECT_CALL(*service_, SetIPConfig(RpcIdentifier(), _));
   DestroyConnection();
 }
 

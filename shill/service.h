@@ -27,6 +27,7 @@
 #include "shill/mockable.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
+#include "shill/network/network.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/store/property_store.h"
@@ -402,13 +403,12 @@ class Service : public base::RefCounted<Service> {
   // its value to true and mark it saved.
   virtual void EnableAndRetainAutoConnect();
 
-  // The IPConfig object associated with this service has changed. The Service
-  // class will cache this path. Also registers a callback which will be invoked
-  // when the static IPConfig configured with this Service changed. Called by
-  // Device.
-  mockable void SetIPConfig(
-      RpcIdentifier ipconfig_rpc_id,
-      base::RepeatingClosure static_ipconfig_changed_callback);
+  // Notifies Service that a connecting or connected Network is attached to this
+  // Service.
+  mockable void SetAttachedNetwork(base::WeakPtr<Network> network);
+  // Notifies D-Bus listeners of a IPConfig change event if the new IPConfig is
+  // not empty.
+  void EmitIPConfigPropertyChange();
 
   // Returns the virtual device associated with this service. Currently this
   // will return a Device pointer only for a connected VPN service.
@@ -1049,12 +1049,9 @@ class Service : public base::RefCounted<Service> {
   // List of subject names reported by remote entity during TLS setup.
   std::vector<std::string> remote_certification_;
 
-  // The IPConfig object associated with this service currently. Can be empty if
-  // no IPConfig object is associated.
-  RpcIdentifier ipconfig_rpc_identifier_;
-  // Invoked when the Service is connected and the static IPConfig associated is
-  // changed.
-  base::RepeatingClosure static_ipconfig_changed_callback_;
+  // The Network which is attached to this Service now, if there is any. Service
+  // will push static IP configs to the attached network.
+  base::WeakPtr<Network> attached_network_;
 
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
   StaticIPParameters static_ip_parameters_;

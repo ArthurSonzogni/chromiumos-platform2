@@ -745,11 +745,6 @@ void Device::OnConnectionUpdated(IPConfig* ipconfig) {
                            ipv6_status);
 
   if (selected_service_) {
-    selected_service_->SetIPConfig(
-        ipconfig->GetRpcIdentifier(),
-        base::BindRepeating(&Network::OnStaticIPConfigChanged,
-                            network()->AsWeakPtr()));
-
     // If the service is already in a Connected state (this happens during a
     // roam or DHCP renewal), transitioning back to Connected isn't productive.
     // Avoid this transition entirely and wait for portal detection to
@@ -875,10 +870,6 @@ void Device::OnConnected() {}
 void Device::DestroyConnection() {
   SLOG(this, 2) << __func__ << " on " << link_name_;
   StopAllActivities();
-  if (selected_service_) {
-    selected_service_->SetIPConfig(RpcIdentifier(),
-                                   /*static_ipconfig_changed_callback=*/{});
-  }
   network_->DestroyConnection();
 }
 
@@ -932,12 +923,14 @@ void Device::SelectService(const ServiceRefPtr& service,
         selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);
     }
-    selected_service_->SetIPConfig(RpcIdentifier(),
-                                   /*static_ipconfig_changed_callback=*/{});
+    selected_service_->SetAttachedNetwork(nullptr);
     StopAllActivities();
   }
 
   selected_service_ = service;
+  if (selected_service_) {
+    selected_service_->SetAttachedNetwork(network_->AsWeakPtr());
+  }
   OnSelectedServiceChanged(old_service);
   FetchTrafficCounters(old_service, selected_service_);
   adaptor_->EmitRpcIdentifierChanged(kSelectedServiceProperty,

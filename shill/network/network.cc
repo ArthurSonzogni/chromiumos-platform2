@@ -39,6 +39,12 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   ipconfig->SetBlackholedUids(blackhole_uids);
   connection_->UpdateFromIPConfig(ipconfig->properties());
   event_handler_->OnConnectionUpdated(ipconfig);
+
+  const bool ipconfig_changed = current_ipconfig_ == ipconfig;
+  current_ipconfig_ = ipconfig;
+  if (ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
+    current_ipconfig_change_handler_.Run();
+  }
 }
 
 void Network::DestroyConnection() {
@@ -102,6 +108,22 @@ void Network::OnStaticIPConfigChanged() {
     // Trigger DHCP renew.
     dhcp_controller()->RenewIP();
   }
+}
+
+void Network::RegisterCurrentIPConfigChangeHandler(
+    base::RepeatingClosure handler) {
+  current_ipconfig_change_handler_ = handler;
+}
+
+IPConfig* Network::GetCurrentIPConfig() const {
+  // Make sure that the |current_ipconfig_| is still valid.
+  if (current_ipconfig_ == ipconfig_.get()) {
+    return current_ipconfig_;
+  }
+  if (current_ipconfig_ == ip6config_.get()) {
+    return current_ipconfig_;
+  }
+  return nullptr;
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {

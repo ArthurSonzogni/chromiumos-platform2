@@ -73,10 +73,7 @@ class MockService : public Service {
   MOCK_METHOD(bool, IsPortalDetectionAuto, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
-  MOCK_METHOD(void,
-              SetIPConfig,
-              (RpcIdentifier, base::RepeatingClosure),
-              (override));
+  MOCK_METHOD(void, SetAttachedNetwork, (base::WeakPtr<Network>), (override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(const EapCredentials*, eap, (), (const, override));

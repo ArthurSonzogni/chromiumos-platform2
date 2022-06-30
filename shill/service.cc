@@ -1064,15 +1064,23 @@ void Service::EnableAndRetainAutoConnect() {
   RetainAutoConnect();
 }
 
-void Service::SetIPConfig(
-    RpcIdentifier ipconfig_rpc_id,
-    base::RepeatingClosure static_ipconfig_changed_callback) {
-  if (ipconfig_rpc_id.value().empty()) {
+void Service::SetAttachedNetwork(base::WeakPtr<Network> network) {
+  if (attached_network_.get() == network.get()) {
+    return;
+  }
+  if (!network) {
     static_ip_parameters_.ClearSavedParameters();
   }
-  ipconfig_rpc_identifier_ = ipconfig_rpc_id;
-  static_ipconfig_changed_callback_ = static_ipconfig_changed_callback;
+  // TODO(b/232177767): Set static IP parameters on Network here.
+  attached_network_ = network;
+  EmitIPConfigPropertyChange();
+  if (attached_network_) {
+    attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
+        &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
+  }
+}
 
+void Service::EmitIPConfigPropertyChange() {
   Error error;
   RpcIdentifier ipconfig = GetIPConfigRpcIdentifier(&error);
   if (error.IsSuccess()) {
@@ -1081,8 +1089,8 @@ void Service::SetIPConfig(
 }
 
 void Service::NotifyStaticIPConfigChanged() {
-  if (!static_ipconfig_changed_callback_.is_null()) {
-    static_ipconfig_changed_callback_.Run();
+  if (attached_network_) {
+    attached_network_->OnStaticIPConfigChanged();
   }
 }
 
@@ -1637,13 +1645,16 @@ void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
 }
 
 RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
-  if (ipconfig_rpc_identifier_.value().empty()) {
+  IPConfig* ipconfig = nullptr;
+  if (attached_network_) {
+    ipconfig = attached_network_->GetCurrentIPConfig();
+  }
+  if (!ipconfig) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
     return DBusControl::NullRpcIdentifier();
   }
-
-  return ipconfig_rpc_identifier_;
+  return ipconfig->GetRpcIdentifier();
 }
 
 void Service::SetConnectable(bool connectable) {
