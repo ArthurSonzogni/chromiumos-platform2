@@ -230,6 +230,8 @@ MountErrorType SshfsHelper::ConfigureSandboxSftpVsock(
   sandbox->AddArgument("localhost:");
   std::vector<std::string> options = {"BatchMode=yes", "follow_symlinks",
                                       "cache=no", "vsock=" + uri.path()};
+  SetParamValue(&options, "uid", base::NumberToString(kChronosUID));
+  SetParamValue(&options, "gid", base::NumberToString(kChronosAccessGID));
   std::string option_string;
   if (!JoinParamsIntoOptions(options, &option_string)) {
     return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
