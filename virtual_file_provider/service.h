@@ -47,6 +47,9 @@ class Service {
   // associated with the ID.
   void SendIdReleased(const std::string& id);
 
+  // Returns true if the given string is a valid virtual file ID.
+  static bool IsValidVirtualFileId(const std::string& id);
+
  private:
   // Handles GenerateVirtualFileId D-Bus method call.
   // Generates and returns an ID, to be used for FD creation on the FUSE file

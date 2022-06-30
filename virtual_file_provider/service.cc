@@ -106,6 +106,11 @@ void Service::SendIdReleased(const std::string& id) {
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, base::DoNothing());
 }
 
+// static
+bool Service::IsValidVirtualFileId(const std::string& id) {
+  return base::GUID::ParseCaseInsensitive(id).is_valid();
+}
+
 void Service::GenerateVirtualFileId(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -144,10 +149,12 @@ void Service::OpenFileById(
 
   dbus::MessageReader reader(method_call);
   std::string id;
-  if (!reader.PopString(&id)) {
+  if (!reader.PopString(&id) || !IsValidVirtualFileId(id)) {
+    LOG(ERROR) << "No valid ID was provided. id = " << id;
     std::move(response_sender)
-        .Run(dbus::ErrorResponse::FromMethodCall(
-            method_call, DBUS_ERROR_INVALID_ARGS, "Id must be provided."));
+        .Run(dbus::ErrorResponse::FromMethodCall(method_call,
+                                                 DBUS_ERROR_INVALID_ARGS,
+                                                 "Valid ID must be provided."));
     return;
   }
 
