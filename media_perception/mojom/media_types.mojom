@@ -6,6 +6,8 @@ module media.mojom;
 
 import "media_perception/mojom/mailbox_holder.mojom";
 import "media_perception/mojom/vulkan_ycbcr_info.mojom";
+import "media_perception/mojom/encryption_pattern.mojom";
+import "media_perception/mojom/shared_memory.mojom";
 import "media_perception/mojom/time.mojom";
 import "media_perception/mojom/values.mojom";
 import "media_perception/mojom/unguessable_token.mojom";
@@ -107,14 +109,6 @@ enum MediaContainerName;
 [Native]
 enum MediaStatusState;
 
-// This defines a mojo transport format for media::EncryptionPattern
-// See media/base/encryption_pattern.h for description.
-[Stable]
-struct EncryptionPattern {
-  uint32 crypt_byte_block;
-  uint32 skip_byte_block;
-};
-
 // See media/base/encryption_scheme.h for description.
 [Native]
 enum EncryptionScheme;
@@ -176,6 +170,7 @@ struct AudioDecoderConfig {
   int32 codec_delay;
   AudioCodecProfile profile;
   ChannelLayout target_output_channel_layout;
+  SampleFormat target_output_sample_format;
   bool should_discard_decoder_delay;
   array<uint8> aac_extra_data;
 };
@@ -333,6 +328,8 @@ struct VideoFrameMetadata {
 
   bool hw_protected;
 
+  bool is_webgpu_compatible;
+
   mojo_base.mojom.UnguessableToken? overlay_plane_id;
 
   bool power_efficient;
@@ -408,9 +405,8 @@ struct EosVideoFrameData {
 
 // This defines video frame data stored in a Mojo shared buffer.
 struct SharedBufferVideoFrameData {
-  // Reference to the shared memory containing the frame's data.
-  handle<shared_buffer> frame_data;
-  uint64 frame_data_size;
+  // Shared memory region for the frame data.
+  mojo_base.mojom.UnsafeSharedMemoryRegion frame_data;
 
   // Stride and offsets for each plane. Offsets are relative to the start
   // of |frame_data|.

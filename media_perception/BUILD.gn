@@ -49,6 +49,7 @@ generate_mojom_bindings("media_perception_mojo_bindings") {
     "mojom/device_factory.mojom",
     "mojom/device_management.mojom",
     "mojom/devices_changed_observer.mojom",
+    "mojom/encryption_pattern.mojom",
     "mojom/frame_perception.mojom",
     "mojom/geometry.mojom",
     "mojom/hdr_metadata.mojom",
