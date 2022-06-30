@@ -37,6 +37,7 @@ source_set("libcros_healthd_fetchers") {
   ]
   sources = [
     "audio_fetcher.cc",
+    "audio_hardware_fetcher.cc",
     "backlight_fetcher.cc",
     "battery_fetcher.cc",
     "bluetooth_fetcher.cc",
@@ -79,6 +80,7 @@ if (use.test) {
     sources = [
       "async_fetcher_test.cc",
       "audio_fetcher_test.cc",
+      "audio_hardware_fetcher_test.cc",
       "backlight_fetcher_test.cc",
       "battery_fetcher_test.cc",
       "bluetooth_fetcher_test.cc",

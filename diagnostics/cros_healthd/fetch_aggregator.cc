@@ -13,6 +13,7 @@
 #include <base/logging.h>
 
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
@@ -176,6 +177,12 @@ void FetchAggregator::Run(
       case mojom::ProbeCategoryEnum::kInput: {
         input_fetcher_.Fetch(
             CreateFetchCallback(&barrier, &info->input_result));
+        break;
+      }
+      case mojom::ProbeCategoryEnum::kAudioHardware: {
+        FetchAudioHardwareInfo(
+            context_,
+            CreateFetchCallback(&barrier, &info->audio_hardware_result));
         break;
       }
     }
