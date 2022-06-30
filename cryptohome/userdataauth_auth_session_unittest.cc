@@ -49,6 +49,7 @@ using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 
 using base::test::TaskEnvironment;
@@ -271,8 +272,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   ExpectVaultKeyset();
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done_ephemeral;
-  EXPECT_CALL(on_done_ephemeral, Run(testing::_))
-      .WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done_ephemeral, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
@@ -287,8 +287,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   // ... or regular.
   // Set up expectation in callback for success.
   base::MockCallback<AuthenticateCallback> on_done_regular;
-  EXPECT_CALL(on_done_regular, Run(testing::_))
-      .WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done_regular, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   auth_session = auth_session_manager_->CreateAuthSession(kUsername2, 0);
   auth_session->Authenticate(CreateAuthorization(kPassword2),
@@ -339,7 +338,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   user_data_auth::AddCredentialsReply reply;
   base::MockCallback<AddCredentialCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
   AddCredentials(request, on_done.Get());
 
   // Evaluate error returned by callback.
@@ -384,7 +383,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   AuthorizationRequest auth_req2 = CreateAuthorization(kPassword2);
   request2.mutable_authorization()->Swap(&auth_req2);
 
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply2));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply2));
   AddCredentials(request2, on_done.Get());
 
   ASSERT_THAT(reply2.error(), Eq(MOUNT_ERROR_NONE));
@@ -410,8 +409,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   user_data_auth::AuthenticateAuthSessionReply reply3;
   // Set up expectation in callback for success.
   base::MockCallback<AuthenticateCallback> on_done_third;
-  EXPECT_CALL(on_done_third, Run(testing::_))
-      .WillOnce(testing::SaveArg<0>(&reply3));
+  EXPECT_CALL(on_done_third, Run(_)).WillOnce(SaveArg<0>(&reply3));
   auth_session3->Authenticate(CreateAuthorization(kPassword3),
                               on_done_third.Get());
   ASSERT_TRUE(
@@ -542,7 +540,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
 
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   AuthenticateAuthSession(request, on_done.Get());
   ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
@@ -586,7 +584,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
   // Set up expectation in callback for success.
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
   ExpectVaultKeyset();
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
@@ -642,7 +640,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
 
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   AuthenticateAuthSession(request, on_done.Get());
   ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
@@ -701,7 +699,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
 
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   AuthenticateAuthSession(request, on_done.Get());
   ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
@@ -737,7 +735,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   AuthorizationRequest auth_req2 = CreateAuthorization(kPassword2);
   request2.mutable_authorization()->Swap(&auth_req2);
   base::MockCallback<AuthenticateCallback> on_done2;
-  EXPECT_CALL(on_done2, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply2));
+  EXPECT_CALL(on_done2, Run(_)).WillOnce(SaveArg<0>(&reply2));
 
   ExpectVaultKeyset();
   ExpectAuth(kUsername2, brillo::SecureBlob(kPassword2));
@@ -871,7 +869,7 @@ TEST_F(AuthSessionInterfaceTest, AuthenticateAuthSessionNoLabel) {
   // AuthorizationRequest.
   user_data_auth::AuthenticateAuthSessionReply reply;
   base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   AuthorizationRequest auth_req;
   auth_req.mutable_key()->set_secret(kPassword);
