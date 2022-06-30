@@ -46,6 +46,18 @@ fn validate_entries(entries: &[AppManifestEntry]) -> Result<()> {
         if !app_ids.insert(&entry.app_name) {
             bail!("Duplicate entry for id: '{}'", &entry.app_name);
         }
+        // Sets in Rust can contain only one of an equivalent entry, so duplicates will be
+        // represented by a single value leading to a length difference between the Set and
+        // the original list.
+        let fds: Set<i32> = entry
+            .channel_config
+            .iter()
+            .filter(|a| **a >= 0)
+            .cloned()
+            .collect();
+        if fds.len() != entry.channel_config.len() {
+            bail!("Invalid channel config for id: '{}'", &entry.app_name);
+        }
     }
     Ok(())
 }
@@ -200,5 +212,39 @@ fn main() -> Result<()> {
         writer
             .write_all(&serialized)
             .context("Failed to write output")
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use libsirenia::app_info::AppManifest;
+    use libsirenia::app_info::AppManifestEntry;
+
+    use crate::validate_entries;
+
+    fn get_entries_for_test() -> Vec<AppManifestEntry> {
+        let entries: Vec<AppManifestEntry> = AppManifest::new().into();
+        assert!(!entries.is_empty());
+        assert!(validate_entries(&entries).is_ok());
+        entries
+    }
+
+    #[test]
+    fn reject_duplicate_app_id() {
+        let mut entries = get_entries_for_test();
+
+        entries.push(entries.first().unwrap().clone());
+        assert!(validate_entries(&entries).is_err());
+    }
+
+    #[test]
+    fn reject_invalid_channel_config() {
+        let mut entries = get_entries_for_test();
+
+        entries.first_mut().unwrap().channel_config = vec![0, 1, 2, 0].into();
+        assert!(validate_entries(&entries).is_err());
+
+        entries.first_mut().unwrap().channel_config = vec![0, 1, 2, -1].into();
+        assert!(validate_entries(&entries).is_err());
     }
 }
