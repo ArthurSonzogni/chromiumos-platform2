@@ -1524,9 +1524,6 @@ class Metrics : public DefaultServiceObserver {
   virtual void NotifyWiFiConnectionAttemptResult(
       NetworkServiceError result_code, uint64_t session_tag);
 
-  // TODO(b/225737253): Right now we report |kWiFiDisconnectionTypeUnknown| in
-  // all cases, we still to have separate the various types of disconnection
-  // (expected, unexpected, ...)
   enum WiFiDisconnectionType {
     kWiFiDisconnectionTypeUnknown = 0,
     kWiFiDisconnectionTypeExpectedUserAction = 1,
