@@ -133,6 +133,11 @@ void ConfigureAndEnterMinijail() {
       base::FilePath("/sys/bus/thunderbolt"));  // Files related to the
                                                 // Thunderbolt information.
 
+  BindMountIfPathExists(
+      jail.get(),
+      base::FilePath(
+          "/sys/class/sound"));  // Files related to the audio information.
+
   // Files related to the SoC ID information.
   BindMountIfPathExists(jail.get(),
                         base::FilePath("/sys/bus/soc/devices/soc0/soc_id"));

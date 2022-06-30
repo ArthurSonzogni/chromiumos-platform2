@@ -355,6 +355,21 @@ class BusFetcherTest : public BaseFileTest {
     return result;
   }
 
+  base::flat_map<base::FilePath, mojom::BusDevicePtr>
+  FetchSysfsPathsBusDeviceMapSync() {
+    base::RunLoop run_loop;
+    base::flat_map<base::FilePath, mojom::BusDevicePtr> result;
+    FetchSysfsPathsBusDeviceMap(
+        &mock_context_,
+        base::BindLambdaForTesting(
+            [&](base::flat_map<base::FilePath, mojom::BusDevicePtr> response) {
+              result = std::move(response);
+              run_loop.Quit();
+            }));
+    run_loop.Run();
+    return result;
+  }
+
   void CheckBusDevices() {
     auto res = FetchBusDevicesSync();
     ASSERT_TRUE(res->is_bus_devices());
@@ -401,6 +416,24 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
   AddExpectedThunderboltDevice(2);
   SetExpectedBusDevices();
   CheckBusDevices();
+}
+
+TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapPci) {
+  AddExpectedPciDevice();
+  SetExpectedBusDevices();
+
+  auto result = FetchSysfsPathsBusDeviceMapSync();
+  EXPECT_EQ(result.begin()->first,
+            GetPathUnderRoot({kFakePathPciDevices, "0000:00:00.0"}));
+}
+
+TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapUsb) {
+  AddExpectedUsbDevice(1);
+  SetExpectedBusDevices();
+
+  auto result = FetchSysfsPathsBusDeviceMapSync();
+  EXPECT_EQ(result.begin()->first,
+            GetPathUnderRoot({kFakePathUsbDevices, "1-0"}));
 }
 
 }  // namespace

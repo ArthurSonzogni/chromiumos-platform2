@@ -346,16 +346,17 @@ fwupd_utils::DeviceList ParseFwupdDevices(
 
 void FetchBusDevicesWithFwupdInfo(
     Context* context,
-    FetchBusDevicesCallback callback,
+    FetchSysfsPathsBusDeviceMapCallback callback,
     const fwupd_utils::DeviceList& fwupd_devices) {
   const auto& root = context->root_dir();
-  std::vector<mojom::BusDevicePtr> res;
+  std::vector<std::pair<base::FilePath, mojom::BusDevicePtr>> res;
 
   auto pci_util = context->CreatePciUtil();
   for (const auto& path : ListDirectory(root.Append(kPathSysPci))) {
     auto device = FetchPciDevice(path, pci_util);
     if (device) {
-      res.push_back(std::move(device));
+      res.push_back(
+          std::make_pair(base::MakeAbsoluteFilePath(path), std::move(device)));
     }
   }
   for (const auto& path : ListDirectory(root.Append(kPathSysUsb))) {
@@ -363,22 +364,35 @@ void FetchBusDevicesWithFwupdInfo(
         context->udev()->CreateDeviceFromSysPath(path.value().c_str());
     auto device = FetchUsbDevice(path, udevice, fwupd_devices);
     if (device) {
-      res.push_back(std::move(device));
+      res.push_back(
+          std::make_pair(base::MakeAbsoluteFilePath(path), std::move(device)));
     }
   }
   auto thunderbolt_path = root.Append(kPathSysThunderbolt);
   for (const auto& dev_path : ListDirectory(thunderbolt_path)) {
     auto device = FetchThunderboltDevice(thunderbolt_path, dev_path);
     if (device) {
-      res.push_back(std::move(device));
+      res.push_back(std::make_pair(base::MakeAbsoluteFilePath(dev_path),
+                                   std::move(device)));
     }
   }
-  std::move(callback).Run(mojom::BusResult::NewBusDevices(std::move(res)));
+  std::move(callback).Run(
+      base::flat_map<base::FilePath, mojom::BusDevicePtr>{std::move(res)});
+}
+
+mojom::BusResultPtr ConvertBusDeviceMapToBusResult(
+    base::flat_map<base::FilePath, mojom::BusDevicePtr> bus_device_map) {
+  std::vector<mojom::BusDevicePtr> res;
+  for (auto& item : bus_device_map) {
+    res.push_back(std::move(item.second));
+  }
+  return mojom::BusResult::NewBusDevices(std::move(res));
 }
 
 }  // namespace
 
-void FetchBusDevices(Context* context, FetchBusDevicesCallback callback) {
+void FetchSysfsPathsBusDeviceMap(Context* context,
+                                 FetchSysfsPathsBusDeviceMapCallback callback) {
   auto get_devices_cb = base::BindOnce(&ParseFwupdDevices)
                             .Then(base::BindOnce(&FetchBusDevicesWithFwupdInfo,
                                                  context, std::move(callback)));
@@ -386,6 +400,12 @@ void FetchBusDevices(Context* context, FetchBusDevicesCallback callback) {
   auto [on_success, on_error] = SplitDbusCallback(std::move(get_devices_cb));
   context->fwupd_proxy()->GetDevicesAsync(std::move(on_success),
                                           std::move(on_error));
+}
+
+void FetchBusDevices(Context* context, FetchBusDevicesCallback callback) {
+  FetchSysfsPathsBusDeviceMap(context,
+                              base::BindOnce(&ConvertBusDeviceMapToBusResult)
+                                  .Then(std::move(callback)));
 }
 
 }  // namespace diagnostics

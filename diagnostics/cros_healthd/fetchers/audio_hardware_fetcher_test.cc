@@ -8,24 +8,49 @@
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <fwupd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
 namespace {
 
+using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::Invoke;
+using ::testing::WithArg;
+
 constexpr char kAsoundPath[] = "/proc/asound";
 constexpr char kFakeAlsaId[] = "FakeId";
+constexpr char kFakePciDevicePath[] = "/sys/devices/pci0000:00";
+constexpr char kFakePciDeviceDirName[] = "0000:12:34.5";
 
 class AudioHardwareFetcherTest : public BaseFileTest {
  protected:
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
+    ON_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
+        .WillByDefault(WithArg<0>(Invoke(
+            [](base::OnceCallback<void(
+                   const std::vector<brillo::VariantDictionary>&)> callback) {
+              std::move(callback).Run({});
+            })));
+    EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
+        .Times(AnyNumber());
+
     // Set id so by default we can get valid result.
     SetFile({kAsoundPath, "card0", "id"}, kFakeAlsaId);
+    // Set symbolic links to emulate real sysfs.
+    SetSymbolicLink({"../../..", kFakePciDeviceDirName},
+                    {kFakePciDevicePath, kFakePciDeviceDirName, "sound",
+                     "card0", "device"});
+    SetSymbolicLink(
+        {"../../devices/pci0000:00", kFakePciDeviceDirName, "sound", "card0"},
+        "/sys/class/sound/card0");
   }
 
   mojom::AudioHardwareResultPtr FetchAudioHardwareInfoSync() {
@@ -98,6 +123,22 @@ TEST_F(AudioHardwareFetcherTest, FetchAudioCardsCodecNoAddress) {
 
   auto result = FetchAudioHardwareInfoSync();
   EXPECT_TRUE(result->is_error());
+}
+
+TEST_F(AudioHardwareFetcherTest, FetchAudioCardsBusDevice) {
+  // Set fake pci device.
+  SetSymbolicLink({"../../../devices/pci0000:00", kFakePciDeviceDirName},
+                  {kPathSysPci, kFakePciDeviceDirName});
+  SetFile({kFakePciDevicePath, kFakePciDeviceDirName, kFilePciClass},
+          "0x123456");
+  SetFile({kFakePciDevicePath, kFakePciDeviceDirName, kFilePciVendor},
+          "0x1234");
+  SetFile({kFakePciDevicePath, kFakePciDeviceDirName, kFilePciDevice},
+          "0x1234");
+
+  auto result = FetchAudioHardwareInfoSync();
+  EXPECT_FALSE(
+      result->get_audio_hardware_info()->audio_cards[0]->bus_device.is_null());
 }
 
 }  // namespace

@@ -15,6 +15,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
@@ -88,8 +89,23 @@ std::tuple<mojom::AudioCardPtr, mojom::ProbeErrorPtr> FetchAudioCard(
   return {std::move(audio_card), nullptr};
 }
 
+std::tuple<base::FilePath, mojom::ProbeErrorPtr> GetAudioCardSysfsRealPath(
+    const base::FilePath& root_dir, const std::string& card_dir_name) {
+  // This path is a symbolic link to the real sysfs device path.
+  auto path =
+      root_dir.Append("sys/class/sound").Append(card_dir_name).Append("device");
+  auto result = base::MakeAbsoluteFilePath(path);
+  if (result.empty())
+    return {base::FilePath{},
+            mojom::ProbeError::New(mojom::ErrorType::kParseError,
+                                   "File not found: " + path.value())};
+  return {result, nullptr};
+}
+
 std::tuple<std::vector<mojom::AudioCardPtr>, mojom::ProbeErrorPtr>
-FetchAudioCards(const base::FilePath& root_dir) {
+FetchAudioCards(
+    const base::FilePath& root_dir,
+    base::flat_map<base::FilePath, mojom::BusDevicePtr> bus_device_map) {
   std::vector<mojom::AudioCardPtr> audio_cards;
 
   const base::FilePath asound_dir = root_dir.Append("proc/asound");
@@ -97,22 +113,36 @@ FetchAudioCards(const base::FilePath& root_dir) {
                                  base::FileEnumerator::FileType::DIRECTORIES,
                                  "card*");
   for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
-    auto [audio_card, err] = FetchAudioCard(path);
-    if (!err.is_null()) {
+    auto [audio_card, audio_card_err] = FetchAudioCard(path);
+    if (!audio_card_err.is_null()) {
       return {std::vector<mojom::AudioCardPtr>{},
-              WrapProbeError(std::move(err),
+              WrapProbeError(std::move(audio_card_err),
                              "Failed to parse audio card " + path.value())};
+    }
+    auto [device_path, device_path_err] =
+        GetAudioCardSysfsRealPath(root_dir, path.BaseName().value());
+    if (!device_path_err.is_null()) {
+      return {std::vector<mojom::AudioCardPtr>{},
+              WrapProbeError(std::move(device_path_err),
+                             "Failed to parse audio card " + path.value())};
+    }
+
+    auto it = bus_device_map.find(device_path);
+    if (it != bus_device_map.end()) {
+      audio_card->bus_device = it->second.Clone();
     }
     audio_cards.push_back(std::move(audio_card));
   }
   return {std::move(audio_cards), nullptr};
 }
 
-mojom::AudioHardwareResultPtr FetchAudioHardwareInfoInner(Context* context) {
+mojom::AudioHardwareResultPtr FetchAudioHardwareInfoInner(
+    Context* context,
+    base::flat_map<base::FilePath, mojom::BusDevicePtr> bus_device_map) {
   auto hardware_info = mojom::AudioHardwareInfo::New();
   mojom::ProbeErrorPtr error;
   std::tie(hardware_info->audio_cards, error) =
-      FetchAudioCards(context->root_dir());
+      FetchAudioCards(context->root_dir(), std::move(bus_device_map));
   if (!error.is_null()) {
     LOG(ERROR) << error->msg;
     return mojom::AudioHardwareResult::NewError(std::move(error));
@@ -126,7 +156,9 @@ mojom::AudioHardwareResultPtr FetchAudioHardwareInfoInner(Context* context) {
 
 void FetchAudioHardwareInfo(Context* context,
                             FetchAudioHardwareInfoCallback callback) {
-  std::move(callback).Run(FetchAudioHardwareInfoInner(context));
+  FetchSysfsPathsBusDeviceMap(
+      context, base::BindOnce(&FetchAudioHardwareInfoInner, context)
+                   .Then(std::move(callback)));
 }
 
 }  // namespace diagnostics
