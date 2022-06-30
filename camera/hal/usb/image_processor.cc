@@ -234,17 +234,18 @@ int ImageProcessor::ConvertFormat(const FrameBuffer& in_frame,
       }
       case V4L2_PIX_FMT_NV12:     // NV12
       case V4L2_PIX_FMT_NV12M: {  // NM12
-        libyuv::CopyPlane(in_frame.GetData(FrameBuffer::YPLANE),
-                          in_frame.GetStride(FrameBuffer::YPLANE),
-                          out_frame->GetData(FrameBuffer::YPLANE),
-                          out_frame->GetStride(FrameBuffer::YPLANE),
-                          out_frame->GetWidth(), out_frame->GetHeight());
-        libyuv::CopyPlane(in_frame.GetData(FrameBuffer::UPLANE),
-                          in_frame.GetStride(FrameBuffer::UPLANE),
-                          out_frame->GetData(FrameBuffer::UPLANE),
-                          out_frame->GetStride(FrameBuffer::UPLANE),
-                          out_frame->GetWidth(), out_frame->GetHeight() / 2);
-        return 0;
+        int res =
+            libyuv::NV12Copy(in_frame.GetData(FrameBuffer::YPLANE),
+                             in_frame.GetStride(FrameBuffer::YPLANE),
+                             in_frame.GetData(FrameBuffer::UPLANE),
+                             in_frame.GetStride(FrameBuffer::UPLANE),
+                             out_frame->GetData(FrameBuffer::YPLANE),
+                             out_frame->GetStride(FrameBuffer::YPLANE),
+                             out_frame->GetData(FrameBuffer::UPLANE),
+                             out_frame->GetStride(FrameBuffer::UPLANE),
+                             out_frame->GetWidth(), out_frame->GetHeight());
+        LOGF_IF(ERROR, res) << "NV12Copy() returns " << res;
+        return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_RGBX32: {
         int res =
