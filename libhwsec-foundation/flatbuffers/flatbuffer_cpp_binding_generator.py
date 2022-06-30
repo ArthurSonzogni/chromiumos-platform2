@@ -751,11 +751,6 @@ def OutputEnumFromFlatBuffer(enum):
           {{ result_type }} operator()({{ serialized_type }} object) const {
             return static_cast<{{ result_type }}>(object);
           }
-
-          {{ result_type }} operator()(
-                std::underlying_type_t<{{ serialized_type }}> object) const {
-            return static_cast<{{ result_type }}>(object);
-          }
         };
         {{ namespace_foot }}
     """

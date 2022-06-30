@@ -59,20 +59,6 @@ struct FromFlatBuffer {
   FromFlatBuffer() = delete;
 };
 
-// Helper template to convert enums to the underlying type.
-template <typename T, typename = void>
-struct ToUnderlying {
-  using Type = T;
-};
-
-template <typename T>
-struct ToUnderlying<T, std::enable_if_t<std::is_enum_v<T>>> {
-  using Type = std::underlying_type_t<T>;
-};
-
-template <typename T>
-using ToUnderlyingType = typename ToUnderlying<T>::Type;
-
 // Converts std::optional<> to flatbuffers::Offset<>.
 // Example:
 //   std::optional<Table> => flatbuffers::Offset<_serialized_::Table>
@@ -120,25 +106,24 @@ struct ToFlatBuffer<std::optional<T>,
 // And excludes the std::vector<uint8_t> for the blob type.
 // Example:
 //   std::vector<uint32_t> => flatbuffers::Offset<flatbuffers::Vector<uint32_t>>
-//   std::vector<Enum> => flatbuffers::Offset<flatbuffers::Vector<
-//                            std::underlying_type_t<Enum>>>
+//   std::vector<Enum> => flatbuffers::Offset<
+//                          flatbuffers::Vector<_serialized_::Enum>>
 //   std::vector<Table> => flatbuffers::Offset<flatbuffers::Vector<
 //                             flatbuffers::Offset<_serialized_::Table>>>
 template <typename T>
 struct ToFlatBuffer<std::vector<T>,
                     void,
                     std::enable_if_t<!std::is_same_v<T, uint8_t>>> {
-  using UnderlyingType = ToUnderlyingType<typename ToFlatBuffer<T>::ResultType>;
-  using ResultType = flatbuffers::Offset<flatbuffers::Vector<UnderlyingType>>;
+  using ValueType = typename ToFlatBuffer<T>::ResultType;
+  using ResultType = flatbuffers::Offset<flatbuffers::Vector<ValueType>>;
 
   ResultType operator()(flatbuffers::FlatBufferBuilder* builder,
                         const std::vector<T>& object) const {
-    std::vector<UnderlyingType> result;
+    std::vector<ValueType> result;
     result.reserve(object.size());
 
     for (const auto& inner : object) {
-      result.push_back(
-          static_cast<UnderlyingType>(ToFlatBuffer<T>()(builder, inner)));
+      result.push_back(ToFlatBuffer<T>()(builder, inner));
     }
     return builder->CreateVector(result);
   }
