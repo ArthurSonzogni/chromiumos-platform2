@@ -865,3 +865,39 @@ TEST(KernelUtilTest, IsHypervisor) {
       "";
   EXPECT_FALSE(kernel_util::IsHypervisorCrash(kChromeOsLog));
 }
+
+TEST(KernelUtilTest, GetHypervisorLog) {
+  const char kConsoleLog[] =
+      "[15.468853] IPv6: ADDRCONF(NETDEV_CHANGE): arc_ns0: link becomes ready\n"
+      "[15.469310] IPv6: ADDRCONF(NETDEV_CHANGE): veth0: link becomes ready\n"
+      "[15.505797] IPv6: ADDRCONF(NETDEV_CHANGE): veth1: link becomes ready\n"
+      "";
+  const char kHypervisorLogHeader[] =
+      "\n"
+      "--------[ hypervisor log ]--------\n"
+      "";
+  const char kHypervisorLog[] =
+      "[3.553454] vfio-pci-pm 0000:00:15.3: attach allowed to drvr vfio-pci-pm "
+      "[internal device]\\n SUBSYSTEM=pci\\n DEVICE=+pci:0000:00:15.3\n"
+      "[3.562705] vfio-pci-pm 0000:00:16.0: attach allowed to drvr vfio-pci-pm "
+      "[internal device]\\n SUBSYSTEM=pci\\n DEVICE=+pci:0000:00:16.0\n"
+      "[3.571948] vfio-pci-pm 0000:00:19.0: attach allowed to drvr vfio-pci-pm "
+      "[internal device]\\n SUBSYSTEM=pci\\n DEVICE=+pci:0000:00:19.0\n"
+      "[3.581197] vfio-pci-pm 0000:00:19.1: attach allowed to drvr vfio-pci-pm "
+      "[internal device]\\n SUBSYSTEM=pci\\n DEVICE=+pci:0000:00:19.1\n"
+      "";
+
+  std::string extract;
+  std::string logWithoutHypervisor(kConsoleLog);
+  EXPECT_FALSE(
+      kernel_util::ExtractHypervisorLog(logWithoutHypervisor, extract));
+  EXPECT_EQ("", extract);
+  EXPECT_EQ(kConsoleLog, logWithoutHypervisor);
+
+  std::string logWithHypervisor(kConsoleLog);
+  logWithHypervisor += kHypervisorLogHeader;
+  logWithHypervisor += kHypervisorLog;
+  EXPECT_TRUE(kernel_util::ExtractHypervisorLog(logWithHypervisor, extract));
+  EXPECT_EQ(kHypervisorLog, extract);
+  EXPECT_EQ(kConsoleLog, logWithHypervisor);
+}

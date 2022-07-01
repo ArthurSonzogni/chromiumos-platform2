@@ -158,8 +158,13 @@ class KernelCollector : public CrashCollector {
                           size_t current_record,
                           bool* record_found);
 
+  void AddLogFile(const char* log_name,
+                  const std::string& log_data,
+                  const base::FilePath& log_path);
+
   bool HandleCrash(const std::string& kernel_dump,
                    const std::string& bios_dump,
+                   const std::string& hypervisor_dump,
                    const std::string& signature);
 
   // Collects ramoops crash.

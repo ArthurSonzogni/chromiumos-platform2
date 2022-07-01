@@ -29,6 +29,7 @@ namespace {
 
 // Name for extra BIOS dump attached to report. Also used as metadata key.
 constexpr char kBiosDumpName[] = "bios_log";
+constexpr char kHypervisorDumpName[] = "hypervisor_log";
 const FilePath kBiosLogPath("/sys/firmware/log");
 // Names of the four BIOS stages in which the BIOS log can start.
 const char* const kBiosStageNames[] = {
@@ -474,10 +475,27 @@ std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
   return efi_crashes;
 }
 
+// Safely writes the string to the named log file.
+void KernelCollector::AddLogFile(const char* log_name,
+                                 const std::string& log_data,
+                                 const FilePath& log_path) {
+  if (!log_data.empty()) {
+    if (WriteNewFile(log_path, log_data) !=
+        static_cast<int>(log_data.length())) {
+      PLOG(WARNING) << "Failed to write " << log_name << " to "
+                    << log_path.value() << " (ignoring)";
+    } else {
+      AddCrashMetaUploadFile(log_name, log_path.BaseName().value());
+      LOG(INFO) << "Stored " << log_name << " to " << log_path.value();
+    }
+  }
+}
+
 // Stores crash pointed by kernel_dump to crash directory. This will be later
 // sent to backend from crash directory by crash_sender.
 bool KernelCollector::HandleCrash(const std::string& kernel_dump,
                                   const std::string& bios_dump,
+                                  const std::string& hypervisor_dump,
                                   const std::string& signature) {
   FilePath root_crash_directory;
 
@@ -495,6 +513,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
       StringPrintf("%s.kcrash", dump_basename.c_str()));
   FilePath bios_dump_path = root_crash_directory.Append(
       StringPrintf("%s.%s", dump_basename.c_str(), kBiosDumpName));
+  FilePath hypervisor_dump_path = root_crash_directory.Append(
+      StringPrintf("%s.%s", dump_basename.c_str(), kHypervisorDumpName));
   FilePath log_path = root_crash_directory.Append(
       StringPrintf("%s.log", dump_basename.c_str()));
 
@@ -507,16 +527,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
               << kernel_crash_path.value().c_str();
     return true;
   }
-  if (!bios_dump.empty()) {
-    if (WriteNewFile(bios_dump_path, bios_dump) !=
-        static_cast<int>(bios_dump.length())) {
-      PLOG(WARNING) << "Failed to write BIOS log to " << bios_dump_path.value()
-                    << " (ignoring)";
-    } else {
-      AddCrashMetaUploadFile(kBiosDumpName, bios_dump_path.BaseName().value());
-      LOG(INFO) << "Stored BIOS log to " << bios_dump_path.value();
-    }
-  }
+  AddLogFile(kBiosDumpName, bios_dump, bios_dump_path);
+  AddLogFile(kHypervisorDumpName, hypervisor_dump, hypervisor_dump_path);
 
   AddCrashMetaData(kKernelSignatureKey, signature);
 
@@ -561,7 +573,7 @@ bool KernelCollector::CollectEfiCrash() {
         StripSensitiveData(&crash);
         if (!crash.empty()) {
           if (!HandleCrash(
-                  crash, std::string(),
+                  crash, std::string(), "",
                   kernel_util::ComputeKernelStackSignature(crash, arch_))) {
             LOG(ERROR) << "Failed to handle kernel efi crash id:"
                        << efi_crash->GetId();
@@ -581,13 +593,17 @@ bool KernelCollector::CollectEfiCrash() {
 bool KernelCollector::CollectRamoopsCrash() {
   std::string bios_dump;
   std::string kernel_dump;
+  std::string console_dump;
+  std::string hypervisor_dump;
   std::string signature;
 
   LoadLastBootBiosLog(&bios_dump);
+  LoadConsoleRamoops(&console_dump);
+  kernel_util::ExtractHypervisorLog(console_dump, hypervisor_dump);
   if (LoadParameters() && LoadPreservedDump(&kernel_dump)) {
     signature = kernel_util::ComputeKernelStackSignature(kernel_dump, arch_);
   } else {
-    LoadConsoleRamoops(&kernel_dump);
+    kernel_dump = std::move(console_dump);
     if (LastRebootWasBiosCrash(bios_dump))
       signature = kernel_util::BiosCrashSignature(bios_dump);
     else if (LastRebootWasNoCError(bios_dump))
@@ -598,9 +614,10 @@ bool KernelCollector::CollectRamoopsCrash() {
       return false;
   }
   StripSensitiveData(&bios_dump);
+  StripSensitiveData(&hypervisor_dump);
   StripSensitiveData(&kernel_dump);
-  if (kernel_dump.empty() && bios_dump.empty()) {
+  if (kernel_dump.empty() && bios_dump.empty() && hypervisor_dump.empty()) {
     return false;
   }
-  return HandleCrash(kernel_dump, bios_dump, signature);
+  return HandleCrash(kernel_dump, bios_dump, hypervisor_dump, signature);
 }
