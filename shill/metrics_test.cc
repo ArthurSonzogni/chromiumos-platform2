@@ -126,6 +126,15 @@ TEST_F(MetricsTest, EnumMetric) {
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Vpn.FakeEnum", 8, 13));
   metrics_.SendEnumToUMA(metric2, Technology(Technology::kVPN), 8);
   Mock::VerifyAndClearExpectations(&library_);
+
+  Metrics::EnumMetric<Metrics::NameByTechnology> metric3 = {
+      .n = Metrics::NameByTechnology{"FakeEnum",
+                                     Metrics::TechnologyLocation::kAfterName},
+      .max = 13,
+  };
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.FakeEnum.Wifi", 3, 13));
+  metrics_.SendEnumToUMA(metric3, Technology(Technology::kWiFi), 3);
+  Mock::VerifyAndClearExpectations(&library_);
 }
 
 TEST_F(MetricsTest, HistogramMetric) {
@@ -152,6 +161,18 @@ TEST_F(MetricsTest, HistogramMetric) {
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Ethernet.FakeBuckets", 13, 0, 250, 64));
   metrics_.SendToUMA(metric2, Technology(Technology::kEthernet), 13);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  const Metrics::HistogramMetric<Metrics::NameByTechnology> metric3 = {
+      .n = Metrics::NameByTechnology{"FakeBuckets",
+                                     Metrics::TechnologyLocation::kAfterName},
+      .min = 0,
+      .max = 250,
+      .num_buckets = 64,
+  };
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.FakeBuckets.Wifi", 148, 0, 250, 64));
+  metrics_.SendToUMA(metric3, Technology(Technology::kWiFi), 148);
   Mock::VerifyAndClearExpectations(&library_);
 }
 

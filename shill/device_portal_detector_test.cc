@@ -232,20 +232,20 @@ class DevicePortalDetectorTest : public testing::Test {
 
   int NumHistogramCalls(
       const Metrics::HistogramMetric<Metrics::NameByTechnology>& metric) {
-    return fake_metrics_library_.NumCalls(
-        Metrics::GetFullMetricName(metric.n.suffix, kTestTechnology));
+    return fake_metrics_library_.NumCalls(Metrics::GetFullMetricName(
+        metric.n.name, kTestTechnology, metric.n.location));
   }
 
   int NumEnumMetricsCalls(
       const Metrics::EnumMetric<Metrics::NameByTechnology>& metric) {
-    return fake_metrics_library_.NumCalls(
-        Metrics::GetFullMetricName(metric.n.suffix, kTestTechnology));
+    return fake_metrics_library_.NumCalls(Metrics::GetFullMetricName(
+        metric.n.name, kTestTechnology, metric.n.location));
   }
 
   int LastEnumMetricsCall(
       const Metrics::EnumMetric<Metrics::NameByTechnology>& metric) {
-    return fake_metrics_library_.GetLast(
-        Metrics::GetFullMetricName(metric.n.suffix, kTestTechnology));
+    return fake_metrics_library_.GetLast(Metrics::GetFullMetricName(
+        metric.n.name, kTestTechnology, metric.n.location));
   }
 
  protected:

@@ -32,8 +32,30 @@ namespace shill {
 
 class WiFiEndPoint;
 
+static constexpr size_t kMaxMetricNameLen = 256;
+
+// Represents a UMA metric name that can be defined by technology for a
+// metric represented with EnumMetric or HistogramMetric, following the
+// pattern "$kMetricPrefix.$TECH.$name" or "$kMetricPrefix.$name.$TECH"
+// depending on the value of |location|.
+// Note: This must be fully defined outside of the Metrics class to allow
+// default member initialization for |location| within the class, e.g.
+// MetricsNameByTechnology{"name"}.
+struct MetricsNameByTechnology {
+  enum class Location { kBeforeName, kAfterName };
+  const char* name;
+  Location location = Location::kBeforeName;
+  // Necessary for testing.
+  bool operator==(const MetricsNameByTechnology& that) const {
+    return strncmp(name, that.name, kMaxMetricNameLen) == 0;
+  }
+};
+
 class Metrics : public DefaultServiceObserver {
  public:
+  using NameByTechnology = MetricsNameByTechnology;
+  using TechnologyLocation = MetricsNameByTechnology::Location;
+
   // Helper type for describing a UMA enum metrics.
   // The template parameter is used for deriving the name of the metric. See
   // FixedName and NameByTechnology.
@@ -63,8 +85,6 @@ class Metrics : public DefaultServiceObserver {
     }
   };
 
-  static constexpr size_t kMaxMetricNameLen = 256;
-
   // Represents a fixed UMA metric name for a metric represented with EnumMetric
   // or HistogramMetric.
   struct FixedName {
@@ -72,17 +92,6 @@ class Metrics : public DefaultServiceObserver {
     // Necessary for testing.
     bool operator==(const FixedName& that) const {
       return strncmp(name, that.name, kMaxMetricNameLen) == 0;
-    }
-  };
-
-  // Represents a UMA metric name that can be declined by technology for a
-  // metric represented with EnumMetric or HistogramMetric, following the
-  // pattern "$kMetricPrefix.$TECH.$suffix".
-  struct NameByTechnology {
-    const char* suffix;
-    // Necessary for testing.
-    bool operator==(const NameByTechnology& that) const {
-      return strncmp(suffix, that.suffix, kMaxMetricNameLen) == 0;
     }
   };
 
@@ -1317,9 +1326,12 @@ class Metrics : public DefaultServiceObserver {
                                               Service::ConnectState start_state,
                                               Service::ConnectState stop_state);
 
-  // Specializes |metric_suffix| for the specified |technology_id|.
-  static std::string GetFullMetricName(const char* metric_suffix,
-                                       Technology technology_id);
+  // Specializes |metric_name| with the specified |technology_id| and
+  // |location|.
+  static std::string GetFullMetricName(
+      const char* metric_name,
+      Technology technology_id,
+      TechnologyLocation location = TechnologyLocation::kBeforeName);
 
   // Implements DefaultServiceObserver.
   void OnDefaultLogicalServiceChanged(

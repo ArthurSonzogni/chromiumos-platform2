@@ -203,8 +203,9 @@ void Metrics::SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample) {
 void Metrics::SendEnumToUMA(const EnumMetric<NameByTechnology>& metric,
                             Technology tech,
                             int sample) {
-  library_->SendEnumToUMA(GetFullMetricName(metric.n.suffix, tech), sample,
-                          metric.max);
+  library_->SendEnumToUMA(
+      GetFullMetricName(metric.n.name, tech, metric.n.location), sample,
+      metric.max);
 }
 
 void Metrics::SendToUMA(const Metrics::HistogramMetric<FixedName>& metric,
@@ -217,8 +218,8 @@ void Metrics::SendToUMA(
     const Metrics::HistogramMetric<NameByTechnology>& metric,
     Technology tech,
     int sample) {
-  library_->SendToUMA(GetFullMetricName(metric.n.suffix, tech), sample,
-                      metric.min, metric.max, metric.num_buckets);
+  library_->SendToUMA(GetFullMetricName(metric.n.name, tech, metric.n.location),
+                      sample, metric.min, metric.max, metric.num_buckets);
 }
 
 // static
@@ -620,12 +621,18 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
 }
 
 // static
-std::string Metrics::GetFullMetricName(const char* metric_suffix,
-                                       Technology technology_id) {
+std::string Metrics::GetFullMetricName(const char* metric_name,
+                                       Technology technology_id,
+                                       TechnologyLocation location) {
   std::string technology = TechnologyName(technology_id);
   technology[0] = base::ToUpperASCII(technology[0]);
-  return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
-                            metric_suffix);
+  if (location == TechnologyLocation::kBeforeName) {
+    return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
+                              metric_name);
+  } else {
+    return base::StringPrintf("%s.%s.%s", kMetricPrefix, metric_name,
+                              technology.c_str());
+  }
 }
 
 void Metrics::NotifySuspendDone() {
