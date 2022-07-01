@@ -254,6 +254,7 @@ shared_library("libml_for_benchmark") {
   public_deps = [
     ":benchmark_proto",
     "//ml_benchmark:libmlbenchmark_proto",
+    "//ml_benchmark/driver_common:libmlbenchmark_driver_common",
   ]
   deps = [ ":ml_mojo_bindings_lib" ]
 }
