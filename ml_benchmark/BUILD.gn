@@ -8,7 +8,10 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [ ":ml_benchmark" ]
   if (use.test) {
-    deps += [ ":ml_benchmark_test" ]
+    deps += [
+      ":ml_benchmark_test",
+      "driver_common:driver_common_test",
+    ]
   }
 }
 
