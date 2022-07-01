@@ -269,20 +269,18 @@ bool ParseProcessor(const std::string& processor,
   std::string physical_id_str;
   bool flags_found = false;
   for (const auto& key_value : pairs) {
-    if (key_value.first.find(kProcessorIdKey) != std::string::npos) {
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
-                                &processor_id_str);
-    } else if (key_value.first.find(kPhysicalIdKey) != std::string::npos) {
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
-                                &physical_id_str);
-    } else if (key_value.first.find(kModelNameKey) != std::string::npos) {
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &model_name);
-    } else if (key_value.first.find(kX86CpuFlagsKey) != std::string::npos ||
-               key_value.first.find(kArmCpuFlagsKey) != std::string::npos) {
-      std::string cpu_flags_str;
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL,
-                                &cpu_flags_str);
-      cpu_flags = base::SplitString(cpu_flags_str, " ", base::TRIM_WHITESPACE,
+    std::string key;
+    std::string value;
+    base::TrimWhitespaceASCII(key_value.first, base::TRIM_ALL, &key);
+    base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
+    if (key == kProcessorIdKey) {
+      processor_id_str = value;
+    } else if (key == kPhysicalIdKey) {
+      physical_id_str = value;
+    } else if (key == kModelNameKey) {
+      model_name = value;
+    } else if (key == kX86CpuFlagsKey || key == kArmCpuFlagsKey) {
+      cpu_flags = base::SplitString(value, " ", base::TRIM_WHITESPACE,
                                     base::SPLIT_WANT_NONEMPTY);
       flags_found = true;
     }

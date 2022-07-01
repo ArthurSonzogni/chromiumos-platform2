@@ -1257,5 +1257,22 @@ TEST_F(CpuFetcherTest, TestMultipleCpuVirtualization) {
             mojo_ipc::CpuVirtualizationInfo::Type::kSVM);
 }
 
+TEST_F(CpuFetcherTest, TestParseCpuFlags) {
+  // Test that "vmx flags" won't be treated as "flags".
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetProcCpuInfoPath(root_dir()),
+      "processor\t: 0\nmodel name\t: model\nphysical id\t: 0\n"
+      "flags\t: cpu_flags\nvmx flags\t:vmx_flags\n\n"));
+
+  // Set the mock executor response for ReadMsr calls.
+  SetReadMsrResponse(cpu_msr::kIA32FeatureControl, 0, 0);
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->flags,
+            std::vector<std::string>{"cpu_flags"});
+}
+
 }  // namespace
 }  // namespace diagnostics
