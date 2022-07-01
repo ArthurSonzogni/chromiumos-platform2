@@ -14100,6 +14100,7 @@ mvno {
       localized_name {
         name : "楽天(rakuten.jp)"
       }
+      ip_type : IPV4V6
       is_attach_apn : true
     }
   }
