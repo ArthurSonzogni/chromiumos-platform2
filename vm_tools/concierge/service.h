@@ -18,6 +18,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -315,6 +316,12 @@ class Service final {
                       const std::string& new_name,
                       std::string* failure_reason);
 
+  // Callback for when the localtime file is changed
+  void OnLocaltimeFileChanged(const base::FilePath& path, bool error);
+
+  // Get the host system time zone
+  std::string GetHostTimeZone();
+
   using VmMap = std::map<VmId, std::unique_ptr<VmInterface>>;
 
   // Returns an iterator to vm with key |vm_id|.
@@ -471,6 +478,9 @@ class Service final {
   // Used to serialize erasing and creating the GPU shader disk cache in the
   // event that VMs are started simultaneously from multiple threads.
   base::Lock cache_mutex_;
+
+  // Watcher to monitor changes to the system timezone file.
+  base::FilePathWatcher localtime_watcher_;
 };
 
 }  // namespace concierge

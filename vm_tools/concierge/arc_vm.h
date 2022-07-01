@@ -115,6 +115,12 @@ class ArcVm final : public VmBaseImpl {
   }
   // TODO(b/136143058): Implement SetTime calls.
   bool SetTime(std::string* failure_reason) override { return true; }
+  // This VM does not use maitred to set timezone.
+  bool SetTimezone(const std::string& timezone,
+                   std::string* out_error) override {
+    *out_error = "";
+    return true;
+  };
   void SetTremplinStarted() override { NOTREACHED(); }
   void VmToolsStateChanged(bool running) override { NOTREACHED(); }
   vm_tools::concierge::DiskImageStatus ResizeDisk(

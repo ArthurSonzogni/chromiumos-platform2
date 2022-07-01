@@ -33,6 +33,7 @@
 #include <grpcpp/grpcpp.h>
 #include <chromeos/constants/vm_tools.h>
 #include <sys/epoll.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/sibling_vms.h"
@@ -337,6 +338,35 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       grpc::InsecureChannelCredentials()));
 
   return true;
+}
+
+bool TerminaVm::SetTimezone(const std::string& timezone,
+                            std::string* out_error) {
+  if (!stub_) {
+    *out_error = "maitred stub not initialized";
+    return false;
+  }
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  ::vm_tools::SetTimezoneRequest request;
+  request.set_timezone_name(timezone);
+  // Borealis needs timezone info to be bind-mounted due to Steam bug, see
+  // TODO(b/237960004): Clean up this exception once Steam bug is fixed.
+  request.set_use_bind_mount(GetInfo().type == VmInfo::BOREALIS);
+  ::vm_tools::EmptyMessage response;
+
+  auto result = stub_->SetTimezone(&ctx, request, &response);
+  if (result.ok()) {
+    *out_error = "";
+    return true;
+  }
+
+  *out_error = result.error_message();
+  return false;
 }
 
 bool TerminaVm::StartSiblingVvuDevices(std::vector<base::StringPairs> cmds) {

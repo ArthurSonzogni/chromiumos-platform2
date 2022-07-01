@@ -12,6 +12,7 @@
 #include <net/route.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/sendfile.h>
@@ -32,6 +33,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -43,6 +45,7 @@
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/format_macros.h>
 #include <base/guid.h>
@@ -84,6 +87,7 @@
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/ssh_keys.h"
+#include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_launch_interface.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
@@ -198,6 +202,11 @@ constexpr const char kL1TFFilePath[] =
 // File path that reports the MDS vulnerability status.
 constexpr const char kMDSFilePath[] =
     "/sys/devices/system/cpu/vulnerabilities/mds";
+
+// Path of system timezone file.
+constexpr char kLocaltimePath[] = "/etc/localtime";
+// Path to zone info directory in host.
+constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 
 constexpr gid_t kCrosvmUGid = 299;
 
@@ -1506,6 +1515,14 @@ bool Service::Init() {
     }
   }
 
+  if (!localtime_watcher_.Watch(
+          base::FilePath(kLocaltimePath),
+          base::FilePathWatcher::Type::kNonRecursive,
+          base::BindRepeating(&Service::OnLocaltimeFileChanged,
+                              weak_ptr_factory_.GetWeakPtr()))) {
+    LOG(WARNING) << "Failed to initialize file watcher for timezone change";
+  }
+
   return true;
 }
 
@@ -2071,6 +2088,14 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
     response.set_failure_reason("Failed to configure VM network");
     return response;
+  }
+
+  // Attempt to set the timezone of the VM correctly. Incorrect timezone does
+  // not introduce issues to turnup process. Timezone can also be set during
+  // runtime upon host's update.
+  std::string error;
+  if (!vm->SetTimezone(GetHostTimeZone(), &error)) {
+    LOG(WARNING) << "Failed to set VM timezone: " << error;
   }
 
   // Mount the tools disk if it exists.
@@ -4273,6 +4298,45 @@ std::string Service::GetContainerToken(const VmId& vm_id,
     return "";
   }
   return response.container_token();
+}
+
+std::string Service::GetHostTimeZone() {
+  base::FilePath system_timezone;
+  // Timezone is set by creating a symlink to an existing file at
+  // /usr/share/zoneinfo.
+  if (!base::NormalizeFilePath(base::FilePath(kLocaltimePath),
+                               &system_timezone)) {
+    LOG(ERROR) << "Failed to get system timezone";
+    return "";
+  }
+
+  base::FilePath zoneinfo(kZoneInfoPath);
+  base::FilePath system_timezone_name;
+  if (!zoneinfo.AppendRelativePath(system_timezone, &system_timezone_name)) {
+    LOG(ERROR) << "Could not get name of timezone " << system_timezone.value();
+    return "";
+  }
+
+  return system_timezone_name.value();
+}
+
+void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
+  if (error) {
+    LOG(WARNING) << "Error while reading system timezone change";
+    return;
+  }
+
+  LOG(INFO) << "System timezone changed, updating VM timezones";
+
+  std::string timezone = GetHostTimeZone();
+  for (auto& vm_entry : vms_) {
+    auto& vm = vm_entry.second;
+    std::string error_msg;
+    if (!vm->SetTimezone(timezone, &error_msg)) {
+      LOG(WARNING) << "Failed to set timezone for " << vm_entry.first.name()
+                   << ": " << error_msg;
+    }
+  }
 }
 
 void Service::OnTremplinStartedSignal(dbus::Signal* signal) {

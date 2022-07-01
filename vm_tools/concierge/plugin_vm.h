@@ -81,6 +81,12 @@ class PluginVm final : public VmBaseImpl {
   bool SetResolvConfig(const std::vector<std::string>& nameservers,
                        const std::vector<std::string>& search_domains) override;
   bool SetTime(std::string* failure_reason) override { return true; }
+  // This VM does not use maitred to set timezone.
+  bool SetTimezone(const std::string& timezone,
+                   std::string* out_error) override {
+    *out_error = "";
+    return true;
+  };
   void SetTremplinStarted() override { NOTREACHED(); }
   void VmToolsStateChanged(bool running) override;
   vm_tools::concierge::DiskImageStatus ResizeDisk(

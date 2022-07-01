@@ -161,6 +161,10 @@ class TerminaVm final : public VmBaseImpl {
   // Set the guest time to the current time as given by gettimeofday.
   bool SetTime(std::string* failure_reason) override;
 
+  // Set VM timezone by calling Maitred.SetTimeZone.
+  bool SetTimezone(const std::string& timezone,
+                   std::string* out_error) override;
+
   // The pid of the child process.
   pid_t pid() { return process_.pid(); }
 

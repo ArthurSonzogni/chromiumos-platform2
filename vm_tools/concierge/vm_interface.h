@@ -136,6 +136,10 @@ class VmInterface {
   // Set the guest time to the current time as given by gettimeofday.
   virtual bool SetTime(std::string* failure_reason) = 0;
 
+  // Set the guest timezone
+  virtual bool SetTimezone(const std::string& timezone,
+                           std::string* out_error) = 0;
+
   // Get enterprise reporting information. Also sets the
   // response fields for success and failure_reason.
   virtual bool GetVmEnterpriseReportingInfo(
