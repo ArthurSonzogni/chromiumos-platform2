@@ -28,7 +28,6 @@ const char kImportDiskImageMethod[] = "ImportDiskImage";
 const char kCancelDiskImageMethod[] = "CancelDiskImageOperation";
 const char kDiskImageStatusMethod[] = "DiskImageStatus";
 const char kListVmDisksMethod[] = "ListVmDisks";
-const char kStartContainerMethod[] = "StartContainer";
 const char kGetContainerSshKeysMethod[] = "GetContainerSshKeys";
 const char kSyncVmTimesMethod[] = "SyncVmTimes";
 const char kAttachUsbDeviceMethod[] = "AttachUsbDevice";
@@ -44,7 +43,6 @@ const char kMakeRtVcpuMethod[] = "MakeRtVcpu";
 const char kListVmsMethod[] = "ListVms";
 const char kArcVmCompleteBootMethod[] = "ArcVmCompleteBoot";
 
-const char kContainerStartupFailedSignal[] = "ContainerStartupFailed";
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";
 const char kVmStartedSignal[] = "VmStartedSignal";
