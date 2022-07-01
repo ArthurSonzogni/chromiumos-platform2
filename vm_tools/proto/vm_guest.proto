@@ -214,6 +214,17 @@ message SetTimeRequest {
   google.protobuf.Timestamp time = 1;
 }
 
+message SetTimezoneRequest {
+  // Timezone name as per values from the timezone-data package in
+  // /usr/share/zoneinfo. Empty string is not a valid input.
+  // Examples: UTC, Australia/Melbourne
+  string timezone_name = 1;
+  // Some applications in the VM may not support chained symlinks (ex. Steam in
+  // Linux). In those instances, we need to bind-mount the zoneinfo file
+  // directly to /etc/localtime.
+  bool use_bind_mount = 2;
+}
+
 // Response to GetKernelVersion, containing detailed Termina kernel information
 // for enterprise reporting.
 message GetKernelVersionResponse {
@@ -306,6 +317,9 @@ service Maitred {
   // This RPC is to address cases where the guest loses time for some reason
   // (e.g. due to the host being suspended for a while).
   rpc SetTime(SetTimeRequest) returns (EmptyMessage);
+
+  // Set the VM timezone to a specified value.
+  rpc SetTimezone(SetTimezoneRequest) returns (EmptyMessage);
 
   // Mount a 9P server using a vsock socket.  This uses the trans=fd option
   // when mounting the 9P server, which requires first connecting a socket

@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/callback.h>
+#include "base/files/file_path.h"
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -33,6 +34,14 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
 
   void set_shutdown_cb(base::OnceCallback<bool(void)> cb) {
     shutdown_cb_ = std::move(cb);
+  }
+
+  void set_localtime_file_path_for_test(const base::FilePath& dir) {
+    localtime_file_path_ = dir;
+  }
+
+  void set_zoneinfo_file_path_for_test(const base::FilePath& dir) {
+    zoneinfo_file_path_ = dir;
   }
 
   // Maitred::Service overrides.
@@ -79,6 +88,10 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   grpc::Status SetTime(grpc::ServerContext* ctx,
                        const vm_tools::SetTimeRequest* request,
                        vm_tools::EmptyMessage* response) override;
+
+  grpc::Status SetTimezone(grpc::ServerContext* ctx,
+                           const vm_tools::SetTimezoneRequest* request,
+                           vm_tools::EmptyMessage* response) override;
 
   grpc::Status GetKernelVersion(
       grpc::ServerContext* ctx,
@@ -133,6 +146,14 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
 
   // Name of the stateful device (e.g. /dev/vdb) as determined by StartTermina.
   std::string stateful_device_;
+
+  // Set timezone according to different implementations.
+  grpc::Status SetTimezoneSymlink(const std::string& zoneinfo_file);
+  grpc::Status SetTimezoneBindMount(const std::string& zoneinfo_file);
+  // Path to system localtime file
+  base::FilePath localtime_file_path_;
+  // Path to zoneinfo directory
+  base::FilePath zoneinfo_file_path_;
 };
 
 }  // namespace maitred

@@ -8,7 +8,13 @@
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 
+#include <fstream>
 #include <string>
+
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include <base/files/scoped_temp_dir.h>
+#include <brillo/file_utils.h>
 
 #include "vm_tools/maitred/service_impl.h"
 
@@ -120,6 +126,131 @@ TEST_F(ServiceTest, GetKernelVersion) {
   EXPECT_TRUE(result.ok());
   EXPECT_NE(std::string(), grpc_response.kernel_release());
   EXPECT_NE(std::string(), grpc_response.kernel_version());
+}
+
+TEST_F(ServiceTest, SetTimezone_ValidTimezone) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto zoneinfo_path = temp_dir.GetPath().Append("zoneinfo");
+  auto localtime_path = temp_dir.GetPath().Append("localtime");
+  service_impl_.set_zoneinfo_file_path_for_test(zoneinfo_path);
+  service_impl_.set_localtime_file_path_for_test(localtime_path);
+
+  auto target_timezone_path = zoneinfo_path.Append("Australia/Melbourne");
+  brillo::TouchFile(target_timezone_path);
+
+  grpc::ServerContext ctx;
+  vm_tools::SetTimezoneRequest request;
+  vm_tools::EmptyMessage empty;
+
+  request.set_timezone_name("Australia/Melbourne");
+  request.set_use_bind_mount(false);
+  grpc::Status result = service_impl_.SetTimezone(&ctx, &request, &empty);
+  EXPECT_TRUE(result.ok());
+
+  base::FilePath result_path;
+  EXPECT_TRUE(base::NormalizeFilePath(localtime_path, &result_path));
+  EXPECT_EQ(result_path.value(), target_timezone_path.value());
+}
+
+TEST_F(ServiceTest, SetTimezone_FileExists) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto zoneinfo_path = temp_dir.GetPath().Append("zoneinfo");
+  auto localtime_path = temp_dir.GetPath().Append("localtime");
+  service_impl_.set_zoneinfo_file_path_for_test(zoneinfo_path);
+  service_impl_.set_localtime_file_path_for_test(localtime_path);
+
+  auto target_timezone_path = zoneinfo_path.Append("Australia/Melbourne");
+  brillo::TouchFile(target_timezone_path);
+
+  // localtime file already exists
+  brillo::TouchFile(localtime_path);
+
+  grpc::ServerContext ctx;
+  vm_tools::SetTimezoneRequest request;
+  vm_tools::EmptyMessage empty;
+
+  request.set_timezone_name("Australia/Melbourne");
+  request.set_use_bind_mount(false);
+  grpc::Status result = service_impl_.SetTimezone(&ctx, &request, &empty);
+  EXPECT_TRUE(result.ok());
+
+  base::FilePath result_path;
+  EXPECT_TRUE(base::NormalizeFilePath(localtime_path, &result_path));
+  EXPECT_EQ(result_path.value(), target_timezone_path.value());
+}
+
+TEST_F(ServiceTest, SetTimezone_Symlink) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto zoneinfo_path = temp_dir.GetPath().Append("zoneinfo");
+  auto localtime_path = temp_dir.GetPath().Append("localtime");
+  auto symlink_path = temp_dir.GetPath().Append("symlink");
+  service_impl_.set_zoneinfo_file_path_for_test(zoneinfo_path);
+  service_impl_.set_localtime_file_path_for_test(localtime_path);
+
+  std::error_code ec;
+  base::CreateSymbolicLink(base::FilePath(symlink_path.value()),
+                           base::FilePath(localtime_path.value()));
+
+  auto target_timezone_path = zoneinfo_path.Append("UTC");
+  brillo::TouchFile(target_timezone_path);
+
+  grpc::ServerContext ctx;
+  vm_tools::SetTimezoneRequest request;
+  vm_tools::EmptyMessage empty;
+
+  request.set_timezone_name("UTC");
+  request.set_use_bind_mount(false);
+  grpc::Status result = service_impl_.SetTimezone(&ctx, &request, &empty);
+  EXPECT_TRUE(result.ok());
+
+  base::FilePath result_path;
+  EXPECT_TRUE(base::NormalizeFilePath(localtime_path, &result_path));
+  EXPECT_EQ(result_path.value(), target_timezone_path.value());
+}
+
+TEST_F(ServiceTest, SetTimezone_MissingTimezone) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto zoneinfo_path = temp_dir.GetPath().Append("zoneinfo");
+  auto localtime_path = temp_dir.GetPath().Append("localtime");
+  service_impl_.set_zoneinfo_file_path_for_test(zoneinfo_path);
+  service_impl_.set_localtime_file_path_for_test(localtime_path);
+
+  grpc::ServerContext ctx;
+  vm_tools::SetTimezoneRequest request;
+  vm_tools::EmptyMessage empty;
+
+  request.set_timezone_name("Australia/Melbourne");
+  request.set_use_bind_mount(false);
+  grpc::Status result = service_impl_.SetTimezone(&ctx, &request, &empty);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.error_message(), "zone info file does not exist");
+
+  base::FilePath result_path;
+}
+
+TEST_F(ServiceTest, SetTimezone_EmptyString) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto zoneinfo_path = temp_dir.GetPath().Append("zoneinfo");
+  auto localtime_path = temp_dir.GetPath().Append("localtime");
+  service_impl_.set_zoneinfo_file_path_for_test(zoneinfo_path);
+  service_impl_.set_localtime_file_path_for_test(localtime_path);
+
+  grpc::ServerContext ctx;
+  vm_tools::SetTimezoneRequest request;
+  vm_tools::EmptyMessage empty;
+
+  request.set_timezone_name("");
+  request.set_use_bind_mount(false);
+  grpc::Status result = service_impl_.SetTimezone(&ctx, &request, &empty);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.error_message(), "timezone cannot be empty");
+
+  base::FilePath result_path;
 }
 
 }  // namespace maitred

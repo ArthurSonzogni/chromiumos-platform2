@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/ethtool.h>
+#include <linux/limits.h>
 #include <linux/sockios.h>
 #include <net/if.h>
 #include <net/route.h>
@@ -34,6 +35,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include "base/files/file_path.h"
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
@@ -71,6 +73,9 @@ constexpr char kTmpResolvConfPath[] = "/run/resolv.conf.tmp";
 
 constexpr char kBashRc[] = "/etc/bash/bashrc.d/";
 constexpr char kSetPathScript[] = "set-path-for-lxd-next.sh";
+
+constexpr char kLocaltimePath[] = "/etc/localtime";
+constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
@@ -255,7 +260,9 @@ bool PrefixPath(const char* env_name, std::string new_val) {
 ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init)
     : init_(std::move(init)),
       lxd_env_({{"LXD_DIR", "/mnt/stateful/lxd"},
-                {"LXD_CONF", "/mnt/stateful/lxd_conf"}}) {}
+                {"LXD_CONF", "/mnt/stateful/lxd_conf"}}),
+      localtime_file_path_(kLocaltimePath),
+      zoneinfo_file_path_(kZoneInfoPath) {}
 
 bool ServiceImpl::Init() {
   string error;
@@ -1069,6 +1076,74 @@ grpc::Status ServiceImpl::SetTime(grpc::ServerContext* ctx,
 
   LOG(INFO) << "Successfully set time.";
   return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::SetTimezoneSymlink(const std::string& ln_src) {
+  char buf[PATH_MAX] = {};
+  auto buffer_len =
+      readlink(localtime_file_path_.value().c_str(), buf, PATH_MAX);
+
+  // /etc/localtime may be a symlink to other writable file in the VM.
+  std::string ln_dst;
+  if (buffer_len < 1) {
+    ln_dst = localtime_file_path_.value();
+  } else {
+    ln_dst = std::string(buf);
+  }
+
+  std::error_code ec;
+  if (!base::DeleteFile(base::FilePath(ln_dst))) {
+    LOG(ERROR) << "Failed to delete existing destination symlink: "
+               << ec.message();
+    return grpc::Status(grpc::INTERNAL, "failed to delete existing symlink");
+  }
+
+  LOG(INFO) << "Creating symlink from " << ln_src << " to " << ln_dst;
+  if (!base::CreateSymbolicLink(base::FilePath(ln_src),
+                                base::FilePath(ln_dst))) {
+    return grpc::Status(grpc::INTERNAL, "failed to create symlink");
+  }
+  return grpc::Status::OK;
+}
+
+// TODO(b/237960004): deprecate bind-mount implementation once Steam supports
+// chained symlinks.
+grpc::Status ServiceImpl::SetTimezoneBindMount(const std::string& bind_source) {
+  LOG(INFO) << "Re-mounting " << localtime_file_path_;
+  umount(localtime_file_path_.value().c_str());
+  auto result = mount(bind_source.c_str(), localtime_file_path_.value().c_str(),
+                      NULL, MS_BIND, NULL);
+  if (result < 0) {
+    LOG(ERROR) << "Failed to create bind-mount: " << result;
+    return grpc::Status(grpc::INTERNAL, "failed to create bind-mount");
+  }
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::SetTimezone(
+    grpc::ServerContext* ctx,
+    const vm_tools::SetTimezoneRequest* request,
+    vm_tools::EmptyMessage* response) {
+  if (request->timezone_name().empty()) {
+    return grpc::Status(grpc::INTERNAL, "timezone cannot be empty");
+  }
+
+  LOG(INFO) << "Setting timezone to " << request->timezone_name();
+
+  base::FilePath zoneinfo_file =
+      zoneinfo_file_path_.Append(request->timezone_name());
+
+  // TODO(b/237963590): Add support to update timezone in VM using
+  // tzif_parser data if zoneinfo file is missing or outdated.
+  if (!base::PathExists(zoneinfo_file)) {
+    LOG(ERROR) << "Zoneinfo file does not exist in VM, unable to set timezone";
+    return grpc::Status(grpc::INTERNAL, "zone info file does not exist");
+  }
+
+  if (request->use_bind_mount()) {
+    return SetTimezoneBindMount(zoneinfo_file.value());
+  }
+  return SetTimezoneSymlink(zoneinfo_file.value());
 }
 
 grpc::Status ServiceImpl::GetKernelVersion(
