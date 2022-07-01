@@ -430,7 +430,7 @@ static void sl_keyboard_key(void* data,
 
       wl_list_for_each(accelerator, &host->seat->ctx->accelerators, link) {
         if (host->modifiers == accelerator->modifiers &&
-            symbol == accelerator->symbol) {
+            xkb_keysym_to_lower(symbol) == accelerator->symbol) {
           handled = false;
           break;
         }
@@ -441,7 +441,7 @@ static void sl_keyboard_key(void* data,
         wl_list_for_each(accelerator, &host->seat->ctx->windowed_accelerators,
                          link) {
           if (host->modifiers == accelerator->modifiers &&
-              symbol == accelerator->symbol) {
+              xkb_keysym_to_lower(symbol) == accelerator->symbol) {
             handled = false;
             break;
           }

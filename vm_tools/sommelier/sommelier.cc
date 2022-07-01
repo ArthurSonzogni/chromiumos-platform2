@@ -3202,6 +3202,7 @@ static const char* sl_arg_value(const char* arg) {
 // list of modifier names (E.g. <Control><Alt>) and KEYSYM is an
 // XKB key symbol name (E.g Delete).
 // Sommelier will exit with EXIT_FAILURE if this returns false.
+// TODO(b/237946069) Confirm accelerator handling works with i18n.
 static bool sl_parse_accelerators(struct wl_list* accelerator_list,
                                   const char* accelerators) {
   if (accelerators) {
