@@ -32,11 +32,17 @@ namespace diagnostics {
 namespace {
 
 TEST(GetWilcoDtcSupportdGrpcUriTestDeathTest, InvalidValue) {
-  ASSERT_DEATH(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
-                   static_cast<DpslRequester::GrpcClientUri>(
-                       std::numeric_limits<std::underlying_type<
-                           DpslRequester::GrpcClientUri>::type>::max())),
+  constexpr auto kInvalidUri = static_cast<DpslRequester::GrpcClientUri>(
+      std::numeric_limits<
+          std::underlying_type<DpslRequester::GrpcClientUri>::type>::max());
+#ifdef NDEBUG
+  // In release builds the error is signaled by returning an empty URI.
+  EXPECT_EQ(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(kInvalidUri), "");
+#else
+  // In debug builds an assertion crash is expected.
+  ASSERT_DEATH(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(kInvalidUri),
                "Unexpected GrpcClientUri");
+#endif
 }
 
 TEST(GetWilcoDtcSupportdGrpcUriTest, Unix) {
@@ -104,12 +110,17 @@ TEST_F(DpslRequesterImplDeathTest, CreateWithInvalidThreadContext) {
 
 TEST_F(DpslRequesterImplDeathTest, CreateWithInvalidServerUri) {
   // Set the maximum possible value to make sure it isn't valid
-  ASSERT_DEATH(DpslRequester::Create(
-                   main_thread_context_.get(),
-                   static_cast<DpslRequester::GrpcClientUri>(
-                       std::numeric_limits<std::underlying_type<
-                           DpslRequester::GrpcClientUri>::type>::max())),
+  constexpr auto kInvalidUri = static_cast<DpslRequester::GrpcClientUri>(
+      std::numeric_limits<
+          std::underlying_type<DpslRequester::GrpcClientUri>::type>::max());
+#ifdef NDEBUG
+  // In release builds the error is signaled by returning null.
+  EXPECT_FALSE(DpslRequester::Create(main_thread_context_.get(), kInvalidUri));
+#else
+  // In debug builds an assertion crash is expected.
+  EXPECT_DEATH(DpslRequester::Create(main_thread_context_.get(), kInvalidUri),
                "Unexpected GrpcClientUri");
+#endif
 }
 
 // Generic template for the type of a member function of DpslRequesterImpl

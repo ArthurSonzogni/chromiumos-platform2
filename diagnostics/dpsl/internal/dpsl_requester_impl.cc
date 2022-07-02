@@ -214,8 +214,11 @@ std::unique_ptr<DpslRequester> DpslRequester::Create(
   CHECK(thread_context->BelongsToCurrentThread())
       << "Thread context does not belong to the current thread";
 
-  return std::make_unique<DpslRequesterImpl>(
-      DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(grpc_client_uri));
+  const std::string uri_string =
+      DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(grpc_client_uri);
+  if (uri_string.empty())
+    return nullptr;
+  return std::make_unique<DpslRequesterImpl>(uri_string);
 }
 
 }  // namespace diagnostics

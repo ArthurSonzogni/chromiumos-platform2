@@ -160,9 +160,16 @@ TEST_F(DpslRpcServerImplBaseDeathTest, CreateWithNullRpcHandler) {
 }
 
 TEST_F(DpslRpcServerImplBaseDeathTest, CreateWithInvalidServerUri) {
+#ifdef NDEBUG
+  // In release builds the error is reported by returning null.
+  EXPECT_FALSE(DpslRpcServer::Create(thread_context_.get(), &mock_handler_,
+                                     kGrpcServerUriInvalidValue));
+#else
+  // In debug builds an assertion crash is expected.
   EXPECT_DEATH(DpslRpcServer::Create(thread_context_.get(), &mock_handler_,
                                      kGrpcServerUriInvalidValue),
                "Unexpected GrpcServerUri");
+#endif
 }
 
 TEST_F(DpslRpcServerImplBaseDeathTest, MultiThreadInvalidThreadContext) {
