@@ -4435,11 +4435,17 @@ void UserDataAuth::PreparePersistentVault(
           DbusEncryptionTypeToContainerType(request.encryption_type()),
       .block_ecryptfs = request.block_ecryptfs(),
   };
-  user_data_auth::PreparePersistentVaultReply reply;
   CryptohomeStatus status =
       PreparePersistentVaultImpl(request.auth_session_id(), options);
-  reply.set_sanitized_username(
-      SanitizedUserNameForSession(request.auth_session_id()));
+
+  const std::string obfuscated_username =
+      SanitizedUserNameForSession(request.auth_session_id());
+  if (status.ok() && !obfuscated_username.empty()) {
+    // Send UMA with VK stats once per successful mount operation.
+    keyset_management_->RecordAllVaultKeysetMetrics(obfuscated_username);
+  }
+  user_data_auth::PreparePersistentVaultReply reply;
+  reply.set_sanitized_username(obfuscated_username);
   ReplyWithError(std::move(on_done), reply, status);
 }
 
