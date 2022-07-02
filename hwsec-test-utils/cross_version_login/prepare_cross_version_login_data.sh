@@ -136,16 +136,17 @@ generate_data() (
   local test_name="hwsec.PrepareCrossVersionLoginData"
   # "tpm2_simulator" is added by crrev.com/c/3312977, so this test cannot run
   # on older version. Therefore, adds -extrauseflags "tpm2_simulator" here.
-  if ! tast run -failfortests -extrauseflags "tpm2_simulator" \
-      "${HOST}:${PORT}" "${test_name}" 1>"/dev/null"; then
-    error "tast failed to run ${test_name}"
+  if ! output=$(tast run -failfortests -extrauseflags "tpm2_simulator" \
+      "${HOST}:${PORT}" "${test_name}"); then
+    error "tast failed to run ${test_name}:"
+    echo "${output}"
     return 1
   fi
   return 0
 )
 
 main() {
-  local default_key_file="${HOME}/trunk/chromite/ssh_keys/testing_rsa"
+  local default_key_file="${HOME}/chromiumos/chromite/ssh_keys/testing_rsa"
 
   # Directory for local temporary data.
   TMP_DIR="$(mktemp -d)" || die "failed to mktemp"
@@ -163,7 +164,8 @@ main() {
   test -n "${board}" || usage
   test -n "${version}" || usage
 
-  local date="$(date +"%Y%m%d")"
+  local date
+  date="$(date +"%Y%m%d")"
   local prefix="${version}_${board}_${date}"
   local image_url="gs://chromeos-image-archive/${board}-release/${version}/\
 chromiumos_test_image.tar.xz"
