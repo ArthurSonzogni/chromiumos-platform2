@@ -27,9 +27,9 @@ class TestDpslBackgroundThread final
   // Wraps |background_callback| to post |main_thread_callback| to
   // |main_thread_context| after |background_callback| was invoked.
   static std::function<void()> WrapTaskToReplyOnMainThread(
-      const base::RepeatingClosure& background_callback,
+      base::OnceClosure background_callback,
       DpslThreadContext* main_thread_context,
-      const base::RepeatingClosure& main_thread_callback);
+      base::OnceClosure main_thread_callback);
 
   TestDpslBackgroundThread(const std::string& name,
                            DpslGlobalContext* global_context,
@@ -44,7 +44,7 @@ class TestDpslBackgroundThread final
 
   // Posts |background_callback| as a background task and waits until it will be
   // processed. |StartEventLoop()| must be called before.
-  void DoSync(const base::RepeatingClosure& background_callback);
+  void DoSync(base::OnceClosure background_callback);
 
   DpslThreadContext* thread_context();
 

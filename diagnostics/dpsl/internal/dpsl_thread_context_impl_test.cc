@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/barrier_closure.h>
@@ -229,21 +230,19 @@ class DpslThreadContextImplMultiThreadTest
   }
 
   std::function<void()> CreateAddToQueueTaskForBackground(
-      int task_id, const base::RepeatingClosure& main_thread_callback) {
-    base::RepeatingClosure main_thread_add_to_queue_task = base::BindRepeating(
-        [](const base::RepeatingClosure& task,
-           const base::RepeatingClosure& main_thread_callback) {
-          task.Run();
-          main_thread_callback.Run();
+      int task_id, base::OnceClosure main_thread_callback) {
+    base::OnceClosure main_thread_add_to_queue_task = base::BindOnce(
+        [](base::OnceClosure task, base::OnceClosure main_thread_callback) {
+          std::move(task).Run();
+          std::move(main_thread_callback).Run();
         },
-        base::BindRepeating(
-            &DpslThreadContextImplMultiThreadTest::AddToQueueTask,
-            base::Unretained(this), task_id),
-        main_thread_callback);
+        base::BindOnce(&DpslThreadContextImplMultiThreadTest::AddToQueueTask,
+                       base::Unretained(this), task_id),
+        std::move(main_thread_callback));
 
     return background_thread_->WrapTaskToReplyOnMainThread(
-        base::RepeatingClosure(), main_thread_context_.get(),
-        main_thread_add_to_queue_task);
+        base::OnceClosure(), main_thread_context_.get(),
+        std::move(main_thread_add_to_queue_task));
   }
 
  protected:

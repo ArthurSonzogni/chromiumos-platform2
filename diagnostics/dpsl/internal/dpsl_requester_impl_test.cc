@@ -740,7 +740,7 @@ TYPED_TEST(DpslRequesterImplServerTest, CallGrpcMethodFromBackgroundThread) {
                                              this->global_context_.get(),
                                              this->main_thread_context_.get());
   background_thread.StartEventLoop();
-  background_thread.DoSync(base::BindRepeating(
+  background_thread.DoSync(base::BindOnce(
       &TestFixture::PerformRequest, base::Unretained(this), request, response));
 
   // Only spin an event loop in case the response hasn't been handled yet, to
