@@ -11,6 +11,7 @@
 #include <base/barrier_closure.h>
 #include <base/bind.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/sequence_checker.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/grpc/async_grpc_server.h>
@@ -669,11 +670,19 @@ class DpslRequesterImplServerTest : public DpslRequesterImplWithRequesterTest {
 
   void PerformRequest(const Request& request, const Response& response) {
     auto handler = [&, response](auto response_ptr) {
+      // The handler should always run on the creation thread.
+      ASSERT_TRUE(main_sequence_checker_.CalledOnValidSequence());
+
       ASSERT_TRUE(response_ptr);
       ASSERT_TRUE(main_thread_context_->BelongsToCurrentThread());
       ASSERT_THAT(*response_ptr, ProtobufEquals(response));
 
+      // Note that this might be a no-op: in case we run before the test body
+      // calls RunEventLoop(). This is possible, because some tests spin
+      // additional run loops, like the one in
+      // TestDpslBackgroundThread::DoSync().
       main_thread_context_->QuitEventLoop();
+      ++responses_received_;
     };
 
     ((*requester_).*(TestParam::MethodValue))(
@@ -681,7 +690,9 @@ class DpslRequesterImplServerTest : public DpslRequesterImplWithRequesterTest {
   }
 
  protected:
+  base::SequenceChecker main_sequence_checker_;
   std::unique_ptr<TestDsplRequesterServer<TestParam>> server_;
+  int responses_received_ = 0;
 };
 
 using DpslRequesterImplServerTestTypes =
@@ -732,8 +743,14 @@ TYPED_TEST(DpslRequesterImplServerTest, CallGrpcMethodFromBackgroundThread) {
   background_thread.DoSync(base::BindRepeating(
       &TestFixture::PerformRequest, base::Unretained(this), request, response));
 
-  this->main_thread_context_->RunEventLoop();
+  // Only spin an event loop in case the response hasn't been handled yet, to
+  // avoid hanging here: the handler might've been executed by the run loop that
+  // DoSync() spins. The check of responses_received_ is not racy, because this
+  // counter is updated on the main thread.
+  if (!this->responses_received_)
+    this->main_thread_context_->RunEventLoop();
 
+  EXPECT_EQ(this->responses_received_, 1);
   EXPECT_EQ(this->server_->GetHandleCallCalled(), 1);
 }
 
