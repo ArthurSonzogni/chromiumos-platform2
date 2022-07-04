@@ -1,20 +1,20 @@
-# Chrome OS DLC Developer Guide
+# ChromeOS DLC Developer Guide
 
 ## Introduction
 
-This guide describes how to use Chrome OS DLC (Downloadable Content).
-DLC allows Chrome OS developers to ship a feature (e.g. a Chrome OS package) to
+This guide describes how to use ChromeOS DLC (Downloadable Content).
+DLC allows ChromeOS developers to ship a feature (e.g. a ChromeOS package) to
 stateful partition as packages and provides a way to download it at runtime
 onto the device. If you‘re looking for detailed information about how to do
 this, you’re in the right place.
 
-### Chrome OS DLC vs Chrome OS package (ebuild)
+### ChromeOS DLC vs ChromeOS package (ebuild)
 
-Chrome OS DLC is an extension of the Chrome OS package (ebuild).
+ChromeOS DLC is an extension of the ChromeOS package (ebuild).
 
 *   **Development** Similar to creating a package, creating a DLC requires
     creating an ebuild file ([Create a DLC]). Modifying a DLC requires upreving
-    the ebuild like when modifying a Chrome OS package.
+    the ebuild like when modifying a ChromeOS package.
 *   **Location** A Package is usually located in the root filesystem partition.
     A DLC is downloaded at runtime and located in the stateful partition.
 *   **Install/Update** Packages can not be updated or installed independently
@@ -25,7 +25,7 @@ Chrome OS DLC is an extension of the Chrome OS package (ebuild).
 *   **Update payload/artifacts** All the package updates are embedded in a
     monolithic payload (a.k.a root filesystem partition) and are downloadable
     from Omaha. Each DLC has its own update (or install) payload and
-    is downloadable from Omaha. Chrome OS infrastructure automatically handles
+    is downloadable from Omaha. ChromeOS infrastructure automatically handles
     packaging and serving of DLC payloads.
 
 ### Organization and Content
@@ -39,7 +39,7 @@ The workflow of a DLC developer involves following few tasks:
 
 ## Create a DLC
 
-Introducing a DLC into Chrome OS involves adding an ebuild. The ebuild
+Introducing a DLC into ChromeOS involves adding an ebuild. The ebuild
 file should inherit [dlc.eclass]. Within the ebuild file the following
 variables should be set:
 
@@ -51,7 +51,7 @@ Required:
     minimum required at the launch time to accommodate future size growth
     (recommendation is 130% of the DLC size).
 
-Optional (Add these only if you kow exactly what you are doing otherwise do not
+Optional (Add these only if you know exactly what you are doing otherwise do not
 add them):
 *    `DLC_ID` - Unique ID. Format of an ID has a few restrictions:
      *    It should not be empty.
@@ -112,7 +112,7 @@ possible following these instructions:
 *   Choose one of the ebuilds as the main ebuild (e.g. `X-main-app`) and the
     other ones be secondary. Normally you want this ebuild be the root of the
     dependency tree to all secondary ebuilds in this DLC. (This is not a strict
-    requirements, but makes it easier to follow.)
+    requirement, but makes it easier to follow.)
 *   Define a unique ID and assign it to `DLC_ID` in all ebuilds (main and
     secondaries) that are part of this DLC. (Don't use the default `DLC_ID`,
     which is basically the ebuild name.)
@@ -127,10 +127,10 @@ possible following these instructions:
 
 This basically puts the files of all these ebuilds under umbrella of one DLC.
 
-If you have DLC packages that gets pulled into different boards with no
+If you have DLC packages that get pulled into different boards with no
 intersection, then they potentially can have the same DLC ID. For example, if
 you have multiple ebuilds for an application, one per architecture, all those
-ebuilds can have the same DLC ID. This means your app only deal with one DLC ID
+ebuilds can have the same DLC ID. This means your app only deals with one DLC ID
 irrespective of the system architecture.
 
 ## Write platform code to request DLC
@@ -160,8 +160,8 @@ the DLC (no DLC is being served). You need to
 
 ## Install a DLC for dev/test
 
-Installing a Chrome OS DLC on a device is similar to installing a Chrome
-OS package:
+Installing a ChromeOS DLC on a device is similar to installing a ChromeOS
+package:
 
 *   Build the DLC: `emerge-${BOARD} chromeos-base/demo-dlc`
 *   Build DLC image and copy the DLC to device:
@@ -186,7 +186,7 @@ each version of a DLC image is tied to the version of the OS image.
 
 ### How do I update my DLC?
 
-Modifying a Chrome OS DLC is the same as modifying a Chrome OS package (ebuild).
+Modifying a ChromeOS DLC is the same as modifying a ChromeOS package (ebuild).
 A DLC is updated at the same time the device itself is updated.
 
 [dlcservice]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
