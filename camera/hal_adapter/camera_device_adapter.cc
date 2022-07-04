@@ -39,100 +39,133 @@
 
 namespace cros {
 
+std::ostream& operator<<(std::ostream& stream,
+                         const CameraMonitor::MonitorType type) {
+  switch (type) {
+    case CameraMonitor::MonitorType::kRequestsMonitor:
+      return stream << "requests";
+    case CameraMonitor::MonitorType::kResultsMonitor:
+      return stream << "results";
+  }
+}
+
 constexpr base::TimeDelta kMonitorTimeDelta = base::Seconds(2);
 
-CameraMonitor::CameraMonitor(const std::string& name)
-    : name_(name), thread_(name + "Monitor"), is_kicked_(false) {}
+CameraMonitor::CameraMonitor() : thread_("CameraMonitor") {
+  CHECK(thread_.Start());
+}
 
-void CameraMonitor::StartMonitor(base::OnceClosure timeout_callback) {
-  timeout_callback_ = std::move(timeout_callback);
+CameraMonitor::~CameraMonitor() {
+  auto stop_all_monitors = [](CameraMonitor* self) {
+    for (auto& [k, v] : self->monitor_states_) {
+      self->StopMonitorOnThread(k);
+    }
+  };
   thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&CameraMonitor::StartMonitorOnThread,
-                                base::Unretained(this)));
-}
-
-void CameraMonitor::Kick() {
-  base::AutoLock l(lock_);
-  is_kicked_ = true;
-  // Resume the monitor timer if it timed out before.
-  // Need to check IsRunning() because the monitor may be detached during close
-  // device.
-  if (thread_.IsRunning()) {
-    thread_.task_runner()->PostTask(
-        FROM_HERE, base::BindOnce(&CameraMonitor::MaybeResumeMonitorOnThread,
-                                  base::Unretained(this)));
-  }
-}
-
-void CameraMonitor::Attach() {
-  if (!thread_.Start()) {
-    LOGF(ERROR) << "Monitor thread failed to start";
-    return;
-  }
-  auto future = cros::Future<void>::Create(nullptr);
-  thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMonitor::SetTaskRunnerOnThread,
-                     base::Unretained(this), cros::GetFutureCallback(future)));
-  future->Wait();
-}
-
-bool CameraMonitor::HasBeenKicked() {
-  base::AutoLock l(lock_);
-  return is_kicked_;
-}
-
-void CameraMonitor::Detach() {
-  thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&base::OneShotTimer::AbandonAndStop,
-                                base::Unretained(this)));
+      FROM_HERE, base::BindOnce(stop_all_monitors, base::Unretained(this)));
   thread_.Stop();
 }
 
-void CameraMonitor::SetTaskRunnerOnThread(base::OnceCallback<void()> callback) {
-  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  base::OneShotTimer::SetTaskRunner(thread_.task_runner());
-  std::move(callback).Run();
+void CameraMonitor::StartMonitor(MonitorType type,
+                                 base::OnceClosure timeout_callback) {
+  thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&CameraMonitor::StartMonitorOnThread,
+                                base::Unretained(this), type,
+                                std::move(timeout_callback)));
 }
 
-void CameraMonitor::StartMonitorOnThread() {
+void CameraMonitor::StopMonitor(MonitorType type) {
+  thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&CameraMonitor::StopMonitorOnThread,
+                                base::Unretained(this), type));
+}
+
+void CameraMonitor::Kick(MonitorType type) {
+  thread_.task_runner()->PostTask(FROM_HERE,
+                                  base::BindOnce(&CameraMonitor::KickOnThread,
+                                                 base::Unretained(this), type));
+}
+
+bool CameraMonitor::HasBeenKicked(MonitorType type) {
+  CHECK(thread_.IsRunning());
+  auto future = cros::Future<bool>::Create(nullptr);
+  auto check_if_kicked = [](CameraMonitor* self, MonitorType type,
+                            base::OnceCallback<void(bool)> cb) {
+    if (!self->monitor_states_.contains(type)) {
+      std::move(cb).Run(false);
+    }
+    std::move(cb).Run(self->monitor_states_.at(type).is_kicked);
+  };
+  thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(check_if_kicked, base::Unretained(this), type,
+                                cros::GetFutureCallback(future)));
+  future->Wait();
+  return future->Get();
+}
+
+void CameraMonitor::StartMonitorOnThread(MonitorType type,
+                                         base::OnceClosure timeout_callback) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  if (base::OneShotTimer::IsRunning()) {
-    base::OneShotTimer::Stop();
+  if (!monitor_states_.contains(type)) {
+    monitor_states_.emplace(
+        type,
+        State{.timer = std::make_unique<base::RetainingOneShotTimer>(
+                  FROM_HERE, kMonitorTimeDelta,
+                  base::BindRepeating(&CameraMonitor::MonitorTimeoutOnThread,
+                                      base::Unretained(this), type))});
   }
 
-  base::OneShotTimer::Start(
-      FROM_HERE, kMonitorTimeDelta,
-      base::BindOnce(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
-  LOGF(INFO) << "Start " << name_ << " monitor";
+  State& s = monitor_states_.at(type);
+  s.is_stopped = false;
+  s.timeout_callback = std::move(timeout_callback);
+  s.ResetTimer();
+  LOGF(INFO) << "Started " << type << " monitor";
 }
 
-void CameraMonitor::MaybeResumeMonitorOnThread() {
+void CameraMonitor::StopMonitorOnThread(MonitorType type) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  if (base::OneShotTimer::IsRunning()) {
+  if (!monitor_states_.contains(type) ||
+      !monitor_states_.at(type).timer->IsRunning()) {
+    return;
+  }
+  State& s = monitor_states_.at(type);
+  s.timer->Stop();
+  s.is_stopped = true;
+  LOGF(INFO) << "Stopped " << type << " monitor";
+}
+
+void CameraMonitor::KickOnThread(MonitorType type) {
+  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
+  if (!monitor_states_.contains(type)) {
+    LOGF(ERROR) << "CameraMonitor for " << type << " not started";
     return;
   }
 
-  base::OneShotTimer::Start(
-      FROM_HERE, kMonitorTimeDelta,
-      base::BindOnce(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
-  LOGF(INFO) << "Resume " << name_ << " monitor";
+  State& s = monitor_states_.at(type);
+  s.is_kicked = true;
+  if (s.is_stopped) {
+    DVLOGF(1) << "CameraMonitor for " << type << " is kicked while stopped";
+    return;
+  }
+  if (!s.timer->IsRunning()) {
+    s.ResetTimer();
+    LOGF(INFO) << "Resumed " << type << " monitor";
+  }
 }
 
-void CameraMonitor::MonitorTimeout() {
+void CameraMonitor::MonitorTimeoutOnThread(MonitorType type) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  base::AutoLock l(lock_);
-  if (is_kicked_) {
-    base::OneShotTimer::Start(
-        FROM_HERE, kMonitorTimeDelta,
-        base::BindOnce(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
+  DCHECK(monitor_states_.contains(type));
+
+  State& s = monitor_states_.at(type);
+  if (s.is_kicked) {
+    s.ResetTimer();
   } else {
-    LOGF(WARNING) << "No " << name_ << " for more than " << kMonitorTimeDelta;
-    if (timeout_callback_) {
-      std::move(timeout_callback_).Run();
+    LOGF(WARNING) << "No " << type << " for more than " << kMonitorTimeDelta;
+    if (s.timeout_callback) {
+      std::move(s.timeout_callback).Run();
     }
   }
-  is_kicked_ = false;
 }
 
 CameraDeviceAdapter::CameraDeviceAdapter(
@@ -155,8 +188,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       device_api_version_(device_api_version),
       static_info_(static_info),
       camera_metrics_(CameraMetrics::New()),
-      capture_request_monitor_("CaptureRequest"),
-      capture_result_monitor_("CaptureResult"),
       stream_manipulators_(std::move(stream_manipulators)) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
@@ -242,8 +273,6 @@ int32_t CameraDeviceAdapter::Initialize(
     (*it)->Initialize(static_info_, result_callback);
   }
 
-  capture_request_monitor_.Attach();
-  capture_result_monitor_.Attach();
   base::AutoLock l(callback_ops_delegate_lock_);
   // Unlike the camera module, only one peer is allowed to access a camera
   // device at any time.
@@ -407,15 +436,17 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       (*updated_config)->streams.push_back(std::move(ptr));
     }
 
-    base::RepeatingClosure timeout_callback = base::DoNothing();
+    base::RepeatingClosure timeout_callback = base::NullCallback();
     std::unique_ptr<CameraConfig> config =
         CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
     if (config->GetBoolean(constants::kCrosAbortWhenCaptureMonitorTimeout,
                            false)) {
       timeout_callback = base::BindRepeating([]() { abort(); });
     }
-    capture_request_monitor_.StartMonitor(timeout_callback);
-    capture_result_monitor_.StartMonitor(timeout_callback);
+    capture_monitor_.StartMonitor(CameraMonitor::MonitorType::kRequestsMonitor,
+                                  timeout_callback);
+    capture_monitor_.StartMonitor(CameraMonitor::MonitorType::kResultsMonitor,
+                                  timeout_callback);
   }
 
   camera_metrics_->SendConfigureStreamsLatency(timer.Elapsed());
@@ -470,7 +501,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     capture_settings_ = std::move(settings);
   }
 
-  capture_request_monitor_.Kick();
+  capture_monitor_.Kick(CameraMonitor::MonitorType::kRequestsMonitor);
 
   // Deserialize input buffer.
   buffer_handle_t input_buffer_handle;
@@ -644,8 +675,8 @@ int32_t CameraDeviceAdapter::Close() {
   }
   // Stop the capture monitors before closing the streams in case it takes time
   // and triggers the timeout.
-  capture_request_monitor_.Detach();
-  capture_result_monitor_.Detach();
+  capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kRequestsMonitor);
+  capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kResultsMonitor);
 
   reprocess_effect_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
@@ -683,8 +714,10 @@ int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
 }
 
 bool CameraDeviceAdapter::IsRequestOrResultStalling() {
-  return !capture_request_monitor_.HasBeenKicked() ||
-         !capture_result_monitor_.HasBeenKicked();
+  return !capture_monitor_.HasBeenKicked(
+             CameraMonitor::MonitorType::kRequestsMonitor) ||
+         !capture_monitor_.HasBeenKicked(
+             CameraMonitor::MonitorType::kResultsMonitor);
 }
 
 // static
@@ -694,7 +727,7 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
 
-  self->capture_result_monitor_.Kick();
+  self->capture_monitor_.Kick(CameraMonitor::MonitorType::kResultsMonitor);
 
   // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
   // so the stream manipulators can unwind the buffer states.

@@ -47,34 +47,58 @@ class Camera3CallbackOpsDelegate;
 // It is a watchdog-like monitor. It detects the kick event. If there is no
 // kick event between 2 timeout it outputs log to indicate it. We can use it to
 // detect if there is any continuous event stopped. e.g. capture request.
-class CameraMonitor : public base::OneShotTimer {
+class CameraMonitor {
  public:
-  explicit CameraMonitor(const std::string& name);
+  enum class MonitorType {
+    kRequestsMonitor,
+    kResultsMonitor,
+  };
+
+  CameraMonitor();
   CameraMonitor(const CameraMonitor&) = delete;
   CameraMonitor& operator=(const CameraMonitor&) = delete;
 
-  ~CameraMonitor() override = default;
+  ~CameraMonitor();
 
-  void Attach();
-  void Detach();
-  void StartMonitor(base::OnceClosure timeout_callback = base::DoNothing());
-  void Kick();
-  bool HasBeenKicked();
+  void StartMonitor(MonitorType type,
+                    base::OnceClosure timeout_callback = base::NullCallback());
+  void StopMonitor(MonitorType type);
+  void Kick(MonitorType type);
+  bool HasBeenKicked(MonitorType type);
 
  private:
-  void SetTaskRunnerOnThread(base::OnceCallback<void()> callback);
-  void StartMonitorOnThread();
-  void MaybeResumeMonitorOnThread();
-  void MonitorTimeout();
+  // Per-type monitor state.
+  struct State {
+    // A repeating oneshot timer to periodically check whether |is_kicked| is
+    // set. |timer| stops if the monitor is not kicked before timeout and will
+    // be resumed when kicked again.
+    std::unique_ptr<base::RetainingOneShotTimer> timer;
 
-  std::string name_;
+    // Set when we stop monitoring for the given type. |timer| will not resume
+    // when |is_stopped| is set.
+    bool is_stopped = true;
+
+    bool is_kicked = false;
+    base::OnceClosure timeout_callback = base::NullCallback();
+
+    void ResetTimer() {
+      is_kicked = false;
+      if (timer) {
+        timer->Reset();
+      }
+    }
+  };
+
+  void StartMonitorOnThread(MonitorType type,
+                            base::OnceClosure timeout_callback);
+  void StopMonitorOnThread(MonitorType type);
+  void KickOnThread(MonitorType type);
+  void MonitorTimeoutOnThread(MonitorType type);
+
   // A thread that handles timeouts of request/response monitors.
   base::Thread thread_;
-
-  base::Lock lock_;
-  bool is_kicked_ GUARDED_BY(lock_);
-
-  base::OnceClosure timeout_callback_;
+  // Access to |monitor_states_| is sequenced on |thread_|.
+  base::flat_map<MonitorType, State> monitor_states_;
 };
 
 class CameraDeviceAdapter : public camera3_callback_ops_t {
@@ -330,11 +354,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // metadata.
   internal::ScopedCameraMetadata capture_settings_;
 
-  // Monitors for capture requests and capture results. If there is no capture
+  // Monitors capture requests and capture results. If there is no capture
   // requests/responses for a while the monitors will output a log to indicate
   // this situation.
-  CameraMonitor capture_request_monitor_;
-  CameraMonitor capture_result_monitor_;
+  CameraMonitor capture_monitor_;
 
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
 };
