@@ -1095,7 +1095,10 @@ void KeysetManagement::RecordVaultKeysetMetrics(
     // Some legacy keysets were created without any key_data at all.
     keyset_metrics.missing_key_data_count++;
   } else if (vk.GetKeyData().label().empty()) {
-    // VaultKeyset label is empty.
+    // Note that we access the label via |GetKeyData()| instead of |GetLabel()|,
+    // because we want to report the number of keysets without an explicitly
+    // assigned label here, meanwhile |GetLabel()| would backfill an empty label
+    // with a "legacy-N" value.
     if (vk.IsLECredential()) {
       keyset_metrics.empty_label_le_cred_count++;
     } else {
@@ -1104,6 +1107,13 @@ void KeysetManagement::RecordVaultKeysetMetrics(
   } else if (vk.IsLECredential()) {
     // VaultKeyset is PIN based, label is non-empty.
     keyset_metrics.le_cred_count++;
+  } else if (!vk.GetKeyData().has_type()) {
+    // Check the case of a missing type separately, since otherwise the key
+    // would be misclassified below, based on |type()|s default return value
+    // |KEY_TYPE_PASSWORD|.
+    keyset_metrics.untyped_count++;
+    // TODO(b/204482221): Remove this log after collecting stats.
+    LOG(INFO) << "Untyped vault keyset " << vk.GetLabel() << ".";
   } else {
     switch (vk.GetKeyData().type()) {
       case KeyData::KEY_TYPE_PASSWORD:
@@ -1128,6 +1138,9 @@ void KeysetManagement::RecordVaultKeysetMetrics(
         keyset_metrics.kiosk_count++;
         break;
       default:
+        // TODO(b/204482221): Remove this log after collecting stats.
+        LOG(WARNING) << "Unexpected type " << vk.GetKeyData().type()
+                     << " in vault keyset " << vk.GetLabel() << ".";
         keyset_metrics.unclassified_count++;
         break;
     }

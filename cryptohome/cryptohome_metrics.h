@@ -444,6 +444,7 @@ struct VaultKeysetMetrics {
   int empty_label_count = 0;
   int empty_label_le_cred_count = 0;
   int le_cred_count = 0;
+  int untyped_count = 0;
   int password_count = 0;
   int smart_unlock_count = 0;
   int smartcard_count = 0;
