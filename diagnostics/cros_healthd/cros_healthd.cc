@@ -183,7 +183,10 @@ void CrosHealthd::GetProbeService(
 void CrosHealthd::GetDiagnosticsService(
     mojo::PendingReceiver<
         chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
-  diagnostics_receiver_set_.Add(routine_service_.get(), std::move(service));
+  // Bind the service after it becomes ready.
+  routine_service_->RegisterServiceReadyCallback(
+      base::BindOnce(&CrosHealthd::GetDiagnosticsServiceInternal,
+                     base::Unretained(this), std::move(service)));
 }
 
 void CrosHealthd::GetEventService(
@@ -234,6 +237,12 @@ void CrosHealthd::OnDisconnect() {
   // recoverable.
   if (service_factory_receiver_set_.current_context())
     ShutDownDueToMojoError("Lost mojo connection to browser.");
+}
+
+void CrosHealthd::GetDiagnosticsServiceInternal(
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
+  diagnostics_receiver_set_.Add(routine_service_.get(), std::move(service));
 }
 
 }  // namespace diagnostics

@@ -18,6 +18,7 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
@@ -88,6 +89,11 @@ class CrosHealthd final
   // Disconnect handler for |binding_set_|.
   void OnDisconnect();
 
+  void GetDiagnosticsServiceInternal(
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+          service);
+
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Provides access to helper objects. Used by various telemetry fetchers,
@@ -112,8 +118,7 @@ class CrosHealthd final
   // |routine_service_| delegates routine creation to |routine_factory_|.
   std::unique_ptr<CrosHealthdRoutineFactory> routine_factory_;
   // Creates new diagnostic routines and controls existing diagnostic routines.
-  std::unique_ptr<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-      routine_service_;
+  std::unique_ptr<CrosHealthdRoutineService> routine_service_;
   // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
   // Receiver set that connects this instance (which is an implementation of
