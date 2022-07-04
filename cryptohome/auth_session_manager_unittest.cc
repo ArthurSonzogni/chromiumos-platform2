@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/test/task_environment.h>
+#include <base/unguessable_token.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -69,7 +70,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   ASSERT_THAT(auth_session, NotNull());
   base::UnguessableToken token = auth_session->token();
   ASSERT_THAT(auth_session_manager.FindAuthSession(token), Eq(auth_session));
-  auth_session_manager.RemoveAuthSession(token);
+  EXPECT_TRUE(auth_session_manager.RemoveAuthSession(token));
   ASSERT_THAT(auth_session_manager.FindAuthSession(token), IsNull());
 
   // Repeat with serialized_token overload.
@@ -78,7 +79,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   std::string serialized_token = auth_session->serialized_token();
   ASSERT_THAT(auth_session_manager.FindAuthSession(serialized_token),
               Eq(auth_session));
-  auth_session_manager.RemoveAuthSession(serialized_token);
+  EXPECT_TRUE(auth_session_manager.RemoveAuthSession(serialized_token));
   ASSERT_THAT(auth_session_manager.FindAuthSession(serialized_token), IsNull());
 }
 
@@ -104,6 +105,23 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
   auth_session->SetAuthSessionAsAuthenticated();
   task_environment.FastForwardUntilNoTasksRemain();
   ASSERT_THAT(auth_session_manager.FindAuthSession(token), IsNull());
+}
+
+TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
+  // Setup:
+  NiceMock<MockKeysetManagement> keyset_management;
+  NiceMock<MockPlatform> platform;
+  AuthFactorManager auth_factor_manager(&platform);
+  UserSecretStashStorage user_secret_stash_storage(&platform);
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+  AuthSessionManager auth_session_manager(
+      &crypto_, &keyset_management, &auth_block_utility, &auth_factor_manager,
+      &user_secret_stash_storage);
+
+  // Test:
+  EXPECT_FALSE(
+      auth_session_manager.RemoveAuthSession(base::UnguessableToken()));
+  EXPECT_FALSE(auth_session_manager.RemoveAuthSession("non-existing-token"));
 }
 
 }  // namespace cryptohome

@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/notreached.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
@@ -60,25 +61,33 @@ AuthSession* AuthSessionManager::CreateAuthSession(
   return auth_sessions_[token].get();
 }
 
-void AuthSessionManager::RemoveAuthSession(
+bool AuthSessionManager::RemoveAuthSession(
     const base::UnguessableToken& token) {
-  auth_sessions_.erase(token);
+  const auto iter = auth_sessions_.find(token);
+  if (iter == auth_sessions_.end())
+    return false;
+  auth_sessions_.erase(iter);
+  return true;
 }
 
-void AuthSessionManager::RemoveAuthSession(
+bool AuthSessionManager::RemoveAuthSession(
     const std::string& serialized_token) {
   std::optional<base::UnguessableToken> token =
       AuthSession::GetTokenFromSerializedString(serialized_token);
   if (!token.has_value()) {
     LOG(ERROR) << "Unparsable AuthSession token for removal";
-    return;
+    return false;
   }
-  RemoveAuthSession(token.value());
+  return RemoveAuthSession(token.value());
 }
 
 void AuthSessionManager::ExpireAuthSession(
     const base::UnguessableToken& token) {
-  RemoveAuthSession(token);
+  if (!RemoveAuthSession(token)) {
+    // All active auth sessions should be tracked by the manager, so report it
+    // if the just-expired session is unknown.
+    NOTREACHED() << "Failed to remove expired AuthSession.";
+  }
 }
 
 AuthSession* AuthSessionManager::FindAuthSession(

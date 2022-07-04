@@ -3339,7 +3339,9 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
   // Since the user is now removed, any further operations require a fresh
   // AuthSession.
   if (auth_session) {
-    auth_session_manager_->RemoveAuthSession(request.auth_session_id());
+    if (!auth_session_manager_->RemoveAuthSession(request.auth_session_id())) {
+      NOTREACHED() << "Failed to remove AuthSession when removing user.";
+    }
   }
 
   PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
@@ -4226,7 +4228,9 @@ void UserDataAuth::InvalidateAuthSession(
   AssertOnMountThread();
 
   user_data_auth::InvalidateAuthSessionReply reply;
-  auth_session_manager_->RemoveAuthSession(request.auth_session_id());
+  if (auth_session_manager_->RemoveAuthSession(request.auth_session_id())) {
+    LOG(INFO) << "AuthSession: invalidated.";
+  }
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }

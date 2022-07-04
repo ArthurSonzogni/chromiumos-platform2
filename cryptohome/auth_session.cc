@@ -8,10 +8,13 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -141,8 +144,6 @@ AuthSession::AuthSession(
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
 
-  LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
-
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
   start_time_ = base::TimeTicks::Now();
@@ -170,6 +171,8 @@ AuthSession::AuthSession(
     converter_->VaultKeysetsToAuthFactors(username_, label_to_auth_factor_);
   }
 
+  RecordAuthSessionStart();
+
   // If the Auth Session is started for an ephemeral user, we always start in an
   // authenticated state.
   if (is_ephemeral_user_) {
@@ -178,13 +181,30 @@ AuthSession::AuthSession(
 }
 
 void AuthSession::AuthSessionTimedOut() {
+  LOG(INFO) << "AuthSession: timed out.";
   status_ = AuthStatus::kAuthStatusTimedOut;
   // After this call back to |UserDataAuth|, |this| object will be deleted.
   std::move(on_timeout_).Run(token_);
 }
 
+void AuthSession::RecordAuthSessionStart() const {
+  std::vector<std::string> keys;
+  for (const auto& [label, key_data] : key_label_data_) {
+    bool is_le_credential = key_data.policy().low_entropy_credential();
+    keys.push_back(base::StringPrintf("%s(type %d%s)", label.c_str(),
+                                      static_cast<int>(key_data.type()),
+                                      is_le_credential ? " le" : ""));
+  }
+  LOG(INFO) << "AuthSession: started with is_ephemeral_user="
+            << is_ephemeral_user_ << " user_exists=" << user_exists_
+            << " keys=" << base::JoinString(keys, ",") << ".";
+}
+
 void AuthSession::SetAuthSessionAsAuthenticated() {
-  status_ = AuthStatus::kAuthStatusAuthenticated;
+  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+    status_ = AuthStatus::kAuthStatusAuthenticated;
+    LOG(INFO) << "AuthSession: authenticated.";
+  }
   timer_.Start(FROM_HERE, kAuthSessionTimeout,
                base::BindOnce(&AuthSession::AuthSessionTimedOut,
                               base::Unretained(this)));
@@ -298,6 +318,8 @@ void AuthSession::AddVaultKeyset(
               ErrorActionSet({ErrorAction::kReboot}), error));
       return;
     }
+    LOG(INFO) << "AuthSession: added additional keyset " << key_data.label()
+              << ".";
   } else {  // AddInitialKeyset
     if (!file_system_keyset_.has_value()) {
       LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
@@ -326,6 +348,8 @@ void AuthSession::AddVaultKeyset(
               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
       return;
     }
+    LOG(INFO) << "AuthSession: added initial keyset " << key_data.label()
+              << ".";
     vault_keyset_ = std::move(vk_status).value();
 
     // Flip the flag, so that our future invocations go through AddKeyset()
@@ -781,6 +805,9 @@ void AuthSession::Authenticate(
     const cryptohome::AuthorizationRequest& authorization_request,
     base::OnceCallback<
         void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done) {
+  LOG(INFO) << "AuthSession: authentication attempt via "
+            << authorization_request.key().data().label() << ".";
+
   MountStatusOr<std::unique_ptr<Credentials>> credentials_or_err =
       GetCredentials(authorization_request);
 
@@ -876,6 +903,9 @@ bool AuthSession::AuthenticateAuthFactor(
     const user_data_auth::AuthenticateAuthFactorRequest& request,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done) {
+  LOG(INFO) << "AuthSession: authentication attempt via "
+            << request.auth_factor_label() << " factor.";
+
   user_data_auth::AuthenticateAuthFactorReply reply;
 
   // Check the factor exists either with USS or VaultKeyset.
@@ -1139,7 +1169,8 @@ std::optional<base::UnguessableToken> AuthSession::GetTokenFromSerializedString(
     const std::string& serialized_token) {
   if (serialized_token.size() !=
       kSizeOfSerializedValueInToken * kNumberOfSerializedValuesInToken) {
-    LOG(ERROR) << "Incorrect serialized string size";
+    LOG(ERROR) << "AuthSession: incorrect serialized string size: "
+               << serialized_token.size() << ".";
     return std::nullopt;
   }
   uint64_t high, low;
@@ -1416,6 +1447,8 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
         .Wrap(std::move(status));
   }
 
+  LOG(INFO) << "AuthSession: added auth factor " << auth_factor_label
+            << " into USS.";
   label_to_auth_factor_.emplace(auth_factor_label, std::move(auth_factor));
   user_has_configured_auth_factor_ = true;
 

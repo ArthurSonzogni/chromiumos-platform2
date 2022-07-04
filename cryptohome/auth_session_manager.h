@@ -40,11 +40,13 @@ class AuthSessionManager {
   // created AuthSession and the method returns a pointer to it.
   AuthSession* CreateAuthSession(const std::string& account_id, uint32_t flags);
 
-  // Removes existing auth session with token.
-  void RemoveAuthSession(const base::UnguessableToken& token);
+  // Removes existing auth session with token. Returns false if there's no auth
+  // session with this token.
+  bool RemoveAuthSession(const base::UnguessableToken& token);
 
-  // Overload for remove to avoid deserialization client side.
-  void RemoveAuthSession(const std::string& serialized_token);
+  // Overload for remove to avoid deserialization client side. Returns false if
+  // there's no auth session with the given token.
+  bool RemoveAuthSession(const std::string& serialized_token);
 
   // Finds existing auth session with token.
   AuthSession* FindAuthSession(const base::UnguessableToken& token) const;

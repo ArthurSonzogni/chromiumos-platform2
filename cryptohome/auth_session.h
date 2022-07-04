@@ -229,6 +229,9 @@ class AuthSession final {
   // this |AuthSession| reference from |UserDataAuth|.
   void AuthSessionTimedOut();
 
+  // Emits a debug log message with the session's initial state.
+  void RecordAuthSessionStart() const;
+
   // SetAuthSessionAsAuthenticated to authenticated sets the status to
   // authenticated and start the timer.
   void SetAuthSessionAsAuthenticated();
