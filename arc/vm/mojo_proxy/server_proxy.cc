@@ -60,14 +60,8 @@ base::ScopedFD SetupVirtwlSocket() {
     return {};
   }
   // Make it accessible to crosvm.
-  uid_t uid = 0;
-  gid_t gid = 0;
-  if (!brillo::userdb::GetUserInfo("crosvm", &uid, &gid)) {
-    LOG(ERROR) << "Failed to get crosvm user info.";
-    return {};
-  }
-  if (lchown(kVirtwlSocketPath, uid, gid) != 0) {
-    PLOG(ERROR) << "lchown failed";
+  if (chmod(kVirtwlSocketPath, 0666) == -1) {
+    PLOG(ERROR) << "Failed to set permission";
     return {};
   }
   // Start listening on the socket.
