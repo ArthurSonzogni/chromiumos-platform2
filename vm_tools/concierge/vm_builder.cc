@@ -11,6 +11,7 @@
 #include <base/strings/string_util.h>
 #include <base/logging.h>
 
+#include "base/files/file_path.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
@@ -314,6 +315,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
   if (!vm_socket_path_.empty())
     args.emplace_back("--socket", vm_socket_path_);
 
+  // Validate the wayland socket, see b/237754226 for details
+  if (!HasValidWaylandSockets())
+    return {};
   for (const auto& w : wayland_sockets_)
     args.emplace_back("--wayland-sock", w);
 
@@ -593,6 +597,27 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
   cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(), "--strict-balloon");
 
   return cmds;
+}
+
+bool VmBuilder::HasValidWaylandSockets() const {
+  if (wayland_sockets_.empty())
+    return true;
+  // The "primary" wayland socket must be either the default socket, or of the
+  // form "/run/wayland/concierge/<something>/wayland-0".
+  if (wayland_sockets_.front() != kWaylandSocket) {
+    std::vector<std::string> primary_wayland_path_components =
+        base::FilePath(wayland_sockets_.front()).GetComponents();
+    if (primary_wayland_path_components.size() != 6 ||
+        primary_wayland_path_components[0] != "/" ||
+        primary_wayland_path_components[1] != "run" ||
+        primary_wayland_path_components[2] != "wayland" ||
+        primary_wayland_path_components[3] != "concierge" ||
+        primary_wayland_path_components[4].empty() ||
+        primary_wayland_path_components[5] != "wayland-0") {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace concierge

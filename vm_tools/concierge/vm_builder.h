@@ -108,7 +108,8 @@ class VmBuilder {
 
   VmBuilder& SetVmMemoryId(VmMemoryId id);
 
-  // Builds the command line required to start a VM.
+  // Builds the command line required to start a VM. Returns an empty list if
+  // the vm args are invalid.
   base::StringPairs BuildVmArgs() const;
 
   // Returns the command line arguments to start a sibling VM as well as the VVU
@@ -117,6 +118,8 @@ class VmBuilder {
       std::vector<VvuDeviceInfo> vvu_devices_info) const;
 
  private:
+  bool HasValidWaylandSockets() const;
+
   base::FilePath kernel_;
   base::FilePath initrd_;
   base::FilePath bios_;
