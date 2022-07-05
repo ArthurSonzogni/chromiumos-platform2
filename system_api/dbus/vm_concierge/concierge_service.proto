@@ -53,6 +53,17 @@ enum DiskImageType {
   DISK_IMAGE_PLUGINVM = 3;
 }
 
+// The type of filesystem.
+enum FilesystemType {
+  // Default option. We make no extra assumptions about the filesystem. Most
+  // existing disk functions don't interact with the filesystem directly or
+  // assume that it is Btrfs.
+  UNSPECIFIED = 0;
+
+  // The Ext4 filesystem.
+  EXT4 = 1;
+}
+
 // Describes any additional disk images that should be mounted inside the VM.
 message DiskImage {
   // Path to the disk image on the host.
@@ -678,6 +689,15 @@ message CreateDiskImageRequest {
   // Parameters to pass to Plugin VM helper to facilitate creating
   // new image.
   repeated string params = 7;
+
+  // Will create the specified filesystem on the image. If unspecified, no
+  // filesystem will be created.
+  FilesystemType filesystem_type = 8;
+
+  // Sets up the disk image to support storage ballooning. This setting is
+  // used exclusively with sparse images. If this is true and disk_size is
+  // non-zero, the request will fail.
+  bool storage_ballooning = 9;
 }
 
 // Response to a CreateDiskImageRequest.
