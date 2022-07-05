@@ -155,13 +155,13 @@ int32_t CameraHalAdapter::OpenDevice(
   std::tie(camera_module, internal_camera_id) =
       GetInternalModuleAndId(camera_id);
 
-  LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id
-             << ", camera_module = " << camera_module->common.name
-             << ", internal_camera_id = " << internal_camera_id;
-
   if (!camera_module) {
     return -EINVAL;
   }
+
+  LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id
+             << ", camera_module = " << camera_module->common.name
+             << ", internal_camera_id = " << internal_camera_id;
 
   if (device_adapters_.find(camera_id) != device_adapters_.end()) {
     LOGF(WARNING) << "Multiple calls to OpenDevice on device " << camera_id;
