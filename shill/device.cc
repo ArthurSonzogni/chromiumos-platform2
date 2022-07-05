@@ -72,6 +72,54 @@ constexpr char kIPFlagArpIgnoreDefault[] = "0";
 constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
 constexpr size_t kHardwareAddressLength = 6;
 
+int PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
+  switch (portal_result.http_phase) {
+    case PortalDetector::Phase::kUnknown:
+      return Metrics::kPortalDetectorResultUnknown;
+    case PortalDetector::Phase::kDNS:
+      // DNS timeout or failure, portal detection stopped.
+      if (portal_result.http_status == PortalDetector::Status::kTimeout) {
+        return Metrics::kPortalDetectorResultDNSTimeout;
+      } else {
+        return Metrics::kPortalDetectorResultDNSFailure;
+      }
+    case PortalDetector::Phase::kConnection:
+      // Connection failed, portal detection stopped.
+      return Metrics::kPortalDetectorResultConnectionFailure;
+    case PortalDetector::Phase::kHTTP:
+      if (portal_result.http_status == PortalDetector::Status::kTimeout) {
+        return Metrics::kPortalDetectorResultHTTPTimeout;
+      } else {
+        return Metrics::kPortalDetectorResultHTTPFailure;
+      }
+    case PortalDetector::Phase::kContent:
+      switch (portal_result.http_status) {
+        case PortalDetector::Status::kFailure:
+          return Metrics::kPortalDetectorResultContentFailure;
+        case PortalDetector::Status::kSuccess:
+          if (portal_result.https_status == PortalDetector::Status::kSuccess) {
+            return Metrics::kPortalDetectorResultOnline;
+          } else {
+            return Metrics::kPortalDetectorResultHTTPSFailure;
+          }
+        case PortalDetector::Status::kTimeout:
+          if (portal_result.https_status == PortalDetector::Status::kSuccess) {
+            // The HTTP probe timed out but the HTTPS probe succeeded.
+            // We expect this to be an uncommon edge case.
+            return Metrics::kPortalDetectorResultContentTimeout;
+          } else {
+            return Metrics::kPortalDetectorResultNoConnectivity;
+          }
+        case PortalDetector::Status::kRedirect:
+          if (!portal_result.redirect_url_string.empty()) {
+            return Metrics::kPortalDetectorResultRedirectFound;
+          } else {
+            return Metrics::kPortalDetectorResultRedirectNoUrl;
+          }
+      }
+  }
+}
+
 }  // namespace
 
 const char Device::kStoragePowered[] = "Powered";
@@ -622,7 +670,7 @@ void Device::SelectService(const ServiceRefPtr& service,
     old_service = selected_service_;
     if (reset_old_service_state &&
         selected_service_->state() != Service::kStateFailure) {
-      selected_service_->SetState(Service::kStateIdle);
+      SetServiceState(Service::kStateIdle);
     }
     selected_service_->SetAttachedNetwork(nullptr);
     StopAllActivities();
@@ -752,9 +800,9 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
-  SLOG(this, 2) << __func__ << " Device: " << link_name() << " Service: "
-                << GetSelectedServiceRpcIdentifier(nullptr).value()
-                << " Received status: " << result.http_status;
+  LOG(INFO) << LoggingTag() << " Device: " << link_name()
+            << " Service: " << GetSelectedServiceRpcIdentifier(nullptr).value()
+            << " Received status: " << result.http_status;
 
   int portal_status = Metrics::PortalDetectionResultToEnum(result);
   metrics()->SendEnumToUMA(Metrics::kMetricPortalResult, technology(),
@@ -767,8 +815,6 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
         << "Portal detection completed but no selected service exists.";
     return;
   }
-
-  selected_service_->increment_portal_detection_count();
 
   if (!network_->HasConnectionObject()) {
     LOG(INFO) << LoggingTag()
@@ -784,6 +830,14 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     return;
   }
 
+  selected_service_->increment_portal_detection_count();
+  int portal_detection_count = selected_service_->portal_detection_count();
+  int portal_result = PortalResultToMetricsEnum(result);
+  metrics()->SendEnumToUMA(portal_detection_count == 1
+                               ? Metrics::kPortalDetectorInitialResult
+                               : Metrics::kPortalDetectorRetryResult,
+                           technology(), portal_result);
+
   // Set the probe URL. It should be empty if there is no redirect.
   selected_service_->SetProbeUrl(result.probe_url_string);
 
@@ -793,6 +847,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     StopPortalDetection();
     SetServiceState(state);
     OnNetworkValidationSuccess();
+    // TODO(b/236388757): Deprecate post M108.
     metrics()->SendToUMA(Metrics::kMetricPortalAttemptsToOnline, technology(),
                          result.num_attempts);
     return;

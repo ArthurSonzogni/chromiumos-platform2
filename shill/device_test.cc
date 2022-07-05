@@ -1386,6 +1386,8 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
                                         kPortalDetectionStatusFailure,
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, Technology(Technology::kUnknown), _))
+      .Times(AnyNumber());
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kMetricPortalResult,
                             Technology(Technology::kUnknown),
@@ -1412,6 +1414,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _, _)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, Technology(Technology::kUnknown), _))
+      .Times(AnyNumber());
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricPortalResult,
                                         Technology(Technology::kUnknown),
                                         Metrics::kPortalResultSuccess));

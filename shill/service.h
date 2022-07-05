@@ -646,6 +646,7 @@ class Service : public base::RefCounted<Service> {
   }
 
   void increment_portal_detection_count() { portal_detection_count_++; }
+  int portal_detection_count() const { return portal_detection_count_; }
 
   // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
   // in that order.

@@ -312,7 +312,7 @@ class Metrics : public DefaultServiceObserver {
     kWirelessSecurityChangeMax
   };
 
-  // The result of the portal detection.
+  // The result of the portal detection. TODO(b/236387876): Deprecate.
   enum PortalResult {
     kPortalResultSuccess = 0,
     kPortalResultDNSFailure = 1,
@@ -331,6 +331,34 @@ class Metrics : public DefaultServiceObserver {
   static constexpr EnumMetric<NameByTechnology> kMetricPortalResult = {
       .n = NameByTechnology{"PortalResult"},
       .max = kPortalResultMax,
+  };
+
+  // Updated portal detector results. See b/236387876 for details.
+  enum PortalDetectorResult {
+    kPortalDetectorResultUnknown = 0,
+    kPortalDetectorResultConnectionFailure = 1,
+    kPortalDetectorResultDNSFailure = 2,
+    kPortalDetectorResultDNSTimeout = 3,
+    kPortalDetectorResultHTTPFailure = 4,
+    kPortalDetectorResultHTTPTimeout = 5,
+    kPortalDetectorResultContentFailure = 6,
+    kPortalDetectorResultContentTimeout = 7,
+    kPortalDetectorResultRedirectFound = 8,
+    kPortalDetectorResultRedirectNoUrl = 9,
+    kPortalDetectorResultHTTPSFailure = 10,
+    kPortalDetectorResultNoConnectivity = 11,
+    kPortalDetectorResultOnline = 12,
+    kPortalDetectorResultMax = 13,
+  };
+  static constexpr EnumMetric<NameByTechnology> kPortalDetectorInitialResult = {
+      .n = NameByTechnology{"PortalDetector.InitialResult",
+                            TechnologyLocation::kAfterName},
+      .max = kPortalDetectorResultMax,
+  };
+  static constexpr EnumMetric<NameByTechnology> kPortalDetectorRetryResult = {
+      .n = NameByTechnology{"PortalDetector.RepeatResult",
+                            TechnologyLocation::kAfterName},
+      .max = kPortalDetectorResultMax,
   };
 
   // patchpanel::NeighborLinkMonitor statistics.

@@ -109,7 +109,7 @@ class TestPortalDetector : public PortalDetector {
     result_.https_status = PortalDetector::Status::kSuccess;
   }
 
-  void SetPortalSuspectedResult() {
+  void SetHTTPSFailureResult() {
     result_ = PortalDetector::Result();
     result_.http_phase = PortalDetector::Phase::kContent;
     result_.http_status = PortalDetector::Status::kSuccess;
@@ -336,6 +336,10 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultDNSFailure));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultDNSFailure));
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kPortalDetectorRetryResult), 0);
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
@@ -360,6 +364,10 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultDNSTimeout));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultDNSTimeout));
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kPortalDetectorRetryResult), 0);
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
@@ -381,6 +389,10 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultContentRedirect));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultRedirectFound));
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kPortalDetectorRetryResult), 0);
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
   EXPECT_THAT(
@@ -404,6 +416,10 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultContentRedirect));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultRedirectNoUrl));
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kPortalDetectorRetryResult), 0);
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
@@ -450,7 +466,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
-  portal_detector->SetPortalSuspectedResult();
+  portal_detector->SetHTTPSFailureResult();
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
@@ -458,6 +474,10 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
   // reports 'success'. This will be addressed when the metrics are updated.
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultSuccess));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kPortalDetectorRetryResult), 0);
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
@@ -474,13 +494,17 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
   EXPECT_TRUE(portal_detector->IsInProgress());
 
   // Multiple portal-suspected results.
-  portal_detector->SetPortalSuspectedResult();
+  portal_detector->SetHTTPSFailureResult();
   portal_detector->Complete();
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultSuccess,
                           Metrics::kPortalResultSuccess));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorRetryResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
 
   // Portal detection should be started again.
   portal_detector = GetPortalDetector();
@@ -500,6 +524,12 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
       MetricsEnumCalls(Metrics::kMetricPortalResult),
       ElementsAre(Metrics::kPortalResultSuccess, Metrics::kPortalResultSuccess,
                   Metrics::kPortalResultContentRedirect));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorRetryResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure,
+                          Metrics::kPortalDetectorResultRedirectFound));
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
@@ -519,7 +549,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
-  portal_detector->SetPortalSuspectedResult();
+  portal_detector->SetHTTPSFailureResult();
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
@@ -541,6 +571,15 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
                           Metrics::kPortalResultSuccess));
   EXPECT_THAT(MetricsHistogramCalls(Metrics::kMetricPortalAttemptsToOnline),
               ElementsAre(2));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorRetryResult),
+              ElementsAre(Metrics::kPortalDetectorResultOnline));
+
+  EXPECT_THAT(MetricsHistogramCalls(Metrics::kMetricPortalAttemptsToOnline),
+              ElementsAre(2));
+  EXPECT_THAT(MetricsHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline),
+              ElementsAre(2));
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should be completed and the PortalDetector destroyed.
@@ -553,7 +592,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
   EXPECT_TRUE(portal_detector->IsInProgress());
 
   // Multiple portal-suspected results
-  portal_detector->SetPortalSuspectedResult();
+  portal_detector->SetHTTPSFailureResult();
   portal_detector->Complete();
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
@@ -564,7 +603,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
   portal_detector->Continue();
   EXPECT_EQ(portal_detector->num_attempts(), 3);
 
-  // Disconnect should record proper UMA results.
+  // Disconnect should not record an UMA result.
   service_->Disconnect(/*error=*/nullptr, /*reason=*/"test");
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateIdle);
@@ -573,6 +612,11 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
       MetricsEnumCalls(Metrics::kMetricPortalResult),
       ElementsAre(Metrics::kPortalResultSuccess, Metrics::kPortalResultSuccess,
                   Metrics::kPortalResultSuccess));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorRetryResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline), 0);
 
@@ -593,7 +637,13 @@ TEST_F(DevicePortalDetectorTest, Online) {
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultSuccess));
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultOnline));
+  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kPortalDetectorRetryResult), 0);
+
   EXPECT_THAT(MetricsHistogramCalls(Metrics::kMetricPortalAttemptsToOnline),
+              ElementsAre(1));
+  EXPECT_THAT(MetricsHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline),
               ElementsAre(1));
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
@@ -607,7 +657,7 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
   EXPECT_TRUE(portal_detector->IsInProgress());
 
   // Run portal detection 3 times.
-  portal_detector->SetPortalSuspectedResult();
+  portal_detector->SetHTTPSFailureResult();
   portal_detector->Complete();
   portal_detector->Complete();
   portal_detector->Complete();
@@ -639,6 +689,15 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
       ElementsAre(Metrics::kPortalResultSuccess, Metrics::kPortalResultSuccess,
                   Metrics::kPortalResultSuccess,
                   Metrics::kPortalResultSuccess));
+  // New initial result metric gets called once with an HTTPS failure.
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
+  // New retry result metric gets called three times, ending with 'online'
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorRetryResult),
+              ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure,
+                          Metrics::kPortalDetectorResultHTTPSFailure,
+                          Metrics::kPortalDetectorResultOnline));
+
   // Old attempts-to-online metric gets called once with a value of 1.
   EXPECT_THAT(MetricsHistogramCalls(Metrics::kMetricPortalAttemptsToOnline),
               ElementsAre(1));
