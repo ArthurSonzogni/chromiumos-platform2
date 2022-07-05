@@ -18,6 +18,7 @@
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 #include "base/strings/string_number_conversions.h"
+#include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
 #include "vm_tools/cicerone/mock_tremplin_stub.h"
@@ -458,6 +459,7 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
   base::OnceClosure quit_closure = base::BindOnce(
       &ServiceTestingHelper::IncrementQuitClosure, base::Unretained(this));
   Service::DisableGrpcForTesting();
+  Container::DisableChannelWaitForTesting();
   service_ = Service::Create(std::move(quit_closure),
                              socket_temp_dir_.GetPath(), mock_bus_);
   CHECK(service_);

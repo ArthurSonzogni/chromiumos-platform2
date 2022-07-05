@@ -130,6 +130,8 @@ class Container {
 
   int32_t GetVshSession(int32_t host_vsh_pid);
 
+  static void DisableChannelWaitForTesting();
+
  private:
   std::string name_;
   std::string token_;
@@ -144,6 +146,8 @@ class Container {
 
   // Stub for making RPC requests to the garcon process inside the container.
   std::unique_ptr<vm_tools::container::Garcon::Stub> garcon_stub_;
+
+  static bool wait_for_channel_;
 };
 
 }  // namespace cicerone
