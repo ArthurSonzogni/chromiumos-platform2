@@ -225,8 +225,8 @@ void UpdateRoFirmwareStateHandler::WaitUsb() {
     if (removable_devices.empty()) {
       // External disk is not detected. Keep waiting.
       status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
-    } else {
-      // External disk is detected. Look for rootfs partition.
+    } else if (status_ == RMAD_UPDATE_RO_FIRMWARE_WAIT_USB) {
+      // External disk is just detected. Look for rootfs partition.
       for (auto& device : removable_devices) {
         if (IsRootfsPartition(device->GetDeviceNode())) {
           // Only try to mount the first root partition found. Stop the polling
@@ -348,8 +348,9 @@ void UpdateRoFirmwareStateHandler::OnUpdateFinished(bool update_success) {
     status_ = RMAD_UPDATE_RO_FIRMWARE_REBOOTING;
     PostRebootTask();
   } else {
-    status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
-    // TODO(chenghan): Emit update failed signal.
+    // Treat update failure as "no valid updater file".
+    // TODO(chenghan): Add an enum for update failure.
+    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
     poll_usb_ = true;
   }
 }
