@@ -24,8 +24,7 @@ class MockPcaHttpUtils : public PcaHttpUtils {
 
   MOCK_METHOD(void,
               GetChromeProxyServersAsync,
-              (const std::string&,
-               const brillo::http::GetChromeProxyServersCallback&),
+              (const std::string&, brillo::http::GetChromeProxyServersCallback),
               (override));
 };
 

@@ -69,8 +69,8 @@ class BRILLO_EXPORT Connection
   virtual bool FinishRequest(brillo::ErrorPtr* error) = 0;
   // Send the request asynchronously and invoke the callback with the response
   // received. Returns the ID of the pending async request.
-  virtual RequestID FinishRequestAsync(const SuccessCallback& success_callback,
-                                       const ErrorCallback& error_callback) = 0;
+  virtual RequestID FinishRequestAsync(SuccessCallback success_callback,
+                                       ErrorCallback error_callback) = 0;
 
   // The following methods are used by http::Response object to obtain the
   // response data. They are used only after the response data has been received

@@ -289,8 +289,8 @@ class BRILLO_EXPORT Request final {
   // Sends out the request and invokes the |success_callback| when the response
   // is received. In case of an error, the |error_callback| is invoked.
   // Returns the ID of the asynchronous request created.
-  RequestID GetResponse(const SuccessCallback& success_callback,
-                        const ErrorCallback& error_callback);
+  RequestID GetResponse(SuccessCallback success_callback,
+                        ErrorCallback error_callback);
 
  private:
   friend class HttpRequestTest;

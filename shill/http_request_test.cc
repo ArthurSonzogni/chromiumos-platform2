@@ -203,7 +203,7 @@ class HttpRequestTest : public Test {
     EXPECT_CALL(*transport_, ResolveHostToIp(host, port, path));
   }
   void FinishRequestAsyncSuccess(
-      const brillo::http::SuccessCallback& success_callback) {
+      brillo::http::SuccessCallback success_callback) {
     auto read_data = [this](void* buffer, Unused, size_t* read,
                             Unused) -> bool {
       memcpy(buffer, resp_data_.data(), resp_data_.size());
@@ -220,28 +220,29 @@ class HttpRequestTest : public Test {
         .WillOnce(Return(mock_stream.release()));
     auto resp = std::make_unique<brillo::http::Response>(brillo_connection_);
     // request_id_ has not yet been set. Pass -1 to match default value.
-    success_callback.Run(-1, std::move(resp));
+    std::move(success_callback).Run(-1, std::move(resp));
   }
-  void FinishRequestAsyncFail(
-      const brillo::http::ErrorCallback& error_callback) {
+  void FinishRequestAsyncFail(brillo::http::ErrorCallback error_callback) {
     brillo::ErrorPtr error;
     brillo::Error::AddTo(&error, FROM_HERE, "curl_easy_error",
                          base::NumberToString(CURLE_COULDNT_CONNECT), "");
     // request_id_ has not yet been set. Pass -1 to match default value.
-    error_callback.Run(-1, error.get());
+    std::move(error_callback).Run(-1, error.get());
   }
   void ExpectFinishRequestAsyncSuccess(const std::string& resp_data) {
     resp_data_ = resp_data;
     EXPECT_CALL(*brillo_connection_, FinishRequestAsync(_, _))
-        .WillOnce(DoAll(WithArg<0>(Invoke(
-                            this, &HttpRequestTest::FinishRequestAsyncSuccess)),
-                        Return(0)));
+        .WillOnce(WithArg<0>([this](auto callback) {
+          FinishRequestAsyncSuccess(std::move(callback));
+          return 0;
+        }));
   }
   void ExpectFinishRequestAsyncFail() {
     EXPECT_CALL(*brillo_connection_, FinishRequestAsync(_, _))
-        .WillOnce(DoAll(
-            WithArg<1>(Invoke(this, &HttpRequestTest::FinishRequestAsyncFail)),
-            Return(0)));
+        .WillOnce(WithArg<1>([this](auto callback) {
+          FinishRequestAsyncFail(std::move(callback));
+          return 0;
+        }));
   }
 
  private:

@@ -23,6 +23,7 @@ namespace {
 
 using ::testing::ByRef;
 using ::testing::Types;
+using ::testing::Unused;
 
 constexpr char kFakeUrl[] = "fake.url.org";
 constexpr char kFakeRequest[] = "fake request";
@@ -43,14 +44,6 @@ void FakeMethodHandler(int status_code,
       brillo::mime::text::kPlain);
 }
 
-// testing::InvokeArgument<N> does not work with base::Callback, need to use
-// |ACTION_TAMPLATE| along with predefined |args| tuple.
-ACTION_TEMPLATE(InvokeChromeProxyServersCallback,
-                HAS_1_TEMPLATE_PARAMS(int, k),
-                AND_2_VALUE_PARAMS(p0, p1)) {
-  std::get<k>(args).Run(p0, p1);
-}
-
 }  // namespace
 
 namespace attestation {
@@ -61,8 +54,9 @@ class PcaRequestTest : public ::testing::Test {
  protected:
   void SetUp() override {
     EXPECT_CALL(mock_pca_http_utils_, GetChromeProxyServersAsync(_, _))
-        .WillRepeatedly(InvokeChromeProxyServersCallback<1>(
-            ByRef(proxy_success_), ByRef(proxy_servers_)));
+        .WillRepeatedly([this](Unused, auto callback) {
+          std::move(callback).Run(proxy_success_, proxy_servers_);
+        });
     request_ = MakePcaRequest();
   }
 

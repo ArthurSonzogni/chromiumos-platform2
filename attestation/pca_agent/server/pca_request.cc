@@ -4,6 +4,8 @@
 
 #include "attestation/pca_agent/server/pca_request.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/http/http_transport.h>
@@ -26,7 +28,7 @@ template <typename ReplyType>
 void PcaRequest<ReplyType>::SendRequest() {
   http_utils_->GetChromeProxyServersAsync(
       url_,
-      base::Bind(&PcaRequest::OnGetProxyServers, base::RetainedRef(this)));
+      base::BindOnce(&PcaRequest::OnGetProxyServers, base::RetainedRef(this)));
 }
 
 template <typename ReplyType>
@@ -52,22 +54,23 @@ bool PcaRequest<ReplyType>::SendRequestWithProxySetting() {
   proxy_servers_.pop_back();
   PostText(url_, request_, brillo::mime::application::kOctet_stream, {},
            transport,
-           base::Bind(&PcaRequest::OnSuccess, base::RetainedRef(this)),
-           base::Bind(&PcaRequest::OnError, base::RetainedRef(this)));
+           base::BindOnce(&PcaRequest::OnSuccess, base::RetainedRef(this)),
+           base::BindOnce(&PcaRequest::OnError, base::RetainedRef(this)));
   return true;
 }
 
 template <typename ReplyType>
 void PcaRequest<ReplyType>::GetChromeProxyServersAsync(
     const std::string& url,
-    const brillo::http::GetChromeProxyServersCallback& callback) {
+    brillo::http::GetChromeProxyServersCallback callback) {
   scoped_refptr<dbus::Bus> bus = connection_.Connect();
   if (!bus) {
     LOG(ERROR) << "Failed to connect to system bus through libbrillo.";
     std::move(callback).Run(false, {});
     return;
   }
-  return brillo::http::GetChromeProxyServersAsync(bus, url, callback);
+  return brillo::http::GetChromeProxyServersAsync(bus, url,
+                                                  std::move(callback));
 }
 
 template <typename ReplyType>

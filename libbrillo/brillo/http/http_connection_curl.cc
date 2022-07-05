@@ -170,11 +170,11 @@ bool Connection::FinishRequest(brillo::ErrorPtr* error) {
   return (ret == CURLE_OK);
 }
 
-RequestID Connection::FinishRequestAsync(
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+RequestID Connection::FinishRequestAsync(SuccessCallback success_callback,
+                                         ErrorCallback error_callback) {
   PrepareRequest();
-  return transport_->StartAsyncTransfer(this, success_callback, error_callback);
+  return transport_->StartAsyncTransfer(this, std::move(success_callback),
+                                        std::move(error_callback));
 }
 
 int Connection::GetResponseStatusCode() const {

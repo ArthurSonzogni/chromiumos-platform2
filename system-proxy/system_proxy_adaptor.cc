@@ -210,7 +210,7 @@ std::vector<uint8_t> SystemProxyAdaptor::ShutDownProcess(
 
 void SystemProxyAdaptor::GetChromeProxyServersAsync(
     const std::string& target_url,
-    const brillo::http::GetChromeProxyServersCallback& callback) {
+    brillo::http::GetChromeProxyServersCallback callback) {
   brillo::http::GetChromeProxyServersWithOverrideAsync(
       dbus_object_->GetBus(), target_url,
       brillo::http::SystemProxyOverride::kOptOut, std::move(callback));

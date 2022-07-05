@@ -54,7 +54,7 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
 
   void GetChromeProxyServersAsync(
       const std::string& target_url,
-      const brillo::http::GetChromeProxyServersCallback& callback);
+      brillo::http::GetChromeProxyServersCallback callback);
 
   void RequestAuthenticationCredentials(
       const worker::ProtectionSpace& protection_space,

@@ -33,8 +33,8 @@ using RequestID = int;
 
 using HeaderList = std::vector<std::pair<std::string, std::string>>;
 using SuccessCallback =
-    base::Callback<void(RequestID, std::unique_ptr<Response>)>;
-using ErrorCallback = base::Callback<void(RequestID, const brillo::Error*)>;
+    base::OnceCallback<void(RequestID, std::unique_ptr<Response>)>;
+using ErrorCallback = base::OnceCallback<void(RequestID, const brillo::Error*)>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Transport is a base class for specific implementation of HTTP communication.
@@ -82,14 +82,14 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // transport. For transports that do not contain references to real message
   // loops (e.g. a fake transport), calls the callback immediately.
   virtual void RunCallbackAsync(const base::Location& from_here,
-                                const base::Closure& callback) = 0;
+                                base::OnceClosure callback) = 0;
 
   // Initiates an asynchronous transfer on the given |connection|.
   // The actual implementation of an async I/O is transport-specific.
   // Returns a request ID which can be used to cancel the request.
   virtual RequestID StartAsyncTransfer(Connection* connection,
-                                       const SuccessCallback& success_callback,
-                                       const ErrorCallback& error_callback) = 0;
+                                       SuccessCallback success_callback,
+                                       ErrorCallback error_callback) = 0;
 
   // Cancels a pending asynchronous request. This will cancel a pending request
   // scheduled by the transport while the I/O operations are still in progress.

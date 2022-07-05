@@ -89,11 +89,11 @@ bool ParseProxyInfo(dbus::Response* response,
   return true;
 }
 
-void OnResolveProxy(const brillo::http::GetChromeProxyServersCallback& callback,
+void OnResolveProxy(brillo::http::GetChromeProxyServersCallback callback,
                     dbus::Response* response) {
   std::vector<std::string> proxies;
   bool result = ParseProxyInfo(response, &proxies);
-  callback.Run(result, std::move(proxies));
+  std::move(callback).Run(result, std::move(proxies));
 }
 }  // namespace
 
@@ -118,7 +118,7 @@ bool GetChromeProxyServers(scoped_refptr<dbus::Bus> bus,
 
 void GetChromeProxyServersAsync(scoped_refptr<dbus::Bus> bus,
                                 const std::string& url,
-                                const GetChromeProxyServersCallback& callback) {
+                                GetChromeProxyServersCallback callback) {
   dbus::ObjectProxy* proxy =
       bus->GetObjectProxy(chromeos::kNetworkProxyServiceName,
                           dbus::ObjectPath(chromeos::kNetworkProxyServicePath));
@@ -128,14 +128,14 @@ void GetChromeProxyServersAsync(scoped_refptr<dbus::Bus> bus,
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(url);
   proxy->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                    base::Bind(&OnResolveProxy, callback));
+                    base::BindOnce(&OnResolveProxy, std::move(callback)));
 }
 
 void GetChromeProxyServersWithOverrideAsync(
     scoped_refptr<dbus::Bus> bus,
     const std::string& url,
     const SystemProxyOverride system_proxy_override,
-    const GetChromeProxyServersCallback& callback) {
+    GetChromeProxyServersCallback callback) {
   dbus::ObjectProxy* proxy =
       bus->GetObjectProxy(chromeos::kNetworkProxyServiceName,
                           dbus::ObjectPath(chromeos::kNetworkProxyServicePath));
@@ -146,7 +146,7 @@ void GetChromeProxyServersWithOverrideAsync(
   writer.AppendString(url);
   writer.AppendInt32(system_proxy_override);
   proxy->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                    base::Bind(&OnResolveProxy, callback));
+                    base::BindOnce(&OnResolveProxy, std::move(callback)));
 }
 
 }  // namespace http

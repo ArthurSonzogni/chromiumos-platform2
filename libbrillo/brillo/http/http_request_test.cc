@@ -157,7 +157,7 @@ TEST_F(HttpRequestTest, GetResponse) {
     return true;
   };
 
-  auto success_callback = base::Bind(
+  auto success_callback = base::BindOnce(
       [](MockConnection* connection, const std::string& resp_data,
          RequestID request_id, std::unique_ptr<Response> resp) {
         EXPECT_EQ(23, request_id);
@@ -179,7 +179,7 @@ TEST_F(HttpRequestTest, GetResponse) {
       connection_.get(), resp_data);
 
   auto finish_request_async =
-      [this, &read_data](const SuccessCallback& success_callback) {
+      [this, &read_data](SuccessCallback success_callback) {
         std::unique_ptr<MockStream> mock_stream{new MockStream};
         EXPECT_CALL(*mock_stream, ReadBlocking(_, _, _, _))
             .WillOnce(Invoke(read_data))
@@ -188,7 +188,7 @@ TEST_F(HttpRequestTest, GetResponse) {
         EXPECT_CALL(*connection_, MockExtractDataStream(_))
             .WillOnce(Return(mock_stream.release()));
         std::unique_ptr<Response> resp{new Response{connection_}};
-        success_callback.Run(23, std::move(resp));
+        std::move(success_callback).Run(23, std::move(resp));
       };
 
   EXPECT_CALL(*transport_, CreateConnection("http://foo.bar",
@@ -196,9 +196,12 @@ TEST_F(HttpRequestTest, GetResponse) {
       .WillOnce(Return(connection_));
 
   EXPECT_CALL(*connection_, FinishRequestAsync(_, _))
-      .WillOnce(DoAll(WithArg<0>(Invoke(finish_request_async)), Return(23)));
+      .WillOnce(WithArg<0>([&](auto callback) {
+        finish_request_async(std::move(callback));
+        return 23;
+      }));
 
-  EXPECT_EQ(23, request.GetResponse(success_callback, {}));
+  EXPECT_EQ(23, request.GetResponse(std::move(success_callback), {}));
 }
 
 }  // namespace http

@@ -148,9 +148,9 @@ TEST_F(HttpProxyTest, DBusNullResponseFailsAsync) {
   EXPECT_CALL(*object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(false, _));
-  GetChromeProxyServersAsync(
-      bus_, kTestUrl,
-      base::Bind(&HttpProxyTest::GetProxiesCallback, base::Unretained(this)));
+  GetChromeProxyServersAsync(bus_, kTestUrl,
+                             base::BindOnce(&HttpProxyTest::GetProxiesCallback,
+                                            base::Unretained(this)));
 }
 
 TEST_F(HttpProxyTest, DBusInvalidResponseFailsAsync) {
@@ -158,9 +158,9 @@ TEST_F(HttpProxyTest, DBusInvalidResponseFailsAsync) {
   EXPECT_CALL(*object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(false, _));
-  GetChromeProxyServersAsync(
-      bus_, kTestUrl,
-      base::Bind(&HttpProxyTest::GetProxiesCallback, base::Unretained(this)));
+  GetChromeProxyServersAsync(bus_, kTestUrl,
+                             base::BindOnce(&HttpProxyTest::GetProxiesCallback,
+                                            base::Unretained(this)));
 }
 
 // We don't need to test all the proxy cases with async because that will be
@@ -175,9 +175,9 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirectAsync) {
   EXPECT_CALL(*object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(true, expected));
-  GetChromeProxyServersAsync(
-      bus_, kTestUrl,
-      base::Bind(&HttpProxyTest::GetProxiesCallback, base::Unretained(this)));
+  GetChromeProxyServersAsync(bus_, kTestUrl,
+                             base::BindOnce(&HttpProxyTest::GetProxiesCallback,
+                                            base::Unretained(this)));
 }
 
 }  // namespace http

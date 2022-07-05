@@ -235,14 +235,14 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
 
   // Success/error callback needed to report the result of an async operation.
   int success_call_count = 0;
-  auto success_callback = base::Bind(
-      [](int* success_call_count, const base::Closure& quit_closure,
-         RequestID /* request_id */,
-         std::unique_ptr<http::Response> /* resp */) {
-        base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure);
-        (*success_call_count)++;
-      },
-      &success_call_count, run_loop.QuitClosure());
+  auto success_callback = [](int* success_call_count,
+                             base::OnceClosure quit_closure,
+                             RequestID /* request_id */,
+                             std::unique_ptr<http::Response> /* resp */) {
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  std::move(quit_closure));
+    (*success_call_count)++;
+  };
 
   auto error_callback = [](RequestID /* request_id */,
                            const Error* /* error */) {
@@ -266,9 +266,11 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   EXPECT_CALL(*curl_api_, MultiAddHandle(multi_handle_, handle_))
       .WillOnce(Return(CURLM_OK));
 
-  EXPECT_EQ(1,
-            transport_->StartAsyncTransfer(connection.get(), success_callback,
-                                           base::Bind(error_callback)));
+  EXPECT_EQ(1, transport_->StartAsyncTransfer(
+                   connection.get(),
+                   base::BindOnce(success_callback, &success_call_count,
+                                  run_loop.QuitClosure()),
+                   base::BindOnce(error_callback)));
   EXPECT_EQ(0, success_call_count);
 
   timer_callback(multi_handle_, 1, transport_.get());

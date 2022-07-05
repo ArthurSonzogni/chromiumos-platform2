@@ -37,8 +37,8 @@ enum BRILLO_EXPORT SystemProxyOverride {
   kOptOut = 2,
 };
 
-using GetChromeProxyServersCallback =
-    base::Callback<void(bool success, const std::vector<std::string>& proxies)>;
+using GetChromeProxyServersCallback = base::OnceCallback<void(
+    bool success, const std::vector<std::string>& proxies)>;
 
 // Gets the list of proxy servers that are configured in Chrome by sending a
 // D-Bus message to Chrome. The list will always be at least one in size, with
@@ -58,7 +58,7 @@ BRILLO_EXPORT bool GetChromeProxyServers(scoped_refptr<::dbus::Bus> bus,
 BRILLO_EXPORT void GetChromeProxyServersAsync(
     scoped_refptr<::dbus::Bus> bus,
     const std::string& url,
-    const GetChromeProxyServersCallback& callback);
+    GetChromeProxyServersCallback callback);
 
 // Async version of `GetChromeProxyServers` which allows the caller to
 // explicitly opt-in and -out of using the system-proxy daemon, which
@@ -67,7 +67,7 @@ BRILLO_EXPORT void GetChromeProxyServersWithOverrideAsync(
     scoped_refptr<::dbus::Bus> bus,
     const std::string& url,
     const SystemProxyOverride system_proxy_override,
-    const GetChromeProxyServersCallback& callback);
+    GetChromeProxyServersCallback callback);
 
 }  // namespace http
 }  // namespace brillo

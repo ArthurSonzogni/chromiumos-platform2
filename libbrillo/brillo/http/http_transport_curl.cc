@@ -8,6 +8,7 @@
 
 #include <limits>
 #include <optional>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -231,19 +232,22 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 }
 
 void Transport::RunCallbackAsync(const base::Location& from_here,
-                                 const base::Closure& callback) {
-  base::ThreadTaskRunnerHandle::Get()->PostTask(from_here, callback);
+                                 base::OnceClosure callback) {
+  base::ThreadTaskRunnerHandle::Get()->PostTask(from_here, std::move(callback));
 }
 
 RequestID Transport::StartAsyncTransfer(http::Connection* connection,
-                                        const SuccessCallback& success_callback,
-                                        const ErrorCallback& error_callback) {
+                                        SuccessCallback success_callback,
+                                        ErrorCallback error_callback) {
   brillo::ErrorPtr error;
   if (!SetupAsyncCurl(&error)) {
-    RunCallbackAsync(
-        FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
+    RunCallbackAsync(FROM_HERE, base::BindOnce(std::move(error_callback), 0,
+                                               base::Owned(error.release())));
     return 0;
   }
+
+  auto [error_callback1, error_callback2] =
+      base::SplitOnceCallback(std::move(error_callback));
 
   RequestID request_id = ++last_request_id_;
 
@@ -252,8 +256,8 @@ RequestID Transport::StartAsyncTransfer(http::Connection* connection,
   // Add the request data to |async_requests_| before adding the CURL handle
   // in case CURL feels like calling the socket callback synchronously which
   // will need the data to be in |async_requests_| map already.
-  request_data->success_callback = success_callback;
-  request_data->error_callback = error_callback;
+  request_data->success_callback = std::move(success_callback);
+  request_data->error_callback = std::move(error_callback1);
   request_data->connection =
       std::static_pointer_cast<Connection>(curl_connection->shared_from_this());
   request_data->request_id = request_id;
@@ -266,8 +270,8 @@ RequestID Transport::StartAsyncTransfer(http::Connection* connection,
   if (code != CURLM_OK) {
     brillo::ErrorPtr error;
     AddMultiCurlError(&error, FROM_HERE, code, curl_interface_.get());
-    RunCallbackAsync(
-        FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
+    RunCallbackAsync(FROM_HERE, base::BindOnce(std::move(error_callback2), 0,
+                                               base::Owned(error.release())));
     async_requests_.erase(curl_connection);
     request_id_map_.erase(request_id);
     return 0;
@@ -437,8 +441,8 @@ int Transport::MultiTimerCallback(CURLM* /* multi */,
   if (timeout_ms >= 0) {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&Transport::OnTimer,
-                   transport->weak_ptr_factory_for_timer_.GetWeakPtr()),
+        base::BindOnce(&Transport::OnTimer,
+                       transport->weak_ptr_factory_for_timer_.GetWeakPtr()),
         base::Milliseconds(timeout_ms));
   }
   return 0;
@@ -479,9 +483,10 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
   if (code != CURLE_OK) {
     brillo::ErrorPtr error;
     AddEasyCurlError(&error, FROM_HERE, code, curl_interface_.get());
-    RunCallbackAsync(FROM_HERE, base::Bind(request_data->error_callback,
-                                           p->second->request_id,
-                                           base::Owned(error.release())));
+    RunCallbackAsync(
+        FROM_HERE,
+        base::BindOnce(std::move(request_data->error_callback),
+                       p->second->request_id, base::Owned(error.release())));
   } else {
     if (connection->GetResponseStatusCode() != status_code::Ok) {
       LOG(INFO) << "Response: " << connection->GetResponseStatusCode() << " ("
@@ -492,14 +497,15 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
     // read the data back.
     const auto& stream = request_data->connection->response_data_stream_;
     if (stream && stream->CanSeek() && !stream->SetPosition(0, &error)) {
-      RunCallbackAsync(FROM_HERE, base::Bind(request_data->error_callback,
-                                             p->second->request_id,
-                                             base::Owned(error.release())));
+      RunCallbackAsync(
+          FROM_HERE,
+          base::BindOnce(std::move(request_data->error_callback),
+                         p->second->request_id, base::Owned(error.release())));
     } else {
       std::unique_ptr<Response> resp{new Response{request_data->connection}};
       RunCallbackAsync(FROM_HERE,
-                       base::Bind(request_data->success_callback,
-                                  p->second->request_id, base::Passed(&resp)));
+                       base::BindOnce(std::move(request_data->success_callback),
+                                      p->second->request_id, std::move(resp)));
     }
   }
   // In case of an error on CURL side, we would have dispatched the error
@@ -511,8 +517,8 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
   // there is a chance that this object might be deleted.
   // Instead, schedule an asynchronous task to clean up the connection.
   RunCallbackAsync(FROM_HERE,
-                   base::Bind(&Transport::CleanAsyncConnection,
-                              weak_ptr_factory_.GetWeakPtr(), connection));
+                   base::BindOnce(&Transport::CleanAsyncConnection,
+                                  weak_ptr_factory_.GetWeakPtr(), connection));
 }
 
 void Transport::CleanAsyncConnection(Connection* connection) {

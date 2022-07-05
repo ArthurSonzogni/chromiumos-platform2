@@ -41,7 +41,7 @@ static void EchoMethodHandler(const fake::ServerRequest& request,
 TEST(HttpUtils, SendRequest_BinaryData) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kEchoUrl, request_type::kPost,
-                        base::Bind(EchoDataHandler));
+                        base::BindRepeating(EchoDataHandler));
 
   // Test binary data round-tripping.
   std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
@@ -57,11 +57,11 @@ TEST(HttpUtils, SendRequest_BinaryData) {
 TEST(HttpUtils, SendRequestAsync_BinaryData) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kEchoUrl, request_type::kPost,
-                        base::Bind(EchoDataHandler));
+                        base::BindRepeating(EchoDataHandler));
 
   // Test binary data round-tripping.
   std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
-  auto success_callback = base::Bind(
+  auto success_callback = base::BindOnce(
       [](const std::vector<uint8_t>& custom_data, RequestID /* id */,
          std::unique_ptr<http::Response> response) {
         EXPECT_TRUE(response->IsSuccessful());
@@ -73,15 +73,16 @@ TEST(HttpUtils, SendRequestAsync_BinaryData) {
   auto error_callback = [](RequestID /* id */, const Error* /* error */) {
     FAIL() << "This callback shouldn't have been called";
   };
-  http::SendRequest(request_type::kPost, kEchoUrl, custom_data.data(),
-                    custom_data.size(),
-                    brillo::mime::application::kOctet_stream, {}, transport,
-                    success_callback, base::Bind(error_callback));
+  http::SendRequest(
+      request_type::kPost, kEchoUrl, custom_data.data(), custom_data.size(),
+      brillo::mime::application::kOctet_stream, {}, transport,
+      std::move(success_callback), base::BindOnce(error_callback));
 }
 
 TEST(HttpUtils, SendRequest_Post) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  transport->AddHandler(kMethodEchoUrl, "*",
+                        base::BindRepeating(EchoMethodHandler));
 
   // Test binary data round-tripping.
   std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
@@ -98,7 +99,8 @@ TEST(HttpUtils, SendRequest_Post) {
 
 TEST(HttpUtils, SendRequest_Get) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  transport->AddHandler(kMethodEchoUrl, "*",
+                        base::BindRepeating(EchoMethodHandler));
 
   auto response =
       http::SendRequestAndBlock(request_type::kGet, kMethodEchoUrl, nullptr, 0,
@@ -110,7 +112,8 @@ TEST(HttpUtils, SendRequest_Get) {
 
 TEST(HttpUtils, SendRequest_Put) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  transport->AddHandler(kMethodEchoUrl, "*",
+                        base::BindRepeating(EchoMethodHandler));
 
   auto response =
       http::SendRequestAndBlock(request_type::kPut, kMethodEchoUrl, nullptr, 0,
@@ -142,8 +145,8 @@ TEST(HttpUtils, SendRequestAsync_NotFound) {
     FAIL() << "This callback shouldn't have been called";
   };
   http::SendRequestWithNoData(request_type::kGet, "http://blah.com", {},
-                              transport, base::Bind(success_callback),
-                              base::Bind(error_callback));
+                              transport, base::BindOnce(success_callback),
+                              base::BindOnce(error_callback));
 }
 
 TEST(HttpUtils, SendRequest_Headers) {
@@ -160,7 +163,8 @@ TEST(HttpUtils, SendRequest_Headers) {
     }
     response->ReplyJson(status_code::Ok, &json);
   };
-  transport->AddHandler(json_echo_url, "*", base::Bind(JsonEchoHandler));
+  transport->AddHandler(json_echo_url, "*",
+                        base::BindRepeating(JsonEchoHandler));
   auto response =
       http::SendRequestAndBlock(request_type::kPost, json_echo_url, "abcd", 4,
                                 brillo::mime::application::kOctet_stream,
@@ -213,8 +217,10 @@ TEST(HttpUtils, Get) {
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kFakeUrl, request_type::kGet, base::Bind(GetHandler));
-  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  transport->AddHandler(kFakeUrl, request_type::kGet,
+                        base::BindRepeating(GetHandler));
+  transport->AddHandler(kMethodEchoUrl, "*",
+                        base::BindRepeating(EchoMethodHandler));
 
   // Make sure Get() actually does the GET request
   auto response = http::GetAndBlock(kMethodEchoUrl, {}, transport, nullptr);
@@ -239,7 +245,8 @@ TEST(HttpUtils, Head) {
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kFakeUrl, request_type::kHead, base::Bind(HeadHandler));
+  transport->AddHandler(kFakeUrl, request_type::kHead,
+                        base::BindRepeating(HeadHandler));
 
   auto response = http::HeadAndBlock(kFakeUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
@@ -265,7 +272,8 @@ TEST(HttpUtils, PostBinary) {
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(Handler));
+  transport->AddHandler(kFakeUrl, request_type::kPost,
+                        base::BindRepeating(Handler));
 
   /// Fill the data buffer with bytes from 0x00 to 0xFF.
   std::vector<uint8_t> data(256);
@@ -279,7 +287,7 @@ TEST(HttpUtils, PostBinary) {
 
 TEST(HttpUtils, PostText) {
   std::string fake_data = "Some data";
-  auto post_handler = base::Bind(
+  auto post_handler = base::BindRepeating(
       [](const std::string& data, const fake::ServerRequest& request,
          fake::ServerResponse* response) {
         EXPECT_EQ(request_type::kPost, request.GetMethod());
@@ -306,7 +314,7 @@ TEST(HttpUtils, PostText) {
 TEST(HttpUtils, PostFormData) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kPost,
-                        base::Bind(EchoDataHandler));
+                        base::BindRepeating(EchoDataHandler));
 
   auto response = http::PostFormDataAndBlock(kFakeUrl,
                                              {
@@ -323,7 +331,7 @@ TEST(HttpUtils, PostFormData) {
 TEST(HttpUtils, PostMultipartFormData) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kPost,
-                        base::Bind(EchoDataHandler));
+                        base::BindRepeating(EchoDataHandler));
 
   std::unique_ptr<FormData> form_data{new FormData{"boundary123"}};
   form_data->AddTextField("key1", "value1");
@@ -359,7 +367,7 @@ TEST(HttpUtils, PostPatchJson) {
                         });
   };
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kFakeUrl, "*", base::Bind(JsonHandler));
+  transport->AddHandler(kFakeUrl, "*", base::BindRepeating(JsonHandler));
 
   base::Value json(base::Value::Type::DICTIONARY);
   json.SetStringKey("key1", "val1");
@@ -401,7 +409,8 @@ TEST(HttpUtils, ParseJsonResponse) {
     response->ReplyJson(status_code, {{"data", request.GetFormField("value")}});
   };
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(JsonHandler));
+  transport->AddHandler(kFakeUrl, request_type::kPost,
+                        base::BindRepeating(JsonHandler));
 
   // Test valid JSON responses (with success or error codes).
   for (auto item : {"200;data", "400;wrong", "500;Internal Server error"}) {
@@ -433,7 +442,8 @@ TEST(HttpUtils, ParseJsonResponse) {
 
 TEST(HttpUtils, SendRequest_Failure) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  transport->AddHandler(kMethodEchoUrl, "*",
+                        base::BindRepeating(EchoMethodHandler));
   ErrorPtr error;
   Error::AddTo(&error, FROM_HERE, "test_domain", "test_code", "Test message");
   transport->SetCreateConnectionError(std::move(error));
@@ -448,7 +458,8 @@ TEST(HttpUtils, SendRequest_Failure) {
 
 TEST(HttpUtils, SendRequestAsync_Failure) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  transport->AddHandler(kMethodEchoUrl, "*",
+                        base::BindRepeating(EchoMethodHandler));
   ErrorPtr error;
   Error::AddTo(&error, FROM_HERE, "test_domain", "test_code", "Test message");
   transport->SetCreateConnectionError(std::move(error));
@@ -462,8 +473,8 @@ TEST(HttpUtils, SendRequestAsync_Failure) {
     EXPECT_EQ("Test message", error->GetMessage());
   };
   http::SendRequestWithNoData(request_type::kGet, "http://blah.com", {},
-                              transport, base::Bind(success_callback),
-                              base::Bind(error_callback));
+                              transport, base::BindOnce(success_callback),
+                              base::BindOnce(error_callback));
 }
 
 TEST(HttpUtils, GetCanonicalHeaderName) {

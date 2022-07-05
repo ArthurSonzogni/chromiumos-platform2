@@ -35,8 +35,8 @@ class Connection : public http::Connection {
   bool SetRequestData(StreamPtr stream, brillo::ErrorPtr* error) override;
   void SetResponseData(StreamPtr /* stream */) override {}
   bool FinishRequest(brillo::ErrorPtr* error) override;
-  RequestID FinishRequestAsync(const SuccessCallback& success_callback,
-                               const ErrorCallback& error_callback) override;
+  RequestID FinishRequestAsync(SuccessCallback success_callback,
+                               ErrorCallback error_callback) override;
 
   int GetResponseStatusCode() const override;
   std::string GetResponseStatusText() const override;
@@ -46,8 +46,8 @@ class Connection : public http::Connection {
 
  private:
   // A helper method for FinishRequestAsync() implementation.
-  void FinishRequestAsyncHelper(const SuccessCallback& success_callback,
-                                const ErrorCallback& error_callback);
+  void FinishRequestAsyncHelper(SuccessCallback success_callback,
+                                ErrorCallback error_callback);
 
   // Request and response objects passed to the user-provided request handler
   // callback. The request object contains all the request information.

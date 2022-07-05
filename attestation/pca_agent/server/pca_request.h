@@ -120,7 +120,7 @@ class PcaRequest final : public base::RefCounted<PcaRequest<ReplyType>>,
   // |PcaRequestHttpUtils| overrides.
   void GetChromeProxyServersAsync(
       const std::string& url,
-      const brillo::http::GetChromeProxyServersCallback& callback) override;
+      brillo::http::GetChromeProxyServersCallback callback) override;
 
   // A |PcaRequestHttpUtils| used to perform HTTP related functions;
   // alternated during unittest for testability.

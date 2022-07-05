@@ -66,21 +66,21 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 }
 
 void Transport::RunCallbackAsync(const base::Location& /* from_here */,
-                                 const base::Closure& callback) {
+                                 base::OnceClosure callback) {
   if (!async_) {
-    callback.Run();
+    std::move(callback).Run();
     return;
   }
-  async_callback_queue_.push(callback);
+  async_callback_queue_.push(std::move(callback));
 }
 
 bool Transport::HandleOneAsyncRequest() {
   if (async_callback_queue_.empty())
     return false;
 
-  base::Closure callback = async_callback_queue_.front();
+  base::OnceClosure callback = std::move(async_callback_queue_.front());
   async_callback_queue_.pop();
-  callback.Run();
+  std::move(callback).Run();
   return true;
 }
 
@@ -91,8 +91,8 @@ void Transport::HandleAllAsyncRequests() {
 
 http::RequestID Transport::StartAsyncTransfer(
     http::Connection* /* connection */,
-    const SuccessCallback& /* success_callback */,
-    const ErrorCallback& /* error_callback */) {
+    SuccessCallback /* success_callback */,
+    ErrorCallback /* error_callback */) {
   // Fake transport doesn't use this method.
   LOG(FATAL) << "This method should not be called on fake transport";
   return 0;
@@ -128,7 +128,7 @@ void Transport::AddSimpleReplyHandler(const std::string& url,
     response->ReplyText(status_code, reply_text, mime_type);
   };
   AddHandler(url, method,
-             base::Bind(handler, status_code, reply_text, mime_type));
+             base::BindRepeating(handler, status_code, reply_text, mime_type));
 }
 
 Transport::HandlerCallback Transport::GetHandler(

@@ -142,16 +142,17 @@ std::unique_ptr<Response> Request::GetResponseAndBlock(
   return response;
 }
 
-RequestID Request::GetResponse(const SuccessCallback& success_callback,
-                               const ErrorCallback& error_callback) {
+RequestID Request::GetResponse(SuccessCallback success_callback,
+                               ErrorCallback error_callback) {
   ErrorPtr error;
   if (!SendRequestIfNeeded(&error)) {
-    transport_->RunCallbackAsync(
-        FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
+    transport_->RunCallbackAsync(FROM_HERE,
+                                 base::BindOnce(std::move(error_callback), 0,
+                                                base::Owned(error.release())));
     return 0;
   }
-  RequestID id =
-      connection_->FinishRequestAsync(success_callback, error_callback);
+  RequestID id = connection_->FinishRequestAsync(std::move(success_callback),
+                                                 std::move(error_callback));
   connection_.reset();
   transport_.reset();  // Indicate that the request has been dispatched.
   return id;

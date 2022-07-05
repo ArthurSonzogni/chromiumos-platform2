@@ -84,8 +84,8 @@ BRILLO_EXPORT RequestID SendRequest(const std::string& method,
                                     const std::string& mime_type,
                                     const HeaderList& headers,
                                     std::shared_ptr<Transport> transport,
-                                    const SuccessCallback& success_callback,
-                                    const ErrorCallback& error_callback);
+                                    SuccessCallback success_callback,
+                                    ErrorCallback error_callback);
 
 // Same as above, but takes a memory buffer. The pointer should be valid only
 // until the function returns. The data is copied into an internal buffer to be
@@ -99,8 +99,8 @@ BRILLO_EXPORT RequestID SendRequest(const std::string& method,
                                     const std::string& mime_type,
                                     const HeaderList& headers,
                                     std::shared_ptr<Transport> transport,
-                                    const SuccessCallback& success_callback,
-                                    const ErrorCallback& error_callback);
+                                    SuccessCallback success_callback,
+                                    ErrorCallback error_callback);
 
 // Asynchronous version of SendRequestNoData().
 // Returns the ID of the request which can be used to cancel the pending
@@ -110,8 +110,8 @@ SendRequestWithNoData(const std::string& method,
                       const std::string& url,
                       const HeaderList& headers,
                       std::shared_ptr<Transport> transport,
-                      const SuccessCallback& success_callback,
-                      const ErrorCallback& error_callback);
+                      SuccessCallback success_callback,
+                      ErrorCallback error_callback);
 
 // Performs a GET request. Success status, returned data and additional
 // information (such as returned HTTP headers) can be obtained from
@@ -128,8 +128,8 @@ BRILLO_EXPORT std::unique_ptr<Response> GetAndBlock(
 BRILLO_EXPORT RequestID Get(const std::string& url,
                             const HeaderList& headers,
                             std::shared_ptr<Transport> transport,
-                            const SuccessCallback& success_callback,
-                            const ErrorCallback& error_callback);
+                            SuccessCallback success_callback,
+                            ErrorCallback error_callback);
 
 // Performs a HEAD request. Success status and additional
 // information (such as returned HTTP headers) can be obtained from
@@ -144,8 +144,8 @@ BRILLO_EXPORT std::unique_ptr<Response> HeadAndBlock(
 // request using Transport::CancelRequest().
 BRILLO_EXPORT RequestID Head(const std::string& url,
                              std::shared_ptr<Transport> transport,
-                             const SuccessCallback& success_callback,
-                             const ErrorCallback& error_callback);
+                             SuccessCallback success_callback,
+                             ErrorCallback error_callback);
 
 // Performs a POST request with binary data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -167,8 +167,8 @@ BRILLO_EXPORT RequestID PostBinary(const std::string& url,
                                    const std::string& mime_type,
                                    const HeaderList& headers,
                                    std::shared_ptr<Transport> transport,
-                                   const SuccessCallback& success_callback,
-                                   const ErrorCallback& error_callback);
+                                   SuccessCallback success_callback,
+                                   ErrorCallback error_callback);
 
 // Same as above, but takes a memory buffer. The pointer should be valid only
 // until the function returns. The data is copied into an internal buffer
@@ -181,8 +181,8 @@ BRILLO_EXPORT RequestID PostBinary(const std::string& url,
                                    const std::string& mime_type,
                                    const HeaderList& headers,
                                    std::shared_ptr<Transport> transport,
-                                   const SuccessCallback& success_callback,
-                                   const ErrorCallback& error_callback);
+                                   SuccessCallback success_callback,
+                                   ErrorCallback error_callback);
 
 // Performs a POST request with text data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -203,8 +203,8 @@ BRILLO_EXPORT RequestID PostText(const std::string& url,
                                  const std::string& mime_type,
                                  const HeaderList& headers,
                                  std::shared_ptr<Transport> transport,
-                                 const SuccessCallback& success_callback,
-                                 const ErrorCallback& error_callback);
+                                 SuccessCallback success_callback,
+                                 ErrorCallback error_callback);
 
 // Performs a POST request with form data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -224,8 +224,8 @@ BRILLO_EXPORT RequestID PostFormData(const std::string& url,
                                      const FormFieldList& data,
                                      const HeaderList& headers,
                                      std::shared_ptr<Transport> transport,
-                                     const SuccessCallback& success_callback,
-                                     const ErrorCallback& error_callback);
+                                     SuccessCallback success_callback,
+                                     ErrorCallback error_callback);
 
 // Performs a POST request with form data, including binary file uploads.
 // Success status, returned data and additional information (such as returned
@@ -245,8 +245,8 @@ BRILLO_EXPORT RequestID PostFormData(const std::string& url,
                                      std::unique_ptr<FormData> form_data,
                                      const HeaderList& headers,
                                      std::shared_ptr<Transport> transport,
-                                     const SuccessCallback& success_callback,
-                                     const ErrorCallback& error_callback);
+                                     SuccessCallback success_callback,
+                                     ErrorCallback error_callback);
 
 // Performs a POST request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -266,8 +266,8 @@ BRILLO_EXPORT RequestID PostJson(const std::string& url,
                                  std::unique_ptr<base::Value> json,
                                  const HeaderList& headers,
                                  std::shared_ptr<Transport> transport,
-                                 const SuccessCallback& success_callback,
-                                 const ErrorCallback& error_callback);
+                                 SuccessCallback success_callback,
+                                 ErrorCallback error_callback);
 
 // Performs a PATCH request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -287,8 +287,8 @@ BRILLO_EXPORT RequestID PatchJson(const std::string& url,
                                   std::unique_ptr<base::Value> json,
                                   const HeaderList& headers,
                                   std::shared_ptr<Transport> transport,
-                                  const SuccessCallback& success_callback,
-                                  const ErrorCallback& error_callback);
+                                  SuccessCallback success_callback,
+                                  ErrorCallback error_callback);
 
 // Given an http::Response object, parse the body data into Json object.
 // Returns null if failed. Optional |error| can be passed in to
