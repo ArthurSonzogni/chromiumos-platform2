@@ -473,26 +473,6 @@ cmd_time_info() (
         -e 's/int64/last-synced-time:/p'
 )
 
-USAGE_bt_console='[<agent capability>]'
-HELP_bt_console='
-  Enters a Bluetooth debugging console. Optional argument specifies the
-  capability of a pairing agent the console will provide; see the Bluetooth
-  Core specification for valid options.
-'
-EXEC_bt_console='/usr/bin/bluetoothctl'
-cmd_bt_console() (
-  if [ $# -gt 1 ]; then
-    help "too many arguments"
-    return 1
-  fi
-
-  if [ $# -eq 0 ]; then
-    "${EXEC_bt_console}" --restricted
-  else
-    "${EXEC_bt_console}" --restricted --agent="$1"
-  fi
-)
-
 USAGE_cras='[ enable <flag> | disable <flag> | telephony <event> [arg] ]'
 HELP_cras='
   Interact with CRAS(CrOS Audio Server) to set flags or trigger events.
