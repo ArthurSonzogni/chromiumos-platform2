@@ -8,10 +8,10 @@
 #include <memory>
 #include <utility>
 
-#include </usr/include/linux/magic.h>
 #include <fcntl.h>
 #include <libdevmapper.h>
 #include <linux/loop.h>
+#include <linux/magic.h>
 #include <mntent.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
