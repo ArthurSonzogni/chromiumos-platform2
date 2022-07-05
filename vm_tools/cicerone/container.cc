@@ -21,24 +21,12 @@
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
 
+#include "vm_tools/cicerone/grpc_util.h"
+
 using std::string;
 
 namespace vm_tools {
 namespace cicerone {
-namespace {
-
-// How long to wait before timing out on regular RPCs.
-constexpr int64_t kDefaultTimeoutSeconds = 60;
-
-// How long to wait before timing out on connecting to Garcon.
-constexpr int64_t kConnectTimeoutSeconds = 5;
-
-gpr_timespec ToGprDeadline(int64_t seconds) {
-  return gpr_time_add(gpr_now(GPR_CLOCK_MONOTONIC),
-                      gpr_time_from_seconds(seconds, GPR_TIMESPAN));
-}
-
-}  // namespace
 
 // static
 bool Container::wait_for_channel_ = true;

@@ -23,6 +23,8 @@
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
 
+#include "vm_tools/cicerone/grpc_util.h"
+
 using std::string;
 
 namespace vm_tools {
@@ -31,13 +33,6 @@ namespace {
 
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
-
-// How long to wait before timing out on regular RPCs.
-constexpr int64_t kDefaultTimeoutSeconds = 60;
-
-// How long to wait while doing more complex operations like starting or
-// creating a container.
-constexpr int64_t kLongOperationTimeoutSeconds = 120;
 
 VirtualMachine::VmType DetermineTypeFromCidAndToken(uint32_t cid,
                                                     const std::string& token) {
@@ -87,9 +82,14 @@ bool VirtualMachine::ConnectTremplin() {
   if (!using_mock_tremplin_stub_) {
     std::string tremplin_address =
         base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort);
-    tremplin_stub_ = std::make_unique<vm_tools::tremplin::Tremplin::Stub>(
-        grpc::CreateChannel(tremplin_address,
-                            grpc::InsecureChannelCredentials()));
+    auto channel = grpc::CreateChannel(tremplin_address,
+                                       grpc::InsecureChannelCredentials());
+    if (channel->WaitForConnected(ToGprDeadline(kConnectTimeoutSeconds))) {
+      LOG(ERROR) << "Tremplin channel not connected after "
+                 << kConnectTimeoutSeconds << " seconds.";
+    }
+    tremplin_stub_ =
+        std::make_unique<vm_tools::tremplin::Tremplin::Stub>(channel);
   }
   return tremplin_stub_ != nullptr;
 }
@@ -126,9 +126,7 @@ bool VirtualMachine::SetTimezone(
     request.add_container_names(name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status = tremplin_stub_->SetTimezone(&ctx, request, &response);
   if (!status.ok()) {
@@ -293,9 +291,7 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
   request.set_metadata_path(metadata_path);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kLongOperationTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kLongOperationTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->CreateContainer(&ctx, request, &response);
@@ -334,9 +330,7 @@ VirtualMachine::DeleteLxdContainerStatus VirtualMachine::DeleteLxdContainer(
   request.set_container_name(container_name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->DeleteContainer(&ctx, request, &response);
@@ -390,9 +384,7 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   request.set_privilege_level(privilege_level);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kLongOperationTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kLongOperationTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->StartContainer(&ctx, request, &response);
@@ -456,9 +448,7 @@ VirtualMachine::StopLxdContainerStatus VirtualMachine::StopLxdContainer(
   request.set_container_name(container_name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status = tremplin_stub_->StopContainer(&ctx, request, &response);
   if (!status.ok()) {
@@ -509,9 +499,7 @@ VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
   request.set_container_name(container_name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->GetContainerUsername(&ctx, request, &response);
@@ -563,9 +551,7 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
   request.set_container_username(container_username);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status = tremplin_stub_->SetUpUser(&ctx, request, &response);
   out_username->assign(response.username());
@@ -610,9 +596,7 @@ VirtualMachine::GetLxdContainerInfoStatus VirtualMachine::GetLxdContainerInfo(
   request.set_container_name(container_name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->GetContainerInfo(&ctx, request, &response);
@@ -654,9 +638,7 @@ VirtualMachine::ExportLxdContainerStatus VirtualMachine::ExportLxdContainer(
   request.set_export_path(export_path);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->ExportContainer(&ctx, request, &response);
@@ -692,9 +674,7 @@ VirtualMachine::CancelExportLxdContainer(
   request.set_in_progress_container_name(in_progress_container_name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->CancelExportContainer(&ctx, request, &response);
@@ -735,9 +715,7 @@ VirtualMachine::ImportLxdContainerStatus VirtualMachine::ImportLxdContainer(
   request.set_available_disk_space(available_disk_space);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->ImportContainer(&ctx, request, &response);
@@ -773,9 +751,7 @@ VirtualMachine::CancelImportLxdContainer(
   request.set_in_progress_container_name(in_progress_container_name);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->CancelImportContainer(&ctx, request, &response);
@@ -829,9 +805,7 @@ VirtualMachine::UpgradeContainerStatus VirtualMachine::UpgradeContainer(
   request.set_target_version(ConvertVersion(target_version));
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->UpgradeContainer(&ctx, request, &response);
@@ -871,9 +845,7 @@ VirtualMachine::CancelUpgradeContainer(Container* container,
   request.set_container_name(container->name());
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->CancelUpgradeContainer(&ctx, request, &response);
@@ -905,9 +877,7 @@ VirtualMachine::StartLxdStatus VirtualMachine::StartLxd(
   vm_tools::tremplin::StartLxdResponse response;
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   request.set_reset_lxd_db(reset_lxd_db);
 
@@ -943,9 +913,7 @@ void VirtualMachine::HostNetworkChanged() {
   vm_tools::tremplin::HostNetworkChangedResponse response;
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->HostNetworkChanged(&ctx, request, &response);
@@ -965,9 +933,7 @@ bool VirtualMachine::GetTremplinDebugInfo(std::string* out) {
   vm_tools::tremplin::GetDebugInfoResponse response;
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kLongOperationTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kLongOperationTimeoutSeconds));
 
   grpc::Status status = tremplin_stub_->GetDebugInfo(&ctx, request, &response);
   if (!status.ok()) {
