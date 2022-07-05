@@ -1454,7 +1454,7 @@ message AuthenticateAuthFactorRequest {
   // The AuthFactor label would be used to determine the AuthFactor that
   // needs to be authenticated. If the label does not exist, the call would
   // return an error.
-  bytes auth_factor_label = 2;
+  string auth_factor_label = 2;
   // In some cases, such as password, the secret would be user supplied. In
   // those cases the secret can be passed here.
   AuthInput auth_input = 3;
