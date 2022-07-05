@@ -19,7 +19,6 @@
 
 #include "rmad/executor/udev/udev_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/system/cros_disks_client.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/crossystem_utils.h"
@@ -42,8 +41,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |udev_utils_|, |cmd_utils_|, |crossystem_utils|,
-  // |flashrom_utils|, |cros_disks_client| and |power_manager_client_| for
-  // testing.
+  // |flashrom_utils|, and |power_manager_client_| for testing.
   explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -51,7 +49,6 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<FlashromUtils> flashrom_utils,
-      std::unique_ptr<CrosDisksClient> cros_disks_client,
       std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
@@ -76,12 +73,10 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   void SendFirmwareUpdateSignal();
   std::vector<std::unique_ptr<UdevDevice>> GetRemovableBlockDevices() const;
   void WaitUsb();
-  void OnMountCompleted(const rmad::MountEntry& entry);
-  bool RunFirmwareUpdater(const std::string& firmware_updater_path);
-  void UpdateFirmware(const std::string& mount_path,
-                      const std::string& firmware_updater_path);
-  void Unmount(const std::string& mount_path);
-  void OnUpdateFinished(bool update_success);
+  void OnCopyCompleted(bool copy_success);
+  void OnCopySuccess();
+  void OnUpdateCompleted(bool update_success);
+  bool RunFirmwareUpdater();
 
   // Functions for rebooting.
   void PostRebootTask();
@@ -90,10 +85,9 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   // True if the class is not initialized with default constructor.
   bool is_mocked_;
 
-  // All accesses to |active_|, |status_|, |usb_detected_| and timers should be
-  // on the same sequence.
+  // All accesses to |status_|, |usb_detected_| and timers should be on the same
+  // sequence.
   SEQUENCE_CHECKER(sequence_checker_);
-  bool active_;
   UpdateRoFirmwareStatus status_;
   bool usb_detected_;
   // Timer for sending status signals.
@@ -105,11 +99,10 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;
-  std::unique_ptr<CrosDisksClient> cros_disks_client_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
 
-  // Sequence runner for thread-safe read/write of |active_|, |status_|,
-  // |usb_detected_| and |poll_usb_|.
+  // Sequence runner for thread-safe read/write of |status_| and
+  // |usb_detected_|.
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   // Task runner for firmware updater.
   scoped_refptr<base::TaskRunner> updater_task_runner_;

@@ -24,7 +24,6 @@
 #include "rmad/executor/udev/udev_device.h"
 #include "rmad/executor/udev/udev_utils.h"
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/system/cros_disks_client_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
@@ -33,10 +32,18 @@
 
 namespace {
 
-constexpr char kFirmwareUpdaterFilePath[] = "usr/sbin/chromeos-firmwareupdate";
+constexpr char kFirmwareUpdaterPath[] = "/var/lib/rmad/chromeos-firmwareupdate";
 
-bool IsRootfsPartition(const std::string& path) {
-  return re2::RE2::FullMatch(path, R"(/dev/sd[a-z]3)");
+bool GetDeviceIdFromRootfsDeviceFile(const std::string& device_file,
+                                     char* device_id) {
+  re2::StringPiece string_piece(device_file);
+  re2::RE2 regexp("/dev/sd([[:lower:]])3");
+  std::string device_id_string;
+  if (RE2::FullMatch(string_piece, regexp, &device_id_string)) {
+    *device_id = device_id_string[0];
+    return true;
+  }
+  return false;
 }
 
 }  // namespace
@@ -46,15 +53,12 @@ namespace rmad {
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback),
-      is_mocked_(false),
-      active_(false) {
+    : BaseStateHandler(json_store, daemon_callback), is_mocked_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
-  cros_disks_client_ = std::make_unique<CrosDisksClientImpl>(GetSystemBus());
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
 }
@@ -66,16 +70,13 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils,
-    std::unique_ptr<CrosDisksClient> cros_disks_client,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
-      active_(false),
       udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)),
-      cros_disks_client_(std::move(cros_disks_client)),
       power_manager_client_(std::move(power_manager_client)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
@@ -97,10 +98,6 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
     sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
     updater_task_runner_ = base::ThreadPool::CreateTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-
-    cros_disks_client_->AddMountCompletedHandler(
-        base::BindRepeating(&UpdateRoFirmwareStateHandler::OnMountCompleted,
-                            base::Unretained(this)));
   }
 
   if (bool firmware_updated;
@@ -110,7 +107,6 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
   } else {
     status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
   }
-  active_ = true;
   usb_detected_ = !GetRemovableBlockDevices().empty();
   return RMAD_ERROR_OK;
 }
@@ -122,7 +118,6 @@ void UpdateRoFirmwareStateHandler::RunState() {
 
 void UpdateRoFirmwareStateHandler::CleanUpState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  active_ = false;
   StopSignalTimer();
   StopPollingTimer();
 }
@@ -236,68 +231,78 @@ void UpdateRoFirmwareStateHandler::WaitUsb() {
   std::vector<std::unique_ptr<UdevDevice>> removable_devices =
       GetRemovableBlockDevices();
   usb_detected_ = !removable_devices.empty();
-  // Update |status_| if firmware update is not completed.
-  if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
-    if (removable_devices.empty()) {
-      // External disk is not detected. Keep waiting.
-      status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
-    } else if (status_ == RMAD_UPDATE_RO_FIRMWARE_WAIT_USB) {
-      // External disk is just detected. Look for rootfs partition.
-      for (auto& device : removable_devices) {
-        if (IsRootfsPartition(device->GetDeviceNode())) {
-          // Only try to mount the first root partition found. Stop the polling
-          // to prevent mounting twice.
-          StopPollingTimer();
-          cros_disks_client_->Mount(device->GetDeviceNode(), "ext2", {"ro"});
-          return;
-        }
-      }
-      // External disk is detected but no rootfs partition found. Treat this
-      // case as file not found.
-      status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
-    }
-  }
-}
-
-void UpdateRoFirmwareStateHandler::OnMountCompleted(
-    const rmad::MountEntry& entry) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // This callback is active even when we're not in the state, so we need this
-  // check to prevent doing a firmware update in other states.
-  // TODO(chenghan): Figure out how to detach the signal handler.
-  if (!active_) {
+  // Do nothing if firmware update is completed.
+  if (status_ == RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
     return;
   }
-  if (entry.success) {
-    if (IsRootfsPartition(entry.source)) {
-      LOG(INFO) << "Found rootfs partition";
-      const base::FilePath firmware_updater_path =
-          base::FilePath(entry.mount_path)
-              .AppendASCII(kFirmwareUpdaterFilePath);
-      if (base::PathExists(firmware_updater_path)) {
-        LOG(INFO) << "Found firmware updater";
-        status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
-        updater_task_runner_->PostTask(
-            FROM_HERE,
-            base::BindOnce(&UpdateRoFirmwareStateHandler::UpdateFirmware,
-                           base::Unretained(this), entry.mount_path,
-                           firmware_updater_path.MaybeAsASCII()));
-        // Unmount is done after running the firmware updater.
-        // TODO(chenghan): Copy the firmware updater so we can unmount here.
+  // Update |status_| if firmware update is not completed.
+  if (removable_devices.empty()) {
+    // External disk is not detected. Keep waiting.
+    status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
+  } else if (status_ == RMAD_UPDATE_RO_FIRMWARE_WAIT_USB) {
+    // External disk is just detected. Look for rootfs partition.
+    for (const auto& device : removable_devices) {
+      const std::string& device_node = device->GetDeviceNode();
+      if (char device_id;
+          GetDeviceIdFromRootfsDeviceFile(device_node, &device_id)) {
+        // Only try to mount the first root partition found. Stop the polling
+        // to prevent mounting twice.
+        StopPollingTimer();
+        daemon_callback_->GetExecuteMountAndCopyFirmwareUpdaterCallback().Run(
+            static_cast<uint8_t>(device_id),
+            base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
+                           base::Unretained(this)));
         return;
       }
     }
-    Unmount(entry.mount_path);
+    // External disk is detected but no rootfs partition found. Treat this
+    // case as file not found.
+    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
   }
-
-  LOG(WARNING) << "Cannot find firmware updater";
-  status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
-  DCHECK(!check_usb_timer_.IsRunning());
-  StartPollingTimer();
 }
 
-bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
-    const std::string& firmware_updater_path) {
+void UpdateRoFirmwareStateHandler::OnCopyCompleted(bool copy_success) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (copy_success) {
+    LOG(INFO) << "Found firmware updater";
+    status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
+    updater_task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopySuccess,
+                                  base::Unretained(this)));
+  } else {
+    LOG(WARNING) << "Cannot find firmware updater";
+    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
+    DCHECK(!check_usb_timer_.IsRunning());
+    StartPollingTimer();
+  }
+}
+
+void UpdateRoFirmwareStateHandler::OnCopySuccess() {
+  // This is run in |updater_task_runner_|.
+  bool update_success = RunFirmwareUpdater();
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&UpdateRoFirmwareStateHandler::OnUpdateCompleted,
+                     base::Unretained(this), update_success));
+}
+
+void UpdateRoFirmwareStateHandler::OnUpdateCompleted(bool update_success) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (update_success) {
+    json_store_->SetValue(kFirmwareUpdated, true);
+    status_ = RMAD_UPDATE_RO_FIRMWARE_REBOOTING;
+    PostRebootTask();
+  } else {
+    // Treat update failure as "no valid updater file".
+    // TODO(chenghan): Add an enum for update failure.
+    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
+    DCHECK(!check_usb_timer_.IsRunning());
+    StartPollingTimer();
+  }
+}
+
+bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
+  // This is run in |updater_task_runner_|.
   // For security reasons, we should only run the firmware update when HWWP and
   // SWWP are off.
 
@@ -326,7 +331,7 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
   // All checks pass. Run the firmware updater.
   bool update_success = false;
   if (std::string output; cmd_utils_->GetOutputAndError(
-          {"futility", "update", "-a", firmware_updater_path, "--mode=recovery",
+          {"futility", "update", "-a", kFirmwareUpdaterPath, "--mode=recovery",
            "--force"},
           &output)) {
     LOG(INFO) << "Firmware updater success";
@@ -336,41 +341,6 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
     LOG(ERROR) << output;
   }
   return update_success;
-}
-
-void UpdateRoFirmwareStateHandler::UpdateFirmware(
-    const std::string& mount_path, const std::string& firmware_updater_path) {
-  bool update_success = RunFirmwareUpdater(firmware_updater_path);
-  sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&UpdateRoFirmwareStateHandler::Unmount,
-                                base::Unretained(this), mount_path));
-  sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&UpdateRoFirmwareStateHandler::OnUpdateFinished,
-                                base::Unretained(this), update_success));
-}
-
-void UpdateRoFirmwareStateHandler::Unmount(const std::string& mount_path) {
-  if (uint32_t result;
-      cros_disks_client_->Unmount(mount_path, {}, &result) && result == 0) {
-    VLOG(1) << "Unmount success " << result;
-  } else {
-    LOG(ERROR) << "Unmount failed";
-  }
-}
-
-void UpdateRoFirmwareStateHandler::OnUpdateFinished(bool update_success) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (update_success) {
-    json_store_->SetValue(kFirmwareUpdated, true);
-    status_ = RMAD_UPDATE_RO_FIRMWARE_REBOOTING;
-    PostRebootTask();
-  } else {
-    // Treat update failure as "no valid updater file".
-    // TODO(chenghan): Add an enum for update failure.
-    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
-    DCHECK(!check_usb_timer_.IsRunning());
-    StartPollingTimer();
-  }
 }
 
 void UpdateRoFirmwareStateHandler::PostRebootTask() {

@@ -17,7 +17,6 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
-#include "rmad/system/mock_cros_disks_client.h"
 #include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
@@ -59,10 +58,6 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
 
-    // Mock |CrosDisksClient|.
-    auto mock_cros_disks_client =
-        std::make_unique<NiceMock<MockCrosDisksClient>>();
-
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
@@ -70,8 +65,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
         json_store_, daemon_callback_, std::move(mock_udev_utils),
         std::move(mock_cmd_utils), std::move(mock_crossystem_utils),
-        std::move(mock_flashrom_utils), std::move(mock_cros_disks_client),
-        std::move(mock_power_manager_client));
+        std::move(mock_flashrom_utils), std::move(mock_power_manager_client));
   }
 
  protected:
