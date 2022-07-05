@@ -207,11 +207,16 @@ fn calculate_extra_bytes(mem_size: u64) -> u64 {
     // 3.2MB/GB for shmem xarray
     // 2MB/GB for EPT
     // 2MB/GB for page tables
-    // 2MB/GB for kvm rmap
-    // .5MB/GB for kvm gfn tracking
-    // => 9.7MB/GB
-    // TODO(stevensd): uprev/backport removal of rmap/gfn tracking to hypervisor
-    let extra_bytes = round_up_to_page_size(mem_size as usize * 97 / 10240) as u64;
+    // => 7.2MB/GB
+    let mut extra_bytes = round_up_to_page_size(mem_size as usize * 72 / 10240) as u64;
+    // Reserve memory for vvu sibling mappings. The current implementation has one
+    // mapping per-vvu device, and each mapping has its own page tables in the host.
+    // Since Linux doesn't support shrinking page tables, this means each mapping may
+    // eventually require 2MB/GB of mmu pages. Although realistically it won't get
+    // to that point for every device, not reserving enough memory will result in an
+    // OOM panic in the hypervisor. So be fairly pessemistic and hope for the best.
+    // TODO(b/236575020): use a single mapping per sibling VM.
+    extra_bytes += round_up_to_page_size(mem_size as usize * 20 / 1024) as u64;
     // 6MB for crosvm
     extra_bytes + (6 * 1024 * 1024)
 }
