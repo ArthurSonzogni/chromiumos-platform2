@@ -331,7 +331,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Emit a property change signal for the "IPConfigs" property of this device.
   void OnIPConfigsPropertyUpdated() override;
   std::vector<uint32_t> GetBlackholedUids() override;
-  Service* GetSelectedService() override { return selected_service_.get(); }
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;

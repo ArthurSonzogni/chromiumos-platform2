@@ -29,7 +29,10 @@ class MockNetwork : public Network {
   ~MockNetwork() override = default;
 
   MOCK_METHOD(bool, HasConnectionObject, (), (const, override));
-  MOCK_METHOD(void, OnStaticIPConfigChanged, (), (override));
+  MOCK_METHOD(void,
+              OnStaticIPConfigChanged,
+              (const NetworkConfig&),
+              (override));
   MOCK_METHOD(void,
               RegisterCurrentIPConfigChangeHandler,
               (base::RepeatingClosure),
@@ -46,6 +49,13 @@ class MockNetwork : public Network {
               (),
               (const, override));
   MOCK_METHOD(const IPAddress&, local, (), (const, override));
+};
+
+class MockNetworkEventHandler : public Network::EventHandler {
+ public:
+  MOCK_METHOD(void, OnConnectionUpdated, (IPConfig*), (override));
+  MOCK_METHOD(void, OnIPConfigsPropertyUpdated, (), (override));
+  MOCK_METHOD(std::vector<uint32_t>, GetBlackholedUids, (), (override));
 };
 
 }  // namespace shill

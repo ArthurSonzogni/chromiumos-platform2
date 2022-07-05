@@ -774,18 +774,19 @@ TEST_F(ServiceTest, StaticIPConfigsChanged) {
   SetStateField(Service::kStateConnected);
 
   // Changes the address, network should be notified.
-  EXPECT_CALL(*network, OnStaticIPConfigChanged());
+  EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
   update_address(kTestIpAddress2);
   // Address is not changed, network should not be notified.
   update_address(kTestIpAddress2);
   // Reloads the service, network should be notified since address is changed.
-  EXPECT_CALL(*network, OnStaticIPConfigChanged());
+  EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
   ASSERT_TRUE(service_->Load(&storage));
 
   // Persists the service and reloads again, network should not be notified
   // since address is not changed.
   ASSERT_TRUE(service_->Save(&storage));
-  // Detaches the network, it should not be notified anymore.
+  // Detaches the network, it should be notified once, but not any more.
+  EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
   service_->SetAttachedNetwork(nullptr);
   update_address(kTestIpAddress2);
 }

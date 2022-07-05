@@ -3867,6 +3867,15 @@ class WiFiTimerTest : public WiFiObjectTest {
         mock_dispatcher_(static_cast<StrictMock<MockEventDispatcher>*>(
             event_dispatcher_.get())) {}
 
+  void TearDown() override {
+    Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
+
+    // Loose the expectation on EventDispatcher to allow it being used in
+    // cleanup.
+    EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(AnyNumber());
+    WiFiObjectTest::TearDown();
+  }
+
  protected:
   void ExpectInitialScanSequence();
 

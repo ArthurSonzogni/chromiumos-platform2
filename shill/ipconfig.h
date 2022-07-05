@@ -19,7 +19,6 @@ namespace shill {
 class ControlInterface;
 class Error;
 class IPConfigAdaptorInterface;
-class StaticIPParameters;
 
 class IPConfig {
  public:
@@ -131,11 +130,10 @@ class IPConfig {
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
-  void ApplyStaticIPParameters(StaticIPParameters* static_ip_parameters);
 
-  // Restore the fields of |properties_| to their original values before
-  // static IP parameters were previously applied.
-  void RestoreSavedIPParameters(StaticIPParameters* static_ip_parameters);
+  // Applies |config| to this object and inform D-Bus listeners of the change.
+  // Returns the current config before applying the incoming one.
+  NetworkConfig ApplyNetworkConfig(const NetworkConfig& config);
 
   // Returns whether the function call changed the configuration.
   bool SetBlackholedUids(const std::vector<uint32_t>& uids);

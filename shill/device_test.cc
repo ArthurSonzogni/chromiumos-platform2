@@ -579,7 +579,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
 
   // Verify static IP config change callback.
   EXPECT_CALL(*dhcp_controller_, RenewIP());
-  device_->network()->OnStaticIPConfigChanged();
+  device_->network()->OnStaticIPConfigChanged({});
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {

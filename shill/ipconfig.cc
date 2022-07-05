@@ -96,6 +96,17 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
 
 void IPConfig::Properties::UpdateFromNetworkConfig(
     const NetworkConfig& network_config) {
+  if (address_family == IPAddress::kFamilyUnknown) {
+    // In situations where no address is supplied (bad or missing DHCP config)
+    // supply an address family ourselves.
+    address_family = IPAddress::kFamilyIPv4;
+  }
+  if (method.empty()) {
+    // When it's empty, it means there is no other IPConfig provider now (e.g.,
+    // DHCP). A StaticIPParameters object is only for IPv4.
+    method = kTypeIPv4;
+  }
+
   if (address_family != IPAddress::kFamilyIPv4) {
     LOG(DFATAL) << "The IPConfig object is not for IPv4, but for "
                 << address_family;
@@ -169,16 +180,11 @@ const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-void IPConfig::ApplyStaticIPParameters(
-    StaticIPParameters* static_ip_parameters) {
-  static_ip_parameters->ApplyTo(&properties_);
+NetworkConfig IPConfig::ApplyNetworkConfig(const NetworkConfig& config) {
+  auto current_config = properties_.ToNetworkConfig();
+  properties_.UpdateFromNetworkConfig(config);
   EmitChanges();
-}
-
-void IPConfig::RestoreSavedIPParameters(
-    StaticIPParameters* static_ip_parameters) {
-  static_ip_parameters->RestoreTo(&properties_);
-  EmitChanges();
+  return current_config;
 }
 
 bool IPConfig::SetBlackholedUids(const std::vector<uint32_t>& uids) {

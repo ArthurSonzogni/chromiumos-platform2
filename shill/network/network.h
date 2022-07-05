@@ -51,9 +51,6 @@ class Network {
     // avoid introducing Manager dependency on Network. Find a better solution
     // later.
     virtual std::vector<uint32_t> GetBlackholedUids() = 0;
-    // TODO(b/232177767): This will be removed once we finish refactoring the
-    // interaction between Service and Network.
-    virtual Service* GetSelectedService() = 0;
   };
 
   // Note that |event_handler| should live longer than the created Network
@@ -85,13 +82,13 @@ class Network {
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
 
-  // Callback invoked when the static IP properties configured on the selected
-  // service changed.
-  mockable void OnStaticIPConfigChanged();
-
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
 
+  // Interfaces between Service and Network.
+  // Callback invoked when the static IP properties configured on the selected
+  // service changed.
+  mockable void OnStaticIPConfigChanged(const NetworkConfig& config);
   // Register a callback that gets called when the |current_ipconfig_| changed.
   // This should only be used by Service.
   mockable void RegisterCurrentIPConfigChangeHandler(
@@ -99,6 +96,10 @@ class Network {
   // Returns the IPConfig object which is used to setup the Connection of this
   // Network. Returns nullptr if there is no such IPConfig.
   mockable IPConfig* GetCurrentIPConfig() const;
+  // The NetworkConfig before applying the static one. Only needed by Service.
+  const NetworkConfig& saved_network_config() const {
+    return saved_network_config_;
+  }
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
@@ -167,6 +168,13 @@ class Network {
   // |ip6config_| which is used to setup the connection. GetCurrentIPConfig()
   // should be used to get this property so that its validity can be checked.
   IPConfig* current_ipconfig_ = nullptr;
+
+  // The static NetworkConfig from the associated Service.
+  NetworkConfig static_network_config_;
+  // The NetworkConfig before applying a static one. This will be used for 1)
+  // able to restore the config to the previous state and 2) being exposed as a
+  // Service property via D-Bus.
+  NetworkConfig saved_network_config_;
 
   EventHandler* event_handler_;
 

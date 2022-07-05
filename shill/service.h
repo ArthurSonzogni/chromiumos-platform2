@@ -824,6 +824,7 @@ class Service : public base::RefCounted<Service> {
   friend class ManagerTest;
   friend class ServiceAdaptorInterface;
   friend class ServiceTest;
+  friend class StaticIPParametersTest;
   friend class VPNProviderTest;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
@@ -973,6 +974,9 @@ class Service : public base::RefCounted<Service> {
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
   // change of static IP config.
   void NotifyStaticIPConfigChanged();
+
+  // Getter for the SavedIPConfig property in D-Bus API.
+  KeyValueStore GetSavedIPConfig(Error* /*error*/);
 
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

@@ -85,8 +85,10 @@ NetworkConfig KeyValuesToNetworkConfig(const KeyValueStore& kvs) {
   return ret;
 }
 
-// Converts the StaticIPParameters from NetworkConfig to KeyValueStore.
-KeyValueStore NetworkConfigToKeyValues(const NetworkConfig& props) {
+}  // namespace
+
+KeyValueStore StaticIPParameters::NetworkConfigToKeyValues(
+    const NetworkConfig& props) {
   KeyValueStore kvs;
   if (props.ipv4_address_cidr.has_value()) {
     IPAddress addr(IPAddress::kFamilyIPv4);
@@ -113,19 +115,12 @@ KeyValueStore NetworkConfigToKeyValues(const NetworkConfig& props) {
   return kvs;
 }
 
-}  // namespace
-
 StaticIPParameters::StaticIPParameters() = default;
 
 StaticIPParameters::~StaticIPParameters() = default;
 
 void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
-  // Register KeyValueStore for both static ip and saved ip parameters.
-  store->RegisterDerivedKeyValueStore(
-      kSavedIPConfigProperty,
-      KeyValueStoreAccessor(
-          new CustomAccessor<StaticIPParameters, KeyValueStore>(
-              this, &StaticIPParameters::GetSavedIPConfig, nullptr)));
+  // Register KeyValueStore for both static ip parameters.
   store->RegisterDerivedKeyValueStore(
       kStaticIPConfigProperty,
       KeyValueStoreAccessor(
@@ -216,46 +211,12 @@ void StaticIPParameters::Save(StoreInterface* storage,
   }
 }
 
-void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
-  if (props->address_family == IPAddress::kFamilyUnknown) {
-    // In situations where no address is supplied (bad or missing DHCP config)
-    // supply an address family ourselves.
-    // TODO(pstew): Guess from the address values.
-    props->address_family = IPAddress::kFamilyIPv4;
-  }
-  if (props->method.empty()) {
-    // When it's empty, it means there is no other IPConfig provider now (e.g.,
-    // DHCP). A StaticIPParameters object is only for IPv4.
-    props->method = kTypeIPv4;
-  }
-  ClearSavedParameters();
-
-  saved_config_ = props->ToNetworkConfig();
-  props->UpdateFromNetworkConfig(config_);
-}
-
-void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
-  if (props->address_family == IPAddress::kFamilyUnknown) {
-    props->address_family = IPAddress::kFamilyIPv4;
-  }
-  props->UpdateFromNetworkConfig(saved_config_);
-  ClearSavedParameters();
-}
-
-void StaticIPParameters::ClearSavedParameters() {
-  saved_config_ = NetworkConfig();
-}
-
 bool StaticIPParameters::ContainsAddress() const {
   return config_.ipv4_address_cidr.has_value();
 }
 
 bool StaticIPParameters::ContainsNameServers() const {
   return config_.dns_servers.has_value();
-}
-
-KeyValueStore StaticIPParameters::GetSavedIPConfig(Error* /*error*/) {
-  return NetworkConfigToKeyValues(saved_config_);
 }
 
 KeyValueStore StaticIPParameters::GetStaticIPConfig(Error* /*error*/) {
@@ -273,7 +234,6 @@ bool StaticIPParameters::SetStaticIP(const KeyValueStore& value,
 }
 
 void StaticIPParameters::Reset() {
-  ClearSavedParameters();
   config_ = NetworkConfig();
 }
 

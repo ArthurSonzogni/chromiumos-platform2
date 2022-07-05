@@ -24,6 +24,9 @@ class StoreInterface;
 // parameters to an IPConfig object.
 class StaticIPParameters {
  public:
+  // Converts the StaticIPParameters from NetworkConfig to KeyValueStore.
+  static KeyValueStore NetworkConfigToKeyValues(const NetworkConfig& props);
+
   StaticIPParameters();
   StaticIPParameters(const StaticIPParameters&) = delete;
   StaticIPParameters& operator=(const StaticIPParameters&) = delete;
@@ -40,17 +43,6 @@ class StaticIPParameters {
   // Save static IP parameters to a persistent store with id |storage_id|.
   void Save(StoreInterface* storage, const std::string& storage_id);
 
-  // Apply static IP parameters to an IPConfig properties object, and save
-  // their original values.
-  void ApplyTo(IPConfig::Properties* props);
-
-  // Restore IP parameters from |saved_args_| to |props|, then clear
-  // |saved_args_|.
-  void RestoreTo(IPConfig::Properties* props);
-
-  // Remove any saved parameters from a previous call to ApplyTo().
-  void ClearSavedParameters();
-
   // Return whether configuration parameters contain an address property.
   bool ContainsAddress() const;
 
@@ -60,16 +52,16 @@ class StaticIPParameters {
   // Reset all states to defaults (e.g. when a service is unloaded).
   void Reset();
 
+  const NetworkConfig& config() const { return config_; }
+
  private:
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
 
-  KeyValueStore GetSavedIPConfig(Error* error);
   KeyValueStore GetStaticIPConfig(Error* error);
   bool SetStaticIP(const KeyValueStore& value, Error* error);
 
   NetworkConfig config_;
-  NetworkConfig saved_config_;
 };
 
 }  // namespace shill

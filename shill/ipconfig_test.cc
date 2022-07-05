@@ -12,7 +12,6 @@
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/static_ip_parameters.h"
 
 using testing::_;
 using testing::Mock;
@@ -115,15 +114,9 @@ TEST_F(IPConfigTest, UpdateProperties) {
 TEST_F(IPConfigTest, PropertyChanges) {
   IPConfigMockAdaptor* adaptor = GetAdaptor();
 
-  StaticIPParameters static_ip_params;
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
-  ipconfig_->ApplyStaticIPParameters(&static_ip_params);
-  Mock::VerifyAndClearExpectations(adaptor);
-
-  EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
-  ipconfig_->RestoreSavedIPParameters(&static_ip_params);
+  ipconfig_->ApplyNetworkConfig({});
   Mock::VerifyAndClearExpectations(adaptor);
 
   IPConfig::Properties ip_properties;

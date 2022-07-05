@@ -300,6 +300,10 @@ Service::Service(Manager* manager, Technology technology)
   metrics()->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
+  store_.RegisterDerivedKeyValueStore(
+      kSavedIPConfigProperty,
+      KeyValueStoreAccessor(new CustomAccessor<Service, KeyValueStore>(
+          this, &Service::GetSavedIPConfig, nullptr)));
 
   IgnoreParameterForConfigure(kTypeProperty);
   IgnoreParameterForConfigure(kProfileProperty);
@@ -829,6 +833,7 @@ bool Service::Unload() {
   }
   current_traffic_counters_.clear();
   static_ip_parameters_.Reset();
+  NotifyStaticIPConfigChanged();
   return false;
 }
 
@@ -1068,15 +1073,18 @@ void Service::SetAttachedNetwork(base::WeakPtr<Network> network) {
   if (attached_network_.get() == network.get()) {
     return;
   }
-  if (!network) {
-    static_ip_parameters_.ClearSavedParameters();
+  if (attached_network_) {
+    // Clear the handler and static IP config registered on the previous
+    // Network.
+    attached_network_->RegisterCurrentIPConfigChangeHandler({});
+    attached_network_->OnStaticIPConfigChanged({});
   }
-  // TODO(b/232177767): Set static IP parameters on Network here.
   attached_network_ = network;
   EmitIPConfigPropertyChange();
   if (attached_network_) {
     attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
         &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
+    NotifyStaticIPConfigChanged();
   }
 }
 
@@ -1090,8 +1098,16 @@ void Service::EmitIPConfigPropertyChange() {
 
 void Service::NotifyStaticIPConfigChanged() {
   if (attached_network_) {
-    attached_network_->OnStaticIPConfigChanged();
+    attached_network_->OnStaticIPConfigChanged(static_ip_parameters_.config());
   }
+}
+
+KeyValueStore Service::GetSavedIPConfig(Error* /*error*/) {
+  if (!attached_network_) {
+    return {};
+  }
+  return StaticIPParameters::NetworkConfigToKeyValues(
+      attached_network_->saved_network_config());
 }
 
 VirtualDeviceRefPtr Service::GetVirtualDevice() const {
@@ -1597,6 +1613,9 @@ void Service::OnPropertyChanged(const std::string& property) {
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   SaveToProfile();
+  if (property == kStaticIPConfigProperty) {
+    NotifyStaticIPConfigChanged();
+  }
   if (!IsConnected()) {
     return;
   }
@@ -1618,8 +1637,6 @@ void Service::OnPropertyChanged(const std::string& property) {
     // sorted differently by this change, so we can avoid doing this for
     // unconnected Services.
     manager_->SortServices();
-  } else if (property == kStaticIPConfigProperty) {
-    NotifyStaticIPConfigChanged();
   }
 }
 

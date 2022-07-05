@@ -56,31 +56,27 @@ bool Network::HasConnectionObject() const {
 }
 
 void Network::OnIPv4ConfigUpdated() {
-  auto* selected_service = event_handler_->GetSelectedService();
-  if (selected_service) {
-    ipconfig()->ApplyStaticIPParameters(
-        selected_service->mutable_static_ip_parameters());
-    if (selected_service->HasStaticIPAddress() && dhcp_controller()) {
-      // If we are using a statically configured IP address instead
-      // of a leased IP address, release any acquired lease so it may
-      // be used by others.  This allows us to merge other non-leased
-      // parameters (like DNS) when they're available from a DHCP server
-      // and not overridden by static parameters, but at the same time
-      // we avoid taking up a dynamic IP address the DHCP server could
-      // assign to someone else who might actually use it.
-      dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
-    }
+  saved_network_config_ =
+      ipconfig()->ApplyNetworkConfig(static_network_config_);
+  if (static_network_config_.ipv4_address_cidr.has_value() &&
+      dhcp_controller()) {
+    // If we are using a statically configured IP address instead of a leased IP
+    // address, release any acquired lease so it may be used by others.  This
+    // allows us to merge other non-leased parameters (like DNS) when they're
+    // available from a DHCP server and not overridden by static parameters, but
+    // at the same time we avoid taking up a dynamic IP address the DHCP server
+    // could assign to someone else who might actually use it.
+    dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
   }
   SetupConnection(ipconfig());
   event_handler_->OnIPConfigsPropertyUpdated();
 }
 
 void Network::ConfigureStaticIPTask() {
-  auto* selected_service = event_handler_->GetSelectedService();
-  if (!selected_service || !ipconfig()) {
+  if (!ipconfig()) {
     return;
   }
-  if (!selected_service->HasStaticIPAddress()) {
+  if (!static_network_config_.ipv4_address_cidr.has_value()) {
     return;
   }
   // If the parameters contain an IP address, apply them now and bring
@@ -89,17 +85,18 @@ void Network::ConfigureStaticIPTask() {
   OnIPv4ConfigUpdated();
 }
 
-void Network::OnStaticIPConfigChanged() {
-  auto* selected_service = event_handler_->GetSelectedService();
-  if (!ipconfig() || !selected_service) {
-    LOG(ERROR) << __func__ << " called but "
-               << (!ipconfig() ? "no IPv4 config" : "no selected service");
+void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
+  static_network_config_ = config;
+  if (!ipconfig()) {
+    // This can happen after service is selected but before the Network is
+    // "started" (e.g., by starting DHCP).
     return;
   }
 
-  // Clear the previously applied static IP parameters.
-  ipconfig()->RestoreSavedIPParameters(
-      selected_service->mutable_static_ip_parameters());
+  // Clear the previously applied static IP parameters. The new config will be
+  // applied in ConfigureStaticIPTask().
+  ipconfig()->ApplyNetworkConfig(saved_network_config_);
+  saved_network_config_ = {};
 
   dispatcher_->PostTask(
       FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPTask, AsWeakPtr()));
