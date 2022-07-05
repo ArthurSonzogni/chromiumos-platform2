@@ -34,6 +34,7 @@ source_set("functions") {
     "sequence.cc",
     "sysfs.cc",
     "tcpc.cc",
+    "ufs_storage.cc",
     "usb_camera.cc",
     "vpd_cached.cc",
     "wireless_network.cc",

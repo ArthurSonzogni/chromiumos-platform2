@@ -24,6 +24,7 @@ GenericStorageFunction::DataType GenericStorageFunction::EvalImpl() const {
   ConcatenateDataType(&result, ata_prober_->Eval());
   ConcatenateDataType(&result, mmc_prober_->Eval());
   ConcatenateDataType(&result, nvme_prober_->Eval());
+  ConcatenateDataType(&result, ufs_prober_->Eval());
   return result;
 }
 

@@ -12,6 +12,7 @@
 #include "runtime_probe/functions/ata_storage.h"
 #include "runtime_probe/functions/mmc_storage.h"
 #include "runtime_probe/functions/nvme_storage.h"
+#include "runtime_probe/functions/ufs_storage.h"
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
@@ -35,6 +36,9 @@ class GenericStorageFunction : public ProbeFunction {
         CreateProbeFunction<NvmeStorageFunction>(dict_value);
     if (!instance->nvme_prober_)
       return nullptr;
+    instance->ufs_prober_ = CreateProbeFunction<UfsStorageFunction>(dict_value);
+    if (!instance->ufs_prober_)
+      return nullptr;
     PARSE_END();
   }
 
@@ -44,6 +48,7 @@ class GenericStorageFunction : public ProbeFunction {
   std::unique_ptr<AtaStorageFunction> ata_prober_;
   std::unique_ptr<MmcStorageFunction> mmc_prober_;
   std::unique_ptr<NvmeStorageFunction> nvme_prober_;
+  std::unique_ptr<UfsStorageFunction> ufs_prober_;
 };
 
 }  // namespace runtime_probe

@@ -25,6 +25,7 @@
 #include "runtime_probe/functions/shell.h"
 #include "runtime_probe/functions/sysfs.h"
 #include "runtime_probe/functions/tcpc.h"
+#include "runtime_probe/functions/ufs_storage.h"
 #include "runtime_probe/functions/usb_camera.h"
 #include "runtime_probe/functions/vpd_cached.h"
 #include "runtime_probe/functions/wireless_network.h"
@@ -70,6 +71,7 @@ auto ProbeFunction::registered_functions_ =
                                      ShellFunction,
                                      SysfsFunction,
                                      TcpcFunction,
+                                     UfsStorageFunction,
                                      UsbCameraFunction,
                                      VPDCached,
                                      WirelessNetworkFunction>();
