@@ -221,6 +221,10 @@ int VncMain() {
                    8 /*bitsPerSample*/, 3 /*samplesPerPixel*/, kBytesPerPixel);
   CHECK(server);
 
+  // Without setting this flag, rfbProcessEvents() consumes only one event per
+  // call.
+  server->handleEventsEagerly = true;
+
   std::unique_ptr<screenshot::DisplayBuffer> display_buffer;
 
   if (method == CaptureMethod::EGL) {
