@@ -4,6 +4,8 @@
 
 #include "mtpd/mtpd_server_impl.h"
 
+#include <utility>
+
 #include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
@@ -280,9 +282,9 @@ bool MtpdServer::IsOpenedWithWrite(const std::string& handle) {
 }
 
 void MtpdServer::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 }  // namespace mtpd

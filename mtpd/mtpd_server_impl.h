@@ -91,7 +91,7 @@ class MtpdServer : public org::chromium::MtpdInterface,
 
   // Register D-Bus object.
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
  private:
   // StorageHandleInfo is a pair of StorageName and Mode.
