@@ -357,8 +357,10 @@ void Device::DestroyIPConfig() {
     set_ipconfig(nullptr);
     ipconfig_changed = true;
   }
+  // Make sure the timer is stopped regardless of the ip6config state. Just in
+  // case that they are not synced.
+  network_->StopIPv6DNSServerTimer();
   if (ip6config()) {
-    network_->StopIPv6DNSServerTimer();
     set_ip6config(nullptr);
     ipconfig_changed = true;
   }
@@ -367,8 +369,8 @@ void Device::DestroyIPConfig() {
     OnIPConfigsPropertyUpdated();
   }
 
-  StopAllActivities();
   network_->DestroyConnection();
+  StopAllActivities();
 }
 
 void Device::OnIPv6AddressChanged(const IPAddress* address) {
@@ -483,7 +485,6 @@ void Device::OnIPv6DnsServerAddressesChanged() {
 void Device::StopAllActivities() {
   StopPortalDetection();
   StopConnectionDiagnostics();
-  network_->StopIPv6DNSServerTimer();
 }
 
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
