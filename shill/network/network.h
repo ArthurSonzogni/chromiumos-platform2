@@ -102,6 +102,11 @@ class Network {
     return saved_network_config_;
   }
 
+  // Functions for IPv6.
+  void StopIPv6();
+  void StartIPv6();
+  void EnableIPv6Privacy();
+
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
   // what this flag should be set to. Overridden by unit tests to pretend

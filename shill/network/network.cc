@@ -24,6 +24,14 @@ constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
 constexpr char kIPFlagVersion4[] = "ipv4";
 constexpr char kIPFlagVersion6[] = "ipv6";
 
+constexpr char kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
+constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
+constexpr char kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
+constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
+constexpr char kIPFlagDisableIPv6[] = "disable_ipv6";
+constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
+constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
+
 }  // namespace
 
 Network::Network(int interface_index,
@@ -134,6 +142,27 @@ IPConfig* Network::GetCurrentIPConfig() const {
     return current_ipconfig_;
   }
   return nullptr;
+}
+
+void Network::StopIPv6() {
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
+}
+
+void Network::StartIPv6() {
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
+
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptDuplicateAddressDetection,
+            kIPFlagAcceptDuplicateAddressDetectionEnabled);
+
+  // Force the kernel to accept RAs even when global IPv6 forwarding is
+  // enabled.  Unfortunately this needs to be set on a per-interface basis.
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptRouterAdvertisements,
+            kIPFlagAcceptRouterAdvertisementsAlways);
+}
+
+void Network::EnableIPv6Privacy() {
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagUseTempAddr,
+            kIPFlagUseTempAddrUsedAndDefault);
 }
 
 bool Network::SetIPFlag(IPAddress::Family family,

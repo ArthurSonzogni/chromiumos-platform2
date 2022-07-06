@@ -484,7 +484,7 @@ void Cellular::DestroySockets() {
   if (!socket_destroyer_)
     return;
 
-  StopIPv6();
+  network()->StopIPv6();
   for (const auto& address :
        manager()->device_info()->GetAddresses(interface_index())) {
     rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
@@ -717,7 +717,7 @@ void Cellular::OnAfterResume() {
   }
 
   // Re-enable IPv6 so we can renegotiate an IP address.
-  StartIPv6();
+  network()->StartIPv6();
 
   // TODO(quiche): Consider if this should be conditional. If, e.g.,
   // the device was still disabling when we suspended, will trying to

@@ -648,12 +648,12 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
 #endif  // DISABLE_CELLULAR
     case Technology::kEthernet:
       device = new Ethernet(manager_, link_name, address, interface_index);
-      device->EnableIPv6Privacy();
+      device->network()->EnableIPv6Privacy();
       break;
     case Technology::kVirtioEthernet:
       device =
           new VirtioEthernet(manager_, link_name, address, interface_index);
-      device->EnableIPv6Privacy();
+      device->network()->EnableIPv6Privacy();
       break;
     case Technology::kWiFi:
 #if defined(DISABLE_WIFI)
@@ -1614,7 +1614,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
 #endif  // DISABLE_WAKE_ON_WIFI
   DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
                                  std::move(wake_on_wifi));
-  device->EnableIPv6Privacy();
+  device->network()->EnableIPv6Privacy();
   RegisterDevice(device);
 }
 

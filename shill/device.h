@@ -129,10 +129,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
                          const ResultCallback& callback);
   virtual void Reset(Error* error, const ResultCallback& callback);
 
-  void StopIPv6();
-  void StartIPv6();
-  mockable void EnableIPv6Privacy();
-
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
   // is not connected.
@@ -573,9 +569,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   friend class VirtualDeviceTest;
   friend class WiFiObjectTest;
 
-  static const char kIPFlagDisableIPv6[];
-  static const char kIPFlagAcceptRouterAdvertisements[];
-  static const char kIPFlagAcceptDuplicateAddressDetection[];
   static const char kStoragePowered[];
 
   // Brings the associated network interface down unless

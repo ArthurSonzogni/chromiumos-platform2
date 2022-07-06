@@ -66,10 +66,6 @@ static std::string ObjectID(const Device* d) {
 
 namespace {
 
-constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
-constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
-constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
-constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
 constexpr char kIPFlagArpAnnounce[] = "arp_announce";
 constexpr char kIPFlagArpAnnounceDefault[] = "0";
 constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
@@ -80,9 +76,6 @@ constexpr size_t kHardwareAddressLength = 6;
 
 }  // namespace
 
-const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
-const char Device::kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
-const char Device::kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
 const char Device::kStoragePowered[] = "Powered";
 
 Device::Device(Manager* manager,
@@ -231,31 +224,6 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
       GetTechnologyName() + " device doesn't implement Reset");
 }
 
-void Device::StopIPv6() {
-  SLOG(this, 2) << __func__;
-  network()->SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
-}
-
-void Device::StartIPv6() {
-  SLOG(this, 2) << __func__;
-  network()->SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
-
-  network()->SetIPFlag(IPAddress::kFamilyIPv6,
-                       kIPFlagAcceptDuplicateAddressDetection,
-                       kIPFlagAcceptDuplicateAddressDetectionEnabled);
-
-  // Force the kernel to accept RAs even when global IPv6 forwarding is
-  // enabled.  Unfortunately this needs to be set on a per-interface basis.
-  network()->SetIPFlag(IPAddress::kFamilyIPv6,
-                       kIPFlagAcceptRouterAdvertisements,
-                       kIPFlagAcceptRouterAdvertisementsAlways);
-}
-
-void Device::EnableIPv6Privacy() {
-  network()->SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagUseTempAddr,
-                       kIPFlagUseTempAddrUsedAndDefault);
-}
-
 void Device::SetIsMultiHomed(bool is_multi_homed) {
   if (is_multi_homed == is_multi_homed_) {
     return;
@@ -379,7 +347,7 @@ void Device::ResetConnection() {
 }
 
 void Device::DestroyIPConfig() {
-  StopIPv6();
+  network_->StopIPv6();
   bool ipconfig_changed = false;
   if (dhcp_controller()) {
     dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
@@ -579,7 +547,7 @@ bool Device::AcquireIPConfig() {
 
 bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   DestroyIPConfig();
-  StartIPv6();
+  network_->StartIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
   network_->set_dhcp_controller(
       dhcp_provider_->CreateController(link_name_, lease_name, arp_gateway,
@@ -635,7 +603,7 @@ void Device::OnNeighborReachabilityEvent(
 
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();
-  StartIPv6();
+  network()->StartIPv6();
   set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_));
   ipconfig()->set_properties(properties);
   dispatcher()->PostTask(
@@ -644,7 +612,7 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
 }
 
 void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
-  StartIPv6();
+  network()->StartIPv6();
 
   // Only apply static config if the address is link local. This is a workaround
   // for b/230336493.
