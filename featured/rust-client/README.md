@@ -24,9 +24,9 @@ environment first.
 
 ## Generated bindings
 
-The build script, `build.rs`, generates bindings to `../c_feature_library.h` at build-time.
-Those bindings are then inlined into `src/platform.rs`.
-Any changes to `../c_feature_library.h` will automatically be propagated when this library is built.
+The build script, `build_buildings.sh`, generates bindings to `../c_feature_library.h`.
+Whenever breaking changes are made to `../c_featured_library.h`, this build script must be
+rerun to generate new bindings to the C library.
 
 ## Running the examples on DUT
 
