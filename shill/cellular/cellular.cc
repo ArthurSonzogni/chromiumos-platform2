@@ -1583,7 +1583,7 @@ bool Cellular::DisconnectCleanup() {
     return false;
   SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
-  DestroyIPConfig();
+  network()->Stop();
   return true;
 }
 

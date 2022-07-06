@@ -201,7 +201,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   void TearDown() override {
     metrics_.DeregisterDevice(device_->interface_index());
-    device_->DestroyIPConfig();
+    device_->network()->Stop();
     device_->set_state_for_testing(Cellular::State::kDisabled);
     GetCapability3gpp()->ReleaseProxies();
     device_->set_dhcp_provider(nullptr);

@@ -292,21 +292,21 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
-TEST_F(DeviceTest, DestroyIPConfig) {
+TEST_F(DeviceTest, StopNetwork) {
   ASSERT_EQ(nullptr, device_->ipconfig());
   device_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
   device_->set_ip6config(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
-  device_->DestroyIPConfig();
+  device_->network()->Stop();
   ASSERT_EQ(nullptr, device_->ipconfig());
   ASSERT_EQ(nullptr, device_->ip6config());
 }
 
-TEST_F(DeviceTest, DestroyIPConfigNULL) {
+TEST_F(DeviceTest, StopNetworkNULL) {
   ASSERT_EQ(nullptr, device_->ipconfig());
   ASSERT_EQ(nullptr, device_->ip6config());
-  device_->DestroyIPConfig();
+  device_->network()->Stop();
   ASSERT_EQ(nullptr, device_->ipconfig());
   ASSERT_EQ(nullptr, device_->ip6config());
 }
@@ -1226,7 +1226,7 @@ class DevicePortalDetectionTest : public DeviceTest {
     EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
         .WillRepeatedly(Return(true));
   }
-  void DestroyIPConfig() { device_->DestroyIPConfig(); }
+  void StopNetwork() { device_->network()->Stop(); }
 
   MockConnection* connection_;  // owned by device_
   scoped_refptr<MockService> service_;
@@ -1861,7 +1861,7 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
 
   // Ensure that the DestroyConnection method removes all connection references
   // except the one left in this scope.
-  DestroyIPConfig();
+  StopNetwork();
 }
 
 }  // namespace shill

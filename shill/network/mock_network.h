@@ -59,6 +59,7 @@ class MockNetwork : public Network {
 class MockNetworkEventHandler : public Network::EventHandler {
  public:
   MOCK_METHOD(void, OnConnectionUpdated, (IPConfig*), (override));
+  MOCK_METHOD(void, OnNetworkStopped, (), (override));
   MOCK_METHOD(void, OnIPConfigsPropertyUpdated, (), (override));
   MOCK_METHOD(std::vector<uint32_t>, GetBlackholedUids, (), (override));
 };

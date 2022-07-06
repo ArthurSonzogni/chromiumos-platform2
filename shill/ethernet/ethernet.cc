@@ -266,7 +266,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
   } else {
     LOG(ERROR) << "Unable to acquire DHCP config.";
     SetServiceState(Service::kStateFailure);
-    DestroyIPConfig();
+    network()->Stop();
   }
 }
 

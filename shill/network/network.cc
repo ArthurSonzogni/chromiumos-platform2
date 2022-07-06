@@ -68,8 +68,30 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   }
 }
 
-void Network::DestroyConnection() {
+void Network::Stop() {
+  StopIPv6();
+  bool ipconfig_changed = false;
+  if (dhcp_controller()) {
+    dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
+    set_dhcp_controller(nullptr);
+  }
+  if (ipconfig()) {
+    set_ipconfig(nullptr);
+    ipconfig_changed = true;
+  }
+  // Make sure the timer is stopped regardless of the ip6config state. Just in
+  // case that they are not synced.
+  StopIPv6DNSServerTimer();
+  if (ip6config()) {
+    set_ip6config(nullptr);
+    ipconfig_changed = true;
+  }
+  // Emit updated IP configs if there are any changes.
+  if (ipconfig_changed) {
+    event_handler_->OnIPConfigsPropertyUpdated();
+  }
   connection_ = nullptr;
+  event_handler_->OnNetworkStopped();
 }
 
 bool Network::HasConnectionObject() const {

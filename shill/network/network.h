@@ -45,6 +45,11 @@ class Network {
     // state to a connected state.
     virtual void OnConnectionUpdated(IPConfig* ipconfig) = 0;
 
+    // Called when the Network becomes idle from a non-idle state (configuring
+    // or connected), no matter if this state change is caused by a failure
+    // (e.g., DHCP failure) or a user-initiate disconnect.
+    virtual void OnNetworkStopped() = 0;
+
     // The IPConfig object lists held by this Network has changed.
     virtual void OnIPConfigsPropertyUpdated() = 0;
 
@@ -71,8 +76,9 @@ class Network {
   // Configures (or reconfigures) the associated Connection object with the
   // given IPConfig.
   void SetupConnection(IPConfig* ipconfig);
-  // Destroys the associated Connection object if exists.
-  void DestroyConnection();
+  // Stops the network connection. OnNetworkStopped() will be called when
+  // cleaning up the network state is finished.
+  void Stop();
   // Returns if the associated Connection object exist. Note that the return
   // value does not indicate any real state of the network. This function will
   // finally be removed.

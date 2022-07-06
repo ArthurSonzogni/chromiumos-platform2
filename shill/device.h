@@ -324,6 +324,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
   void OnConnectionUpdated(IPConfig* ipconfig) override;
+  void OnNetworkStopped() override;
   // Emit a property change signal for the "IPConfigs" property of this device.
   void OnIPConfigsPropertyUpdated() override;
   std::vector<uint32_t> GetBlackholedUids() override;
@@ -436,10 +437,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Drops the currently selected service along with its IP configuration and
   // connection, if any.
   virtual void DropConnection();
-
-  // If there's an IP configuration in |ipconfig_|, releases the IP address and
-  // destroys the configuration instance.
-  void DestroyIPConfig();
 
   // Creates a new DHCP IP configuration instance, stores it in |ipconfig_| and
   // requests a new IP configuration.  Saves the DHCP lease to the generic

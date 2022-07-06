@@ -336,41 +336,14 @@ void Device::OnDarkResume(const ResultCallback& callback) {
 
 void Device::DropConnection() {
   SLOG(this, 2) << __func__;
-  DestroyIPConfig();
+  network_->Stop();
   SelectService(nullptr);
 }
 
 void Device::ResetConnection() {
   SLOG(this, 2) << __func__;
-  DestroyIPConfig();
+  network_->Stop();
   SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
-}
-
-void Device::DestroyIPConfig() {
-  network_->StopIPv6();
-  bool ipconfig_changed = false;
-  if (dhcp_controller()) {
-    dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
-    network_->set_dhcp_controller(nullptr);
-  }
-  if (ipconfig()) {
-    set_ipconfig(nullptr);
-    ipconfig_changed = true;
-  }
-  // Make sure the timer is stopped regardless of the ip6config state. Just in
-  // case that they are not synced.
-  network_->StopIPv6DNSServerTimer();
-  if (ip6config()) {
-    set_ip6config(nullptr);
-    ipconfig_changed = true;
-  }
-  // Emit updated IP configs if there are any changes.
-  if (ipconfig_changed) {
-    OnIPConfigsPropertyUpdated();
-  }
-
-  network_->DestroyConnection();
-  StopAllActivities();
 }
 
 void Device::OnIPv6AddressChanged(const IPAddress* address) {
@@ -530,7 +503,7 @@ bool Device::AcquireIPConfig() {
 }
 
 bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
-  DestroyIPConfig();
+  network_->Stop();
   network_->StartIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
   network_->set_dhcp_controller(
@@ -586,7 +559,7 @@ void Device::OnNeighborReachabilityEvent(
 }
 
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
-  DestroyIPConfig();
+  network_->Stop();
   network()->StartIPv6();
   set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_));
   ipconfig()->set_properties(properties);
@@ -728,6 +701,10 @@ void Device::OnConnectionUpdated(IPConfig* ipconfig) {
   }
 }
 
+void Device::OnNetworkStopped() {
+  StopAllActivities();
+}
+
 std::vector<uint32_t> Device::GetBlackholedUids() {
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
     return manager_->GetUserTrafficUids();
@@ -806,7 +783,7 @@ void Device::OnDHCPFailure() {
   }
 
   OnIPConfigFailure();
-  DestroyIPConfig();
+  network_->Stop();
 }
 
 void Device::OnIPConfigFailure() {
@@ -1259,7 +1236,7 @@ void Device::SetEnabledUnchecked(bool enable,
   if (enable) {
     Start(error, chained_callback);
   } else {
-    DestroyIPConfig();       // breaks a reference cycle
+    network_->Stop();        // breaks a reference cycle
     SelectService(nullptr);  // breaks a reference cycle
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
       BringNetworkInterfaceDown();
