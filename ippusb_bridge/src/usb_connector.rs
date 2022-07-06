@@ -434,6 +434,7 @@ pub struct UnplugDetector {
     // These are always Some until the destructor runs.
     registration: Option<Registration<GlobalContext>>,
     event_thread: Option<std::thread::JoinHandle<()>>,
+    join_event_thread: bool,
 }
 
 impl UnplugDetector {
@@ -470,6 +471,7 @@ impl UnplugDetector {
             event_thread_run: run,
             registration: Some(registration),
             event_thread: Some(event_thread),
+            join_event_thread: !delay_shutdown, // Only wait if we're not managed by upstart.
         })
     }
 }
@@ -484,7 +486,11 @@ impl Drop for UnplugDetector {
 
         // Dropping the callback above wakes the event thread, so this should complete quickly.
         // Unwrap is safe because event_thread only becomes None at drop.
-        let _ = self.event_thread.take().unwrap().join();
+        let t = self.event_thread.take().unwrap();
+        if self.join_event_thread {
+            t.join()
+                .unwrap_or_else(|e| error!("Failed to join event thread: {:?}", e));
+        }
     }
 }
 
