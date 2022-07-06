@@ -98,11 +98,11 @@ DebugdDBusAdaptor::~DebugdDBusAdaptor() {
 }
 
 void DebugdDBusAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   auto* my_interface = dbus_object_.AddOrGetInterface(kDebugdInterface);
   DCHECK(my_interface);
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 std::string DebugdDBusAdaptor::SetOomScoreAdj(

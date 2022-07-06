@@ -72,7 +72,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // org::chromium::debugdInterface overrides; D-Bus methods.
   std::string BatteryFirmware(const std::string& option) override;
