@@ -69,10 +69,10 @@ SystemProxyAdaptor::SystemProxyAdaptor(
 SystemProxyAdaptor::~SystemProxyAdaptor() = default;
 
 void SystemProxyAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction
         completion_callback) {
   RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(completion_callback);
+  dbus_object_->RegisterAsync(std::move(completion_callback));
 }
 
 std::vector<uint8_t> SystemProxyAdaptor::SetAuthenticationDetails(

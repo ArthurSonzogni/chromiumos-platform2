@@ -41,9 +41,8 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   virtual ~SystemProxyAdaptor();
 
   // Registers the D-Bus object and interfaces.
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
+                         completion_callback);
 
   // org::chromium::SystemProxyInterface: (see org.chromium.SystemProxy.xml).
   std::vector<uint8_t> SetAuthenticationDetails(
