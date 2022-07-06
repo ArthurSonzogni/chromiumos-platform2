@@ -28,7 +28,7 @@ class ImageBurnService : public org::chromium::ImageBurnerInterfaceInterface,
   virtual ~ImageBurnService();
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // org::chromium::ImageBurnerInterfaceInterface overrides.
   bool BurnImage(brillo::ErrorPtr* error,

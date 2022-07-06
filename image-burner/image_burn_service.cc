@@ -5,6 +5,7 @@
 #include "image-burner/image_burn_service.h"
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -33,9 +34,9 @@ ImageBurnService::ImageBurnService(scoped_refptr<dbus::Bus> bus,
 ImageBurnService::~ImageBurnService() = default;
 
 void ImageBurnService::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 bool ImageBurnService::BurnImage(brillo::ErrorPtr* error,
