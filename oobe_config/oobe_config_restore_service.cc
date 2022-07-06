@@ -5,6 +5,7 @@
 #include "oobe_config/oobe_config_restore_service.h"
 
 #include <string>
+#include <utility>
 
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/oobe_config.h"
@@ -25,9 +26,9 @@ OobeConfigRestoreService::OobeConfigRestoreService(
 OobeConfigRestoreService::~OobeConfigRestoreService() = default;
 
 void OobeConfigRestoreService::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(completion_callback);
+  dbus_object_->RegisterAsync(std::move(completion_callback));
 }
 
 void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(

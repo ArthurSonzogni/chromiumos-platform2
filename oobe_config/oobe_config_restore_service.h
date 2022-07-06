@@ -29,9 +29,8 @@ class OobeConfigRestoreService
   ~OobeConfigRestoreService() override;
 
   // Registers the D-Bus object and interfaces.
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
+                         completion_callback);
 
   // org::chromium::OobeConfigRestoreInterface
   //   - See org.chromium.OobeConfigRestoreInterface.xml
