@@ -2259,7 +2259,8 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 }
 
-// Test that GetVaultKeysetLabelsAndData() ignores keysets without KeyData.
+// Test that GetVaultKeysetLabelsAndData() backfills a missing KeyData in
+// keysets, but doesn't populate any fields in it.
 TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataNoKeyData) {
   constexpr char kFakeLabel[] = "legacy-123";
   constexpr int kVaultFilePermissions = 0600;
@@ -2279,10 +2280,10 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataNoKeyData) {
   EXPECT_TRUE(keyset_management_->GetVaultKeysetLabelsAndData(
       users_[0].obfuscated, &labels_and_data_map));
   ASSERT_EQ(labels_and_data_map.size(), 1);
-  EXPECT_EQ(kFakeLabel, labels_and_data_map.begin()->first);
-  EXPECT_TRUE(labels_and_data_map.begin()->second.has_type());
-  EXPECT_EQ(KeyData::KEY_TYPE_PASSWORD,
-            labels_and_data_map.begin()->second.type());
+  const auto& [label, key_data] = *labels_and_data_map.begin();
+  EXPECT_EQ(label, kFakeLabel);
+  EXPECT_FALSE(key_data.has_type());
+  EXPECT_FALSE(key_data.has_label());
 }
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.

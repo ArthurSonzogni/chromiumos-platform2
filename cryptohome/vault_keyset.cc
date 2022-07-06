@@ -1296,18 +1296,11 @@ KeyData VaultKeyset::GetKeyDataOrDefault() const {
   }
 
   // The VK created before M91 may contain empty key data.
-  // We should use default value for that case.
-  KeyData key_data;
-
-  // Explicitly set the key label and key type to password as some callers
-  // might not expect a key with the |label| or |type| field unset.
-  key_data.set_label(GetLabel());
-
-  // KeyData is only expected to be empty on the old VK which has Password Type,
-  // and for other types we don't expect key data to be empty.
-  key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
-
-  return key_data;
+  // We should use default value for that case. Note that we don't populate any
+  // fields, like |type| or |label|, because we can't determine the type
+  // reliably and the "legacy-N" label has never been stored in the key data
+  // explicitly.
+  return KeyData();
 }
 
 void VaultKeyset::SetResetIV(const brillo::SecureBlob& iv) {

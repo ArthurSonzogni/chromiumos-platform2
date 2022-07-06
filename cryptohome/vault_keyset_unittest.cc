@@ -821,11 +821,11 @@ TEST_F(VaultKeysetTest, KeyData) {
   vk.SetLegacyIndex(0);
   EXPECT_FALSE(vk.HasKeyData());
 
+  // When there's no key data stored, |GetKeyDataOrDefault()| should return an
+  // empty protobuf.
   KeyData key_data = vk.GetKeyDataOrDefault();
-  EXPECT_TRUE(key_data.has_type());
-  EXPECT_TRUE(key_data.has_label());
-  EXPECT_EQ(key_data.type(), KeyData::KEY_TYPE_PASSWORD);
-  EXPECT_EQ(key_data.label(), "legacy-0");
+  EXPECT_FALSE(key_data.has_type());
+  EXPECT_FALSE(key_data.has_label());
 
   KeyData key_data2;
   key_data2.set_type(KeyData::KEY_TYPE_PASSWORD);
