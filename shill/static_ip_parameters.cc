@@ -4,11 +4,10 @@
 
 #include "shill/static_ip_parameters.h"
 
-#include <string.h>
-
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -209,14 +208,6 @@ void StaticIPParameters::Save(StoreInterface* storage,
       storage->DeleteKey(storage_id, name);
     }
   }
-}
-
-bool StaticIPParameters::ContainsAddress() const {
-  return config_.ipv4_address_cidr.has_value();
-}
-
-bool StaticIPParameters::ContainsNameServers() const {
-  return config_.dns_servers.has_value();
 }
 
 KeyValueStore StaticIPParameters::GetStaticIPConfig(Error* /*error*/) {

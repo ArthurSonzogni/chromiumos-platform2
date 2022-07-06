@@ -68,7 +68,6 @@ class MockService : public Service {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  MOCK_METHOD(bool, HasStaticNameServers, (), (const, override));
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(bool, IsPortalDetectionAuto, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));

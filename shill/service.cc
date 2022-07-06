@@ -1163,11 +1163,7 @@ std::string Service::GetEapPassphrase(Error* error) {
 }
 
 bool Service::HasStaticIPAddress() const {
-  return static_ip_parameters().ContainsAddress();
-}
-
-bool Service::HasStaticNameServers() const {
-  return static_ip_parameters().ContainsNameServers();
+  return static_ip_parameters_.config().ipv4_address_cidr.has_value();
 }
 
 void Service::SetAutoConnect(bool connect) {

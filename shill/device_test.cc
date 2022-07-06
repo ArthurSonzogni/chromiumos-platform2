@@ -44,7 +44,6 @@
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/routing_table.h"
-#include "shill/static_ip_parameters.h"
 #include "shill/store/fake_store.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
@@ -543,7 +542,9 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   KeyValueStore kvs;
   kvs.Set<std::string>(kAddressProperty, "1.1.1.1");
   kvs.Set<int32_t>(kPrefixlenProperty, 16);
-  ASSERT_TRUE(service->static_ip_parameters_.SetStaticIP(kvs, nullptr));
+  EXPECT_CALL(*service, OnPropertyChanged(_));
+  service->mutable_store()->SetKeyValueStoreProperty(kStaticIPConfigProperty,
+                                                     kvs, nullptr);
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
@@ -568,7 +569,6 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
                                         Metrics::kIPv6ConnectivityStatusNo));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service, HasStaticNameServers()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
@@ -599,7 +599,6 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service, HasStaticNameServers()).WillRepeatedly(Return(false));
 
   // Successful portal (non-)detection forces the service Online.
   EXPECT_CALL(*service, SetState(Service::kStateOnline));

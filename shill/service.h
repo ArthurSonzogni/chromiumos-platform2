@@ -430,10 +430,6 @@ class Service : public base::RefCounted<Service> {
   // parameters, false otherwise.
   mockable bool HasStaticIPAddress() const;
 
-  // Returns true if this service contains nameservers in its static IP
-  // parameters, false otherwise.
-  mockable bool HasStaticNameServers() const;
-
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
   // |time_resume_to_ready_milliseconds| holds the elapsed time from when
@@ -591,12 +587,6 @@ class Service : public base::RefCounted<Service> {
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
-  StaticIPParameters* mutable_static_ip_parameters() {
-    return &static_ip_parameters_;
-  }
-  const StaticIPParameters& static_ip_parameters() const {
-    return static_ip_parameters_;
-  }
 
   // Retrieves |key| from |id| in |storage| to |value|.  If this key does
   // not exist, assign |default_value| to |value|.

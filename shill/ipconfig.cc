@@ -19,7 +19,6 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/network/network_config.h"
-#include "shill/static_ip_parameters.h"
 
 namespace shill {
 
