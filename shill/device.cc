@@ -366,7 +366,9 @@ void Device::DestroyIPConfig() {
   if (ipconfig_changed) {
     OnIPConfigsPropertyUpdated();
   }
-  DestroyConnection();
+
+  StopAllActivities();
+  network_->DestroyConnection();
 }
 
 void Device::OnIPv6AddressChanged(const IPAddress* address) {
@@ -803,7 +805,7 @@ void Device::OnDHCPFailure() {
   }
 
   OnIPConfigFailure();
-  DestroyConnection();
+  DestroyIPConfig();
 }
 
 void Device::OnIPConfigFailure() {
@@ -815,12 +817,6 @@ void Device::OnIPConfigFailure() {
 }
 
 void Device::OnConnected() {}
-
-void Device::DestroyConnection() {
-  SLOG(this, 2) << __func__ << " on " << link_name_;
-  StopAllActivities();
-  network_->DestroyConnection();
-}
 
 void Device::GetTrafficCountersCallback(
     const ServiceRefPtr& old_service,

@@ -1226,7 +1226,7 @@ class DevicePortalDetectionTest : public DeviceTest {
     EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
         .WillRepeatedly(Return(true));
   }
-  void DestroyConnection() { device_->DestroyConnection(); }
+  void DestroyIPConfig() { device_->DestroyIPConfig(); }
 
   MockConnection* connection_;  // owned by device_
   scoped_refptr<MockService> service_;
@@ -1861,7 +1861,7 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
 
   // Ensure that the DestroyConnection method removes all connection references
   // except the one left in this scope.
-  DestroyConnection();
+  DestroyIPConfig();
 }
 
 }  // namespace shill

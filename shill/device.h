@@ -595,9 +595,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Callback invoked on DHCP failures.
   void OnDHCPFailure();
 
-  // Remove connection state
-  void DestroyConnection();
-
   // Initiate portal detection if all the following conditions are met:
   //   - There is currently a |selected_service_| for this Device.
   //   - Portal detection is enabled for this Device type and for the current
