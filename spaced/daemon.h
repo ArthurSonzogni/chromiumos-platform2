@@ -26,7 +26,7 @@ class DBusAdaptor : public org::chromium::SpacedInterface,
   ~DBusAdaptor() override = default;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   int64_t GetFreeDiskSpace(const std::string& path) override;
   int64_t GetTotalDiskSpace(const std::string& path) override;

@@ -26,9 +26,9 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       disk_usage_util_(std::make_unique<DiskUsageUtilImpl>()) {}
 
 void DBusAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 int64_t DBusAdaptor::GetFreeDiskSpace(const std::string& path) {
