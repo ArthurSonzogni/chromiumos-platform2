@@ -37,7 +37,7 @@ class DBusAdaptor : public org::chromium::ModemfwdInterface,
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // org::chromium::ModemfwdInterface overrides.
   void SetDebugMode(bool debug_mode) override;
