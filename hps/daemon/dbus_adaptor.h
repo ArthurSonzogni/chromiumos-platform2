@@ -33,7 +33,7 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Timer Callback used to poll hps hardware and debounce results.
   void PollTask();

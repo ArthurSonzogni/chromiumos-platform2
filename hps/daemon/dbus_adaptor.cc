@@ -114,10 +114,10 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
 }
 
 void DBusAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 void DBusAdaptor::PollTask() {
