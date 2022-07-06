@@ -105,11 +105,6 @@ class DHCPController {
   // lease has already expired or no current DHCP lease), true otherwise.
   std::optional<base::TimeDelta> TimeToLeaseExpiry();
 
-  // Set the minimum MTU that this configuration will respect.
-  mockable void set_minimum_mtu(const int minimum_mtu) {
-    minimum_mtu_ = minimum_mtu;
-  }
-
   std::string device_name() const { return device_name_; }
 
   void set_root_for_testing(base::FilePath path) { root_ = path; }
@@ -272,9 +267,6 @@ class DHCPController {
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
   FailureCallback failure_callback_;
-
-  // The minimum MTU value this configuration will respect.
-  int minimum_mtu_;
 
   // Root file path, used for testing.
   base::FilePath root_;

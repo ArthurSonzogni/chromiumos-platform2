@@ -29,7 +29,6 @@ class MockDHCPController : public DHCPController {
   MOCK_METHOD(bool, RequestIP, (), (override));
   MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
   MOCK_METHOD(bool, RenewIP, (), (override));
-  MOCK_METHOD(void, set_minimum_mtu, (int), (override));
 };
 
 }  // namespace shill

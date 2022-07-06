@@ -595,11 +595,6 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   network_->set_dhcp_controller(
       dhcp_provider_->CreateController(link_name_, lease_name, arp_gateway,
                                        manager_->dhcp_hostname(), technology_));
-  const int minimum_mtu = manager()->GetMinimumMTU();
-  if (minimum_mtu != IPConfig::kUndefinedMTU) {
-    dhcp_controller()->set_minimum_mtu(minimum_mtu);
-  }
-
   dhcp_controller()->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));

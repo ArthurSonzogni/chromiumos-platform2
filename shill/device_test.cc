@@ -357,26 +357,6 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   device_->dhcp_provider_ = nullptr;
 }
 
-TEST_F(DeviceTest, ConfigWithMinimumMTU) {
-  const int minimum_mtu = 1500;
-  const std::string dhcp_hostname = "chromeos";
-  EXPECT_CALL(*manager(), GetMinimumMTU()).WillOnce(Return(minimum_mtu));
-  EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
-
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), "anothername"));
-  auto dhcp_provider = std::make_unique<MockDHCPProvider>();
-  device_->dhcp_provider_ = dhcp_provider.get();
-
-  EXPECT_CALL(*dhcp_provider, CreateController(_, _, _, _, _))
-      .WillOnce(InvokeWithoutArgs([this]() {
-        auto controller = CreateDHCPController();
-        EXPECT_CALL(*controller, set_minimum_mtu(minimum_mtu));
-        return controller;
-      }));
-  device_->AcquireIPConfig();
-}
-
 TEST_F(DeviceTest, StartIPv6) {
   EXPECT_CALL(*device_,
               SetIPFlag(IPAddress::kFamilyIPv6,

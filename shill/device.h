@@ -358,7 +358,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
-  FRIEND_TEST(DeviceTest, ConfigWithMinimumMTU);
   FRIEND_TEST(DeviceTest, FetchTrafficCounters);
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Config);

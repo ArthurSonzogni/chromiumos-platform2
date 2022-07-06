@@ -41,10 +41,6 @@ if [ -n "${SHILL_PASSIVE_MODE}" ]; then
   set -- "$@" --passive-mode
 fi
 
-if [ -n "${SHILL_MINIMUM_MTU}" ]; then
-  set -- "$@" --minimum-mtu="${SHILL_MINIMUM_MTU}"
-fi
-
 # If OOBE has not completed (i.e. EULA not agreed to), do not run
 # portal checks
 if [ ! -f /home/chronos/.oobe_completed ]; then

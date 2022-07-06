@@ -73,7 +73,6 @@ DHCPController::DHCPController(ControlInterface* control_interface,
       is_gateway_arp_active_(false),
       hostname_(hostname),
       lease_acquisition_timeout_(kAcquisitionTimeout),
-      minimum_mtu_(IPConfig::kMinIPv4MTU),
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
@@ -178,8 +177,7 @@ void DHCPController::ProcessEventSignal(const std::string& reason,
     return;
   }
   IPConfig::Properties properties;
-  CHECK(DHCPv4Config::ParseConfiguration(configuration, minimum_mtu_,
-                                         &properties));
+  CHECK(DHCPv4Config::ParseConfiguration(configuration, &properties));
 
   // This needs to be set before calling OnIPConfigUpdated() below since
   // those functions may indirectly call other methods like ReleaseIP that

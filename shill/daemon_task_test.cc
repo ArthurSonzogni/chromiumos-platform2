@@ -192,7 +192,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   EXPECT_CALL(*manager_, SetStartupPortalList(_)).Times(0);
   EXPECT_CALL(*manager_, SetPassiveMode()).Times(0);
-  EXPECT_CALL(*manager_, SetMinimumMTU(_)).Times(0);
   ApplySettings(settings);
   Mock::VerifyAndClearExpectations(manager_);
 
@@ -203,13 +202,11 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   settings.portal_list = "cellular";
   settings.use_portal_list = true;
   settings.passive_mode = true;
-  settings.minimum_mtu = 256;
   EXPECT_CALL(*manager_, SetBlockedDevices(kBlockedDevices));
   EXPECT_CALL(*manager_, SetTechnologyOrder("wifi,ethernet", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   EXPECT_CALL(*manager_, SetStartupPortalList("cellular"));
   EXPECT_CALL(*manager_, SetPassiveMode());
-  EXPECT_CALL(*manager_, SetMinimumMTU(256));
   ApplySettings(settings);
   Mock::VerifyAndClearExpectations(manager_);
 }

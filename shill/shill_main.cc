@@ -45,8 +45,6 @@ const char kPortalList[] = "portal-list";
 const char kPassiveMode[] = "passive-mode";
 // Default priority order of the technologies.
 const char kTechnologyOrder[] = "default-technology-order";
-// The minimum MTU value that will be respected in DHCP responses.
-const char kMinimumMTU[] = "minimum-mtu";
 // Flag that causes shill to show the help message and exit.
 const char kHelp[] = "help";
 
@@ -73,9 +71,7 @@ const char kHelpMessage[] =
     "  --passive-mode\n"
     "    Do not manage any devices by default\n"
     "  --default-technology-order=technology1,technology2\n"
-    "    Specify the default priority order of the technologies.\n"
-    "  --minimum-mtu=mtu\n"
-    "    Set the minimum value to respect as the MTU from DHCP responses.\n";
+    "    Specify the default priority order of the technologies.\n";
 }  // namespace switches
 
 const char kLoggerCommand[] = "/usr/bin/logger";
@@ -173,15 +169,6 @@ int main(int argc, char** argv) {
   }
 
   settings.passive_mode = cl->HasSwitch(switches::kPassiveMode);
-
-  if (cl->HasSwitch(switches::kMinimumMTU)) {
-    int mtu;
-    std::string value = cl->GetSwitchValueASCII(switches::kMinimumMTU);
-    if (!base::StringToInt(value, &mtu)) {
-      LOG(FATAL) << "Could not convert '" << value << "' to integer.";
-    }
-    settings.minimum_mtu = mtu;
-  }
 
   shill::Config config;
   // Construct the daemon first, so we get our AtExitManager.

@@ -38,7 +38,6 @@ class DHCPv4Config {
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
   static bool ParseConfiguration(const KeyValueStore& configuration,
-                                 int minimum_mtu,
                                  IPConfig::Properties* properties);
 
   // Parses |classless_routes| into |properties|.  Sets the default gateway

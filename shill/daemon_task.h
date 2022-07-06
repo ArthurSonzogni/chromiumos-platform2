@@ -41,14 +41,12 @@ class DaemonTask {
   struct Settings {
     Settings()
         : ignore_unknown_ethernet(false),
-          minimum_mtu(0),
           passive_mode(false),
           use_portal_list(false) {}
     std::string default_technology_order;
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;
     bool ignore_unknown_ethernet;
-    int minimum_mtu;
     bool passive_mode;
     std::string portal_list;
     bool use_portal_list;

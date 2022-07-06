@@ -64,9 +64,6 @@ void DaemonTask::ApplySettings() {
   if (settings_.passive_mode) {
     manager_->SetPassiveMode();
   }
-  if (settings_.minimum_mtu) {
-    manager_->SetMinimumMTU(settings_.minimum_mtu);
-  }
 }
 
 bool DaemonTask::Quit(const base::Closure& completion_callback) {

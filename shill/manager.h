@@ -100,8 +100,6 @@ struct ManagerProperties {
   std::string prohibited_technologies;
   // Comma-separated list of DNS search paths to be ignored.
   std::string ignored_dns_search_paths;
-  // The minimum MTU value that will be respected in DHCP responses.
-  int minimum_mtu = IPConfig::kUndefinedMTU;
   // Name of Android VPN package that should be enforced for user traffic.
   // Empty string if the lockdown feature is not enabled.
   std::string always_on_vpn_package;
@@ -430,10 +428,6 @@ class Manager {
   virtual const ManagerProperties& GetProperties() const { return props_; }
 
   bool GetArpGateway() const { return props_.arp_gateway; }
-
-  virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
-
-  virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();

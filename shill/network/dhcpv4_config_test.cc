@@ -95,8 +95,7 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
                                  isns_data);
 
   IPConfig::Properties properties;
-  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, IPConfig::kMinIPv4MTU,
-                                               &properties));
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, &properties));
   EXPECT_EQ("4.3.2.1", properties.address);
   EXPECT_EQ(16, properties.subnet_prefix);
   EXPECT_EQ("64.48.32.16", properties.broadcast_address);
@@ -114,27 +113,20 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
       memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));
 }
 
-TEST(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
-  // Even without a minimum MTU set, we should ignore a 576 value.
-  KeyValueStore conf;
-  conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 576);
-
-  IPConfig::Properties properties;
-  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, IPConfig::kMinIPv4MTU,
-                                               &properties));
-  EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
-
-  // With a minimum MTU set, values below the minimum should be ignored.
-  conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
-  conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 1499);
-  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, 1500, &properties));
-  EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
-
-  // A value (other than 576) should be accepted if it is >= mimimum_mtu.
-  conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
-  conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 577);
-  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, 577, &properties));
-  EXPECT_EQ(577, properties.mtu);
+TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
+  // Values smaller than or equal to 576 should be ignored.
+  for (int mtu = IPConfig::kMinIPv4MTU - 3; mtu < IPConfig::kMinIPv4MTU + 3;
+       mtu++) {
+    KeyValueStore conf;
+    IPConfig::Properties properties;
+    conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, mtu);
+    ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, &properties));
+    if (mtu <= IPConfig::kMinIPv4MTU) {
+      EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
+    } else {
+      EXPECT_EQ(mtu, properties.mtu);
+    }
+  }
 }
 
 }  // namespace shill
