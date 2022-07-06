@@ -34,7 +34,7 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
     ExportedObjectManager* object_manager,
     SessionStateManagerInterface* session_state_manager,
     ObjectPath object_path,
-    const AsyncEventSequencer::CompletionAction& completion_callback)
+    AsyncEventSequencer::CompletionAction completion_callback)
     : biometrics_manager_(std::move(biometrics_manager)),
       session_state_manager_(session_state_manager),
       dbus_object_(object_manager, object_manager->GetBus(), object_path),
@@ -80,7 +80,7 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
       kBiometricsManagerStartAuthSessionMethod,
       base::BindRepeating(&BiometricsManagerWrapper::StartAuthSession,
                           base::Unretained(this)));
-  dbus_object_.RegisterAsync(completion_callback);
+  dbus_object_.RegisterAsync(std::move(completion_callback));
 
   // Add this BiometricsManagerWrapper instance to observe session state
   // changes.

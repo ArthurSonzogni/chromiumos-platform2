@@ -25,7 +25,7 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
       brillo::dbus_utils::ExportedObjectManager* object_manager,
       SessionStateManagerInterface* session_state_manager,
       dbus::ObjectPath object_path,
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction
           completion_callback);
   BiometricsManagerWrapper(const BiometricsManagerWrapper&) = delete;
   BiometricsManagerWrapper& operator=(const BiometricsManagerWrapper&) = delete;
