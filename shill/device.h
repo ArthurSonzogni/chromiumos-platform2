@@ -592,13 +592,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Timer function for monitoring IPv6 DNS server's lifetime.
-  void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
-  void StopIPv6DNSServerTimer();
-
-  // Called when the lifetime for IPv6 DNS server expires.
-  void IPv6DNSServerExpired();
-
   // Callback invoked on DHCP failures.
   void OnDHCPFailure();
 
@@ -705,8 +698,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   std::unique_ptr<Network> network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
-  // Callback to invoke when IPv6 DNS servers lifetime expired.
-  base::CancelableOnceClosure ipv6_dns_server_expired_callback_;
   // DNS servers obtained from ipconfig (either from DHCP or static config)
   // that are not working.
   std::vector<std::string> config_dns_servers_;

@@ -358,7 +358,7 @@ void Device::DestroyIPConfig() {
     ipconfig_changed = true;
   }
   if (ip6config()) {
-    StopIPv6DNSServerTimer();
+    network_->StopIPv6DNSServerTimer();
     set_ip6config(nullptr);
     ipconfig_changed = true;
   }
@@ -435,12 +435,12 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   uint32_t lifetime = 0;
 
   // Stop any existing timer.
-  StopIPv6DNSServerTimer();
+  network_->StopIPv6DNSServerTimer();
 
   if (!manager_->device_info()->GetIPv6DnsServerAddresses(
           interface_index_, &server_addresses, &lifetime) ||
       lifetime == 0) {
-    IPv6DNSServerExpired();
+    network_->IPv6DNSServerExpired();
     return;
   }
 
@@ -450,7 +450,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
     if (!ip.IntoString(&address_str)) {
       LOG(ERROR) << LoggingTag()
                  << ": Unable to convert IPv6 address into a string!";
-      IPv6DNSServerExpired();
+      network_->IPv6DNSServerExpired();
       return;
     }
     addresses_str.push_back(address_str);
@@ -463,7 +463,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   if (lifetime != ND_OPT_LIFETIME_INFINITY) {
     // Setup timer to monitor DNS server lifetime if not infinite lifetime.
     base::TimeDelta delay = base::Seconds(lifetime);
-    StartIPv6DNSServerTimer(delay);
+    network_->StartIPv6DNSServerTimer(delay);
   }
 
   // Done if no change in server addresses.
@@ -478,29 +478,10 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   OnIPv6ConfigUpdated();
 }
 
-void Device::StartIPv6DNSServerTimer(base::TimeDelta delay) {
-  ipv6_dns_server_expired_callback_.Reset(base::BindOnce(
-      &Device::IPv6DNSServerExpired, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(
-      FROM_HERE, ipv6_dns_server_expired_callback_.callback(), delay);
-}
-
-void Device::StopIPv6DNSServerTimer() {
-  ipv6_dns_server_expired_callback_.Cancel();
-}
-
-void Device::IPv6DNSServerExpired() {
-  if (!ip6config()) {
-    return;
-  }
-  ip6config()->UpdateDNSServers(std::vector<std::string>());
-  OnIPConfigsPropertyUpdated();
-}
-
 void Device::StopAllActivities() {
   StopPortalDetection();
   StopConnectionDiagnostics();
-  StopIPv6DNSServerTimer();
+  network_->StopIPv6DNSServerTimer();
 }
 
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
@@ -524,7 +505,7 @@ void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
     SLOG(this, 3) << "Waiting for new IPv6 configuration";
     // Invalidate the old IPv6 configuration, will receive notifications
     // from kernel for new IPv6 configuration if there is one.
-    StopIPv6DNSServerTimer();
+    network_->StopIPv6DNSServerTimer();
     set_ip6config(nullptr);
     OnIPConfigsPropertyUpdated();
   }

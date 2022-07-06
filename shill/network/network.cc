@@ -165,6 +165,25 @@ void Network::EnableIPv6Privacy() {
             kIPFlagUseTempAddrUsedAndDefault);
 }
 
+void Network::StartIPv6DNSServerTimer(base::TimeDelta delay) {
+  ipv6_dns_server_expired_callback_.Reset(base::BindOnce(
+      &Network::IPv6DNSServerExpired, weak_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(
+      FROM_HERE, ipv6_dns_server_expired_callback_.callback(), delay);
+}
+
+void Network::StopIPv6DNSServerTimer() {
+  ipv6_dns_server_expired_callback_.Cancel();
+}
+
+void Network::IPv6DNSServerExpired() {
+  if (!ip6config()) {
+    return;
+  }
+  ip6config()->UpdateDNSServers(std::vector<std::string>());
+  event_handler_->OnIPConfigsPropertyUpdated();
+}
+
 bool Network::SetIPFlag(IPAddress::Family family,
                         const std::string& flag,
                         const std::string& value) {

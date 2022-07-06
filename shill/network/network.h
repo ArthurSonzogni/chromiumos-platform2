@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/time/time.h>
 
 #include "shill/connection.h"
 #include "shill/ipconfig.h"
@@ -106,6 +107,11 @@ class Network {
   void StopIPv6();
   void StartIPv6();
   void EnableIPv6Privacy();
+  // Timer function for monitoring IPv6 DNS server's lifetime.
+  void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
+  void StopIPv6DNSServerTimer();
+  // Called when the lifetime for IPv6 DNS server expires.
+  void IPv6DNSServerExpired();
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
@@ -189,6 +195,9 @@ class Network {
   // able to restore the config to the previous state and 2) being exposed as a
   // Service property via D-Bus.
   NetworkConfig saved_network_config_;
+
+  // Callback to invoke when IPv6 DNS servers lifetime expired.
+  base::CancelableOnceClosure ipv6_dns_server_expired_callback_;
 
   // Remember which flag files were previously successfully written. Only used
   // in SetIPFlag().
