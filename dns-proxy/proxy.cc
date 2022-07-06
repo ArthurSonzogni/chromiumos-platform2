@@ -370,8 +370,8 @@ void Proxy::OnShillReset(bool reset) {
   LOG(WARNING) << "Shill has been shutdown";
   shill_ready_ = false;
   shill_props_.reset();
-  shill_->RegisterOnAvailableCallback(
-      base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
+  shill_.reset();
+  InitShill();
 }
 
 void Proxy::OnSessionStateChanged(bool login) {
