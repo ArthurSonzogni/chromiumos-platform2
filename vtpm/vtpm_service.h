@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -81,9 +82,9 @@ class VtpmServiceAdaptor : public org::chromium::VtpmAdaptor {
   VtpmServiceAdaptor& operator=(const VtpmServiceAdaptor&) = delete;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
     RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(cb);
+    dbus_object_.RegisterAsync(std::move(cb));
   }
 
  private:
