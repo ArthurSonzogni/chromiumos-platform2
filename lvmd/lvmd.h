@@ -59,6 +59,13 @@ class Lvmd : public brillo::DBusServiceDaemon,
                         const std::string& in_logical_volume_name,
                         lvmd::LogicalVolume* out_logical_volume) override;
 
+  // Returns the logical volume created.
+  bool CreateLogicalVolume(
+      brillo::ErrorPtr* error,
+      const lvmd::Thinpool& in_thinpool,
+      const lvmd::LogicalVolumeConfiguration& in_logical_volume_configuration,
+      lvmd::LogicalVolume* out_logical_volume) override;
+
  protected:
   int OnInit() override;
   void RegisterDBusObjectsAsync(

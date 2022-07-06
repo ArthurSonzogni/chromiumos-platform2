@@ -119,5 +119,34 @@
                   value="lvmd::LogicalVolume"/>
     </arg>
   </method>
+  <method name="CreateLogicalVolume">
+    <tp:docstring>
+      Returns the logical volume created.
+    </tp:docstring>
+    <arg name="thinpool" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (Thinpool,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::Thinpool"/>
+    </arg>
+    <arg name="logical_volume_configuration" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (LogicalVolumeConfiguration,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::LogicalVolumeConfiguration"/>
+    </arg>
+    <arg name="logical_volume" type="ay" direction="out">
+      <tp:docstring>
+        A serialized protobuf (LogicalVolume,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::LogicalVolume"/>
+    </arg>
+  </method>
 </interface>
 </node>

@@ -11,6 +11,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
+#include <brillo/strings/string_utils.h>
 #include <chromeos/dbus/lvmd/dbus-constants.h>
 
 namespace lvmd {
@@ -144,6 +145,41 @@ bool Lvmd::GetLogicalVolume(brillo::ErrorPtr* error,
   }
 
   *out_logical_volume->mutable_volume_group() = in_volume_group;
+  out_logical_volume->set_name(opt_lv->GetName());
+  out_logical_volume->set_path(opt_lv->GetPath().value());
+  return true;
+}
+
+bool Lvmd::CreateLogicalVolume(
+    brillo::ErrorPtr* error,
+    const lvmd::Thinpool& in_thinpool,
+    const lvmd::LogicalVolumeConfiguration& in_logical_volume_configuration,
+    lvmd::LogicalVolume* out_logical_volume) {
+  auto vg_name = in_thinpool.volume_group().name();
+  auto vg = brillo::VolumeGroup(vg_name, {});
+
+  auto thinpool_name = in_thinpool.name();
+  auto thinpool = brillo::Thinpool(thinpool_name, vg_name, {});
+
+  base::Value config(base::Value::Type::DICTIONARY);
+  auto lv_name = in_logical_volume_configuration.name();
+  config.SetStringKey("name", lv_name);
+  config.SetStringKey("size", brillo::string_utils::ToString(
+                                  in_logical_volume_configuration.size()));
+
+  auto opt_lv = lvm_->CreateLogicalVolume(vg, thinpool, config);
+
+  if (!opt_lv) {
+    *error =
+        CreateError(FROM_HERE, kErrorInternal,
+                    base::StringPrintf("Failed to CreateLogicalVolume for lv "
+                                       "name (%s) in thinpool (%s) in vg (%s)",
+                                       lv_name.c_str(), thinpool_name.c_str(),
+                                       vg_name.c_str()));
+    return false;
+  }
+
+  *out_logical_volume->mutable_volume_group() = in_thinpool.volume_group();
   out_logical_volume->set_name(opt_lv->GetName());
   out_logical_volume->set_path(opt_lv->GetPath().value());
   return true;

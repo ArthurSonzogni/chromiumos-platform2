@@ -27,6 +27,14 @@ message Thinpool {
   int64 free_bytes = 4;
 }
 
+// Encapsulates logical volume configuration information.
+message LogicalVolumeConfiguration {
+  string name = 1;
+
+  // Size is in MiB.
+  int64 size = 2;
+}
+
 // Encapsulates information about an LVM logical volume.
 message LogicalVolume {
   VolumeGroup volume_group = 1;
