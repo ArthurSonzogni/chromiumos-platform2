@@ -69,8 +69,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                                uint16_t transaction_id) override;
 
   // Register DBus object and interfaces.
-  void RegisterAsync(
-      const AsyncEventSequencer::CompletionAction& completion_callback);
+  void RegisterAsync(AsyncEventSequencer::CompletionAction completion_callback);
 
  private:
   // Returns a pointer to the SambaInterface corresponding to |mount_id|.

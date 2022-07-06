@@ -76,9 +76,9 @@ SmbProvider::SmbProvider(
           std::move(kerberos_artifact_synchronizer)) {}
 
 void SmbProvider::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(completion_callback);
+  dbus_object_->RegisterAsync(std::move(completion_callback));
 }
 
 void SmbProvider::ReadShareEntries(const ProtoBlob& options_blob,
