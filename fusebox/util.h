@@ -10,7 +10,9 @@
 #include <dbus/message.h>
 
 // Returns errno from |reader| containing the |response| message.
-int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response);
+int GetResponseErrno(dbus::MessageReader* reader,
+                     dbus::Response* response,
+                     const char* operation = nullptr);
 
 // Returns errno for POSIX or base::File::Error |error| code.
 int ResponseErrorToErrno(int error);

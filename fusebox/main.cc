@@ -160,7 +160,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "getattr")) {
       request->ReplyError(error);
       return;
     }
@@ -244,7 +244,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "lookup")) {
       request->ReplyError(error);
       return;
     }
@@ -324,7 +324,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "truncate")) {
       request->ReplyError(error);
       return;
     }
@@ -431,7 +431,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     VLOG(1) << "readdir-resp fh " << handle;
 
     dbus::MessageReader reader(response);
-    int error = GetResponseErrno(&reader, response);
+    int error = GetResponseErrno(&reader, response, "readdir");
     if (!error)
       return;
 
@@ -566,7 +566,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "mkdir")) {
       GetInodeTable().Forget(ino);
       request->ReplyError(error);
       return;
@@ -654,7 +654,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     CHECK(request->flags() & O_ACCMODE);  // open for write
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "open")) {
       request->ReplyError(error);
       return;
     }
@@ -722,7 +722,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "read")) {
       request->ReplyError(error);
       return;
     }
@@ -816,7 +816,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "write")) {
       request->ReplyError(error);
       return;
     }
@@ -895,7 +895,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "release")) {
       request->ReplyError(error);
       return;
     }
@@ -967,7 +967,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
+    if (int error = GetResponseErrno(&reader, response, "create")) {
       GetInodeTable().Forget(ino);
       request->ReplyError(error);
       return;

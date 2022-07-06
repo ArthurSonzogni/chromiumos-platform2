@@ -14,7 +14,9 @@
 #include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
 
-int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
+int GetResponseErrno(dbus::MessageReader* reader,
+                     dbus::Response* response,
+                     const char* operation) {
   DCHECK(reader);
 
   if (!response) {
@@ -26,7 +28,10 @@ int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
   CHECK(reader->PopInt32(&response_error));
 
   if (int error = ResponseErrorToErrno(response_error)) {
-    LOG(ERROR) << base::safe_strerror(error);
+    std::string cause;
+    if (operation)
+      cause.append("server ").append(operation).append(": ");
+    LOG(ERROR) << cause << base::safe_strerror(error);
     return error;
   }
 
