@@ -16,48 +16,195 @@
 
 namespace rmad {
 
-bool MetricsUtils::SetStateSetupTimestamp(scoped_refptr<JsonStore> json_store,
-                                          RmadState::StateCase state_case,
-                                          double setup_timestamp) {
-  std::string key = base::NumberToString(static_cast<int>(state_case));
-  std::map<std::string, std::map<std::string, double>> state_metrics;
-  // At the beginning, we may have no data, so ignore the return value.
-  GetMetricsValue(json_store, kStateMetrics, &state_metrics);
+bool StateMetricsData::operator==(const StateMetricsData& other) const {
+  return state_case == other.state_case && is_aborted == other.is_aborted &&
+         setup_timestamp == other.setup_timestamp &&
+         overall_time == other.overall_time &&
+         transition_count == other.transition_count &&
+         get_log_count == other.get_log_count &&
+         save_log_count == other.save_log_count;
+}
 
-  state_metrics[key][kStateSetupTimestamp] = setup_timestamp;
+base::Value StateMetricsData::ToValue() const {
+  base::Value dict(base::Value::Type::DICTIONARY);
+  dict.SetKey(kStateCase, ConvertToValue(static_cast<int>(state_case)));
+  dict.SetKey(kStateIsAborted, ConvertToValue(is_aborted));
+  dict.SetKey(kStateSetupTimestamp, ConvertToValue(setup_timestamp));
+  dict.SetKey(kStateOverallTime, ConvertToValue(overall_time));
+  dict.SetKey(kStateTransitionsCount, ConvertToValue(transition_count));
+  dict.SetKey(kStateGetLogCount, ConvertToValue(get_log_count));
+  dict.SetKey(kStateSaveLogCount, ConvertToValue(save_log_count));
+  return dict;
+}
+
+bool StateMetricsData::FromValue(const base::Value* data) {
+  if (!data || !data->is_dict()) {
+    return false;
+  }
+
+  if (auto state_case_it = data->FindKey(kStateCase);
+      state_case_it && state_case_it->GetIfInt().has_value()) {
+    state_case = static_cast<RmadState::StateCase>(state_case_it->GetInt());
+  } else {
+    return false;
+  }
+  if (auto is_aborted_it = data->FindKey(kStateIsAborted);
+      is_aborted_it && is_aborted_it->GetIfBool().has_value()) {
+    is_aborted = is_aborted_it->GetBool();
+  } else {
+    return false;
+  }
+  if (auto setup_timestamp_it = data->FindKey(kStateSetupTimestamp);
+      setup_timestamp_it && setup_timestamp_it->GetIfDouble().has_value()) {
+    setup_timestamp = setup_timestamp_it->GetDouble();
+  } else {
+    return false;
+  }
+  if (auto overall_time_it = data->FindKey(kStateOverallTime);
+      overall_time_it && overall_time_it->GetIfDouble().has_value()) {
+    overall_time = overall_time_it->GetDouble();
+  } else {
+    return false;
+  }
+  if (auto transition_count_it = data->FindKey(kStateTransitionsCount);
+      transition_count_it && transition_count_it->GetIfInt().has_value()) {
+    transition_count = transition_count_it->GetInt();
+  } else {
+    return false;
+  }
+  if (auto get_log_count_it = data->FindKey(kStateGetLogCount);
+      get_log_count_it && get_log_count_it->GetIfInt().has_value()) {
+    get_log_count = get_log_count_it->GetInt();
+  } else {
+    return false;
+  }
+  if (auto save_log_count_it = data->FindKey(kStateSaveLogCount);
+      save_log_count_it && save_log_count_it->GetIfInt().has_value()) {
+    save_log_count = save_log_count_it->GetInt();
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
+base::Value ConvertToValue(const StateMetricsData& value) {
+  return value.ToValue();
+}
+
+bool ConvertFromValue(const base::Value* data, StateMetricsData* result) {
+  if (!data || !result) {
+    return false;
+  }
+
+  return result->FromValue(data);
+}
+
+bool MetricsUtils::UpdateStateMetricsOnAbort(
+    scoped_refptr<JsonStore> json_store,
+    RmadState::StateCase state_case,
+    double timestamp) {
+  std::string key = base::NumberToString(static_cast<int>(state_case));
+  if (!UpdateStateMetricsOnStateTransition(
+          json_store, state_case, RmadState::STATE_NOT_SET, timestamp)) {
+    LOG(ERROR) << "Failed to calculate metrics for state " << key;
+    return false;
+  }
+
+  std::map<std::string, StateMetricsData> state_metrics;
+  GetMetricsValue(json_store, kStateMetrics, &state_metrics);
+  state_metrics[key].is_aborted = true;
   return SetMetricsValue(json_store, kStateMetrics, state_metrics);
 }
 
-bool MetricsUtils::CalculateStateOverallTime(
+bool MetricsUtils::UpdateStateMetricsOnStateTransition(
     scoped_refptr<JsonStore> json_store,
+    RmadState::StateCase from,
+    RmadState::StateCase to,
+    double timestamp) {
+  std::map<std::string, StateMetricsData> state_metrics;
+  // At the beginning, we may have no data, so ignore the return value.
+  GetMetricsValue(json_store, kStateMetrics, &state_metrics);
+
+  if (from != RmadState::STATE_NOT_SET) {
+    std::string key = base::NumberToString(static_cast<int>(from));
+    state_metrics[key].transition_count++;
+  }
+
+  if (!CalculateStateOverallTime(&state_metrics, from, timestamp) ||
+      !SetStateSetupTimestamp(&state_metrics, to, timestamp)) {
+    return false;
+  }
+
+  return SetMetricsValue(json_store, kStateMetrics, state_metrics);
+}
+
+bool MetricsUtils::UpdateStateMetricsOnGetLog(
+    scoped_refptr<JsonStore> json_store, RmadState::StateCase state_case) {
+  std::string key = base::NumberToString(static_cast<int>(state_case));
+  std::map<std::string, StateMetricsData> state_metrics;
+  // At the beginning, we may have no data, so ignore the return value.
+  GetMetricsValue(json_store, kStateMetrics, &state_metrics);
+
+  state_metrics[key].get_log_count++;
+  return SetMetricsValue(json_store, kStateMetrics, state_metrics);
+}
+
+bool MetricsUtils::UpdateStateMetricsOnSaveLog(
+    scoped_refptr<JsonStore> json_store, RmadState::StateCase state_case) {
+  std::string key = base::NumberToString(static_cast<int>(state_case));
+  std::map<std::string, StateMetricsData> state_metrics;
+  // At the beginning, we may have no data, so ignore the return value.
+  GetMetricsValue(json_store, kStateMetrics, &state_metrics);
+
+  state_metrics[key].save_log_count++;
+  return SetMetricsValue(json_store, kStateMetrics, state_metrics);
+}
+
+bool MetricsUtils::SetStateSetupTimestamp(
+    std::map<std::string, StateMetricsData>* state_metrics,
+    RmadState::StateCase state_case,
+    double setup_timestamp) {
+  if (state_case == RmadState::STATE_NOT_SET) {
+    return true;
+  }
+
+  std::string key = base::NumberToString(static_cast<int>(state_case));
+  (*state_metrics)[key].setup_timestamp = setup_timestamp;
+  (*state_metrics)[key].state_case = state_case;
+  return true;
+}
+
+bool MetricsUtils::CalculateStateOverallTime(
+    std::map<std::string, StateMetricsData>* state_metrics,
     RmadState::StateCase state_case,
     double leave_timestamp) {
-  std::string key = base::NumberToString(static_cast<int>(state_case));
-  std::map<std::string, std::map<std::string, double>> state_metrics;
+  if (state_case == RmadState::STATE_NOT_SET) {
+    return true;
+  }
 
-  if (!GetMetricsValue(json_store, kStateMetrics, &state_metrics) ||
-      state_metrics.find(key) == state_metrics.end()) {
+  std::string key = base::NumberToString(static_cast<int>(state_case));
+  if (state_metrics->find(key) == state_metrics->end()) {
     LOG(ERROR) << "Failed to get state metrics to calculate.";
     return false;
   }
 
-  if (state_metrics[key].find(kStateSetupTimestamp) ==
-      state_metrics[key].end()) {
+  if ((*state_metrics)[key].setup_timestamp == 0.0) {
     LOG(ERROR) << "Failed to get timestamp when state is setup.";
     return false;
   }
 
-  double setup_timestamp = state_metrics[key][kStateSetupTimestamp];
-  double time_spent_sec = leave_timestamp - setup_timestamp;
+  double time_spent_sec =
+      leave_timestamp - (*state_metrics)[key].setup_timestamp;
   if (time_spent_sec < 0) {
     LOG(ERROR) << "Failed to calculate time spent.";
     return false;
   }
 
-  state_metrics[key][kStateOverallTime] += time_spent_sec;
-  state_metrics[key][kStateSetupTimestamp] = leave_timestamp;
+  (*state_metrics)[key].overall_time += time_spent_sec;
+  (*state_metrics)[key].setup_timestamp = leave_timestamp;
 
-  return SetMetricsValue(json_store, kStateMetrics, state_metrics);
+  return true;
 }
 
 }  // namespace rmad

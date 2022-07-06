@@ -90,8 +90,8 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
                              Return(record_metrics_success)));
 
     if (state_metrics_recorded) {
-      EXPECT_TRUE(MetricsUtils::SetStateSetupTimestamp(
-          json_store_, RmadState::kRepairComplete,
+      EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+          json_store_, RmadState::STATE_NOT_SET, RmadState::kRepairComplete,
           base::Time::Now().ToDoubleT()));
     }
 

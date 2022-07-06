@@ -139,8 +139,9 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   } else {
     // Clear the state file and shutdown/reboot/cutoff if the device doesn't
     // need to do a powerwash, or a powerwash is already done.
-    if (!MetricsUtils::CalculateStateOverallTime(
-            json_store_, GetStateCase(), base::Time::Now().ToDoubleT()) ||
+    if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
+            json_store_, GetStateCase(), RmadState::STATE_NOT_SET,
+            base::Time::Now().ToDoubleT()) ||
         !metrics_utils_->Record(json_store_, true)) {
       LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
       // TODO(genechang): We should block here if the metrics library is ready.

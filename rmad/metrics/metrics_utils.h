@@ -5,6 +5,7 @@
 #ifndef RMAD_METRICS_METRICS_UTILS_H_
 #define RMAD_METRICS_METRICS_UTILS_H_
 
+#include <map>
 #include <string>
 #include <utility>
 
@@ -12,8 +13,31 @@
 
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/type_conversions.h"
 
 namespace rmad {
+
+struct StateMetricsData {
+ public:
+  StateMetricsData() = default;
+  ~StateMetricsData() = default;
+
+  bool operator==(const StateMetricsData& other) const;
+  base::Value ToValue() const;
+  bool FromValue(const base::Value* data);
+
+  RmadState::StateCase state_case;
+  bool is_aborted;
+  double setup_timestamp;
+  double overall_time;
+  int transition_count;
+  int get_log_count;
+  int save_log_count;
+};
+
+base::Value ConvertToValue(const StateMetricsData& value);
+
+bool ConvertFromValue(const base::Value* data, StateMetricsData* result);
 
 class MetricsUtils {
  public:
@@ -56,13 +80,32 @@ class MetricsUtils {
     return true;
   }
 
-  static bool SetStateSetupTimestamp(scoped_refptr<JsonStore> json_store,
-                                     RmadState::StateCase state_case,
-                                     double setup_timestamp);
-
-  static bool CalculateStateOverallTime(scoped_refptr<JsonStore> json_store,
+  static bool UpdateStateMetricsOnAbort(scoped_refptr<JsonStore> json_store,
                                         RmadState::StateCase state_case,
-                                        double leave_timestamp);
+                                        double timestamp);
+
+  static bool UpdateStateMetricsOnStateTransition(
+      scoped_refptr<JsonStore> json_store,
+      RmadState::StateCase from,
+      RmadState::StateCase to,
+      double timestamp);
+
+  static bool UpdateStateMetricsOnGetLog(scoped_refptr<JsonStore> json_store,
+                                         RmadState::StateCase state_case);
+
+  static bool UpdateStateMetricsOnSaveLog(scoped_refptr<JsonStore> json_store,
+                                          RmadState::StateCase state_case);
+
+ private:
+  static bool SetStateSetupTimestamp(
+      std::map<std::string, StateMetricsData>* state_metrics,
+      RmadState::StateCase state_case,
+      double setup_timestamp);
+
+  static bool CalculateStateOverallTime(
+      std::map<std::string, StateMetricsData>* state_metrics,
+      RmadState::StateCase state_case,
+      double leave_timestamp);
 };
 
 }  // namespace rmad

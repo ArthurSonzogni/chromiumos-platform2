@@ -687,17 +687,33 @@
       </summary>
     </metric>
   </event>
-  <event name="StateOverallTime">
+  <event name="ShimlessRmaStateReport">
     <summary>
-      The overall time Shimless RMA spent on the state.
+      For each state. record a shimless rma state report once whole
+      process is completed or aborted.
     </summary>
     <metric name="StateCase" type="int">
       <summary>
         Please refer to the RmadState of rmad.proto for more info.
       </summary>
     </metric>
+    <metric name="IsAborted" type="int">
+      <summary>
+        0: Abort is not called in the state.
+        1: Abort is called in the state.
+      </summary>
+    </metric>
     <metric name="OverallTime" type="int">
       <summary>Overall time spent to complete the state in seconds.</summary>
+    </metric>
+    <metric name="TransitionCount" type="int">
+      <summary>How many transitions were taken in the state.</summary>
+    </metric>
+    <metric name="GetLogCount" type="int">
+      <summary>How many get log were taken in the state.</summary>
+    </metric>
+    <metric name="SaveLogCount" type="int">
+      <summary>How many save log were taken in the state.</summary>
     </metric>
   </event>
 </project>

@@ -36,12 +36,22 @@ constexpr char kDefaultMetricsJson[] =
         "additional_activities": [2],
         "state_metrics": {
           "1": {
+            "state_case": 1,
+            "state_is_aborted": false,
             "state_setup_timestamp": 0.0,
-            "state_overall_time": 123.456
+            "state_overall_time": 123.456,
+            "state_transition_count": 2,
+            "state_get_log_count": 3,
+            "state_save_log_count": 4
           },
           "2": {
+            "state_case": 2,
+            "state_is_aborted": true,
             "state_setup_timestamp": 123.456,
-            "state_overall_time": 332.544
+            "state_overall_time": 332.544,
+            "state_transition_count": 1,
+            "state_get_log_count": 0,
+            "state_save_log_count": 0
           }
         }
       }
@@ -54,13 +64,23 @@ constexpr double kDefaultRunningTime = 333.333;
 constexpr bool kDefaultRoFirmwareVerified = true;
 const std::vector<int> kDefaultOccurredErrors = {1};
 const std::vector<int> kDefaultAdditionalActivities = {2};
-const std::map<std::string, std::map<std::string, double>>
-    kDefaultStateMetrics = {
-        {"1",
-         {{"state_setup_timestamp", 0.0}, {"state_overall_time", 123.456}}},
-        {"2",
-         {{"state_setup_timestamp", 123.456},
-          {"state_overall_time", 332.544}}}};
+const std::map<std::string, rmad::StateMetricsData> kDefaultStateMetrics = {
+    {"1",
+     {.state_case = rmad::RmadState::StateCase::kWelcome,
+      .is_aborted = false,
+      .setup_timestamp = 0.0,
+      .overall_time = 123.456,
+      .transition_count = 2,
+      .get_log_count = 3,
+      .save_log_count = 4}},
+    {"2",
+     {.state_case = rmad::RmadState::StateCase::kComponentsRepair,
+      .is_aborted = true,
+      .setup_timestamp = 123.456,
+      .overall_time = 332.544,
+      .transition_count = 1,
+      .get_log_count = 0,
+      .save_log_count = 0}}};
 
 constexpr double kTestFirstSetupTimestamp = 111.111;
 constexpr double kTestSetupTimestamp = 666.666;
@@ -68,11 +88,6 @@ constexpr double kTestRunningTime = 555.555;
 constexpr bool kTestRoFirmwareVerified = false;
 const std::vector<int> kTestOccurredErrors = {1, 2, 3};
 const std::vector<int> kTestAdditionalActivities = {4, 5, 6};
-const std::map<std::string, std::map<std::string, double>> kTestStateMetrics = {
-    {"3",
-     {{"state_setup_timestamp", 111.111}, {"state_overall_time", 555.555}}},
-    {"4",
-     {{"state_setup_timestamp", 666.666}, {"state_overall_time", 123.456}}}};
 
 constexpr double kTestStateSetupTimestamp = 111.111;
 constexpr double kTestStateLeaveTimestamp = 666.666;
@@ -139,7 +154,7 @@ TEST_F(MetricsUtilsTest, GetValue) {
                                             &additional_activities));
   EXPECT_EQ(additional_activities, kDefaultAdditionalActivities);
 
-  std::map<std::string, std::map<std::string, double>> state_metrics;
+  std::map<std::string, StateMetricsData> state_metrics;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
                                             &state_metrics));
   EXPECT_EQ(state_metrics, kDefaultStateMetrics);
@@ -147,7 +162,7 @@ TEST_F(MetricsUtilsTest, GetValue) {
 
 TEST_F(MetricsUtilsTest, SetValue_FirstSetupTimestamp) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kFirstSetupTimestamp,
                                             kTestFirstSetupTimestamp));
@@ -160,7 +175,7 @@ TEST_F(MetricsUtilsTest, SetValue_FirstSetupTimestamp) {
 
 TEST_F(MetricsUtilsTest, SetValue_SetupTimestamp) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
                                             kTestSetupTimestamp));
@@ -173,7 +188,7 @@ TEST_F(MetricsUtilsTest, SetValue_SetupTimestamp) {
 
 TEST_F(MetricsUtilsTest, SetValue_RunningTime) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kRunningTime,
                                             kTestRunningTime));
@@ -186,7 +201,7 @@ TEST_F(MetricsUtilsTest, SetValue_RunningTime) {
 
 TEST_F(MetricsUtilsTest, SetValue_RoFirmwareVerified) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified,
                                             kTestRoFirmwareVerified));
@@ -199,7 +214,7 @@ TEST_F(MetricsUtilsTest, SetValue_RoFirmwareVerified) {
 
 TEST_F(MetricsUtilsTest, SetValue_OccurredErrors) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kOccurredErrors,
                                             kTestOccurredErrors));
@@ -212,7 +227,7 @@ TEST_F(MetricsUtilsTest, SetValue_OccurredErrors) {
 
 TEST_F(MetricsUtilsTest, SetValue_AddtionalActivities) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
                                             kTestAdditionalActivities));
@@ -225,67 +240,131 @@ TEST_F(MetricsUtilsTest, SetValue_AddtionalActivities) {
 
 TEST_F(MetricsUtilsTest, SetValue_StateMetrics) {
   EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kStateMetrics,
-                                            kTestStateMetrics));
+                                            kDefaultStateMetrics));
 
-  std::map<std::string, std::map<std::string, double>> state_metrics;
+  std::map<std::string, StateMetricsData> state_metrics;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
                                             &state_metrics));
-  EXPECT_EQ(state_metrics, kTestStateMetrics);
+  EXPECT_EQ(state_metrics, kDefaultStateMetrics);
 }
 
-TEST_F(MetricsUtilsTest, SetStateSetupTimestamp) {
+TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition) {
   EXPECT_TRUE(
       CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
-  std::map<std::string, std::map<std::string, double>> state_metrics;
-  EXPECT_FALSE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
-                                             &state_metrics));
-
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
-  EXPECT_TRUE(MetricsUtils::SetStateSetupTimestamp(
-      json_store_, RmadState::StateCase::kRestock, kTestStateSetupTimestamp));
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, RmadState::StateCase::STATE_NOT_SET, state_case,
+      kTestStateSetupTimestamp));
 
+  std::map<std::string, StateMetricsData> state_metrics;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
                                             &state_metrics));
 
   auto state_it =
       state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
   EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateSetupTimestamp);
 
-  auto ts_it = state_it->second.find(kStateSetupTimestamp);
-  EXPECT_NE(ts_it, state_it->second.end());
-  EXPECT_EQ(ts_it->second, kTestStateSetupTimestamp);
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, state_case, RmadState::StateCase::STATE_NOT_SET,
+      kTestStateLeaveTimestamp));
+
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+  state_it =
+      state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateLeaveTimestamp);
+  EXPECT_DOUBLE_EQ(state_it->second.overall_time, kTestStateOverallTime);
 }
 
-TEST_F(MetricsUtilsTest, CalculateStateOverallTime) {
+TEST_F(MetricsUtilsTest, UpdateStateMetricsOnAbort) {
   EXPECT_TRUE(
       CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
-  EXPECT_TRUE(MetricsUtils::SetStateSetupTimestamp(
-      json_store_, RmadState::StateCase::kRestock, kTestStateSetupTimestamp));
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, RmadState::StateCase::STATE_NOT_SET, state_case,
+      kTestStateSetupTimestamp));
 
-  EXPECT_TRUE(MetricsUtils::CalculateStateOverallTime(
-      json_store_, RmadState::StateCase::kRestock, kTestStateLeaveTimestamp));
-
-  std::map<std::string, std::map<std::string, double>> state_metrics;
+  std::map<std::string, StateMetricsData> state_metrics;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
                                             &state_metrics));
 
   auto state_it =
       state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
   EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateSetupTimestamp);
 
-  auto ts_it = state_it->second.find(kStateSetupTimestamp);
-  EXPECT_NE(ts_it, state_it->second.end());
-  EXPECT_EQ(ts_it->second, kTestStateLeaveTimestamp);
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnAbort(
+      json_store_, state_case, kTestStateLeaveTimestamp));
 
-  auto time_it = state_it->second.find(kStateOverallTime);
-  EXPECT_NE(time_it, state_it->second.end());
-  EXPECT_DOUBLE_EQ(time_it->second, kTestStateOverallTime);
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+  state_it =
+      state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateLeaveTimestamp);
+  EXPECT_DOUBLE_EQ(state_it->second.overall_time, kTestStateOverallTime);
+  EXPECT_EQ(state_it->second.is_aborted, true);
+}
+
+TEST_F(MetricsUtilsTest, UpdateStateMetricsOnGetLog) {
+  EXPECT_TRUE(
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+
+  RmadState::StateCase state_case = RmadState::StateCase::kRestock;
+  EXPECT_TRUE(
+      MetricsUtils::UpdateStateMetricsOnGetLog(json_store_, state_case));
+
+  std::map<std::string, StateMetricsData> state_metrics;
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+  auto state_it =
+      state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.get_log_count, 1);
+
+  EXPECT_TRUE(
+      MetricsUtils::UpdateStateMetricsOnGetLog(json_store_, state_case));
+
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+  state_it =
+      state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.get_log_count, 2);
+}
+
+TEST_F(MetricsUtilsTest, UpdateStateMetricsOnSaveLog) {
+  EXPECT_TRUE(
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+
+  RmadState::StateCase state_case = RmadState::StateCase::kRestock;
+  EXPECT_TRUE(
+      MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_, state_case));
+
+  std::map<std::string, StateMetricsData> state_metrics;
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+  auto state_it =
+      state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.save_log_count, 1);
+
+  EXPECT_TRUE(
+      MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_, state_case));
+
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+  state_it =
+      state_metrics.find(base::NumberToString(static_cast<int>(state_case)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.save_log_count, 2);
 }
 
 class MetricsUtilsImplTest : public testing::Test {

@@ -139,8 +139,9 @@ bool RmadInterfaceImpl::WaitForServices() {
 bool RmadInterfaceImpl::StartFromInitialState() {
   current_state_case_ = kInitialStateCase;
   state_history_.push_back(current_state_case_);
-  if (!MetricsUtils::SetStateSetupTimestamp(json_store_, kInitialStateCase,
-                                            base::Time::Now().ToDoubleT())) {
+  if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
+          json_store_, RmadState::STATE_NOT_SET, kInitialStateCase,
+          base::Time::Now().ToDoubleT())) {
     LOG(ERROR) << "Failed to initialize timestamp for the initial state.";
     // TODO(genechang): Send a signal to Chrome that the json store failed
     //                  so a message can be displayed.
@@ -372,15 +373,13 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     LOG(ERROR) << "Could not store history";
   }
 
-  // Update state overall time for metrics.
-  double current_timestamp = base::Time::Now().ToDoubleT();
-  if (!MetricsUtils::SetStateSetupTimestamp(json_store_, next_state_case,
-                                            current_timestamp) ||
-      !MetricsUtils::CalculateStateOverallTime(json_store_, current_state_case_,
-                                               current_timestamp)) {
-    // TODO(genechang): Add error replies when failed to update state overall
-    // time in |json_store| -> |metrics| -> |state_metrics|.
-    LOG(ERROR) << "Could not update state overall time";
+  // Update state metrics.
+  if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
+          json_store_, current_state_case_, next_state_case,
+          base::Time::Now().ToDoubleT())) {
+    // TODO(genechang): Add error replies when failed to update state metrics
+    //                  in |json_store| -> |metrics| -> |state_metrics|.
+    LOG(ERROR) << "Could not update state metrics.";
   }
 
   // Update state and run it.
@@ -452,15 +451,13 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
     LOG(ERROR) << "Could not store history";
   }
 
-  // Update state overall time for metrics.
-  double current_timestamp = base::Time::Now().ToDoubleT();
-  if (!MetricsUtils::SetStateSetupTimestamp(json_store_, prev_state_case,
-                                            current_timestamp) ||
-      !MetricsUtils::CalculateStateOverallTime(json_store_, current_state_case_,
-                                               current_timestamp)) {
-    // TODO(genechang): Add error replies when failed to update state overall
-    // time in |json_store| -> |metrics| -> |state_metrics|.
-    LOG(ERROR) << "Could not update state overall time";
+  // Update state metrics.
+  if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
+          json_store_, current_state_case_, prev_state_case,
+          base::Time::Now().ToDoubleT())) {
+    // TODO(genechang): Add error replies when failed to update state metrics
+    //                  in |json_store| -> |metrics| -> |state_metrics|.
+    LOG(ERROR) << "Could not update state metrics.";
   }
 
   // Update state and run it.
@@ -480,11 +477,11 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else if (can_abort_) {
     VLOG(1) << "AbortRma: Abort allowed.";
-    if (!MetricsUtils::CalculateStateOverallTime(
+    if (!MetricsUtils::UpdateStateMetricsOnAbort(
             json_store_, current_state_case_, base::Time::Now().ToDoubleT())) {
-      // TODO(genechang): Add error replies when failed to update state overall
-      // time in |json_store| -> |metrics| -> |state_metrics|.
-      LOG(ERROR) << "Could not update state overall time";
+      // TODO(genechang): Add error replies when failed to update state metrics
+      //                  in |json_store| -> |metrics| -> |state_metrics|.
+      LOG(ERROR) << "AbortRma: Failed to update state metrics.";
     }
     if (!metrics_utils_->Record(json_store_, false)) {
       // TODO(genechang): Add error replies when failed to record metrics.
@@ -511,6 +508,12 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   if (cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
     reply.set_error(RMAD_ERROR_OK);
     reply.set_log(log_string);
+    if (!MetricsUtils::UpdateStateMetricsOnGetLog(json_store_,
+                                                  current_state_case_)) {
+      // TODO(genechang): Add error replies when failed to update state metrics
+      //                  in |json_store| -> |metrics| -> |state_metrics|.
+      LOG(ERROR) << "GetLog: Failed to update state metrics.";
+    }
   } else {
     LOG(ERROR) << "Failed to generate logs";
     reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
@@ -524,6 +527,13 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
   SaveLogReply reply;
   reply.set_error(RMAD_ERROR_OK);
   reply.set_save_path("fake_path");
+
+  if (!MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_,
+                                                 current_state_case_)) {
+    // TODO(genechang): Add error replies when failed to update state metrics
+    //                  in |json_store| -> |metrics| -> |state_metrics|.
+    LOG(ERROR) << "SaveLog: Failed to update state metrics.";
+  }
   ReplyCallback(std::move(callback), reply);
 }
 

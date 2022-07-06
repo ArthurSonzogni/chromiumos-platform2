@@ -512,8 +512,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  MetricsUtils::SetStateSetupTimestamp(json_store, RmadState::kWelcome,
-                                       base::Time::Now().ToDoubleT());
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
+      base::Time::Now().ToDoubleT()));
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -534,12 +535,12 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
   EXPECT_EQ(true, rmad_interface.CanAbort());
-  std::map<std::string, std::map<std::string, double>> state_metrics;
+  std::map<std::string, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_FLOAT_EQ(
+  EXPECT_DOUBLE_EQ(
       state_metrics[base::NumberToString(static_cast<int>(RmadState::kWelcome))]
-                   [kStateOverallTime],
+          .overall_time,
       kTestTransitionInterval.InSecondsF());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
@@ -555,9 +556,10 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   EXPECT_EQ(false, rmad_interface.CanAbort());
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_FLOAT_EQ(state_metrics[base::NumberToString(static_cast<int>(
-                      RmadState::kComponentsRepair))][kStateOverallTime],
-                  kTestTransitionInterval.InSecondsF());
+  EXPECT_DOUBLE_EQ(state_metrics[base::NumberToString(static_cast<int>(
+                                     RmadState::kComponentsRepair))]
+                       .overall_time,
+                   kTestTransitionInterval.InSecondsF());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
@@ -609,8 +611,23 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
       std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  MetricsUtils::SetStateSetupTimestamp(json_store, RmadState::kComponentsRepair,
-                                       base::Time::Now().ToDoubleT());
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
+      base::Time::Now().ToDoubleT()));
+
+  task_environment_.FastForwardBy(kTestTransitionInterval);
+
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store, RmadState::kWelcome, RmadState::kComponentsRepair,
+      base::Time::Now().ToDoubleT()));
+  std::map<std::string, StateMetricsData> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  EXPECT_DOUBLE_EQ(
+      state_metrics[base::NumberToString(static_cast<int>(RmadState::kWelcome))]
+          .overall_time,
+      kTestTransitionInterval.InSecondsF());
+
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -628,12 +645,12 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
-  std::map<std::string, std::map<std::string, double>> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_FLOAT_EQ(state_metrics[base::NumberToString(static_cast<int>(
-                      RmadState::kComponentsRepair))][kStateOverallTime],
-                  kTestTransitionInterval.InSecondsF());
+  EXPECT_DOUBLE_EQ(state_metrics[base::NumberToString(static_cast<int>(
+                                     RmadState::kComponentsRepair))]
+                       .overall_time,
+                   kTestTransitionInterval.InSecondsF());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
@@ -794,6 +811,14 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetLog(base::BindOnce(callback));
+
+  std::map<std::string, StateMetricsData> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  auto state_it = state_metrics.find(
+      base::NumberToString(static_cast<int>(RmadState::kWelcome)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.get_log_count, 1);
 }
 
 TEST_F(RmadInterfaceImplTest, SaveLog) {
@@ -813,6 +838,14 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.SaveLog("", base::BindOnce(callback));
+
+  std::map<std::string, StateMetricsData> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  auto state_it = state_metrics.find(
+      base::NumberToString(static_cast<int>(RmadState::kWelcome)));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.save_log_count, 1);
 }
 
 TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {

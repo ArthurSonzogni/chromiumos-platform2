@@ -27,8 +27,8 @@ using StructuredOccurredError =
     metrics::structured::events::rmad::OccurredError;
 using StructuredAdditionalActivity =
     metrics::structured::events::rmad::AdditionalActivity;
-using StructuredStateOverallTime =
-    metrics::structured::events::rmad::StateOverallTime;
+using StructuredShimlessRmaStateReport =
+    metrics::structured::events::rmad::ShimlessRmaStateReport;
 
 namespace rmad {
 
@@ -41,7 +41,7 @@ bool MetricsUtilsImpl::Record(scoped_refptr<JsonStore> json_store,
       !RecordOccurredErrors(json_store) ||
       !RecordReplacedComponents(json_store) ||
       !RecordAdditionalActivities(json_store) ||
-      !RecordStateOverallTime(json_store)) {
+      !RecordShimlessRmaStateReport(json_store)) {
     return false;
   }
   return true;
@@ -206,32 +206,54 @@ bool MetricsUtilsImpl::RecordAdditionalActivities(
   return true;
 }
 
-bool MetricsUtilsImpl::RecordStateOverallTime(
+bool MetricsUtilsImpl::RecordShimlessRmaStateReport(
     scoped_refptr<JsonStore> json_store) {
-  std::map<std::string, std::map<std::string, double>> state_metrics;
+  std::map<std::string, StateMetricsData> state_metrics;
 
   if (GetMetricsValue(json_store, kStateMetrics, &state_metrics)) {
     for (auto [key, data] : state_metrics) {
+      auto structured_state_report = StructuredShimlessRmaStateReport();
+
       int state_case;
       if (!base::StringToInt(key, &state_case)) {
-        LOG(ERROR) << "Failed to get state case from metrics.";
+        LOG(ERROR) << key << ": Failed to get state case from metrics.";
         return false;
       }
+      structured_state_report.SetStateCase(state_case);
 
-      double overall_time = data[kStateOverallTime];
-      if (overall_time <= 0) {
-        LOG(ERROR) << "Invalid overall time: "
-                   << base::NumberToString(overall_time);
+      structured_state_report.SetIsAborted(data.is_aborted);
+
+      if (data.overall_time < 0) {
+        LOG(ERROR) << key << ": Invalid overall time: "
+                   << base::NumberToString(data.overall_time);
         return false;
       }
+      structured_state_report.SetOverallTime(
+          static_cast<int>(data.overall_time));
 
-      auto structured_state_overall_time = StructuredStateOverallTime();
-      structured_state_overall_time.SetStateCase(state_case);
-      structured_state_overall_time.SetOverallTime(
-          static_cast<int>(overall_time));
+      if (data.transition_count <= 0) {
+        LOG(ERROR) << key << ": Invalid transition count: "
+                   << base::NumberToString(data.transition_count);
+        return false;
+      }
+      structured_state_report.SetTransitionCount(data.transition_count);
 
-      if (record_to_system_ && !structured_state_overall_time.Record()) {
-        LOG(ERROR) << "Failed to record state overall time to metrics.";
+      if (data.get_log_count < 0) {
+        LOG(ERROR) << key << ": Invalid GetLog count: "
+                   << base::NumberToString(data.get_log_count);
+        return false;
+      }
+      structured_state_report.SetGetLogCount(data.get_log_count);
+
+      if (data.save_log_count < 0) {
+        LOG(ERROR) << key << ": Invalid SaveLog count: "
+                   << base::NumberToString(data.save_log_count);
+        return false;
+      }
+      structured_state_report.SetSaveLogCount(data.save_log_count);
+
+      if (record_to_system_ && !structured_state_report.Record()) {
+        LOG(ERROR) << key << ": Failed to record state report to metrics.";
         return false;
       }
     }

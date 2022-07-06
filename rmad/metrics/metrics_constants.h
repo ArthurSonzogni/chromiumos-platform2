@@ -23,10 +23,16 @@ inline constexpr char kAdditionalActivities[] = "additional_activities";
 
 // This is a dict of dicts for states store info by |state_case|.
 inline constexpr char kStateMetrics[] = "state_metrics";
-// This should be under kStateMetrics[state_case].
+
+// The part should be under kStateMetrics[state_case].
+// Only used when converting from StateMetricsData to base::Value.
+inline constexpr char kStateCase[] = "state_case";
+inline constexpr char kStateIsAborted[] = "state_is_aborted";
 inline constexpr char kStateSetupTimestamp[] = "state_setup_timestamp";
-// This should be under kStateMetrics[state_case].
 inline constexpr char kStateOverallTime[] = "state_overall_time";
+inline constexpr char kStateTransitionsCount[] = "state_transition_count";
+inline constexpr char kStateGetLogCount[] = "state_get_log_count";
+inline constexpr char kStateSaveLogCount[] = "state_save_log_count";
 
 // Defined RO verification status.
 enum class RoVerification : int {
