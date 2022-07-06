@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_NETWORK_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -101,6 +102,14 @@ class Network {
     return saved_network_config_;
   }
 
+  // Set an IP configuration flag on the device. |family| should be "ipv6" or
+  // "ipv4". |flag| should be the name of the flag to be set and |value| is
+  // what this flag should be set to. Overridden by unit tests to pretend
+  // writing to procfs.
+  mockable bool SetIPFlag(IPAddress::Family family,
+                          const std::string& flag,
+                          const std::string& value);
+
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
@@ -175,6 +184,10 @@ class Network {
   // able to restore the config to the previous state and 2) being exposed as a
   // Service property via D-Bus.
   NetworkConfig saved_network_config_;
+
+  // Remember which flag files were previously successfully written. Only used
+  // in SetIPFlag().
+  std::set<std::string> written_flags_;
 
   EventHandler* event_handler_;
 

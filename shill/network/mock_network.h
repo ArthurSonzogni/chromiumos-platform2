@@ -39,6 +39,11 @@ class MockNetwork : public Network {
               (override));
   MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
+  MOCK_METHOD(bool,
+              SetIPFlag,
+              (IPAddress::Family, const std::string&, const std::string&),
+              (override));
+
   MOCK_METHOD(bool, IsDefault, (), (const, override));
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
   MOCK_METHOD(void, SetUseDNS, (bool), (override));

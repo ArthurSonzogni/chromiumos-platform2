@@ -66,9 +66,6 @@ static std::string ObjectID(const Device* d) {
 
 namespace {
 
-constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
-constexpr char kIPFlagVersion4[] = "ipv4";
-constexpr char kIPFlagVersion6[] = "ipv6";
 constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
 constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
 constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
@@ -236,25 +233,27 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
 
 void Device::StopIPv6() {
   SLOG(this, 2) << __func__;
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
+  network()->SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
 }
 
 void Device::StartIPv6() {
   SLOG(this, 2) << __func__;
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
+  network()->SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
 
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptDuplicateAddressDetection,
-            kIPFlagAcceptDuplicateAddressDetectionEnabled);
+  network()->SetIPFlag(IPAddress::kFamilyIPv6,
+                       kIPFlagAcceptDuplicateAddressDetection,
+                       kIPFlagAcceptDuplicateAddressDetectionEnabled);
 
   // Force the kernel to accept RAs even when global IPv6 forwarding is
   // enabled.  Unfortunately this needs to be set on a per-interface basis.
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptRouterAdvertisements,
-            kIPFlagAcceptRouterAdvertisementsAlways);
+  network()->SetIPFlag(IPAddress::kFamilyIPv6,
+                       kIPFlagAcceptRouterAdvertisements,
+                       kIPFlagAcceptRouterAdvertisementsAlways);
 }
 
 void Device::EnableIPv6Privacy() {
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagUseTempAddr,
-            kIPFlagUseTempAddrUsedAndDefault);
+  network()->SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagUseTempAddr,
+                       kIPFlagUseTempAddrUsedAndDefault);
 }
 
 void Device::SetIsMultiHomed(bool is_multi_homed) {
@@ -271,16 +270,17 @@ void Device::SetIsMultiHomed(bool is_multi_homed) {
 }
 
 void Device::DisableArpFiltering() {
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-            kIPFlagArpAnnounceDefault);
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore, kIPFlagArpIgnoreDefault);
+  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+                       kIPFlagArpAnnounceDefault);
+  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
+                       kIPFlagArpIgnoreDefault);
 }
 
 void Device::EnableArpFiltering() {
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-            kIPFlagArpAnnounceBestLocal);
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
-            kIPFlagArpIgnoreLocalOnly);
+  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+                       kIPFlagArpAnnounceBestLocal);
+  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
+                       kIPFlagArpIgnoreLocalOnly);
 }
 
 bool Device::IsConnected() const {
@@ -953,37 +953,6 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   if (selected_service_) {
     selected_service_->SetFailureSilent(failure_state);
   }
-}
-
-bool Device::SetIPFlag(IPAddress::Family family,
-                       const std::string& flag,
-                       const std::string& value) {
-  std::string ip_version;
-  if (family == IPAddress::kFamilyIPv4) {
-    ip_version = kIPFlagVersion4;
-  } else if (family == IPAddress::kFamilyIPv6) {
-    ip_version = kIPFlagVersion6;
-  } else {
-    NOTIMPLEMENTED();
-  }
-  base::FilePath flag_file(base::StringPrintf(
-      kIPFlagTemplate, ip_version.c_str(), link_name_.c_str(), flag.c_str()));
-  SLOG(this, 2) << "Writing " << value << " to flag file " << flag_file.value();
-  if (base::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
-    const auto message =
-        base::StringPrintf("IP flag write failed: %s to %s", value.c_str(),
-                           flag_file.value().c_str());
-    if (!base::PathExists(flag_file) &&
-        base::Contains(written_flags_, flag_file.value())) {
-      SLOG(this, 2) << message << " (device is no longer present?)";
-    } else {
-      LOG(ERROR) << LoggingTag() << ": " << message;
-    }
-    return false;
-  } else {
-    written_flags_.insert(flag_file.value());
-  }
-  return true;
 }
 
 bool Device::RestartPortalDetection() {

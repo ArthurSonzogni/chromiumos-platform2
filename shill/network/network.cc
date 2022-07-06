@@ -7,11 +7,24 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/contains.h>
+#include <base/files/file_util.h>
+#include <base/notreached.h>
+#include <base/strings/stringprintf.h>
+
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
 #include "shill/service.h"
 
 namespace shill {
+
+namespace {
+
+constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
+constexpr char kIPFlagVersion4[] = "ipv4";
+constexpr char kIPFlagVersion6[] = "ipv6";
+
+}  // namespace
 
 Network::Network(int interface_index,
                  const std::string& interface_name,
@@ -121,6 +134,37 @@ IPConfig* Network::GetCurrentIPConfig() const {
     return current_ipconfig_;
   }
   return nullptr;
+}
+
+bool Network::SetIPFlag(IPAddress::Family family,
+                        const std::string& flag,
+                        const std::string& value) {
+  std::string ip_version;
+  if (family == IPAddress::kFamilyIPv4) {
+    ip_version = kIPFlagVersion4;
+  } else if (family == IPAddress::kFamilyIPv6) {
+    ip_version = kIPFlagVersion6;
+  } else {
+    NOTIMPLEMENTED();
+  }
+  base::FilePath flag_file(
+      base::StringPrintf(kIPFlagTemplate, ip_version.c_str(),
+                         interface_name_.c_str(), flag.c_str()));
+  if (base::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
+    const auto message =
+        base::StringPrintf("IP flag write failed: %s to %s", value.c_str(),
+                           flag_file.value().c_str());
+    if (base::PathExists(flag_file) ||
+        !base::Contains(written_flags_, flag_file.value())) {
+      // Leave a log if the file is there or this is the first time we try to
+      // write it on a failure.
+      LOG(ERROR) << interface_name_ << ": " << message;
+    }
+    return false;
+  } else {
+    written_flags_.insert(flag_file.value());
+  }
+  return true;
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {

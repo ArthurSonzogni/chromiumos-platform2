@@ -586,14 +586,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Configure static IP address received from cellular bearer.
   void ConfigureStaticIPv6Address();
 
-  // Set an IP configuration flag on the device. |family| should be "ipv6" or
-  // "ipv4". |flag| should be the name of the flag to be set and |value| is
-  // what this flag should be set to. Overridden by unit tests to pretend
-  // writing to procfs.
-  mockable bool SetIPFlag(IPAddress::Family family,
-                          const std::string& flag,
-                          const std::string& value);
-
   // Disable ARP filtering on the device.  The interface will exhibit the
   // default Linux behavior -- incoming ARP requests are responded to by all
   // interfaces.  Outgoing ARP requests can contain any local address.
@@ -737,9 +729,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;
-
-  // Remember which flag files were previously successfully written.
-  std::set<std::string> written_flags_;
 
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 
