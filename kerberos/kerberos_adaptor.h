@@ -41,9 +41,8 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   ~KerberosAdaptor();
 
   // Registers the D-Bus object and interfaces.
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
+                         completion_callback);
 
   using ByteArray = std::vector<uint8_t>;
 
