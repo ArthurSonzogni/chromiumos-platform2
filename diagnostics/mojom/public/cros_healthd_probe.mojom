@@ -378,8 +378,8 @@ struct VirtualizationInfo {
 
   // Whether the /dev/kvm device exists.
   bool has_kvm_device@0;
-  // Whether SMT is active, False if SMT detection is not supported by kernel
-  // version.
+  // Whether SMT is active. This will always be false if SMT detection is not
+  // supported by the kernel of this device.
   bool is_smt_active@1;
   // The state of SMT control.
   SMTControl smt_control@2;
