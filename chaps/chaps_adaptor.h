@@ -34,7 +34,7 @@ class ChapsAdaptor {
   virtual ~ChapsAdaptor();
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Chaps D-Bus interface methods.
   void OpenIsolate(const brillo::SecureVector& isolate_credential_in,

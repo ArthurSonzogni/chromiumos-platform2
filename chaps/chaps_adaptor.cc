@@ -4,6 +4,8 @@
 
 #include "chaps/chaps_adaptor.h"
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -36,7 +38,7 @@ ChapsAdaptor::ChapsAdaptor(scoped_refptr<dbus::Bus> bus,
 ChapsAdaptor::~ChapsAdaptor() {}
 
 void ChapsAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   brillo::dbus_utils::DBusInterface* interface =
       dbus_object_.AddOrGetInterface(kChapsInterface);
   interface->AddSimpleMethodHandler(kOpenIsolateMethod, base::Unretained(this),
@@ -208,7 +210,7 @@ void ChapsAdaptor::RegisterAsync(
   interface->AddSimpleMethodHandler(kGenerateRandomMethod,
                                     base::Unretained(this),
                                     &ChapsAdaptor::GenerateRandom);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 void ChapsAdaptor::OpenIsolate(
