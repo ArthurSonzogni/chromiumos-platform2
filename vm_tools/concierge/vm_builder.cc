@@ -378,7 +378,7 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
   }
 
   if (enable_gpu_) {
-    std::string gpu_arg = "--gpu=vulkan=";
+    std::string gpu_arg = "vulkan=";
     gpu_arg += enable_vulkan_ ? "true" : "false";
     if (enable_virtgpu_native_context_) {
       gpu_arg += ",context-types=drm:venus:cross-domain";
@@ -392,10 +392,10 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     if (!gpu_cache_size_str_.empty()) {
       gpu_arg += ",cache-size=" + gpu_cache_size_str_;
     }
-    args.emplace_back(gpu_arg, "");
+    args.emplace_back("--gpu", gpu_arg);
 
     if (enable_render_server_) {
-      std::string render_server_arg = "--gpu-render-server=path=";
+      std::string render_server_arg = "path=";
       render_server_arg += kVirglRenderServerPath;
       if (!render_server_cache_path_.empty()) {
         render_server_arg += ",cache-path=" + render_server_cache_path_.value();
@@ -403,7 +403,7 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
       if (!render_server_cache_size_str_.empty()) {
         render_server_arg += ",cache-size=" + render_server_cache_size_str_;
       }
-      args.emplace_back(render_server_arg, "");
+      args.emplace_back("--gpu-render-server", render_server_arg);
     }
   }
 
