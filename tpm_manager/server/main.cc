@@ -79,7 +79,7 @@ bool IsBootFromRemoveableDevice() {
   return removable;
 }
 
-bool PreformPreinit() {
+bool PerformPreinit() {
   if (base::PathExists(base::FilePath(kNoPreinitFlagFile))) {
     return false;
   }
@@ -101,7 +101,7 @@ bool PreformPreinit() {
 
   // Normal ChromeOS case.
   if (IsBootFromRemoveableDevice()) {
-    // Don't preform preinit when we are booting from removable device.
+    // Don't perform preinit when we are booting from removable device.
     // Because we may not store the data at correct location.
     return false;
   }
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(flags);
 
   tpm_manager::LocalDataStoreImpl local_data_store;
-  bool perform_preinit = PreformPreinit();
+  bool perform_preinit = PerformPreinit();
 
   std::unique_ptr<tpm_manager::TpmManagerService> tpm_manager_service{
       new tpm_manager::TpmManagerService(perform_preinit, &local_data_store)};
