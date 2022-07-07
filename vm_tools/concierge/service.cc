@@ -51,6 +51,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -62,6 +63,7 @@
 #include <base/version.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/files/safe_fd.h>
+#include <brillo/process/process.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -447,9 +449,16 @@ bool CheckVmExists(const std::string& vm_name,
 }
 
 // Returns the desired size of VM disks, which is 90% of the available space
-// (excluding the space already taken up by the disk).
+// (excluding the space already taken up by the disk). If storage ballooning
+// is being used, we instead return 95% of the total disk space.
 uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
-                                  uint64_t current_usage) {
+                                  uint64_t current_usage,
+                                  bool storage_ballooning = false) {
+  if (storage_ballooning) {
+    auto total_space =
+        base::SysInfo::AmountOfTotalDiskSpace(disk_location.DirName());
+    return ((total_space * 95) / 100) & kDiskSizeMask;
+  }
   uint64_t free_space =
       base::SysInfo::AmountOfFreeDiskSpace(disk_location.DirName());
   free_space += current_usage;
@@ -2748,6 +2757,66 @@ bool Service::StartTermina(TerminaVm* vm,
   return true;
 }
 
+// Helper function to return the filesystem type of a given file/path. If no
+// file system exists, or if the function fails, it will return an empty string.
+std::string GetFilesystem(base::FilePath disk_location) {
+  int exit_code = -1;
+  std::string output;
+  base::GetAppOutputWithExitCode(
+      base::CommandLine({"/sbin/blkid", "--match-tag TYPE", "--output value",
+                         disk_location.value()}),
+      &output, &exit_code);
+  if (exit_code != 0) {
+    LOG(WARNING) << "Can't get the filesystem for '"
+                 << disk_location.value().c_str()
+                 << "', exit status: " << exit_code;
+  }
+  return output;
+}
+
+// Creates a filesystem at the specified file/path.
+bool CreateFilesystem(base::FilePath disk_location,
+                      enum FilesystemType filesystem_type) {
+  std::string filesystem_string;
+  switch (filesystem_type) {
+    case FilesystemType::EXT4:
+      filesystem_string = "ext4";
+      break;
+    case FilesystemType::UNSPECIFIED:
+    default:
+      LOG(ERROR) << "Filesystem was not specified";
+      return false;
+  }
+
+  std::string existing_filesystem = GetFilesystem(disk_location);
+  if (!existing_filesystem.empty() &&
+      existing_filesystem != filesystem_string) {
+    LOG(ERROR) << "Filesystem already exists but is the wrong type, expected:"
+               << filesystem_string << ", got:" << existing_filesystem;
+    return false;
+  }
+
+  if (existing_filesystem == filesystem_string) {
+    return true;
+  }
+
+  LOG(INFO) << "Creating " << filesystem_string << " filesystem at "
+            << disk_location.value().c_str();
+  int exit_code = -1;
+  std::string output;
+  base::GetAppOutputWithExitCode(
+      base::CommandLine(
+          {"/sbin/mkfs." + filesystem_string, disk_location.value(), "-q"}),
+      &output, &exit_code);
+  if (exit_code != 0) {
+    LOG(ERROR) << "Can't format '" << disk_location.value().c_str()
+               << "' as ext4, exit status: " << exit_code;
+    return false;
+  }
+
+  return true;
+}
+
 std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -2767,6 +2836,15 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Unable to parse CreateImageDiskRequest");
 
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  bool is_sparse = request.disk_size() == 0;
+  if (!is_sparse && request.storage_ballooning()) {
+    response.set_failure_reason(
+        "Request is invalid, storage ballooning is only available for sparse "
+        "disks");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -2808,8 +2886,9 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
               << " with current size " << current_size << " and usage "
               << current_usage;
 
-    // Automatically extend existing disk images if disk_size was not specified.
-    if (request.disk_size() == 0) {
+    // Automatically extend existing disk images if disk_size was not specified
+    // (unless storage ballooning is being used).
+    if (is_sparse && !request.storage_ballooning()) {
       // If the user.crostini.user_chosen_size xattr exists, don't resize the
       // disk. (The value stored in the xattr is ignored; only its existence
       // matters.)
@@ -2901,7 +2980,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
   uint64_t disk_size = request.disk_size()
                            ? request.disk_size()
-                           : CalculateDesiredDiskSize(disk_path, 0);
+                           : CalculateDesiredDiskSize(
+                                 disk_path, 0, request.storage_ballooning());
 
   if (request.image_type() == DISK_IMAGE_RAW ||
       request.image_type() == DISK_IMAGE_AUTO) {
@@ -2947,24 +3027,31 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       response.set_disk_path(disk_path.value());
       writer.AppendProtoAsArrayOfBytes(response);
 
-      return dbus_response;
-    }
+    } else {
+      LOG(INFO) << "Creating sparse raw disk image";
+      int ret = ftruncate(fd.get(), disk_size);
+      if (ret != 0) {
+        PLOG(ERROR) << "Failed to truncate raw disk";
+        unlink(disk_path.value().c_str());
+        response.set_status(DISK_STATUS_FAILED);
+        response.set_failure_reason("Failed to truncate raw disk file");
+        writer.AppendProtoAsArrayOfBytes(response);
 
-    LOG(INFO) << "Creating sparse raw disk image";
-    int ret = ftruncate(fd.get(), disk_size);
-    if (ret != 0) {
-      PLOG(ERROR) << "Failed to truncate raw disk";
-      unlink(disk_path.value().c_str());
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason("Failed to truncate raw disk file");
+        return dbus_response;
+      }
+
+      response.set_status(DISK_STATUS_CREATED);
+      response.set_disk_path(disk_path.value());
       writer.AppendProtoAsArrayOfBytes(response);
-
-      return dbus_response;
     }
 
-    response.set_status(DISK_STATUS_CREATED);
-    response.set_disk_path(disk_path.value());
-    writer.AppendProtoAsArrayOfBytes(response);
+    if (request.filesystem_type() != FilesystemType::UNSPECIFIED &&
+        !CreateFilesystem(disk_path, request.filesystem_type())) {
+      PLOG(ERROR) << "Failed to create filesystem";
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Failed to create filesystem");
+      writer.AppendProtoAsArrayOfBytes(response);
+    }
 
     return dbus_response;
   }
