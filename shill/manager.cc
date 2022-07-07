@@ -2782,18 +2782,6 @@ void Manager::RecheckPortal(Error* /*error*/) {
   }
 }
 
-void Manager::RecheckPortalOnService(const ServiceRefPtr& service) {
-  for (const auto& device : devices_) {
-    if (device->IsConnectedToService(service)) {
-      // As opposed to RecheckPortal() above, we explicitly stop and then
-      // restart portal detection, since the service to recheck was explicitly
-      // specified.
-      device->RestartPortalDetection();
-      break;
-    }
-  }
-}
-
 void Manager::RequestScan(const std::string& technology, Error* error) {
   Technology technology_identifier;
   // TODO(benchan): To maintain backward compatibility, we treat an unspecified

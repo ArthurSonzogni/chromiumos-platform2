@@ -67,6 +67,7 @@ namespace {
 const char kConnectDisconnectReason[] = "RPC";
 const char kGUID[] = "guid";
 const char kDeviceName[] = "testdevice";
+const char kDeviceHwAddr[] = "01:02:03:0a:0b:0c";
 
 bool TrafficCountersMatch(
     const std::vector<brillo::VariantDictionary>& expected_traffic_counters,
@@ -1400,27 +1401,29 @@ TEST_F(ServiceTest, OnPropertyChanged) {
 }
 
 TEST_F(ServiceTest, RecheckPortal) {
+  scoped_refptr<MockDevice> mock_device =
+      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
+  ON_CALL(mock_manager_, FindDeviceFromService(IsRefPtrTo(service_)))
+      .WillByDefault(Return(mock_device));
+
   service_->state_ = Service::kStateIdle;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
+  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(0);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStateNoConnectivity;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
-      .Times(1);
+  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(1);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStateConnected;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
-      .Times(1);
+  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(1);
   service_->OnPropertyChanged(kProxyConfigProperty);
 
   service_->state_ = Service::kStateOnline;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
-      .Times(1);
+  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(1);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStateNoConnectivity;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
+  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(0);
   service_->OnPropertyChanged(kEapKeyIdProperty);
 }
 

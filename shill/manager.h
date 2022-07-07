@@ -253,9 +253,6 @@ class Manager {
   // Request portal detection checks on each registered device with a connected
   // Service.
   void RecheckPortal(Error* error);
-  // Request portal detection be restarted on the device connected to
-  // |service|.
-  virtual void RecheckPortalOnService(const ServiceRefPtr& service);
 
   virtual void RequestScan(const std::string& technology, Error* error);
   std::string GetTechnologyOrder();

@@ -74,7 +74,6 @@ class MockManager : public Manager {
               OnDeviceGeolocationInfoUpdated,
               (const DeviceRefPtr&),
               (override));
-  MOCK_METHOD(void, RecheckPortalOnService, (const ServiceRefPtr&), (override));
   MOCK_METHOD(void, RemoveService, (const ServiceRefPtr&), (override));
   MOCK_METHOD(bool,
               HandleProfileEntryDeletion,

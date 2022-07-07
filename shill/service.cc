@@ -1598,7 +1598,14 @@ void Service::OnPropertyChanged(const std::string& property) {
   }
 
   if (property == kCheckPortalProperty || property == kProxyConfigProperty) {
-    manager_->RecheckPortalOnService(this);
+    const DeviceRefPtr device = manager_->FindDeviceFromService(this);
+    if (device) {
+      device->RestartPortalDetection();
+    } else {
+      LOG(WARNING)
+          << log_name()
+          << ": Service is connected but associated Device was not found";
+    }
   } else if (property == kPriorityProperty ||
              property == kEphemeralPriorityProperty ||
              property == kManagedCredentialsProperty) {

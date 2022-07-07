@@ -2916,38 +2916,6 @@ TEST_F(ManagerTest, OnSuspendActionsComplete) {
   OnSuspendActionsComplete(error);
 }
 
-TEST_F(ManagerTest, RecheckPortal) {
-  EXPECT_CALL(*mock_devices_[0], RequestPortalDetection())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[1], RequestPortalDetection())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[2], RequestPortalDetection())
-      .WillOnce(Return(true));
-
-  manager()->RegisterDevice(mock_devices_[0]);
-  manager()->RegisterDevice(mock_devices_[1]);
-  manager()->RegisterDevice(mock_devices_[2]);
-
-  manager()->RecheckPortal(nullptr);
-}
-
-TEST_F(ManagerTest, RecheckPortalOnService) {
-  MockServiceRefPtr service = new NiceMock<MockService>(manager());
-  EXPECT_CALL(*mock_devices_[0], IsConnectedToService(IsRefPtrTo(service)))
-      .WillOnce(Return(false));
-  EXPECT_CALL(*mock_devices_[1], IsConnectedToService(IsRefPtrTo(service)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[1], RestartPortalDetection())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[2], IsConnectedToService(_)).Times(0);
-
-  manager()->RegisterDevice(mock_devices_[0]);
-  manager()->RegisterDevice(mock_devices_[1]);
-  manager()->RegisterDevice(mock_devices_[2]);
-
-  manager()->RecheckPortalOnService(service);
-}
-
 TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
   EXPECT_EQ(DBusControl::NullRpcIdentifier(), GetDefaultServiceRpcIdentifier());
