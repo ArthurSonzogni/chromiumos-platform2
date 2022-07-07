@@ -167,7 +167,8 @@ int Daemon::OnInit() {
   }
 
   variant_ = GetModemFirmwareVariant();
-  helper_directory_ = CreateModemHelperDirectory(helper_dir_path_, variant_);
+  helper_directory_ =
+      CreateModemHelperDirectory(helper_dir_path_, variant_, bus_);
   if (!helper_directory_) {
     auto err =
         Error::Create(FROM_HERE, kErrorResultInitFailure,
@@ -316,7 +317,7 @@ void Daemon::OnModemCarrierIdReady(
     return;
   }
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), &err);
+  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), bus_, &err);
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = std::move(cb);
 }
@@ -336,7 +337,7 @@ bool Daemon::ForceFlash(const std::string& device_id) {
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), &err);
+  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), bus_, &err);
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we

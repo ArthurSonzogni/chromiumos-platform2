@@ -10,6 +10,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <dbus/bus.h>
 
 namespace modemfwd {
 
@@ -30,7 +31,9 @@ class ModemHelperDirectory {
 };
 
 std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
-    const base::FilePath& directory, const std::string& variant);
+    const base::FilePath& directory,
+    const std::string& variant,
+    scoped_refptr<dbus::Bus> bus);
 
 }  // namespace modemfwd
 

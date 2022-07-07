@@ -19,6 +19,7 @@
 #include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/notification_manager.h"
+#include "upstart/dbus-proxies.h"
 
 namespace modemfwd {
 
@@ -35,7 +36,9 @@ class ModemFlasher {
 
   // Returns a callback that should be executed when the modem reappears.
   // |err| is set if an error occurred.
-  base::OnceClosure TryFlash(Modem* modem, brillo::ErrorPtr* err);
+  base::OnceClosure TryFlash(Modem* modem,
+                             scoped_refptr<dbus::Bus> bus,
+                             brillo::ErrorPtr* err);
 
   // This function is the same as TryFlash, but it sets the variant to be used.
   // |err| is set if an error occurred.

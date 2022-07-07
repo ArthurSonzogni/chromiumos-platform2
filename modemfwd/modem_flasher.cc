@@ -22,6 +22,7 @@
 #include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/notification_manager.h"
+#include "modemfwd/upstart_job_controller.h"
 
 namespace modemfwd {
 
@@ -81,7 +82,7 @@ base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
                                                    const std::string& variant,
                                                    brillo::ErrorPtr* err) {
   firmware_directory_->OverrideVariantForTesting(variant);
-  return TryFlash(modem, err);
+  return TryFlash(modem, scoped_refptr<dbus::Bus>(), err);
 }
 
 uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
@@ -116,7 +117,9 @@ uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
   return fw_types;
 }
 
-base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
+base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
+                                         scoped_refptr<dbus::Bus> bus,
+                                         brillo::ErrorPtr* err) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {

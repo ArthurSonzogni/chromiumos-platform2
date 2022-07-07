@@ -50,6 +50,11 @@ generate_dbus_proxies("modemmanager_proxies") {
   ]
 }
 
+generate_dbus_proxies("upstart_proxies") {
+  proxy_output_file = "include/upstart/dbus-proxies.h"
+  sources = [ "dbus_bindings/upstart-job-hermes.dbus-xml" ]
+}
+
 generate_dbus_adaptors("modemfwd_adaptors") {
   dbus_service_config = "dbus_bindings/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/modemfwd/dbus_adaptors"
@@ -74,10 +79,12 @@ static_library("libmodemfw") {
     "modem_tracker.cc",
     "notification_manager.cc",
     "scoped_temp_file.cc",
+    "upstart_job_controller.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
     ":modemmanager_proxies",
+    ":upstart_proxies",
     "//metrics/structured:libstructuredmetrics",
     "//modemfwd//proto:modemfw-protos",
   ]

@@ -12,6 +12,8 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/scoped_refptr.h>
+#include <dbus/bus.h>
 
 namespace modemfwd {
 
@@ -70,7 +72,8 @@ class ModemHelper {
   virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
 };
 
-std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info);
+std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info,
+                                               scoped_refptr<dbus::Bus> bus);
 
 }  // namespace modemfwd
 

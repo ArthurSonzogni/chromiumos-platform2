@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "modemfwd/modem_helper.h"
+#include "modemfwd/upstart_job_controller.h"
 
 #include <linux/securebits.h>
 #include <sys/capability.h>
@@ -38,6 +39,10 @@ constexpr char kPowerOverrideLockFilePath[] =
 
 constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
 constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy";
+constexpr char kUpstartServiceName[] = "com.ubuntu.Upstart";
+constexpr char kHermesJobPath[] = "/com/ubuntu/Upstart/jobs/hermes";
+constexpr char kModemHelperJobPath[] =
+    "/com/ubuntu/Upstart/jobs/modemfwd_2dhelpers";
 
 // For security reasons, we want to apply security restrictions to helpers:
 // 1. We want to provide net admin capabilities only when necessary.
@@ -223,8 +228,9 @@ class FlashMode {
 
 class ModemHelperImpl : public ModemHelper {
  public:
-  explicit ModemHelperImpl(const HelperInfo& helper_info)
-      : helper_info_(helper_info) {}
+  explicit ModemHelperImpl(const HelperInfo& helper_info,
+                           scoped_refptr<dbus::Bus> bus)
+      : helper_info_(helper_info), bus_(bus) {}
   ModemHelperImpl(const ModemHelperImpl&) = delete;
   ModemHelperImpl& operator=(const ModemHelperImpl&) = delete;
 
@@ -232,7 +238,6 @@ class ModemHelperImpl : public ModemHelper {
 
   bool GetFirmwareInfo(FirmwareInfo* out_info) override {
     CHECK(out_info);
-
     std::string helper_output;
     if (!RunHelperProcess(helper_info_, {kGetFirmwareInfo}, &helper_output))
       return false;
@@ -270,13 +275,30 @@ class ModemHelperImpl : public ModemHelper {
     if (!configs.size())
       return false;
 
+    UpstartJobController hermes(kUpstartServiceName, kHermesJobPath, bus_);
+    if (hermes.IsRunning())
+      hermes.Stop();  // Job starts automatically upon exiting scope
     std::vector<std::string> firmwares;
+    std::vector<std::string> upstart_in_env;
     std::vector<std::string> versions;
     for (const auto& config : configs) {
       firmwares.push_back(base::StringPrintf("%s:%s", config.fw_type.c_str(),
                                              config.path.value().c_str()));
+      upstart_in_env.push_back(base::StringPrintf(
+          "%s=%s", config.fw_type.c_str(), config.path.value().c_str()));
       versions.push_back(base::StringPrintf("%s:%s", config.fw_type.c_str(),
                                             config.version.c_str()));
+    }
+
+    // If installed, modemfwd-helpers.conf may be used to perform actions with
+    // the fw that only root can perform. upstart_in_env must be checked by
+    // modemfwd-helpers.conf.
+    UpstartJobController modemfwd_helpers(kUpstartServiceName,
+                                          kModemHelperJobPath, bus_);
+    if (modemfwd_helpers.IsInstalled() &&
+        !modemfwd_helpers.Start(upstart_in_env)) {
+      LOG(ERROR) << "Failed to start modemfwd-helpers";
+      return false;
     }
 
     return RunHelperProcessWithLogs(
@@ -308,10 +330,12 @@ class ModemHelperImpl : public ModemHelper {
 
  private:
   HelperInfo helper_info_;
+  scoped_refptr<dbus::Bus> bus_;
 };
 
-std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info) {
-  return std::make_unique<ModemHelperImpl>(helper_info);
+std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info,
+                                               scoped_refptr<dbus::Bus> bus) {
+  return std::make_unique<ModemHelperImpl>(helper_info, bus);
 }
 
 }  // namespace modemfwd
