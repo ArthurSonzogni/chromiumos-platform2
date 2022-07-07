@@ -78,10 +78,8 @@ PrefsSourceInterfaceVector Prefs::GetDefaultSources() {
   if (CrosEcPrefsSource::IsSupported())
     sources.emplace_back(new CrosEcPrefsSource);
 
-  auto config = std::make_unique<brillo::CrosConfig>();
-  if (config->Init()) {
-    sources.emplace_back(new CrosConfigPrefsSource(std::move(config)));
-  }
+  sources.emplace_back(
+      new CrosConfigPrefsSource(std::make_unique<brillo::CrosConfig>()));
 
   sources.emplace_back(
       new FilePrefsStore(read_only_path.Append(kBoardSpecificPrefsSubdir)));
