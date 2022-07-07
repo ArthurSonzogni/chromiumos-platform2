@@ -1227,7 +1227,6 @@ class DevicePortalDetectionTest : public DeviceTest {
   void PortalDetectorCallback(const PortalDetector::Result& result) {
     device_->PortalDetectorCallback(result);
   }
-  bool RequestPortalDetection() { return device_->RequestPortalDetection(); }
   void StopNetwork() { device_->network()->Stop(); }
 
   MockConnection* connection_;  // owned by device_
@@ -1426,49 +1425,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
   PortalDetectorCallback(result);
-}
-
-TEST_F(DevicePortalDetectionTest, RequestPortalDetectionIsNoop) {
-  // Non connected state returns false.
-  EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
-      .WillRepeatedly(Return(false));
-  EXPECT_FALSE(RequestPortalDetection());
-  Mock::VerifyAndClearExpectations(service_.get());
-
-  // Portal detection is disabled for the Service
-  EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_FALSE(RequestPortalDetection());
-  Mock::VerifyAndClearExpectations(service_.get());
-
-  // Portal detection already running.
-  EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*SetMockPortalDetector(), IsInProgress())
-      .WillRepeatedly(Return(true));
-  EXPECT_TRUE(RequestPortalDetection());
-  Mock::VerifyAndClearExpectations(service_.get());
-}
-
-TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
-  const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const auto props = MakePortalProperties();
-  const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
-
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
-  EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
-  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection_, dns_servers()).WillRepeatedly(ReturnRef(dns_list));
-
-  EXPECT_TRUE(RequestPortalDetection());
-  ASSERT_NE(nullptr, GetPortalDetector());
 }
 
 // The first portal detection attempt is inconclusive and the next portal

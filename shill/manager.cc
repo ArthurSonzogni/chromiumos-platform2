@@ -2799,7 +2799,7 @@ void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
 void Manager::RecheckPortal(Error* /*error*/) {
   SLOG(this, 2) << __func__;
   for (const auto& device : devices_) {
-    device->RequestPortalDetection();
+    device->UpdatePortalDetector(/*restart=*/false);
   }
 }
 
