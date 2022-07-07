@@ -19,6 +19,7 @@
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcp_provider.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -58,6 +59,14 @@ class Network {
     // avoid introducing Manager dependency on Network. Find a better solution
     // later.
     virtual std::vector<uint32_t> GetBlackholedUids() = 0;
+  };
+
+  // Options for starting a network.
+  struct StartOptions {
+    // Start DHCP client on this interface if |dhcp| is not empty.
+    std::optional<DHCPProvider::Options> dhcp;
+    // Accept router advertisements for IPv6.
+    bool accept_ra = false;
   };
 
   // Note that |event_handler| should live longer than the created Network

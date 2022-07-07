@@ -487,10 +487,6 @@ void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
   }
 }
 
-bool Device::ShouldUseArpGateway() const {
-  return false;
-}
-
 bool Device::IsUsingStaticIP() const {
   if (!selected_service_) {
     return false;
@@ -498,17 +494,13 @@ bool Device::IsUsingStaticIP() const {
   return selected_service_->HasStaticIPAddress();
 }
 
-bool Device::AcquireIPConfig() {
-  return AcquireIPConfigWithLeaseName(std::string());
-}
-
-bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
+bool Device::AcquireIPConfig(const Network::StartOptions& opts) {
   network_->Stop();
+  CHECK(opts.accept_ra);
   network_->StartIPv6();
-  bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
-  network_->set_dhcp_controller(
-      dhcp_provider_->CreateController(link_name_, lease_name, arp_gateway,
-                                       manager_->dhcp_hostname(), technology_));
+  CHECK(opts.dhcp.has_value());
+  network_->set_dhcp_controller(dhcp_provider_->CreateController(
+      link_name_, opts.dhcp.value(), technology_));
   dhcp_controller()->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));

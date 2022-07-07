@@ -627,7 +627,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         .WillByDefault(Return(true));
 
     ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
-    EXPECT_CALL(*dhcp_provider(), CreateController(_, _, _, _, _))
+    EXPECT_CALL(*dhcp_provider(), CreateController(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs([this]() {
           auto controller = CreateMockDHCPController();
           ON_CALL(*controller, RequestIP()).WillByDefault(Return(true));
@@ -1302,6 +1302,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   bool NeedInterworkingSelect() { return wifi_->need_interworking_select_; }
 
+  void TriggerNetworkStart() {
+    // Reset the state and set to completed again to trigger the DHCP acquiring.
+    wifi_->supplicant_state_ = WPASupplicant::kInterfaceStateDisconnected;
+    wifi_->StateChanged(WPASupplicant::kInterfaceStateCompleted);
+  }
+
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -1614,32 +1620,35 @@ TEST_F(WiFiMainTest, RemoveNetwork) {
   EXPECT_TRUE(RemoveNetwork(network));
 }
 
-TEST_F(WiFiMainTest, UseArpGateway) {
+TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   StartWiFi();
-
-  // With no selected service.
-  EXPECT_TRUE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateController(kDeviceName, _, true, _, _))
-      .WillOnce(Return(ByMove(CreateMockDHCPController())));
-  const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
 
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   InitiateConnect(service);
 
   // Selected service that does not have a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(false));
-  EXPECT_TRUE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateController(kDeviceName, _, true, _, _))
+  EXPECT_CALL(
+      dhcp_provider_,
+      CreateController(kDeviceName, IsDHCPProviderOptionUseARPGateway(true), _))
       .WillOnce(Return(ByMove(CreateMockDHCPController())));
-  const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
+  TriggerNetworkStart();
   Mock::VerifyAndClearExpectations(service.get());
+}
+
+TEST_F(WiFiMainTest, StartNetworkNoArpGateway) {
+  StartWiFi();
+
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  InitiateConnect(service);
 
   // Selected service that has a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(true));
-  EXPECT_FALSE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateController(kDeviceName, _, false, _, _))
+  EXPECT_CALL(dhcp_provider_,
+              CreateController(kDeviceName,
+                               IsDHCPProviderOptionUseARPGateway(false), _))
       .WillOnce(Return(ByMove(CreateMockDHCPController())));
-  const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
+  TriggerNetworkStart();
 }
 
 TEST_F(WiFiMainTest, RemoveNetworkFailed) {

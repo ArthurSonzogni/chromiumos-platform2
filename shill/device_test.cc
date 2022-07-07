@@ -316,20 +316,34 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
       std::make_unique<IPConfig>(control_interface(), "randomname"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
+
   const std::string dhcp_hostname = "chromeos";
+  const std::string dhcp_lease_name = "leasename";
+  constexpr bool use_arp_gateway = true;
+
+  Network::StartOptions opts;
+  opts.dhcp = DHCPProvider::Options{
+      .use_arp_gateway = use_arp_gateway,
+      .lease_name = dhcp_lease_name,
+      .hostname = dhcp_hostname,
+  };
+  opts.accept_ra = true;
 
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
-  EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
-  EXPECT_CALL(*dhcp_provider,
-              CreateController(_, _, _, StrEq(dhcp_hostname), _))
+  EXPECT_CALL(
+      *dhcp_provider,
+      CreateController(_,
+                       IsDHCPProviderOptions(use_arp_gateway, dhcp_lease_name,
+                                             dhcp_hostname),
+                       _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateDHCPController();
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
         return controller;
       }));
-  EXPECT_TRUE(device_->AcquireIPConfig());
+  EXPECT_TRUE(device_->AcquireIPConfig(opts));
   ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
   device_->dhcp_provider_ = nullptr;
@@ -340,17 +354,17 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
       std::make_unique<IPConfig>(control_interface(), "randomname"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
-  const std::string dhcp_hostname = "chromeos";
 
-  EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
-  EXPECT_CALL(*dhcp_provider,
-              CreateController(_, _, _, StrEq(dhcp_hostname), _))
+  Network::StartOptions opts;
+  opts.dhcp = DHCPProvider::Options{};
+  opts.accept_ra = true;
+  EXPECT_CALL(*dhcp_provider, CreateController(_, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateDHCPController();
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
         return controller;
       }));
-  EXPECT_TRUE(device_->AcquireIPConfig());
+  EXPECT_TRUE(device_->AcquireIPConfig(opts));
   ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
   device_->dhcp_provider_ = nullptr;
@@ -836,10 +850,6 @@ TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   // Just test that we don't crash in this case.
   ASSERT_EQ(nullptr, device_->ipconfig());
   device_->OnAfterResume();
-}
-
-TEST_F(DeviceTest, ShouldUseArpGateway) {
-  EXPECT_FALSE(device_->ShouldUseArpGateway());
 }
 
 TEST_F(DeviceTest, IsConnectedViaTether) {

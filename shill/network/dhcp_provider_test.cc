@@ -42,15 +42,22 @@ class DHCPProviderTest : public Test {
  protected:
   void RetireUnboundPID(int pid) { provider_->RetireUnboundPID(pid); }
 
+  static DHCPProvider::Options CreateOptions() {
+    DHCPProvider::Options opts;
+    opts.use_arp_gateway = kArpGateway;
+    opts.hostname = kDeviceName;
+    opts.lease_name = kStorageIdentifier;
+    return opts;
+  }
+
   MockControl control_;
   DHCPProvider* provider_;
   StrictMock<MockEventDispatcher> dispatcher_;
 };
 
 TEST_F(DHCPProviderTest, CreateController) {
-  auto config =
-      provider_->CreateController(kDeviceName, kStorageIdentifier, kArpGateway,
-                                  kDeviceName, Technology::kUnknown);
+  auto config = provider_->CreateController(kDeviceName, CreateOptions(),
+                                            Technology::kUnknown);
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->controllers_.empty());
@@ -75,9 +82,8 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   EXPECT_EQ(nullptr, provider_->GetController(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
-  auto config =
-      provider_->CreateController(kDeviceName, kStorageIdentifier, kArpGateway,
-                                  kDeviceName, Technology::kUnknown);
+  auto config = provider_->CreateController(kDeviceName, CreateOptions(),
+                                            Technology::kUnknown);
   provider_->BindPID(kPid, config->weak_ptr_factory_.GetWeakPtr());
   EXPECT_NE(nullptr, provider_->GetController(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));

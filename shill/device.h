@@ -369,7 +369,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
-  FRIEND_TEST(DeviceTest, ShouldUseArpGateway);
   FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, StartIPv6);
   FRIEND_TEST(DeviceTest, StartIPv6Disabled);
@@ -438,19 +437,9 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // connection, if any.
   virtual void DropConnection();
 
-  // Creates a new DHCP IP configuration instance, stores it in |ipconfig_| and
-  // requests a new IP configuration.  Saves the DHCP lease to the generic
-  // lease filename based on the interface name.  Registers a callback to
-  // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
-  // request was successfully sent.
-  bool AcquireIPConfig();
-
-  // Creates a new DHCP IP configuration instance, stores it in |ipconfig_| and
-  // requests a new IP configuration.  Saves the DHCP lease to a filename
-  // based on the passed-in |lease_name|.  Registers a callback to
-  // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
-  // request was successfully sent.
-  bool AcquireIPConfigWithLeaseName(const std::string& lease_name);
+  // Start DHCP clients on this interface using the options in |options.dhcp|.
+  // Returns true if the IP request was successfully sent.
+  bool AcquireIPConfig(const Network::StartOptions& options);
 
   // Assigns the IPv4 configuration |properties| to |ipconfig_|.
   void AssignIPConfig(const IPConfig::Properties& properties);
@@ -621,10 +610,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Stop all monitoring/testing activities on this device. Called when tearing
   // down or changing network connection on the device.
   void StopAllActivities();
-
-  // Specifies whether an ARP gateway should be used for the
-  // device technology.
-  virtual bool ShouldUseArpGateway() const;
 
   // Atomically update the counters of the old service and the snapshot of the
   // new service. |GetTrafficCountersPatchpanelCallback| calls

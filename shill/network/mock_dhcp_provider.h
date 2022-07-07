@@ -34,15 +34,20 @@ class MockDHCPProvider : public DHCPProvider {
               (override));
   MOCK_METHOD(std::unique_ptr<DHCPController>,
               CreateController,
-              (const std::string&,
-               const std::string&,
-               bool,
-               const std::string&,
-               Technology),
+              (const std::string&, const DHCPProvider::Options&, Technology),
               (override));
   MOCK_METHOD(void, BindPID, (int, base::WeakPtr<DHCPController>), (override));
   MOCK_METHOD(void, UnbindPID, (int), (override));
 };
+
+MATCHER_P3(IsDHCPProviderOptions, use_arp_gateway, lease_name, hostname, "") {
+  return arg.use_arp_gateway == use_arp_gateway &&
+         arg.lease_name == lease_name && arg.hostname == hostname;
+}
+
+MATCHER_P(IsDHCPProviderOptionUseARPGateway, use_arp_gateway, "") {
+  return arg.use_arp_gateway == use_arp_gateway;
+}
 
 }  // namespace shill
 

@@ -268,9 +268,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Overridden from Device superclass
   std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
-  // Overridden from Device superclass
-  bool ShouldUseArpGateway() const override;
-
   // Called by a WiFiService when it disassociates itself from this Device.
   virtual void DisassociateFromService(const WiFiServiceRefPtr& service);
 

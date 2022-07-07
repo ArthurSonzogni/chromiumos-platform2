@@ -4,9 +4,9 @@
 
 #include "shill/ethernet/ethernet.h"
 
-#include <netinet/ether.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/sockios.h>
+#include <netinet/ether.h>
 
 #include <memory>
 #include <string>
@@ -355,7 +355,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   StartEthernet();
   SetLinkUp(false);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
@@ -368,7 +368,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _))
       .WillOnce(
           Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
   EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(false));
@@ -386,7 +386,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _))
       .WillOnce(
           Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
   EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(true));

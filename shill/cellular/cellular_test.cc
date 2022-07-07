@@ -1081,12 +1081,8 @@ TEST_P(CellularTest, LinkEventInterfaceDown) {
   EXPECT_EQ(device_->service(), nullptr);
 }
 
-TEST_P(CellularTest, UseNoArpGateway) {
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, false, _, _))
-      .WillOnce(
-          InvokeWithoutArgs([this]() { return CreateMockDHCPController(); }));
-  device_->AcquireIPConfig();
-}
+// TODO(b/232177767): Add a test to verify that Cellular start the Network with
+// the correct options.
 
 TEST_P(CellularTest, ModemStateChangeValidConnected) {
   device_->set_state_for_testing(Cellular::State::kEnabled);
@@ -1217,15 +1213,14 @@ TEST_P(CellularTest, LinkEventUpWithPPP) {
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
   device_->ppp_task_ = std::move(mock_task);
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _, _, _))
-      .Times(0);
+  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _)).Times(0);
   device_->LinkEvent(IFF_UP, 0);
 }
 
 TEST_P(CellularTest, LinkEventUpWithoutPPP) {
   // If PPP is not running, fire up DHCP.
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateMockDHCPController();
         EXPECT_CALL(*controller, RequestIP());
@@ -1869,7 +1864,7 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateMockDHCPController();
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));

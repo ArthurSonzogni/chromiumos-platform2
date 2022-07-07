@@ -2506,8 +2506,16 @@ void WiFi::StateChanged(const std::string& new_state) {
     } else if (has_already_completed_) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else {
-      if (AcquireIPConfigWithLeaseName(
-              GetServiceLeaseName(*affected_service))) {
+      auto dhcp_opts = DHCPProvider::Options::Create(*manager());
+      if (IsUsingStaticIP()) {
+        dhcp_opts.use_arp_gateway = false;
+      }
+      dhcp_opts.lease_name = GetServiceLeaseName(*affected_service);
+      Network::StartOptions opts = {
+          .dhcp = dhcp_opts,
+          .accept_ra = true,
+      };
+      if (AcquireIPConfig(opts)) {
         LOG(INFO) << link_name() << " is up; started L3 configuration.";
         RetrieveLinkStatistics(NetworkEvent::kIPConfigurationStart);
         affected_service->SetState(Service::kStateConfiguring);
@@ -2707,10 +2715,6 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
   // there is something wrong.
   StartReconnectTimer();
   LOG(INFO) << "In " << __func__ << "(): Called Reattach().";
-}
-
-bool WiFi::ShouldUseArpGateway() const {
-  return !IsUsingStaticIP();
 }
 
 void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service) {

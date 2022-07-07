@@ -261,7 +261,13 @@ void Ethernet::ConnectTo(EthernetService* service) {
     return;
   }
   SelectService(service);
-  if (AcquireIPConfigWithLeaseName(service->GetStorageIdentifier())) {
+  auto dhcp_opts = DHCPProvider::Options::Create(*manager());
+  dhcp_opts.use_arp_gateway = false;
+  Network::StartOptions opts = {
+      .dhcp = dhcp_opts,
+      .accept_ra = true,
+  };
+  if (AcquireIPConfig(opts)) {
     SetServiceState(Service::kStateConfiguring);
   } else {
     LOG(ERROR) << "Unable to acquire DHCP config.";

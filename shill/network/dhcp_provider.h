@@ -24,6 +24,7 @@ namespace shill {
 class ControlInterface;
 class DHCPCDListenerInterface;
 class EventDispatcher;
+class Manager;
 class Metrics;
 
 // DHCPProvider is a singleton providing the main DHCP configuration entrypoint.
@@ -37,6 +38,25 @@ class Metrics;
 //                                               dhcp_props)->Request();
 class DHCPProvider {
  public:
+  // Options to create a DHCP controller.
+  struct Options {
+    // Creates a default Options object using the dhcp properties provided in
+    // Manager.
+    // TODO(b/232177767): Consider moving this function into Manager.
+    static Options Create(const Manager& manager);
+    // If true, the DHCP client will ARP for the gateway IP address as an
+    // additional safeguard against the issued IP address being in-use by
+    // another station.
+    bool use_arp_gateway = false;
+    // The DHCP lease file will contain the suffix supplied in |lease_name| if
+    // non-empty, otherwise the interface name will be used.
+    std::string lease_name;
+    // Hostname to be used in DHCP request. If it is not empty, it is placed in
+    // the DHCP request to allow the server to map the request to a specific
+    // user-named origin.
+    std::string hostname;
+  };
+
   static constexpr char kDHCPCDPathFormatLease[] =
       "var/lib/dhcpcd/dhcpcd-%s.lease";
 
@@ -57,18 +77,10 @@ class DHCPProvider {
 
   // Creates a new DHCPController for |device_name|. The DHCP configuration for
   // the device can then be initiated through DHCPController::Request and
-  // DHCPController::Renew.  If |host_name| is not-empty, it is placed in the
-  // DHCP request to allow the server to map the request to a specific
-  // user-named origin.  The DHCP lease file will contain the suffix supplied in
-  // |lease_file_suffix| if non-empty, otherwise |device_name|.  If
-  // |arp_gateway| is true, the DHCP client will ARP for the gateway IP
-  // address as an additional safeguard against the issued IP address being
-  // in-use by another station.
+  // DHCPController::Renew.
   virtual std::unique_ptr<DHCPController> CreateController(
       const std::string& device_name,
-      const std::string& lease_file_suffix,
-      bool arp_gateway,
-      const std::string& hostname,
+      const Options& opts,
       Technology technology);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Returns

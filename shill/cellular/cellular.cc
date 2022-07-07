@@ -1386,7 +1386,13 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
 
     if (!ipv6_configured ||
         (bearer && bearer->ipv4_config_method() == IPConfig::kMethodDHCP)) {
-      if (AcquireIPConfig()) {
+      auto dhcp_opts = DHCPProvider::Options::Create(*manager());
+      dhcp_opts.use_arp_gateway = false;
+      Network::StartOptions opts = {
+          .dhcp = dhcp_opts,
+          .accept_ra = true,
+      };
+      if (AcquireIPConfig(opts)) {
         SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
         SelectService(service_);
         SetServiceState(Service::kStateConfiguring);

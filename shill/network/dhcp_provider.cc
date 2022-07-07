@@ -22,6 +22,7 @@
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/technology.h"
@@ -44,7 +45,12 @@ const char kDHCPCDExecutableName[] = "dhcpcd";
 
 }  // namespace
 
-constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
+DHCPProvider::Options DHCPProvider::Options::Create(const Manager& manager) {
+  return Options{
+      .use_arp_gateway = manager.GetArpGateway(),
+      .hostname = manager.dhcp_hostname(),
+  };
+}
 
 DHCPProvider::DHCPProvider()
     : root_("/"), control_interface_(nullptr), dispatcher_(nullptr) {
@@ -81,14 +87,12 @@ void DHCPProvider::Stop() {
 
 std::unique_ptr<DHCPController> DHCPProvider::CreateController(
     const std::string& device_name,
-    const std::string& lease_file_suffix,
-    bool arp_gateway,
-    const std::string& hostname,
+    const Options& opts,
     Technology technology) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return std::make_unique<DHCPController>(
-      control_interface_, dispatcher_, this, device_name, lease_file_suffix,
-      arp_gateway, hostname, technology, metrics_);
+      control_interface_, dispatcher_, this, device_name, opts.lease_name,
+      opts.use_arp_gateway, opts.hostname, technology, metrics_);
 }
 
 DHCPController* DHCPProvider::GetController(int pid) {
