@@ -42,7 +42,7 @@ class WakeLockImpl : public WakeLock {
                     base::File::FLAG_OPEN | base::File::FLAG_READ |
                         base::File::FLAG_WRITE) {
     if (!power_file_.IsValid())
-      PLOG(ERROR) << "Unable to create wake lock: \"" << power_control << "\"";
+      PLOG(FATAL) << "Unable to create wake lock: \"" << power_control << "\"";
   }
   ~WakeLockImpl() override = default;
 
