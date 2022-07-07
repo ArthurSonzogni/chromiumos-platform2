@@ -318,8 +318,9 @@ Status StorageQueue::EnumerateDataFiles(
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
                                 base::StrCat({options_.file_prefix(), ".*"}));
-  base::FilePath full_name;
-  while (full_name = dir_enum.Next(), !full_name.empty()) {
+
+  for (auto full_name = dir_enum.Next(); !full_name.empty();
+       full_name = dir_enum.Next()) {
     const auto file_sequencing_id_result =
         AddDataFile(full_name, dir_enum.GetInfo());
     if (!file_sequencing_id_result.ok()) {
