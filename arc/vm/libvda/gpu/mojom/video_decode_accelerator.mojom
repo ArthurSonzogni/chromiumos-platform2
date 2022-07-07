@@ -49,7 +49,7 @@ struct VideoDecodeAcceleratorConfig {
   bool secure_mode;
 };
 
-[MinVersion=4]
+// Introduced in Version 4.
 struct BufferModifier {
   uint64 val;
 };

@@ -50,21 +50,21 @@ inline vea_error_t ConvertMojoError(
 
 inline arc::mojom::BitratePtr ConvertToMojoBitrate(
     const vea_bitrate_t& vea_bitrate) {
-  arc::mojom::BitratePtr bitrate = arc::mojom::Bitrate::New();
+  arc::mojom::BitratePtr bitrate;
   switch (vea_bitrate.mode) {
     case VBR: {
       arc::mojom::VariableBitratePtr variable_bitrate =
           arc::mojom::VariableBitrate::New();
       variable_bitrate->target = vea_bitrate.target;
       variable_bitrate->peak = vea_bitrate.peak;
-      bitrate->set_variable(std::move(variable_bitrate));
+      bitrate = arc::mojom::Bitrate::NewVariable(std::move(variable_bitrate));
       break;
     }
     case CBR: {
       arc::mojom::ConstantBitratePtr constant_bitrate =
           arc::mojom::ConstantBitrate::New();
       constant_bitrate->target = vea_bitrate.target;
-      bitrate->set_constant(std::move(constant_bitrate));
+      bitrate = arc::mojom::Bitrate::NewConstant(std::move(constant_bitrate));
       break;
     }
     default:
