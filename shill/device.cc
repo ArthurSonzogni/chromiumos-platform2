@@ -773,11 +773,6 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
-bool Device::RestartPortalDetection() {
-  StopPortalDetection();
-  return UpdatePortalDetector(/*restart=*/false);
-}
-
 bool Device::RequestPortalDetection() {
   SLOG(this, 1) << LoggingTag() << ": " << __func__;
   return UpdatePortalDetector(/*restart=*/false);

@@ -154,12 +154,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // call up to the parent.
   virtual void OnSelectedServiceChanged(const ServiceRefPtr& old_service);
 
-  // Restart the portal detection process on a connected device.  This is
-  // useful if the properties on the connected service have changed in a
-  // way that may affect the decision to run portal detection at all.
-  // Returns true if portal detection was started.
-  mockable bool RestartPortalDetection();
-
   // Requests that portal detection be done, if this device has the default
   // connection.  Returns true if portal detection was started.
   mockable bool RequestPortalDetection();

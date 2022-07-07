@@ -1888,7 +1888,7 @@ void Manager::SortServicesTask() {
         new_logical->IsPortalled()) {
       SLOG(this, 2)
           << "Restarting portal detection for the new primary device.";
-      device->RestartPortalDetection();
+      device->UpdatePortalDetector(/*restart=*/true);
     }
   }
 
