@@ -49,11 +49,6 @@ constexpr char kDisableAutoUpdatePref[] =
 // specified.
 std::string GetModemFirmwareVariant() {
   brillo::CrosConfig config;
-  if (!config.Init()) {
-    LOG(WARNING) << "Failed to load Chrome OS configuration";
-    return std::string();
-  }
-
   std::string variant;
   if (!config.GetString("/modem", "firmware-variant", &variant)) {
     LOG(INFO) << "No modem firmware variant is specified";
