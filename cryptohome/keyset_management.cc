@@ -619,38 +619,37 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
     const VaultKeyset& vault_keyset_old,
     EncryptVkCallback encrypt_vk_callback,
     bool clobber) {
-  // Walk the namespace looking for the first free spot.
-  // Note, nothing is stopping simultaneous access to these files
-  // or enforcing mandatory locking.
-  base::FilePath vk_path;
-  bool file_found = false;
-  for (int new_index = 0; new_index < kKeyFileMax; ++new_index) {
-    vk_path = VaultKeysetPath(obfuscated_username_new, new_index);
-    // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
-    // repeatedly until there is an opening.
-    base::ScopedFILE vk_file(platform_->OpenFile(vk_path, "wx"));
-    if (vk_file) {  // got one
-      file_found = true;
-      break;
-    }
-  }
-
-  if (!file_found) {
-    LOG(WARNING) << "Failed to find an available keyset slot";
-    return CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED;
-  }
-
   // Before persisting, check if there is an existing labeled credential.
   std::unique_ptr<VaultKeyset> match =
       GetVaultKeyset(obfuscated_username_new, key_data_new.label());
-
+  base::FilePath vk_path;
   if (match.get()) {
     LOG(INFO) << "Label already exists.";
-    platform_->DeleteFile(vk_path);
     if (!clobber) {
       return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
     }
     vk_path = match->GetSourceFile();
+  }
+
+  // If we need to create a new file, walk the namespace looking for the first
+  // free spot. Note, nothing is stopping simultaneous access to these files
+  // or enforcing mandatory locking.
+  if (vk_path.empty()) {
+    bool file_found = false;
+    for (int new_index = 0; new_index < kKeyFileMax; ++new_index) {
+      vk_path = VaultKeysetPath(obfuscated_username_new, new_index);
+      // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
+      // repeatedly until there is an opening.
+      base::ScopedFILE vk_file(platform_->OpenFile(vk_path, "wx"));
+      if (vk_file) {  // got one
+        file_found = true;
+        break;
+      }
+    }
+    if (!file_found) {
+      LOG(WARNING) << "Failed to find an available keyset slot";
+      return CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED;
+    }
   }
 
   std::unique_ptr<VaultKeyset> keyset_to_add(
