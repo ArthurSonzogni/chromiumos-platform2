@@ -63,9 +63,12 @@ interface Executor {
   // memtester mlocks the vast majority of the device's memory, and a second
   // memtester process would have no memory to test.
   //
+  // The request:
+  // * |test_mem_kib| - The amount of memory used for memory test, should be
+  //                    greater than zero.
   // The response:
   // * |result| - contains information received from running memtester.
-  RunMemtester() => (ExecutedProcessResult result);
+  RunMemtester(uint32 test_mem_kib) => (ExecutedProcessResult result);
 
   // Kills an existing memtester process, which must have been started by the
   // executor.
