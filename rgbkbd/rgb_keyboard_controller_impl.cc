@@ -86,8 +86,8 @@ void RgbKeyboardControllerImpl::SetRainbowMode() {
   background_type_ = BackgroundType::kStaticRainbow;
 
   if (IsZonedKeyboard()) {
-    rainbow_mode = base::span<const KeyColor>(kRainbowModeFiveZone,
-                                              std::size(kRainbowModeFiveZone));
+    rainbow_mode = base::span<const KeyColor>(
+        kRainbowModeFourZoneFortyLed, std::size(kRainbowModeFourZoneFortyLed));
   } else {
     rainbow_mode = base::span<const KeyColor>(
         kRainbowModeIndividualKey, std::size(kRainbowModeIndividualKey));

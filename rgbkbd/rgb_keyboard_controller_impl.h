@@ -150,7 +150,7 @@ const KeyColor kRainbowModeIndividualKey[] = {
     {123, kRainbowIndigo},  // T10: Mic Mute
 };
 
-const KeyColor kRainbowModeFiveZone[] = {
+const KeyColor kRainbowModeFourZoneFortyLed[] = {
     {1, kRainbowRed},        {2, kRainbowRed},        {3, kRainbowRed},
     {4, kRainbowRed},        {5, kRainbowRed},        {6, kRainbowRed},
     {7, kRainbowRed},        {8, kRainbowRed},        {9, kRainbowRed},

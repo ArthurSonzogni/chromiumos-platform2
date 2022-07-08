@@ -54,8 +54,8 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
     case RgbKeyboardCapabilities::kNone:
       LOG(INFO) << "Device does not support an internal RGB keyboard";
       break;
-    case RgbKeyboardCapabilities::kFiveZone:
-      LOG(INFO) << "Device supports five zone keyboard";
+    case RgbKeyboardCapabilities::kFourZoneFortyLed:
+      LOG(INFO) << "Device supports four zone - fourty led keyboard";
       break;
     case RgbKeyboardCapabilities::kIndividualKey:
       LOG(INFO) << "Device supports per-key keyboard over USB";
@@ -141,7 +141,7 @@ RgbKeyboardCapabilities InternalRgbKeyboard::GetRgbKeyboardCapabilities() {
     // Try and use a FD if USB fails.
     ec_fd_ = CreateFileDescriptorForEc();
     if (ec_fd_.is_valid() && command->Run(ec_fd_.get())) {
-      capabilities_ = RgbKeyboardCapabilities::kFiveZone;
+      capabilities_ = RgbKeyboardCapabilities::kFourZoneFortyLed;
     }
   }
 

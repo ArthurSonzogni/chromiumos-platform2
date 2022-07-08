@@ -76,9 +76,10 @@ class RgbKeyboardControllerTest : public testing::Test {
 };
 
 // TODO(michaelcheco): Update when we are able to test the real implementation.
-TEST_F(RgbKeyboardControllerTest, GetRgbKeyboardCapabilitiesReturnsFiveZone) {
+TEST_F(RgbKeyboardControllerTest,
+       GetRgbKeyboardCapabilitiesReturnsFourZoneFortyLed) {
   EXPECT_EQ(controller_->GetRgbKeyboardCapabilities(),
-            static_cast<uint32_t>(RgbKeyboardCapabilities::kFiveZone));
+            static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFortyLed));
 }
 
 TEST_F(RgbKeyboardControllerTest, SetCapabilityIndividualKey) {
@@ -89,11 +90,11 @@ TEST_F(RgbKeyboardControllerTest, SetCapabilityIndividualKey) {
             controller_->GetRgbKeyboardCapabilities());
 }
 
-TEST_F(RgbKeyboardControllerTest, SetCapabilityFiveZone) {
+TEST_F(RgbKeyboardControllerTest, SetCapabilityFourZoneFortyLed) {
   controller_->SetKeyboardCapabilityForTesting(
-      RgbKeyboardCapabilities::kFiveZone);
+      RgbKeyboardCapabilities::kFourZoneFortyLed);
 
-  EXPECT_EQ(static_cast<uint32_t>(RgbKeyboardCapabilities::kFiveZone),
+  EXPECT_EQ(static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFortyLed),
             controller_->GetRgbKeyboardCapabilities());
 }
 
@@ -139,10 +140,11 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithAlternateHighlight) {
   ValidateLog(std::move(caps_lock_colors));
 }
 
-TEST_F(RgbKeyboardControllerTest, SetRainbowModeFiveZone) {
-  controller_->SetCapabilitiesForTesting(RgbKeyboardCapabilities::kFiveZone);
+TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFortyLed) {
+  controller_->SetCapabilitiesForTesting(
+      RgbKeyboardCapabilities::kFourZoneFortyLed);
   controller_->SetRainbowMode();
-  ValidateLog(kRainbowModeFiveZone);
+  ValidateLog(kRainbowModeFourZoneFortyLed);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeIndividualKey) {
@@ -237,7 +239,7 @@ TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
 
 TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithPerZoneKeyboard) {
   controller_->SetKeyboardCapabilityForTesting(
-      RgbKeyboardCapabilities::kFiveZone);
+      RgbKeyboardCapabilities::kFourZoneFortyLed);
 
   // Set static background color.
   const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);

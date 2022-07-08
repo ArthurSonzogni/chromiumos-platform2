@@ -40,7 +40,7 @@ bool KeyboardBacklightLogger::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 RgbKeyboardCapabilities KeyboardBacklightLogger::GetRgbKeyboardCapabilities() {
-  return RgbKeyboardCapabilities::kFiveZone;
+  return RgbKeyboardCapabilities::kFourZoneFortyLed;
 }
 
 bool KeyboardBacklightLogger::InitializeFile() {
