@@ -12,6 +12,7 @@ use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 const INVALID_ARGUMENTS_MSG: &str = "Please pass in a single argument 'enable' or 'disable'.";
+const CORP_PROTOCOL: &str = "corp_protocol";
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
@@ -52,9 +53,19 @@ fn execute_builtin_corpssh(_cmd: &Command, args: &Arguments) -> Result<(), dispa
         DEFAULT_DBUS_TIMEOUT,
     );
 
-    let flags = if enabled { "corp_protocol" } else { "" };
+    let flags = conn_path.get_u2f_flags().map_err(|err| {
+        eprintln!("ERROR: Got unexpected result: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
 
-    let response = conn_path.set_u2f_flags(flags).map_err(|err| {
+    let mut flags: Vec<&str> = flags.split(",").collect();
+    flags.retain(|&flag| flag != CORP_PROTOCOL);
+    if enabled {
+        flags.push(CORP_PROTOCOL);
+    }
+
+    let flags = flags.join(",");
+    let response = conn_path.set_u2f_flags(&flags).map_err(|err| {
         eprintln!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;
