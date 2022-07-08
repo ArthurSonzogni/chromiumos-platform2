@@ -5,6 +5,7 @@
 #include "shill/dbus/mm1_modem_location_proxy.h"
 
 #include <memory>
+#include <utility>
 
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
@@ -46,14 +47,17 @@ void ModemLocationProxy::Setup(uint32_t sources,
 }
 
 void ModemLocationProxy::GetLocation(Error* error,
-                                     const BrilloAnyCallback& callback,
+                                     BrilloAnyCallback callback,
                                      int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->GetLocationAsync(
       base::BindOnce(&ModemLocationProxy::OnGetLocationSuccess,
-                     weak_factory_.GetWeakPtr(), callback),
+                     weak_factory_.GetWeakPtr(),
+                     std::move(split_callback.first)),
       base::BindOnce(&ModemLocationProxy::OnGetLocationFailure,
-                     weak_factory_.GetWeakPtr(), callback),
+                     weak_factory_.GetWeakPtr(),
+                     std::move(split_callback.second)),
       timeout);
 }
 
@@ -71,18 +75,18 @@ void ModemLocationProxy::OnSetupFailure(const ResultCallback& callback,
 }
 
 void ModemLocationProxy::OnGetLocationSuccess(
-    const BrilloAnyCallback& callback,
+    BrilloAnyCallback callback,
     const std::map<uint32_t, brillo::Any>& results) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  callback.Run(results, Error());
+  std::move(callback).Run(results, Error());
 }
 
-void ModemLocationProxy::OnGetLocationFailure(const BrilloAnyCallback& callback,
+void ModemLocationProxy::OnGetLocationFailure(BrilloAnyCallback callback,
                                               brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(std::map<uint32_t, brillo::Any>(), error);
+  std::move(callback).Run(std::map<uint32_t, brillo::Any>(), error);
 }
 
 }  // namespace mm1

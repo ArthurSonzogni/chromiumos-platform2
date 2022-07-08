@@ -522,9 +522,8 @@ void Cellular::Scan(Error* error, const std::string& /*reason*/) {
   if (!capability_)
     return;
 
-  ResultStringmapsCallback cb =
-      base::Bind(&Cellular::OnScanReply, weak_ptr_factory_.GetWeakPtr());
-  capability_->Scan(error, cb);
+  capability_->Scan(error, base::BindOnce(&Cellular::OnScanReply,
+                                          weak_ptr_factory_.GetWeakPtr()));
   // An immediate failure in |cabapility_->Scan(...)| is indicated through the
   // |error| argument.
   if (error->IsFailure())

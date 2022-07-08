@@ -30,7 +30,7 @@ class MockModemProxy : public ModemProxyInterface {
               (override));
   MOCK_METHOD(void,
               CreateBearer,
-              (const KeyValueStore&, Error*, const RpcIdentifierCallback&, int),
+              (const KeyValueStore&, Error*, RpcIdentifierCallback, int),
               (override));
   MOCK_METHOD(void,
               DeleteBearer,

@@ -32,7 +32,7 @@ class ModemProxyInterface {
                       int timeout) = 0;
   virtual void CreateBearer(const KeyValueStore& properties,
                             Error* error,
-                            const RpcIdentifierCallback& callback,
+                            RpcIdentifierCallback callback,
                             int timeout) = 0;
   virtual void DeleteBearer(const RpcIdentifier& bearer,
                             Error* error,

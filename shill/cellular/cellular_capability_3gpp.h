@@ -86,7 +86,7 @@ class CellularCapability3gpp : public CellularCapability {
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
   void CompleteActivation(Error* error) override;
-  void Scan(Error* error, const ResultStringmapsCallback& callback) override;
+  void Scan(Error* error, ResultStringmapsCallback callback) override;
   void SetInitialEpsBearer(const KeyValueStore& properties,
                            Error* error,
                            const ResultCallback& callback) override;
@@ -358,7 +358,7 @@ class CellularCapability3gpp : public CellularCapability {
   // Method callbacks
   void OnRegisterReply(const ResultCallback& callback, const Error& error);
   void OnResetReply(const ResultCallback& callback, const Error& error);
-  void OnScanReply(const ResultStringmapsCallback& callback,
+  void OnScanReply(ResultStringmapsCallback callback,
                    const ScanResults& results,
                    const Error& error);
   void OnSetupLocationReply(const Error& error);

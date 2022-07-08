@@ -129,7 +129,7 @@ class CellularCapability {
   // Cellular or CellularCapability.
   //
   // TODO(jglasgow): Implement real error handling.
-  virtual void Scan(Error* error, const ResultStringmapsCallback& callback) = 0;
+  virtual void Scan(Error* error, ResultStringmapsCallback callback) = 0;
 
   // Sets the parameters specified by |properties| for the LTE initial EPS
   // bearer used at registration, particularly the 'Attach' APN settings.

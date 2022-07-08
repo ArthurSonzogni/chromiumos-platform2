@@ -36,7 +36,7 @@ class ModemProxy : public ModemProxyInterface {
               int timeout) override;
   void CreateBearer(const KeyValueStore& properties,
                     Error* error,
-                    const RpcIdentifierCallback& callback,
+                    RpcIdentifierCallback callback,
                     int timeout) override;
   void DeleteBearer(const RpcIdentifier& bearer,
                     Error* error,
@@ -85,9 +85,9 @@ class ModemProxy : public ModemProxyInterface {
   void StateChanged(int32_t old, int32_t _new, uint32_t reason);
 
   // Callbacks for CreateBearer async call.
-  void OnCreateBearerSuccess(const RpcIdentifierCallback& callback,
+  void OnCreateBearerSuccess(RpcIdentifierCallback callback,
                              const dbus::ObjectPath& path);
-  void OnCreateBearerFailure(const RpcIdentifierCallback& callback,
+  void OnCreateBearerFailure(RpcIdentifierCallback callback,
                              brillo::Error* dbus_error);
 
   // Callbacks for Command async call.

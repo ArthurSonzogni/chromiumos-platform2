@@ -24,13 +24,13 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
 
   MOCK_METHOD(void,
               Connect,
-              (const KeyValueStore&, const RpcIdentifierCallback&, int),
+              (const KeyValueStore&, RpcIdentifierCallback, int),
               (override));
   MOCK_METHOD(void,
               Disconnect,
               (const RpcIdentifier&, const ResultCallback&, int),
               (override));
-  MOCK_METHOD(void, GetStatus, (const KeyValueStoreCallback&, int), (override));
+  MOCK_METHOD(void, GetStatus, (KeyValueStoreCallback, int), (override));
 };
 
 }  // namespace mm1

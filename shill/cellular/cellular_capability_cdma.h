@@ -64,7 +64,7 @@ class CellularCapabilityCdma : public CellularCapability3gpp {
                  Error* error,
                  const ResultCallback& callback) override;
   void Reset(Error* error, const ResultCallback& callback) override;
-  void Scan(Error* error, const ResultStringmapsCallback& callback) override;
+  void Scan(Error* error, ResultStringmapsCallback callback) override;
 
   void GetProperties() override;
 

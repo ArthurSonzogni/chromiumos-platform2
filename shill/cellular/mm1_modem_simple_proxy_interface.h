@@ -25,13 +25,12 @@ class ModemSimpleProxyInterface {
   virtual ~ModemSimpleProxyInterface() = default;
 
   virtual void Connect(const KeyValueStore& properties,
-                       const RpcIdentifierCallback& callback,
+                       RpcIdentifierCallback callback,
                        int timeout) = 0;
   virtual void Disconnect(const RpcIdentifier& bearer,
                           const ResultCallback& callback,
                           int timeout) = 0;
-  virtual void GetStatus(const KeyValueStoreCallback& callback,
-                         int timeout) = 0;
+  virtual void GetStatus(KeyValueStoreCallback callback, int timeout) = 0;
 };
 
 }  // namespace mm1

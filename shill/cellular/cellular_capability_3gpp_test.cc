@@ -57,6 +57,7 @@ using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
+using testing::WithArg;
 
 namespace shill {
 
@@ -1524,17 +1525,18 @@ TEST_F(CellularCapability3gppTest, Connect) {
 
   // Test connect failures
   EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _))
-      .WillRepeatedly(SaveArg<1>(&connect_callback_));
+      .WillRepeatedly(
+          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
   capability_->Connect(callback);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   EXPECT_CALL(*service_, ClearLastGoodApn());
-  connect_callback_.Run(bearer, Error(Error::kOperationFailed));
+  std::move(connect_callback_).Run(bearer, Error(Error::kOperationFailed));
   Mock::VerifyAndClearExpectations(this);
 
   // Test connect success
   capability_->Connect(callback);
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  connect_callback_.Run(bearer, Error(Error::kSuccess));
+  std::move(connect_callback_).Run(bearer, Error(Error::kSuccess));
   Mock::VerifyAndClearExpectations(this);
 
   // Test connect failures without a service.  Make sure that shill
@@ -1545,7 +1547,7 @@ TEST_F(CellularCapability3gppTest, Connect) {
   EXPECT_FALSE(capability_->cellular()->service());
   capability_->Connect(callback);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  connect_callback_.Run(bearer, Error(Error::kOperationFailed));
+  std::move(connect_callback_).Run(bearer, Error(Error::kOperationFailed));
 }
 
 // Validates Connect iterates over APNs
@@ -1560,7 +1562,8 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
   const char apn_name_foo[] = "foo";
   const char apn_name_bar[] = "bar";
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _))
-      .WillOnce(SaveArg<1>(&connect_callback_));
+      .WillRepeatedly(
+          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
   Stringmap apn1;
   apn1[kApnProperty] = apn_name_foo;
   Stringmap apn2;
@@ -1571,13 +1574,14 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
   Mock::VerifyAndClearExpectations(modem_simple_proxy);
 
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _))
-      .WillOnce(SaveArg<1>(&connect_callback_));
+      .WillRepeatedly(
+          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
   EXPECT_CALL(*service_, ClearLastGoodApn());
-  connect_callback_.Run(bearer, Error(Error::kInvalidApn));
+  std::move(connect_callback_).Run(bearer, Error(Error::kInvalidApn));
 
   EXPECT_CALL(*service_, SetLastGoodApn(apn2));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  connect_callback_.Run(bearer, Error(Error::kSuccess));
+  std::move(connect_callback_).Run(bearer, Error(Error::kSuccess));
 }
 
 // Validates GetTypeString and AccessTechnologyToTechnologyFamily

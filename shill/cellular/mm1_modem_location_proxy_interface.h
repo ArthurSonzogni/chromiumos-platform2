@@ -28,7 +28,7 @@ class ModemLocationProxyInterface {
                      int timeout) = 0;
 
   virtual void GetLocation(Error* error,
-                           const BrilloAnyCallback& callback,
+                           BrilloAnyCallback callback,
                            int timeout) = 0;
 };
 

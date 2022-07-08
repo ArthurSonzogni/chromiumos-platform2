@@ -386,7 +386,7 @@ void CellularCapabilityCdma::Reset(Error* error,
 }
 
 void CellularCapabilityCdma::Scan(Error* error,
-                                  const ResultStringmapsCallback& callback) {
+                                  ResultStringmapsCallback callback) {
   OnUnsupportedOperation(__func__, error);
 }
 

@@ -5,6 +5,7 @@
 #include "shill/dbus/mm1_modem_proxy.h"
 
 #include <tuple>
+#include <utility>
 
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
@@ -53,18 +54,20 @@ void ModemProxy::Enable(bool enable,
 
 void ModemProxy::CreateBearer(const KeyValueStore& properties,
                               Error* error,
-                              const RpcIdentifierCallback& callback,
+                              RpcIdentifierCallback callback,
                               int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary properties_dict =
       KeyValueStore::ConvertToVariantDictionary(properties);
-  proxy_->CreateBearerAsync(
-      properties_dict,
-      base::BindOnce(&ModemProxy::OnCreateBearerSuccess,
-                     weak_factory_.GetWeakPtr(), callback),
-      base::BindOnce(&ModemProxy::OnCreateBearerFailure,
-                     weak_factory_.GetWeakPtr(), callback),
-      timeout);
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
+  proxy_->CreateBearerAsync(properties_dict,
+                            base::BindOnce(&ModemProxy::OnCreateBearerSuccess,
+                                           weak_factory_.GetWeakPtr(),
+                                           std::move(split_callback.first)),
+                            base::BindOnce(&ModemProxy::OnCreateBearerFailure,
+                                           weak_factory_.GetWeakPtr(),
+                                           std::move(split_callback.second)),
+                            timeout);
 }
 
 void ModemProxy::DeleteBearer(const RpcIdentifier& bearer,
@@ -201,18 +204,18 @@ void ModemProxy::StateChanged(int32_t old, int32_t _new, uint32_t reason) {
   state_changed_callback_.Run(old, _new, reason);
 }
 
-void ModemProxy::OnCreateBearerSuccess(const RpcIdentifierCallback& callback,
+void ModemProxy::OnCreateBearerSuccess(RpcIdentifierCallback callback,
                                        const dbus::ObjectPath& path) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << path.value();
-  callback.Run(path, Error());
+  std::move(callback).Run(path, Error());
 }
 
-void ModemProxy::OnCreateBearerFailure(const RpcIdentifierCallback& callback,
+void ModemProxy::OnCreateBearerFailure(RpcIdentifierCallback callback,
                                        brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(RpcIdentifier(""), error);
+  std::move(callback).Run(RpcIdentifier(""), error);
 }
 
 void ModemProxy::OnCommandSuccess(const StringCallback& callback,

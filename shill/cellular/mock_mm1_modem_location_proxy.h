@@ -25,10 +25,7 @@ class MockModemLocationProxy : public ModemLocationProxyInterface {
               Setup,
               (uint32_t, bool, Error*, const ResultCallback&, int),
               (override));
-  MOCK_METHOD(void,
-              GetLocation,
-              (Error*, const BrilloAnyCallback&, int),
-              (override));
+  MOCK_METHOD(void, GetLocation, (Error*, BrilloAnyCallback, int), (override));
 };
 
 }  // namespace mm1

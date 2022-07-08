@@ -35,7 +35,7 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
              int timeout) override;
 
   void GetLocation(Error* error,
-                   const BrilloAnyCallback& callback,
+                   BrilloAnyCallback callback,
                    int timeout) override;
 
  private:
@@ -45,9 +45,9 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
                       brillo::Error* dbus_error);
 
   // Callbacks for GetLocation async call.
-  void OnGetLocationSuccess(const BrilloAnyCallback& callback,
+  void OnGetLocationSuccess(BrilloAnyCallback callback,
                             const std::map<uint32_t, brillo::Any>& results);
-  void OnGetLocationFailure(const BrilloAnyCallback& callback,
+  void OnGetLocationFailure(BrilloAnyCallback callback,
                             brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::LocationProxy> proxy_;

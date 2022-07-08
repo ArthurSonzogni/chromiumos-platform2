@@ -276,24 +276,24 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     callback.Run(Error(Error::kWrongState));
   }
   void InvokeGetModemStatus(Error* error,
-                            const KeyValueStoreCallback& callback,
+                            KeyValueStoreCallback callback,
                             int timeout) {
     KeyValueStore props;
     props.Set<std::string>("carrier", kTestCarrier);
     props.Set<std::string>("unknown-property", "irrelevant-value");
-    callback.Run(props, Error());
+    std::move(callback).Run(props, Error());
   }
   void InvokeConnect(const KeyValueStore& props,
-                     const RpcIdentifierCallback& callback,
+                     RpcIdentifierCallback callback,
                      int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
-    callback.Run(kTestBearerPath, Error());
+    std::move(callback).Run(kTestBearerPath, Error());
   }
   void InvokeConnectFail(const KeyValueStore& props,
-                         const RpcIdentifierCallback& callback,
+                         RpcIdentifierCallback callback,
                          int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
-    callback.Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
+    std::move(callback).Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
   }
   void InvokeDisconnect(const RpcIdentifier& bearer,
                         const ResultCallback& callback,

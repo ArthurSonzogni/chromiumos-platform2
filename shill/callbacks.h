@@ -31,20 +31,20 @@ using ResultVariantDictionariesOnceCallback =
     base::OnceCallback<void(const VariantDictionaries&, const Error&)>;
 using EnabledStateChangedCallback = base::Callback<void(const Error&)>;
 using KeyValueStoreCallback =
-    base::Callback<void(const KeyValueStore&, const Error&)>;
+    base::OnceCallback<void(const KeyValueStore&, const Error&)>;
 using KeyValueStoresCallback =
-    base::Callback<void(const std::vector<KeyValueStore>&, const Error&)>;
+    base::OnceCallback<void(const std::vector<KeyValueStore>&, const Error&)>;
 using KeyValueStoresOnceCallback =
     base::OnceCallback<void(const std::vector<KeyValueStore>&, const Error&)>;
 using RpcIdentifierCallback =
-    base::Callback<void(const RpcIdentifier&, const Error&)>;
+    base::OnceCallback<void(const RpcIdentifier&, const Error&)>;
 using StringCallback = base::Callback<void(const std::string&, const Error&)>;
 using ActivationStateSignalCallback =
-    base::Callback<void(uint32_t, uint32_t, const KeyValueStore&)>;
+    base::RepeatingCallback<void(uint32_t, uint32_t, const KeyValueStore&)>;
 using ResultStringmapsCallback =
-    base::Callback<void(const Stringmaps&, const Error&)>;
-using BrilloAnyCallback =
-    base::Callback<void(const std::map<uint32_t, brillo::Any>&, const Error&)>;
+    base::OnceCallback<void(const Stringmaps&, const Error&)>;
+using BrilloAnyCallback = base::OnceCallback<void(
+    const std::map<uint32_t, brillo::Any>&, const Error&)>;
 
 }  // namespace shill
 

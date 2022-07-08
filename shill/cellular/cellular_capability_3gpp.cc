@@ -1185,7 +1185,7 @@ void CellularCapability3gpp::OnResetReply(const ResultCallback& callback,
 }
 
 void CellularCapability3gpp::Scan(Error* error,
-                                  const ResultStringmapsCallback& callback) {
+                                  ResultStringmapsCallback callback) {
   if (!modem_3gpp_proxy_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "No 3gpp proxy");
@@ -1193,19 +1193,18 @@ void CellularCapability3gpp::Scan(Error* error,
   }
 
   KeyValueStoresCallback cb =
-      base::Bind(&CellularCapability3gpp::OnScanReply,
-                 weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_3gpp_proxy_->Scan(error, cb, kTimeoutScan);
+      base::BindOnce(&CellularCapability3gpp::OnScanReply,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+  modem_3gpp_proxy_->Scan(error, std::move(cb), kTimeoutScan);
 }
 
-void CellularCapability3gpp::OnScanReply(
-    const ResultStringmapsCallback& callback,
-    const ScanResults& results,
-    const Error& error) {
+void CellularCapability3gpp::OnScanReply(ResultStringmapsCallback callback,
+                                         const ScanResults& results,
+                                         const Error& error) {
   Stringmaps found_networks;
   for (const auto& result : results)
     found_networks.push_back(ParseScanResult(result));
-  callback.Run(found_networks, error);
+  std::move(callback).Run(found_networks, error);
 }
 
 Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
@@ -1353,10 +1352,12 @@ void CellularCapability3gpp::OnSetupSignalReply(const Error& error) {
 }
 
 void CellularCapability3gpp::GetLocation(const StringCallback& callback) {
-  BrilloAnyCallback cb = base::Bind(&CellularCapability3gpp::OnGetLocationReply,
-                                    weak_ptr_factory_.GetWeakPtr(), callback);
+  BrilloAnyCallback cb =
+      base::BindOnce(&CellularCapability3gpp::OnGetLocationReply,
+                     weak_ptr_factory_.GetWeakPtr(), callback);
   Error error;
-  modem_location_proxy_->GetLocation(&error, cb, kTimeoutGetLocation);
+  modem_location_proxy_->GetLocation(&error, std::move(cb),
+                                     kTimeoutGetLocation);
 }
 
 void CellularCapability3gpp::OnGetLocationReply(
