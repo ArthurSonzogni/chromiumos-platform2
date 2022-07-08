@@ -2515,21 +2515,18 @@ void WiFi::StateChanged(const std::string& new_state) {
           .dhcp = dhcp_opts,
           .accept_ra = true,
       };
-      if (network()->Start(opts)) {
-        LOG(INFO) << link_name() << " is up; started L3 configuration.";
-        RetrieveLinkStatistics(NetworkEvent::kIPConfigurationStart);
-        affected_service->SetState(Service::kStateConfiguring);
-        if (affected_service->IsSecurityMatch(kSecurityWep)) {
-          // With the overwhelming majority of WEP networks, we cannot assume
-          // our credentials are correct just because we have successfully
-          // connected.  It is more useful to track received data as the L3
-          // configuration proceeds to see if we can decrypt anything.
-          receive_byte_count_at_connect_ = GetReceiveByteCount();
-        } else {
-          affected_service->ResetSuspectedCredentialFailures();
-        }
+      network()->Start(opts);
+      LOG(INFO) << link_name() << " is up; started L3 configuration.";
+      RetrieveLinkStatistics(NetworkEvent::kIPConfigurationStart);
+      affected_service->SetState(Service::kStateConfiguring);
+      if (affected_service->IsSecurityMatch(kSecurityWep)) {
+        // With the overwhelming majority of WEP networks, we cannot assume
+        // our credentials are correct just because we have successfully
+        // connected.  It is more useful to track received data as the L3
+        // configuration proceeds to see if we can decrypt anything.
+        receive_byte_count_at_connect_ = GetReceiveByteCount();
       } else {
-        LOG(ERROR) << "Unable to acquire DHCP config.";
+        affected_service->ResetSuspectedCredentialFailures();
       }
     }
     has_already_completed_ = true;

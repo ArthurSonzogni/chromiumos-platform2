@@ -91,9 +91,8 @@ class Network {
   Network& operator=(const Network&) = delete;
   virtual ~Network() = default;
 
-  // Starts the network with the given |options|. Returns true if the IP request
-  // was successfully sent.
-  bool Start(const StartOptions& options);
+  // Starts the network with the given |options|.
+  void Start(const StartOptions& options);
   // Configures (or reconfigures) the associated Connection object with the
   // given IPConfig.
   void SetupConnection(IPConfig* ipconfig);

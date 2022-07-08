@@ -24,7 +24,6 @@
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -34,6 +33,7 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -232,7 +232,7 @@ class EthernetTest : public testing::Test {
   }
 #endif  // DISABLE_WIRED_8021X
 
-  StrictMock<MockEventDispatcher> dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockControl control_interface_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
@@ -356,7 +356,6 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   SetLinkUp(false);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(nullptr, GetSelectedService());
@@ -372,11 +371,9 @@ TEST_F(EthernetTest, ConnectToFailure) {
       .WillOnce(
           Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
   EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(false));
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(
-                  _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
-  EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
+  EXPECT_CALL(*mock_service_, SetFailure(Service::kFailureDHCP));
   ethernet_->ConnectTo(mock_service_.get());
+  dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(mock_service_, GetSelectedService());
   StopEthernet();
 }
@@ -390,11 +387,9 @@ TEST_F(EthernetTest, ConnectToSuccess) {
       .WillOnce(
           Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
   EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(true));
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(
-                  _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());
+  dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(GetService(), GetSelectedService());
   Mock::VerifyAndClearExpectations(mock_service_.get());
 
@@ -410,9 +405,6 @@ TEST_F(EthernetTest, OnEapDetected) {
   EXPECT_CALL(*eap_listener_, Stop());
   EXPECT_CALL(ethernet_eap_provider_,
               SetCredentialChangeCallback(ethernet_.get(), _));
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(
-                  _, _, base::TimeDelta()));  // Posts TryEapAuthenticationTask.
   TriggerOnEapDetected();
   EXPECT_TRUE(GetIsEapDetected());
 }

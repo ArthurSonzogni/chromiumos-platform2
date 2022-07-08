@@ -1392,13 +1392,10 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
           .dhcp = dhcp_opts,
           .accept_ra = true,
       };
-      if (network()->Start(opts)) {
-        SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
-        SelectService(service_);
-        SetServiceState(Service::kStateConfiguring);
-      } else {
-        LOG(ERROR) << "Unable to acquire IPv4 configuration over DHCP.";
-      }
+      network()->Start(opts);
+      SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
+      SelectService(service_);
+      SetServiceState(Service::kStateConfiguring);
     }
     return;
   }

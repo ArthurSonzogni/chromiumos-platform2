@@ -347,7 +347,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
         return controller;
       }));
-  EXPECT_TRUE(device_->network()->Start(opts));
+  device_->network()->Start(opts);
   ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
   SetDHCPProvider(nullptr);
@@ -368,7 +368,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
         return controller;
       }));
-  EXPECT_TRUE(device_->network()->Start(opts));
+  device_->network()->Start(opts);
   ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
   SetDHCPProvider(nullptr);

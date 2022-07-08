@@ -267,13 +267,8 @@ void Ethernet::ConnectTo(EthernetService* service) {
       .dhcp = dhcp_opts,
       .accept_ra = true,
   };
-  if (network()->Start(opts)) {
-    SetServiceState(Service::kStateConfiguring);
-  } else {
-    LOG(ERROR) << "Unable to acquire DHCP config.";
-    SetServiceState(Service::kStateFailure);
-    network()->Stop();
-  }
+  network()->Start(opts);
+  SetServiceState(Service::kStateConfiguring);
 }
 
 std::string Ethernet::GetStorageIdentifier() const {

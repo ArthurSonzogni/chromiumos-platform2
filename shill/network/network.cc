@@ -52,7 +52,7 @@ Network::Network(int interface_index,
       dispatcher_(dispatcher),
       dhcp_provider_(DHCPProvider::GetInstance()) {}
 
-bool Network::Start(const Network::StartOptions& opts) {
+void Network::Start(const Network::StartOptions& opts) {
   Stop();
   CHECK(opts.accept_ra);
   StartIPv6();
@@ -66,7 +66,15 @@ bool Network::Start(const Network::StartOptions& opts) {
                                           IPConfig::kTypeDHCP));
   dispatcher_->PostTask(
       FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPTask, AsWeakPtr()));
-  return dhcp_controller()->RequestIP();
+
+  if (dhcp_controller()->RequestIP()) {
+    // If RequestIP succeeds, the following handling will be done in its
+    // callbacks.
+    return;
+  }
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Network::StopInternal, AsWeakPtr(), /*is_failure*/ true));
 }
 
 void Network::SetupConnection(IPConfig* ipconfig) {
