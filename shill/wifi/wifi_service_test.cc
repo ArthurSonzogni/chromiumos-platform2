@@ -33,6 +33,7 @@
 #include "shill/mock_service.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_netlink_manager.h"
+#include "shill/network/mock_network.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
 #include "shill/store/fake_store.h"
@@ -1869,8 +1870,10 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
 
 TEST_F(WiFiServiceTest, Unload) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), DestroyIPConfigLease(service->GetStorageIdentifier()))
+  auto network = std::make_unique<MockNetwork>(1, "ifname", Technology::kWiFi);
+  EXPECT_CALL(*network, DestroyDHCPLease(service->GetStorageIdentifier()))
       .Times(1);
+  wifi()->set_network_for_testing(std::move(network));
   service->Unload();
 }
 

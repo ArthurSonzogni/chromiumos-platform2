@@ -20,6 +20,7 @@ MockNetwork::MockNetwork(int interface_index,
               technology,
               /*fixed_ip_params=*/false,
               /*event_handler=*/nullptr,
+              /*control_interface=*/nullptr,
               /*device_info=*/nullptr,
               /*dispatcher=*/nullptr) {}
 

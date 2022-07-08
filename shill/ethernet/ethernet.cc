@@ -267,7 +267,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
       .dhcp = dhcp_opts,
       .accept_ra = true,
   };
-  if (AcquireIPConfig(opts)) {
+  if (network()->Start(opts)) {
     SetServiceState(Service::kStateConfiguring);
   } else {
     LOG(ERROR) << "Unable to acquire DHCP config.";

@@ -669,7 +669,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     ScopeLogger::GetInstance()->set_verbose_level(3);
     static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
-    wifi_->set_dhcp_provider(&dhcp_provider_);
+    wifi_->network()->set_dhcp_provider_for_testing(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
     EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
@@ -686,7 +686,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop(nullptr, ResultCallback());
-    wifi_->set_dhcp_provider(nullptr);
+    wifi_->network()->set_dhcp_provider_for_testing(nullptr);
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
     ScopeLogger::GetInstance()->set_verbose_level(0);

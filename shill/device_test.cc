@@ -226,6 +226,10 @@ class DeviceTest : public testing::Test {
     device_->ip6config()->set_properties(properties);
   }
 
+  void SetDHCPProvider(DHCPProvider* dhcp_provider) {
+    device_->network()->set_dhcp_provider_for_testing(dhcp_provider);
+  }
+
   static ManagerProperties MakePortalProperties() {
     ManagerProperties props;
     props.portal_http_url = PortalDetector::kDefaultHttpUrl;
@@ -315,7 +319,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
   device_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), "randomname"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
-  device_->dhcp_provider_ = dhcp_provider.get();
+  SetDHCPProvider(dhcp_provider.get());
 
   const std::string dhcp_hostname = "chromeos";
   const std::string dhcp_lease_name = "leasename";
@@ -343,17 +347,17 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
         return controller;
       }));
-  EXPECT_TRUE(device_->AcquireIPConfig(opts));
+  EXPECT_TRUE(device_->network()->Start(opts));
   ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
-  device_->dhcp_provider_ = nullptr;
+  SetDHCPProvider(nullptr);
 }
 
 TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   device_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), "randomname"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
-  device_->dhcp_provider_ = dhcp_provider.get();
+  SetDHCPProvider(dhcp_provider.get());
 
   Network::StartOptions opts;
   opts.dhcp = DHCPProvider::Options{};
@@ -364,10 +368,10 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
         return controller;
       }));
-  EXPECT_TRUE(device_->AcquireIPConfig(opts));
+  EXPECT_TRUE(device_->network()->Start(opts));
   ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
-  device_->dhcp_provider_ = nullptr;
+  SetDHCPProvider(nullptr);
 }
 
 TEST_F(DeviceTest, StartIPv6) {

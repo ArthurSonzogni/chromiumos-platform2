@@ -96,11 +96,11 @@ Device::Device(Manager* manager,
                            technology,
                            fixed_ip_params,
                            this,
+                           manager->control_interface(),
                            manager->device_info(),
                            manager->dispatcher())),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
-      dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       is_multi_homed_(false),
@@ -494,25 +494,6 @@ bool Device::IsUsingStaticIP() const {
   return selected_service_->HasStaticIPAddress();
 }
 
-bool Device::AcquireIPConfig(const Network::StartOptions& opts) {
-  network_->Stop();
-  CHECK(opts.accept_ra);
-  network_->StartIPv6();
-  CHECK(opts.dhcp.has_value());
-  network_->set_dhcp_controller(dhcp_provider_->CreateController(
-      link_name_, opts.dhcp.value(), technology_));
-  dhcp_controller()->RegisterCallbacks(
-      base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP,
-                          network_->AsWeakPtr()),
-      base::BindRepeating(&Network::OnDHCPFailure, network_->AsWeakPtr()));
-  set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_,
-                                          IPConfig::kTypeDHCP));
-  dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Network::ConfigureStaticIPTask, network_->AsWeakPtr()));
-  return dhcp_controller()->RequestIP();
-}
-
 void Device::UpdateBlackholeUserTraffic() {
   SLOG(this, 2) << __func__;
   if (ipconfig()) {
@@ -577,10 +558,6 @@ void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
       base::BindOnce(&Device::ConfigureStaticIPv6Address, AsWeakPtr()));
   // OnIPConfigsPropertyUpdated() will be called later when SLAAC finishes, that
   // is also where static DNS configuration will be applied.
-}
-
-void Device::DestroyIPConfigLease(const std::string& name) {
-  dhcp_provider_->DestroyLease(name);
 }
 
 void Device::HelpRegisterConstDerivedString(

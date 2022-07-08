@@ -226,8 +226,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Save configuration for the device to |storage|.
   virtual bool Save(StoreInterface* storage);
 
-  void set_dhcp_provider(DHCPProvider* provider) { dhcp_provider_ = provider; }
-
   DeviceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
   // Suspend event handler. Called by Manager before the system
@@ -258,10 +256,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
   virtual void OnDarkResume(const ResultCallback& callback);
-
-  // Destroy the lease, if any, with this |name|.
-  // Called by the service during Unload() as part of the cleanup sequence.
-  mockable void DestroyIPConfigLease(const std::string& name);
 
   // Called by DeviceInfo when the kernel adds or removes a globally-scoped
   // IPv6 address from this interface.
@@ -442,10 +436,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Drops the currently selected service along with its IP configuration and
   // connection, if any.
   virtual void DropConnection();
-
-  // Start DHCP clients on this interface using the options in |options.dhcp|.
-  // Returns true if the IP request was successfully sent.
-  bool AcquireIPConfig(const Network::StartOptions& options);
 
   // Assigns the IPv4 configuration |properties| to |ipconfig_|.
   void AssignIPConfig(const IPConfig::Properties& properties);
@@ -675,7 +665,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   ServiceRefPtr selected_service_;
 
   // Cache singleton pointers for performance and test purposes.
-  DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 

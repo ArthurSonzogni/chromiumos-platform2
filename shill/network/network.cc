@@ -39,6 +39,7 @@ Network::Network(int interface_index,
                  Technology technology,
                  bool fixed_ip_params,
                  EventHandler* event_handler,
+                 ControlInterface* control_interface,
                  DeviceInfo* device_info,
                  EventDispatcher* dispatcher)
     : interface_index_(interface_index),
@@ -46,8 +47,27 @@ Network::Network(int interface_index,
       technology_(technology),
       fixed_ip_params_(fixed_ip_params),
       event_handler_(event_handler),
+      control_interface_(control_interface),
       device_info_(device_info),
-      dispatcher_(dispatcher) {}
+      dispatcher_(dispatcher),
+      dhcp_provider_(DHCPProvider::GetInstance()) {}
+
+bool Network::Start(const Network::StartOptions& opts) {
+  Stop();
+  CHECK(opts.accept_ra);
+  StartIPv6();
+  CHECK(opts.dhcp.has_value());
+  set_dhcp_controller(dhcp_provider_->CreateController(
+      interface_name_, opts.dhcp.value(), technology_));
+  dhcp_controller()->RegisterCallbacks(
+      base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
+      base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
+  set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
+                                          IPConfig::kTypeDHCP));
+  dispatcher_->PostTask(
+      FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPTask, AsWeakPtr()));
+  return dhcp_controller()->RequestIP();
+}
 
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
@@ -228,6 +248,10 @@ void Network::OnDHCPFailure() {
   }
 
   StopInternal(/*is_failure=*/true);
+}
+
+void Network::DestroyDHCPLease(const std::string& name) {
+  dhcp_provider_->DestroyLease(name);
 }
 
 void Network::StopIPv6() {

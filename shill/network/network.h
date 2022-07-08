@@ -84,12 +84,16 @@ class Network {
                    Technology technology,
                    bool fixed_ip_params,
                    EventHandler* event_handler,
+                   ControlInterface* control_interface,
                    DeviceInfo* device_info,
                    EventDispatcher* dispatcher);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network() = default;
 
+  // Starts the network with the given |options|. Returns true if the IP request
+  // was successfully sent.
+  bool Start(const StartOptions& options);
   // Configures (or reconfigures) the associated Connection object with the
   // given IPConfig.
   void SetupConnection(IPConfig* ipconfig);
@@ -133,6 +137,9 @@ class Network {
                                  bool new_lease_acquired);
   // Callback invoked on DHCP failures.
   void OnDHCPFailure();
+  // Destroy the lease, if any, with this |name|.
+  // Called by the service during Unload() as part of the cleanup sequence.
+  mockable void DestroyDHCPLease(const std::string& name);
 
   // Functions for IPv6.
   void StopIPv6();
@@ -198,6 +205,9 @@ class Network {
     connection_ = std::move(connection);
   }
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
+  void set_dhcp_provider_for_testing(DHCPProvider* provider) {
+    dhcp_provider_ = provider;
+  }
 
  private:
   void StopInternal(bool is_failure);
@@ -239,8 +249,12 @@ class Network {
   EventHandler* event_handler_;
 
   // Other dependencies.
+  ControlInterface* control_interface_;
   DeviceInfo* device_info_;
   EventDispatcher* dispatcher_;
+
+  // Cache singleton pointers for performance and test purposes.
+  DHCPProvider* dhcp_provider_;
 
   base::WeakPtrFactory<Network> weak_factory_{this};
 };

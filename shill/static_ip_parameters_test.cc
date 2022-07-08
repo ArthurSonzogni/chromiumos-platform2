@@ -70,9 +70,9 @@ class StaticIPParametersTest : public Test {
     service_ = new ServiceUnderTest(manager_.get());
 
     const std::string ifname = "eth1";
-    network_ = std::make_unique<Network>(1, ifname, Technology::kEthernet,
-                                         false, &network_handler_,
-                                         device_info_.get(), &dispatcher_);
+    network_ = std::make_unique<Network>(
+        1, ifname, Technology::kEthernet, false, &network_handler_,
+        &control_interface_, device_info_.get(), &dispatcher_);
     network_->set_connection_for_testing(
         std::make_unique<MockConnection>(device_info_.get()));
     network_->set_ipconfig(

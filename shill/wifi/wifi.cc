@@ -2437,7 +2437,7 @@ const WiFiEndpointConstRefPtr WiFi::GetCurrentEndpoint() const {
 }
 
 void WiFi::DestroyServiceLease(const WiFiService& service) {
-  DestroyIPConfigLease(GetServiceLeaseName(service));
+  network()->DestroyDHCPLease(GetServiceLeaseName(service));
 }
 
 void WiFi::StateChanged(const std::string& new_state) {
@@ -2515,7 +2515,7 @@ void WiFi::StateChanged(const std::string& new_state) {
           .dhcp = dhcp_opts,
           .accept_ra = true,
       };
-      if (AcquireIPConfig(opts)) {
+      if (network()->Start(opts)) {
         LOG(INFO) << link_name() << " is up; started L3 configuration.";
         RetrieveLinkStatistics(NetworkEvent::kIPConfigurationStart);
         affected_service->SetState(Service::kStateConfiguring);

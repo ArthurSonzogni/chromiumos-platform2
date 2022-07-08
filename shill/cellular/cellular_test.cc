@@ -183,7 +183,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
 
     static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;
-    device_->set_dhcp_provider(&dhcp_provider_);
+    device_->network()->set_dhcp_provider_for_testing(&dhcp_provider_);
     device_->process_manager_ = &process_manager_;
 
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
@@ -204,7 +204,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->network()->Stop();
     device_->set_state_for_testing(Cellular::State::kDisabled);
     GetCapability3gpp()->ReleaseProxies();
-    device_->set_dhcp_provider(nullptr);
+    device_->network()->set_dhcp_provider_for_testing(nullptr);
     // Break cycle between Cellular and CellularService.
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
