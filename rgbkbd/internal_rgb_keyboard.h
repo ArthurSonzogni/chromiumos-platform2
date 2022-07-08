@@ -10,6 +10,7 @@
 
 #include <base/files/scoped_file.h>
 #include <dbus/rgbkbd/dbus-constants.h>
+#include <libec/ec_command.h>
 #include <libec/ec_usb_endpoint.h>
 #include <stdint.h>
 
@@ -29,7 +30,21 @@ class InternalRgbKeyboard : public RgbKeyboard {
   RgbKeyboardCapabilities GetRgbKeyboardCapabilities() override;
 
  private:
-  std::optional<RgbKeyboardCapabilities> capabilities_;
+  enum class CommunicationType {
+    kUsb = 0,
+    kFileDescriptor = 1,
+  };
+
+  // When calling EC commands, we have to figure out whether the rgb
+  // keyboard communicates over USB or File Descriptor. This takes an EcCommand
+  // and tries it both over USB and FD. If either succeeds it saves which type
+  // to use in future EcCommands.
+  template <typename T, typename S>
+  bool SetCommunicationType(ec::EcCommand<T, S>& command);
+  template <typename T, typename S>
+  bool RunEcCommand(ec::EcCommand<T, S>& command);
+
+  std::optional<CommunicationType> communication_type_;
   std::unique_ptr<ec::EcUsbEndpointInterface> usb_endpoint_;
   base::ScopedFD ec_fd_;
 };

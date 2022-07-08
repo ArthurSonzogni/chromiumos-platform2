@@ -31,24 +31,6 @@ std::string CreateRgbLogString(uint8_t r, uint8_t g, uint8_t b) {
   return rgb_log.str();
 }
 
-std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() {
-  auto endpoint = std::make_unique<ec::EcUsbEndpoint>();
-  return endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)
-             ? std::move(endpoint)
-             : std::unique_ptr<ec::EcUsbEndpoint>();
-}
-
-base::ScopedFD CreateFileDescriptorForEc() {
-  auto raw_fd = open(kEcPath, O_RDWR | O_CLOEXEC);
-  if (raw_fd == -1) {
-    auto err = errno;
-    LOG(ERROR) << "Failed to open FD for EC with errno=" << err;
-    return base::ScopedFD();
-  }
-
-  return base::ScopedFD(raw_fd);
-}
-
 void LogSupportType(RgbKeyboardCapabilities capabilities) {
   switch (capabilities) {
     case RgbKeyboardCapabilities::kNone:
@@ -67,26 +49,32 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
   }
 }
 
+std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() {
+  auto endpoint = std::make_unique<ec::EcUsbEndpoint>();
+  return endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)
+             ? std::move(endpoint)
+             : std::unique_ptr<ec::EcUsbEndpoint>();
+}
+
+base::ScopedFD CreateFileDescriptorForEc() {
+  auto raw_fd = open(kEcPath, O_RDWR | O_CLOEXEC);
+  if (raw_fd == -1) {
+    LOG(ERROR) << "Failed to open FD for EC with errno=" << errno;
+    return base::ScopedFD();
+  }
+
+  return base::ScopedFD(raw_fd);
+}
+
 }  // namespace
 
 bool InternalRgbKeyboard::SetKeyColor(uint32_t key,
                                       uint8_t r,
                                       uint8_t g,
                                       uint8_t b) {
-  DCHECK(capabilities_.has_value());
-  DCHECK_NE(RgbKeyboardCapabilities::kNone, capabilities_.value());
-
   struct rgb_s color = {r, g, b};
   ec::RgbkbdSetColorCommand command(key, std::vector<struct rgb_s>{color});
-
-  bool success = false;
-  if (capabilities_ == RgbKeyboardCapabilities::kIndividualKey) {
-    DCHECK(usb_endpoint_);
-    success = command.Run(*usb_endpoint_);
-  } else {
-    DCHECK(ec_fd_.is_valid());
-    success = command.Run(ec_fd_.get());
-  }
+  const bool success = RunEcCommand(command);
 
   if (success) {
     LOG(INFO) << "Setting key color succeeded with key " << key
@@ -99,19 +87,9 @@ bool InternalRgbKeyboard::SetKeyColor(uint32_t key,
 }
 
 bool InternalRgbKeyboard::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
-  DCHECK(capabilities_.has_value());
-  DCHECK_NE(RgbKeyboardCapabilities::kNone, capabilities_.value());
-
   struct rgb_s color = {r, g, b};
-  auto command = ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, color);
-  bool success = false;
-  if (capabilities_ == RgbKeyboardCapabilities::kIndividualKey) {
-    DCHECK(usb_endpoint_);
-    success = command->Run(*usb_endpoint_);
-  } else {
-    DCHECK(ec_fd_.is_valid());
-    success = command->Run(ec_fd_.get());
-  }
+  const bool success =
+      RunEcCommand(*ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, color));
 
   if (success) {
     LOG(INFO) << "Setting all key colors to" << CreateRgbLogString(r, g, b)
@@ -124,29 +102,65 @@ bool InternalRgbKeyboard::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 RgbKeyboardCapabilities InternalRgbKeyboard::GetRgbKeyboardCapabilities() {
-  if (capabilities_.has_value()) {
-    return capabilities_.value();
-  }
-
-  DCHECK(!usb_endpoint_);
-  usb_endpoint_ = CreateEcUsbEndpoint();
-  capabilities_ = RgbKeyboardCapabilities::kNone;
+  RgbKeyboardCapabilities capabilities = RgbKeyboardCapabilities::kNone;
 
   LOG(INFO) << "Checking RgbKeyboardCapabilities by trying to set all keys to "
             << CreateRgbLogString(/*r=*/0, /*g=*/0, /*b=*/0);
   auto command = ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, {0, 0, 0});
-  if (usb_endpoint_ && command->Run(*usb_endpoint_)) {
-    capabilities_ = RgbKeyboardCapabilities::kIndividualKey;
-  } else {
-    // Try and use a FD if USB fails.
-    ec_fd_ = CreateFileDescriptorForEc();
-    if (ec_fd_.is_valid() && command->Run(ec_fd_.get())) {
-      capabilities_ = RgbKeyboardCapabilities::kFourZoneFortyLed;
+
+  // TODO(dpad): Replace CLEAR command with GET_CONFIG command once available
+  // on all devices. Deducing communication type will still be needed as
+  // GET_CONFIG API still needs either USB or FileDescriptor param
+  if (SetCommunicationType(*command)) {
+    if (communication_type_ == CommunicationType::kUsb) {
+      capabilities = RgbKeyboardCapabilities::kIndividualKey;
+    } else if (communication_type_ == CommunicationType::kFileDescriptor) {
+      capabilities = RgbKeyboardCapabilities::kFourZoneFortyLed;
     }
   }
 
-  DCHECK(capabilities_.has_value());
-  LogSupportType(capabilities_.value());
-  return capabilities_.value();
+  LogSupportType(capabilities);
+  return capabilities;
 }
+
+template <typename T, typename U>
+bool InternalRgbKeyboard::SetCommunicationType(ec::EcCommand<T, U>& command) {
+  LOG(INFO) << "Deducing Communication type";
+
+  usb_endpoint_ = CreateEcUsbEndpoint();
+  if (usb_endpoint_ && command.Run(*usb_endpoint_)) {
+    LOG(INFO) << "Internal RGB Keyboard communicates over USB";
+    communication_type_ = CommunicationType::kUsb;
+    return true;
+  }
+
+  ec_fd_ = CreateFileDescriptorForEc();
+  if (ec_fd_.is_valid() && command.Run(ec_fd_.get())) {
+    LOG(INFO) << "Internal RGB Keyboard communicates over FD";
+    communication_type_ = CommunicationType::kFileDescriptor;
+    return true;
+  }
+
+  LOG(ERROR) << "Failed to deduce communication type for internal RGB Keyboard";
+  return false;
+}
+
+template <typename T, typename U>
+bool InternalRgbKeyboard::RunEcCommand(ec::EcCommand<T, U>& command) {
+  if (!communication_type_) {
+    LOG(ERROR) << "Could not run EC command, Internal RGB Keyboard has no "
+                  "communication type set";
+    return false;
+  }
+
+  switch (communication_type_.value()) {
+    case CommunicationType::kUsb:
+      DCHECK(usb_endpoint_);
+      return command.Run(*usb_endpoint_);
+    case CommunicationType::kFileDescriptor:
+      DCHECK(ec_fd_.is_valid());
+      return command.Run(ec_fd_.get());
+  }
+}
+
 }  // namespace rgbkbd
