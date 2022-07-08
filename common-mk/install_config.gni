@@ -51,10 +51,14 @@ template("install_config") {
                                    "options",
                                    "outputs",
                                    "recursive",
-                                   "sources",
                                    "symlinks",
                                    "type",
                                  ])
+          sources = []
+          foreach(x, invoker.sources) {
+            # Rebase to the system absolute path.
+            sources += [ rebase_path(x, "") ]
+          }
         },
       ]
     }
