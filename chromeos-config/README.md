@@ -922,6 +922,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -937,6 +938,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -952,6 +954,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -967,6 +970,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### dc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -990,6 +994,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1005,6 +1010,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1020,6 +1026,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1035,6 +1042,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

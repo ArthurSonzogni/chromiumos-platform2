@@ -297,6 +297,8 @@ typeDefs:
                 properties:
                   powersave-bias:
                     type: integer
+                  sampling-rate-ms:
+                    type: integer
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
       https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
