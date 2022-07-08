@@ -117,7 +117,6 @@ class FuseFrontend {
   }
 
   void StopFuseSession(int error) {
-    read_watcher_.reset();
     if (stop_callback_) {
       errno = error;
       std::move(stop_callback_).Run();
