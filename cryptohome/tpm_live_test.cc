@@ -15,14 +15,18 @@
 #include <set>
 #include <utility>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
+#include <libhwsec/structures/key.h>
 #include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/error.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
@@ -32,6 +36,13 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/crypto_error.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/signature_sealing_backend.h"
 
 #if USE_TPM1
@@ -52,9 +63,90 @@ using hwsec_foundation::Sha256;
 
 namespace cryptohome {
 
-TpmLiveTest::TpmLiveTest() : tpm_(Tpm::GetSingleton()) {}
+namespace {
+
+// Performs common tests for an auth block against correct/wrong passwords.
+bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
+  constexpr char kObfuscatedUsername[] = "user";
+  constexpr char kPassword[] = "pass";
+  constexpr char kWrongPassword[] = "wrong";
+
+  // Create auth block state.
+  AuthBlockState auth_block_state;
+  KeyBlobs key_blobs;
+  CryptoStatus creation_status =
+      auth_block.Create(AuthInput{.user_input = SecureBlob(kPassword),
+                                  .obfuscated_username = kObfuscatedUsername},
+                        &auth_block_state, &key_blobs);
+  if (!creation_status.ok()) {
+    LOG(ERROR) << "Creation failed: " << creation_status;
+    return false;
+  }
+  if (!key_blobs.vkk_key.has_value()) {
+    LOG(ERROR) << "Creation returned no VKK key";
+    return false;
+  }
+
+  // Check derivation using the correct password.
+  KeyBlobs derived_key_blobs;
+  CryptoStatus derivation_status =
+      auth_block.Derive(AuthInput{.user_input = SecureBlob(kPassword),
+                                  .obfuscated_username = kObfuscatedUsername},
+                        auth_block_state, &derived_key_blobs);
+  if (!derivation_status.ok()) {
+    LOG(ERROR) << "Derivation failed: " << derivation_status;
+    return false;
+  }
+  if (!derived_key_blobs.vkk_key.has_value() ||
+      key_blobs.vkk_key.value() != derived_key_blobs.vkk_key.value()) {
+    LOG(ERROR) << "Derivation gave wrong VKK key: "
+               << (derived_key_blobs.vkk_key.has_value()
+                       ? hwsec_foundation::SecureBlobToHex(
+                             derived_key_blobs.vkk_key.value())
+                       : "<none>")
+               << ", expected: "
+               << hwsec_foundation::SecureBlobToHex(key_blobs.vkk_key.value());
+    return false;
+  }
+
+  // Check derivation using a wrong password.
+  derivation_status =
+      auth_block.Derive(AuthInput{.user_input = SecureBlob(kWrongPassword),
+                                  .obfuscated_username = kObfuscatedUsername},
+                        auth_block_state, &derived_key_blobs);
+  if (derivation_status.ok()) {
+    LOG(ERROR) << "Derivation succeeded despite wrong password";
+    return false;
+  }
+  if (derivation_status->local_crypto_error() != CryptoError::CE_TPM_CRYPTO) {
+    LOG(ERROR) << "Derivation with wrong password returned wrong error: "
+               << derivation_status->local_crypto_error() << ", expected "
+               << CryptoError::CE_TPM_CRYPTO;
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
+
+TpmLiveTest::TpmLiveTest()
+    : tpm_(Tpm::GetSingleton()),
+      cryptohome_keys_manager_(tpm_->GetHwsec(), &platform_) {}
 
 bool TpmLiveTest::RunLiveTests() {
+  if (!TpmEccAuthBlockTest()) {
+    LOG(ERROR) << "Error running TpmEccAuthBlockTest.";
+    return false;
+  }
+  if (!TpmBoundToPcrAuthBlockTest()) {
+    LOG(ERROR) << "Error running TpmBoundToPcrAuthBlockTest.";
+    return false;
+  }
+  if (!TpmNotBoundToPcrAuthBlockTest()) {
+    LOG(ERROR) << "Error running TpmNotBoundToPcrAuthBlockTest.";
+    return false;
+  }
   if (!PCRKeyTest()) {
     LOG(ERROR) << "Error running PCRKeyTest.";
     return false;
@@ -101,6 +193,56 @@ bool TpmLiveTest::SignData(const SecureBlob& pcr_bound_key,
     LOG(ERROR) << "Failed to verify signature.";
     return false;
   }
+  return true;
+}
+
+bool TpmLiveTest::TpmEccAuthBlockTest() {
+  LOG(INFO) << "TpmEccAuthBlockTest started";
+
+  // Skip the test if elliptic-curve cryptography is not supported on the
+  // device.
+  hwsec::StatusOr<absl::flat_hash_set<hwsec::KeyAlgoType>> algorithms_status =
+      tpm_->GetHwsec()->GetSupportedAlgo();
+  if (!algorithms_status.ok()) {
+    LOG(ERROR) << "Failed to get supported algorithms: "
+               << algorithms_status.status();
+    return false;
+  }
+  if (!algorithms_status->count(hwsec::KeyAlgoType::kEcc)) {
+    LOG(INFO) << "Skipping the test: ECC is not supported by the TPM.";
+    return true;
+  }
+
+  TpmEccAuthBlock auth_block(tpm_->GetHwsec(), &cryptohome_keys_manager_);
+  if (!TestPasswordBasedAuthBlock(auth_block)) {
+    LOG(ERROR) << "TpmEccAuthBlockTest failed.";
+    return false;
+  }
+  LOG(INFO) << "TpmEccAuthBlockTest ended successfully.";
+  return true;
+}
+
+bool TpmLiveTest::TpmBoundToPcrAuthBlockTest() {
+  LOG(INFO) << "TpmBoundToPcrAuthBlockTest started";
+  TpmBoundToPcrAuthBlock auth_block(tpm_->GetHwsec(),
+                                    &cryptohome_keys_manager_);
+  if (!TestPasswordBasedAuthBlock(auth_block)) {
+    LOG(ERROR) << "TpmBoundToPcrAuthBlockTest failed.";
+    return false;
+  }
+  LOG(INFO) << "TpmBoundToPcrAuthBlockTest ended successfully.";
+  return true;
+}
+
+bool TpmLiveTest::TpmNotBoundToPcrAuthBlockTest() {
+  LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest started";
+  TpmNotBoundToPcrAuthBlock auth_block(tpm_->GetHwsec(),
+                                       &cryptohome_keys_manager_);
+  if (!TestPasswordBasedAuthBlock(auth_block)) {
+    LOG(ERROR) << "TpmNotBoundToPcrAuthBlockTest failed.";
+    return false;
+  }
+  LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest ended successfully.";
   return true;
 }
 

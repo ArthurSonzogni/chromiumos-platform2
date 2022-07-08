@@ -11,6 +11,8 @@
 #include <map>
 #include <string>
 
+#include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/tpm.h"
 
 #include <base/logging.h>
@@ -39,6 +41,11 @@ class TpmLiveTest {
   bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
                              const std::map<uint32_t, brillo::Blob>& pcr_map);
 
+  // These tests check TPM-bound AuthBlocks work correctly.
+  bool TpmEccAuthBlockTest();
+  bool TpmBoundToPcrAuthBlockTest();
+  bool TpmNotBoundToPcrAuthBlockTest();
+
   // This test checks if PCRs and PCR bound keys work correctly.
   bool PCRKeyTest();
 
@@ -58,7 +65,9 @@ class TpmLiveTest {
   // random RSA key is used.
   bool SignatureSealedSecretTest();
 
+  FakePlatform platform_;
   Tpm* tpm_;
+  CryptohomeKeysManager cryptohome_keys_manager_;
 };
 
 }  // namespace cryptohome
