@@ -150,7 +150,7 @@ class DeviceTest : public testing::Test {
 
   void OnIPv4ConfigUpdated() { device_->network()->OnIPv4ConfigUpdated(); }
 
-  void OnDHCPFailure() { device_->OnDHCPFailure(); }
+  void OnDHCPFailure() { device_->network()->OnDHCPFailure(); }
 
   patchpanel::TrafficCounter CreateCounter(
       const std::valarray<uint64_t>& vals,
@@ -547,12 +547,9 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  KeyValueStore kvs;
-  kvs.Set<std::string>(kAddressProperty, "1.1.1.1");
-  kvs.Set<int32_t>(kPrefixlenProperty, 16);
-  EXPECT_CALL(*service, OnPropertyChanged(_));
-  service->mutable_store()->SetKeyValueStoreProperty(kStaticIPConfigProperty,
-                                                     kvs, nullptr);
+  NetworkConfig config;
+  config.ipv4_address_cidr = "1.1.1.1/16";
+  device_->network()->OnStaticIPConfigChanged(config);
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);

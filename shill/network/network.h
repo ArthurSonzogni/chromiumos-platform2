@@ -48,11 +48,17 @@ class Network {
 
     // Called when the Network becomes idle from a non-idle state (configuring
     // or connected), no matter if this state change is caused by a failure
-    // (e.g., DHCP failure) or a user-initiate disconnect.
-    virtual void OnNetworkStopped() = 0;
+    // (e.g., DHCP failure) or a user-initiate disconnect. |is_failure|
+    // indicates this failure is triggered by a DHCP failure. Note that
+    // currently this is the only failure type generated inside the Network
+    // class.
+    virtual void OnNetworkStopped(bool is_failure) = 0;
 
     // The IPConfig object lists held by this Network has changed.
     virtual void OnIPConfigsPropertyUpdated() = 0;
+
+    // Called when DHCPv4 fails to acquire a lease.
+    virtual void OnGetDHCPFailure() = 0;
 
     // TODO(b/232177767): Get the list of uids whose traffic should be blocked
     // on this connection. This is not a signal or callback. Put it here just to
@@ -117,6 +123,10 @@ class Network {
   const NetworkConfig& saved_network_config() const {
     return saved_network_config_;
   }
+
+  // Functions for DHCP.
+  // Callback invoked on DHCP failures.
+  void OnDHCPFailure();
 
   // Functions for IPv6.
   void StopIPv6();
@@ -184,6 +194,8 @@ class Network {
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
 
  private:
+  void StopInternal(bool is_failure);
+
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;

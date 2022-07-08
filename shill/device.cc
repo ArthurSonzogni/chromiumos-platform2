@@ -503,7 +503,7 @@ bool Device::AcquireIPConfig(const Network::StartOptions& opts) {
       link_name_, opts.dhcp.value(), technology_));
   dhcp_controller()->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-      base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));
+      base::BindRepeating(&Network::OnDHCPFailure, network_->AsWeakPtr()));
   set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_,
                                           IPConfig::kTypeDHCP));
   dispatcher()->PostTask(
@@ -693,7 +693,10 @@ void Device::OnConnectionUpdated(IPConfig* ipconfig) {
   }
 }
 
-void Device::OnNetworkStopped() {
+void Device::OnNetworkStopped(bool is_failure) {
+  if (is_failure) {
+    OnIPConfigFailure();
+  }
   StopAllActivities();
 }
 
@@ -722,61 +725,6 @@ void Device::OnGetSLAACAddress() {}
 void Device::OnNetworkValidationStart() {}
 void Device::OnNetworkValidationSuccess() {}
 void Device::OnNetworkValidationFailure() {}
-
-void Device::OnDHCPFailure() {
-  SLOG(this, 2) << __func__;
-
-  OnGetDHCPFailure();
-
-  // |dhcp_controller()| cannot be empty when the callback is invoked.
-  DCHECK(dhcp_controller());
-  DCHECK(ipconfig());
-  if (selected_service_) {
-    if (selected_service_->HasStaticIPAddress()) {
-      // Consider three cases:
-      //
-      // 1. We're here because DHCP failed while starting up. There
-      //    are two subcases:
-      //    a. DHCP has failed, and Static IP config has _not yet_
-      //       completed. It's fine to do nothing, because we'll
-      //       apply the static config shortly.
-      //    b. DHCP has failed, and Static IP config has _already_
-      //       completed. It's fine to do nothing, because we can
-      //       continue to use the static config that's already
-      //       been applied.
-      //
-      // 2. We're here because a previously valid DHCP configuration
-      //    is no longer valid. There's still a static IP config,
-      //    because the condition in the if clause evaluated to true.
-      //    Furthermore, the static config includes an IP address for
-      //    us to use.
-      //
-      //    The current configuration may include some DHCP
-      //    parameters, overriden by any static parameters
-      //    provided. We continue to use this configuration, because
-      //    the only configuration element that is leased to us (IP
-      //    address) will be overriden by a static parameter.
-      return;
-    }
-  }
-
-  ipconfig()->ResetProperties();
-  OnIPConfigsPropertyUpdated();
-
-  // Fallback to IPv6 if possible.
-  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    if (!network_->HasConnectionObject() || !network_->IsIPv6()) {
-      // Setup IPv6 connection.
-      network_->SetupConnection(ip6config());
-    } else {
-      // Ignore IPv4 config failure, since IPv6 is up.
-    }
-    return;
-  }
-
-  OnIPConfigFailure();
-  network_->Stop();
-}
 
 void Device::OnIPConfigFailure() {
   if (selected_service_) {

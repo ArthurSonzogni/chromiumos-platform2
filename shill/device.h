@@ -324,9 +324,12 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
   void OnConnectionUpdated(IPConfig* ipconfig) override;
-  void OnNetworkStopped() override;
+  void OnNetworkStopped(bool is_failure) override;
   // Emit a property change signal for the "IPConfigs" property of this device.
   void OnIPConfigsPropertyUpdated() override;
+  // Derived class should implement this function to listen to this event. Base
+  // class does nothing.
+  void OnGetDHCPFailure() override;
   std::vector<uint32_t> GetBlackholedUids() override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
@@ -458,10 +461,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // nothing.
   virtual void OnGetDHCPLease();
 
-  // Called when DHCPv4 fails to acquire a lease. Derived class should implement
-  // this function to listen to this event. Base class does nothing.
-  virtual void OnGetDHCPFailure();
-
   // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
   // by the kernel when the link is connected and is currently not monitored by
   // shill. Derived class should implement this function to listen to this
@@ -577,9 +576,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
-
-  // Callback invoked on DHCP failures.
-  void OnDHCPFailure();
 
   // Initiate portal detection if all the following conditions are met:
   //   - There is currently a |selected_service_| for this Device.

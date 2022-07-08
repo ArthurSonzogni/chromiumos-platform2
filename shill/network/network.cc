@@ -69,6 +69,10 @@ void Network::SetupConnection(IPConfig* ipconfig) {
 }
 
 void Network::Stop() {
+  StopInternal(/*is_failure=*/false);
+}
+
+void Network::StopInternal(bool is_failure) {
   StopIPv6();
   bool ipconfig_changed = false;
   if (dhcp_controller()) {
@@ -91,7 +95,7 @@ void Network::Stop() {
     event_handler_->OnIPConfigsPropertyUpdated();
   }
   connection_ = nullptr;
-  event_handler_->OnNetworkStopped();
+  event_handler_->OnNetworkStopped(is_failure);
 }
 
 bool Network::HasConnectionObject() const {
@@ -164,6 +168,54 @@ IPConfig* Network::GetCurrentIPConfig() const {
     return current_ipconfig_;
   }
   return nullptr;
+}
+
+void Network::OnDHCPFailure() {
+  event_handler_->OnGetDHCPFailure();
+
+  // |dhcp_controller()| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller());
+  DCHECK(ipconfig());
+  if (static_network_config_.ipv4_address_cidr.has_value()) {
+    // Consider three cases:
+    //
+    // 1. We're here because DHCP failed while starting up. There
+    //    are two subcases:
+    //    a. DHCP has failed, and Static IP config has _not yet_
+    //       completed. It's fine to do nothing, because we'll
+    //       apply the static config shortly.
+    //    b. DHCP has failed, and Static IP config has _already_
+    //       completed. It's fine to do nothing, because we can
+    //       continue to use the static config that's already
+    //       been applied.
+    //
+    // 2. We're here because a previously valid DHCP configuration
+    //    is no longer valid. There's still a static IP config,
+    //    because the condition in the if clause evaluated to true.
+    //    Furthermore, the static config includes an IP address for
+    //    us to use.
+    //
+    //    The current configuration may include some DHCP
+    //    parameters, overridden by any static parameters
+    //    provided. We continue to use this configuration, because
+    //    the only configuration element that is leased to us (IP
+    //    address) will be overridden by a static parameter.
+    return;
+  }
+
+  ipconfig()->ResetProperties();
+  event_handler_->OnIPConfigsPropertyUpdated();
+
+  // Fallback to IPv6 if possible.
+  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
+    if (!connection_ || !connection_->IsIPv6()) {
+      // Setup IPv6 connection is there isn's one.
+      SetupConnection(ip6config());
+    }
+    return;
+  }
+
+  StopInternal(/*is_failure=*/true);
 }
 
 void Network::StopIPv6() {
