@@ -1131,10 +1131,6 @@ int main(int argc, char** argv) {
 
   int exit_code = fusebox::Run(&mountpoint, chan, foreground);
 
-  if (fuse_session* session = fuse_chan_session(chan))
-    fuse_session_destroy(session);
-  fuse_opt_free_args(&args);
-
   if (!mountpoint) {  // Kernel removed the FUSE mountpoint: umount(8).
     exit_code = EX_OK;
   } else {
