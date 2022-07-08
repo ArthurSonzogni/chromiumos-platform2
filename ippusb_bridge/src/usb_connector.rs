@@ -22,7 +22,8 @@ const USB_CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
 pub enum Error {
     ClaimInterface(u8, rusb::Error),
     ReleaseInterface(u8, rusb::Error),
-    DetachDrivers(rusb::Error),
+    DetachDrivers(u8, rusb::Error),
+    AttachDrivers(u8, rusb::Error),
     DeviceList(rusb::Error),
     OpenDevice(rusb::Error),
     CleanupThread(io::Error),
@@ -45,7 +46,16 @@ impl fmt::Display for Error {
         match self {
             ClaimInterface(i, err) => write!(f, "Failed to claim interface {}: {}", i, err),
             ReleaseInterface(i, err) => write!(f, "Failed to release interface {}: {}", i, err),
-            DetachDrivers(err) => write!(f, "Failed to detach kernel drivers: {}", err),
+            DetachDrivers(i, err) => write!(
+                f,
+                "Failed to detach kernel driver for interface {}: {}",
+                i, err
+            ),
+            AttachDrivers(i, err) => write!(
+                f,
+                "Failed to attach kernel driver for interface {}, {}",
+                i, err
+            ),
             DeviceList(err) => write!(f, "Failed to read device list: {}", err),
             OpenDevice(err) => write!(f, "Failed to open device: {}", err),
             CleanupThread(err) => write!(f, "Failed to start cleanup thread: {}", err),
@@ -72,6 +82,67 @@ fn is_ippusb_interface(descriptor: &rusb::InterfaceDescriptor) -> bool {
     descriptor.class_code() == 0x07
         && descriptor.sub_class_code() == 0x01
         && descriptor.protocol_code() == 0x04
+}
+
+fn interface_contains_ippusb(interface: &rusb::Interface) -> bool {
+    for descriptor in interface.descriptors() {
+        if is_ippusb_interface(&descriptor) {
+            return true;
+        }
+    }
+    false
+}
+
+fn set_device_config(handle: &mut rusb::DeviceHandle<GlobalContext>, new_config: u8) -> Result<()> {
+    let cur_config = handle
+        .device()
+        .active_config_descriptor()
+        .map_err(Error::ReadConfigDescriptor)?;
+
+    // While detaching any outstanding kernel drivers for the current config, keep
+    // track of non-printer drivers so we can restore them after setting the config.
+    let mut restore_interfaces = Vec::new();
+    for interface in cur_config.interfaces() {
+        if !interface_contains_ippusb(&interface) {
+            match handle.kernel_driver_active(interface.number()) {
+                Ok(false) => continue, // No active driver.
+                Err(e) => return Err(Error::DetachDrivers(interface.number(), e)),
+                _ => {}
+            }
+
+            info!(
+                "Temporarily detaching kernel driver for non-printer interface {}",
+                interface.number()
+            );
+            restore_interfaces.push(interface.number());
+        }
+
+        match handle.detach_kernel_driver(interface.number()) {
+            Err(e) if e != rusb::Error::NotFound => {
+                return Err(Error::DetachDrivers(interface.number(), e))
+            }
+            _ => {}
+        }
+    }
+
+    info!(
+        "Switching from configuration {} to {}",
+        cur_config.number(),
+        new_config
+    );
+    handle
+        .set_active_configuration(new_config)
+        .map_err(Error::SetActiveConfig)?;
+
+    // Try to put back the previously detached drivers.  We don't return an error if one
+    // of these fails because it won't prevent us from claiming the IPP-USB interfaces later.
+    for inum in restore_interfaces {
+        handle
+            .attach_kernel_driver(inum)
+            .unwrap_or_else(|e| error!("Failed to reattach driver for interface {}: {}", inum, e));
+    }
+
+    Ok(())
 }
 
 /// The information for an interface descriptor that supports IPPUSB.
@@ -222,16 +293,9 @@ impl InterfaceManagerState {
             .active_config_descriptor()
             .map_err(Error::ReadConfigDescriptor)?;
 
-        for interface in config.interfaces() {
-            match self.handle.detach_kernel_driver(interface.number()) {
-                Err(e) if e != rusb::Error::NotFound => return Err(Error::DetachDrivers(e)),
-                _ => {}
-            }
+        if config.number() != self.usb_config {
+            set_device_config(&mut self.handle, self.usb_config)?;
         }
-
-        self.handle
-            .set_active_configuration(self.usb_config)
-            .map_err(Error::SetActiveConfig)?;
 
         for interface in &mut self.interfaces {
             if let Err(e) = interface.claim() {
@@ -602,23 +666,9 @@ impl UsbConnector {
         let mut handle = device.open().map_err(Error::OpenDevice)?;
         handle
             .set_auto_detach_kernel_driver(true)
-            .map_err(Error::DetachDrivers)?;
+            .map_err(|e| Error::DetachDrivers(u8::MAX, e))?; // Use MAX to mean "no interface".
 
-        // Detach any outstanding kernel drivers for the current config.
-        let config = device
-            .active_config_descriptor()
-            .map_err(Error::ReadConfigDescriptor)?;
-
-        for interface in config.interfaces() {
-            match handle.detach_kernel_driver(interface.number()) {
-                Err(e) if e != rusb::Error::NotFound => return Err(Error::DetachDrivers(e)),
-                _ => {}
-            }
-        }
-
-        handle
-            .set_active_configuration(info.config)
-            .map_err(Error::SetActiveConfig)?;
+        set_device_config(&mut handle, info.config)?;
 
         // Open the IPPUSB interfaces.
         let mut connections = Vec::new();
