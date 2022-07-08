@@ -35,7 +35,7 @@ enum class ClientType {
 };
 
 using PrivacySwitchStateChangeCallback =
-    base::RepeatingCallback<void(PrivacySwitchState state)>;
+    base::RepeatingCallback<void(int camera_id, PrivacySwitchState state)>;
 
 typedef struct cros_camera_hal {
   /**

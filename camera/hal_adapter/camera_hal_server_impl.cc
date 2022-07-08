@@ -215,7 +215,7 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
 }
 
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
-    PrivacySwitchState state) {
+    int camera_id, PrivacySwitchState state) {
   cros::mojom::CameraPrivacySwitchState state_in_mojo;
   if (state == PrivacySwitchState::kUnknown) {
     state_in_mojo = cros::mojom::CameraPrivacySwitchState::UNKNOWN;
@@ -224,7 +224,7 @@ void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
   } else {  // state == PrivacySwitchState::kOff
     state_in_mojo = cros::mojom::CameraPrivacySwitchState::OFF;
   }
-  callbacks_->CameraPrivacySwitchStateChange(state_in_mojo);
+  callbacks_->CameraPrivacySwitchStateChange(state_in_mojo, camera_id);
 }
 
 int CameraHalServerImpl::LoadCameraHal() {

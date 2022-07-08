@@ -129,8 +129,7 @@ void CameraPrivacySwitchMonitor::OnStatusChanged(int camera_id,
 
   state_ = state;
   if (!callback_.is_null()) {
-    // TODO(b/167994459): Contains |camera_id| information when notifies.
-    callback_.Run(state);
+    callback_.Run(camera_id, state);
   }
 }
 

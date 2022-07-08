@@ -96,7 +96,7 @@ class CameraHalServerImpl final {
     void OnServiceMojoChannelError();
 
     // Triggers when the camera privacy switch status changed.
-    void OnPrivacySwitchStatusChanged(PrivacySwitchState state);
+    void OnPrivacySwitchStatusChanged(int camera_id, PrivacySwitchState state);
 
     CameraHalServerImpl* camera_hal_server_;
 

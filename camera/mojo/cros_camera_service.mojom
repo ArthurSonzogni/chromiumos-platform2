@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next min version: 9
+// Next min version: 10
 
 module cros.mojom;
 
@@ -153,7 +153,8 @@ interface CameraHalServerCallbacks {
   // such switch, this callback will be fired immediately for once to notify its
   // current status when the callbacks are registered.
   [MinVersion=5]
-  CameraPrivacySwitchStateChange@1(CameraPrivacySwitchState state);
+  CameraPrivacySwitchStateChange@1(CameraPrivacySwitchState state,
+                                   [MinVersion=9] int32 camera_id);
 
   // Fired when the camera software privacy switch status is changed.
   [MinVersion=8]
