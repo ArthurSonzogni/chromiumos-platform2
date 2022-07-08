@@ -57,6 +57,8 @@ class Network {
     // The IPConfig object lists held by this Network has changed.
     virtual void OnIPConfigsPropertyUpdated() = 0;
 
+    // Called when a new DHCPv4 lease is obtained for this device.
+    virtual void OnGetDHCPLease() = 0;
     // Called when DHCPv4 fails to acquire a lease.
     virtual void OnGetDHCPFailure() = 0;
 
@@ -125,6 +127,10 @@ class Network {
   }
 
   // Functions for DHCP.
+  // Callback registered with DHCPController. Also see the comment for
+  // DHCPController::UpdateCallback.
+  void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
+                                 bool new_lease_acquired);
   // Callback invoked on DHCP failures.
   void OnDHCPFailure();
 

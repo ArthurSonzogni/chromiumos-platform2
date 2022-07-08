@@ -170,6 +170,18 @@ IPConfig* Network::GetCurrentIPConfig() const {
   return nullptr;
 }
 
+void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
+                                        bool new_lease_acquired) {
+  // |dhcp_controller()| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller());
+  DCHECK(ipconfig());
+  ipconfig()->UpdateProperties(properties);
+  OnIPv4ConfigUpdated();
+  if (new_lease_acquired) {
+    event_handler_->OnGetDHCPLease();
+  }
+}
+
 void Network::OnDHCPFailure() {
   event_handler_->OnGetDHCPFailure();
 

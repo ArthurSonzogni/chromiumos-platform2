@@ -329,6 +329,9 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   void OnIPConfigsPropertyUpdated() override;
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
+  void OnGetDHCPLease() override;
+  // Derived class should implement this function to listen to this event. Base
+  // class does nothing.
   void OnGetDHCPFailure() override;
   std::vector<uint32_t> GetBlackholedUids() override;
 
@@ -450,16 +453,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Applies the static address from IPv6 configuration |properties|.
   // |ip6config_| will be created later when SLAAC address is available.
   void AssignStaticIPv6Config(const IPConfig::Properties& properties);
-
-  // Callback registered with DHCPController. Also see the comment for
-  // DHCPController::UpdateCallback.
-  void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
-                                 bool new_lease_acquired);
-
-  // Called when a new DHCPv4 lease is obtained for this device. Derived class
-  // should implement this function to listen to this event. Base class does
-  // nothing.
-  virtual void OnGetDHCPLease();
 
   // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
   // by the kernel when the link is connected and is currently not monitored by

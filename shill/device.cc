@@ -502,7 +502,8 @@ bool Device::AcquireIPConfig(const Network::StartOptions& opts) {
   network_->set_dhcp_controller(dhcp_provider_->CreateController(
       link_name_, opts.dhcp.value(), technology_));
   dhcp_controller()->RegisterCallbacks(
-      base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
+      base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP,
+                          network_->AsWeakPtr()),
       base::BindRepeating(&Network::OnDHCPFailure, network_->AsWeakPtr()));
   set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_,
                                           IPConfig::kTypeDHCP));
@@ -705,18 +706,6 @@ std::vector<uint32_t> Device::GetBlackholedUids() {
     return manager_->GetUserTrafficUids();
   }
   return {};
-}
-
-void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
-                                       bool new_lease_acquired) {
-  // |dhcp_controller()| cannot be empty when the callback is invoked.
-  DCHECK(dhcp_controller());
-  DCHECK(ipconfig());
-  ipconfig()->UpdateProperties(properties);
-  network_->OnIPv4ConfigUpdated();
-  if (new_lease_acquired) {
-    OnGetDHCPLease();
-  }
 }
 
 void Device::OnGetDHCPLease() {}
