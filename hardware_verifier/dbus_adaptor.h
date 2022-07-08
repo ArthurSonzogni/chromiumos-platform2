@@ -39,10 +39,10 @@ class DBusAdaptor : public org::chromium::HardwareVerifierInterface,
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
     DCHECK(dbus_object_);
     RegisterWithDBusObject(dbus_object_);
-    dbus_object_->RegisterAsync(cb);
+    dbus_object_->RegisterAsync(std::move(cb));
   }
 
   void VerifyComponents(VerifyComponentsResponseCallback callback) override;
