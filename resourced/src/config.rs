@@ -23,7 +23,10 @@ pub trait ConfigProvider {
 
 #[derive(Debug, PartialEq)]
 pub enum Governor {
-    OndemandGovernor { powersave_bias: u32 },
+    OndemandGovernor {
+        powersave_bias: u32,
+        sampling_rate: Option<u32>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -67,13 +70,42 @@ impl PowerSourceType {
 }
 
 fn parse_ondemand_governor(path: &Path) -> Result<Governor> {
-    let path = path.join("powersave-bias");
+    let powersave_bias_path = path.join("powersave-bias");
 
-    let powersave_bias = read_file_to_u64(&path)
-        .with_context(|| format!("Error reading powersave_bias from {}", path.display()))?
-        as u32;
+    let powersave_bias = read_file_to_u64(&powersave_bias_path).with_context(|| {
+        format!(
+            "Error reading powersave-bias from {}",
+            powersave_bias_path.display()
+        )
+    })? as u32;
 
-    Ok(Governor::OndemandGovernor { powersave_bias })
+    let sampling_rate_path = path.join("sampling-rate-ms");
+
+    // The sampling-rate config is optional in the config
+    let sampling_rate = if sampling_rate_path.exists() {
+        let sampling_rate_ms = read_file_to_u64(&sampling_rate_path).with_context(|| {
+            format!(
+                "Error reading sampling-rate-ms from {}",
+                sampling_rate_path.display()
+            )
+        })? as u32;
+
+        // We treat the default value of 0 as unset. We do this because the kernel treats
+        // a sampling rate of 0 as invalid.
+        if sampling_rate_ms == 0 {
+            None
+        } else {
+            // We convert from ms to uS to match what the kernel expects
+            Some(sampling_rate_ms * 1000)
+        }
+    } else {
+        None
+    };
+
+    Ok(Governor::OndemandGovernor {
+        powersave_bias,
+        sampling_rate,
+    })
 }
 
 // Returns Ok(None) when there is no sub directory in path.

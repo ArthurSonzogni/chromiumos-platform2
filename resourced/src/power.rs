@@ -163,25 +163,23 @@ pub struct DirectoryPowerPreferencesManager<C: config::ConfigProvider, P: PowerS
 }
 
 impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreferencesManager<C, P> {
-    fn set_ondemand_power_bias(&self, value: u32) -> Result<()> {
-        let path = self.root.join(ONDEMAND_PATH).join("powersave_bias");
+    fn set_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
+        let path = self.root.join(ONDEMAND_PATH).join(attr);
 
-        std::fs::write(&path, value.to_string()).with_context(|| {
-            format!(
-                "Error writing powersave_bias {} to {}",
-                value,
-                path.display()
-            )
-        })?;
+        std::fs::write(&path, value.to_string())
+            .with_context(|| format!("Error writing {} {} to {}", attr, value, path.display()))?;
 
-        info!("Updating ondemand powersave_bias to {}", value);
+        info!("Updating ondemand {} to {}", attr, value);
 
         Ok(())
     }
 
     fn apply_governor_preferences(&self, governor: config::Governor) -> Result<()> {
         match governor {
-            config::Governor::OndemandGovernor { powersave_bias } => {
+            config::Governor::OndemandGovernor {
+                powersave_bias,
+                sampling_rate,
+            } => {
                 let path = self.root.join(ONDEMAND_PATH);
 
                 if !path.exists() {
@@ -193,7 +191,11 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
                     return Ok(());
                 }
 
-                self.set_ondemand_power_bias(powersave_bias)?
+                self.set_ondemand_governor_value("powersave_bias", powersave_bias)?;
+
+                if let Some(sampling_rate) = sampling_rate {
+                    self.set_ondemand_governor_value("sampling_rate", sampling_rate)?;
+                }
             }
         }
 
