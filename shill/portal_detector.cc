@@ -274,8 +274,8 @@ void PortalDetector::HttpsRequestErrorCallback(
   result_->https_phase = GetPortalPhaseForRequestResult(https_result);
   result_->https_status = GetPortalStatusForRequestResult(https_result);
   LOG(INFO) << LoggingTag()
-            << ": HTTPS probe failed with phase=" << result_->http_phase
-            << " status=" << result_->http_status;
+            << ": HTTPS probe failed with phase=" << result_->https_phase
+            << " status=" << result_->https_status;
   if (result_->IsComplete())
     CompleteTrial(*result_);
 }
