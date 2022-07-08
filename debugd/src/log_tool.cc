@@ -235,6 +235,7 @@ const std::array kCommandLogs {
   Log{kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
     kRoot, kRoot},
   Log{kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
+  Log{kCommand, "crosid", "/usr/bin/crosid -v"},
   Log{kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
   Log{kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
     " /run/daemon-store/crosvm/*/log/*.log.1"

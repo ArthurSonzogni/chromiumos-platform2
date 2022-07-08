@@ -183,6 +183,12 @@ See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 
 ## cros_tp version
 
+## crosid
+
+The output of `crosid -v`, which can be used to understand/debug why a
+device matched a certain config identity (or, why a device didn't
+match one).
+
 ## crostini
 
 ## crosvm.log
