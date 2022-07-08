@@ -1484,6 +1484,8 @@ bool Service::Init(
       {kFileSelectedMethod, &Service::FileSelected},
       {kAttachUsbToContainerMethod, &Service::AttachUsbToContainer},
       {kDetachUsbFromContainerMethod, &Service::DetachUsbFromContainer},
+      {kListRunningContainersMethod, &Service::ListRunningContainers},
+      {kGetGarconSessionInfoMethod, &Service::GetGarconSessionInfo},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -3663,6 +3665,7 @@ std::unique_ptr<dbus::Response> Service::GetVshSession(
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
+
 std::unique_ptr<dbus::Response> Service::FileSelected(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -3708,6 +3711,94 @@ std::unique_ptr<dbus::Response> Service::FileSelected(
           std::make_move_iterator(request.mutable_files()->begin()),
           std::make_move_iterator(request.mutable_files()->end())));
   select_file_dialogs_.erase(it);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ListRunningContainers(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ListRunningContainers request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ListRunningContainersRequest request;
+  ListRunningContainersResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ListRunningContainersRequest from message";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  for (const auto& vm : vms_) {
+    if (vm.first.first != request.owner_id()) {
+      continue;
+    }
+    for (const auto& container_name : vm.second->GetContainerNames()) {
+      auto* info = response.add_containers();
+      info->set_vm_name(vm.first.second);
+      info->set_container_name(container_name);
+      auto* os_release = vm.second->GetOsReleaseForContainer(container_name);
+      if (os_release) {
+        info->mutable_os_release()->MergeFrom(*os_release);
+      }
+    }
+  }
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetGarconSessionInfo(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received GetGarconSessionInfo request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetGarconSessionInfoRequest request;
+  GetGarconSessionInfoResponse response;
+  response.set_status(GetGarconSessionInfoResponse::UNKNOWN);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse GetGarconSessionInfoRequest from message";
+    response.set_failure_reason("unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("requested VM does not exist");
+    response.set_status(GetGarconSessionInfoResponse::NOT_FOUND);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  Container* container = vm->GetContainerForName(request.container_name());
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: "
+               << request.container_name();
+    response.set_failure_reason("requested container does not exist");
+    response.set_status(GetGarconSessionInfoResponse::NOT_FOUND);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  uint32_t sftp_vsock_port;
+  if (container->GetGarconSessionInfo(response.mutable_failure_reason(),
+                                      response.mutable_container_username(),
+                                      response.mutable_container_homedir(),
+                                      &sftp_vsock_port)) {
+    response.set_status(GetGarconSessionInfoResponse::SUCCEEDED);
+    response.set_sftp_vsock_port(sftp_vsock_port);
+  } else {
+    response.set_status(GetGarconSessionInfoResponse::FAILED);
+  }
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

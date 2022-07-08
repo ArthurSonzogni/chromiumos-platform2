@@ -386,6 +386,34 @@ void Container::RegisterVshSession(int32_t host_vsh_pid,
   }
 }
 
+bool Container::GetGarconSessionInfo(std::string* out_failure_reason,
+                                     std::string* out_container_username,
+                                     std::string* out_container_homedir,
+                                     uint32_t* out_sftp_vsock_port) {
+  vm_tools::container::GetGarconSessionInfoRequest container_request;
+  vm_tools::container::GetGarconSessionInfoResponse container_response;
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
+
+  grpc::Status status = garcon_stub_->GetGarconSessionInfo(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to get garcon session info: "
+               << status.error_message() << " code: " << status.error_code();
+    out_failure_reason->assign("gRPC failure getting session info: " +
+                               status.error_message());
+    return false;
+  }
+
+  *out_failure_reason = container_response.failure_reason();
+  *out_container_username = container_response.container_username();
+  *out_container_homedir = container_response.container_homedir();
+  *out_sftp_vsock_port = container_response.sftp_vsock_port();
+  return container_response.status() ==
+         vm_tools::container::GetGarconSessionInfoResponse::SUCCEEDED;
+}
+
 int32_t Container::GetVshSession(int32_t host_vsh_pid) {
   auto it = vsh_pids_.find(host_vsh_pid);
   return it != vsh_pids_.end() ? it->second : 0;

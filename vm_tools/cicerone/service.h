@@ -704,6 +704,14 @@ class Service final {
   std::unique_ptr<dbus::Response> DetachUsbFromContainer(
       dbus::MethodCall* method_call);
 
+  // Handles a request to list containers.
+  std::unique_ptr<dbus::Response> ListRunningContainers(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to get session info from Garcon.
+  std::unique_ptr<dbus::Response> GetGarconSessionInfo(
+      dbus::MethodCall* method_call);
+
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
                            const std::string& vm_name,

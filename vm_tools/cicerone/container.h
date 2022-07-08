@@ -130,6 +130,11 @@ class Container {
 
   int32_t GetVshSession(int32_t host_vsh_pid);
 
+  bool GetGarconSessionInfo(std::string* out_failure_reason,
+                            std::string* out_container_username,
+                            std::string* out_container_homedir,
+                            uint32_t* out_sftp_vsock_port);
+
   static void DisableChannelWaitForTesting();
 
  private:

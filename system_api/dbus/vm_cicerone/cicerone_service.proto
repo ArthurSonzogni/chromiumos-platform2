@@ -1800,3 +1800,69 @@ message DetachUsbFromContainerResponse {
   // Human-readable failure reason.
   string failure_reason = 2;
 }
+
+message ContainerInfo {
+  // The name of the VM.
+  string vm_name = 1;
+
+  // The name of the container within the VM.
+  string container_name = 2;
+
+  // OPTIONAL: If using LXD, information about the OS.
+  OsRelease os_release = 3;
+}
+
+// Sent by chrome to query the list of containers and VMs that Cicerone knows
+// about.
+message ListRunningContainersRequest {
+  // The owner to list VMs and Containers for.
+  string owner_id = 1;
+}
+
+message ListRunningContainersResponse {
+  // List of known vms and containers.
+  repeated ContainerInfo containers = 1;
+}
+
+// Sent by chrome to get session info from Garcon.
+message GetGarconSessionInfoRequest {
+  // Name of the VM the container is in.
+  string vm_name = 1;
+
+  // Name of the container within the VM.
+  string container_name = 2;
+
+  // The owner of the VM and container.
+  string owner_id = 3;
+}
+
+message GetGarconSessionInfoResponse {
+  enum Status {
+    // The current status is unknown.
+    UNKNOWN = 0;
+
+    // Generic error.
+    FAILED = 1;
+
+    // Unknown container.
+    NOT_FOUND = 2;
+
+    // Got info successfully.
+    SUCCEEDED = 3;
+  }
+
+  // Status.
+  Status status = 1;
+
+  // The failure reason if not successful.
+  string failure_reason = 2;
+
+  // The username of the user garcon is running as.
+  string container_username = 3;
+
+  // The home directory of the user garcon is running as.
+  string container_homedir = 4;
+
+  // The vsock port that sftp-server runs on.
+  uint32 sftp_vsock_port = 5;
+}

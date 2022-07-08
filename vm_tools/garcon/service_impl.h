@@ -9,7 +9,6 @@
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
-#include "vm_tools/garcon/ansible_playbook_application.h"
 #include "vm_tools/garcon/host_notifier.h"
 
 namespace vm_tools {
@@ -89,6 +88,11 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       grpc::ServerContext* ctx,
       const vm_tools::container::RemoveFileWatchRequest* request,
       vm_tools::container::RemoveFileWatchResponse* response) override;
+
+  grpc::Status GetGarconSessionInfo(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::GetGarconSessionInfoRequest* request,
+      vm_tools::container::GetGarconSessionInfoResponse* response) override;
 
  private:
   PackageKitProxy* package_kit_proxy_;  // Not owned.

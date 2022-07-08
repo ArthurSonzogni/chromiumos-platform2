@@ -104,6 +104,8 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // Stop watching files in |path| relative to $HOME.
   bool RemoveFileWatch(const base::FilePath& path, std::string* error_msg);
 
+  uint32_t sftp_vsock_port() const { return sftp_vsock_port_; }
+
  private:
   // Callback structure for SendAppListToHost callback chain.
   struct AppListBuilderState {
@@ -231,6 +233,8 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   base::RepeatingTimer free_disk_space_timer_;
+
+  uint32_t sftp_vsock_port_ = 0;
 
   base::WeakPtrFactory<HostNotifier> weak_ptr_factory_{this};
 };

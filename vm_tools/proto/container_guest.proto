@@ -329,6 +329,32 @@ message RemoveFileWatchResponse {
   string failure_reason = 2;
 }
 
+// Request to get session info from Garcon.
+message GetGarconSessionInfoRequest {}
+
+message GetGarconSessionInfoResponse {
+  enum Status {
+    UNKNOWN = 0;
+    FAILED = 1;
+    SUCCEEDED = 2;
+  }
+
+  // Status.
+  Status status = 1;
+
+  // Failure reason if gathering info failed.
+  string failure_reason = 2;
+
+  // The username of garcon is running as.
+  string container_username = 3;
+
+  // The home directory of the user garcon is running as.
+  string container_homedir = 4;
+
+  // The vsock port that sftp-server runs on.
+  uint32 sftp_vsock_port = 5;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -375,4 +401,8 @@ service Garcon {
 
   // Stop watching files in the specified directory.
   rpc RemoveFileWatch(RemoveFileWatchRequest) returns (RemoveFileWatchResponse);
+
+  // Requests Garcon to send information about the current session
+  rpc GetGarconSessionInfo(GetGarconSessionInfoRequest)
+      returns (GetGarconSessionInfoResponse);
 }

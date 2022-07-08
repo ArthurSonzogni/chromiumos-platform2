@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -526,6 +527,32 @@ grpc::Status ServiceImpl::RemoveFileWatch(
     response->set_status(vm_tools::container::RemoveFileWatchResponse::FAILED);
     response->set_failure_reason(error_msg);
   }
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::GetGarconSessionInfo(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::GetGarconSessionInfoRequest* request,
+    vm_tools::container::GetGarconSessionInfoResponse* response) {
+  LOG(INFO) << "Getting session info";
+  if (host_notifier_->sftp_vsock_port() == 0) {
+    response->set_failure_reason(
+        "sftp_vsock_port not set, container probably hasn't finished "
+        "booting so unable to get info");
+    LOG(ERROR) << response->failure_reason();
+    response->set_status(container::GetGarconSessionInfoResponse::FAILED);
+    return grpc::Status::OK;
+  }
+  response->set_sftp_vsock_port(host_notifier_->sftp_vsock_port());
+  auto env = base::Environment::Create();
+  if (!env->GetVar("USER", response->mutable_container_username())) {
+    LOG(ERROR) << "$USER not set";
+  }
+  if (!env->GetVar("HOME", response->mutable_container_homedir())) {
+    LOG(ERROR) << "$HOME not set";
+  }
+  response->set_status(
+      vm_tools::container::GetGarconSessionInfoResponse::SUCCEEDED);
   return grpc::Status::OK;
 }
 

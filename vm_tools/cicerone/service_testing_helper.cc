@@ -18,6 +18,7 @@
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 #include "base/strings/string_number_conversions.h"
+#include "dbus/vm_cicerone/dbus-constants.h"
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
@@ -530,6 +531,10 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
       kAttachUsbToContainerMethod;
   dbus_callbacks_[kDetachUsbFromContainer].method_name =
       kDetachUsbFromContainerMethod;
+  dbus_callbacks_[kListRunningContainers].method_name =
+      kListRunningContainersMethod;
+  dbus_callbacks_[kGetGarconSessionInfo].method_name =
+      kGetGarconSessionInfoMethod;
 
   // Check we didn't forget any.
   for (const auto& callback_info : dbus_callbacks_) {

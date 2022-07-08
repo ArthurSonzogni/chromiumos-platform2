@@ -79,6 +79,8 @@ class ServiceTestingHelper {
     kFileSelected,
     kAttachUsbToContainer,
     kDetachUsbFromContainer,
+    kListRunningContainers,
+    kGetGarconSessionInfo,
 
     kNumDbusCalls
   };

@@ -447,6 +447,7 @@ bool HostNotifier::Init(uint32_t garcon_port,
   if (token_.empty()) {
     return false;
   }
+  sftp_vsock_port_ = sftp_port;
   SetUpContainerListenerStub();
   if (!NotifyHostGarconIsReady(garcon_port, sftp_port)) {
     return false;
