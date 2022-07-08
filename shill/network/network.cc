@@ -64,17 +64,22 @@ void Network::Start(const Network::StartOptions& opts) {
       base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
   set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                           IPConfig::kTypeDHCP));
-  dispatcher_->PostTask(
-      FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPTask, AsWeakPtr()));
 
-  if (dhcp_controller()->RequestIP()) {
-    // If RequestIP succeeds, the following handling will be done in its
-    // callbacks.
-    return;
+  bool dhcp_started = dhcp_controller()->RequestIP();
+
+  if (static_network_config_.ipv4_address_cidr.has_value()) {
+    // If the parameters contain an IP address, apply them now and bring the
+    // interface up.  When DHCP information arrives, it will supplement the
+    // static information.
+    dispatcher_->PostTask(
+        FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
+  } else if (!dhcp_started) {
+    // We don't have static config, and DHCP failed immediately. Triggers a
+    // failure here.
+    dispatcher_->PostTask(FROM_HERE,
+                          base::BindOnce(&Network::StopInternal, AsWeakPtr(),
+                                         /*is_failure*/ true));
   }
-  dispatcher_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Network::StopInternal, AsWeakPtr(), /*is_failure*/ true));
 }
 
 void Network::SetupConnection(IPConfig* ipconfig) {
@@ -131,6 +136,9 @@ bool Network::HasConnectionObject() const {
 }
 
 void Network::OnIPv4ConfigUpdated() {
+  if (!ipconfig()) {
+    return;
+  }
   saved_network_config_ =
       ipconfig()->ApplyNetworkConfig(static_network_config_);
   if (static_network_config_.ipv4_address_cidr.has_value() &&
@@ -147,19 +155,6 @@ void Network::OnIPv4ConfigUpdated() {
   event_handler_->OnIPConfigsPropertyUpdated();
 }
 
-void Network::ConfigureStaticIPTask() {
-  if (!ipconfig()) {
-    return;
-  }
-  if (!static_network_config_.ipv4_address_cidr.has_value()) {
-    return;
-  }
-  // If the parameters contain an IP address, apply them now and bring
-  // the interface up.  When DHCP information arrives, it will supplement
-  // the static information.
-  OnIPv4ConfigUpdated();
-}
-
 void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
   static_network_config_ = config;
   if (!ipconfig()) {
@@ -173,8 +168,12 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
   ipconfig()->ApplyNetworkConfig(saved_network_config_);
   saved_network_config_ = {};
 
-  dispatcher_->PostTask(
-      FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPTask, AsWeakPtr()));
+  // TODO(b/232177767): Apply the static IP parameters no matter if there is a
+  // valid IPv4 in it.
+  if (config.ipv4_address_cidr.has_value()) {
+    dispatcher_->PostTask(
+        FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
+  }
 
   if (dhcp_controller()) {
     // Trigger DHCP renew.

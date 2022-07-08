@@ -107,9 +107,6 @@ class Network {
   // Triggers a reconfiguration on connection for an IPv4 config change.
   void OnIPv4ConfigUpdated();
 
-  // Configure static IP address parameters if the service provides them.
-  void ConfigureStaticIPTask();
-
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
 
