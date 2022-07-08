@@ -6,17 +6,24 @@
 //! crosvm-base. Generally Sirenia code outside of this module shouldn't directly
 //! interact with the libc package.
 
+use std::fmt::Debug;
 use std::fs::File;
 use std::io;
 use std::io::stdin;
+use std::io::BufRead;
+use std::io::Cursor;
 use std::io::Write;
 use std::mem::MaybeUninit;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
+use std::process::Command;
 use std::ptr::null_mut;
 
+use anyhow::anyhow;
+use anyhow::bail;
 use anyhow::Context;
+use anyhow::Result;
 use crosvm_base::add_fd_flags;
 use crosvm_base::handle_eintr;
 use crosvm_base::Terminal;
@@ -33,6 +40,8 @@ use log::error;
 
 use crate::linux::poll::PollContext;
 use crate::linux::poll::WatchingEvents;
+
+const CBMEM_CMD: &str = "cbmem";
 
 pub struct ScopedRaw {}
 
@@ -243,4 +252,172 @@ pub fn write_all_blocking<W: Write + AsRawFd>(write: &mut W, buf: &[u8]) -> Resu
         }
     }
     Ok(())
+}
+
+// Coreboot uses the CBMEM memory area to dynamically allocate data structures
+// that remain resident. For example, console log, boot timestamps, etc.
+#[derive(Debug, PartialEq)]
+pub struct CbmemEntry {
+    pub name: String,
+    pub id: String,
+    pub start: u64,
+    pub size: usize,
+}
+
+impl CbmemEntry {
+    fn parse_cmd_output_line(line: &str) -> Result<CbmemEntry> {
+        // Example line:
+        //     NAME        ID        START      LENGTH
+        //  3. RW MCACHE   574d5346  76adc000   0000043c
+        let parts: Vec<&str> = line.split_ascii_whitespace().collect();
+        let nparts = parts.len();
+        if nparts < 5 {
+            bail!("Invalid line: {}", line);
+        }
+        let name = parts[1..nparts - 3].join(" ");
+        let id = parts[nparts - 3].to_string();
+        let size = usize::from_str_radix(parts[nparts - 1], 16)
+            .map_err(|_| anyhow!("Invalid length: {}", line))?;
+        let start = u64::from_str_radix(parts[nparts - 2], 16)
+            .map_err(|_| anyhow!("Invalid start address: {}", line))?;
+        Ok(CbmemEntry {
+            name,
+            id,
+            start,
+            size,
+        })
+    }
+
+    fn parse_cmd_output<E: Debug, R: Iterator<Item = Result<String, E>>>(
+        mut reader: R,
+    ) -> Result<Vec<CbmemEntry>> {
+        // The first two lines are headers
+        reader.next();
+        reader.next();
+        let mut entries = Vec::new();
+        for line in reader {
+            entries.push(CbmemEntry::parse_cmd_output_line(&line.unwrap())?);
+        }
+        Ok(entries)
+    }
+}
+
+// Returns the CBMEM table of contents. Equivalent to "cbmem -l"
+pub fn get_cbmem_toc() -> Result<Vec<CbmemEntry>> {
+    let output = Command::new(CBMEM_CMD)
+        .arg("-l")
+        .output()
+        .expect("failed to execute cbmem");
+    if !output.status.success() {
+        bail!(
+            "cbmem failed: {} out={:?} err={:?}",
+            output.status,
+            output.stdout,
+            output.stderr
+        );
+    }
+    CbmemEntry::parse_cmd_output(Cursor::new(output.stdout).lines())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_cbmem_line() {
+        assert_eq!(
+            CbmemEntry::parse_cmd_output_line(" 0. FSP MEMORY  46535052  76afe000   00500000\n")
+                .unwrap(),
+            CbmemEntry {
+                name: "FSP MEMORY".to_string(),
+                id: "46535052".to_string(),
+                start: 0x76afe000,
+                size: 0x500000,
+            }
+        );
+        assert_eq!(
+            CbmemEntry::parse_cmd_output_line(" 1. CONSOLE     434f4e53  76ade000   00020000\n")
+                .unwrap(),
+            CbmemEntry {
+                name: "CONSOLE".to_string(),
+                id: "434f4e53".to_string(),
+                start: 0x76ade000,
+                size: 0x20000,
+            }
+        );
+        assert_eq!(
+            CbmemEntry::parse_cmd_output_line(
+                "12. CHROMEOS NVS        434e5653  76a31000   00000f00\n"
+            )
+            .unwrap(),
+            CbmemEntry {
+                name: "CHROMEOS NVS".to_string(),
+                id: "434e5653".to_string(),
+                start: 0x76a31000,
+                size: 0xf00,
+            }
+        );
+        assert_eq!(
+            CbmemEntry::parse_cmd_output_line("25. a b d c  e WEIRD_ID  76ffeae0   0000000c")
+                .unwrap(),
+            CbmemEntry {
+                name: "a b d c e".to_string(),
+                id: "WEIRD_ID".to_string(),
+                start: 0x76ffeae0,
+                size: 0xc,
+            }
+        );
+        assert_eq!(
+            CbmemEntry::parse_cmd_output_line("1 n i 0 1").unwrap(),
+            CbmemEntry {
+                name: "n".to_string(),
+                id: "i".to_string(),
+                start: 0,
+                size: 1,
+            }
+        );
+        assert!(CbmemEntry::parse_cmd_output_line("").is_err());
+        assert!(CbmemEntry::parse_cmd_output_line("a b c d").is_err());
+        assert!(CbmemEntry::parse_cmd_output_line("1 n i vv 0").is_err());
+        assert!(CbmemEntry::parse_cmd_output_line("1 n i 0 vv").is_err());
+    }
+
+    #[test]
+    fn parse_cbmem_list() {
+        let cbmem_out = b"CBMEM table of contents:
+   NAME          ID           START      LENGTH
+0. FSP MEMORY  46535052  76afe000   00500000
+1. CONSOLE     434f4e53  76ade000   00020000
+2. VPD         56504420  76add000   000003ba
+3. RW MCACHE   574d5346  76adc000   0000043c";
+        assert_eq!(
+            CbmemEntry::parse_cmd_output(Cursor::new(cbmem_out).lines()).unwrap(),
+            vec![
+                CbmemEntry {
+                    name: "FSP MEMORY".to_string(),
+                    id: "46535052".to_string(),
+                    start: 0x76afe000,
+                    size: 0x500000,
+                },
+                CbmemEntry {
+                    name: "CONSOLE".to_string(),
+                    id: "434f4e53".to_string(),
+                    start: 0x76ade000,
+                    size: 0x20000,
+                },
+                CbmemEntry {
+                    name: "VPD".to_string(),
+                    id: "56504420".to_string(),
+                    start: 0x76add000,
+                    size: 0x000003ba,
+                },
+                CbmemEntry {
+                    name: "RW MCACHE".to_string(),
+                    id: "574d5346".to_string(),
+                    start: 0x76adc000,
+                    size: 0x0000043c,
+                },
+            ]
+        );
+    }
 }
