@@ -340,6 +340,7 @@ void DlpAdaptor::CheckFilesTransfer(
   for (const auto& [source_url, file_paths] : transferred_files) {
     matching_request.add_files_sources(source_url);
   }
+  matching_request.set_destination_url(request.destination_url());
 
   auto callbacks = base::SplitOnceCallback(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
