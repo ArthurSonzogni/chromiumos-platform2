@@ -89,8 +89,8 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
     state_keys_received_ = false;
     state_keys_.clear();
     generator_.RequestStateKeys(
-        base::Bind(&DeviceIdentifierGeneratorTest::CompletionHandler,
-                   base::Unretained(this)));
+        base::BindOnce(&DeviceIdentifierGeneratorTest::CompletionHandler,
+                       base::Unretained(this)));
     EXPECT_EQ(expect_immediate_callback, state_keys_received_);
   }
 
@@ -101,7 +101,7 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
 
   void RequestPsmDeviceActiveSecret(bool expect_immediate_callback) {
     psm_device_secret_received_ = false;
-    generator_.RequestPsmDeviceActiveSecret(base::Bind(
+    generator_.RequestPsmDeviceActiveSecret(base::BindOnce(
         &DeviceIdentifierGeneratorTest::CompletionPsmDeviceKeyHandler,
         base::Unretained(this)));
     EXPECT_EQ(expect_immediate_callback, psm_device_secret_received_);

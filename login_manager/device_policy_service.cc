@@ -63,20 +63,20 @@ bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
 }
 
 void HandleVpdUpdateCompletion(bool ignore_error,
-                               const PolicyService::Completion& completion,
+                               PolicyService::Completion completion,
                                bool success) {
   if (completion.is_null()) {
     return;
   }
 
   if (success || ignore_error) {
-    completion.Run(brillo::ErrorPtr());
+    std::move(completion).Run(brillo::ErrorPtr());
     return;
   }
 
   LOG(ERROR) << "Failed to update VPD";
-  completion.Run(
-      CreateError(dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
+  std::move(completion)
+      .Run(CreateError(dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
 }
 
 }  // namespace
@@ -228,9 +228,9 @@ bool DevicePolicyService::Store(const PolicyNamespace& ns,
                                 const std::vector<uint8_t>& policy_blob,
                                 int key_flags,
                                 SignatureCheck signature_check,
-                                const Completion& completion) {
+                                Completion completion) {
   bool result = PolicyService::Store(ns, policy_blob, key_flags,
-                                     signature_check, completion);
+                                     signature_check, std::move(completion));
 
   if (result && ns == MakeChromePolicyNamespace()) {
     // Flush the settings cache, the next read will decode the new settings.
@@ -465,29 +465,31 @@ std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
 }
 
 void DevicePolicyService::PersistPolicy(const PolicyNamespace& ns,
-                                        const Completion& completion) {
+                                        Completion completion) {
   // Run base method for everything other than Chrome device policy.
   if (ns != MakeChromePolicyNamespace()) {
-    PolicyService::PersistPolicy(ns, completion);
+    PolicyService::PersistPolicy(ns, std::move(completion));
     return;
   }
 
   if (!GetOrCreateStore(ns)->Persist()) {
-    OnPolicyPersisted(completion, dbus_error::kSigEncodeFail);
+    OnPolicyPersisted(std::move(completion), dbus_error::kSigEncodeFail);
     return;
   }
 
   if (!MayUpdateSystemSettings()) {
-    OnPolicyPersisted(completion, dbus_error::kNone);
+    OnPolicyPersisted(std::move(completion), dbus_error::kNone);
     return;
   }
 
-  if (UpdateSystemSettings(completion)) {
+  auto split_callback = base::SplitOnceCallback(std::move(completion));
+  if (UpdateSystemSettings(std::move(split_callback.first))) {
     // |vpd_process_| will run |completion| when it's done, so pass a null
     // completion to OnPolicyPersisted().
     OnPolicyPersisted(Completion(), dbus_error::kNone);
   } else {
-    OnPolicyPersisted(completion, dbus_error::kVpdUpdateFailed);
+    OnPolicyPersisted(std::move(split_callback.second),
+                      dbus_error::kVpdUpdateFailed);
   }
 }
 
@@ -510,7 +512,7 @@ bool DevicePolicyService::MayUpdateSystemSettings() {
   return true;
 }
 
-bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
+bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   const int block_devmode_setting =
       GetSettings().system_settings().block_devmode();
   int block_devmode_value =
@@ -560,7 +562,7 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
       mode != InstallAttributesReader::kDeviceModeConsumer) {
     // Probably the first sign in, install attributes file is not created yet.
     if (!completion.is_null())
-      completion.Run(brillo::ErrorPtr());
+      std::move(completion).Run(brillo::ErrorPtr());
 
     return true;
   }
@@ -586,7 +588,7 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
     // Return true to be on the safe side here since not allowing to continue
     // would make the device unusable.
     if (!completion.is_null())
-      completion.Run(brillo::ErrorPtr());
+      std::move(completion).Run(brillo::ErrorPtr());
 
     return true;
   }
@@ -602,27 +604,31 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
       !is_enrolled || mode == InstallAttributesReader::kDeviceModeEnterpriseAD;
   return vpd_process_->RunInBackground(
       updates, false,
-      base::Bind(&HandleVpdUpdateCompletion, ignore_errors, completion));
+      base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,
+                     std::move(completion)));
 }
 
-void DevicePolicyService::ClearForcedReEnrollmentFlags(
-    const Completion& completion) {
+void DevicePolicyService::ClearForcedReEnrollmentFlags(Completion completion) {
   LOG(WARNING) << "Clear enrollment requested";
   // The block_devmode system property needs to be set to 0 as well to unblock
   // dev mode. It is stored independently from VPD and firmware management
   // parameters.
   if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0) != 0) {
-    completion.Run(
-        CreateError(dbus_error::kSystemPropertyUpdateFailed,
-                    "Failed to set block_devmode system property to 0."));
+    std::move(completion)
+        .Run(CreateError(dbus_error::kSystemPropertyUpdateFailed,
+                         "Failed to set block_devmode system property to 0."));
     return;
   }
+  auto split_callback = base::SplitOnceCallback(std::move(completion));
   if (!vpd_process_->RunInBackground(
           {{Crossystem::kBlockDevmode, "0"},
            {Crossystem::kCheckEnrollment, "0"}},
-          false, base::Bind(&HandleVpdUpdateCompletion, false, completion))) {
-    completion.Run(CreateError(dbus_error::kVpdUpdateFailed,
-                               "Failed to run VPD update in the background."));
+          false,
+          base::BindOnce(&HandleVpdUpdateCompletion, false,
+                         std::move(split_callback.first)))) {
+    std::move(split_callback.second)
+        .Run(CreateError(dbus_error::kVpdUpdateFailed,
+                         "Failed to run VPD update in the background."));
   }
 }
 

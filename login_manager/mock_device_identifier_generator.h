@@ -22,10 +22,10 @@ class MockDeviceIdentifierGenerator : public DeviceIdentifierGenerator {
 
   ~MockDeviceIdentifierGenerator() override {}
 
-  MOCK_METHOD(void, RequestStateKeys, (const StateKeyCallback&), (override));
+  MOCK_METHOD(void, RequestStateKeys, (StateKeyCallback), (override));
   MOCK_METHOD(void,
               RequestPsmDeviceActiveSecret,
-              (const PsmDeviceActiveSecretCallback&),
+              (PsmDeviceActiveSecretCallback),
               (override));
 };
 

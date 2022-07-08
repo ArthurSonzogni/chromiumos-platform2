@@ -30,7 +30,7 @@ class FakeContainerManager : public ContainerManagerInterface {
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   bool StartContainer(const std::vector<std::string>& env,
-                      const ExitCallback& exit_callback) override;
+                      ExitCallback exit_callback) override;
   StatefulMode GetStatefulMode() const override;
   void SetStatefulMode(StatefulMode mode) override;
   bool GetContainerPID(pid_t* pid_out) const override;

@@ -71,8 +71,8 @@ class AndroidOciWrapperTest : public ::testing::Test {
   bool CallStartContainer() {
     return impl_->StartContainer(
         std::vector<std::string>{},
-        base::Bind(&AndroidOciWrapperTest::ExitCallback,
-                   base::Unretained(this)));
+        base::BindOnce(&AndroidOciWrapperTest::ExitCallback,
+                       base::Unretained(this)));
   }
 
   void ExpectKill(bool forceful, int exit_code) {

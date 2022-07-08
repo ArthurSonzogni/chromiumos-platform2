@@ -337,8 +337,8 @@ class SessionManagerImpl::DBusService {
   // Adaptor from DBusMethodResponse to PolicyService::Completion callback.
   PolicyService::Completion CreatePolicyServiceCompletionCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-    return base::Bind(&DBusService::HandlePolicyServiceCompletion,
-                      weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+    return base::BindOnce(&DBusService::HandlePolicyServiceCompletion,
+                          weak_ptr_factory_.GetWeakPtr(), std::move(response));
   }
 
   // Adaptor from DBusMethodResponse to
@@ -346,8 +346,8 @@ class SessionManagerImpl::DBusService {
   DeviceIdentifierGenerator::StateKeyCallback CreateStateKeyCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>>> response) {
-    return base::Bind(&DBusService::HandleStateKeyCallback,
-                      weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+    return base::BindOnce(&DBusService::HandleStateKeyCallback,
+                          weak_ptr_factory_.GetWeakPtr(), std::move(response));
   }
 
   // Adaptor for DBusMethodResponse to
@@ -356,8 +356,8 @@ class SessionManagerImpl::DBusService {
   CreatePsmDeviceActiveSecretCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
           response) {
-    return base::Bind(&DBusService::HandlePsmDeviceActiveSecretCallback,
-                      weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+    return base::BindOnce(&DBusService::HandlePsmDeviceActiveSecretCallback,
+                          weak_ptr_factory_.GetWeakPtr(), std::move(response));
   }
 
  private:
@@ -1322,9 +1322,9 @@ void SessionManagerImpl::GetServerBackedStateKeys(
   DeviceIdentifierGenerator::StateKeyCallback callback =
       dbus_service_->CreateStateKeyCallback(std::move(response));
   if (system_clock_synchronized_) {
-    device_identifier_generator_->RequestStateKeys(callback);
+    device_identifier_generator_->RequestStateKeys(std::move(callback));
   } else {
-    pending_state_key_callbacks_.push_back(callback);
+    pending_state_key_callbacks_.push_back(std::move(callback));
   }
 }
 
@@ -1334,7 +1334,8 @@ void SessionManagerImpl::GetPsmDeviceActiveSecret(
   DCHECK(dbus_service_);
   DeviceIdentifierGenerator::PsmDeviceActiveSecretCallback callback =
       dbus_service_->CreatePsmDeviceActiveSecretCallback(std::move(response));
-  device_identifier_generator_->RequestPsmDeviceActiveSecret(callback);
+  device_identifier_generator_->RequestPsmDeviceActiveSecret(
+      std::move(callback));
 }
 
 void SessionManagerImpl::OnSuspendImminent(dbus::Signal* signal) {
@@ -1399,8 +1400,8 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
 
   if (network_synchronized) {
     system_clock_synchronized_ = true;
-    for (const auto& callback : pending_state_key_callbacks_)
-      device_identifier_generator_->RequestStateKeys(callback);
+    for (auto& callback : pending_state_key_callbacks_)
+      device_identifier_generator_->RequestStateKeys(std::move(callback));
     pending_state_key_callbacks_.clear();
   } else {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
@@ -2057,8 +2058,9 @@ bool SessionManagerImpl::StartArcContainer(
   // propagate some information (such as the CHROMEOS_USER) to the hooks so it
   // can set itself up.
   if (!android_container_->StartContainer(
-          env_vars, base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
-                               weak_ptr_factory_.GetWeakPtr()))) {
+          env_vars,
+          base::BindOnce(&SessionManagerImpl::OnAndroidContainerStopped,
+                         weak_ptr_factory_.GetWeakPtr()))) {
     // Failed to start container. Thus, trigger stop-arc-instance impulse
     // manually for cleanup.
     init_controller_->TriggerImpulse(kStopArcInstanceImpulse, {},

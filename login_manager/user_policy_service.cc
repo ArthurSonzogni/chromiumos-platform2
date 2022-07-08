@@ -61,14 +61,15 @@ bool UserPolicyService::Store(const PolicyNamespace& ns,
                               const std::vector<uint8_t>& policy_blob,
                               int key_flags,
                               SignatureCheck signature_check,
-                              const Completion& completion) {
+                              Completion completion) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
   if (!policy.ParseFromArray(policy_blob.data(), policy_blob.size()) ||
       !policy.has_policy_data() ||
       !policy_data.ParseFromString(policy.policy_data())) {
-    completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
-                                        "Unable to parse policy protobuf."));
+    std::move(completion)
+        .Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
+                                  "Unable to parse policy protobuf."));
     return false;
   }
 
@@ -82,12 +83,12 @@ bool UserPolicyService::Store(const PolicyNamespace& ns,
     }
 
     GetOrCreateStore(ns)->Set(policy);
-    PostPersistPolicyTask(ns, completion);
+    PostPersistPolicyTask(ns, std::move(completion));
     return true;
   }
 
   return PolicyService::StorePolicy(ns, policy, key_flags, signature_check,
-                                    completion);
+                                    std::move(completion));
 }
 
 void UserPolicyService::OnKeyPersisted(bool status) {

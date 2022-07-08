@@ -44,7 +44,7 @@ class UserPolicyService : public PolicyService {
              const std::vector<uint8_t>& policy_blob,
              int key_flags,
              SignatureCheck signature_check,
-             const Completion& completion) override;
+             Completion completion) override;
 
   // Invoked after a new key has been persisted. This creates a copy of the key
   // at |key_copy_path_| that is readable by chronos, and notifies the delegate.

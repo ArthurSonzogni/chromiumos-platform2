@@ -67,7 +67,7 @@ class PolicyService {
   // Callback for asynchronous completion of a Store operation.
   // On success, |error| is nullptr. Otherwise, it contains an instance
   // with detailed info.
-  using Completion = base::Callback<void(brillo::ErrorPtr error)>;
+  using Completion = base::OnceCallback<void(brillo::ErrorPtr error)>;
 
   // Delegate for notifications about key and policy getting persisted.
   class Delegate {
@@ -103,7 +103,7 @@ class PolicyService {
                      const std::vector<uint8_t>& policy_blob,
                      int key_flags,
                      SignatureCheck signature_check,
-                     const Completion& completion);
+                     Completion completion);
 
   // Retrieves the current policy blob (does not verify the signature) from the
   // namespace |ns|. Returns true on success.
@@ -123,8 +123,7 @@ class PolicyService {
 
   // Persists policy of the namespace |ns| to disk synchronously and passes
   // |completion| and the result to OnPolicyPersisted().
-  virtual void PersistPolicy(const PolicyNamespace& ns,
-                             const Completion& completion);
+  virtual void PersistPolicy(const PolicyNamespace& ns, Completion completion);
 
   // Persists policy for all namespaces.
   virtual void PersistAllPolicy();
@@ -153,8 +152,7 @@ class PolicyService {
   void PostPersistKeyTask();
 
   // Posts a task to run PersistPolicy().
-  void PostPersistPolicyTask(const PolicyNamespace& ns,
-                             const Completion& completion);
+  void PostPersistPolicyTask(const PolicyNamespace& ns, Completion completion);
 
   // Store a policy blob under the namespace |ns|. This does the heavy lifting
   // for Store(), making the signature checks, taking care of key changes and
@@ -163,7 +161,7 @@ class PolicyService {
                    const enterprise_management::PolicyFetchResponse& policy,
                    int key_flags,
                    SignatureCheck signature_check,
-                   const Completion& completion);
+                   Completion completion);
 
   // Handles completion of a key storage operation, reporting the result to
   // |delegate_|.
@@ -173,7 +171,7 @@ class PolicyService {
   // |dbus_error_code| through |completion|. |completion| may be null, and in
   // that case the reporting part is not done. |dbus_error_code| is a dbus_error
   // constant and can be a non-error, like kNone.
-  void OnPolicyPersisted(const Completion& completion,
+  void OnPolicyPersisted(Completion completion,
                          const std::string& dbus_error_code);
 
   // Owned by the caller. Passed to the policy stores at creation and used by

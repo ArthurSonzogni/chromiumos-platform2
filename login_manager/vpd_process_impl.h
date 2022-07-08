@@ -33,7 +33,7 @@ class VpdProcessImpl : public VpdProcess, public ChildExitHandler {
   // Implementation of VpdProcess.
   bool RunInBackground(const KeyValuePairs& updates,
                        bool sync_cache,
-                       const CompletionCallback& completion) override;
+                       CompletionCallback completion) override;
 
   // Implementation of ChildExitHandler.
   bool HandleExit(const siginfo_t& status) override;

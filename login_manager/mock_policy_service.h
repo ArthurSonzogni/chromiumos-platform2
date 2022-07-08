@@ -31,7 +31,7 @@ class MockPolicyService : public PolicyService {
                const std::vector<uint8_t>&,
                int,
                SignatureCheck,
-               const Completion&),
+               Completion),
               (override));
   MOCK_METHOD(bool,
               Retrieve,
@@ -39,17 +39,17 @@ class MockPolicyService : public PolicyService {
               (override));
 
   static Completion CreateDoNothing() {
-    return base::Bind(&MockPolicyService::DoNothingWithError);
+    return base::BindOnce(&MockPolicyService::DoNothingWithError);
   }
 
   static Completion CreateExpectSuccessCallback() {
-    return base::Bind(&ExpectingErrorHandler::HandleError,
-                      base::Owned(new ExpectingErrorHandler(true)));
+    return base::BindOnce(&ExpectingErrorHandler::HandleError,
+                          base::Owned(new ExpectingErrorHandler(true)));
   }
 
   static Completion CreateExpectFailureCallback() {
-    return base::Bind(&ExpectingErrorHandler::HandleError,
-                      base::Owned(new ExpectingErrorHandler(false)));
+    return base::BindOnce(&ExpectingErrorHandler::HandleError,
+                          base::Owned(new ExpectingErrorHandler(false)));
   }
 
  private:

@@ -35,7 +35,7 @@ class AndroidOciWrapper : public ContainerManagerInterface {
 
   // ContainerManagerInterface:
   bool StartContainer(const std::vector<std::string>& env,
-                      const ExitCallback& exit_callback) override;
+                      ExitCallback exit_callback) override;
   void RequestJobExit(ArcContainerStopReason reason) override;
   void EnsureJobExit(base::TimeDelta timeout) override;
   bool GetContainerPID(pid_t* pid_out) const override;

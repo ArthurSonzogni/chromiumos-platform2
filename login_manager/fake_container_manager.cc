@@ -4,6 +4,8 @@
 
 #include "login_manager/fake_container_manager.h"
 
+#include <utility>
+
 #include <base/logging.h>
 
 namespace login_manager {
@@ -17,15 +19,15 @@ bool FakeContainerManager::HandleExit(const siginfo_t& status) {
 void FakeContainerManager::RequestJobExit(ArcContainerStopReason reason) {
   LOG_IF(FATAL, !running_) << "Trying to stop an already stopped container";
   running_ = false;
-  exit_callback_.Run(pid_, reason);
+  std::move(exit_callback_).Run(pid_, reason);
 }
 
 void FakeContainerManager::EnsureJobExit(base::TimeDelta timeout) {}
 
 bool FakeContainerManager::StartContainer(const std::vector<std::string>& env,
-                                          const ExitCallback& exit_callback) {
+                                          ExitCallback exit_callback) {
   LOG_IF(FATAL, running_) << "Trying to start an already started container";
-  exit_callback_ = exit_callback;
+  exit_callback_ = std::move(exit_callback);
   running_ = true;
   return true;
 }
@@ -48,7 +50,7 @@ bool FakeContainerManager::GetContainerPID(pid_t* pid_out) const {
 void FakeContainerManager::SimulateCrash() {
   LOG_IF(FATAL, !running_) << "Trying to crash an already stopped container";
   running_ = false;
-  exit_callback_.Run(pid_, ArcContainerStopReason::CRASH);
+  std::move(exit_callback_).Run(pid_, ArcContainerStopReason::CRASH);
 }
 
 }  // namespace login_manager

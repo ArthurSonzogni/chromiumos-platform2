@@ -103,7 +103,7 @@ void AndroidOciWrapper::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
-                                       const ExitCallback& exit_callback) {
+                                       ExitCallback exit_callback) {
   pid_t pid = system_utils_->fork();
 
   if (pid < 0) {
@@ -180,7 +180,7 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
 
   LOG(INFO) << "Container PID: " << container_pid_;
 
-  exit_callback_ = exit_callback;
+  exit_callback_ = std::move(exit_callback);
   // Set CRASH initially. So if ARC is stopped without RequestJobExit() call,
   // it will be handled as CRASH.
   exit_reason_ = ArcContainerStopReason::CRASH;
@@ -291,7 +291,7 @@ void AndroidOciWrapper::CleanUpContainer() {
   container_pid_ = 0;
 
   if (!old_callback.is_null())
-    old_callback.Run(pid, exit_reason_);
+    std::move(old_callback).Run(pid, exit_reason_);
 }
 
 bool AndroidOciWrapper::CloseOpenedFiles() {

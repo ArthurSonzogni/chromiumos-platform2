@@ -110,14 +110,14 @@ class DevicePolicyService : public PolicyService {
   // started successfully and is running in a separate process. In this case,
   // |vpd_process_| is responsible for running |completion|; otherwise,
   // OnPolicyPersisted() is.
-  virtual bool UpdateSystemSettings(const Completion& completion);
+  virtual bool UpdateSystemSettings(Completion completion);
 
   // Sets the block_devmode and check_enrollment flags in the VPD to 0
   // in the background. Also set block_devmode=0 in system properties.
   // If the update VPD process could be started in the background
   // |vpd_process_| is responsible for running |completion|;
   // otherwise, the completion is run with an error.
-  virtual void ClearForcedReEnrollmentFlags(const Completion& completion);
+  virtual void ClearForcedReEnrollmentFlags(Completion completion);
 
   // Validates the remote device wipe command received from the server.
   virtual bool ValidateRemoteDeviceWipeCommand(
@@ -128,9 +128,8 @@ class DevicePolicyService : public PolicyService {
              const std::vector<uint8_t>& policy_blob,
              int key_flags,
              SignatureCheck signature_check,
-             const Completion& completion) override;
-  void PersistPolicy(const PolicyNamespace& ns,
-                     const Completion& completion) override;
+             Completion completion) override;
+  void PersistPolicy(const PolicyNamespace& ns, Completion completion) override;
 
   static const char kPolicyDir[];
   static const char kSerialRecoveryFlagFile[];

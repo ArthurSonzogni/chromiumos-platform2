@@ -44,7 +44,7 @@ void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
 
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      bool ignore_cache,
-                                     const CompletionCallback& completion) {
+                                     CompletionCallback completion) {
   subprocess_.reset(new Subprocess(0 /*root*/, system_utils_));
 
   std::vector<std::string> argv = {"/usr/sbin/update_rw_vpd"};
@@ -64,7 +64,7 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
   }
 
   // |completion_| will be run when the job exits.
-  completion_ = completion;
+  completion_ = std::move(completion);
   return true;
 }
 

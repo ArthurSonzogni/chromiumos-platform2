@@ -77,16 +77,18 @@ bool PolicyService::Store(const PolicyNamespace& ns,
                           const std::vector<uint8_t>& policy_blob,
                           int key_flags,
                           SignatureCheck signature_check,
-                          const Completion& completion) {
+                          Completion completion) {
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob.data(), policy_blob.size()) ||
       !policy.has_policy_data()) {
-    completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
-                                        "Unable to parse policy protobuf."));
+    std::move(completion)
+        .Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
+                                  "Unable to parse policy protobuf."));
     return false;
   }
 
-  return StorePolicy(ns, policy, key_flags, signature_check, completion);
+  return StorePolicy(ns, policy, key_flags, signature_check,
+                     std::move(completion));
 }
 
 bool PolicyService::Retrieve(const PolicyNamespace& ns,
@@ -157,9 +159,9 @@ std::vector<std::string> PolicyService::ListComponentIds(PolicyDomain domain) {
 }
 
 void PolicyService::PersistPolicy(const PolicyNamespace& ns,
-                                  const Completion& completion) {
+                                  Completion completion) {
   const bool success = GetOrCreateStore(ns)->Persist();
-  OnPolicyPersisted(completion,
+  OnPolicyPersisted(std::move(completion),
                     success ? dbus_error::kNone : dbus_error::kSigEncodeFail);
 }
 
@@ -199,21 +201,21 @@ void PolicyService::PostPersistKeyTask() {
 }
 
 void PolicyService::PostPersistPolicyTask(const PolicyNamespace& ns,
-                                          const Completion& completion) {
+                                          Completion completion) {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&PolicyService::PersistPolicy,
-                     weak_ptr_factory_.GetWeakPtr(), ns, completion));
+      FROM_HERE, base::BindOnce(&PolicyService::PersistPolicy,
+                                weak_ptr_factory_.GetWeakPtr(), ns,
+                                std::move(completion)));
 }
 
 bool PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 const em::PolicyFetchResponse& policy,
                                 int key_flags,
                                 SignatureCheck signature_check,
-                                const Completion& completion) {
+                                Completion completion) {
   if (signature_check == SignatureCheck::kDisabled) {
     GetOrCreateStore(ns)->Set(policy);
-    PostPersistPolicyTask(ns, completion);
+    PostPersistPolicyTask(ns, std::move(completion));
     return true;
   }
 
@@ -240,8 +242,9 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
     }
 
     if (!installed) {
-      completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kPubkeySetIllegal,
-                                          "Failed to install policy key!"));
+      std::move(completion)
+          .Run(CREATE_ERROR_AND_LOG(dbus_error::kPubkeySetIllegal,
+                                    "Failed to install policy key!"));
       return false;
     }
 
@@ -252,13 +255,14 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
   // Validate signature on policy and persist to disk.
   if (!key()->Verify(StringToBlob(policy.policy_data()),
                      StringToBlob(policy.policy_data_signature()))) {
-    completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kVerifyFail,
-                                        "Signature could not be verified."));
+    std::move(completion)
+        .Run(CREATE_ERROR_AND_LOG(dbus_error::kVerifyFail,
+                                  "Signature could not be verified."));
     return false;
   }
 
   GetOrCreateStore(ns)->Set(policy);
-  PostPersistPolicyTask(ns, completion);
+  PostPersistPolicyTask(ns, std::move(completion));
   return true;
 }
 
@@ -271,7 +275,7 @@ void PolicyService::OnKeyPersisted(bool status) {
     delegate_->OnKeyPersisted(status);
 }
 
-void PolicyService::OnPolicyPersisted(const Completion& completion,
+void PolicyService::OnPolicyPersisted(Completion completion,
                                       const std::string& dbus_error_code) {
   brillo::ErrorPtr error;
   if (dbus_error_code != dbus_error::kNone) {
@@ -281,7 +285,7 @@ void PolicyService::OnPolicyPersisted(const Completion& completion,
   }
 
   if (!completion.is_null())
-    completion.Run(std::move(error));
+    std::move(completion).Run(std::move(error));
   else
     error.reset();
 
