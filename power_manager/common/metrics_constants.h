@@ -14,6 +14,10 @@ namespace metrics {
 extern const char kAcSuffix[];
 extern const char kBatterySuffix[];
 
+// Suffixes added to certain metric names for different privacy screen states.
+extern const char kPrivacyScreenDisabled[];
+extern const char kPrivacyScreenEnabled[];
+
 // Default max for percent-based metrics. Percents are reported as enums instead
 // of regular exponential histograms so they'll get a linear scale.
 extern const int kMaxPercent;

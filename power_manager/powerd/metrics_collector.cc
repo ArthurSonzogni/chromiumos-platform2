@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "power_manager/common/metrics_constants.h"
@@ -75,6 +76,22 @@ std::string MetricsCollector::AppendPowerSourceToEnumName(
     const std::string& enum_name, PowerSource power_source) {
   return enum_name +
          (power_source == PowerSource::AC ? kAcSuffix : kBatterySuffix);
+}
+
+std::string MetricsCollector::AppendPrivacyScreenStateToEnumName(
+    const std::string& enum_name,
+    const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state) {
+  switch (state) {
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_DISABLED:
+      return enum_name + kPrivacyScreenDisabled;
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_ENABLED:
+      return enum_name + kPrivacyScreenEnabled;
+    default:
+      NOTREACHED()
+          << "Will not send metrics for unhandled privacy screen state "
+          << static_cast<int>(state);
+      return enum_name;
+  }
 }
 
 // static
@@ -288,6 +305,14 @@ void MetricsCollector::HandleShutdown(ShutdownReason reason) {
                  static_cast<int>(kShutdownReasonMax));
 }
 
+void MetricsCollector::HandlePrivacyScreenStateChange(
+    const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state) {
+  if (state == privacy_screen_state_)
+    return;
+
+  privacy_screen_state_ = state;
+}
+
 void MetricsCollector::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
@@ -383,6 +408,8 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
     // Enum to avoid exponential histogram's varyingly-sized buckets.
     SendEnumMetricWithPowerSource(kBacklightLevelName, lround(percent),
                                   kMaxPercent);
+    SendEnumMetricWithPrivacyScreenStatePowerSource(
+        kBacklightLevelName, lround(percent), kMaxPercent);
   }
   if (keyboard_backlight_controller_ &&
       keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
@@ -459,6 +486,20 @@ bool MetricsCollector::SendEnumMetricWithPowerSource(const std::string& name,
       name, last_power_status_.line_power_on ? PowerSource::AC
                                              : PowerSource::BATTERY);
   return SendEnumMetric(full_name, sample, max);
+}
+
+bool MetricsCollector::SendEnumMetricWithPrivacyScreenStatePowerSource(
+    const std::string& name, int sample, int max) {
+  privacy_screen::PrivacyScreenSetting_PrivacyScreenState state =
+      privacy_screen_state_;
+  switch (state) {
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_DISABLED:
+    case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_ENABLED:
+      return SendEnumMetricWithPowerSource(
+          AppendPrivacyScreenStateToEnumName(name, state), sample, max);
+    default:
+      return true;
+  }
 }
 
 void MetricsCollector::GenerateBatteryDischargeRateMetric() {

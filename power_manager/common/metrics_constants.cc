@@ -12,6 +12,9 @@ namespace metrics {
 const char kAcSuffix[] = "OnAC";
 const char kBatterySuffix[] = "OnBattery";
 
+extern const char kPrivacyScreenDisabled[] = "PrivacyScreenDisabled";
+extern const char kPrivacyScreenEnabled[] = "PrivacyScreenEnabled";
+
 const int kMaxPercent = 101;
 const int kDefaultBuckets = 50;
 const int kDefaultDischargeBuckets = 100;

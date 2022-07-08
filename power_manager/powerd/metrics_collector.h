@@ -20,6 +20,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "privacy_screen/proto_bindings/privacy_screen.pb.h"
 
 namespace power_manager {
 
@@ -58,6 +59,12 @@ class MetricsCollector {
   static std::string AppendPowerSourceToEnumName(const std::string& enum_name,
                                                  PowerSource power_source);
 
+  // Returns a copy of |enum_name| with a suffix describing privacy screen state
+  // |state| appended to it. Public so it can be called by tests.
+  static std::string AppendPrivacyScreenStateToEnumName(
+      const std::string& enum_name,
+      const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state);
+
   // Calculates the S0ix residency percentage that should be reported
   // as part of UMA metrics by MetricsCollector.
   static int GetExpectedS0ixResidencyPercent(
@@ -85,6 +92,8 @@ class MetricsCollector {
   void HandleSessionStateChange(SessionState state);
   void HandlePowerStatusUpdate(const system::PowerStatus& status);
   void HandleShutdown(ShutdownReason reason);
+  void HandlePrivacyScreenStateChange(
+      const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state);
 
   // Called at the beginning of a suspend request (which may consist of multiple
   // suspend attempts).
@@ -165,6 +174,13 @@ class MetricsCollector {
   bool SendEnumMetricWithPowerSource(const std::string& name,
                                      int sample,
                                      int max);
+  // This method appends the current privacy screen state and the current power
+  // source to |name|. Metrics are only sent if privacy screen is supported. If
+  // privacy screen is not supported, this method returns true but does not send
+  // metrics.
+  bool SendEnumMetricWithPrivacyScreenStatePowerSource(const std::string& name,
+                                                       int sample,
+                                                       int max);
 
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
@@ -220,6 +236,11 @@ class MetricsCollector {
 
   // Runs GenerateBacklightLevelMetric().
   base::RepeatingTimer generate_backlight_metrics_timer_;
+
+  // Last privacy screen state that we have been informed of.
+  privacy_screen::PrivacyScreenSetting_PrivacyScreenState
+      privacy_screen_state_ =
+          privacy_screen::PrivacyScreenSetting_PrivacyScreenState_NOT_SUPPORTED;
 
   // Timestamp of the last generated battery discharge rate metric.
   base::TimeTicks last_battery_discharge_rate_metric_timestamp_;

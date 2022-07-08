@@ -1678,6 +1678,7 @@ void Daemon::OnPrivacyScreenStateChange(
   VLOG(1) << "Privacy screen state changed to "
           << PrivacyScreenStateToString(state);
   privacy_screen_state_ = state;
+  metrics_collector_->HandlePrivacyScreenStateChange(privacy_screen_state_);
 }
 
 void Daemon::RequestTpmStatus() {

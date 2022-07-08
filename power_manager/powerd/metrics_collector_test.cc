@@ -231,6 +231,33 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
   ExpectEnumMetric(kKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMaxPercent);
   collector_.GenerateBacklightLevelMetrics();
+
+  std::vector<bool> line_power_on_states{true, false};
+  std::vector<privacy_screen::PrivacyScreenSetting_PrivacyScreenState>
+      privacy_screen_states{
+          privacy_screen::PrivacyScreenSetting_PrivacyScreenState_DISABLED,
+          privacy_screen::PrivacyScreenSetting_PrivacyScreenState_ENABLED};
+  for (const auto& line_power_on : line_power_on_states) {
+    for (const auto& state : privacy_screen_states) {
+      const PowerSource source =
+          line_power_on ? PowerSource::AC : PowerSource::BATTERY;
+      power_status_.line_power_on = line_power_on;
+      IgnoreHandlePowerStatusUpdateMetrics();
+      collector_.HandlePowerStatusUpdate(power_status_);
+      collector_.HandlePrivacyScreenStateChange(state);
+      ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
+                           kBacklightLevelName, source),
+                       kCurrentDisplayPercent, kMaxPercent);
+      ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
+                           MetricsCollector::AppendPrivacyScreenStateToEnumName(
+                               kBacklightLevelName, state),
+                           source),
+                       kCurrentDisplayPercent, kMaxPercent);
+      ExpectEnumMetric(kKeyboardBacklightLevelName, kCurrentKeyboardPercent,
+                       kMaxPercent);
+      collector_.GenerateBacklightLevelMetrics();
+    }
+  }
 }
 
 TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
