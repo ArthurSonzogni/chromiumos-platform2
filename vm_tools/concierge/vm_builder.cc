@@ -67,6 +67,17 @@ inline std::string BuildVvuSocketPath(int32_t index) {
   return base::StringPrintf(kVvuProxySocketPathFormat, index);
 }
 
+// Takes a VVU device from the vector of un-allocated devices.
+std::optional<VvuDeviceInfo> TakeNextVvuDevice(
+    std::vector<VvuDeviceInfo>* info) {
+  if (info->empty()) {
+    return std::nullopt;
+  }
+  auto ret = std::make_optional(info->back());
+  info->pop_back();
+  return ret;
+}
+
 }  // namespace
 
 VmBuilder::VmBuilder() = default;
@@ -453,41 +464,38 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
 std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     std::vector<VvuDeviceInfo> vvu_devices_info) const {
+  size_t num_vvu_devices = vvu_devices_info.size();
   VmBuilder::SiblingStartCommands cmds;
   cmds.sibling_cmd_args = BuildBaseSiblingArgs();
 
-  int32_t index = 0;
   // Console VVU device.
-  // There need to be enough socket indices to support all VVU devices.
-  if (vvu_devices_info.size() < (index + serial_devices_.size())) {
-    LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return std::nullopt;
-  }
-
   for (size_t i = 0; i < serial_devices_.size(); ++i) {
-    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
+      return std::nullopt;
+    }
+
     base::StringPairs cmd =
-        BuildVvuBaseCmd("console", vvu_device_info.proxy_device);
+        BuildVvuBaseCmd("console", vvu_device_info->proxy_device);
     // TODO(b/215472603): Specify input-file and output-file.
     cmds.vvu_cmds.emplace_back(cmd);
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-console",
-         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-    index++;
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
   // Rootfs Block VVU device.
   if (rootfs_.has_value()) {
-    // There need to be enough socket indices to support all VVU devices.
-    if (vvu_devices_info.size() < (index + 1)) {
-      LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
       return std::nullopt;
     }
 
-    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
     base::StringPairs cmd =
-        BuildVvuBaseCmd("block", vvu_device_info.proxy_device);
+        BuildVvuBaseCmd("block", vvu_device_info->proxy_device);
     const auto& rootfs = rootfs_.value();
     if (rootfs.writable) {
       cmd.emplace_back("--file", rootfs.path.value());
@@ -498,88 +506,78 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-blk",
-         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-    index++;
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
   // Tools and Stateful Block VVU device.
-  // There need to be enough socket indices to support all VVU devices.
-  if (vvu_devices_info.size() < (index + disks_.size())) {
-    LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return std::nullopt;
-  }
-
   for (const auto& d : disks_) {
-    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
+      return std::nullopt;
+    }
+
     base::StringPairs cmd =
-        BuildVvuBaseCmd("block", vvu_device_info.proxy_device);
+        BuildVvuBaseCmd("block", vvu_device_info->proxy_device);
     auto disk_args = d.GetVvuArgs();
     cmd.insert(std::end(cmd), std::begin(disk_args), std::end(disk_args));
     cmds.vvu_cmds.emplace_back(cmd);
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-blk",
-         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-    index++;
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
   // Vsock VVU device.
   if (vsock_cid_.has_value()) {
-    // There need to be enough socket indices to support all VVU devices.
-    if (vvu_devices_info.size() < (index + 1)) {
-      LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
       return std::nullopt;
     }
 
-    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
     base::StringPairs cmd =
-        BuildVvuBaseCmd("vsock", vvu_device_info.proxy_device);
+        BuildVvuBaseCmd("vsock", vvu_device_info->proxy_device);
     cmd.emplace_back("--cid", std::to_string(vsock_cid_.value()));
     cmds.vvu_cmds.emplace_back(cmd);
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-vsock",
-         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-    index++;
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
   // Net VVU device.
-  // There need to be enough socket indices to support all VVU devices.
-  if (vvu_devices_info.size() < (index + tap_fds_.size())) {
-    LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return std::nullopt;
-  }
-
   for (const auto& tap_fd : tap_fds_) {
-    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
+      return std::nullopt;
+    }
+
     base::StringPairs cmd =
-        BuildVvuNetCmd(tap_fd.get(), vvu_device_info.proxy_device);
+        BuildVvuNetCmd(tap_fd.get(), vvu_device_info->proxy_device);
     cmds.vvu_cmds.emplace_back(cmd);
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-net",
-         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-    index++;
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
   // Sound VVU device.
-  // There need to be enough socket indices to support all VVU devices.
-  if (vvu_devices_info.size() < (index + audio_devices_.size())) {
-    LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return std::nullopt;
-  }
-
   for (const auto& audio_device : audio_devices_) {
-    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
+    auto vvu_device_info = TakeNextVvuDevice(&vvu_devices_info);
+    if (!vvu_device_info) {
+      LOG(ERROR) << "Not enough socket indices: " << num_vvu_devices;
+      return std::nullopt;
+    }
     base::StringPairs cmd =
-        BuildVvuBaseCmd("snd", vvu_device_info.proxy_device);
+        BuildVvuBaseCmd("snd", vvu_device_info->proxy_device);
     cmd.emplace_back("--config", audio_device.params);
     cmds.vvu_cmds.emplace_back(cmd);
     cmds.sibling_cmd_args.insert(
         cmds.sibling_cmd_args.end(),
         {"--vhost-user-snd",
-         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-    index++;
+         BuildVvuSocketPath(vvu_device_info->proxy_socket_index)});
   }
 
   // TODO(morg): Refactor shared parameter logic with BuildVmArgs
