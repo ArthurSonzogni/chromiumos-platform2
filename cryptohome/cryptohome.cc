@@ -536,6 +536,23 @@ bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier* id) {
   return true;
 }
 
+bool SetLeCredentialPolicyIfNeeded(const base::CommandLine& cl,
+                                   cryptohome::Key* key) {
+  if (!cl.HasSwitch(switches::kKeyPolicySwitch)) {
+    return true;
+  }
+
+  if (cl.GetSwitchValueASCII(switches::kKeyPolicySwitch) !=
+      switches::kKeyPolicyLECredential) {
+    printf("Unknown key policy.\n");
+    return false;
+  }
+
+  cryptohome::KeyData* data = key->mutable_data();
+  data->mutable_policy()->set_low_entropy_credential(true);
+  return true;
+}
+
 bool BuildAuthorization(base::CommandLine* cl,
                         org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                         bool need_credential,
@@ -1129,18 +1146,10 @@ int main(int argc, char** argv) {
     key->set_secret(new_password);
     cryptohome::KeyData* data = key->mutable_data();
     data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
-
-    if (cl->HasSwitch(switches::kKeyPolicySwitch)) {
-      if (cl->GetSwitchValueASCII(switches::kKeyPolicySwitch) ==
-          switches::kKeyPolicyLECredential) {
-        data->mutable_policy()->set_low_entropy_credential(true);
-      } else {
-        printf("Unknown key policy.\n");
-        return 1;
-      }
+    if (!SetLeCredentialPolicyIfNeeded(*cl, key)) {
+      printf("Setting LECredential Policy failed.");
+      return 1;
     }
-
-    // TODO(wad) Add a privileges cl interface
 
     user_data_auth::AddKeyReply reply;
     brillo::ErrorPtr error;
@@ -2838,18 +2847,10 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    if (cl->HasSwitch(switches::kKeyPolicySwitch)) {
-      if (cl->GetSwitchValueASCII(switches::kKeyPolicySwitch) ==
-          switches::kKeyPolicyLECredential) {
-        req.mutable_authorization()
-            ->mutable_key()
-            ->mutable_data()
-            ->mutable_policy()
-            ->set_low_entropy_credential(true);
-      } else {
-        printf("Unknown key policy.\n");
-        return 1;
-      }
+    if (!SetLeCredentialPolicyIfNeeded(
+            *cl, req.mutable_authorization()->mutable_key())) {
+      printf("Setting LECredential Policy failed.");
+      return 1;
     }
 
     brillo::ErrorPtr error;
@@ -2881,8 +2882,16 @@ int main(int argc, char** argv) {
     if (!BuildAuthorization(
             cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
-            req.mutable_authorization()))
+            req.mutable_authorization())) {
       return 1;
+    }
+    // For update credential, LeCredentials needs to be supplied if those are
+    // the ones being updated.
+    if (!SetLeCredentialPolicyIfNeeded(
+            *cl, req.mutable_authorization()->mutable_key())) {
+      printf("Setting LECredential Policy failed.");
+      return 1;
+    }
 
     if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
       req.set_old_credential_label(
