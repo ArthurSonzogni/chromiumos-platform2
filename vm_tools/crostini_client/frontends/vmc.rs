@@ -25,7 +25,6 @@ enum VmcError {
     ExpectedName,
     ExpectedNoArgs,
     ExpectedPath,
-    ExpectedPluginVm,
     ExpectedSize,
     ExpectedU8Bus,
     ExpectedU8Device,
@@ -115,10 +114,6 @@ impl fmt::Display for VmcError {
             ),
             ExpectedName => write!(f, "expected <name>"),
             ExpectedPath => write!(f, "expected <path>"),
-            ExpectedPluginVm => write!(
-                f,
-                "unable to launch pluginvm. Have you run `vmc create -p PvmDefault <source media>`?"
-            ),
             ExpectedSize => write!(f, "expected <size>"),
             ExpectedVmAndContainer => write!(
                 f,

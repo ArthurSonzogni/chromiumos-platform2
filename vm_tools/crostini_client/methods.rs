@@ -675,25 +675,6 @@ impl Methods {
         }
     }
 
-    fn is_chrome_feature_enabled(&mut self, feature_name: &str) -> Result<bool, Box<dyn Error>> {
-        let method = Message::new_method_call(
-            CHROME_FEATURES_SERVICE_NAME,
-            CHROME_FEATURES_SERVICE_PATH,
-            CHROME_FEATURES_SERVICE_INTERFACE,
-            CHROME_FEATURES_SERVICE_IS_FEATURE_ENABLED_METHOD,
-        )?
-        .append1(feature_name);
-
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
-        match message.get1() {
-            Some(true) => Ok(true),
-            Some(false) => Ok(false),
-            _ => Err(BadChromeFeatureStatus.into()),
-        }
-    }
-
     fn notify_vm_starting(&mut self) -> Result<(), Box<dyn Error>> {
         let method = Message::new_method_call(
             LOCK_TO_SINGLE_USER_SERVICE_NAME,
