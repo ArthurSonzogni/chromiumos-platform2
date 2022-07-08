@@ -1451,7 +1451,6 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   }
 
   if (fs.ipv6 && IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
-    ndproxy_ifnames_[ifname_physical].insert(ifname_virtual);
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
               << ifname_virtual;
 
@@ -1467,7 +1466,6 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   }
 
   if (fs.multicast && IsMulticastInterface(ifname_physical)) {
-    multicast_ifnames_[ifname_physical].insert(ifname_virtual);
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
     mcast_proxy_->SendMessage(ipm);
@@ -1490,30 +1488,20 @@ void Manager::StopForwarding(const std::string& ifname_physical,
 
   if (fs.ipv6) {
     if (ifname_virtual.empty()) {
-      ndproxy_ifnames_.erase(ifname_physical);
       LOG(INFO) << "Stopping IPv6 forwarding on " << ifname_physical;
     } else {
-      auto ndproxy_it = ndproxy_ifnames_.find(ifname_physical);
-      if (ndproxy_it != ndproxy_ifnames_.end()) {
-        ndproxy_it->second.erase(ifname_virtual);
-        LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical
-                  << " to " << ifname_virtual;
-      }
+      LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical << " to "
+                << ifname_virtual;
     }
     nd_proxy_->SendMessage(ipm);
   }
 
   if (fs.multicast) {
     if (ifname_virtual.empty()) {
-      multicast_ifnames_.erase(ifname_physical);
       LOG(INFO) << "Stopping multicast forwarding on " << ifname_physical;
     } else {
-      auto multicast_it = multicast_ifnames_.find(ifname_physical);
-      if (multicast_it != multicast_ifnames_.end()) {
-        multicast_it->second.erase(ifname_virtual);
-        LOG(INFO) << "Stopping multicast forwarding from " << ifname_physical
-                  << " to " << ifname_virtual;
-      }
+      LOG(INFO) << "Stopping multicast forwarding from " << ifname_physical
+                << " to " << ifname_virtual;
     }
     mcast_proxy_->SendMessage(ipm);
   }
