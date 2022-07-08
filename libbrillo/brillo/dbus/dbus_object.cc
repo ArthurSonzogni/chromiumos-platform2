@@ -228,7 +228,7 @@ DBusObject::DBusObject(ExportedObjectManager* object_manager,
     : DBusObject::DBusObject(object_manager,
                              bus,
                              object_path,
-                             base::Bind(&SetupDefaultPropertyHandlers)) {}
+                             base::BindOnce(&SetupDefaultPropertyHandlers)) {}
 
 DBusObject::DBusObject(
     ExportedObjectManager* object_manager,
@@ -365,7 +365,8 @@ bool DBusObject::SendSignal(dbus::Signal* signal) {
 
 void DBusObject::RegisterPropertiesInterface() {
   DBusInterface* prop_interface = AddOrGetInterface(dbus::kPropertiesInterface);
-  property_handler_setup_callback_.Run(prop_interface, &property_set_);
+  std::move(property_handler_setup_callback_)
+      .Run(prop_interface, &property_set_);
   property_set_.OnPropertiesInterfaceExported(prop_interface);
 }
 

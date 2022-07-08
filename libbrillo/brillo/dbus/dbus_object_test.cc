@@ -133,12 +133,13 @@ class DBusObjectTest : public ::testing::Test {
     itf2->AddSimpleMethodHandlerWithError(kTestMethod_CheckNonEmpty,
                                           CheckNonEmpty);
     DBusInterface* itf3 = dbus_object_->AddOrGetInterface(kTestInterface3);
-    base::Callback<void()> noop_callback = base::Bind(NoOp);
+    base::RepeatingCallback<void()> noop_callback = base::BindRepeating(NoOp);
     itf3->AddSimpleMethodHandler(kTestMethod_NoOp, noop_callback);
     itf3->AddSimpleMethodHandlerWithErrorAndMessage(
-        kTestMethod_WithMessage, base::Bind(&TestWithMessage));
-    itf3->AddMethodHandlerWithMessage(kTestMethod_WithMessageAsync,
-                                      base::Bind(&TestWithMessageAsync));
+        kTestMethod_WithMessage, base::BindRepeating(&TestWithMessage));
+    itf3->AddMethodHandlerWithMessage(
+        kTestMethod_WithMessageAsync,
+        base::BindRepeating(&TestWithMessageAsync));
 
     dbus_object_->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
@@ -346,7 +347,7 @@ TEST_F(DBusObjectTest, TestUnexportInterfaceAsync) {
               UnexportMethod(kTestInterface3, kTestMethod_WithMessageAsync, _))
       .Times(1);
   dbus_object_->UnexportInterfaceAsync(kTestInterface3,
-                                       base::Bind(&OnInterfaceExported));
+                                       base::BindOnce(&OnInterfaceExported));
 }
 
 TEST_F(DBusObjectTest, TestUnexportInterfaceBlocking) {
@@ -368,7 +369,7 @@ TEST_F(DBusObjectTest, TestUnexportInterfaceBlocking) {
 TEST_F(DBusObjectTest, TestInterfaceExportedLateAsync) {
   // Registers a new interface late.
   dbus_object_->ExportInterfaceAsync(kTestInterface4,
-                                     base::Bind(&OnInterfaceExported));
+                                     base::BindOnce(&OnInterfaceExported));
 
   const std::string sender{":1.2345"};
   dbus::MethodCall method_call(kTestInterface4, kTestMethod_WithMessage);

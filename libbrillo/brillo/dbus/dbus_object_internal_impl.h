@@ -75,7 +75,7 @@ class SimpleDBusInterfaceMethodHandler
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit SimpleDBusInterfaceMethodHandler(
-      const base::Callback<R(Args...)>& handler)
+      const base::RepeatingCallback<R(Args...)>& handler)
       : handler_(handler) {}
   SimpleDBusInterfaceMethodHandler(const SimpleDBusInterfaceMethodHandler&) =
       delete;
@@ -101,7 +101,7 @@ class SimpleDBusInterfaceMethodHandler
 
  private:
   // C++ callback to be called when a DBus method is dispatched.
-  base::Callback<R(Args...)> handler_;
+  base::RepeatingCallback<R(Args...)> handler_;
 };
 
 // Specialization of SimpleDBusInterfaceMethodHandlerInterface for
@@ -113,7 +113,7 @@ class SimpleDBusInterfaceMethodHandler<void, Args...>
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit SimpleDBusInterfaceMethodHandler(
-      const base::Callback<void(Args...)>& handler)
+      const base::RepeatingCallback<void(Args...)>& handler)
       : handler_(handler) {}
   SimpleDBusInterfaceMethodHandler(const SimpleDBusInterfaceMethodHandler&) =
       delete;
@@ -142,7 +142,7 @@ class SimpleDBusInterfaceMethodHandler<void, Args...>
 
  private:
   // C++ callback to be called when a DBus method is dispatched.
-  base::Callback<void(Args...)> handler_;
+  base::RepeatingCallback<void(Args...)> handler_;
 };
 
 // An implementation of DBusInterfaceMethodHandlerInterface for simple
@@ -162,7 +162,7 @@ class SimpleDBusInterfaceMethodHandlerWithError
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit SimpleDBusInterfaceMethodHandlerWithError(
-      const base::Callback<bool(ErrorPtr*, Args...)>& handler)
+      const base::RepeatingCallback<bool(ErrorPtr*, Args...)>& handler)
       : handler_(handler) {}
   SimpleDBusInterfaceMethodHandlerWithError(
       const SimpleDBusInterfaceMethodHandlerWithError&) = delete;
@@ -195,7 +195,7 @@ class SimpleDBusInterfaceMethodHandlerWithError
 
  private:
   // C++ callback to be called when a DBus method is dispatched.
-  base::Callback<bool(ErrorPtr*, Args...)> handler_;
+  base::RepeatingCallback<bool(ErrorPtr*, Args...)> handler_;
 };
 
 // An implementation of SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
@@ -216,7 +216,8 @@ class SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit SimpleDBusInterfaceMethodHandlerWithErrorAndMessage(
-      const base::Callback<bool(ErrorPtr*, ::dbus::Message*, Args...)>& handler)
+      const base::RepeatingCallback<bool(ErrorPtr*, ::dbus::Message*, Args...)>&
+          handler)
       : handler_(handler) {}
   SimpleDBusInterfaceMethodHandlerWithErrorAndMessage(
       const SimpleDBusInterfaceMethodHandlerWithErrorAndMessage&) = delete;
@@ -250,7 +251,7 @@ class SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
 
  private:
   // C++ callback to be called when a DBus method is dispatched.
-  base::Callback<bool(ErrorPtr*, ::dbus::Message*, Args...)> handler_;
+  base::RepeatingCallback<bool(ErrorPtr*, ::dbus::Message*, Args...)> handler_;
 };
 
 // An implementation of DBusInterfaceMethodHandlerInterface for more generic
@@ -266,7 +267,8 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit DBusInterfaceMethodHandler(
-      const base::Callback<void(std::unique_ptr<Response>, Args...)>& handler)
+      const base::RepeatingCallback<void(std::unique_ptr<Response>, Args...)>&
+          handler)
       : handler_(handler) {}
   DBusInterfaceMethodHandler(const DBusInterfaceMethodHandler&) = delete;
   DBusInterfaceMethodHandler& operator=(const DBusInterfaceMethodHandler&) =
@@ -295,7 +297,7 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
 
  private:
   // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<void(std::unique_ptr<Response>, Args...)> handler_;
+  base::RepeatingCallback<void(std::unique_ptr<Response>, Args...)> handler_;
 };
 
 // An implementation of DBusInterfaceMethodHandlerWithMessage which is almost
@@ -314,7 +316,7 @@ class DBusInterfaceMethodHandlerWithMessage
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit DBusInterfaceMethodHandlerWithMessage(
-      const base::Callback<
+      const base::RepeatingCallback<
           void(std::unique_ptr<Response>, ::dbus::Message*, Args...)>& handler)
       : handler_(handler) {}
   DBusInterfaceMethodHandlerWithMessage(
@@ -345,7 +347,8 @@ class DBusInterfaceMethodHandlerWithMessage
 
  private:
   // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<void(std::unique_ptr<Response>, ::dbus::Message*, Args...)>
+  base::RepeatingCallback<void(
+      std::unique_ptr<Response>, ::dbus::Message*, Args...)>
       handler_;
 };
 
@@ -362,7 +365,8 @@ class RawDBusInterfaceMethodHandler
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   RawDBusInterfaceMethodHandler(
-      const base::Callback<void(::dbus::MethodCall*, ResponseSender)>& handler)
+      const base::RepeatingCallback<void(::dbus::MethodCall*, ResponseSender)>&
+          handler)
       : handler_(handler) {}
   RawDBusInterfaceMethodHandler(const RawDBusInterfaceMethodHandler&) = delete;
   RawDBusInterfaceMethodHandler& operator=(
@@ -375,7 +379,7 @@ class RawDBusInterfaceMethodHandler
 
  private:
   // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<void(::dbus::MethodCall*, ResponseSender)> handler_;
+  base::RepeatingCallback<void(::dbus::MethodCall*, ResponseSender)> handler_;
 };
 
 }  // namespace dbus_utils
