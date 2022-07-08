@@ -34,7 +34,7 @@ class BRILLO_EXPORT FileStream : public Stream {
   // Simple interface to wrap native library calls so that they can be mocked
   // out for testing.
   struct FileDescriptorInterface {
-    using DataCallback = base::Callback<void(Stream::AccessMode)>;
+    using DataCallback = base::OnceCallback<void(Stream::AccessMode)>;
 
     virtual ~FileDescriptorInterface() = default;
 
@@ -47,7 +47,7 @@ class BRILLO_EXPORT FileStream : public Stream {
     virtual int Truncate(off64_t length) const = 0;
     virtual int Close() = 0;
     virtual bool WaitForData(AccessMode mode,
-                             const DataCallback& data_callback,
+                             DataCallback data_callback,
                              ErrorPtr* error) = 0;
     virtual int WaitForDataBlocking(AccessMode in_mode,
                                     base::TimeDelta timeout,
@@ -134,7 +134,7 @@ class BRILLO_EXPORT FileStream : public Stream {
   // Override for Stream::WaitForData to start watching the associated file
   // descriptor for non-blocking read/write operations.
   bool WaitForData(AccessMode mode,
-                   const base::Callback<void(AccessMode)>& callback,
+                   base::OnceCallback<void(AccessMode)> callback,
                    ErrorPtr* error) override;
 
   // Runs select() on the file descriptor to wait until we can do non-blocking

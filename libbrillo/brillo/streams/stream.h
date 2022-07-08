@@ -369,8 +369,10 @@ class BRILLO_EXPORT Stream {
   // data availability for the stream. Calls |callback| when data can be read
   // and/or written without blocking.
   // |mode| specifies the type of operation to monitor for (read, write, both).
+  // If |mode| is set to READ_WRITE, |callback| will be called when data can be
+  // either read or written without blocking. See also WaitForDataBlocking().
   virtual bool WaitForData(AccessMode mode,
-                           const base::Callback<void(AccessMode)>& callback,
+                           base::OnceCallback<void(AccessMode)> callback,
                            ErrorPtr* error) = 0;
 
   // Helper function for implementing blocking I/O. Blocks until the

@@ -88,7 +88,7 @@ class MockStream : public Stream {
 
   MOCK_METHOD(bool,
               WaitForData,
-              (AccessMode, const base::Callback<void(AccessMode)>&, ErrorPtr*),
+              (AccessMode, base::OnceCallback<void(AccessMode)>, ErrorPtr*),
               (override));
   MOCK_METHOD(bool,
               WaitForDataBlocking,

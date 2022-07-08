@@ -225,8 +225,8 @@ bool Stream::ReadAsyncImpl(
 
   is_async_read_pending_ = WaitForData(
       AccessMode::READ,
-      base::Bind(&Stream::OnReadAvailable, weak_ptr_factory_.GetWeakPtr(),
-                 buffer, size_to_read, success_callback, error_callback),
+      base::BindOnce(&Stream::OnReadAvailable, weak_ptr_factory_.GetWeakPtr(),
+                     buffer, size_to_read, success_callback, error_callback),
       error);
   return is_async_read_pending_;
 }
@@ -288,8 +288,8 @@ bool Stream::WriteAsyncImpl(
   }
   is_async_write_pending_ = WaitForData(
       AccessMode::WRITE,
-      base::Bind(&Stream::OnWriteAvailable, weak_ptr_factory_.GetWeakPtr(),
-                 buffer, size_to_write, success_callback, error_callback),
+      base::BindOnce(&Stream::OnWriteAvailable, weak_ptr_factory_.GetWeakPtr(),
+                     buffer, size_to_write, success_callback, error_callback),
       error);
   return is_async_write_pending_;
 }

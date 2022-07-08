@@ -5,6 +5,7 @@
 #include <brillo/streams/memory_stream.h>
 
 #include <limits>
+#include <utility>
 
 #include <base/bind.h>
 #include <brillo/message_loops/message_loop.h>
@@ -188,9 +189,10 @@ bool MemoryStream::CheckContainer(ErrorPtr* error) const {
 }
 
 bool MemoryStream::WaitForData(AccessMode mode,
-                               const base::Callback<void(AccessMode)>& callback,
+                               base::OnceCallback<void(AccessMode)> callback,
                                ErrorPtr* /* error */) {
-  MessageLoop::current()->PostTask(FROM_HERE, base::BindOnce(callback, mode));
+  MessageLoop::current()->PostTask(FROM_HERE,
+                                   base::BindOnce(std::move(callback), mode));
   return true;
 }
 

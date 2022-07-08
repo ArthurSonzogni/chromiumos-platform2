@@ -94,7 +94,7 @@ class BRILLO_EXPORT InputStreamSet : public Stream {
 
   // == Data availability monitoring ==========================================
   bool WaitForData(AccessMode mode,
-                   const base::Callback<void(AccessMode)>& callback,
+                   base::OnceCallback<void(AccessMode)> callback,
                    ErrorPtr* error) override;
 
   bool WaitForDataBlocking(AccessMode in_mode,

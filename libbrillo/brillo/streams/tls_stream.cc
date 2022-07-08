@@ -104,7 +104,7 @@ class TlsStream::TlsStreamImpl {
   bool Flush(ErrorPtr* error);
   bool Close(ErrorPtr* error);
   bool WaitForData(AccessMode mode,
-                   const base::Callback<void(AccessMode)>& callback,
+                   base::OnceCallback<void(AccessMode)> callback,
                    ErrorPtr* error);
   bool WaitForDataBlocking(AccessMode in_mode,
                            base::TimeDelta timeout,
@@ -251,7 +251,7 @@ bool TlsStream::TlsStreamImpl::Close(ErrorPtr* error) {
 
 bool TlsStream::TlsStreamImpl::WaitForData(
     AccessMode mode,
-    const base::Callback<void(AccessMode)>& callback,
+    base::OnceCallback<void(AccessMode)> callback,
     ErrorPtr* error) {
   bool is_read = stream_utils::IsReadAccessMode(mode);
   bool is_write = stream_utils::IsWriteAccessMode(mode);
@@ -260,11 +260,11 @@ bool TlsStream::TlsStreamImpl::WaitForData(
   need_more_read_ = false;
   need_more_write_ = false;
   if (is_read && SSL_pending(ssl_.get()) > 0) {
-    callback.Run(AccessMode::READ);
+    std::move(callback).Run(AccessMode::READ);
     return true;
   }
   mode = stream_utils::MakeAccessMode(is_read, is_write);
-  return socket_->WaitForData(mode, callback, error);
+  return socket_->WaitForData(mode, std::move(callback), error);
 }
 
 bool TlsStream::TlsStreamImpl::WaitForDataBlocking(AccessMode in_mode,
@@ -427,20 +427,22 @@ void TlsStream::TlsStreamImpl::DoHandshake(
   int err = SSL_get_error(ssl_.get(), res);
   if (err == SSL_ERROR_WANT_READ) {
     VLOG(1) << "Waiting for read data...";
-    bool ok = socket_->WaitForData(Stream::AccessMode::READ,
-                                   base::Bind(&TlsStreamImpl::RetryHandshake,
-                                              weak_ptr_factory_.GetWeakPtr(),
-                                              success_callback, error_callback),
-                                   &error);
+    bool ok =
+        socket_->WaitForData(Stream::AccessMode::READ,
+                             base::BindOnce(&TlsStreamImpl::RetryHandshake,
+                                            weak_ptr_factory_.GetWeakPtr(),
+                                            success_callback, error_callback),
+                             &error);
     if (ok)
       return;
   } else if (err == SSL_ERROR_WANT_WRITE) {
     VLOG(1) << "Waiting for write data...";
-    bool ok = socket_->WaitForData(Stream::AccessMode::WRITE,
-                                   base::Bind(&TlsStreamImpl::RetryHandshake,
-                                              weak_ptr_factory_.GetWeakPtr(),
-                                              success_callback, error_callback),
-                                   &error);
+    bool ok =
+        socket_->WaitForData(Stream::AccessMode::WRITE,
+                             base::BindOnce(&TlsStreamImpl::RetryHandshake,
+                                            weak_ptr_factory_.GetWeakPtr(),
+                                            success_callback, error_callback),
+                             &error);
     if (ok)
       return;
   } else {
@@ -526,11 +528,11 @@ bool TlsStream::CloseBlocking(ErrorPtr* error) {
 }
 
 bool TlsStream::WaitForData(AccessMode mode,
-                            const base::Callback<void(AccessMode)>& callback,
+                            base::OnceCallback<void(AccessMode)> callback,
                             ErrorPtr* error) {
   if (!impl_)
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
-  return impl_->WaitForData(mode, callback, error);
+  return impl_->WaitForData(mode, std::move(callback), error);
 }
 
 bool TlsStream::WaitForDataBlocking(AccessMode in_mode,

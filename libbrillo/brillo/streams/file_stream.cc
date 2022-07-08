@@ -86,8 +86,17 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
   }
 
   bool WaitForData(Stream::AccessMode mode,
-                   const DataCallback& data_callback,
+                   DataCallback data_callback,
                    ErrorPtr* error) override {
+    // When |mode| is READ_WRITE, we will watching for both reading and writing.
+    // Add a wrapper around |data_callback| to avoid invoking it twice.
+    auto first_invocation_only_data_callback = base::BindRepeating(
+        [](DataCallback& cb, Stream::AccessMode mode) {
+          if (!cb.is_null()) {
+            std::move(cb).Run(mode);
+          }
+        },
+        base::OwnedRef(std::move(data_callback)));
     if (stream_utils::IsReadAccessMode(mode)) {
       CHECK(read_data_callback_.is_null());
       read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
@@ -99,7 +108,7 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
                      "File descriptor doesn't support watching for reading.");
         return false;
       }
-      read_data_callback_ = data_callback;
+      read_data_callback_ = first_invocation_only_data_callback;
     }
     if (stream_utils::IsWriteAccessMode(mode)) {
       CHECK(write_data_callback_.is_null());
@@ -112,7 +121,7 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
                      "File descriptor doesn't support watching for writing.");
         return false;
       }
-      write_data_callback_ = data_callback;
+      write_data_callback_ = first_invocation_only_data_callback;
     }
     return true;
   }
@@ -163,7 +172,7 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
 
     read_watcher_ = nullptr;
     DataCallback cb = std::move(read_data_callback_);
-    cb.Run(Stream::AccessMode::READ);
+    std::move(cb).Run(Stream::AccessMode::READ);
   }
 
   void OnWritable() {
@@ -171,7 +180,7 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
 
     write_watcher_ = nullptr;
     DataCallback cb = std::move(write_data_callback_);
-    cb.Run(Stream::AccessMode::WRITE);
+    std::move(cb).Run(Stream::AccessMode::WRITE);
   }
 
  private:
@@ -499,12 +508,12 @@ bool FileStream::CloseBlocking(ErrorPtr* error) {
 }
 
 bool FileStream::WaitForData(AccessMode mode,
-                             const base::Callback<void(AccessMode)>& callback,
+                             base::OnceCallback<void(AccessMode)> callback,
                              ErrorPtr* error) {
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  return fd_interface_->WaitForData(mode, callback, error);
+  return fd_interface_->WaitForData(mode, std::move(callback), error);
 }
 
 bool FileStream::WaitForDataBlocking(AccessMode in_mode,

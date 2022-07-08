@@ -106,7 +106,7 @@ class FakeStream : public Stream {
   bool FlushBlocking(ErrorPtr* error) override;
   bool CloseBlocking(ErrorPtr* error) override;
   bool WaitForData(AccessMode mode,
-                   const base::Callback<void(AccessMode)>& callback,
+                   base::OnceCallback<void(AccessMode)> callback,
                    ErrorPtr* error) override;
   bool WaitForDataBlocking(AccessMode in_mode,
                            base::TimeDelta timeout,

@@ -156,10 +156,9 @@ bool InputStreamSet::CloseBlocking(ErrorPtr* error) {
   return success;
 }
 
-bool InputStreamSet::WaitForData(
-    AccessMode mode,
-    const base::Callback<void(AccessMode)>& callback,
-    ErrorPtr* error) {
+bool InputStreamSet::WaitForData(AccessMode mode,
+                                 base::OnceCallback<void(AccessMode)> callback,
+                                 ErrorPtr* error) {
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
@@ -168,10 +167,11 @@ bool InputStreamSet::WaitForData(
 
   if (!source_streams_.empty()) {
     Stream* stream = source_streams_.front();
-    return stream->WaitForData(mode, callback, error);
+    return stream->WaitForData(mode, std::move(callback), error);
   }
 
-  MessageLoop::current()->PostTask(FROM_HERE, base::BindOnce(callback, mode));
+  MessageLoop::current()->PostTask(FROM_HERE,
+                                   base::BindOnce(std::move(callback), mode));
   return true;
 }
 

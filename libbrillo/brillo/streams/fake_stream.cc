@@ -360,7 +360,7 @@ bool FakeStream::CloseBlocking(ErrorPtr* /* error */) {
 }
 
 bool FakeStream::WaitForData(AccessMode mode,
-                             const base::Callback<void(AccessMode)>& callback,
+                             base::OnceCallback<void(AccessMode)> callback,
                              ErrorPtr* error) {
   bool read_requested = stream_utils::IsReadAccessMode(mode);
   bool write_requested = stream_utils::IsWriteAccessMode(mode);
@@ -376,8 +376,8 @@ bool FakeStream::WaitForData(AccessMode mode,
   base::TimeDelta delay;
   GetMinDelayAndMode(clock_->Now(), read_requested, delay_input_until_,
                      write_requested, delay_output_until_, &mode, &delay);
-  MessageLoop::current()->PostDelayedTask(FROM_HERE, base::Bind(callback, mode),
-                                          delay);
+  MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, base::BindOnce(std::move(callback), mode), delay);
   return true;
 }
 

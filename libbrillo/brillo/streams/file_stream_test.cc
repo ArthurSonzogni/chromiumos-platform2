@@ -32,6 +32,7 @@ using testing::Return;
 using testing::ReturnArg;
 using testing::SaveArg;
 using testing::SetErrnoAndReturn;
+using testing::WithArg;
 
 namespace brillo {
 
@@ -143,7 +144,7 @@ class MockFileDescriptor : public FileStream::FileDescriptorInterface {
   MOCK_METHOD(int, Close, (), (override));
   MOCK_METHOD(bool,
               WaitForData,
-              (Stream::AccessMode, const DataCallback&, ErrorPtr*),
+              (Stream::AccessMode, DataCallback, ErrorPtr*),
               (override));
   MOCK_METHOD(int,
               WaitForDataBlocking,
@@ -391,7 +392,10 @@ TEST_F(FileStreamTest, ReadAsync) {
   EXPECT_CALL(fd_mock(), Read(test_read_buffer_, 100))
       .WillOnce(ReturnWouldBlock());
   EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
+      .WillOnce(WithArg<1>([&data_callback](auto cb) {
+        data_callback = std::move(cb);
+        return true;
+      }));
   EXPECT_TRUE(stream_->ReadAsync(test_read_buffer_, 100,
                                  base::Bind(&SetSizeT, &read_size),
                                  base::Bind(&SetToTrue, &failed), nullptr));
@@ -399,7 +403,7 @@ TEST_F(FileStreamTest, ReadAsync) {
   EXPECT_FALSE(failed);
 
   EXPECT_CALL(fd_mock(), Read(test_read_buffer_, 100)).WillOnce(Return(83));
-  data_callback.Run(Stream::AccessMode::READ);
+  std::move(data_callback).Run(Stream::AccessMode::READ);
   EXPECT_EQ(83u, read_size);
   EXPECT_FALSE(failed);
 }
@@ -527,7 +531,10 @@ TEST_F(FileStreamTest, WriteAsync) {
   EXPECT_CALL(fd_mock(), Write(test_write_buffer_, 100))
       .WillOnce(ReturnWouldBlock());
   EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::WRITE, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
+      .WillOnce(WithArg<1>([&data_callback](auto cb) {
+        data_callback = std::move(cb);
+        return true;
+      }));
   EXPECT_TRUE(stream_->WriteAsync(test_write_buffer_, 100,
                                   base::Bind(&SetSizeT, &write_size),
                                   base::Bind(&SetToTrue, &failed), nullptr));
@@ -535,7 +542,7 @@ TEST_F(FileStreamTest, WriteAsync) {
   EXPECT_FALSE(failed);
 
   EXPECT_CALL(fd_mock(), Write(test_write_buffer_, 100)).WillOnce(Return(87));
-  data_callback.Run(Stream::AccessMode::WRITE);
+  std::move(data_callback).Run(Stream::AccessMode::WRITE);
   EXPECT_EQ(87u, write_size);
   EXPECT_FALSE(failed);
 }
