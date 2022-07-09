@@ -875,6 +875,13 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
+    // TODO(crbug.com/1249754): implement kCloseMethod. ReplyOk here for now,
+    // to suppress method "not implemented" error logs.
+    if (data.type == kMTPType) {
+      request->ReplyOk();
+      return;
+    }
+
     dbus::MethodCall method(kFuseBoxServiceInterface, kCloseMethod);
     dbus::MessageWriter writer(&method);
 
