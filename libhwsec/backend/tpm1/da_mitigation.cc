@@ -30,7 +30,7 @@ StatusOr<bool> DAMitigationTpm1::IsReady() {
 
   RETURN_IF_ERROR(MakeStatus<TPMManagerError>(reply.status()));
 
-  return reply.has_has_reset_lock_permissions();
+  return reply.has_reset_lock_permissions();
 }
 
 StatusOr<DAMitigationTpm1::DAMitigationStatus> DAMitigationTpm1::GetStatus() {

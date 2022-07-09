@@ -39,6 +39,21 @@ TEST_F(BackendDAMitigationTpm2Test, IsReady) {
   EXPECT_TRUE(*result);
 }
 
+TEST_F(BackendDAMitigationTpm2Test, IsNotReady) {
+  tpm_manager::GetTpmNonsensitiveStatusReply reply;
+  reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  reply.set_is_enabled(true);
+  reply.set_is_owned(true);
+  reply.set_has_reset_lock_permissions(false);
+  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto result = middleware_->CallSync<&Backend::DAMitigation::IsReady>();
+  ASSERT_TRUE(result.ok());
+  EXPECT_FALSE(*result);
+}
+
 TEST_F(BackendDAMitigationTpm2Test, GetStatus) {
   const base::TimeDelta kRemaining = base::Minutes(2);
 
