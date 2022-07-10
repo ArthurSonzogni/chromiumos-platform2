@@ -763,9 +763,12 @@ void CellularCapability3gpp::SetRoamingProperties(KeyValueStore* properties) {
 }
 
 bool CellularCapability3gpp::IsDualStackSupported() {
+  SLOG(this, 2) << __func__;
   if (!cellular()->device_id())
     return true;
 
+  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString()
+                << " MCCMNC: " << mobile_operator_info_->mccmnc();
   // Disable dual-stack on L850 + Verizon
   const struct {
     DeviceId device_id;
