@@ -7,9 +7,10 @@
 #   https://source.chromium.org/chromium/infra/infra/+/HEAD:go/src/infra/tools/dirmd/proto/dir_metadata.proto
 
 buganizer {
-  component_id: 1032705
+  # https://b.corp.google.com/issues?q=status:open%20componentid:860616
+  # ChromeOS > Platform > Services > Scanning
+  component_id: 860616
 }
-team_email: "cros-telemetry@google.com"
 
 chromeos {
   cq {
@@ -24,16 +25,7 @@ chromeos {
         project: "chromeos/config-internal"
         path: "test/plans/v2/ctpv1_compatible/bvt_tast_cq_each_kernel_version.star"
       }
-      test_plan_starlark_files {
-        host: "chrome-internal.googlesource.com"
-        project: "chromeos/config-internal"
-        path: "test/plans/v2/ctpv1_compatible/bvt_inline_each_arch.star"
-      }
-      test_plan_starlark_files {
-        host: "chrome-internal.googlesource.com"
-        project: "chromeos/config-internal"
-        path: "test/plans/v2/ctpv1_compatible/bvt_inline_each_kernel_version.star"
-      }
+      path_regexp_excludes: "lorgnette/hwtests/.*"
     }
   }
 }

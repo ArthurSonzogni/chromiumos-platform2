@@ -97,7 +97,6 @@ LEGACYLIST = {
     'libmems',
     'libpasswordprovider',
     'login_manager',
-    'lorgnette',
     'media_capabilities',
     'media_perception',
     'mems_setup',
