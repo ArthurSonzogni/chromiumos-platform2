@@ -173,15 +173,15 @@ MetricSample SerializationUtils::ParseSample(const std::string& sample) {
   const std::string& name = parts[0];
   const std::string& value = parts[1];
 
-  if (base::LowerCaseEqualsASCII(name, "crash")) {
+  if (base::EqualsCaseInsensitiveASCII(name, "crash")) {
     return MetricSample::CrashSample(value);
-  } else if (base::LowerCaseEqualsASCII(name, "histogram")) {
+  } else if (base::EqualsCaseInsensitiveASCII(name, "histogram")) {
     return MetricSample::ParseHistogram(value);
-  } else if (base::LowerCaseEqualsASCII(name, "linearhistogram")) {
+  } else if (base::EqualsCaseInsensitiveASCII(name, "linearhistogram")) {
     return MetricSample::ParseLinearHistogram(value);
-  } else if (base::LowerCaseEqualsASCII(name, "sparsehistogram")) {
+  } else if (base::EqualsCaseInsensitiveASCII(name, "sparsehistogram")) {
     return MetricSample::ParseSparseHistogram(value);
-  } else if (base::LowerCaseEqualsASCII(name, "useraction")) {
+  } else if (base::EqualsCaseInsensitiveASCII(name, "useraction")) {
     return MetricSample::UserActionSample(value);
   } else {
     LOG(ERROR) << "invalid event type: " << name << ", value: " << value;
