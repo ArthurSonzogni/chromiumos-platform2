@@ -905,7 +905,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAuthenticateInvalidAuthInput = 539,
   /* ./auth_session.cc */
   kLocAuthSessionVKConverterFailsInAddAuthFactor = 540,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionAddViaUSSFailedInAddAuthFactor = 541,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor = 542,

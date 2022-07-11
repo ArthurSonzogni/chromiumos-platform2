@@ -308,11 +308,13 @@ class AuthSession final {
 
   // Creates a new per-credential secret, adds the key block for the new secret
   // to the USS and persists it to disk.
-  CryptohomeStatus AddAuthFactorViaUserSecretStash(
+  void AddAuthFactorViaUserSecretStash(
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
-      const AuthInput& auth_input);
+      const AuthInput& auth_input,
+      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+          on_done);
 
   // Adds a new VaultKeyset for the |obfuscated_username_| and persists it to
   // disk.

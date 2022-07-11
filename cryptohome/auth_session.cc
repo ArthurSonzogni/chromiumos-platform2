@@ -1290,20 +1290,9 @@ void AuthSession::AddAuthFactor(
           CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH));
     }
 
-    CryptohomeStatus error = AddAuthFactorViaUserSecretStash(
-        auth_factor_type, auth_factor_label, auth_factor_metadata,
-        auth_input.value());
-    if (error.ok()) {
-      ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-      return;
-    }
-
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionAddViaUSSFailedInAddAuthFactor),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-            .Wrap(std::move(error)));
+    AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
+                                    auth_factor_metadata, auth_input.value(),
+                                    std::move(on_done));
     return;
   }
 
@@ -1339,14 +1328,18 @@ void AuthSession::AddAuthFactorViaVaultKeyset(
       /*initial_keyset*/ !user_has_configured_credential_, std::move(on_done));
 }
 
-CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
+void AuthSession::AddAuthFactorViaUserSecretStash(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
-    const AuthInput& auth_input) {
+    const AuthInput& auth_input,
+    base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+        on_done) {
   // Preconditions.
   DCHECK(user_secret_stash_);
   DCHECK(user_secret_stash_main_key_.has_value());
+
+  user_data_auth::AddAuthFactorReply reply;
 
   // 1. Create a new auth factor in-memory, by executing auth block's Create().
   KeyBlobs key_blobs;
@@ -1357,11 +1350,13 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
                             auth_block_utility_, key_blobs);
   if (!auth_factor_or_status.ok()) {
     LOG(ERROR) << "Failed to create new auth factor";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthSessionCreateAuthFactorFailedInAddViaUSS),
-               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-        .Wrap(std::move(auth_factor_or_status).status());
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocAuthSessionCreateAuthFactorFailedInAddViaUSS),
+                       user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+                       .Wrap(std::move(auth_factor_or_status).status()));
+    return;
   }
 
   // 2. Derive the credential secret for the USS from the key blobs.
@@ -1370,11 +1365,14 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   if (!uss_credential_secret.has_value()) {
     LOG(ERROR) << "Failed to derive credential secret for created auth factor";
     // TODO(b/229834676): Migrate USS and wrap the error.
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInAddViaUSS),
+            ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
+                            ErrorAction::kDeleteVault}),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+    return;
   }
 
   // 3. Add the new factor into the USS in-memory.
@@ -1385,10 +1383,13 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
       /*wrapping_id=*/auth_factor_label, uss_credential_secret.value());
   if (!status.ok()) {
     LOG(ERROR) << "Failed to add created auth factor into user secret stash";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthSessionAddMainKeyFailedInAddViaUSS),
-               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-        .Wrap(std::move(status));
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionAddMainKeyFailedInAddViaUSS),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
   }
 
   if (auth_input.reset_secret.has_value() &&
@@ -1396,10 +1397,13 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
           auth_factor_label, auth_input.reset_secret.value())) {
     LOG(ERROR) << "Failed to insert reset secret for auth factor";
     // TODO(b/229834676): Migrate USS and wrap the error.
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionAddResetSecretFailedInAddViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionAddResetSecretFailedInAddViaUSS),
+            ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry}),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+    return;
   }
 
   // 4. Encrypt the updated USS.
@@ -1409,10 +1413,13 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR)
         << "Failed to encrypt user secret stash after auth factor creation";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInAddViaUSS),
-               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-        .Wrap(std::move(encrypted_uss_container).status());
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInAddViaUSS),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(encrypted_uss_container).status()));
+    return;
   }
 
   // 5. Persist the factor.
@@ -1424,11 +1431,13 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
       auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to persist created auth factor";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthSessionPersistFactorFailedInAddViaUSS),
-               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-        .Wrap(std::move(status));
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionPersistFactorFailedInAddViaUSS),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
   }
 
   // 6. Persist the USS.
@@ -1441,10 +1450,13 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   if (!status.ok()) {
     LOG(ERROR)
         << "Failed to persist user secret stash after auth factor creation";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthSessionPersistUSSFailedInAddViaUSS),
-               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-        .Wrap(std::move(status));
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionPersistUSSFailedInAddViaUSS),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
   }
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor_label
@@ -1452,7 +1464,7 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
   label_to_auth_factor_.emplace(auth_factor_label, std::move(auth_factor));
   user_has_configured_auth_factor_ = true;
 
-  return OkStatus<CryptohomeError>();
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 CryptohomeStatus AuthSession::AuthenticateViaUserSecretStash(
