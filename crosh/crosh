@@ -134,16 +134,16 @@ shell_read() {
   local prompt="$1"
   shift
 
-  if [ "$IS_BASH" -eq "1" ]; then
+  if [ "${IS_BASH}" -eq "1" ]; then
     # In bash, -e gives readline support.
-    read -p "$prompt" -e "$@"
+    read -p "${prompt}" -e "$@"
   else
-    read -p "$prompt" "$@"
+    read -p "${prompt}" "$@"
   fi
 }
 
 shell_history() {
-  if [ "$IS_BASH" -eq "1" ]; then
+  if [ "${IS_BASH}" -eq "1" ]; then
     # In bash, the history builtin can be used to manage readline history
     history "$@"
   fi
@@ -191,7 +191,7 @@ shell_history_init() {
 
   # Initialize pseudo completion support.  Do it before we load the user's
   # history so that new entries don't come after old ones.
-  if [ ${IS_BASH} -eq 1 ]; then
+  if [ "${IS_BASH}" -eq 1 ]; then
     local f
     for f in $(registered_visible_commands); do
       # Do not add duplicates to avoid ballooning history.
@@ -333,7 +333,7 @@ is_chrome_feature_enabled() {
     "org.chromium.ChromeFeaturesServiceInterface.${method}" \
     "string:${CROS_USER_ID_HASH}" 2>/dev/null)"
   status="$?"
-  [ ${status} -eq 0 -a "${reply##* }" = "true" ]
+  [ "${status}" -eq 0 -a "${reply##* }" = "true" ]
 }
 
 
@@ -797,7 +797,7 @@ debugd() {
   local method="$1"; shift
   dbus-send "${timeout}" --system --print-reply --fixed \
       --dest=org.chromium.debugd /org/chromium/debugd \
-      "org.chromium.debugd.$method" "$@"
+      "org.chromium.debugd.${method}" "$@"
 }
 
 # Run a debugd command for a long time and poll its output.
@@ -1139,8 +1139,8 @@ cmd_autest() (
     shift
   done
 
-  echo "Calling update_engine_client with omaha_url = $omaha_url"
-  /usr/bin/update_engine_client "--omaha_url=$omaha_url"
+  echo "Calling update_engine_client with omaha_url = ${omaha_url}"
+  /usr/bin/update_engine_client "--omaha_url=${omaha_url}"
 )
 
 USAGE_p2p_update='[enable|disable] [--num-connections] [--show-peers]'
@@ -1268,7 +1268,7 @@ HELP_rlz="
 proposed-changes/apis-under-development/rlz-api
 "
 cmd_rlz() (
-  local flag_file="$HOME/.rlz_disabled"
+  local flag_file="${HOME}/.rlz_disabled"
   local enabled=1
   local changed=0
   if [ -r "${flag_file}" ]; then
@@ -1276,7 +1276,7 @@ cmd_rlz() (
   fi
   case "$1" in
     "status")
-      if [ $enabled -eq 1 ]; then
+      if [ "${enabled}" -eq 1 ]; then
         echo "Currently enabled"
       else
         echo "Currently disabled"
@@ -1285,14 +1285,14 @@ cmd_rlz() (
       ;;
 
     "enable")
-      if [ $enabled -eq 0 ]; then
+      if [ "${enabled}" -eq 0 ]; then
         changed=1
       fi
       rm -f "${flag_file}"
       ;;
 
     "disable")
-      if [ $enabled -eq 1 ]; then
+      if [ "${enabled}" -eq 1 ]; then
         changed=1
       fi
       touch "${flag_file}"
@@ -1303,7 +1303,7 @@ cmd_rlz() (
       return 1
       ;;
   esac
-  if [ $changed -eq 1 ]; then
+  if [ ${changed} -eq 1 ]; then
     echo "You must reboot for this to take effect."
   else
     echo "No change."
@@ -1350,12 +1350,12 @@ cmd_storage_test_1() (
   debugd Smartctl "string:abort_test" >/dev/null
 
   test="$(debugd Smartctl "string:short_test")"
-  if [ "$option" != "-v" ]; then
-    echo "$test" | sed -n '1p;2p'
+  if [ "${option}" != "-v" ]; then
+    echo "${test}" | sed -n '1p;2p'
     echo ""
-    echo "$test" | grep "Please wait"
+    echo "${test}" | grep "Please wait"
   else
-    echo "$test"
+    echo "${test}"
   fi
 
   echo ""
@@ -1366,10 +1366,10 @@ cmd_storage_test_1() (
   done
 
   result="$(debugd Smartctl "string:selftest")"
-  if [ "$option" != "-v" ]; then
-    echo "$result" | grep -e "Num" -e "# 1"
+  if [ "${option}" != "-v" ]; then
+    echo "${result}" | grep -e "Num" -e "# 1"
   else
-    echo "$result"
+    echo "${result}"
   fi
 
   debugd Smartctl "string:abort_test" >/dev/null
@@ -1450,7 +1450,7 @@ HELP_battery_test='
 '
 cmd_battery_test() (
   local test_length="$1"
-  if [ -z "$test_length" ]; then
+  if [ -z "${test_length}" ]; then
     echo "No test length specified. Defaulting to 300 seconds."
     test_length=300
   fi
@@ -1860,10 +1860,10 @@ substr() {
   local start="$2"
   local end="$3"
 
-  start="$(expr "$start" + 1)"
+  start="$(expr "${start}" + 1)"
 
-  if [ ! -z "$end" ]; then
-    end="$(expr "$end" - 1)"
+  if [ -n "${end}" ]; then
+    end="$(expr "${end}" - 1)"
   fi
 
   printf '%s' "${str}" | cut -c${start}-${end}
@@ -1947,11 +1947,11 @@ dispatch_line() {
   local space_pos="$(expr index "${line}" ' ')"
 
   if [ "${space_pos}" = "0" ]; then
-    command="$line"
+    command="${line}"
   else
-    command="$(substr "$line" "0" "$space_pos")"
+    command="$(substr "${line}" "0" "${space_pos}")"
     command="${command% *}"
-    params="$(substr "$line" "$space_pos")"
+    params="$(substr "${line}" "${space_pos}")"
   fi
 
   dispatch "${command}" ${params}
@@ -1959,7 +1959,7 @@ dispatch_line() {
 
 repl() {
   echo "${INTRO_TEXT}"
-  if [ "$IS_BASH" != "1" ]; then
+  if [ "${IS_BASH}" != "1" ]; then
     echo "Sorry, line editing and command history disabled due to" \
       "shell limitations."
   fi
@@ -1973,8 +1973,8 @@ repl() {
 
   while [ -z "${exit}" ]; do
     if shell_read "${prompt}" LINE_; then
-      if [ ! -z "$LINE_" ]; then
-        dispatch_line "$LINE_"
+      if [ ! -z "${LINE_}" ]; then
+        dispatch_line "${LINE_}"
       fi
     else
       echo
@@ -2043,7 +2043,7 @@ main() {
 
   load_extra_crosh
 
-  if [ "${CROSH_SINGLE_COMMAND}" == "1" ]; then
+  if [ "${CROSH_SINGLE_COMMAND}" = "1" ]; then
     # Don't trap anymore.
     trap 'exit 1' INT QUIT
 
