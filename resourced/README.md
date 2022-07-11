@@ -14,13 +14,13 @@ Check go/resourced for details.
 The following chromeos-config values are supported:
 
  * resource/
- *   * {ac,dc}
- *     * web-rtc-power-preferences/governor/
- *       * ondemand/
- *         * powersave-bias
- *     * fullscreen-power-preferences/governor/..
- *     * gaming-power-preferences/governor/..
- *     * default-power-preferences/governor/..
+    * {ac,dc}
+      * web-rtc-power-preferences/governor/
+        * ondemand/
+          * powersave-bias
+      * fullscreen-power-preferences/governor/..
+      * gaming-power-preferences/governor/..
+      * default-power-preferences/governor/..
 
 ## Debugging
 
