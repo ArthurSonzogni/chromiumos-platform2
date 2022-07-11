@@ -15,25 +15,7 @@
 
 namespace {
 
-std::string GetParentChildName(const char* path) {
-  base::StringPiece name(path ? path : ".");
-
-  if (name.empty() || name == "/")
-    return path;
-  if (name == "." || name == "..")
-    return {};
-  if (name.find('/') != base::StringPiece::npos)
-    return {};
-
-  return std::string("/").append(name.data(), name.size());
-}
-
 using Node = fusebox::Node;
-
-inline Node* NodeError(int error) {
-  errno = error;
-  return nullptr;
-}
 
 Node* CreateNode(ino_t parent, const std::string& child, ino_t ino) {
   Node* node = new Node();
@@ -44,6 +26,25 @@ Node* CreateNode(ino_t parent, const std::string& child, ino_t ino) {
   node->name = child;
   node->refcount = 1;
   return node;
+}
+
+std::string GetChildNodeName(const char* name) {
+  base::StringPiece entry(name ? name : "");
+
+  // Verify entry name is POSIX conformant: return "" if not.
+  if (entry == "." || entry == "..")
+    return {};  // path traversals not allowed
+  if (entry.find('/') != base::StringPiece::npos)
+    return {};  // path components not allowed
+  if (entry.empty())
+    return {};  // trivial cases "" or nullptr
+
+  return std::string("/").append(entry.data(), entry.size());
+}
+
+inline Node* NodeError(int error) {
+  errno = error;
+  return nullptr;
 }
 
 }  // namespace
@@ -64,7 +65,7 @@ ino_t InodeTable::CreateIno() {
 }
 
 Node* InodeTable::Create(ino_t parent, const char* name) {
-  std::string child = GetParentChildName(name);
+  std::string child = GetChildNodeName(name);
   if (child.empty() || !parent)
     return NodeError(EINVAL);
 
@@ -92,7 +93,7 @@ Node* InodeTable::Lookup(ino_t ino, uint64_t ref) {
 }
 
 Node* InodeTable::Lookup(ino_t parent, const char* name, uint64_t ref) {
-  std::string child = GetParentChildName(name);
+  std::string child = GetChildNodeName(name);
   if (child.empty())
     return NodeError(EINVAL);
 
@@ -106,7 +107,7 @@ Node* InodeTable::Lookup(ino_t parent, const char* name, uint64_t ref) {
 }
 
 Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
-  std::string child = GetParentChildName(name);
+  std::string child = GetChildNodeName(name);
   if (child.empty() || !parent)
     return NodeError(EINVAL);
 
@@ -133,7 +134,7 @@ Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   if (parent_it == node_map_.end())
     return NodeError(EINVAL);
 
-  std::string child = GetParentChildName(name);
+  std::string child = GetChildNodeName(name);
   if (child.empty() || !node || node->ino == parent)
     return NodeError(EINVAL);
 

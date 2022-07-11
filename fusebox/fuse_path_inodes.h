@@ -24,7 +24,7 @@ struct Node {
   dev_t device;       // Device number
   ino_t parent;       // Parent ino
   ino_t ino;          // Inode ino
-  std::string name;   // Entry name
+  std::string name;   // Entry name with "/" prefix
   uint64_t refcount;  // Ref count
 };
 
@@ -127,7 +127,7 @@ class InodeTable {
   // Map ino to node.
   std::unordered_map<ino_t, std::unique_ptr<Node>> node_map_;
 
-  // Map parent-ino/child-name to node.
+  // Map parent-ino/child-name (e.g., 342/child.txt) to node.
   std::unordered_map<std::string, Node*> parent_map_;
 
   // Map device number to device.

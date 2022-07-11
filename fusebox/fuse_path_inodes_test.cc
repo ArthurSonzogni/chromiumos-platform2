@@ -12,22 +12,21 @@ TEST(FusePathInodesTest, RootNode) {
   InodeTable inodes;
 
   // The root node always exists.
-  Node* node = inodes.Lookup(1);
-  EXPECT_TRUE(node);
-  EXPECT_EQ(0, node->device);
-  EXPECT_EQ(1, node->ino);
-  EXPECT_EQ(1, node->refcount);
-
-  // Root node can be found by parent child lookup.
-  Node* root = inodes.Lookup(0, "/");
-  EXPECT_EQ(node, root);
+  Node* root = inodes.Lookup(1);
+  EXPECT_TRUE(root);
+  EXPECT_EQ(0, root->device);
+  EXPECT_EQ(1, root->ino);
+  EXPECT_EQ(1, root->refcount);
 
   // Root has a name and full path name.
   EXPECT_EQ("/", inodes.GetName(root->ino));
   EXPECT_EQ("/", inodes.GetPath(root));
 
   // Root node cannot be forgotten.
-  EXPECT_FALSE(inodes.Forget(node->ino));
+  EXPECT_FALSE(inodes.Forget(root->ino));
+
+  // Root node parent inode is ino 0.
+  EXPECT_EQ(0, root->parent);
 
   // Root node cannot be recreated.
   errno = 0;
@@ -119,9 +118,9 @@ TEST(FusePathInodesTest, NodeNames) {
   EXPECT_EQ(EINVAL, errno);
 
   static const char* kInvalidNames[] = {
-      "",    ".",    "..",   "/.",   "/..",   "./",    "..//",
-      "//",  "//.",  "//..", "/foo", "//bar", "foo/",  "bar//",
-      "/a/", "//b/", "c/.",  "c/..", "d/e",   "f/./g", "/../i",
+      "",    "/",    ".",    "..",   "/.",    "/..",   "./",    "../",
+      "//",  "//.",  "//..", "/foo", "//bar", "foo/",  "bar//", "/ .",
+      "/a/", "//b/", "c/.",  "c/..", "d/e",   "f/./g", "/../i", ". /",
   };
 
   for (const char* name : kInvalidNames) {
@@ -136,13 +135,19 @@ TEST(FusePathInodesTest, NodeNames) {
     EXPECT_EQ(EINVAL, errno);
   }
 
-  for (const char* valid : {"foo", "bar", "baz"}) {
+  for (const char* valid : {"foo", "bar", ".foo", "foo.bar"}) {
     errno = 0;
     EXPECT_TRUE(inodes.Create(1, valid));
     EXPECT_EQ(0, errno);
-    EXPECT_TRUE(inodes.Lookup(1, valid));
-    EXPECT_EQ(0, errno);
     EXPECT_TRUE(inodes.Ensure(1, valid));
+    EXPECT_EQ(0, errno);
+    Node* node = inodes.Lookup(1, valid);
+    EXPECT_EQ(0, errno);
+
+    EXPECT_TRUE(node);
+    const auto name = std::string("/").append(valid);
+    EXPECT_EQ(name, inodes.GetName(node->ino));
+    EXPECT_EQ(name, inodes.GetPath(node));
     EXPECT_EQ(0, errno);
   }
 
