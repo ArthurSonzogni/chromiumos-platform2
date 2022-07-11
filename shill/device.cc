@@ -820,31 +820,11 @@ bool Device::StartPortalDetection(bool restart) {
     return true;
   }
 
+  // If portal detection is disabled for this technology, immediately set
+  // the service state to "Online".
   if (selected_service_->IsPortalDetectionDisabled()) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this service";
-    SetServiceState(Service::kStateOnline);
-    return false;
-  }
-
-  // If portal detection is disabled for this technology, immediately set
-  // the service state to "Online".
-  if (selected_service_->IsPortalDetectionAuto() &&
-      !manager_->IsPortalDetectionEnabled(technology())) {
-    LOG(INFO) << LoggingTag()
-              << ": Portal detection is disabled for this technology";
-    SetServiceState(Service::kStateOnline);
-    return false;
-  }
-
-  if (selected_service_->HasProxyConfig()) {
-    // Services with HTTP proxy configurations should not be checked by the
-    // connection manager, since we don't have the ability to evaluate
-    // arbitrary proxy configs and their possible credentials.
-    // TODO(b/207657239) Make PortalDetector proxy-aware and compatible with
-    // web proxy configurations.
-    LOG(INFO) << LoggingTag()
-              << ": Service has proxy config; marking it online.";
     SetServiceState(Service::kStateOnline);
     return false;
   }
@@ -933,7 +913,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
 
   if (!network_->HasConnectionObject()) {
     LOG(INFO) << LoggingTag()
-                 << ": Portal detection completed but there is no Connecttion";
+              << ": Portal detection completed but there is no Connecttion";
     return;
   }
 

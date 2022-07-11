@@ -1796,11 +1796,18 @@ bool Service::IsDisconnectable(Error* error) const {
 }
 
 bool Service::IsPortalDetectionDisabled() const {
-  return check_portal_ == kCheckPortalFalse;
-}
+  // Services with HTTP proxy configurations should not be checked by the
+  // connection manager, since we don't have the ability to evaluate
+  // arbitrary proxy configs and their possible credentials.
+  // TODO(b/207657239) Make PortalDetector proxy-aware and compatible with
+  // web proxy configurations.
+  if (HasProxyConfig()) {
+    return true;
+  }
 
-bool Service::IsPortalDetectionAuto() const {
-  return check_portal_ == kCheckPortalAuto;
+  return (check_portal_ == kCheckPortalFalse) ||
+         (check_portal_ == kCheckPortalAuto &&
+          !manager_->IsPortalDetectionEnabled(technology()));
 }
 
 void Service::HelpRegisterDerivedBool(const std::string& name,

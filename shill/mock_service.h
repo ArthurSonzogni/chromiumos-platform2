@@ -69,7 +69,6 @@ class MockService : public Service {
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
-  MOCK_METHOD(bool, IsPortalDetectionAuto, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
   MOCK_METHOD(void, SetAttachedNetwork, (base::WeakPtr<Network>), (override));

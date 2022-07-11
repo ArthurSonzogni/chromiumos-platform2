@@ -378,13 +378,13 @@ class Service : public base::RefCounted<Service> {
   // keys in |args| do not exist or have different values, true otherwise.
   mockable bool DoPropertiesMatch(const KeyValueStore& args) const;
 
-  // Returns whether portal detection is explicitly disabled on this service
-  // via a property set on it.
+  // Returns whether portal detection is disabled by configuration on this
+  // service. This is the case if any of the following conditions is met:
+  //   - Property "CheckPortal" is set to "false".
+  //   - Property "CheckPortal" is set to "auto" and portal detection is
+  //     disabled for the link technology of this Service.
+  //   - The Service has a proxy configuration defined.
   mockable bool IsPortalDetectionDisabled() const;
-
-  // Returns whether portal detection is set to follow the default setting
-  // of this service's technology via a property set on it.
-  mockable bool IsPortalDetectionAuto() const;
 
   // Returns true if the service is persisted to a non-ephemeral profile.
   mockable bool IsRemembered() const;
@@ -844,6 +844,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsNotMeteredByDefault);
+  FRIEND_TEST(ServiceTest, IsPortalDetectionDisabled);
   FRIEND_TEST(ServiceTest, Load);
   FRIEND_TEST(ServiceTest, LoadTrafficCounters);
   FRIEND_TEST(ServiceTest, MeteredOverride);
@@ -856,6 +857,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, SetConnectableFull);
   FRIEND_TEST(ServiceTest, SetFriendlyName);
+  FRIEND_TEST(ServiceTest, SetProxyConfig);
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, StateResetAfterFailure);

@@ -562,11 +562,12 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Initiate portal detection if all the following conditions are met:
   //   - There is currently a |selected_service_| for this Device.
-  //   - Portal detection is enabled for this Device type and for the current
-  //   |selected_service_|.
   //   - The Device has an active Network connection and |selected_service_| is
   //   in a connected state.
-  //   - There is no proxy configuration defined on |selected_service_|.
+  //   - Portal detection is not disabled (Service::IsPortalDetectioDisabled):
+  //      - There is no proxy configuration defined on |selected_service_|.
+  //      - Portal detection is enabled for the |selected_service_| itself or
+  //      for its link technology.
   //   - Portal detection was not already running. If |restart| is true this
   //   check is ignored. This allows the caller to force the creation of a new
   //   PortalDetector instance with the latest network layer properties.

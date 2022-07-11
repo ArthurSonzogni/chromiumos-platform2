@@ -1428,23 +1428,34 @@ TEST_F(ServiceTest, RecheckPortal) {
 }
 
 TEST_F(ServiceTest, SetCheckPortal) {
+  // Ensure no other conditions for IsPortalDetectionDisabled is met.
+  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillRepeatedly(Return(true));
+  {
+    Error error;
+    service_->SetProxyConfig("", &error);
+  }
+
   {
     Error error;
     service_->SetCheckPortal("false", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalFalse, service_->check_portal_);
+    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   }
   {
     Error error;
     service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalTrue, service_->check_portal_);
+    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
   }
   {
     Error error;
     service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
   }
   {
     Error error;
@@ -1452,6 +1463,61 @@ TEST_F(ServiceTest, SetCheckPortal) {
     EXPECT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+  }
+}
+
+TEST_F(ServiceTest, SetProxyConfig) {
+  // Ensure no other conditions for IsPortalDetectionDisabled is met.
+  {
+    Error error;
+    service_->SetCheckPortal("true", &error);
+  }
+
+  {
+    Error error;
+    service_->SetProxyConfig("", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_FALSE(service_->HasProxyConfig());
+    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+  }
+  {
+    Error error;
+    service_->SetProxyConfig("proxyconfiguration", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(service_->HasProxyConfig());
+    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  }
+}
+
+TEST_F(ServiceTest, IsPortalDetectionDisabled) {
+  {
+    // The service has a proxy configuration.
+    Error error;
+    service_->SetCheckPortal("true", &error);
+    service_->SetProxyConfig("proxyconfiguration", &error);
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  }
+  {
+    // The service's "CheckPortal" property is set to "false".
+    Error error;
+    service_->SetCheckPortal("false", &error);
+    service_->SetProxyConfig("", &error);
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  }
+  {
+    // The service's "CheckPortal" property is set to "auto" and portal
+    // detection is disabled for this link technology.
+    Error error;
+    service_->SetCheckPortal("auto", &error);
+    service_->SetProxyConfig("", &error);
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+        .WillRepeatedly(Return(false));
+    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   }
 }
 
