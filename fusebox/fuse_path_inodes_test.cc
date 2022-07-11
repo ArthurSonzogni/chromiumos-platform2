@@ -145,6 +145,22 @@ TEST(FusePathInodesTest, NodeNames) {
     EXPECT_TRUE(inodes.Ensure(1, valid));
     EXPECT_EQ(0, errno);
   }
+
+  for (const char* device : {"mtp:usb:5,3:65537"}) {
+    errno = 0;
+    EXPECT_TRUE(inodes.Create(1, device));
+    EXPECT_EQ(0, errno);
+    EXPECT_TRUE(inodes.Ensure(1, device));
+    EXPECT_EQ(0, errno);
+    Node* node = inodes.Lookup(1, device);
+    EXPECT_EQ(0, errno);
+
+    EXPECT_TRUE(node);
+    const auto name = std::string("/").append(device);
+    EXPECT_EQ(name, inodes.GetName(node->ino));
+    EXPECT_EQ(name, inodes.GetPath(node));
+    EXPECT_EQ(0, errno);
+  }
 }
 
 TEST(FusePathInodesTest, ChildNode) {
