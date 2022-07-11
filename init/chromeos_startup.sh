@@ -304,7 +304,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
       STATE_DEV="/dev/${vg_name}/unencrypted"
       DEV_IMAGE="/dev/${vg_name}/dev-image"
     fi
-    boostat lvm-activation-complete
+    bootstat lvm-activation-complete
   fi
 
   # Check if we enable ext4 features.
