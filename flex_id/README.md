@@ -1,13 +1,13 @@
 # Chrome OS Flex ID
-This is a utility and library for generating a device specific identifier
+This is a utility and library for generating a device-specific identifier
 known as a Flex ID. This was previously named Client ID, and is also
-a separate identifier than the client id used in UMA and crash reporting.
+a separate identifier from the client id used in UMA and crash reporting.
 
 Flex ID can be used to account for the lack of VPD information by
 amd64 generic based platforms (such as the Reven board).
 
 This utility will check a number of locations to attempt to find a useful
-source to define a non random device identifier.
+source to define a non-random device identifier.
 
 The Flex ID is stored at `/var/lib/flex_id/flex_id`.
 
