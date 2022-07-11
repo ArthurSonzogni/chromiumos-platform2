@@ -126,8 +126,8 @@ void Smdp::SendHttps(const std::string& path,
   http_request.AddRequestBody(&request[0], request.size(), &error);
   CHECK(!error);
 
-  http_request.GetResponse(base::Bind(&OnHttpsResponse, cb),
-                           base::Bind(&OnHttpsError, cb));
+  http_request.GetResponse(base::BindOnce(&OnHttpsResponse, cb),
+                           base::BindOnce(&OnHttpsError, cb));
 }
 
 }  // namespace hermes

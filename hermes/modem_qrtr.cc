@@ -82,31 +82,34 @@ ModemQrtr::ModemQrtr(std::unique_ptr<SocketInterface> socket,
       weak_factory_(this) {
   CHECK(socket_);
   CHECK(socket_->IsValid());
-  socket_->SetDataAvailableCallback(
-      base::Bind(&ModemQrtr::OnDataAvailable, weak_factory_.GetWeakPtr()));
+  socket_->SetDataAvailableCallback(base::BindRepeating(
+      &ModemQrtr::OnDataAvailable, weak_factory_.GetWeakPtr()));
 
   // DMS callbacks
   qmi_rx_callbacks_[{QmiCmdInterface::Service::kDms,
                      DmsCmd::QmiType::kGetDeviceSerialNumbers}] =
-      base::Bind(&ModemQrtr::ReceiveQmiGetSerialNumbers,
-                 base::Unretained(this));
+      base::BindRepeating(&ModemQrtr::ReceiveQmiGetSerialNumbers,
+                          base::Unretained(this));
 
   // UIM callbacks
   qmi_rx_callbacks_[{QmiCmdInterface::Service::kUim, UimCmd::QmiType::kReset}] =
-      base::Bind(&ModemQrtr::ReceiveQmiReset, base::Unretained(this));
+      base::BindRepeating(&ModemQrtr::ReceiveQmiReset, base::Unretained(this));
   qmi_rx_callbacks_[{QmiCmdInterface::Service::kUim,
                      UimCmd::QmiType::kSendApdu}] =
-      base::Bind(&ModemQrtr::ReceiveQmiSendApdu, base::Unretained(this));
+      base::BindRepeating(&ModemQrtr::ReceiveQmiSendApdu,
+                          base::Unretained(this));
   qmi_rx_callbacks_[{QmiCmdInterface::Service::kUim,
                      UimCmd::QmiType::kSwitchSlot}] =
-      base::Bind(&ModemQrtr::ReceiveQmiSwitchSlot, base::Unretained(this));
+      base::BindRepeating(&ModemQrtr::ReceiveQmiSwitchSlot,
+                          base::Unretained(this));
   qmi_rx_callbacks_[{QmiCmdInterface::Service::kUim,
                      UimCmd::QmiType::kGetSlots}] =
-      base::Bind(&ModemQrtr::ReceiveQmiGetSlots, base::Unretained(this));
+      base::BindRepeating(&ModemQrtr::ReceiveQmiGetSlots,
+                          base::Unretained(this));
   qmi_rx_callbacks_[{QmiCmdInterface::Service::kUim,
                      UimCmd::QmiType::kOpenLogicalChannel}] =
-      base::Bind(&ModemQrtr::ReceiveQmiOpenLogicalChannel,
-                 base::Unretained(this));
+      base::BindRepeating(&ModemQrtr::ReceiveQmiOpenLogicalChannel,
+                          base::Unretained(this));
 }
 
 ModemQrtr::~ModemQrtr() {

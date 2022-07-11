@@ -14,7 +14,7 @@ namespace hermes {
 // Interface representing a socket used to communicate with a modem.
 class SocketInterface {
  public:
-  using DataAvailableCallback = base::Callback<void(SocketInterface*)>;
+  using DataAvailableCallback = base::RepeatingCallback<void(SocketInterface*)>;
 
   enum class Type {
     kQrtr,

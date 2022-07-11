@@ -20,23 +20,23 @@ namespace hermes {
 // connection to the server.
 class SmdpInterface {
  public:
-  using InitiateAuthenticationCallback =
-      base::Callback<void(const std::string& transaction_id,
-                          const std::vector<uint8_t>& server_signed1,
-                          const std::vector<uint8_t>& server_signature1,
-                          const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
-                          const std::vector<uint8_t>& server_certificate)>;
+  using InitiateAuthenticationCallback = base::OnceCallback<void(
+      const std::string& transaction_id,
+      const std::vector<uint8_t>& server_signed1,
+      const std::vector<uint8_t>& server_signature1,
+      const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
+      const std::vector<uint8_t>& server_certificate)>;
   using AuthenticateClientCallback =
-      base::Callback<void(const std::string& transaction_id,
-                          const std::vector<uint8_t>& profile_metadata,
-                          const std::vector<uint8_t>& smdp_signed2,
-                          const std::vector<uint8_t>& smdp_signature2,
-                          const std::vector<uint8_t>& public_key)>;
-  using GetBoundProfilePackageCallback =
-      base::Callback<void(const std::string& transaction_id,
-                          const std::vector<uint8_t>& bound_profile_package)>;
+      base::OnceCallback<void(const std::string& transaction_id,
+                              const std::vector<uint8_t>& profile_metadata,
+                              const std::vector<uint8_t>& smdp_signed2,
+                              const std::vector<uint8_t>& smdp_signature2,
+                              const std::vector<uint8_t>& public_key)>;
+  using GetBoundProfilePackageCallback = base::OnceCallback<void(
+      const std::string& transaction_id,
+      const std::vector<uint8_t>& bound_profile_package)>;
   using ErrorCallback =
-      base::Callback<void(const std::vector<uint8_t>& error_data)>;
+      base::OnceCallback<void(const std::vector<uint8_t>& error_data)>;
 
   virtual ~SmdpInterface() = default;
 
@@ -52,20 +52,19 @@ class SmdpInterface {
   virtual void InitiateAuthentication(
       const std::vector<uint8_t>& info1,
       const std::vector<uint8_t>& challenge,
-      const InitiateAuthenticationCallback& data_callback,
-      const ErrorCallback& error_callback) = 0;
+      InitiateAuthenticationCallback data_callback,
+      ErrorCallback error_callback) = 0;
 
-  virtual void AuthenticateClient(
-      const std::string& transaction_id,
-      const std::vector<uint8_t>& data,
-      const AuthenticateClientCallback& data_callback,
-      const ErrorCallback& error_callback) = 0;
+  virtual void AuthenticateClient(const std::string& transaction_id,
+                                  const std::vector<uint8_t>& data,
+                                  AuthenticateClientCallback data_callback,
+                                  ErrorCallback error_callback) = 0;
 
   virtual void GetBoundProfilePackage(
       const std::string& transaction_id,
       const std::vector<uint8_t>& data,
-      const GetBoundProfilePackageCallback& data_callback,
-      const ErrorCallback& error_callback) = 0;
+      GetBoundProfilePackageCallback data_callback,
+      ErrorCallback error_callback) = 0;
 };
 
 }  // namespace hermes

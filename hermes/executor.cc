@@ -19,8 +19,9 @@ Executor::Executor(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
 }
 
 void Executor::Execute(std::function<void()> f) {
-  // TaskRunner::PostTask takes a base::Closure, not a std::function. Convert
-  // the captureless lambda into a base::BindState for use as a base::Closure.
+  // TaskRunner::PostTask takes a base::OnceClosure, not a std::function.
+  // Convert the captureless lambda into a base::BindState for use as a
+  // base::OnceClosure.
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce([](std::function<void()> f) { f(); }, std::move(f)));

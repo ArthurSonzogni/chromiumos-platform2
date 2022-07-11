@@ -236,7 +236,7 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   std::vector<uint8_t> buffer_;
 
   std::map<std::pair<QmiCmdInterface::Service, uint16_t>,
-           base::Callback<int(const qrtr_packet&)>>
+           base::RepeatingCallback<int(const qrtr_packet&)>>
       qmi_rx_callbacks_;
 
   base::WeakPtrFactory<ModemQrtr> weak_factory_;
