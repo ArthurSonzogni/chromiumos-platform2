@@ -1616,18 +1616,8 @@ void Service::OnPropertyChanged(const std::string& property) {
     return;
   }
 
-  if (property == kCheckPortalProperty || property == kProxyConfigProperty) {
-    const DeviceRefPtr device = manager_->FindDeviceFromService(this);
-    if (device) {
-      device->RestartPortalDetection();
-    } else {
-      LOG(WARNING)
-          << log_name()
-          << ": Service is connected but associated Device was not found";
-    }
-  } else if (property == kPriorityProperty ||
-             property == kEphemeralPriorityProperty ||
-             property == kManagedCredentialsProperty) {
+  if (property == kPriorityProperty || property == kEphemeralPriorityProperty ||
+      property == kManagedCredentialsProperty) {
     // These properties affect the sorting order of Services. Note that this is
     // only necessary if there are multiple connected Services that would be
     // sorted differently by this change, so we can avoid doing this for
@@ -1976,7 +1966,30 @@ bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
     return false;
   }
   check_portal_ = check_portal;
+  OnPortalDetectionConfigurationChange(/*restart=*/false, __func__);
   return true;
+}
+
+void Service::OnPortalDetectionConfigurationChange(bool restart,
+                                                   const std::string& reason) {
+  if (!IsConnected()) {
+    return;
+  }
+  const DeviceRefPtr device = manager_->FindDeviceFromService(this);
+  if (!device) {
+    LOG(WARNING)
+        << log_name()
+        << ": Service is connected but associated Device was not found";
+    return;
+  }
+  // Start or restart portal detection if it should be running.
+  // Stop portal detection if it should now be disabled and ensure that the
+  // Service transitions to the "online" state now that portal detection has
+  // stopped.
+  LOG(INFO) << log_name()
+            << ": Updating PortalDetector after configuration change: "
+            << reason;
+  device->UpdatePortalDetector(restart);
 }
 
 std::string Service::GetGuid(Error* error) {
@@ -2065,9 +2078,13 @@ std::string Service::GetProxyConfig(Error* error) {
 }
 
 bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
-  if (proxy_config_ == proxy_config)
+  if (proxy_config_ == proxy_config) {
     return false;
+  }
   proxy_config_ = proxy_config;
+  // Force portal detection to restart if it was already running: the new
+  // Proxy settings could change validation results.
+  OnPortalDetectionConfigurationChange(/*restart=*/true, __func__);
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }

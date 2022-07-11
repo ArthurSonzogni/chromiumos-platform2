@@ -1400,34 +1400,12 @@ TEST_F(ServiceTest, OnPropertyChanged) {
   service_->OnPropertyChanged("");
 }
 
-TEST_F(ServiceTest, RecheckPortal) {
+TEST_F(ServiceTest, SetCheckPortal) {
   scoped_refptr<MockDevice> mock_device =
       new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
-  ON_CALL(mock_manager_, FindDeviceFromService(IsRefPtrTo(service_)))
+  ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));
 
-  service_->state_ = Service::kStateIdle;
-  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(0);
-  service_->OnPropertyChanged(kCheckPortalProperty);
-
-  service_->state_ = Service::kStateNoConnectivity;
-  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(1);
-  service_->OnPropertyChanged(kCheckPortalProperty);
-
-  service_->state_ = Service::kStateConnected;
-  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(1);
-  service_->OnPropertyChanged(kProxyConfigProperty);
-
-  service_->state_ = Service::kStateOnline;
-  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(1);
-  service_->OnPropertyChanged(kCheckPortalProperty);
-
-  service_->state_ = Service::kStateNoConnectivity;
-  EXPECT_CALL(*mock_device, RestartPortalDetection()).Times(0);
-  service_->OnPropertyChanged(kEapKeyIdProperty);
-}
-
-TEST_F(ServiceTest, SetCheckPortal) {
   // Ensure no other conditions for IsPortalDetectionDisabled is met.
   EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
       .WillRepeatedly(Return(true));
@@ -1435,58 +1413,81 @@ TEST_F(ServiceTest, SetCheckPortal) {
     Error error;
     service_->SetProxyConfig("", &error);
   }
+  SetStateField(Service::kStateConnected);
+  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
   {
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(false));
     Error error;
     service_->SetCheckPortal("false", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalFalse, service_->check_portal_);
     EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+    Mock::VerifyAndClearExpectations(mock_device.get());
   }
   {
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(false));
     Error error;
     service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalTrue, service_->check_portal_);
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+    Mock::VerifyAndClearExpectations(mock_device.get());
   }
   {
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(false));
     Error error;
     service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+    Mock::VerifyAndClearExpectations(mock_device.get());
   }
   {
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(_)).Times(0);
     Error error;
     service_->SetCheckPortal("xxx", &error);
     EXPECT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+    Mock::VerifyAndClearExpectations(mock_device.get());
   }
 }
 
 TEST_F(ServiceTest, SetProxyConfig) {
+  scoped_refptr<MockDevice> mock_device =
+      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
+  ON_CALL(mock_manager_, FindDeviceFromService(_))
+      .WillByDefault(Return(mock_device));
+
   // Ensure no other conditions for IsPortalDetectionDisabled is met.
+  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillRepeatedly(Return(true));
   {
     Error error;
     service_->SetCheckPortal("true", &error);
   }
+  SetStateField(Service::kStateConnected);
+  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
   {
-    Error error;
-    service_->SetProxyConfig("", &error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_FALSE(service_->HasProxyConfig());
-    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-  }
-  {
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(true));
     Error error;
     service_->SetProxyConfig("proxyconfiguration", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(service_->HasProxyConfig());
     EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+    Mock::VerifyAndClearExpectations(mock_device.get());
+  }
+  {
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(true));
+    Error error;
+    service_->SetProxyConfig("", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_FALSE(service_->HasProxyConfig());
+    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+    Mock::VerifyAndClearExpectations(mock_device.get());
   }
 }
 

@@ -970,6 +970,13 @@ class Service : public base::RefCounted<Service> {
   // Getter for the SavedIPConfig property in D-Bus API.
   KeyValueStore GetSavedIPConfig(Error* /*error*/);
 
+  // Requests to start portal detection if the Service is connected and
+  // portal detection became enabled. Otherwise request to stop portal
+  // detection if the Service is connected and portal detection became
+  // disabled.
+  void OnPortalDetectionConfigurationChange(bool restart,
+                                            const std::string& reason);
+
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
