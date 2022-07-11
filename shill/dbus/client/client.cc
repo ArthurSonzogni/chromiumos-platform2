@@ -251,7 +251,8 @@ void Client::OnManagerPropertyChangeRegistration(const std::string& interface,
   }
   brillo::VariantDictionary properties;
   if (!manager_proxy_ || !manager_proxy_->GetProperties(&properties, nullptr)) {
-    LOG(ERROR) << "Unable to get shill Manager properties";
+    LOG(WARNING) << "Unable to get shill Manager properties, likely because "
+                    "shill is unavailable";
     return;
   }
 
