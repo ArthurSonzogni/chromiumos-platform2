@@ -7,7 +7,9 @@
 
 from __future__ import division
 
+import json
 import logging
+import os
 from pathlib import Path
 import sys
 from typing import Generator, List, Optional
@@ -20,6 +22,8 @@ sys.path.insert(0, str(TOP_DIR.parent.parent))
 
 # pylint: disable=wrong-import-position
 from chromite.lib import commandline
+from chromite.lib import constants
+from chromite.lib import cros_build_lib
 from chromite.lib import git
 
 
@@ -152,6 +156,14 @@ LEGACYLIST = {
     'wifi-testbed',
 }
 
+# Mapping between tracker & component key name.
+DIR_MD_COMPONENT_KEY = (
+    ('buganizer', 'componentId'),
+    ('buganizer_public', 'componentId'),
+    ('monorail', 'component'),
+)
+
+
 def CheckSubdirs() -> int:
     """Check the subdir DIR_METADATA files exist.
 
@@ -198,6 +210,23 @@ def CheckSubdirs() -> int:
         if data.endswith('\n\n'):
             logging.error('*** %s: Trim trailing blanklines', path)
             ret = 1
+
+    # Make sure the projects have declared how to route bugs.
+    result = cros_build_lib.dbg_run(
+        [os.path.join(constants.DEPOT_TOOLS_DIR, 'dirmd'), 'read'],
+        cwd=TOP_DIR, capture_output=True, check=True)
+    dirmd = json.loads(result.stdout)
+    for project, data in dirmd['dirs'].items():
+        bug_component_found = False
+        for tracker, key in DIR_MD_COMPONENT_KEY:
+            if tracker in data:
+                if key not in data[tracker]:
+                    logging.error('*** %s: Missing tracker "%s" component "%s"',
+                                  project, tracker, key)
+                else:
+                    bug_component_found = True
+        if not bug_component_found:
+            logging.error('*** %s: Missing bug component information', project)
 
     return ret
 
