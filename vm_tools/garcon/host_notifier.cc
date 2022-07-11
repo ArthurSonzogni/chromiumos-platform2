@@ -58,19 +58,6 @@ constexpr char kUrlSchemeDelimiter[] = "://";
 constexpr base::TimeDelta kDiskSpaceCheckInterval = base::Minutes(2);
 constexpr int64_t kDiskSpaceCheckThreshold = 1 * 1024 * 1024 * 1024;  // 1GiB
 
-std::string GetHostIp() {
-  char host_addr[INET_ADDRSTRLEN + 1];
-  base::FilePath host_ip_path(vm_tools::kGarconHostIpFile);
-  int num_read = base::ReadFile(host_ip_path, host_addr, sizeof(host_addr) - 1);
-  if (num_read <= 0) {
-    LOG(ERROR) << "Failed reading the host IP from: "
-               << host_ip_path.MaybeAsASCII();
-    return "";
-  }
-  host_addr[num_read] = '\0';
-  return std::string(host_addr);
-}
-
 std::string GetSecurityToken() {
   char token[kSecurityTokenLength + 1];
   base::FilePath security_token_path(vm_tools::kGarconContainerTokenFile);
@@ -137,9 +124,8 @@ std::unique_ptr<HostNotifier> HostNotifier::Create(
 
 // static
 bool HostNotifier::OpenUrlInHost(const std::string& url) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -171,9 +157,8 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
 }
 
 bool HostNotifier::OpenTerminal(std::vector<std::string> args) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -204,9 +189,8 @@ bool HostNotifier::SelectFile(const std::string& type,
                               const std::string& default_path,
                               const std::string& allowed_extensions,
                               std::vector<std::string>* files) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -240,9 +224,8 @@ bool HostNotifier::SelectFile(const std::string& type,
 
 bool HostNotifier::GetDiskInfo(
     vm_tools::container::GetDiskInfoResponse* response) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -265,9 +248,8 @@ bool HostNotifier::GetDiskInfo(
 bool HostNotifier::RequestSpace(
     uint64_t space_requested,
     vm_tools::container::RequestSpaceResponse* response) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -291,9 +273,8 @@ bool HostNotifier::RequestSpace(
 bool HostNotifier::ReleaseSpace(
     uint64_t space_to_release,
     vm_tools::container::ReleaseSpaceResponse* response) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -317,9 +298,8 @@ bool HostNotifier::ReleaseSpace(
 bool HostNotifier::ReportMetrics(
     vm_tools::container::ReportMetricsRequest request,
     vm_tools::container::ReportMetricsResponse* response) {
-  std::string host_ip = GetHostIp();
   std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
+  if (token.empty()) {
     return false;
   }
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
@@ -486,12 +466,11 @@ bool HostNotifier::Init(uint32_t garcon_port,
   CHECK(package_kit_proxy);
   package_kit_proxy_ = package_kit_proxy;
   task_runner_ = base::ThreadTaskRunnerHandle::Get();
-  std::string host_ip = GetHostIp();
   token_ = GetSecurityToken();
-  if (token_.empty() || host_ip.empty()) {
+  if (token_.empty()) {
     return false;
   }
-  SetUpContainerListenerStub(std::move(host_ip));
+  SetUpContainerListenerStub();
   if (!NotifyHostGarconIsReady(garcon_port, sftp_port)) {
     return false;
   }
@@ -913,7 +892,7 @@ void HostNotifier::MimeTypesChanged(const base::FilePath& path, bool error) {
   update_mime_types_posted_ = true;
 }
 
-void HostNotifier::SetUpContainerListenerStub(const std::string& host_ip) {
+void HostNotifier::SetUpContainerListenerStub() {
   stub_ = std::make_unique<vm_tools::container::ContainerListener::Stub>(
       grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
                                              vm_tools::kGarconPort),

@@ -169,9 +169,8 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // |absolute_path| must be converted to a path relative to $HOME.
   void FileWatchTriggered(const base::FilePath& absolute_path, bool error);
 
-  // Creates a ContainerListener::Stub, defaulting to vsock but falling back
-  // to IPv4 if the host doesn't support vsock.
-  void SetUpContainerListenerStub(const std::string& host_ip);
+  // Creates a ContainerListener::Stub using vsock.
+  void SetUpContainerListenerStub();
 
   // Kicks off the next step in the process of getting package_id data while
   // building an UpdateApplicationListRequest. It either kicks off another
