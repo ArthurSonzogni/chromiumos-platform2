@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include "rgbkbd/constants.h"
 #include "rgbkbd/keyboard_backlight_logger.h"
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
