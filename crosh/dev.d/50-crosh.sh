@@ -5,7 +5,9 @@
 
 # dev-mode functionality for crosh
 
+# shellcheck disable=SC2034
 USAGE_systrace='[<start | stop | status>]'
+# shellcheck disable=SC2034
 HELP_systrace='
   Start/stop system tracing.  Turning tracing off will generate a trace
   log file in the Downloads directory with all the events collected
@@ -43,7 +45,9 @@ cmd_systrace() (
   esac
 )
 
+# shellcheck disable=SC2034
 USAGE_live_in_a_coal_mine=''
+# shellcheck disable=SC2034
 HELP_live_in_a_coal_mine='
   Switch to the canary channel.
 

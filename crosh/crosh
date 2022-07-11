@@ -228,7 +228,9 @@ var_is_set() {
   [ "$(expand_var "{${var}+set}")" = "set" ]
 }
 
+# shellcheck disable=SC2034
 USAGE_help='[command]'
+# shellcheck disable=SC2034
 HELP_help='
   Display general help, or details for a specific command.
 '
@@ -290,7 +292,9 @@ help() {
   fi
 }
 
+# shellcheck disable=SC2034
 USAGE_help_advanced=''
+# shellcheck disable=SC2034
 HELP_help_advanced='
   Display the help for more advanced commands, mainly used for debugging.
 '
@@ -313,7 +317,9 @@ cmd_help_advanced() (
 # checker from rejecting the use of braces.  We cannot use subshells here
 # as we want the set the exit variable in crosh itself.
 # http://crbug.com/318368
+# shellcheck disable=SC2034
 USAGE_exit=''
+# shellcheck disable=SC2034
 HELP_exit='
   Exit crosh.
 '
@@ -352,11 +358,14 @@ imageloader() {
     2>&1 >/dev/null
 }
 
+# shellcheck disable=SC2034
 USAGE_vsh='<vm_name> [<container_name>]'
+# shellcheck disable=SC2034
 HELP_vsh='
   Connect to a shell inside the VM <vm_name>, or to a shell inside the container
   <container_name> within the VM <vm_name>.
 '
+# shellcheck disable=SC2034
 EXEC_vsh='/usr/bin/vsh'
 cmd_vsh() (
   if ! is_chrome_feature_enabled "IsCrostiniEnabled"; then
@@ -387,7 +396,9 @@ cmd_vsh() (
 
 )
 
+# shellcheck disable=SC2034
 USAGE_swap='[ enable <size (MB)> | disable | start | stop | status ]'
+# shellcheck disable=SC2034
 HELP_swap='
   Change kernel memory manager parameters
   (FOR EXPERIMENTS ONLY --- USE AT OWN RISK)
@@ -458,7 +469,9 @@ cmd_swap() (
   esac
 )
 
+# shellcheck disable=SC2034
 USAGE_time_info=''
+# shellcheck disable=SC2034
 HELP_time_info='
   Returns the current synchronization state for the time service.
 '
@@ -473,7 +486,9 @@ cmd_time_info() (
         -e 's/int64/last-synced-time:/p'
 )
 
+# shellcheck disable=SC2034
 USAGE_cras='[ enable <flag> | disable <flag> | telephony <event> [arg] ]'
+# shellcheck disable=SC2034
 HELP_cras='
   Interact with CRAS(CrOS Audio Server) to set flags or trigger events.
 
@@ -631,7 +646,9 @@ cmd_cras() (
 )
 
 # Set the help string so crosh can discover us automatically.
+# shellcheck disable=SC2034
 HELP_ff_debug=''
+# shellcheck disable=SC2034
 EXEC_ff_debug='/usr/bin/ff_debug'
 cmd_ff_debug() (
   debugd_shill ff_debug "$@"
@@ -641,7 +658,9 @@ help_ff_debug() (
 )
 
 # Set the vars to pass the unittests ...
+# shellcheck disable=SC2034
 USAGE_wpa_debug=''
+# shellcheck disable=SC2034
 HELP_wpa_debug=''
 # ... then unset them to hide the command from "help" output.
 unset USAGE_wpa_debug HELP_wpa_debug
@@ -653,7 +672,9 @@ chrome://net-internals/#chromeos
 EOF
 )
 
+# shellcheck disable=SC2034
 USAGE_authpolicy_debug='<level>'
+# shellcheck disable=SC2034
 HELP_authpolicy_debug='
   Set authpolicy daemon debugging level.
   <level> can be 0 (quiet), 1 (taciturn), 2 (chatty), or 3 (verbose).
@@ -698,7 +719,9 @@ cmd_authpolicy_debug() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_set_arpgw='<true | false>'
+# shellcheck disable=SC2034
 HELP_set_arpgw='
   Turn on extra network state checking to make sure the default gateway
   is reachable.
@@ -707,7 +730,9 @@ cmd_set_arpgw() (
   debugd_shill set_arpgw "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_set_wake_on_lan='<true | false>'
+# shellcheck disable=SC2034
 HELP_set_wake_on_lan='
   Enable or disable Wake on LAN for Ethernet devices.  This command takes
   effect after re-connecting to Ethernet and is not persistent across system
@@ -717,7 +742,9 @@ cmd_set_wake_on_lan() (
   debugd_shill set_wake_on_lan "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_wifi_power_save='< status | enable | disable >'
+# shellcheck disable=SC2034
 HELP_wifi_power_save='
   Enable or disable WiFi power save mode.  This command is not persistent across
   system restarts.
@@ -741,7 +768,9 @@ cmd_wifi_power_save() (
 )
 
 # Set the help string so crosh can discover us automatically.
+# shellcheck disable=SC2034
 HELP_network_diag=''
+# shellcheck disable=SC2034
 EXEC_network_diag='/usr/bin/network_diag'
 cmd_network_diag() (
   case " $* " in
@@ -774,7 +803,9 @@ u2f_warning='
   ### play with this, but use at your own risk. You have been warned.
 '
 
+# shellcheck disable=SC2034
 USAGE_u2f_flags='<u2f | g2f>[, user_keys, verbose]'
+# shellcheck disable=SC2034
 HELP_u2f_flags="
 ${u2f_warning}
   Set flags to override the second-factor authentication daemon configuration.
@@ -851,8 +882,10 @@ debugd_shill() {
   debugd_poll RunShillScript "fd:1" "string:${script}" "array:string:${args%,}"
 }
 
+# shellcheck disable=SC2034
 USAGE_ping="[-4] [-6] [-c count] [-i interval] [-n] [-s packetsize] \
 [-W waittime] <destination>"
+# shellcheck disable=SC2034
 HELP_ping='
   Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
   then the next hop gateway for the default route is used.
@@ -926,7 +959,9 @@ cmd_ping() (
   debugd_poll Ping "fd:1" "string:${dest}" "${option%,}"
 )
 
+# shellcheck disable=SC2034
 USAGE_chaps_debug='[start|stop|<log_level>]'
+# shellcheck disable=SC2034
 HELP_chaps_debug='
   Sets the chapsd logging level.  No arguments will start verbose logging.
 '
@@ -946,7 +981,9 @@ cmd_chaps_debug() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_ipaddrs='[-4] [-6]'
+# shellcheck disable=SC2034
 HELP_ipaddrs='
   Display IP addresses.
   -4: Only show IPv4 addresses.
@@ -978,7 +1015,9 @@ cmd_ipaddrs() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_route='[-4] [-6] [--all]'
+# shellcheck disable=SC2034
 HELP_route='
   Display the routing tables.
   -4: Only show IPv4 routes.
@@ -1013,7 +1052,9 @@ cmd_route() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_tracepath='[-4] [-6] [-n] <destination>[/port]'
+# shellcheck disable=SC2034
 HELP_tracepath='
   Trace the path/route to a network host.
   Default is to trace IPv4 [-4] rather than IPv6 [-6] targets.
@@ -1054,7 +1095,9 @@ cmd_tracepath() (
   debugd_poll TracePath "fd:1" "string:${dest}" "${option%,}"
 )
 
+# shellcheck disable=SC2034
 USAGE_top=''
+# shellcheck disable=SC2034
 HELP_top='
   Run top.
 '
@@ -1065,7 +1108,9 @@ cmd_top() (
   HOME="/mnt/empty" top -s
 )
 
+# shellcheck disable=SC2034
 USAGE_modem='<command> [args...]'
+# shellcheck disable=SC2034
 HELP_modem='
   Interact with the 3G modem. Run "modem help" for detailed help.
 '
@@ -1073,7 +1118,9 @@ cmd_modem() (
   debugd_shill modem "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_set_apn='[-c] [-n <network-id>] [-u <username>] [-p <password>] <apn>'
+# shellcheck disable=SC2034
 HELP_set_apn='
   Set the APN to use when connecting to the network specified by <network-id>.
   If <network-id> is not specified, use the network-id of the currently
@@ -1086,7 +1133,9 @@ cmd_set_apn() (
   debugd_shill set_apn "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_set_cellular_ppp='[-c] [-u <username>] [-p <password>]'
+# shellcheck disable=SC2034
 HELP_set_cellular_ppp='
   Set the PPP username and/or password for an existing cellular connection.
   If neither -u nor -p is provided, show the existing PPP username for
@@ -1099,7 +1148,9 @@ cmd_set_cellular_ppp() (
   /usr/bin/set_cellular_ppp "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_connectivity=''
+# shellcheck disable=SC2034
 HELP_connectivity='
   Shows connectivity status.  "connectivity help" for more details
 '
@@ -1107,7 +1158,9 @@ cmd_connectivity() (
   /usr/bin/connectivity "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_autest='[--scheduled]'
+# shellcheck disable=SC2034
 HELP_autest='
   Trigger an auto-update against a **test** update server.
 
@@ -1143,7 +1196,9 @@ cmd_autest() (
   /usr/bin/update_engine_client "--omaha_url=${omaha_url}"
 )
 
+# shellcheck disable=SC2034
 USAGE_p2p_update='[enable|disable] [--num-connections] [--show-peers]'
+# shellcheck disable=SC2034
 HELP_p2p_update='
   Enables or disables the peer-to-peer (P2P) sharing of updates over the local
   network. This will both attempt to get updates from other peers in the
@@ -1200,7 +1255,9 @@ p2p_check_enabled() {
   fi
 }
 
+# shellcheck disable=SC2034
 USAGE_rollback=''
+# shellcheck disable=SC2034
 HELP_rollback='
   Attempt to rollback to the previous update cached on your system. Only
   available on non-stable channels and non-enterprise enrolled devices.
@@ -1231,7 +1288,9 @@ cmd_rollback() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_upload_crashes=''
+# shellcheck disable=SC2034
 HELP_upload_crashes='
   Uploads available crash reports to the crash server.
 '
@@ -1240,7 +1299,9 @@ cmd_upload_crashes() (
   echo "Check chrome://crashes for status updates"
 )
 
+# shellcheck disable=SC2034
 USAGE_upload_devcoredumps='[enable|disable]'
+# shellcheck disable=SC2034
 HELP_upload_devcoredumps='
   Enable or disable the upload of devcoredump reports.
 '
@@ -1261,7 +1322,9 @@ cmd_upload_devcoredumps() (
   esac
 )
 
+# shellcheck disable=SC2034
 USAGE_rlz='< status | enable | disable >'
+# shellcheck disable=SC2034
 HELP_rlz="
   Enable or disable RLZ.  See this site for details:
   http://dev.chromium.org/developers/design-documents/extensions/\
@@ -1310,7 +1373,9 @@ cmd_rlz() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_syslog='<message>'
+# shellcheck disable=SC2034
 HELP_syslog='
   Logs a message to syslog (the system log daemon).
 '
@@ -1340,7 +1405,9 @@ mk_fifo() {
   echo "${fifo}"
 }
 
+# shellcheck disable=SC2034
 USAGE_storage_test_1=''
+# shellcheck disable=SC2034
 HELP_storage_test_1='
   Performs a short offline SMART test.
 '
@@ -1375,7 +1442,9 @@ cmd_storage_test_1() (
   debugd Smartctl "string:abort_test" >/dev/null
 )
 
+# shellcheck disable=SC2034
 USAGE_storage_test_2=''
+# shellcheck disable=SC2034
 HELP_storage_test_2='
   Performs an extensive readability test.
 '
@@ -1383,7 +1452,9 @@ cmd_storage_test_2() (
   debugd_poll Badblocks "fd:1"
 )
 
+# shellcheck disable=SC2034
 USAGE_memory_test=''
+# shellcheck disable=SC2034
 HELP_memory_test='
   Performs extensive memory testing on the available free memory.
 '
@@ -1400,7 +1471,9 @@ cmd_memory_test() (
   debugd_poll Memtester "fd:1" "uint32:${mem}"
 )
 
+# shellcheck disable=SC2034
 USAGE_battery_firmware='<info|check|update>'
+# shellcheck disable=SC2034
 HELP_battery_firmware='
   info   : Query battery info.
   check  : Check whether the AC adapter is connected.
@@ -1443,7 +1516,9 @@ cmd_battery_firmware() (
   esac
 )
 
+# shellcheck disable=SC2034
 USAGE_battery_test='[<test length>]'
+# shellcheck disable=SC2034
 HELP_battery_test='
   Tests battery discharge rate for given number of seconds. Without an argument,
   defaults to 300 seconds.
@@ -1497,7 +1572,9 @@ cmd_battery_test() (
 )
 
 # Set the help string so crosh can discover us automatically.
+# shellcheck disable=SC2034
 HELP_diag=''
+# shellcheck disable=SC2034
 EXEC_diag='/usr/bin/cros-health-tool'
 cmd_diag() (
   # diag does its own parameter validation. Aside from a single D-Bus command to
@@ -1518,7 +1595,9 @@ help_diag() (
   cros-health-tool diag "--crosh_help=true"
 )
 
+# shellcheck disable=SC2034
 USAGE_dump_emk=''
+# shellcheck disable=SC2034
 HELP_dump_emk='
   Show the EMK (Enterprise Machine Key).
 '
@@ -1527,7 +1606,9 @@ cmd_dump_emk() (
                        --name=attest-ent-machine
 )
 
+# shellcheck disable=SC2034
 USAGE_enroll_status='[--mode] [--domain] [--realm] [--user]'
+# shellcheck disable=SC2034
 HELP_enroll_status='
   Displays device enrollment information.
 '
@@ -1602,7 +1683,9 @@ check_enterprise_mode() {
 }
 
 # Set the vars to pass the unittests ...
+# shellcheck disable=SC2034
 USAGE_tpm_status=''
+# shellcheck disable=SC2034
 HELP_tpm_status=''
 # ... then unset them to hide the command from "help" output.
 unset USAGE_tpm_status HELP_tpm_status
@@ -1615,7 +1698,9 @@ EOF
 )
 
 # Set the vars to pass the unittests ...
+# shellcheck disable=SC2034
 USAGE_cryptohome_status=''
+# shellcheck disable=SC2034
 HELP_cryptohome_status=''
 # ... then unset them to hide the command from "help" output.
 unset USAGE_cryptohome_status HELP_cryptohome_status
@@ -1627,7 +1712,9 @@ chrome://cryptohome
 EOF
 )
 
+# shellcheck disable=SC2034
 USAGE_free='[options]'
+# shellcheck disable=SC2034
 HELP_free='
   Display free/used memory info
 '
@@ -1636,7 +1723,9 @@ cmd_free() (
   free "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_meminfo=''
+# shellcheck disable=SC2034
 HELP_meminfo='
   Display detailed memory statistics
 '
@@ -1649,7 +1738,9 @@ cmd_meminfo() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_sync=''
+# shellcheck disable=SC2034
 HELP_sync='
   Run the sync command
 '
@@ -1662,7 +1753,9 @@ cmd_sync() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_uptime=''
+# shellcheck disable=SC2034
 HELP_uptime='
   Display uptime/load info
 '
@@ -1675,7 +1768,9 @@ cmd_uptime() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_uname='[-a|-s|-n|-r|-v|-m|-p|-i|-o]'
+# shellcheck disable=SC2034
 HELP_uname='
   Display system info
 '
@@ -1691,7 +1786,9 @@ cmd_uname() (
   uname "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_vmstat='[-a|-d|-f|-m|-n|-s|-w] [delay [count]]'
+# shellcheck disable=SC2034
 HELP_vmstat='
   Report virtual memory statistics
 '
@@ -1707,8 +1804,11 @@ cmd_vmstat() (
   vmstat "$@"
 )
 
+# shellcheck disable=SC2034
 USAGE_evtest=''
+# shellcheck disable=SC2034
 EXEC_evtest='/usr/bin/evtest'
+# shellcheck disable=SC2034
 HELP_evtest='
   Run evtest in safe mode.
 '
@@ -1724,8 +1824,10 @@ cmd_evtest() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_gesture_prop="[ devices | list <device ID> \
 | get <device ID> <property name> | set <device ID> <property name> <value> ]"
+# shellcheck disable=SC2034
 HELP_gesture_prop='
   Read and change gesture properties for attached input devices. The "Enable
   gesture properties D-Bus service" flag must be enabled for this command to
@@ -1841,7 +1943,9 @@ cmd_gesture_prop() (
   esac
 )
 
+# shellcheck disable=SC2034
 USAGE_wifi_fw_dump=''
+# shellcheck disable=SC2034
 HELP_wifi_fw_dump='
   Manually trigger a WiFi firmware dump. This command will currently only
   complete successfully if the intel-wifi-fw-dumper package is present on the

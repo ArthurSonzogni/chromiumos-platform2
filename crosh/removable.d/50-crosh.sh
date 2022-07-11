@@ -24,7 +24,9 @@ do_install() {
   fi
 }
 
+# shellcheck disable=SC2034
 USAGE_update_firmware='[--factory]'
+# shellcheck disable=SC2034
 HELP_update_firmware='
   Update system firmware, if applicable. This command will update only the RW
   region by default. To rewrite RO and everything, add option --factory.
@@ -59,7 +61,9 @@ cmd_update_firmware() (
   fi
 )
 
+# shellcheck disable=SC2034
 USAGE_install='[<dev>]'
+# shellcheck disable=SC2034
 HELP_install='
   Install Chrome OS to the target device, clearing out all existing data.
 '
@@ -67,7 +71,9 @@ cmd_install() (
   do_install "$1"
 )
 
+# shellcheck disable=SC2034
 USAGE_upgrade='[<dev>]'
+# shellcheck disable=SC2034
 HELP_upgrade='
   Upgrade an existing Chrome OS installation, saving existing user data.
 '
