@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(mcu_fw_image, "", "MCU firmware file");
   DEFINE_string(fpga_bitstream, "", "FPGA bitstream file");
   DEFINE_string(fpga_app_image, "", "FPGA application file");
-  DEFINE_uint32(poll_timer_ms, 500,
+  DEFINE_uint32(poll_timer_ms, 200,
                 "How frequently to poll HPS hardware for results (in ms).");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
 
