@@ -109,7 +109,7 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
     def testCheckGnFile(self):
         """Check CheckGnFile tails down correctly."""
         content = '# gn file\n'
-        gnfile = os.path.join(self.tempdir, 'asdf')
+        gnfile = self.tempdir / 'asdf.gn'
         osutils.WriteFile(gnfile, content)
         self.assertExists(gnlint.GetGnPath())
         ret = gnlint.CheckGnFile(gnfile)
@@ -124,7 +124,7 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
             '  cflags = [ "-fvisibility=default" ]\n'
             '}\n')
         gn_options = '#gnlint: disable=GnLintVisibilityFlags\n'
-        gnfile = os.path.join(self.tempdir, 'asdf')
+        gnfile = self.tempdir / 'asdf.gn'
         osutils.WriteFile(gnfile, static_library_with_visibility_flag)
         self.assertExists(gnlint.GetGnPath())
         ret = gnlint.CheckGnFile(gnfile)
@@ -139,7 +139,7 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
     def testCheckFormatDetectError(self):
         """Check CheckGnFile detects non-standard format."""
         content = 'executable("foo"){\n}\n'  # no space after ')'
-        gnfile = os.path.join(self.tempdir, 'asdf')
+        gnfile = self.tempdir / 'asdf.gn'
         osutils.WriteFile(gnfile, content)
         self.assertExists(gnlint.GetGnPath())
         ret = gnlint.CheckGnFile(gnfile)

@@ -176,28 +176,12 @@ def CheckFormat(gnfile):
                 msg=msg,
                 type=logging.ERROR))
 
-    try:
-        gn_path = os.path.join(chromite_root, 'chroot', 'usr', 'bin', 'gn')
-        result = cros_build_lib.run([gn_path, 'format', '--dry-run', gnfile],
-                                    check=False,
-                                    debug_level=logging.DEBUG)
-    except cros_build_lib.RunCommandError as e:
-        AppendError('Failed to run gn format: %s' % e)
-    else:
-        if result.returncode == 0:
-            # successful format, matches on disk.
-            pass
-        elif result.returncode == 1:
-            AppendError('General failure while running gn format '
-                        '(e.g. parse error)')
-        elif result.returncode == 2:
-            AppendError(
-                'Needs reformatting. Run following command: %s format %s' %
-                (gn_path, gnfile))
-        else:
-            AppendError('Unknown error with gn format: '
-                        'returncode=%i error=%s output=%s' %
-                        (result.returncode, result.stderr, result.stdout))
+    result = cros_build_lib.dbg_run(
+        ['cros', 'format', '--check', gnfile], check=False)
+
+    if result.returncode:
+        AppendError(f'Needs reformatting. To fix, run: cros format {gnfile}')
+
     return issues
 
 
