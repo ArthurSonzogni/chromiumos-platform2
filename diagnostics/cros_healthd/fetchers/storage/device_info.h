@@ -10,9 +10,9 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <brillo/blkdev_utils/disk_iostat.h>
 
 #include "diagnostics/common/statusor.h"
-#include "diagnostics/cros_healthd/fetchers/storage/disk_iostat.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
 #include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
@@ -53,7 +53,7 @@ class StorageDeviceInfo {
   // platform_ is owned by the StorageDeviceManager.
   const Platform* platform_;
 
-  DiskIoStat iostat_;
+  brillo::DiskIoStat iostat_;
 
   StorageDeviceInfo(const base::FilePath& dev_sys_path,
                     const base::FilePath& dev_node_path,

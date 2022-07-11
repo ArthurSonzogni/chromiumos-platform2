@@ -119,7 +119,10 @@ libbrillo_sublibs = [
   {
     library_name = "brillo-storage"
     deps = [ ":libbrillo-core" ]
-    sources = [ "brillo/blkdev_utils/loop_device.cc" ]
+    sources = [
+      "brillo/blkdev_utils/disk_iostat.cc",
+      "brillo/blkdev_utils/loop_device.cc",
+    ]
     if (use.device_mapper) {
       libs = [ "lvm2cmd" ]
       pkg_deps = [ "devmapper" ]
@@ -449,6 +452,7 @@ if (use.test) {
     sources = [
       "brillo/asynchronous_signal_handler_test.cc",
       "brillo/backoff_entry_test.cc",
+      "brillo/blkdev_utils/disk_iostat_test.cc",
       "brillo/blkdev_utils/loop_device_test.cc",
       "brillo/cryptohome_test.cc",
       "brillo/data_encoding_test.cc",

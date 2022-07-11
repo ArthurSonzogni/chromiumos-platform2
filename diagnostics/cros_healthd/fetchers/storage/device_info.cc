@@ -15,12 +15,12 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <brillo/blkdev_utils/disk_iostat.h>
 
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/caching_device_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/storage/default_device_adapter.h"
-#include "diagnostics/cros_healthd/fetchers/storage/disk_iostat.h"
 #include "diagnostics/cros_healthd/fetchers/storage/emmc_device_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/storage/nvme_device_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
@@ -126,18 +126,23 @@ Status StorageDeviceInfo::PopulateDeviceInfo(
   output_info->revision = revision.Clone();
   output_info->firmware_version = fwversion.Clone();
 
-  RETURN_IF_ERROR(iostat_.Update());
+  std::optional<brillo::DiskIoStat::Snapshot> iostat_snapshot =
+      iostat_.GetSnapshot();
+  if (!iostat_snapshot.has_value()) {
+    return Status(StatusCode::kUnavailable, "Failed retrieving iostat");
+  }
+
   ASSIGN_OR_RETURN(uint64_t sector_size,
                    platform_->GetDeviceBlockSizeBytes(dev_node_path_));
 
   output_info->read_time_seconds_since_last_boot =
-      static_cast<uint64_t>(iostat_.GetReadTime().InSeconds());
+      static_cast<uint64_t>(iostat_snapshot->GetReadTime().InSeconds());
   output_info->write_time_seconds_since_last_boot =
-      static_cast<uint64_t>(iostat_.GetWriteTime().InSeconds());
+      static_cast<uint64_t>(iostat_snapshot->GetWriteTime().InSeconds());
   output_info->io_time_seconds_since_last_boot =
-      static_cast<uint64_t>(iostat_.GetIoTime().InSeconds());
+      static_cast<uint64_t>(iostat_snapshot->GetIoTime().InSeconds());
 
-  auto discard_time = iostat_.GetDiscardTime();
+  auto discard_time = iostat_snapshot->GetDiscardTime();
   if (discard_time.has_value()) {
     output_info->discard_time_seconds_since_last_boot =
         mojo_ipc::NullableUint64::New(
@@ -146,9 +151,9 @@ Status StorageDeviceInfo::PopulateDeviceInfo(
 
   // Convert from sectors to bytes.
   output_info->bytes_written_since_last_boot =
-      sector_size * iostat_.GetWrittenSectors();
+      sector_size * iostat_snapshot->GetWrittenSectors();
   output_info->bytes_read_since_last_boot =
-      sector_size * iostat_.GetReadSectors();
+      sector_size * iostat_snapshot->GetReadSectors();
 
   return Status::OkStatus();
 }
