@@ -346,14 +346,15 @@ void OpenVPNDriver::ParseIPConfiguration(
     const std::string& key = configuration_map.first;
     const std::string& value = configuration_map.second;
     SLOG(this, 2) << "Processing: " << key << " -> " << value;
-    if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigLocal)) {
+    if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigLocal)) {
       properties->address = value;
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigBroadcast)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key,
+                                                kOpenVPNIfconfigBroadcast)) {
       properties->broadcast_address = value;
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigNetmask)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigNetmask)) {
       properties->subnet_prefix =
           IPAddress::GetPrefixLengthFromMask(properties->address_family, value);
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigRemote)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigRemote)) {
       if (base::StartsWith(value, kSuspectedNetmaskPrefix,
                            base::CompareCase::INSENSITIVE_ASCII)) {
         LOG(WARNING) << "Option " << key << " value " << value
@@ -370,13 +371,13 @@ void OpenVPNDriver::ParseIPConfiguration(
         // This creates an explicit route to the peer address in SetRoutes().
         properties->peer_address = value;
       }
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNRedirectGateway)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRedirectGateway)) {
       redirect_gateway = true;
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTrustedIP)) {
       size_t prefix = IPAddress::GetMaxPrefixLength(properties->address_family);
       properties->exclusion_list.push_back(value + "/" +
                                            base::NumberToString(prefix));
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTunMTU)) {
       int mtu = 0;
       if (base::StringToInt(value, &mtu) && mtu >= IPConfig::kMinIPv4MTU) {
         properties->mtu = mtu;
@@ -392,8 +393,8 @@ void OpenVPNDriver::ParseIPConfiguration(
       } else {
         LOG(ERROR) << "Ignored unexpected foreign option suffix: " << suffix;
       }
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNRouteNetGateway) ||
-               base::LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
+    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRouteNetGateway) ||
+               base::EqualsCaseInsensitiveASCII(key, kOpenVPNRouteVPNGateway)) {
       // These options are unused.  Catch them here so that they don't
       // get passed to ParseRouteOption().
     } else if (base::StartsWith(key, kOpenVPNRouteOptionPrefix,
@@ -457,12 +458,12 @@ void OpenVPNDriver::ParseForeignOption(const std::string& option,
   const auto tokens = base::SplitString(option, " ", base::TRIM_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
   if (tokens.size() != 3 ||
-      !base::LowerCaseEqualsASCII(tokens[0], "dhcp-option")) {
+      !base::EqualsCaseInsensitiveASCII(tokens[0], "dhcp-option")) {
     return;
   }
-  if (base::LowerCaseEqualsASCII(tokens[1], "domain")) {
+  if (base::EqualsCaseInsensitiveASCII(tokens[1], "domain")) {
     domain_search->push_back(tokens[2]);
-  } else if (base::LowerCaseEqualsASCII(tokens[1], "dns")) {
+  } else if (base::EqualsCaseInsensitiveASCII(tokens[1], "dns")) {
     dns_servers->push_back(tokens[2]);
   }
 }
