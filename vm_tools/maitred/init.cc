@@ -401,6 +401,10 @@ constexpr struct {
         .path = "/proc/sys/vm/max_map_count",
         .value = "262144",
     },
+    {
+        .path = "/proc/sys/net/core/rmem_max",
+        .value = "2097152",
+    },
 };
 
 // Recursively changes the owner and group for all files and directories in
