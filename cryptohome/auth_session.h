@@ -219,7 +219,8 @@ class AuthSession final {
       const std::string& serialized_token);
 
   // Extends the timer for the AuthSession by kAuthSessionExtensionInMinutes.
-  CryptohomeStatus ExtendTimer(const base::TimeDelta kAuthSessionExtension);
+  CryptohomeStatus ExtendTimeoutTimer(
+      const base::TimeDelta kAuthSessionExtension);
 
   // Set status for testing only.
   void SetStatus(const AuthStatus status) { status_ = status; }
@@ -258,6 +259,9 @@ class AuthSession final {
 
   // This function sets the credential_verifier_ based on the passkey parameter.
   void SetCredentialVerifier(const brillo::SecureBlob& passkey);
+
+  // Set the timeout timer to now + delay
+  void SetTimeoutTimer(const base::TimeDelta& delay);
 
   // Helper function to update a keyset on disk on KeyBlobs generated. If update
   // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
@@ -438,8 +442,8 @@ class AuthSession final {
   const bool is_ephemeral_user_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
-  base::OneShotTimer timer_;
-  base::TimeTicks start_time_;
+  base::OneShotTimer timeout_timer_;
+  base::TimeTicks timeout_timer_start_time_;
   base::TimeTicks auth_session_creation_time_;
   base::TimeTicks authenticated_time_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
@@ -521,6 +525,7 @@ class AuthSession final {
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication);
   FRIEND_TEST(UserDataAuthExTest,
               StartMigrateToDircryptoWithAuthenticatedAuthSession);
 };

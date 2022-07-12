@@ -148,7 +148,6 @@ AuthSession::AuthSession(
 
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
-  start_time_ = base::TimeTicks::Now();
   auth_session_creation_time_ = base::TimeTicks::Now();
 
   converter_ =
@@ -218,17 +217,25 @@ void AuthSession::SetAuthSessionAsAuthenticated() {
     authenticated_time_ = base::TimeTicks::Now();
     LOG(INFO) << "AuthSession: authenticated.";
   }
-  timer_.Start(FROM_HERE, kAuthSessionTimeout,
-               base::BindOnce(&AuthSession::AuthSessionTimedOut,
-                              base::Unretained(this)));
+  SetTimeoutTimer(kAuthSessionTimeout);
 }
 
-CryptohomeStatus AuthSession::ExtendTimer(
+void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
+  DCHECK_GT(delay, base::Minutes(0));
+
+  // |.start_time| and |.timer| need to be set at the same time.
+  timeout_timer_start_time_ = base::TimeTicks::Now();
+  timeout_timer_.Start(FROM_HERE, delay,
+                       base::BindOnce(&AuthSession::AuthSessionTimedOut,
+                                      base::Unretained(this)));
+}
+
+CryptohomeStatus AuthSession::ExtendTimeoutTimer(
     const base::TimeDelta extension_duration) {
   // Check to make sure that the AuthSesion is still valid before we stop the
   // timer.
   if (status_ == AuthStatus::kAuthStatusTimedOut) {
-    // AuthSession timed out before timer_.Stop() could be called.
+    // AuthSession timed out before timeout_timer_.Stop() could be called.
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
         ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
@@ -236,16 +243,9 @@ CryptohomeStatus AuthSession::ExtendTimer(
         user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
 
-  timer_.Stop();
-  // Calculate time remaining and add kAuthSessionExtensionInMinutes to it.
-  auto time_passed = base::TimeTicks::Now() - start_time_;
-  auto extended_delay =
-      (timer_.GetCurrentDelay() - time_passed) + extension_duration;
-  timer_.Start(FROM_HERE, extended_delay,
-               base::BindOnce(&AuthSession::AuthSessionTimedOut,
-                              base::Unretained(this)));
-  // Update start_time_.
-  start_time_ = base::TimeTicks::Now();
+  // Calculate time remaining and add extension_duration to it.
+  auto extended_delay = GetRemainingTime() + extension_duration;
+  SetTimeoutTimer(extended_delay);
   return OkStatus<CryptohomeError>();
 }
 
@@ -1828,9 +1828,9 @@ void AuthSession::ResetLECredentials() {
 }
 
 base::TimeDelta AuthSession::GetRemainingTime() {
-  DCHECK(timer_.IsRunning());
-  auto time_passed = base::TimeTicks::Now() - start_time_;
-  auto time_left = timer_.GetCurrentDelay() - time_passed;
+  DCHECK(timeout_timer_.IsRunning());
+  auto time_passed = base::TimeTicks::Now() - timeout_timer_start_time_;
+  auto time_left = timeout_timer_.GetCurrentDelay() - time_passed;
   return time_left;
 }
 

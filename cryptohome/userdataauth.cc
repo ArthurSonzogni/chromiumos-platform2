@@ -4168,7 +4168,7 @@ void UserDataAuth::ExtendAuthSession(
 
   // Extend specified AuthSession.
   auto timer_extension = base::Seconds(request.extension_duration());
-  CryptohomeStatus ret = auth_session->ExtendTimer(timer_extension);
+  CryptohomeStatus ret = auth_session->ExtendTimeoutTimer(timer_extension);
 
   CryptohomeStatus err = OkStatus<CryptohomeError>();
   if (!ret.ok()) {
