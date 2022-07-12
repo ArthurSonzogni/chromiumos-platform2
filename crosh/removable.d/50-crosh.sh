@@ -52,8 +52,8 @@ cmd_update_firmware() (
   # TODO(hungte) if some day we have better security jail / sandbox, change the
   # sudo to follow new magic for granting root permission.
 
-  if [ -s $CHROMEOS_FIRMWARE_UPDATE ]; then
-    sudo $CHROMEOS_FIRMWARE_UPDATE --force $UPDATE_OPTION
+  if [ -s "${CHROMEOS_FIRMWARE_UPDATE}" ]; then
+    sudo "${CHROMEOS_FIRMWARE_UPDATE}" --force "${UPDATE_OPTION}"
   else
     echo "There is no firmware update in current system."
   fi
