@@ -22,11 +22,12 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <chromeos/mojo/service_constants.h>
 #include <dbus/bus.h>
 #if USE_IIOSERVICE
-#include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
 
 #include "power_manager/common/battery_percentage_converter.h"
@@ -184,29 +185,6 @@ class Converter {
   std::unique_ptr<BacklightController> controller_;
 };
 
-#if USE_IIOSERVICE
-class SensorClientDbusImpl : public iioservice::SensorClientDbus {
- public:
-  explicit SensorClientDbusImpl(SensorServiceHandler* handler)
-      : handler_(handler) {}
-
- protected:
-  // SensorClientDbus overrides:
-  void OnClientReceived(
-      mojo::PendingReceiver<cros::mojom::SensorHalClient> client) override {
-    handler_->BindSensorHalClient(
-        std::move(client),
-        base::BindOnce(&SensorClientDbusImpl::OnMojoDisconnect,
-                       base::Unretained(this)));
-  }
-
- private:
-  void OnMojoDisconnect() { LOG(ERROR) << "OnMojoDisconnect"; }
-
-  SensorServiceHandler* handler_;
-};
-#endif  // USE_IIOSERVICE
-
 class ObserverImpl : public power_manager::system::AmbientLightObserver {
  public:
   ObserverImpl(const ObserverImpl&) = delete;
@@ -278,15 +256,22 @@ void GetAmbientLightLux(bool keyboard) {
   SensorServiceHandler sensor_service_handler;
   AmbientLightSensorManagerMojo manager(&prefs, &sensor_service_handler);
 
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  if (!bus->Connect())
-    Abort("GetAmbientLightLux: Cannot connect to D-Bus.");
+  auto pending_remote =
+      chromeos::mojo_service_manager::ConnectToMojoServiceManager();
 
-  SensorClientDbusImpl client_dbus(&sensor_service_handler);
-  client_dbus.SetBus(bus.get());
-  client_dbus.BootstrapMojoConnection();
+  if (!pending_remote)
+    Abort("Failed to connect to Mojo Service Manager");
+
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
+      service_manager_remote;
+  service_manager_remote.Bind(std::move(pending_remote));
+
+  mojo::PendingRemote<cros::mojom::SensorService> sensor_service_remote;
+
+  service_manager_remote->Request(
+      chromeos::mojo_services::kIioSensor, std::nullopt,
+      sensor_service_remote.InitWithNewPipeAndPassReceiver().PassPipe());
+  sensor_service_handler.SetUpChannel(std::move(sensor_service_remote));
 #else   // !USE_IIOSERVICE
   AmbientLightSensorManagerFile manager(&prefs);
   manager.Run(true /* read_immediately */);

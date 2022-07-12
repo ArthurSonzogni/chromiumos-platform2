@@ -102,6 +102,7 @@ pkg_config("target_defaults") {
     "libml-client",
     "libmojo",
     "libudev",
+    "mojo_service_manager",
     "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear

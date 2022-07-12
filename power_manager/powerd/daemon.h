@@ -19,6 +19,7 @@
 #include <dbus/exported_object.h>
 #if USE_IIOSERVICE
 #include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
+#include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
 #include <libec/ec_usb_endpoint.h>
 #include <ml/dbus-proxies.h>
@@ -102,18 +103,14 @@ class WakeupSourceIdentifierInterface;
 class Daemon;
 
 // Main class within the powerd daemon that ties all other classes together.
-class Daemon :
-#if USE_IIOSERVICE
-    public iioservice::SensorClientDbus,
-#endif  // USE_IIOSERVICE
-    public policy::AdaptiveChargingControllerInterface::Delegate,
-    public policy::InputEventHandler::Delegate,
-    public policy::Suspender::Delegate,
-    public policy::WifiController::Delegate,
-    public policy::CellularController::Delegate,
-    public system::AudioObserver,
-    public system::DBusWrapperInterface::Observer,
-    public system::PowerSupplyObserver {
+class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
+               public policy::InputEventHandler::Delegate,
+               public policy::Suspender::Delegate,
+               public policy::WifiController::Delegate,
+               public policy::CellularController::Delegate,
+               public system::AudioObserver,
+               public system::DBusWrapperInterface::Observer,
+               public system::PowerSupplyObserver {
  public:
   // File used to identify the first instantiation of powerd after a boot.
   // Presence of this file indicates that this is not the first run of powerd
@@ -143,6 +140,7 @@ class Daemon :
   }
 
   bool first_run_after_boot_for_testing() { return first_run_after_boot_; }
+  void disable_mojo_for_testing() { disable_mojo_for_testing_ = true; }
 
   void Init();
 
@@ -228,12 +226,13 @@ class Daemon :
   };
 
 #if USE_IIOSERVICE
-  // SensorClientDbus overrides:
-  void OnClientReceived(
-      mojo::PendingReceiver<cros::mojom::SensorHalClient> client) override;
+  void ConnectToMojoServiceManager();
+  void ReconnectToMojoServiceManagerWithDelay();
+  void RequestIioSensor();
 
-  // Try to reconnect to Chromium when Mojo disconnects.
-  void OnMojoDisconnect();
+  void OnServiceManagerDisconnect(uint32_t custom_reason,
+                                  const std::string& message);
+  void OnIioSensorDisconnect(base::TimeDelta delay);
 #endif  // USE_IIOSERVICE
 
   // Convenience method that returns true if |name| exists and is true.
@@ -510,6 +509,14 @@ class Daemon :
   std::unique_ptr<PeriodicActivityLogger> user_activity_logger_;
   std::unique_ptr<StartStopActivityLogger> audio_activity_logger_;
   std::unique_ptr<StartStopActivityLogger> hovering_logger_;
+
+  // Unwrap |service_manager_| if it's also used for other services.
+#if USE_IIOSERVICE
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
+      service_manager_;
+#endif  // USE_IIOSERVICE
+
+  bool disable_mojo_for_testing_ = false;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

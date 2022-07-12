@@ -203,6 +203,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     daemon_->set_cros_ec_path_for_testing(cros_ec_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
     daemon_->set_hibernated_state_path_for_testing(hibernated_state_path_);
+    daemon_->disable_mojo_for_testing();
     daemon_->Init();
   }
 

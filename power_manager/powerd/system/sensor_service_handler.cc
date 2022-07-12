@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/sensor_service_handler.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/bind.h>
@@ -11,22 +12,28 @@
 
 namespace power_manager {
 namespace system {
+namespace {
+constexpr uint32_t kMaxReconnectDelayInSeconds = 1000;
+}  // namespace
 
 SensorServiceHandler::SensorServiceHandler() = default;
 
 SensorServiceHandler::~SensorServiceHandler() {
-  ResetSensorService();
-  sensor_hal_client_.reset();
+  ResetSensorService(false);
 }
 
 void SensorServiceHandler::SetUpChannel(
-    mojo::PendingRemote<cros::mojom::SensorService> pending_remote) {
+    mojo::PendingRemote<cros::mojom::SensorService> pending_remote,
+    OnIioSensorDisconnectCallback on_iio_sensor_disconnect_callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (sensor_service_remote_.is_bound()) {
     LOG(ERROR) << "Ignoring the second Remote<SensorService>";
     return;
   }
+
+  on_iio_sensor_disconnect_callback_ =
+      std::move(on_iio_sensor_disconnect_callback);
 
   sensor_service_remote_.Bind(std::move(pending_remote));
   sensor_service_remote_.set_disconnect_handler(
@@ -56,20 +63,6 @@ void SensorServiceHandler::OnNewDeviceAdded(
     observer.OnNewDeviceAdded(iio_device_id, types);
 }
 
-void SensorServiceHandler::BindSensorHalClient(
-    mojo::PendingReceiver<cros::mojom::SensorHalClient> pending_receiver,
-    OnMojoDisconnectCallback on_mojo_disconnect_callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!sensor_hal_client_.is_bound());
-
-  sensor_hal_client_.Bind(std::move(pending_receiver));
-  sensor_hal_client_.set_disconnect_handler(
-      base::BindOnce(&SensorServiceHandler::OnSensorHalClientDisconnect,
-                     base::Unretained(this)));
-
-  on_mojo_disconnect_callback_ = std::move(on_mojo_disconnect_callback);
-}
-
 void SensorServiceHandler::AddObserver(SensorServiceHandlerObserver* observer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -97,18 +90,6 @@ void SensorServiceHandler::GetDevice(
   sensor_service_remote_->GetDevice(iio_device_id, std::move(pending_receiver));
 }
 
-void SensorServiceHandler::OnSensorHalClientDisconnect() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(on_mojo_disconnect_callback_);
-
-  LOG(ERROR) << "SensorHalClient connection lost";
-
-  ResetSensorService();
-  sensor_hal_client_.reset();
-
-  std::move(on_mojo_disconnect_callback_).Run();
-}
-
 void SensorServiceHandler::OnSensorServiceDisconnect() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -126,7 +107,7 @@ void SensorServiceHandler::OnNewDevicesObserverDisconnect() {
   ResetSensorService();
 }
 
-void SensorServiceHandler::ResetSensorService() {
+void SensorServiceHandler::ResetSensorService(bool reconnect) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (sensor_service_remote_.is_bound()) {
@@ -138,11 +119,27 @@ void SensorServiceHandler::ResetSensorService() {
   sensor_service_remote_.reset();
 
   iio_device_ids_types_.clear();
+
+  if (!reconnect) {
+    on_iio_sensor_disconnect_callback_.Reset();
+    return;
+  }
+
+  if (on_iio_sensor_disconnect_callback_) {
+    std::move(on_iio_sensor_disconnect_callback_)
+        .Run(base::Seconds(reconnect_delay_in_seconds_));
+
+    reconnect_delay_in_seconds_ =
+        std::min(reconnect_delay_in_seconds_ * 2, kMaxReconnectDelayInSeconds);
+  }
 }
 
 void SensorServiceHandler::GetAllDeviceIdsCallback(
     const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
         iio_device_ids_types) {
+  // Reset reconnect delay upon successful reconnection.
+  reconnect_delay_in_seconds_ = 1;
+
   iio_device_ids_types_ = iio_device_ids_types;
 
   for (auto& observer : observers_)

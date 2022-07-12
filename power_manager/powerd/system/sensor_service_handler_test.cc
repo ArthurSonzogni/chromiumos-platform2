@@ -55,16 +55,19 @@ class SensorServiceHandlerTest : public ::testing::Test {
     ResetMojoChannel();
   }
 
-  void ResetMojoChannel() {
+  void ResetMojoChannel(SensorServiceHandler::OnIioSensorDisconnectCallback
+                            on_iio_sensor_disconnect_callback =
+                                base::DoNothing()) {
     sensor_service_.ClearReceivers();
 
-    // Wait until the disconnect handler in |sensor_service_handler_| is called.
-    base::RunLoop().RunUntilIdle();
+    sensor_service_handler_.ResetSensorService(false);
 
     mojo::PendingRemote<cros::mojom::SensorService> pending_remote;
     sensor_service_.AddReceiver(
         pending_remote.InitWithNewPipeAndPassReceiver());
-    sensor_service_handler_.SetUpChannel(std::move(pending_remote));
+    sensor_service_handler_.SetUpChannel(
+        std::move(pending_remote),
+        std::move(on_iio_sensor_disconnect_callback));
   }
 
   void SetSensor(int32_t iio_device_id) {
@@ -80,23 +83,20 @@ class SensorServiceHandlerTest : public ::testing::Test {
   FakeSensorService sensor_service_;
 };
 
-TEST_F(SensorServiceHandlerTest, BindSensorHalClient) {
+TEST_F(SensorServiceHandlerTest, DisconnectCallback) {
   base::RunLoop loop;
+  ResetMojoChannel(base::BindOnce(
+      [](base::OnceClosure closure, base::TimeDelta delay) {
+        EXPECT_EQ(delay, base::Seconds(1));
+        std::move(closure).Run();
+      },
+      loop.QuitClosure()));
 
-  mojo::Remote<cros::mojom::SensorHalClient> remote;
-  sensor_service_handler_.BindSensorHalClient(
-      remote.BindNewPipeAndPassReceiver(), loop.QuitClosure());
+  sensor_service_.ClearReceivers();
 
-  EXPECT_TRUE(sensor_service_.HasReceivers());
-
-  remote.reset();
-  // Wait until |sensor_service_handler.on_mojo_disconnect_callback_| is called.
+  // Wait until |sensor_service_handler.on_iio_sensor_disconnect_callback_| is
+  // called.
   loop.Run();
-
-  // Wait until |sensor_service_|'s disconnection callback is done.
-  base::RunLoop().RunUntilIdle();
-
-  EXPECT_FALSE(sensor_service_.HasReceivers());
 }
 
 TEST_F(SensorServiceHandlerTest, ConnectedAndAddNewDevices) {

@@ -24,8 +24,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/mojo/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -50,6 +52,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
 #if USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
+#include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
@@ -162,6 +165,10 @@ const char kBattery[] = "battery";
 // When we're making sync calls to the Adaptive Charging ML Service, use a
 // shorter timeout.
 const int kAdaptiveChargingSyncDBusTimeoutMs = 3000;
+
+#if USE_IIOSERVICE
+constexpr base::TimeDelta kReconnectServiceManagerDelay = base::Seconds(1);
+#endif  // USE_IIOSERVICE
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is
@@ -394,6 +401,8 @@ void Daemon::Init() {
 
 #if USE_IIOSERVICE
   sensor_service_handler_ = delegate_->CreateSensorServiceHandler();
+  if (!disable_mojo_for_testing_)
+    ConnectToMojoServiceManager();
 #endif  // USE_IIOSERVICE
 
   if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
@@ -608,17 +617,70 @@ bool Daemon::TriggerRetryShutdownTimerForTesting() {
 }
 
 #if USE_IIOSERVICE
-void Daemon::OnClientReceived(
-    mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
-  sensor_service_handler_->BindSensorHalClient(
-      std::move(client),
-      base::BindOnce(&Daemon::OnMojoDisconnect, base::Unretained(this)));
+void Daemon::ConnectToMojoServiceManager() {
+  DCHECK(!service_manager_.is_bound());
+
+  auto service_manager_remote =
+      chromeos::mojo_service_manager::ConnectToMojoServiceManager();
+
+  if (!service_manager_remote) {
+    LOG(ERROR) << "Failed to connect to Mojo Service Manager. Retry in: "
+               << kReconnectServiceManagerDelay;
+    ReconnectToMojoServiceManagerWithDelay();
+    return;
+  }
+
+  service_manager_.Bind(std::move(service_manager_remote));
+  service_manager_.set_disconnect_with_reason_handler(base::BindOnce(
+      &Daemon::OnServiceManagerDisconnect, base::Unretained(this)));
+
+  RequestIioSensor();
 }
 
-void Daemon::OnMojoDisconnect() {
-  LOG(ERROR) << "Chromium stopped. Establishing a new Mojo connection";
+void Daemon::ReconnectToMojoServiceManagerWithDelay() {
+  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Daemon::ConnectToMojoServiceManager,
+                     base::Unretained(this)),
+      kReconnectServiceManagerDelay);
+}
 
-  ReconnectMojoWithDelay();
+void Daemon::RequestIioSensor() {
+  if (!service_manager_.is_bound())
+    return;
+
+  mojo::PendingRemote<cros::mojom::SensorService> sensor_service_remote;
+
+  service_manager_->Request(
+      chromeos::mojo_services::kIioSensor, std::nullopt,
+      sensor_service_remote.InitWithNewPipeAndPassReceiver().PassPipe());
+  // There might be race conditions when reconnecting iioservice and Mojo
+  // Service Manager, and this function might be called more than once. But it's
+  // fine as SensorServiceHandler::SetUpChannel will ignore the duplicated mojo
+  // pipes.
+  sensor_service_handler_->SetUpChannel(
+      std::move(sensor_service_remote),
+      base::BindOnce(&Daemon::OnIioSensorDisconnect, base::Unretained(this)));
+}
+
+void Daemon::OnServiceManagerDisconnect(uint32_t custom_reason,
+                                        const std::string& message) {
+  auto error = static_cast<chromeos::mojo_service_manager::mojom::ErrorCode>(
+      custom_reason);
+  LOG(ERROR) << "ServiceManagerDisconnected, error: " << error
+             << ", message: " << message;
+  service_manager_.reset();
+  sensor_service_handler_->ResetSensorService(false);
+
+  ReconnectToMojoServiceManagerWithDelay();
+}
+
+void Daemon::OnIioSensorDisconnect(base::TimeDelta delay) {
+  DCHECK(service_manager_.is_bound());
+
+  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Daemon::RequestIioSensor, base::Unretained(this)), delay);
 }
 #endif  // USE_IIOSERVICE
 
@@ -1238,11 +1300,6 @@ void Daemon::InitDBus() {
     prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
     tpm_status_interval_ = base::Seconds(tpm_status_sec);
   }
-
-#if USE_IIOSERVICE
-  SetBus(bus.get());
-  BootstrapMojoConnection();
-#endif  // USE_IIOSERVICE
 }
 
 void Daemon::HandleDisplayServiceAvailableOrRestarted(bool available) {
