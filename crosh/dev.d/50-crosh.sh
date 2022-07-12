@@ -29,8 +29,8 @@ cmd_systrace() (
     ;;
   xstop)
     local downloads_dir="/home/${USER}/user/Downloads"
-    local data_file="$(mktemp "${downloads_dir}/systrace.XXXXXX")"
-    if [ $? -ne 0 ]; then
+    local data_file
+    if ! data_file="$(mktemp "${downloads_dir}/systrace.XXXXXX")"; then
       echo "Cannot create data file ${data_file}"
       return 1
     fi
