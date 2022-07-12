@@ -21,7 +21,7 @@ CROS_CERTS=/usr/share/chromeos-ca-certificates/
 declare -A fn_entry
 
 # Annotate function entry.
-fn_enter () {
+fn_enter() {
   local fn="$1"
   fn_entry["${fn}"]=1
   echo "Entering $*"
@@ -29,28 +29,28 @@ fn_enter () {
 
 # Annotate function entry.  Also, return non-zero if function has
 # been called more than once
-fn_enter_once () {
+fn_enter_once() {
   local fn="$1"
   [ -n "${fn_entry["${fn}"]}" ] && return 1
   fn_enter "$@"
 }
 
 # Output pass/fail reports
-pass () {
-    echo "PASS: $*"
+pass() {
+  echo "PASS: $*"
 }
-fail () {
-    echo "FAIL: $*"
-    fail_count="$((fail_count+1))"
+fail() {
+  echo "FAIL: $*"
+  fail_count="$((fail_count+1))"
 }
 
 # Split a dotted decimal string
-do_address_parts () {
+do_address_parts() {
   (IFS=" ."; echo $1)
 }
 
 # Perform a mask (binary "&") between two dotted-decimal strings
-do_netmask () {
+do_netmask() {
   local -a ip=($(do_address_parts "$1"))
   local -a mask=($(do_address_parts "$2"))
   local -a ret
@@ -64,7 +64,7 @@ do_netmask () {
 # @ip: Destination IP address
 # @route_flags: Search for this value in the "Flags" column
 # @part: Column from the netstat output to return
-get_route () {
+get_route() {
   local ip="$1"
   local route_flags="$2"
   shift ; shift
@@ -82,17 +82,17 @@ get_route () {
 }
 
 # Return the interface through which traffic to given neigbor IP should go
-get_if_route () {
+get_if_route() {
   get_route "$1" U 7
 }
 
 # Return the gateway IP to which traffic to given remote IP should be forwarded
-get_gw_route () {
+get_gw_route() {
   get_route "$1" UG 1 7
 }
 
 # Trace down a symbolic link until we reach a dead-end (or a real file)
-get_tracelink () {
+get_tracelink() {
   local file="$1"
   local link_count=0
   while [ -h "${file}" -o -e "${file}" ] ; do
@@ -110,30 +110,30 @@ get_tracelink () {
 }
 
 # Return the IP addresses of the currently configured nameservers
-get_nameservers () {
+get_nameservers() {
   awk '/^nameserver/ {print $2}' /etc/resolv.conf
 }
 
 # Return list of interface names
-get_iflist () {
+get_iflist() {
   ls /sys/class/net/ | egrep -v '^(lo|sit)'
 }
 
 # Return IP address of a given network interface
-get_if_addr () {
+get_if_addr() {
   ifc="$1"
   ${IFCONFIG} "${ifc}" | grep "inet addr" | sed  -e 's/.*addr://; s/ .*//'
 }
 
 # Super-gross method for looking up IP address of a given hostname
-get_host_addr () {
+get_host_addr() {
   # TODO(pstew): super gross -- but there's no host/dig/nslookup/dnsquery
   local host="$1"
   ping -c1 "${host}" | head -1 | awk -v FS='[()]' '{print $2}'
 }
 
 # Find a the device name of a device given the driver's name
-get_class_driver () {
+get_class_driver() {
   local find_pat="$1"
   local find_driver="$2"
   for device in "/sys/class/${find_pat}"*; do
@@ -146,7 +146,7 @@ get_class_driver () {
 }
 
 # The "status" command can't be run as non-root, so we fake it here
-get_status () {
+get_status() {
   pid="$(pgrep $1)"
   if [ -n "${pid}" ] ; then
     pass "$1 is running, pid ${pid}"
@@ -158,14 +158,14 @@ get_status () {
 }
 
 # Join the rest of the arguments using the first argument as a delimiter.
-join () {
+join() {
   local delim="$1"
   shift
   echo $(IFS="${delim}"; echo "$*")
 }
 
 # Compose a string from hex characters.
-hex_to_string () {
+hex_to_string() {
   local hex
   for hex in "$@"; do
     printf "\x${hex}"
@@ -173,7 +173,7 @@ hex_to_string () {
   printf "\n"
 }
 
-seconds_compare () {
+seconds_compare() {
   local test_time="$1"
   local reference_time="$2"
   if [ "${test_time}" -gt "${reference_time}" ] ; then
@@ -184,7 +184,7 @@ seconds_compare () {
 }
 
 # Read a DHCPCD lease file
-read_dhcp_lease () {
+read_dhcp_lease() {
   local file="$1"
   local message_types=(UNKNOWN DISCOVER OFFER REQUEST DECLINE \
                        ACK NACK RELEASE INFORM)
@@ -257,7 +257,7 @@ read_dhcp_lease () {
 }
 
 # Anonymize PII (except MAC addresses) so they are not transmitted.
-output_anonymize () {
+output_anonymize() {
   if [ "${anonymize_output}" != "yes" ]; then
     cat
     return
@@ -272,7 +272,7 @@ output_anonymize () {
 }
 
 # Read the logs
-tail_logs () {
+tail_logs() {
   files="$(for f in /var/log/messages{.2,.1,} ; do
     [ -f "${f}" ] && echo "${f}";
     done)"
@@ -284,7 +284,7 @@ tail_logs () {
 }
 
 # List all ethernet devices and their unique manufacturer strings
-get_device_list () {
+get_device_list() {
   fn_enter_once "${FUNCNAME}" || return
   echo "Device list:"
   for ifc in $(get_iflist); do
@@ -306,14 +306,14 @@ get_device_list () {
 }
 
 # List all USB and PCI devices
-diag_devs () {
+diag_devs() {
   fn_enter_once "${FUNCNAME}" || return
   ${LSUSB}
   ${LSPCI}
 }
 
 # Check whether we are in sync with the time server
-diag_date () {
+diag_date() {
   local host="$1"
   local proxy="$2"
   local cmd=()
@@ -338,7 +338,7 @@ diag_date () {
 }
 
 # Try to detect IP address collisions
-diag_ip_collision () {
+diag_ip_collision() {
   fn_enter "${FUNCNAME}" "$@"
   local ifc="$1"
   ip="$(get_if_addr "${ifc}")"
@@ -354,7 +354,7 @@ diag_ip_collision () {
 }
 
 # Make sure we have an ARP table entry for $ip through $ifc
-diag_arp () {
+diag_arp() {
   fn_enter "${FUNCNAME}" "$@"
   local ip="$1"
   local ifc="$2"
@@ -382,7 +382,7 @@ diag_arp () {
   return "${failures}"
 }
 
-show_routes () {
+show_routes() {
   netstat -nr
   echo "Raw routing tables:"
   cat /proc/net/route
@@ -390,7 +390,7 @@ show_routes () {
 }
 
 # Make sure we have a route to each host
-diag_route () {
+diag_route() {
   fn_enter "${FUNCNAME}" "$@"
   local failures=0
   for ip in "$@"; do
@@ -412,7 +412,7 @@ diag_route () {
 }
 
 # Figure whether we have IP connectivity to each host
-diag_ping () {
+diag_ping() {
   fn_enter "${FUNCNAME}" "$@"
   local failures=0
   for ip in "$@"; do
@@ -439,7 +439,7 @@ diag_ping () {
 }
 
 # Report the last DHCP interaction for a given network interface
-diag_dhcp () {
+diag_dhcp() {
   fn_enter_once "${FUNCNAME}" || return
   local ifc="$1"
   shift
@@ -464,7 +464,7 @@ diag_dhcp () {
 }
 
 # Perform diagnostics on an 802.11 interface
-diag_link_wifi () {
+diag_link_wifi() {
   fn_enter "${FUNCNAME}" "$@"
   ifc="$1"
 
@@ -501,7 +501,7 @@ diag_link_wifi () {
 }
 
 # Print out WiFi debugging info
-diag_wifi () {
+diag_wifi() {
   fn_enter_once "${FUNCNAME}" || return
 
   # Call out to debugd (which in turn calls this script's diag_wifi_internal
@@ -516,7 +516,7 @@ diag_wifi () {
         /org/chromium/debugd org.chromium.debugd.GetLog "string:${log_name}"
 }
 
-diag_wifi_internal () {
+diag_wifi_internal() {
   local ifc
   for ifc in $(get_iflist); do
     if is_wifi "${ifc}" ; then
@@ -535,7 +535,7 @@ diag_wifi_internal () {
 }
 
 # Perform diagnostics on a WAN interface
-diag_link_cellular () {
+diag_link_cellular() {
   fn_enter "${FUNCNAME}" "$@"
   diag_cellular_dbus
   diag_devs
@@ -546,7 +546,7 @@ diag_link_cellular () {
   tail_logs | grep "QDL unable" | tail -3
 }
 
-diag_link_wired () {
+diag_link_wired() {
   fn_enter "${FUNCNAME}" "$@"
   local ifc="$1"
 
@@ -558,7 +558,7 @@ diag_link_wired () {
 
 # Tests to check to see if this is a modem.  Very abstract adaptation
 # from flimflam's tests
-is_modem () {
+is_modem() {
   local ifc="$1"
   driver="$(basename "$(readlink "/sys/class/net/${ifc}/device/driver")")"
   # Allow certain device types.
@@ -574,7 +574,7 @@ is_modem () {
   return 1
 }
 
-is_wifi () {
+is_wifi() {
   local ifc="$1"
   if expr "${ifc}" : wlan > /dev/null || \
      [ -e "/sys/class/net/${ifc}/phy80211" ] ; then
@@ -584,7 +584,7 @@ is_wifi () {
 }
 
 # Perform type-specific link diagnostics on a network interface
-diag_link () {
+diag_link() {
   fn_enter "${FUNCNAME}" "$@"
   ifc="$1"
 
@@ -606,7 +606,7 @@ diag_link () {
   tail_logs | grep "kernel:.*${ifc}" | tail -10
 }
 
-diag_linkall () {
+diag_linkall() {
   fn_enter_once "${FUNCNAME}" || return
   for ifc in $(get_iflist); do
     diag_link "${ifc}"
@@ -614,7 +614,7 @@ diag_linkall () {
 }
 
 # Perform generic diagnostics on a network interface
-diag_if () {
+diag_if() {
   fn_enter "${FUNCNAME}" "$@"
   ifc="$1"
   config="$("${IFCONFIG}" "${ifc}")"
@@ -642,7 +642,7 @@ diag_if () {
 
 # Query interface status on all network interfaces, and return an error if
 # none of them appear to be up
-diag_ifall () {
+diag_ifall() {
   fn_enter_once "${FUNCNAME}" || return
 
   local good_ifs=0
@@ -660,7 +660,7 @@ diag_ifall () {
 }
 
 # Diagnose nameserver connectivity
-diag_nameservers () {
+diag_nameservers() {
   fn_enter_once "${FUNCNAME}" || return
   nameservers="$(get_nameservers)"
   if [ -z "${nameservers}" ] ; then
@@ -678,7 +678,7 @@ diag_nameservers () {
 }
 
 # See if we can connect to a given host
-diag_connectivity () {
+diag_connectivity() {
   fn_enter_once "${FUNCNAME}" "$@" || exit 0
   local host="$1"
   local ip="$(get_host_addr "$host")"
@@ -697,7 +697,7 @@ diag_connectivity () {
 }
 
 # Get information from flimflam about its state over D-Bus.
-dbus_get_object_properties () {
+dbus_get_object_properties() {
   local entity="$1"
   local object_type="$2"
   local object_path="${3-/}"
@@ -705,7 +705,7 @@ dbus_get_object_properties () {
     "${object_path}" "${entity}.${object_type}.GetProperties"
 }
 
-dbus_get_object_list () {
+dbus_get_object_list() {
   local entity="$1"
   local parent="$2"
   local child="$3"
@@ -722,7 +722,7 @@ dbus_get_object_list () {
     awk -v re="^/[0-9]+/${child}[/ ]" 'match($0, re) { print $2 }'
 }
 
-diag_flimflam_dbus () {
+diag_flimflam_dbus() {
   fn_enter_once "${FUNCNAME}" "$@"
   local ff="org.chromium.flimflam"
   if [ -z "$1" ] ; then
@@ -750,7 +750,7 @@ diag_flimflam_dbus () {
 }
 
 # Get information from ModemManager about its state over D-Bus
-diag_cellular_dbus () {
+diag_cellular_dbus() {
   fn_enter "${FUNCNAME}" "$@"
   dbus-send --fixed --system --print-reply --dest=org.chromium.ModemManager \
     /org/chromium/ModemManager \
@@ -759,7 +759,7 @@ diag_cellular_dbus () {
 }
 
 # Read lease information
-diag_dhcp_lease () {
+diag_dhcp_lease() {
   fn_enter "${FUNCNAME}" "$@"
   local lease_dir=/var/lib/dhcpcd
   for file in "${lease_dir}/"*.lease; do
@@ -769,7 +769,7 @@ diag_dhcp_lease () {
 }
 
 # Probe process status of flimflam and its process descendants
-diag_flimflam () {
+diag_flimflam() {
   fn_enter_once "${FUNCNAME}" || return
   local status="$(get_status shill)"
   echo "${status}"
@@ -798,7 +798,7 @@ run_hosts_webget() {
 }
 
 # Try to connect to a host via SSL, diagnose failures.
-diag_hosts () {
+diag_hosts() {
   local host
   local proxy="$1"
   # Hosts is pulled from
@@ -869,7 +869,7 @@ diag_hosts () {
   done
 }
 
-run_webget () {
+run_webget() {
   local url="$1"
   local proxy="$2"
   local cmd=()
@@ -883,7 +883,7 @@ run_webget () {
 }
 
 # Try to connect to a host via SSL, diagnose failures
-diag_webget () {
+diag_webget() {
   local host="$1"
   local url="https://${host}"
   local proxy="$2"
@@ -938,7 +938,7 @@ diag_webget () {
 }
 
 # Do standard run of tests
-diag_run () {
+diag_run() {
   local host="$1"
   local proxy="$2"
   if run_webget "https://${host}" "${proxy}"; then
@@ -951,7 +951,7 @@ diag_run () {
   diag_date "${host}" "${proxy}"
 }
 
-valid_host () {
+valid_host() {
   local host="$1"
 
   # Allow things that look like valid IPv4/IPv6/DNS.  This doesn't deal with
@@ -962,7 +962,7 @@ valid_host () {
   [ "${host}" = "$(printf '%s' "${host}" | tr -cd 'A-Za-z0-9.:-')" ]
 }
 
-usage () {
+usage() {
   echo "Usage: $0 [--date|--flimflam|--link|--wifi|--help] [host]"
   echo "    --date:      Diagnose time-of-day"
   echo "                 ([host] must support SSL)"
@@ -980,7 +980,7 @@ usage () {
                          "(default: clients3.google.com)"
 }
 
-check_no_arg () {
+check_no_arg() {
   if [[ "$2" == "yes" ]]; then
     echo "Option $1 does not take any arguments"
     usage
@@ -988,7 +988,7 @@ check_no_arg () {
   fi
 }
 
-main () {
+main() {
   local test_host=clients3.google.com
   local proxy
   local option_and_arg_provided=no
@@ -1106,6 +1106,5 @@ main () {
   fi
 }
 main "$@"
-
 
 exit "${fail_count}"
