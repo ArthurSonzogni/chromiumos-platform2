@@ -107,7 +107,7 @@ def merge_config_bundles(
     _merge_sequences_by_key(
         config_bundle.brand_configs,
         backfilled_config_bundle.brand_configs,
-        lambda b: b.id.value,
+        lambda b: b.brand_id.value,
     )
 
 

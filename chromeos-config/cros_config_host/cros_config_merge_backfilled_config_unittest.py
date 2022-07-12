@@ -16,6 +16,7 @@ from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import partner_id_pb2
 from chromiumos.config.api import partner_pb2
 from chromiumos.config.api.software import bluetooth_config_pb2
+from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import software_config_pb2
 from chromiumos.config.payload import config_bundle_pb2
 import cros_config_merge_backfilled_config
@@ -53,6 +54,12 @@ class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):
                     id=device_brand_id_pb2.DeviceBrandId(value="DeviceBrandA"),
                     brand_name="BrandNameA",
                 )
+            ],
+            brand_configs=[
+                brand_config_pb2.BrandConfig(
+                    brand_id=device_brand_id_pb2.DeviceBrandId(value="DeviceBrandA"),
+                    wallpaper="DefaultWallpaper",
+                ),
             ],
             software_configs=[
                 software_config_pb2.SoftwareConfig(
@@ -125,6 +132,12 @@ class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):
                 device_brand_pb2.DeviceBrand(
                     id=device_brand_id_pb2.DeviceBrandId(value="DeviceBrandB"),
                     brand_name="BrandNameB",
+                ),
+            ],
+            brand_configs=[
+                brand_config_pb2.BrandConfig(
+                    brand_id=device_brand_id_pb2.DeviceBrandId(value="DeviceBrandA"),
+                    wallpaper="DefaultWallpaper",
                 ),
             ],
             software_configs=[
