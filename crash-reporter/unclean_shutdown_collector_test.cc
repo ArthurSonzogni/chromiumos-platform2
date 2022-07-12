@@ -144,3 +144,42 @@ TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
   ASSERT_FALSE(base::PathExists(test_crash_spool_.Append("lsb-release")));
   ASSERT_FALSE(base::PathExists(test_crash_spool_.Append("os-release")));
 }
+
+TEST_F(UncleanShutdownCollectorTest, SaveVersionData_Overwrites) {
+  ASSERT_TRUE(base::CreateDirectory(test_crash_spool_));
+  ASSERT_TRUE(base::CreateDirectory(test_crash_lib_dir_));
+  FilePath lsb_release = test_dir_.Append("lsb-release");
+  const char kLongLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "SOME_OTHER_KEY=Some other value\n";
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kLongLsbContents));
+
+  FilePath os_release = test_dir_.Append("os-release");
+  const char kOsContents[] =
+      "BUILD_ID=9428.0.2017_04_04_0853\n"
+      "ID=chromeos\n"
+      "VERSION_ID=59\n";
+  ASSERT_TRUE(test_util::CreateFile(os_release, kOsContents));
+
+  collector_.set_lsb_release_for_test(lsb_release);
+  collector_.set_os_release_for_test(os_release);
+  collector_.set_crash_directory_for_test(test_crash_spool_);
+  collector_.set_reporter_state_directory_for_test(test_crash_lib_dir_);
+  ASSERT_TRUE(collector_.SaveVersionData());
+
+  std::string contents;
+  base::ReadFileToString(test_crash_lib_dir_.Append("lsb-release"), &contents);
+  ASSERT_EQ(contents, kLongLsbContents);
+
+  const char kShortLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n";
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kShortLsbContents));
+  ASSERT_TRUE(collector_.SaveVersionData());
+
+  base::ReadFileToString(test_crash_lib_dir_.Append("lsb-release"), &contents);
+  ASSERT_EQ(contents, kShortLsbContents);
+}

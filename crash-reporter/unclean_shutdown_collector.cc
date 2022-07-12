@@ -75,9 +75,11 @@ bool SafelyCopyFile(FilePath source, FilePath dest) {
     return false;
   }
   base::ScopedFD scoped_dest_parent(dest_parent_fd);
-  int dest_fd =
-      HANDLE_EINTR(openat(dest_parent_fd, dest.BaseName().value().c_str(),
-                          O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0644));
+  // We need O_TRUNC so that any existing larger files are deleted, rather than
+  // partially overwritten.
+  int dest_fd = HANDLE_EINTR(
+      openat(dest_parent_fd, dest.BaseName().value().c_str(),
+             O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0644));
   if (dest_fd < 0) {
     PLOG(ERROR) << "Failed to open " << dest;
     return false;
