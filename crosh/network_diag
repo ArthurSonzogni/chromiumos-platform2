@@ -4,14 +4,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-IFCONFIG=/bin/ifconfig
-LSUSB=/usr/sbin/lsusb
-LSPCI=/usr/sbin/lspci
-IW=/usr/sbin/iw
-ARP=/sbin/arp
-ARPING=/sbin/arping
-TLSDATE=/usr/bin/tlsdate
-ETHTOOL=/usr/sbin/ethtool
+# Use $PATH lookup for tools.  Add sbin in case script is run by non-root.
+PATH+=:/sbin:/usr/sbin
+
+IFCONFIG=ifconfig
+LSUSB=lsusb
+LSPCI=lspci
+IW=iw
+ARP=arp
+ARPING=arping
+TLSDATE=tlsdate
+ETHTOOL=ethtool
 anonymize_output="${ANONYMIZE_OUTPUT-no}"
 fail_count=0
 CROS_CERTS=/usr/share/chromeos-ca-certificates/
