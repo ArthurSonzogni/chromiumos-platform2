@@ -37,10 +37,12 @@ backward-kill-word
 backward-word
 beginning-of-history
 beginning-of-line
+bracketed-paste-begin
 #call-last-kbd-macro
 capitalize-word
 character-search
 character-search-backward
+clear-display
 clear-screen
 #complete
 #complete-command
@@ -111,7 +113,11 @@ reverse-search-history
 revert-line
 self-insert
 set-mark
+shell-backward-word
 #shell-expand-line
+shell-forward-word
+shell-kill-word
+shell-transpose-words
 #start-kbd-macro
 tab-insert
 #tilde-expand
@@ -174,23 +180,26 @@ yank-pop
 EOF
 )"
 
-if [ -t 0 ]; then
-  echo "Usage: bind -p | $0 > inputrc"
-  exit
+if [[ $# -ne 0 ]] || [[ -t 0 ]]; then
+  echo "Usage: bind -p | $0 > inputrc.safe"
+  exit 1
 fi
 
-# Remove any commands that are not bound to a key.
-BINDINGS="$(cat | grep -v "not bound")"
+# Remove any commands that are not bound to a key.  Newer bash includes
+# bindings for non-UTF-8 bytes to insert, so have to use -a with grep to
+# avoid binary input warnings.
+BINDINGS="$(cat | grep -a -v "not bound")"
 
 # Remove any allowed commands from the list of bindings.
 for safecommand in ${ALLOWLIST}; do
-  BINDINGS="$(echo "${BINDINGS}" | grep -v ": ${safecommand}\$")"
+  BINDINGS="$(echo "${BINDINGS}" | grep -a -v ": ${safecommand}\$")"
 done
 
 # Anything left is not allowed, remap it to the "abort" command.
-echo "# Generated with $(basename $0) on $(date)"
-echo "${BINDINGS}" | sed 's/\([^:]\+\):\(.*\)$/\1: abort #\2/'
+echo "# Generated with $(basename "$0") against bash ${BASH_VERSION}"
+# This regex is too complicated for a simple string substitution.
+# shellcheck disable=SC2001
+echo "${BINDINGS}" | sed -E 's/([^:]+):(.*)$/\1: abort #\2/'
 echo
 echo "set expand-tilde off"
 echo "set disable-completion on"
-

@@ -1,4 +1,4 @@
-# Generated with make-safe-inputrc on Tue Oct 12 15:23:49 PDT 2010
+# Generated with make-safe-inputrc for bash 5.1.8(1)-release
 
 "\C-xe": abort # call-last-kbd-macro
 "\C-i": abort # complete
