@@ -67,6 +67,11 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   static bool ReleaseSpace(uint64_t space_to_release,
                            vm_tools::container::ReleaseSpaceResponse* response);
 
+  // Sends a gRPC call to the host to report metrics.
+  static bool ReportMetrics(
+      vm_tools::container::ReportMetricsRequest request,
+      vm_tools::container::ReportMetricsResponse* response);
+
   ~HostNotifier() override;
 
   // Notifies the host that garcon is ready. This will send the initial update

@@ -14,6 +14,7 @@ recvmsg: 1
 epoll_wait: 1
 sendmsg: 1
 write: 1
+pwrite64: 1
 read: 1
 pread64: 1
 # Don't allow mmap2 with both PROT_WRITE and PROT_EXEC.

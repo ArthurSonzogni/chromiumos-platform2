@@ -461,9 +461,18 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
       &ServiceTestingHelper::IncrementQuitClosure, base::Unretained(this));
   Service::DisableGrpcForTesting();
   Container::DisableChannelWaitForTesting();
+  Service::DisableGuestMetricsCreation();
   service_ = Service::Create(std::move(quit_closure),
                              socket_temp_dir_.GetPath(), mock_bus_);
   CHECK(service_);
+
+  // Set up guest metrics testing
+  CHECK(metrics_temp_dir_.CreateUniqueTempDir());
+  auto guest_metrics = std::make_unique<TestGuestMetrics>(
+      metrics_temp_dir_.GetPath(), "borealis", "penguin");
+  guest_metrics->SetMetricsLibraryForTesting(
+      std::make_unique<MetricsLibraryMock>());
+  service_->SetGuestMetricsForTesting(std::move(guest_metrics));
 
   event->Signal();
 }

@@ -105,6 +105,11 @@ class ContainerListenerImpl final
       const vm_tools::container::ReleaseSpaceRequest* request,
       vm_tools::container::ReleaseSpaceResponse* response) override;
 
+  grpc::Status ReportMetrics(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ReportMetricsRequest* request,
+      vm_tools::container::ReportMetricsResponse* response) override;
+
  private:
   // Returns 0 on failure, otherwise the parsed vsock cid from a
   // vsock:cid:port string from ctx->peer()
