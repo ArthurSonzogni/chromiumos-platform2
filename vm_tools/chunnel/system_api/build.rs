@@ -5,6 +5,7 @@
 extern crate protoc_rust;
 
 use std::env;
+use std::ffi::OsStr;
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::io::Write;
@@ -20,7 +21,16 @@ fn paths_to_strs<P: AsRef<Path>>(paths: &[P]) -> Vec<&str> {
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let proto_root = match env::var("SYSROOT") {
-        Ok(dir) => PathBuf::from(dir).join("usr/include/chromeos"),
+        Ok(dir) => {
+            let sysroot = PathBuf::from(dir);
+            sysroot.join(
+                if matches!(sysroot.file_name(), Some(name) if name == OsStr::new("usr")) {
+                    "include/chromeos"
+                } else {
+                    "usr/include/chromeos"
+                },
+            )
+        }
         // Make this work when typing "cargo build" in platform2/vm_tools/chunnel.
         Err(_) => PathBuf::from("../../../system_api"),
     };
