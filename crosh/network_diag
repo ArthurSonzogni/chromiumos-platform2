@@ -20,19 +20,30 @@ fail_count=0
 CROS_CERTS=/usr/share/chromeos-ca-certificates/
 declare -A fn_entry
 
-# Annotate function entry.
-fn_enter() {
+# Annotate function entry.  Function name is provided by caller.
+_fn_enter() {
   local fn="$1"
   fn_entry["${fn}"]=1
-  echo "Entering $*"
+  echo "### Entering $*"
 }
 
-# Annotate function entry.  Also, return non-zero if function has
-# been called more than once
-fn_enter_once() {
+# Annotate function entry.  Function name is automatically the parent.
+fn_enter() {
+  _fn_enter "${FUNCNAME[1]}" "$@"
+}
+
+# Annotate function entry.  Function name is provided by caller.
+# Also, return non-zero if function has been called more than once.
+_fn_enter_once() {
   local fn="$1"
   [ -n "${fn_entry["${fn}"]}" ] && return 1
-  fn_enter "$@"
+  _fn_enter "$@"
+}
+
+# Annotate function entry.  Function name is automatically the parent.
+# Also, return non-zero if function has been called more than once.
+fn_enter_once() {
+  _fn_enter_once "${FUNCNAME[1]}" "$@"
 }
 
 # Output pass/fail reports
@@ -285,7 +296,7 @@ tail_logs() {
 
 # List all ethernet devices and their unique manufacturer strings
 get_device_list() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
   echo "Device list:"
   for ifc in $(get_iflist); do
     dir="$(readlink -f "/sys/class/net/${ifc}/device")"
@@ -307,7 +318,7 @@ get_device_list() {
 
 # List all USB and PCI devices
 diag_devs() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
   ${LSUSB}
   ${LSPCI}
 }
@@ -317,7 +328,7 @@ diag_date() {
   local host="$1"
   local proxy="$2"
   local cmd=()
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   echo "Local time of day: $(date)"
   cmd=( "${TLSDATE}" -nv -H "${host}" )
   if [[ -n "${proxy}" ]]; then
@@ -339,7 +350,7 @@ diag_date() {
 
 # Try to detect IP address collisions
 diag_ip_collision() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   local ifc="$1"
   ip="$(get_if_addr "${ifc}")"
   if [ -z "${ip}" ]; then
@@ -355,7 +366,7 @@ diag_ip_collision() {
 
 # Make sure we have an ARP table entry for $ip through $ifc
 diag_arp() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   local ip="$1"
   local ifc="$2"
   local failures=0
@@ -377,7 +388,7 @@ diag_arp() {
     fi
   fi
 
-  fn_enter_once "${FUNCNAME}_table" && "${ARP}" -an | output_anonymize
+  _fn_enter_once "${FUNCNAME[0]}_table" && "${ARP}" -an | output_anonymize
 
   return "${failures}"
 }
@@ -391,7 +402,7 @@ show_routes() {
 
 # Make sure we have a route to each host
 diag_route() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   local failures=0
   for ip in "$@"; do
     ifinfo="$(get_if_route "${ip}")"
@@ -406,14 +417,14 @@ diag_route() {
     fi
   done
 
-  fn_enter_once "${FUNCNAME}_table" && show_routes
+  _fn_enter_once "${FUNCNAME[0]}_table" && show_routes
 
   return "${failures}"
 }
 
 # Figure whether we have IP connectivity to each host
 diag_ping() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   local failures=0
   for ip in "$@"; do
     if ping -c 3 "${ip}" | grep -q '0 received'; then
@@ -440,7 +451,7 @@ diag_ping() {
 
 # Report the last DHCP interaction for a given network interface
 diag_dhcp() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
   local ifc="$1"
   shift
 
@@ -465,7 +476,7 @@ diag_dhcp() {
 
 # Perform diagnostics on an 802.11 interface
 diag_link_wifi() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   ifc="$1"
 
   echo "wifi stats (all interfaces):"
@@ -502,7 +513,7 @@ diag_link_wifi() {
 
 # Print out WiFi debugging info
 diag_wifi() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
 
   # Call out to debugd (which in turn calls this script's diag_wifi_internal
   # function with the debugd privileges needed to read debugfs contents).
@@ -536,7 +547,7 @@ diag_wifi_internal() {
 
 # Perform diagnostics on a WAN interface
 diag_link_cellular() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   diag_cellular_dbus
   diag_devs
   qcdev="$(get_class_driver tty/ttyUSB qcserial)"
@@ -547,7 +558,7 @@ diag_link_cellular() {
 }
 
 diag_link_wired() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   local ifc="$1"
 
   echo "Output from ethtool ${ifc}:"
@@ -585,7 +596,7 @@ is_wifi() {
 
 # Perform type-specific link diagnostics on a network interface
 diag_link() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   ifc="$1"
 
   if [ "$(cat "/sys/class/net/${ifc}/carrier")" -eq 1 ]; then
@@ -607,7 +618,7 @@ diag_link() {
 }
 
 diag_linkall() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
   for ifc in $(get_iflist); do
     diag_link "${ifc}"
   done
@@ -615,7 +626,7 @@ diag_linkall() {
 
 # Perform generic diagnostics on a network interface
 diag_if() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   ifc="$1"
   config="$("${IFCONFIG}" "${ifc}")"
   ret=0
@@ -643,7 +654,7 @@ diag_if() {
 # Query interface status on all network interfaces, and return an error if
 # none of them appear to be up
 diag_ifall() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
 
   local good_ifs=0
   for ifc in $(get_iflist); do
@@ -661,7 +672,7 @@ diag_ifall() {
 
 # Diagnose nameserver connectivity
 diag_nameservers() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
   nameservers="$(get_nameservers)"
   if [ -z "${nameservers}" ] ; then
     fail "No nameservers -- this is either a network failure or net misconfig"
@@ -679,7 +690,7 @@ diag_nameservers() {
 
 # See if we can connect to a given host
 diag_connectivity() {
-  fn_enter_once "${FUNCNAME}" "$@" || exit 0
+  fn_enter_once "$@" || exit 0
   local host="$1"
   local ip="$(get_host_addr "$host")"
   if [ -z "${ip}" ] ; then
@@ -723,7 +734,7 @@ dbus_get_object_list() {
 }
 
 diag_flimflam_dbus() {
-  fn_enter_once "${FUNCNAME}" "$@"
+  fn_enter_once "$@"
   local ff="org.chromium.flimflam"
   if [ -z "$1" ] ; then
     echo "Flimflam Manager:"
@@ -751,7 +762,7 @@ diag_flimflam_dbus() {
 
 # Get information from ModemManager about its state over D-Bus
 diag_cellular_dbus() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   dbus-send --fixed --system --print-reply --dest=org.chromium.ModemManager \
     /org/chromium/ModemManager \
     org.freedesktop.ModemManager.EnumerateDevices || \
@@ -760,7 +771,7 @@ diag_cellular_dbus() {
 
 # Read lease information
 diag_dhcp_lease() {
-  fn_enter "${FUNCNAME}" "$@"
+  fn_enter "$@"
   local lease_dir=/var/lib/dhcpcd
   for file in "${lease_dir}/"*.lease; do
     echo "DHCP Lease file ${file}"
@@ -770,7 +781,7 @@ diag_dhcp_lease() {
 
 # Probe process status of flimflam and its process descendants
 diag_flimflam() {
-  fn_enter_once "${FUNCNAME}" || return
+  fn_enter_once || return
   local status="$(get_status shill)"
   echo "${status}"
   if ! echo "${status}" | fgrep -q 'running'; then
