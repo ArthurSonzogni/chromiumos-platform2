@@ -414,13 +414,13 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     args.emplace_back("--vtpm-proxy", "");
 
   if (enable_video_decoder_)
-    args.emplace_back("--video-decoder", "");
+    args.emplace_back("--video-decoder", "libvda");
 
   if (enable_video_encoder_)
-    args.emplace_back("--video-encoder", "");
+    args.emplace_back("--video-encoder", "libvda");
 
   if (enable_battery_)
-    args.emplace_back("--battery", "");
+    args.emplace_back("--battery", "type=goldfish");
 
   for (const auto& shared_dir : shared_dirs_)
     args.emplace_back("--shared-dir", shared_dir);
