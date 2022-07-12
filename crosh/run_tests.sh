@@ -7,8 +7,9 @@
 export LC_ALL=C
 
 show_diff() {
-  local tmp1=$(mktemp)
-  local tmp2=$(mktemp)
+  local tmp1 tmp2
+  tmp1=$(mktemp)
+  tmp2=$(mktemp)
   echo "$1" > "${tmp1}"
   echo "$2" > "${tmp2}"
   diff -U 1 "${tmp1}" "${tmp2}" | sed -e 1d -e 2d -e 's:^:\t:'
@@ -26,13 +27,13 @@ for s in crosh {dev,extra,removable}.d/[0-9][0-9]-*.sh; do
   #
   # No trailing whitespace.
   #
-  egrep -hn '[[:space:]]+$' ${s} && ret=1
+  grep -Ehn '[[:space:]]+$' "${s}" && ret=1
 
   #
   # Make sure we can at least parse the file and catch glaringly
   # obvious errors.
   #
-  bash -n ${s} || ret=1
+  bash -n "${s}" || ret=1
 
   #
   # Make sure every command is documented.
@@ -94,7 +95,7 @@ EOF
   #
   # Check for common style mistakes.
   #
-  if grep -hn '^[a-z0-9_]*()[{(]' ${s}; then
+  if grep -hn '^[a-z0-9_]*()[{(]' "${s}"; then
     cat <<EOF
 ERROR: The above commands need a space after the ()
 
@@ -106,7 +107,7 @@ EOF
   # Check for common bashisms.  We don't use `checkbashisms` as that script
   # throws too many false positives, and we do actually use some bash.
   #
-  if grep -hn '&>' ${s}; then
+  if grep -hn '&>' "${s}"; then
     cat <<EOF
 ERROR: The &> construct is a bashism.  Please fix it like so:
        before:   some_command &> /dev/null
@@ -118,7 +119,7 @@ EOF
     ret=1
   fi
 
-  if grep -hn '[[:space:]]\[\[[[:space:]]' ${s}; then
+  if grep -hn '[[:space:]]\[\[[[:space:]]' "${s}"; then
     cat <<EOF
 ERROR: The [[...]] construct is a bashism.  Please stick to [...].
 
@@ -126,7 +127,7 @@ EOF
     ret=1
   fi
 
-  if grep -hn 'echo -' ${s}; then
+  if grep -hn 'echo -' "${s}"; then
     cat <<\EOF
 ERROR: `echo -n` and `echo -e` options are not portable.  Please use printf.
        before:   echo -n "foo ${blah}"
@@ -139,4 +140,4 @@ EOF
   fi
 done
 
-exit ${ret}
+exit "${ret}"
