@@ -37,7 +37,6 @@
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/crash_listener_impl.h"
-#include "vm_tools/cicerone/guest_metrics.h"
 #include "vm_tools/cicerone/shill_client.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
@@ -96,16 +95,6 @@ class Service final {
   // Stop Service from starting GRPC servers in a testing environment. Must
   // be called before calling Service::Init (and therefore Service::Create).
   static void DisableGrpcForTesting();
-
-  // For testing only. Replace |guest_metrics_| with a mock.
-  void SetGuestMetricsForTesting(std::unique_ptr<GuestMetrics> guest_metrics) {
-    guest_metrics_ = std::move(guest_metrics);
-  }
-
-  GuestMetrics* guest_metrics_for_testing() { return guest_metrics_.get(); }
-
-  // For testing only. Disable initialization of |guest_metrics_|.
-  static void DisableGuestMetricsCreation() { create_guest_metrics_ = false; }
 
   // Connect to the Tremplin instance on the VM with the given |cid|.
   void ConnectTremplin(const uint32_t cid,
@@ -444,14 +433,6 @@ class Service final {
                     vm_tools::disk_management::ReleaseSpaceResponse* result,
                     base::WaitableEvent* event);
 
-  // Passes metrics from a container.  Used by e.g. Borealis, for IO and swap
-  // metrics.
-  void ReportMetrics(const std::string& container_token,
-                     const uint32_t cid,
-                     const vm_tools::container::ReportMetricsRequest& request,
-                     vm_tools::container::ReportMetricsResponse* result,
-                     base::WaitableEvent* event);
-
  private:
   // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
   // It will use |cid| to lookup VM and owner, and set these fields on
@@ -769,11 +750,6 @@ class Service final {
   // Send all listening ports to chunneld.
   void SendListeningPorts();
 
-  // Returns true if a metric reporting operation will be within the rules for
-  // rate limiting, false if it should be blocked. This will also increment the
-  // rate limit counter as a side effect.
-  bool CheckReportMetricsRateLimit(const std::string& vm_name);
-
   // Gets a VirtualMachine pointer to the registered VM with corresponding
   // |owner_id| and |vm_name|. Returns a nullptr if not found.
   VirtualMachine* FindVm(const std::string& owner_id,
@@ -861,23 +837,9 @@ class Service final {
   // Watcher to monitor changes to the system timezone file.
   base::FilePathWatcher localtime_watcher_;
 
-  // Handler and accumulator for guest metrics.
-  std::unique_ptr<GuestMetrics> guest_metrics_;
-
-  // Should Service create GuestMetric instance on initialization?  Used for
-  // testing.
-  static bool create_guest_metrics_;
-
   // Should Service start GRPC servers for ContainerListener and
   // TremplinListener Used for testing
   static bool run_grpc_;
-
-  // Per-VM rate limiting for metric reporting.
-  struct RateLimitState {
-    uint32_t count;
-    base::TimeTicks window_start;
-  };
-  std::map<std::string, RateLimitState> metric_rate_limit_state_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 };

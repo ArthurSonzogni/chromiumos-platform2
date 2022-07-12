@@ -19,8 +19,6 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
-#include <re2/re2.h>
-
 #include "vm_tools/cicerone/service.h"
 
 namespace {
@@ -633,39 +631,6 @@ grpc::Status ContainerListenerImpl::ReleaseSpace(
   event.Wait();
   response->set_error(result.error());
   response->set_space_released(result.space_released());
-  return grpc::Status::OK;
-}
-
-grpc::Status ContainerListenerImpl::ReportMetrics(
-    grpc::ServerContext* ctx,
-    const vm_tools::container::ReportMetricsRequest* request,
-    vm_tools::container::ReportMetricsResponse* response) {
-  uint32_t cid = ExtractCidFromPeerAddress(ctx);
-  if (cid == 0) {
-    return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid for ContainerListener");
-  }
-
-  // Validate ReportMetricsRequest
-  if (request->metric_size() > 10) {
-    return grpc::Status(grpc::FAILED_PRECONDITION, "Too many metrics");
-  }
-  for (const auto& metric : request->metric()) {
-    // Check that metric name is valid
-    const RE2 re("[A-Za-z.-]{1,64}");
-    if (!RE2::FullMatch(metric.name(), re)) {
-      return grpc::Status(grpc::FAILED_PRECONDITION, "Invalid metric name");
-    }
-  }
-
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&vm_tools::cicerone::Service::ReportMetrics, service_,
-                     request->token(), cid, *request, response, &event));
-  event.Wait();
-
   return grpc::Status::OK;
 }
 

@@ -18,10 +18,8 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
-#include <metrics/metrics_library_mock.h>
 
 #include "vm_tools/cicerone/service.h"
-#include "vm_tools/cicerone/test_guest_metrics.h"
 
 namespace vm_tools {
 namespace cicerone {
@@ -176,15 +174,6 @@ class ServiceTestingHelper {
       std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
           mock_tremplin_stub);
 
-  GuestMetrics* GetGuestMetrics() {
-    return service_->guest_metrics_for_testing();
-  }
-
-  MetricsLibraryMock* GetMetricsLibraryMock() {
-    return static_cast<MetricsLibraryMock*>(
-        GetGuestMetrics()->metrics_library_for_testing());
-  }
-
   // Number of times Service's quit closure was called.
   int get_quit_closure_called_count_() const {
     return quit_closure_called_count_;
@@ -309,9 +298,6 @@ class ServiceTestingHelper {
 
   // Callbacks for dbus. Index is DbusCall value for callback.
   DbusCallback dbus_callbacks_[kNumDbusCalls];
-
-  // Temporary directory for TestGuestMetrics.
-  base::ScopedTempDir metrics_temp_dir_;
 
   // The object under test
   std::unique_ptr<Service> service_;

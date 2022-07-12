@@ -82,10 +82,6 @@ const uint16_t kRestrictedPorts[] = {
 // from Plugin VMs.
 constexpr char kHostDomainSocket[] = "/run/vm_cicerone/client/host.sock";
 
-// These rate limits ensure metrics can't be reported too frequently.
-constexpr base::TimeDelta kMetricRateWindow = base::Seconds(60);
-constexpr uint32_t kMetricRateLimit = 2;
-
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -384,10 +380,6 @@ void OnFileSelected(std::vector<std::string>* result,
 }
 
 }  // namespace
-
-// Should Service create GuestMetric instance on initialization?  Used for
-// testing.
-bool Service::create_guest_metrics_ = true;
 
 // Should Service start GRPC servers for ContainerListener and TremplinListener
 // Used for testing
@@ -1440,74 +1432,6 @@ void Service::ReleaseSpace(
   event->Signal();
 }
 
-void Service::ReportMetrics(
-    const std::string& container_token,
-    const uint32_t cid,
-    const vm_tools::container::ReportMetricsRequest& request,
-    vm_tools::container::ReportMetricsResponse* response,
-    base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(response);
-  CHECK(event);
-  VirtualMachine* vm;
-  std::string owner_id;
-  std::string vm_name;
-
-  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
-    LOG(ERROR) << "Failed to get VirtualMachine for cid: " << cid;
-    response->set_error(1);
-    event->Signal();
-    return;
-  }
-
-  std::string container_name = vm->GetContainerNameForToken(container_token);
-  if (container_name.empty()) {
-    LOG(ERROR) << "Could not get container name for token";
-    response->set_error(1);
-    event->Signal();
-    return;
-  }
-
-  // Check on rate limiting for the VM before processing any further.
-  if (!CheckReportMetricsRateLimit(vm_name)) {
-    LOG(ERROR) << "ReportMetrics rate limit exceeded, blocking request";
-    response->set_error(1);
-    event->Signal();
-    return;
-  }
-
-  for (const auto& metric : request.metric()) {
-    if (!guest_metrics_->HandleMetric(vm_name, container_name, metric.name(),
-                                      metric.value())) {
-      LOG(ERROR) << "Error handling metric " << metric.name() << " for VM "
-                 << vm_name << " container " << container_name;
-      response->set_error(1);
-      break;
-    }
-  }
-
-  event->Signal();
-}
-
-bool Service::CheckReportMetricsRateLimit(const std::string& vm_name) {
-  RateLimitState& state = metric_rate_limit_state_[vm_name];
-  base::TimeTicks now = base::TimeTicks::Now();
-  if (now - state.window_start > kMetricRateWindow) {
-    // Beyond the window, reset the window start time and counter.
-    state.window_start = now;
-    state.count = 1;
-    return true;
-  }
-  if (++state.count <= kMetricRateLimit)
-    return true;
-  // Only log the first one over the limit to prevent log spam if this is
-  // getting hit quickly.
-  LOG_IF(ERROR, state.count == kMetricRateLimit + 1)
-      << "ReportMetrics rate limit hit, blocking requests until window "
-         "closes";
-  return false;
-}
-
 bool Service::Init(
     const std::optional<base::FilePath>& unix_socket_path_for_testing) {
   if (!bus_->Connect()) {
@@ -1736,11 +1660,6 @@ bool Service::Init(
                            base::FilePathWatcher::Type::kNonRecursive,
                            base::BindRepeating(&Service::OnLocaltimeFileChanged,
                                                weak_ptr_factory_.GetWeakPtr()));
-
-  if (create_guest_metrics_) {
-    // Setup metric accumulator for Borealis swap and disk IO.
-    guest_metrics_ = std::make_unique<GuestMetrics>();
-  }
 
   return true;
 }

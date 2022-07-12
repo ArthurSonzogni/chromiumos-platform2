@@ -10,11 +10,9 @@
 #include <unistd.h>
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
-#include <vm_protos/proto_bindings/container_host.pb.h>
 
 #include <memory>
 #include <string>
-#include "base/strings/string_split.h"
 
 // syslog.h and base/logging.h both try to #define LOG_INFO and LOG_WARNING.
 // We need to #undef at least these two before including base/logging.h.  The
@@ -74,7 +72,6 @@ constexpr char kGetDiskInfoArg[] = "get_disk_info";
 constexpr char kRequestSpaceArg[] = "request_space";
 constexpr char kReleaseSpaceArg[] = "release_space";
 constexpr char kSftpServer[] = "/usr/lib/openssh/sftp-server";
-constexpr char kMetricsSwitch[] = "metrics";
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
 
@@ -236,7 +233,6 @@ void PrintUsage() {
             << "  --terminal: opens terminal\n"
             << "  --selectfile: open file dialog and return file: URL list\n"
             << "  --disk: handles requests relating to disk management\n"
-            << "  --metrics: reports metrics to the host\n"
             << "Select File Switches (only with --client --selectfile):\n"
             << "  --type: "
                "open-file|open-multi-file|saveas-file|folder|upload-folder\n"
@@ -247,8 +243,6 @@ void PrintUsage() {
             << "  get_disk_info: returns information about the disk\n"
             << "  request_space <bytes>: tries to expand the disk by <bytes>\n"
             << "  release_space <bytes>: tries to shrink the disk by <bytes>\n"
-            << "Metrics args (use with --client --metrics):\n"
-            << "  <metric_name>=<metric_value>,[...]\n"
             << "Server Switches (only with --server):\n"
             << "  --allow_any_user: allow running as non-default uid\n";
 }
@@ -328,52 +322,6 @@ int HandleDiskArgs(std::vector<std::string> args) {
   return -1;
 }
 
-int HandleMetricsArgs(std::vector<std::string> args) {
-  vm_tools::container::ReportMetricsRequest request;
-  if (args.empty()) {
-    LOG(ERROR) << "Missing arguments in --metrics mode";
-    PrintUsage();
-    return -1;
-  }
-
-  // Expected argument: swap_bytes_written=1234567890,bytes_written=99999999,...
-  base::StringPairs key_value_pairs;
-  if (!base::SplitStringIntoKeyValuePairs(args.at(0), '=', ',',
-                                          &key_value_pairs)) {
-    LOG(ERROR) << "Invalid argument to --metrics";
-    PrintUsage();
-    return -1;
-  }
-
-  for (const auto& [metric_name, metric_value] : key_value_pairs) {
-    auto metric = request.add_metric();
-    metric->set_name(metric_name);
-    uint64_t metric_arg;
-    bool arg_conversion = base::StringToUint64(metric_value, &metric_arg);
-    if (!arg_conversion) {
-      LOG(ERROR) << "Couldn't parse metric value (expected Uint64)";
-      PrintUsage();
-      return -1;
-    }
-    metric->set_value(metric_arg);
-  }
-
-  vm_tools::container::ReportMetricsResponse response;
-  if (!vm_tools::garcon::HostNotifier::ReportMetrics(std::move(request),
-                                                     &response)) {
-    LOG(ERROR) << "ReportMetrics RPC to host failed";
-    return -1;
-  }
-
-  if (response.error() != 0) {
-    LOG(ERROR) << "ReportMetrics RPC to host returned error "
-               << response.error();
-    return -1;
-  }
-
-  return 0;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -436,8 +384,6 @@ int main(int argc, char** argv) {
       }
     } else if (cl->HasSwitch(kDiskSwitch)) {
       return HandleDiskArgs(cl->GetArgs());
-    } else if (cl->HasSwitch(kMetricsSwitch)) {
-      return HandleMetricsArgs(cl->GetArgs());
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();

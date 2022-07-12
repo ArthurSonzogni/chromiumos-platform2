@@ -347,28 +347,6 @@ message ReleaseSpaceResponse {
   int64 error = 2;
 }
 
-// Guest metric, for example "borealis-swap-kb-written"
-message Metric {
-  // Metric name, for Cicerone to convert into a histogram key
-  string name = 1;
-  // Metric value
-  int64 value = 2;
-}
-
-// For passing guest metrics to the host.
-message ReportMetricsRequest {
-  // The security token the container was given.
-  string token = 1;
-  // Metrics to report
-  repeated Metric metric = 2;
-}
-
-// Response from ReportMetrics.
-message ReportMetricsResponse {
-  // 0 if the request was successful.
-  int64 error = 1;
-}
-
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -436,8 +414,6 @@ service ContainerListener {
 
   // Called by a container when it no longer needs as much space.
   rpc ReleaseSpace(ReleaseSpaceRequest) returns (ReleaseSpaceResponse);
-
-  rpc ReportMetrics(ReportMetricsRequest) returns (ReportMetricsResponse);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.

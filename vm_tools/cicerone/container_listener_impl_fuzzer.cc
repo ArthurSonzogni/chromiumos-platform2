@@ -209,7 +209,6 @@ DEFINE_PROTO_FUZZER(
     vm_tools::container::GetDiskInfoResponse get_disk_info_response;
     vm_tools::container::RequestSpaceResponse request_space_response;
     vm_tools::container::ReleaseSpaceResponse release_space_response;
-    vm_tools::container::ReportMetricsResponse report_metrics_response;
 
     switch (action.input_case()) {
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
@@ -402,13 +401,6 @@ DEFINE_PROTO_FUZZER(
           kReleaseSpaceRequest:
         container_listener->ReleaseSpace(
             &context, &action.release_space_request(), &release_space_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kReportMetricsRequest:
-        container_listener->ReportMetrics(&context,
-                                          &action.report_metrics_request(),
-                                          &report_metrics_response);
         break;
 
       default:
