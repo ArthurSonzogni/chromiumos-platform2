@@ -5,6 +5,7 @@
 use std::env;
 
 use crosvm_base::unix::getpid;
+use log::LevelFilter;
 use log::SetLoggerError;
 use stderrlog::StdErrLog;
 use syslog::{BasicLogger, Facility, Formatter3164};
@@ -56,7 +57,7 @@ pub fn init(ident: String, log_to_stderr: bool) -> Result<()> {
             log::Level::Info,
         )
     } else {
-        log::set_boxed_logger(syslog_logger)
+        log::set_boxed_logger(syslog_logger).map(|()| log::set_max_level(LevelFilter::Info))
     }
     .map_err(Error::SetLoggerError)
 }
