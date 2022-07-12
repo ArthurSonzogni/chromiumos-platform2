@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 
 # This file lists out the seccomp policy for allowed syscalls on cups_proxy.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 accept4: 1
 bind: 1
 brk: 1

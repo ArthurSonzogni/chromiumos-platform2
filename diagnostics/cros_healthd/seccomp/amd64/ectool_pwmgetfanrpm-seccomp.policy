@@ -5,6 +5,9 @@
 # This file lists out the seccomp policy.
 
 # The following are generic syscalls.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 openat: 1
 stat: 1
 fstat: 1

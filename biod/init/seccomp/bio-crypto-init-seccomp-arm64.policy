@@ -5,6 +5,9 @@
 # Use the run_bio_crypto_init_strace.sh script to generate an initial list
 # of syscalls.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 openat: 1
 read: 1
 close: 1

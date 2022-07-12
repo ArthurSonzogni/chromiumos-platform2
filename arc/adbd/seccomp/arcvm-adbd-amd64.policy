@@ -5,6 +5,9 @@
 # This file lists out the seccomp policy for allowed syscalls on arc-adbd
 # when it works with arcvm
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 stat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

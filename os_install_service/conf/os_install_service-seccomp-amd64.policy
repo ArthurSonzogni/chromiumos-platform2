@@ -9,6 +9,9 @@
 # SCSI_IOCTL_GET_IDLUN = 0x5382
 # LOOP_CONFIGURE = 0x4c0a
 # CDROM_LAST_WRITTEN = 0x5395
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == BLKDISCARDZEROES || arg1 == BLKGETSIZE64 || \
        arg1 == BLKIOMIN || arg1 == BLKIOOPT || arg1 == BLKPBSZGET || \

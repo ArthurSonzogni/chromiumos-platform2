@@ -4,6 +4,9 @@
 
 # Use the run_biod_strace.sh script to generate an initial list of syscalls.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 access: 1
 faccessat: 1
 faccessat2: 1

@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

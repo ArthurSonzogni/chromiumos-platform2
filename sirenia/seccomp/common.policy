@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 
 # General file descriptor operations.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 read: 1
 readv: 1
 write: 1

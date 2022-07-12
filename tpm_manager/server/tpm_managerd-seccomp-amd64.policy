@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 
 # Tested on link
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 gettid: 1
 getuid: 1
 geteuid: 1

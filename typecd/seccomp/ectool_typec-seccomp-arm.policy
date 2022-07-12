@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 #
 # This seccomp policy is used by debugd while creating the sandbox to run the
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # following command:
 # ectool inventory
 #

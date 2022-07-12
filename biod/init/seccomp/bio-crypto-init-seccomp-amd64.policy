@@ -5,6 +5,9 @@
 # Use the run_bio_crypto_init_strace.sh script to generate an initial list
 # of syscalls.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # clone: bio_crypto_init forks a child process
 access: 1
 faccessat: 1

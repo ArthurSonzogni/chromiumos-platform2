@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # Generated using "instructions for generating a seccomp policy" at:
 # https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
 

@@ -4,6 +4,9 @@
 
 # These seccomp rules specify the syscalls used by the override_max_pressure.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # ioctl: arg1 == EVIOCGABS || EVIOCSABS
 ioctl: arg1 == 0x80184558 || arg1 == 0x401845d8
 openat: 1

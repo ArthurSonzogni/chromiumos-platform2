@@ -4,6 +4,9 @@
 
 # This is the seccomp policy of allowed syscalls for GrammarCheckerModel
 # on 64-bit ARM.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 brk: 1
 clock_gettime: 1
 close: 1

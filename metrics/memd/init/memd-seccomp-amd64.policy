@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # Use this to generate a starting list of syscalls:
 #
 # strace -f minijail0 -i /usr/bin/memd always-poll-fast >& /tmp/memd.strace & sleep 3; dbus-send --system --type=signal / org.chromium.EventLogger.ChromeEvent string:tab-discard

@@ -5,6 +5,9 @@
 # This file lists out the seccomp policy.
 
 # The following are allowed syscalls for runtime_probe skeleton + DBus
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 clock_gettime: 1
 clock_gettime64: 1
 rt_sigaction: 1

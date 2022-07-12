@@ -4,6 +4,9 @@
 #
 # Please see memd-seccomp.policy.amd64 for comments.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 access: 1
 faccessat: 1
 faccessat2: 1

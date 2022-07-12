@@ -1,6 +1,9 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 faccessat: 1
 faccessat2: 1
 lseek: 1
