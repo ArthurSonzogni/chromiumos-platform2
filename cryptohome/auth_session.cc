@@ -20,6 +20,7 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -30,6 +31,7 @@
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -1465,24 +1467,28 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
 
   user_data_auth::AddAuthFactorReply reply;
 
-  // 1. Create a new auth factor in-memory, by executing auth block's Create().
+  // 1. Create a new auth factor in-memory by creating key blobs and capturing
+  // the resulting block state.
+  AuthBlockState auth_block_state;
   KeyBlobs key_blobs;
   AuthBlockType auth_block_type;
-  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_or_status =
-      AuthFactor::CreateNew(auth_factor_type,
-                            AuthFactorStorageType::kUserSecretStash,
-                            auth_factor_label, auth_factor_metadata, auth_input,
-                            auth_block_utility_, key_blobs, auth_block_type);
-  if (!auth_factor_or_status.ok()) {
-    LOG(ERROR) << "Failed to create new auth factor";
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocAuthSessionCreateAuthFactorFailedInAddViaUSS),
-                       user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-                       .Wrap(std::move(auth_factor_or_status).status()));
+  CryptoStatus create_status =
+      auth_block_utility_->CreateKeyBlobsWithAuthFactorType(
+          auth_factor_type, AuthFactorStorageType::kUserSecretStash, auth_input,
+          auth_block_state, key_blobs, auth_block_type);
+  if (!create_status.ok()) {
+    LOG(ERROR) << "Auth block creation failed for new auth factor";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateKeyBlobsFailedInAddViaUSS),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(create_status)));
     return;
   }
+  auto auth_factor =
+      std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
+                                   auth_factor_metadata, auth_block_state);
 
   // Parameterize timer by AuthBlockType.
   auth_session_performance_timer->auth_block_type = auth_block_type;
@@ -1553,8 +1559,6 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
   // 5. Persist the factor.
   // It's important to do this after all steps ##1-4, so that we only start
   // writing files after all validity checks (like the label duplication check).
-  std::unique_ptr<AuthFactor> auth_factor =
-      std::move(auth_factor_or_status).value();
   status =
       auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
   if (!status.ok()) {
