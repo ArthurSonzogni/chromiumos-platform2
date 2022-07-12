@@ -93,42 +93,18 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
   void SetUpAccelBase(bool with_hrtimer) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
-    if (with_hrtimer) {
-      hrtimer_ = std::make_unique<libmems::fakes::FakeIioDevice>(
-          nullptr, kFakeTriggerName, kFakeTriggerId);
-      device_->SetHrtimer(hrtimer_.get());
-    }
-
-    EXPECT_TRUE(
-        device_->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
-                                      fakes::kFakeSamplingFrequencyAvailable));
 
     for (const auto& channel : libmems::fakes::kFakeAccelChns) {
       device_->AddChannel(
           std::make_unique<libmems::fakes::FakeIioChannel>(channel, true));
     }
 
-    EXPECT_TRUE(
-        device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0));
-
-    handler_ = fakes::FakeSamplesHandler::Create(
-        task_environment_.GetMainThreadTaskRunner(),
-        task_environment_.GetMainThreadTaskRunner(), device_.get());
-    EXPECT_TRUE(handler_);
+    SetUpHandler(with_hrtimer, cros::mojom::DeviceType::ACCEL);
   }
 
   void SetUpLightBase(bool with_hrtimer) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, kFakeLightName, kFakeLightId);
-    if (with_hrtimer) {
-      hrtimer_ = std::make_unique<libmems::fakes::FakeIioDevice>(
-          nullptr, kFakeTriggerName, kFakeTriggerId);
-      device_->SetHrtimer(hrtimer_.get());
-    }
-
-    EXPECT_TRUE(
-        device_->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
-                                      fakes::kFakeSamplingFrequencyAvailable));
 
     auto light_channel = std::make_unique<libmems::fakes::FakeIioChannel>(
         cros::mojom::kLightChannel, true);
@@ -143,8 +119,25 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
     device_->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
         libmems::kTimestampAttr, true));
 
+    SetUpHandler(with_hrtimer, cros::mojom::DeviceType::LIGHT);
+  }
+
+  void SetUpHandler(bool with_hrtimer, cros::mojom::DeviceType type) {
+    if (with_hrtimer) {
+      hrtimer_ = std::make_unique<libmems::fakes::FakeIioDevice>(
+          nullptr, kFakeTriggerName, kFakeTriggerId);
+      device_->SetHrtimer(hrtimer_.get());
+    }
+
+    EXPECT_TRUE(
+        device_->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
+                                      fakes::kFakeSamplingFrequencyAvailable));
+
     EXPECT_TRUE(
         device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0));
+
+    device_data_ = std::make_unique<DeviceData>(
+        device_.get(), std::set<cros::mojom::DeviceType>{type});
 
     handler_ = fakes::FakeSamplesHandler::Create(
         task_environment_.GetMainThreadTaskRunner(),
@@ -201,10 +194,6 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
-
   // ClientData should be valid until |handler_| is destructed.
   clients_data_.emplace_back(ClientData(0, device_data_.get()));
   ClientData& client_data = clients_data_[0];
@@ -237,10 +226,6 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
 TEST_F(SamplesHandlerTest, NoTimeout) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
 
   // ClientData should be valid until |handler_| is destructed.
   clients_data_.emplace_back(ClientData(0, device_data_.get()));
@@ -282,10 +267,6 @@ TEST_F(SamplesHandlerTest, NoTimeout) {
 TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
 
   std::vector<double> freqs = {0.0, 10.0};
   clients_data_.reserve(freqs.size());
@@ -332,10 +313,6 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
 
 TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
   device_->DisableFd();
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
 
   std::vector<double> freqs = {5.0, 0.0, 10.0, 100.0};
   clients_data_.reserve(freqs.size());
@@ -412,10 +389,6 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
-
   clients_data_.reserve(GetParam().size());
 
   std::multiset<double> frequencies;
@@ -481,10 +454,6 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
   // Set the pause in the beginning to prevent reading samples before all
   // clients added.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> rf_failures;
   for (int i = 0; i < kNumFailures; ++i) {
@@ -635,10 +604,6 @@ class SamplesHandlerWithTriggerTest : public ::testing::Test,
 };
 
 TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
-
   // ClientData should be valid until |handler_| is destructed.
   clients_data_.emplace_back(ClientData(0, device_data_.get()));
   ClientData& client_data = clients_data_[0];
@@ -733,10 +698,6 @@ TEST_F(SamplesHandlerLightTest, AcpiAls) {
   // Set the pause in the beginning to test only the first sample from raw
   // values.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
 
   // ClientData should be valid until |handler_| is destructed.
   clients_data_.emplace_back(ClientData(0, device_data_.get()));
