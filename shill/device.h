@@ -193,9 +193,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
-  DHCPController* dhcp_controller() const {
-    return network()->dhcp_controller();
-  }
   IPConfig* ipconfig() const { return network()->ipconfig(); }
   IPConfig* ip6config() const { return network()->ip6config(); }
   void set_ipconfig(std::unique_ptr<IPConfig> config) {
@@ -303,13 +300,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type);
-
-  // Calculates the duration till a DHCP lease is due for renewal, and stores
-  // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
-  // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
-  // TODO(jiejiang): Move this out of Device class before Device has multiple
-  // active connection.
-  std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
   // Returns a string formatted as "$ifname $service_log_name", or
   // "$ifname no_service" if |selected_service_| is currently not defined.

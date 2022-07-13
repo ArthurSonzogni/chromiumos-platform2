@@ -2492,7 +2492,7 @@ void WiFi::StateChanged(const std::string& new_state) {
         // AP is on a different subnet than where we started.
         // TODO(matthewmwang): Handle the IPv6 roam case.
         is_roaming_in_progress_ = false;
-        if (TimeToNextDHCPLeaseRenewal() != std::nullopt) {
+        if (network()->TimeToNextDHCPLeaseRenewal() != std::nullopt) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
           RetrieveLinkStatistics(NetworkEvent::kDHCPRenewOnRoam);
           network()->RenewDHCPLease();
@@ -2802,7 +2802,7 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
                  weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
       base::Bind(&WiFi::RemoveSupplicantNetworks,
                  weak_ptr_factory_while_started_.GetWeakPtr()),
-      TimeToNextDHCPLeaseRenewal());
+      network()->TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnDarkResume(const ResultCallback& callback) {
@@ -4027,7 +4027,8 @@ void WiFi::OnGetDHCPLease() {
   }
   SLOG(this, 3) << __func__ << ": "
                 << "IPv4 DHCP lease obtained";
-  wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
+  wake_on_wifi_->OnConnectedAndReachable(
+      network()->TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnGetDHCPFailure() {

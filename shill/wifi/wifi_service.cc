@@ -775,7 +775,7 @@ void WiFiService::SetState(ConnectState state) {
       // if the lease is still (potentially) valid and don't regenerate MAC
       // address for this network.
       std::optional<base::TimeDelta> lease_time =
-          wifi_->TimeToNextDHCPLeaseRenewal();
+          wifi_->network()->TimeToNextDHCPLeaseRenewal();
       if (lease_time.has_value()) {
         dhcp4_lease_expiry_ = clock_->Now() + lease_time.value();
       } else {

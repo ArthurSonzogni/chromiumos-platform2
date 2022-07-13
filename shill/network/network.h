@@ -137,6 +137,10 @@ class Network {
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
   mockable void DestroyDHCPLease(const std::string& name);
+  // Calculates the duration till a DHCP lease is due for renewal, and stores
+  // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
+  // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
+  std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
   // Functions for IPv6.
   void StopIPv6();
@@ -183,7 +187,6 @@ class Network {
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
-  DHCPController* dhcp_controller() const { return dhcp_controller_.get(); }
   IPConfig* ipconfig() const { return ipconfig_.get(); }
   IPConfig* ip6config() const { return ip6config_.get(); }
   void set_dhcp_controller(std::unique_ptr<DHCPController> controller) {

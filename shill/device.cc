@@ -876,13 +876,6 @@ void Device::set_mac_address(const std::string& mac_address) {
   EmitMACAddress();
 }
 
-std::optional<base::TimeDelta> Device::TimeToNextDHCPLeaseRenewal() {
-  if (!dhcp_controller()) {
-    return std::nullopt;
-  }
-  return dhcp_controller()->TimeToLeaseExpiry();
-}
-
 void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   SLOG(this, 2) << __func__ << " Device: " << link_name() << " Service: "
                 << GetSelectedServiceRpcIdentifier(nullptr).value()

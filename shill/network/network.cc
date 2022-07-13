@@ -65,12 +65,12 @@ void Network::Start(const Network::StartOptions& opts) {
   if (opts.dhcp) {
     set_dhcp_controller(dhcp_provider_->CreateController(
         interface_name_, opts.dhcp.value(), technology_));
-    dhcp_controller()->RegisterCallbacks(
+    dhcp_controller_->RegisterCallbacks(
         base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
         base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
     set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                             IPConfig::kTypeDHCP));
-    dhcp_started = dhcp_controller()->RequestIP();
+    dhcp_started = dhcp_controller_->RequestIP();
   } else if (link_protocol_ipv4_properties_) {
     set_ipconfig(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
@@ -122,8 +122,8 @@ void Network::Stop() {
 void Network::StopInternal(bool is_failure) {
   StopIPv6();
   bool ipconfig_changed = false;
-  if (dhcp_controller()) {
-    dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
+  if (dhcp_controller_) {
+    dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
     set_dhcp_controller(nullptr);
   }
   if (ipconfig()) {
@@ -157,14 +157,14 @@ void Network::OnIPv4ConfigUpdated() {
   saved_network_config_ =
       ipconfig()->ApplyNetworkConfig(static_network_config_);
   if (static_network_config_.ipv4_address_cidr.has_value() &&
-      dhcp_controller()) {
+      dhcp_controller_) {
     // If we are using a statically configured IP address instead of a leased IP
     // address, release any acquired lease so it may be used by others.  This
     // allows us to merge other non-leased parameters (like DNS) when they're
     // available from a DHCP server and not overridden by static parameters, but
     // at the same time we avoid taking up a dynamic IP address the DHCP server
     // could assign to someone else who might actually use it.
-    dhcp_controller()->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
+    dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
   }
   SetupConnection(ipconfig());
   event_handler_->OnIPConfigsPropertyUpdated();
@@ -190,9 +190,9 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   }
 
-  if (dhcp_controller()) {
+  if (dhcp_controller_) {
     // Trigger DHCP renew.
-    dhcp_controller()->RenewIP();
+    dhcp_controller_->RenewIP();
   }
 }
 
@@ -214,8 +214,8 @@ IPConfig* Network::GetCurrentIPConfig() const {
 
 void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                         bool new_lease_acquired) {
-  // |dhcp_controller()| cannot be empty when the callback is invoked.
-  DCHECK(dhcp_controller());
+  // |dhcp_controller_| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
   ipconfig()->UpdateProperties(properties);
   OnIPv4ConfigUpdated();
@@ -227,8 +227,8 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
 void Network::OnDHCPFailure() {
   event_handler_->OnGetDHCPFailure();
 
-  // |dhcp_controller()| cannot be empty when the callback is invoked.
-  DCHECK(dhcp_controller());
+  // |dhcp_controller_| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
   if (static_network_config_.ipv4_address_cidr.has_value()) {
     // Consider three cases:
@@ -281,6 +281,13 @@ bool Network::RenewDHCPLease() {
 
 void Network::DestroyDHCPLease(const std::string& name) {
   dhcp_provider_->DestroyLease(name);
+}
+
+std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
+  if (!dhcp_controller_) {
+    return std::nullopt;
+  }
+  return dhcp_controller_->TimeToLeaseExpiry();
 }
 
 void Network::StopIPv6() {
