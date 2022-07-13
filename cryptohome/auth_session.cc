@@ -1424,6 +1424,27 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     std::unique_ptr<AuthBlockState> auth_block_state) {
   user_data_auth::AddAuthFactorReply reply;
 
+  // Check the status of the callback error, to see if the key blob creation was
+  // actually successful.
+  if (!callback_error.ok() || !key_blobs || !auth_block_state) {
+    if (callback_error.ok()) {
+      callback_error = MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInPersistToUSS),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO,
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    }
+    LOG(ERROR) << "KeyBlob creation failed before persisting USS";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateFailedInPersistToUSS),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(callback_error)));
+    return;
+  }
+
   // Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =
       key_blobs->DeriveUssCredentialSecret();
@@ -1668,35 +1689,36 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
 
   user_data_auth::AddAuthFactorReply reply;
 
-  // Create a new auth factor in-memory by creating key blobs and capturing
-  // the resulting block state.
-  auto auth_block_state = std::make_unique<AuthBlockState>();
-  auto key_blobs = std::make_unique<KeyBlobs>();
-  AuthBlockType auth_block_type;
-  CryptoStatus create_status =
-      auth_block_utility_->CreateKeyBlobsWithAuthFactorType(
-          auth_factor_type, AuthFactorStorageType::kUserSecretStash, auth_input,
-          *auth_block_state, *key_blobs, auth_block_type);
-  if (!create_status.ok()) {
-    LOG(ERROR) << "Auth block creation failed for new auth factor";
+  // Determine the auth block type to use.
+  bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
+  bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
+  AuthBlockType auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeForCreation(
+          is_le_credential, is_recovery,
+          /*is_challenge_credential=*/false,
+          AuthFactorStorageType::kUserSecretStash);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateKeyBlobsFailedInAddViaUSS),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-            .Wrap(std::move(create_status)));
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddViaUSS),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
     return;
   }
 
   // Parameterize timer by AuthBlockType.
   auth_session_performance_timer->auth_block_type = auth_block_type;
 
-  // Persist the key blobs out to the USS.
-  PersistAuthFactorToUserSecretStash(
-      auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      std::move(auth_session_performance_timer), std::move(on_done),
-      OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
-      std::move(auth_block_state));
+  // Create the keyset and then add it to the USS after it completes.
+  auto create_callback = base::BindOnce(
+      &AuthSession::PersistAuthFactorToUserSecretStash,
+      weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor_label,
+      auth_factor_metadata, auth_input,
+      std::move(auth_session_performance_timer), std::move(on_done));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input, std::move(create_callback));
 }
 
 CryptohomeStatus AuthSession::AuthenticateViaUserSecretStash(

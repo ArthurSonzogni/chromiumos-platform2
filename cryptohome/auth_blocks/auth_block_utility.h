@@ -112,16 +112,6 @@ class AuthBlockUtility {
   virtual void AssignAuthBlockStateToVaultKeyset(
       const AuthBlockState& state, VaultKeyset& vault_keyset) const = 0;
 
-  // Creates a new auth block state and key blobs using an auth block. On error,
-  // returns the error code.
-  [[nodiscard]] virtual CryptoStatus CreateKeyBlobsWithAuthFactorType(
-      AuthFactorType auth_factor_type,
-      const AuthFactorStorageType auth_factor_storage_type,
-      const AuthInput& auth_input,
-      AuthBlockState& out_auth_block_state,
-      KeyBlobs& out_key_blobs,
-      AuthBlockType& out_auth_block_type) const = 0;
-
   // Derives key blobs using the given auth block state and input.
   [[nodiscard]] virtual CryptoStatus DeriveKeyBlobs(
       const AuthInput& auth_input,

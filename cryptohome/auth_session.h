@@ -521,6 +521,8 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss);
+  FRIEND_TEST(AuthSessionWithUssExperimentTest,
+              AddPasswordAuthFactorViaAsyncUss);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, RemoveAuthFactor);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);

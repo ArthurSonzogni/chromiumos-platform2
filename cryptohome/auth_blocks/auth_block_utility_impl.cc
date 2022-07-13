@@ -518,47 +518,6 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
   }
 }
 
-CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
-    AuthFactorType auth_factor_type,
-    const AuthFactorStorageType auth_factor_storage_type,
-    const AuthInput& auth_input,
-    AuthBlockState& out_auth_block_state,
-    KeyBlobs& out_key_blobs,
-    AuthBlockType& out_auth_block_type) const {
-  bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
-  bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
-  AuthBlockType auth_block_type = GetAuthBlockTypeForCreation(
-      is_le_credential, is_recovery,
-      /*is_challenge_credential =*/false, auth_factor_storage_type);
-
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    LOG(ERROR) << "Failed to get auth block type for creation";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  out_auth_block_type = auth_block_type;
-
-  AuthInput mutable_auth_input = auth_input;
-
-  if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    LOG(ERROR) << "Unsupported auth factor type";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthBlockUtilChalCredUnsupportedInCreateKeyBlobsAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-  // TODO(b/216804305): Stop hardcoding the auth block.
-  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  return auth_block.value()->Create(auth_input, &out_auth_block_state,
-                                    &out_key_blobs);
-}
-
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
   AuthBlockType auth_block_type = AuthBlockType::kMaxValue;

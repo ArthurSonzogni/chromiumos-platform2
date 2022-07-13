@@ -13,8 +13,11 @@
 #include <utility>
 
 #include <base/callback_helpers.h>
+#include <base/run_loop.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/timer/mock_timer.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -55,6 +58,7 @@ using hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::ElementsAre;
+using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Pair;
 using ::testing::Return;
@@ -108,6 +112,9 @@ class AuthSessionTest : public ::testing::Test {
 
  protected:
   base::test::SingleThreadTaskEnvironment task_environment_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_ =
+      base::SequencedTaskRunnerHandle::Get();
+
   // Mock and fake objects, will be passed to AuthSession for its internal use.
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
@@ -1439,23 +1446,23 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
       const std::string& password, AuthSession& auth_session) {
     EXPECT_CALL(
         auth_block_utility_,
-        CreateKeyBlobsWithAuthFactorType(
-            AuthFactorType::kPassword, AuthFactorStorageType::kUserSecretStash,
-            /*auth_input=*/_,
-            /*out_auth_block_state=*/_,
-            /*out_key_blobs=*/_,
-            /*out_auth_block_type=*/_))
-        .WillOnce([](AuthFactorType auth_factor_type,
-                     const AuthFactorStorageType auth_factor_storage_type,
-                     const AuthInput& auth_input,
-                     AuthBlockState& out_auth_block_state,
-                     KeyBlobs& out_key_blobs,
-                     AuthBlockType& out_auth_block_type) {
-          out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
-          out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
-          out_key_blobs.vkk_key =
+        GetAuthBlockTypeForCreation(false, false, false,
+                                    AuthFactorStorageType::kUserSecretStash))
+        .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                         AuthBlockType::kTpmBoundToPcr, _, _))
+        .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                     AuthBlock::CreateCallback create_callback) {
+          // Make an arbitrary auth block state type can be used in this test.
+          auto key_blobs = std::make_unique<KeyBlobs>();
+          key_blobs->vkk_key =
               GetFakeDerivedSecret(auth_input.user_input.value());
-          return OkStatus<CryptohomeCryptoError>();
+          auto auth_block_state = std::make_unique<AuthBlockState>();
+          auth_block_state->state = TpmBoundToPcrAuthBlockState();
+          std::move(create_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                   std::move(auth_block_state));
+          return true;
         });
 
     user_data_auth::AddAuthFactorRequest request;
@@ -1523,23 +1530,23 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
       const std::string& pin, AuthSession& auth_session) {
     EXPECT_CALL(
         auth_block_utility_,
-        CreateKeyBlobsWithAuthFactorType(
-            AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
-            /*auth_input=*/_,
-            /*out_auth_block_state=*/_,
-            /*out_key_blobs=*/_,
-            /*out_auth_block_type=*/_))
-        .WillOnce([](AuthFactorType auth_factor_type,
-                     const AuthFactorStorageType auth_factor_storage_type,
-                     const AuthInput& auth_input,
-                     AuthBlockState& out_auth_block_state,
-                     KeyBlobs& out_key_blobs,
-                     AuthBlockType& out_auth_block_type) {
-          out_auth_block_state.state = PinWeaverAuthBlockState();
-          out_auth_block_type = AuthBlockType::kPinWeaver;
-          out_key_blobs.vkk_key =
+        GetAuthBlockTypeForCreation(true, false, false,
+                                    AuthFactorStorageType::kUserSecretStash))
+        .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
+    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                         AuthBlockType::kPinWeaver, _, _))
+        .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                     AuthBlock::CreateCallback create_callback) {
+          // Make an arbitrary auth block state type can be used in this test.
+          auto key_blobs = std::make_unique<KeyBlobs>();
+          key_blobs->vkk_key =
               GetFakeDerivedSecret(auth_input.user_input.value());
-          return OkStatus<CryptohomeCryptoError>();
+          auto auth_block_state = std::make_unique<AuthBlockState>();
+          auth_block_state->state = PinWeaverAuthBlockState();
+          std::move(create_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                   std::move(auth_block_state));
+          return true;
         });
     // Calling AddAuthFactor.
     user_data_auth::AddAuthFactorRequest add_pin_request;
@@ -1630,24 +1637,24 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
-                                       AuthFactorType::kPassword,
-                                       AuthFactorStorageType::kUserSecretStash,
-                                       /*auth_input=*/_,
-                                       /*out_auth_block_state=*/_,
-                                       /*out_key_blobs=*/_,
-                                       /*out_auth_block_type=*/_))
-      .WillOnce(
-          [](AuthFactorType auth_factor_type,
-             const AuthFactorStorageType auth_factor_storage_type,
-             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
-             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
-            // An arbitrary auth block state type can be used in this test.
-            out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
-            out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
-            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-            return OkStatus<CryptohomeCryptoError>();
-          });
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(
+                  false, false, false, AuthFactorStorageType::kUserSecretStash))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                       AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+        return true;
+      });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -1678,6 +1685,152 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
   EXPECT_NE(auth_session.label_to_auth_factor_.find(kFakeLabel),
             auth_session.label_to_auth_factor_.end());
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+
+  // Test.
+  // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(
+                  false, false, false, AuthFactorStorageType::kUserSecretStash))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                       AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([this](AuthBlockType, const AuthInput&,
+                       AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state, but schedule it to run later to
+        // simulate an proper async key creation.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        task_runner_->PostTask(
+            FROM_HERE,
+            base::BindOnce(std::move(create_callback),
+                           OkStatus<CryptohomeCryptoError>(),
+                           std::move(key_blobs), std::move(auth_block_state)));
+        return true;
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  base::RunLoop run_loop;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](base::RunLoop& run_loop,
+                      user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     error = reply.error();
+                     run_loop.Quit();
+                   },
+                   std::ref(run_loop), std::ref(error)));
+
+  // Pump messages until the AddAuthFactor on_done calls Quit.
+  run_loop.Run();
+
+  // Verify.
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_NE(auth_session.label_to_auth_factor_.find(kFakeLabel),
+            auth_session.label_to_auth_factor_.end());
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       AddPasswordAuthFactorViaAsyncUssFails) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+
+  // Test.
+  // Setting the expectation that the auth block utility will be called an that
+  // key blob creation will fail.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(
+                  false, false, false, AuthFactorStorageType::kUserSecretStash))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                       AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([this](AuthBlockType, const AuthInput&,
+                       AuthBlock::CreateCallback create_callback) {
+        // Have the creation callback report an error.
+        task_runner_->PostTask(
+            FROM_HERE,
+            base::BindOnce(
+                std::move(create_callback),
+                MakeStatus<CryptohomeCryptoError>(
+                    kErrorLocationForTestingAuthSession,
+                    error::ErrorActionSet(
+                        {error::ErrorAction::kDevCheckUnexpectedState}),
+                    CryptoError::CE_OTHER_CRYPTO,
+                    user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED),
+                nullptr, nullptr));
+        return true;
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  base::RunLoop run_loop;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.AddAuthFactor(
+      request, base::BindOnce(
+                   [](base::RunLoop& run_loop,
+                      user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::AddAuthFactorReply& reply) {
+                     error = reply.error();
+                     run_loop.Quit();
+                   },
+                   std::ref(run_loop), std::ref(error)));
+
+  // Pump messages until the AddAuthFactor on_done calls Quit.
+  run_loop.Run();
+
+  // Verify.
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED, error);
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors, IsEmpty());
 }
 
 // Test that a new auth factor cannot be added for an unauthenticated
@@ -1734,24 +1887,24 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
             std::nullopt);
   // Add a password first.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
-                                       AuthFactorType::kPassword,
-                                       AuthFactorStorageType::kUserSecretStash,
-                                       /*auth_input=*/_,
-                                       /*out_auth_block_state=*/_,
-                                       /*out_key_blobs=*/_,
-                                       /*out_auth_block_type=*/_))
-      .WillOnce(
-          [](AuthFactorType auth_factor_type,
-             const AuthFactorStorageType auth_factor_storage_type,
-             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
-             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
-            // An arbitrary auth block state type can be used in this test.
-            out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
-            out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
-            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-            return OkStatus<CryptohomeCryptoError>();
-          });
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(
+                  false, false, false, AuthFactorStorageType::kUserSecretStash))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                       AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+        return true;
+      });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -1779,23 +1932,23 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
 
   // Setting the expectation that the auth block utility will create key blobs.
   EXPECT_CALL(auth_block_utility_,
-              CreateKeyBlobsWithAuthFactorType(
-                  AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
-                  /*auth_input=*/_,
-                  /*out_auth_block_state=*/_,
-                  /*out_key_blobs=*/_,
-                  /*out_auth_block_type=*/_))
-      .WillOnce(
-          [](AuthFactorType auth_factor_type,
-             const AuthFactorStorageType auth_factor_storage_type,
-             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
-             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
-            // An arbitrary auth block state type can be used in this test.
-            out_auth_block_state.state = PinWeaverAuthBlockState();
-            out_auth_block_type = AuthBlockType::kPinWeaver;
-            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-            return OkStatus<CryptohomeCryptoError>();
-          });
+              GetAuthBlockTypeForCreation(
+                  true, false, false, AuthFactorStorageType::kUserSecretStash))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlockAsync(AuthBlockType::kPinWeaver, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = PinWeaverAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+        return true;
+      });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -2011,24 +2164,25 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthFactorType(
-                                       AuthFactorType::kCryptohomeRecovery,
-                                       AuthFactorStorageType::kUserSecretStash,
-                                       /*auth_input=*/_,
-                                       /*out_auth_block_state=*/_,
-                                       /*out_key_blobs=*/_,
-                                       /*out_auth_block_type=*/_))
-      .WillOnce(
-          [](AuthFactorType auth_factor_type,
-             const AuthFactorStorageType auth_factor_storage_type,
-             const AuthInput& auth_input, AuthBlockState& out_auth_block_state,
-             KeyBlobs& out_key_blobs, AuthBlockType& out_auth_block_type) {
-            // An arbitrary auth block state type can be used in this test.
-            out_auth_block_state.state = CryptohomeRecoveryAuthBlockState();
-            out_auth_block_type = AuthBlockType::kCryptohomeRecovery;
-            out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
-            return OkStatus<CryptohomeCryptoError>();
-          });
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(
+                  false, true, false, AuthFactorStorageType::kUserSecretStash))
+      .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlockAsync(
+                  AuthBlockType::kCryptohomeRecovery, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = CryptohomeRecoveryAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+        return true;
+      });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
