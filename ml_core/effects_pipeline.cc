@@ -45,8 +45,8 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   }
 
   // TODO(b:237964122) Consider converting effects_config to a protobuf
-  virtual void SetEffect(cros::EffectsConfig* effects_config) {
-    set_effect_fn_(pipeline_, effects_config);
+  virtual bool SetEffect(cros::EffectsConfig* effects_config) {
+    return set_effect_fn_(pipeline_, effects_config);
   }
 
  protected:

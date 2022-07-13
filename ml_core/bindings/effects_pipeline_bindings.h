@@ -73,7 +73,7 @@ bool cros_ml_effects_SetRenderedImageObserver(
 typedef decltype(&cros_ml_effects_SetRenderedImageObserver)
     cros_ml_effects_SetRenderedImageObserverFn;
 
-void cros_ml_effects_SetEffect(void* pipeline,
+bool cros_ml_effects_SetEffect(void* pipeline,
                                cros::EffectsConfig* effects_config);
 typedef decltype(&cros_ml_effects_SetEffect) cros_ml_effects_SetEffectFn;
 }
