@@ -224,7 +224,7 @@ is_chrome_feature_enabled() {
     "org.chromium.ChromeFeaturesServiceInterface.${method}" \
     "string:${CROS_USER_ID_HASH}" 2>/dev/null)"
   status="$?"
-  [ "${status}" -eq 0 -a "${reply##* }" = "true" ]
+  [ "${status}" -eq 0 ] && [ "${reply##* }" = "true" ]
 }
 
 # shellcheck disable=SC2034
@@ -247,7 +247,7 @@ cmd_vsh() (
     return 1
   fi
 
-  if [ $# -ne 1 -a $# -ne 2 ]; then
+  if [ $# -ne 1 ] && [ $# -ne 2 ]; then
     help "Missing vm_name"
     return 1
   fi
@@ -1861,7 +1861,7 @@ dispatch() {
     # See if --help was requested; if so, handle it directly so each command
     # doesn't have to deal with it directly.
     for p in "$@"; do
-      if [ "${p}" = "-h" -o "${p}" = "--help" ]; then
+      if [ "${p}" = "-h" ] || [ "${p}" = "--help" ]; then
         cmd_help "${command}"
         return 0
       fi
