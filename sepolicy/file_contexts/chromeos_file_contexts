@@ -452,7 +452,8 @@ has_arc(`
 # This needs to match arc++. See: device/google/bertha/sepolicy/file_contexts.
 /dev/pts(/.*)?                  u:object_r:devpts:s0
 /dev/random                     u:object_r:random_device:s0
-/dev/shm(/.*)?                  u:object_r:cros_shm:s0
+# TODO(b/239615455): Restore this back to '/dev/shm(/.*)?'.
+/dev/shm/.+                     u:object_r:cros_shm:s0
 /dev/snd(/.*)?                  u:object_r:audio_device:s0
 /dev/tpm[0-9]*                  u:object_r:tpm_device:s0
 /dev/urandom                    u:object_r:urandom_device:s0
