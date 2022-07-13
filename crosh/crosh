@@ -342,22 +342,6 @@ is_chrome_feature_enabled() {
   [ "${status}" -eq 0 -a "${reply##* }" = "true" ]
 }
 
-
-imageloader() {
-  # Default timeout 30 seconds.
-  local timeout="--reply-timeout=30000"
-  case $1 in
-  --reply-timeout=*) timeout="$1"; shift;;
-  esac
-  local method="$1"; shift
-
-  dbus-send "${timeout}" --system --type=method_call \
-    --fixed --print-reply --dest=org.chromium.ComponentUpdaterService \
-    /org/chromium/ComponentUpdaterService \
-    "org.chromium.ComponentUpdaterService.${method}" "$@" \
-    2>&1 >/dev/null
-}
-
 # shellcheck disable=SC2034
 USAGE_vsh='<vm_name> [<container_name>]'
 # shellcheck disable=SC2034
