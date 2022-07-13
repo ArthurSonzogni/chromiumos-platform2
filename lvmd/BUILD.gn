@@ -12,6 +12,7 @@ group("all") {
     ":install_dbus_service",
     ":install_upstart_config",
     ":lvmd",
+    ":lvmd_client",
     ":lvmd_dbus_adaptors",
   ]
 }
@@ -28,6 +29,10 @@ pkg_config("target_defaults") {
     "system_api",
     "protobuf-lite",
   ]
+}
+
+pkg_config("lvmd_client_config") {
+  pkg_deps = [ "liblvmd-client" ]
 }
 
 generate_dbus_adaptors("lvmd_dbus_adaptors") {
@@ -58,4 +63,13 @@ install_config("install_dbus_service") {
 install_config("install_upstart_config") {
   sources = [ "init/lvmd.conf" ]
   install_path = "/etc/init"
+}
+
+executable("lvmd_client") {
+  sources = [ "lvmd_client.cc" ]
+  configs += [
+    ":target_defaults",
+    ":lvmd_client_config",
+  ]
+  install_path = "sbin"
 }
