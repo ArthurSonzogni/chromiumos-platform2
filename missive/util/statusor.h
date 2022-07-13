@@ -91,8 +91,8 @@ class [[nodiscard]] StatusOr {
   // is statically set to true, otherwise it is statically set to false.
   template <class U, typename V>
   struct is_implicitly_constructible
-      : base::conjunction<std::is_constructible<U, V>,
-                          std::is_convertible<V, U>> {};
+      : std::conjunction<std::is_constructible<U, V>,
+                         std::is_convertible<V, U>> {};
 
  public:
   // Constructs a new StatusOr with UNINITIALIZED status and no value.
