@@ -82,6 +82,7 @@ libpatchpanel_sources = [
   "datapath.cc",
   "device.cc",
   "firewall.cc",
+  "guest_ipv6_service.cc",
   "helper_process.cc",
   "manager.cc",
   "message_dispatcher.cc",

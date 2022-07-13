@@ -29,6 +29,7 @@
 #include <brillo/minijail/minijail.h>
 #include <metrics/metrics_library.h>
 
+#include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.pb.h"
 #include "patchpanel/mac_address_generator.h"
@@ -56,16 +57,6 @@ void HandleSynchronousDBusMethodCall(
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
   std::move(response_sender).Run(std::move(response));
-}
-
-bool IsIPv6NDProxyEnabled(ShillClient::Device::Type type) {
-  static const std::set<ShillClient::Device::Type> ndproxy_allowed_types{
-      ShillClient::Device::Type::kCellular,
-      ShillClient::Device::Type::kEthernet,
-      ShillClient::Device::Type::kEthernetEap,
-      ShillClient::Device::Type::kWifi,
-  };
-  return ndproxy_allowed_types.find(type) != ndproxy_allowed_types.end();
 }
 
 void FillSubnetProto(const Subnet& virtual_subnet,
@@ -288,9 +279,6 @@ void Manager::InitialSetup() {
   shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
       &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
 
-  nd_proxy_->RegisterNDProxyMessageHandler(base::BindRepeating(
-      &Manager::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
-
   GuestMessage::GuestType arc_guest =
       USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;
   arc_svc_ = std::make_unique<ArcService>(
@@ -305,8 +293,11 @@ void Manager::InitialSetup() {
       shill_client_.get(),
       base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
                           weak_factory_.GetWeakPtr()));
+  ipv6_svc_ = std::make_unique<GuestIPv6Service>(
+      nd_proxy_.get(), datapath_.get(), shill_client_.get());
+
   network_monitor_svc_->Start();
-  nd_proxy_->Listen();
+  ipv6_svc_->Start();
 }
 
 void Manager::OnShutdown(int* exit_code) {
@@ -1481,7 +1472,6 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
   *ipm.mutable_guest_message() = msg;
   adb_proxy_->SendMessage(ipm);
   mcast_proxy_->SendMessage(ipm);
-  nd_proxy_->SendMessage(ipm);
 }
 
 void Manager::SendNetworkConfigurationChangedSignal() {
@@ -1495,38 +1485,16 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   if (ifname_physical.empty() || ifname_virtual.empty())
     return;
 
-  IpHelperMessage ipm;
-  DeviceMessage* msg = ipm.mutable_device_message();
-  msg->set_dev_ifname(ifname_physical);
-  msg->set_br_ifname(ifname_virtual);
-
-  ShillClient::Device upstream_shill_device;
-  shill_client_->GetDeviceProperties(ifname_physical, &upstream_shill_device);
-
-  // b/187462665, b/187918638: If the physical interface is a cellular
-  // modem, the network connection is expected to work as a point to point
-  // link where neighbor discovery of the remote gateway is not possible.
-  // Therefore force guests are told to see the host as their next hop.
-  if (upstream_shill_device.type == ShillClient::Device::Type::kCellular) {
-    msg->set_force_local_next_hop(true);
-  }
-
-  if (fs.ipv6 && IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
-    LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
-              << ifname_virtual;
-
-    if (!datapath_->MaskInterfaceFlags(ifname_physical, IFF_ALLMULTI)) {
-      LOG(WARNING) << "Failed to setup all multicast mode for interface "
-                   << ifname_physical;
-    }
-    if (!datapath_->MaskInterfaceFlags(ifname_virtual, IFF_ALLMULTI)) {
-      LOG(WARNING) << "Failed to setup all multicast mode for interface "
-                   << ifname_virtual;
-    }
-    nd_proxy_->SendMessage(ipm);
+  if (fs.ipv6) {
+    ipv6_svc_->StartForwarding(ifname_physical, ifname_virtual);
   }
 
   if (fs.multicast && IsMulticastInterface(ifname_physical)) {
+    IpHelperMessage ipm;
+    DeviceMessage* msg = ipm.mutable_device_message();
+    msg->set_dev_ifname(ifname_physical);
+    msg->set_br_ifname(ifname_virtual);
+
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
     mcast_proxy_->SendMessage(ipm);
@@ -1539,25 +1507,22 @@ void Manager::StopForwarding(const std::string& ifname_physical,
   if (ifname_physical.empty())
     return;
 
-  IpHelperMessage ipm;
-  DeviceMessage* msg = ipm.mutable_device_message();
-  msg->set_dev_ifname(ifname_physical);
-  msg->set_teardown(true);
-  if (!ifname_virtual.empty()) {
-    msg->set_br_ifname(ifname_virtual);
-  }
-
   if (fs.ipv6) {
     if (ifname_virtual.empty()) {
-      LOG(INFO) << "Stopping IPv6 forwarding on " << ifname_physical;
+      ipv6_svc_->StopUplink(ifname_physical);
     } else {
-      LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical << " to "
-                << ifname_virtual;
+      ipv6_svc_->StopForwarding(ifname_physical, ifname_virtual);
     }
-    nd_proxy_->SendMessage(ipm);
   }
 
   if (fs.multicast) {
+    IpHelperMessage ipm;
+    DeviceMessage* msg = ipm.mutable_device_message();
+    msg->set_dev_ifname(ifname_physical);
+    msg->set_teardown(true);
+    if (!ifname_virtual.empty()) {
+      msg->set_br_ifname(ifname_virtual);
+    }
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping multicast forwarding on " << ifname_physical;
     } else {
@@ -1565,31 +1530,6 @@ void Manager::StopForwarding(const std::string& ifname_physical,
                 << " to " << ifname_virtual;
     }
     mcast_proxy_->SendMessage(ipm);
-  }
-}
-
-void Manager::OnNDProxyMessage(const NDProxyMessage& msg) {
-  LOG_IF(DFATAL, msg.ifname().empty())
-      << "Received DeviceMessage w/ empty dev_ifname";
-  switch (msg.type()) {
-    case NDProxyMessage::ADD_ROUTE:
-      if (!datapath_->AddIPv6HostRoute(msg.ifname(), msg.ip6addr(), 128)) {
-        LOG(WARNING) << "Failed to setup the IPv6 route for interface "
-                     << msg.ifname() << ", addr " << msg.ip6addr();
-      }
-      break;
-    case NDProxyMessage::ADD_ADDR:
-      if (!datapath_->AddIPv6Address(msg.ifname(), msg.ip6addr())) {
-        LOG(WARNING) << "Failed to setup the IPv6 address for interface "
-                     << msg.ifname() << ", addr " << msg.ip6addr();
-      }
-      break;
-    case NDProxyMessage::DEL_ADDR:
-      datapath_->RemoveIPv6Address(msg.ifname(), msg.ip6addr());
-      break;
-    default:
-      LOG(ERROR) << "Unknown NDProxy event " << msg.type();
-      NOTREACHED();
   }
 }
 

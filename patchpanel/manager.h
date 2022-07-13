@@ -26,6 +26,7 @@
 #include "patchpanel/counters_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/helper_process.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
@@ -113,10 +114,6 @@ class Manager final : public brillo::DBusDaemon {
   // Callback from Daemon to notify that the message loop exits and before
   // Daemon::Run() returns.
   void OnShutdown(int* exit_code) override;
-
-  // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
-  // address to guest-facing interface.
-  void OnNDProxyMessage(const NDProxyMessage& msg);
 
   // Handles DBus request for querying the list of virtual devices managed by
   // patchpanel.
@@ -232,8 +229,10 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<HelperProcess> adb_proxy_;
   // IPv4 and IPv6 Multicast forwarder service.
   std::unique_ptr<HelperProcess> mcast_proxy_;
-  // IPv6 neighbor discovery forwarder service.
+  // IPv6 neighbor discovery forwarder process handler.
   std::unique_ptr<HelperProcess> nd_proxy_;
+  // IPv6 address provisioning / ndp forwarding service.
+  std::unique_ptr<GuestIPv6Service> ipv6_svc_;
   // Traffic counter service.
   std::unique_ptr<CountersService> counters_svc_;
   // L2 neighbor monitor service.
