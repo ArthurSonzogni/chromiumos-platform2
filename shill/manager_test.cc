@@ -301,16 +301,24 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->SetCheckPortalList(check_portal_list, error);
   }
 
-  bool SetPortalFallbackUrlsString(const std::string& urls, Error* error) {
-    return manager()->SetPortalFallbackUrlsString(urls, error);
+  bool SetPortalFallbackHttpUrls(const std::string& urls, Error* error) {
+    return manager()->SetPortalFallbackHttpUrls(urls, error);
+  }
+
+  bool SetPortalFallbackHttpsUrls(const std::string& urls, Error* error) {
+    return manager()->SetPortalFallbackHttpsUrls(urls, error);
   }
 
   const std::string& GetIgnoredDNSSearchPaths() {
     return manager()->props_.ignored_dns_search_paths;
   }
 
-  const std::vector<std::string>& GetPortalFallbackUrlsString() {
+  const std::vector<std::string>& GetPortalFallbackHttpUrls() {
     return manager()->props_.portal_fallback_http_urls;
+  }
+
+  const std::vector<std::string>& GetPortalFallbackHttpsUrls() {
+    return manager()->props_.portal_fallback_https_urls;
   }
 
   size_t GetDefaultServiceObserverCount() const {
@@ -3249,20 +3257,36 @@ TEST_F(ManagerTest, IgnoredSearchList) {
   EXPECT_EQ("", GetIgnoredDNSSearchPaths());
 }
 
-TEST_F(ManagerTest, PortalFallbackUrls) {
+TEST_F(ManagerTest, PortalFallbackHttpUrls) {
   const std::string kFallback0 = "http://fallback";
   const std::vector<std::string> kFallbackVec0 = {kFallback0};
-  SetPortalFallbackUrlsString(kFallback0, nullptr);
-  EXPECT_EQ(kFallbackVec0, GetPortalFallbackUrlsString());
+  SetPortalFallbackHttpUrls(kFallback0, nullptr);
+  EXPECT_EQ(kFallbackVec0, GetPortalFallbackHttpUrls());
 
   const std::string kFallback1 = "http://other";
   const std::string kFallbackSum = kFallback0 + "," + kFallback1;
   const std::vector<std::string> kFallbackVec1 = {kFallback0, kFallback1};
-  SetPortalFallbackUrlsString(kFallbackSum, nullptr);
-  EXPECT_EQ(kFallbackVec1, GetPortalFallbackUrlsString());
+  SetPortalFallbackHttpUrls(kFallbackSum, nullptr);
+  EXPECT_EQ(kFallbackVec1, GetPortalFallbackHttpUrls());
 
-  SetPortalFallbackUrlsString("", nullptr);
-  EXPECT_EQ(kFallbackVec1, GetPortalFallbackUrlsString());
+  SetPortalFallbackHttpUrls("", nullptr);
+  EXPECT_EQ(kFallbackVec1, GetPortalFallbackHttpUrls());
+}
+
+TEST_F(ManagerTest, PortalFallbackHttpsUrls) {
+  const std::string kFallback0 = "https://fallback";
+  const std::vector<std::string> kFallbackVec0 = {kFallback0};
+  SetPortalFallbackHttpsUrls(kFallback0, nullptr);
+  EXPECT_EQ(kFallbackVec0, GetPortalFallbackHttpsUrls());
+
+  const std::string kFallback1 = "https://other";
+  const std::string kFallbackSum = kFallback0 + "," + kFallback1;
+  const std::vector<std::string> kFallbackVec1 = {kFallback0, kFallback1};
+  SetPortalFallbackHttpsUrls(kFallbackSum, nullptr);
+  EXPECT_EQ(kFallbackVec1, GetPortalFallbackHttpsUrls());
+
+  SetPortalFallbackHttpsUrls("", nullptr);
+  EXPECT_EQ(kFallbackVec1, GetPortalFallbackHttpsUrls());
 }
 
 TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {

@@ -272,11 +272,14 @@ Manager::Manager(ControlInterface* control_interface,
                             &Manager::SetIgnoredDNSSearchPaths);
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
                         &props_.no_auto_connect_technologies);
-  store_.RegisterConstString(kPortalHttpUrlProperty, &props_.portal_http_url);
-  store_.RegisterConstString(kPortalHttpsUrlProperty, &props_.portal_https_url);
-  HelpRegisterDerivedString(kPortalFallbackUrlsStringProperty,
-                            &Manager::GetPortalFallbackUrlsString,
-                            &Manager::SetPortalFallbackUrlsString);
+  store_.RegisterString(kPortalHttpUrlProperty, &props_.portal_http_url);
+  store_.RegisterString(kPortalHttpsUrlProperty, &props_.portal_https_url);
+  HelpRegisterDerivedString(kPortalFallbackHttpUrlsProperty,
+                            &Manager::GetPortalFallbackHttpUrls,
+                            &Manager::SetPortalFallbackHttpUrls);
+  HelpRegisterDerivedString(kPortalFallbackHttpsUrlsProperty,
+                            &Manager::GetPortalFallbackHttpsUrls,
+                            &Manager::SetPortalFallbackHttpsUrls);
   HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,
                                          &Manager::EnumerateProfiles);
   HelpRegisterDerivedString(kProhibitedTechnologiesProperty,
@@ -2442,18 +2445,33 @@ bool Manager::SetIgnoredDNSSearchPaths(const std::string& ignored_paths,
   return true;
 }
 
-std::string Manager::GetPortalFallbackUrlsString(Error* /*error*/) {
+std::string Manager::GetPortalFallbackHttpUrls(Error* /*error*/) {
   return base::JoinString(props_.portal_fallback_http_urls, ",");
 }
 
-bool Manager::SetPortalFallbackUrlsString(const std::string& urls,
-                                          Error* /*error*/) {
+std::string Manager::GetPortalFallbackHttpsUrls(Error* /*error*/) {
+  return base::JoinString(props_.portal_fallback_https_urls, ",");
+}
+
+bool Manager::SetPortalFallbackHttpUrls(const std::string& urls,
+                                        Error* /*error*/) {
   if (urls.empty()) {
     return false;
   }
   auto url_list =
       base::SplitString(urls, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   props_.portal_fallback_http_urls = url_list;
+  return true;
+}
+
+bool Manager::SetPortalFallbackHttpsUrls(const std::string& urls,
+                                         Error* /*error*/) {
+  if (urls.empty()) {
+    return false;
+  }
+  auto url_list =
+      base::SplitString(urls, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  props_.portal_fallback_https_urls = url_list;
   return true;
 }
 

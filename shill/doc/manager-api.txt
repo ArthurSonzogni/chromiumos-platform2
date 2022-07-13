@@ -584,19 +584,29 @@ Properties	object ActiveProfile [readonly]
 			The list of technologies for which auto-connect is disabled. This is
 			a comma-separated string, e.g. "cellular,wifi".
 
-		string PortalFallbackUrlsString [readwrite]
+		string PortalFallbackHttpUrls [readwrite]
 
 			Comma-separated string of URLs used for HTTP connectivity
 			verification after the first connectivity verification trial. The
 			order of these URLs has no meaning.
 
-		string PortalHttpUrl [readonly]
+		string PortalFallbackHttpsUrls [readwrite]
 
-			The URL to use when doing connectivity verification over HTTP.
+			Comma-separated string of URLs used for HTTPS connectivity
+			verification after the first connectivity verification trial. The
+			order of these URLs has no meaning.
 
-		string PortalHttpsUrl [readonly]
+		string PortalHttpUrl [readwrite]
 
-			The URL to use when doing connectivity verification over HTTPS.
+			The first URL to use when doing connectivity verification over HTTP.
+			If portal detection fails with this URL, an entry in
+			PortalFallbackHTTPUrls will be used.
+
+		string PortalHttpsUrl [readwrite]
+
+			The first URL to use when doing connectivity verification over
+			HTTPS. If portal detection fails with this URL, an entry in
+			PortalFallbackHTTPSUrls will be used.
 
 		string ProhibitedTechnologies [readwrite]
 
