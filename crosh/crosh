@@ -1314,13 +1314,14 @@ HELP_memory_test='
 '
 cmd_memory_test() (
   # Getting total free memory in KB.
+  local mem
   mem="$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)"
 
   # Converting to MiB.
-  mem="$(($mem / 1024))"
+  mem="$((mem / 1024))"
 
   # Giving OS 200MB free memory before hogging the rest of it.
-  mem="$(($mem - 200))"
+  mem="$((mem - 200))"
 
   debugd_poll Memtester "fd:1" "uint32:${mem}"
 )
@@ -1789,13 +1790,13 @@ substr() {
   local start="$2"
   local end="$3"
 
-  start="$(expr "${start}" + 1)"
+  : $(( start += 1 ))
 
   if [ -n "${end}" ]; then
-    end="$(expr "${end}" - 1)"
+    : $(( end -= 1 ))
   fi
 
-  printf '%s' "${str}" | cut -c${start}-${end}
+  printf '%s' "${str}" | cut -c"${start}-${end}"
 }
 
 # Return true if the arg is a shell function.
