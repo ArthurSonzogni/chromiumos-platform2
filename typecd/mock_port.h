@@ -29,6 +29,7 @@ class MockPort : public Port {
   MOCK_METHOD(bool, IsPartnerDiscoveryComplete, (), (override));
   MOCK_METHOD(bool, IsCableDiscoveryComplete, (), (override));
   MOCK_METHOD(bool, CableLimitingUSBSpeed, (), (override));
+  MOCK_METHOD(void, ReportMetrics, (Metrics*, bool), ());
 };
 
 }  // namespace typecd

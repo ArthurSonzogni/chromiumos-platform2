@@ -228,6 +228,12 @@ void Cable::ReportMetrics(Metrics* metrics) {
   if (!metrics || metrics_reported_)
     return;
 
+  if (!DiscoveryComplete()) {
+    LOG(WARNING)
+        << "Cable discovery not complete before attempt to report metrics";
+    return;
+  }
+
   metrics->ReportCableSpeed(GetCableSpeedMetric());
 
   metrics_reported_ = true;

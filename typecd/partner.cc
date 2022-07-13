@@ -288,6 +288,12 @@ void Partner::ReportMetrics(Metrics* metrics) {
   if (!metrics || metrics_reported_)
     return;
 
+  if (GetSupportsPD() && !DiscoveryComplete()) {
+    LOG(WARNING)
+        << "Partner discovery not complete before attempt to report metrics";
+    return;
+  }
+
   metrics->ReportPartnerType(GetPartnerTypeMetric());
 
   metrics_reported_ = true;

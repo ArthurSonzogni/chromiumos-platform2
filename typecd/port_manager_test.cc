@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -13,12 +14,20 @@
 #include "typecd/mock_port.h"
 
 using ::testing::_;
+using ::testing::Assign;
 using ::testing::Return;
 using ::testing::Sequence;
 
 namespace typecd {
 
-class PortManagerTest : public ::testing::Test {};
+class PortManagerTest : public ::testing::Test {
+ protected:
+  // Port uses ThreadTaskRunnerHandle, thus SingleThreadTaskEnvironment is
+  // needed for APIs to be functional and to run posted delayed task.
+  // https://chromium.googlesource.com/chromium/src/+/HEAD/docs/threading_and_tasks_testing.md#base_test_singlethreadtaskenvironment
+  base::test::SingleThreadTaskEnvironment task_environment{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+};
 
 // Test the basic case where mode entry is not supported
 // by the ECUtil implementation.
@@ -646,6 +655,114 @@ TEST_F(PortManagerTest, ModeEntryDPOnlySystem) {
 
   // There is no explicit test here, just that the mock expectations should be
   // met.
+}
+
+// Test that metrics reporting waits for 10 seconds after Partner Add to give
+// time for PD negotiation.
+TEST_F(PortManagerTest, MetricsReportingWaitsForPD) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Add a valid Metrics pointer to satisfy PortManager checks.
+  auto metrics = std::make_unique<Metrics>();
+  port_manager->SetMetrics(metrics.get());
+
+  // Create MockPort with no EXPECT_CALL since this test is not interested
+  // in the mode entry.
+  auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
+  bool metrics_called = false;
+  ON_CALL(*port, ReportMetrics(_, _))
+      .WillByDefault(Assign(&metrics_called, true));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
+
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 0, true);
+
+  // Metrics is not reported on Partner Add, but 10 seconds later to give time
+  // for PD negotiation.
+  EXPECT_FALSE(metrics_called);
+  task_environment.FastForwardBy(base::Seconds(10));
+  EXPECT_TRUE(metrics_called);
+}
+
+// Test that metrics reporting waits for PD negotiation per each port
+// distinctly.
+TEST_F(PortManagerTest, MetricsReportingOnMultiplePorts) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Add a valid Metrics pointer to satisfy PortManager checks.
+  auto metrics = std::make_unique<Metrics>();
+  port_manager->SetMetrics(metrics.get());
+
+  // Create MockPort with no EXPECT_CALL since this test is not interested
+  // in the mode entry.
+  auto port0 = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
+  bool port0_metrics_called = false;
+  ON_CALL(*port0, ReportMetrics(_, _))
+      .WillByDefault(Assign(&port0_metrics_called, true));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+
+  auto port1 = std::make_unique<MockPort>(base::FilePath("fakepath"), 1);
+  bool port1_metrics_called = false;
+  ON_CALL(*port1, ReportMetrics(_, _))
+      .WillByDefault(Assign(&port1_metrics_called, true));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 0, true);
+  EXPECT_FALSE(port0_metrics_called);
+
+  task_environment.FastForwardBy(base::Seconds(5));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 1, true);
+  EXPECT_FALSE(port0_metrics_called);
+  EXPECT_FALSE(port1_metrics_called);
+
+  task_environment.FastForwardBy(base::Seconds(5));
+  EXPECT_TRUE(port0_metrics_called);
+  EXPECT_FALSE(port1_metrics_called);
+
+  task_environment.FastForwardBy(base::Seconds(5));
+  EXPECT_TRUE(port1_metrics_called);
+}
+
+// Test that metrics reporting is cancelled if partner is disconnected while
+// waiting for PD negotiation, leaving other metrics reporting tasks unaffected.
+TEST_F(PortManagerTest, MetricsReportingCancelled) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Add a valid Metrics pointer to satisfy PortManager checks.
+  auto metrics = std::make_unique<Metrics>();
+  port_manager->SetMetrics(metrics.get());
+
+  // Create MockPort with no EXPECT_CALL since this test is not interested
+  // in the mode entry.
+  auto port0 = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
+  bool port0_metrics_called = false;
+  ON_CALL(*port0, ReportMetrics(_, _))
+      .WillByDefault(Assign(&port0_metrics_called, true));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+
+  auto port1 = std::make_unique<MockPort>(base::FilePath("fakepath"), 1);
+  bool port1_metrics_called = false;
+  ON_CALL(*port1, ReportMetrics(_, _))
+      .WillByDefault(Assign(&port1_metrics_called, true));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 0, true);
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 1, true);
+  EXPECT_FALSE(port0_metrics_called);
+  EXPECT_FALSE(port1_metrics_called);
+
+  // Remove partner on port 1 while waiting for PD negotiation, cancelling
+  // metrics reporting on port 1 while metrics reporting on port 0 is not
+  // affected.
+  task_environment.FastForwardBy(base::Seconds(5));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 1, false);
+  task_environment.FastForwardBy(base::Seconds(5));
+  EXPECT_TRUE(port0_metrics_called);
+  EXPECT_FALSE(port1_metrics_called);
 }
 
 }  // namespace typecd

@@ -71,6 +71,9 @@ class PortManager : public UdevMonitor::TypecObserver,
               ModeSwitchDPandTBTPeripheralDataAccessChangingLockUnlock);
   FRIEND_TEST(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging);
   FRIEND_TEST(PortManagerTest, ModeEntryDPOnlySystem);
+  FRIEND_TEST(PortManagerTest, MetricsReportingWaitsForPD);
+  FRIEND_TEST(PortManagerTest, MetricsReportingOnMultiplePorts);
+  FRIEND_TEST(PortManagerTest, MetricsReportingCancelled);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryUSB4NotifyThunderboltDp);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryTBTNotifyThunderboltOnly);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryDpAltModeNoNotifications);

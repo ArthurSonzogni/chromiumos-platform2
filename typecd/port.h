@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/cancelable_callback.h>
 #include <gtest/gtest_prod.h>
 
 #include "typecd/cable.h"
@@ -124,16 +125,12 @@ class Port {
   // cable.
   virtual bool CableLimitingUSBSpeed();
 
-  // Calls the |partner_|'s metrics reporting function, if a |partner_| is
-  // registered.
-  void ReportPartnerMetrics(Metrics* metrics);
+  // Enqueue metrics reporting task with a delay to give time for PD
+  // negotiation.
+  void EnqueueMetricsTask(Metrics* metrics, bool mode_entry_supported);
 
-  // Calls the |cable_|'s metrics reporting function, if a |cable_| is
-  // registered.
-  void ReportCableMetrics(Metrics* metrics);
-
-  // Reports port level metrics.
-  void ReportPortMetrics(Metrics* metrics);
+  // Cancel enqueued metrics task.
+  void CancelMetricsTask();
 
  private:
   friend class PortTest;
@@ -201,6 +198,20 @@ class Port {
   // |power_role_|.
   void ParsePowerRole();
 
+  // Calls the |partner_|'s metrics reporting function, if a |partner_| is
+  // registered.
+  void ReportPartnerMetrics(Metrics* metrics);
+
+  // Calls the |cable_|'s metrics reporting function, if a |cable_| is
+  // registered.
+  void ReportCableMetrics(Metrics* metrics);
+
+  // Reports port level metrics.
+  void ReportPortMetrics(Metrics* metrics);
+
+  // Reports all metrics.
+  virtual void ReportMetrics(Metrics* metrics, bool mode_entry_supported);
+
   // Sysfs path used to access partner PD information.
   base::FilePath syspath_;
   // Port number as described by the Type C connector class framework.
@@ -217,6 +228,9 @@ class Port {
   bool supports_usb4_;
   DataRole data_role_;
   PowerRole power_role_;
+
+  // Cancelable callback for metrics reporting.
+  base::CancelableOnceClosure report_metrics_callback_;
 };
 
 }  // namespace typecd

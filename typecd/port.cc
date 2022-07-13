@@ -4,9 +4,11 @@
 
 #include "typecd/port.h"
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <re2/re2.h>
 
 #include "typecd/pd_vdo_constants.h"
@@ -14,6 +16,12 @@
 namespace {
 
 constexpr char kDualRoleRegex[] = R"(\[(\w+)\])";
+
+// Give a delay before reporting metrics to finish PD negotiation. Calculated
+// as follows:
+// nCapsCount (50) * tTypeCSendSourceCap (100ms ~ 200ms)
+// which gives 10000ms or 10 sec to officially declare non-PD.
+constexpr uint32_t kPDNegotiationDelayMs = 10000;
 
 }  // namespace
 
@@ -551,6 +559,29 @@ void Port::ReportPortMetrics(Metrics* metrics) {
 
   metrics_reported_ = true;
   return;
+}
+
+void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
+  if (!metrics)
+    return;
+
+  ReportPartnerMetrics(metrics);
+  ReportCableMetrics(metrics);
+  if (mode_entry_supported)
+    ReportPortMetrics(metrics);
+}
+
+void Port::EnqueueMetricsTask(Metrics* metrics, bool mode_entry_supported) {
+  report_metrics_callback_.Reset(base::BindOnce(&Port::ReportMetrics,
+                                                base::Unretained(this), metrics,
+                                                mode_entry_supported));
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, report_metrics_callback_.callback(),
+      base::Milliseconds(kPDNegotiationDelayMs));
+}
+
+void Port::CancelMetricsTask() {
+  report_metrics_callback_.Cancel();
 }
 
 }  // namespace typecd

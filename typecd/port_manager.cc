@@ -88,9 +88,11 @@ void PortManager::OnPartnerAddedOrRemoved(const base::FilePath& path,
   if (added) {
     port->AddPartner(path);
     RunModeEntry(port_num);
+    port->EnqueueMetricsTask(metrics_, GetModeEntrySupported());
   } else {
     port->RemovePartner();
     port->SetCurrentMode(TypeCMode::kNone);
+    port->CancelMetricsTask();
   }
 }
 
@@ -281,37 +283,7 @@ void PortManager::HandleUnlock() {
   }
 }
 
-void PortManager::ReportMetrics(int port_num) {
-  if (!metrics_)
-    return;
-
-  auto it = ports_.find(port_num);
-  if (it == ports_.end()) {
-    LOG(WARNING) << "Metrics reporting attempted for non-existent port "
-                 << port_num;
-    return;
-  }
-
-  auto port = it->second.get();
-  auto partner_has_pd = port->PartnerSupportsPD();
-  if (!partner_has_pd || (partner_has_pd && port->IsPartnerDiscoveryComplete()))
-    port->ReportPartnerMetrics(metrics_);
-
-  if (port->IsCableDiscoveryComplete()) {
-    port->ReportCableMetrics(metrics_);
-  }
-
-  // The only Port metric we are reporting is cable misconfiguration; we only
-  // need to report that if we're on a system supporting USB4/TBT.
-  if (GetModeEntrySupported())
-    port->ReportPortMetrics(metrics_);
-}
-
 void PortManager::RunModeEntry(int port_num) {
-  // Since RunModeEntry() executes after any Type C change, we can just run the
-  // metrics reporting before executing the mode entry logic.
-  ReportMetrics(port_num);
-
   if (!ec_util_) {
     LOG(ERROR) << "No EC Util implementation registered, mode entry aborted.";
     return;
