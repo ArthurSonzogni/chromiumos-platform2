@@ -10,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -246,6 +247,10 @@ class Manager final : public brillo::DBusDaemon {
   // ConnectNamespace.
   std::map<int, ConnectedNamespace> connected_namespaces_;
   int connected_namespaces_next_id_{0};
+
+  // DNS proxy's IPv4 and IPv6 addresses keyed by its guest interface.
+  std::map<std::string, std::string> dns_proxy_ipv4_addrs_;
+  std::map<std::string, std::string> dns_proxy_ipv6_addrs_;
 
   // All rules currently created through patchpanel RedirectDns
   // API, keyed by file descriptors committed by clients when calling the

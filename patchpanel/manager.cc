@@ -85,6 +85,25 @@ void FillDeviceProto(const Device& virtual_device,
   output->set_host_ipv4_addr(virtual_device.config().host_ipv4_addr());
 }
 
+void FillDeviceDnsProxyProto(
+    const Device& virtual_device,
+    patchpanel::NetworkDevice* output,
+    const std::map<std::string, std::string>& ipv4_addrs,
+    const std::map<std::string, std::string>& ipv6_addrs) {
+  const auto& ipv4_it = ipv4_addrs.find(virtual_device.host_ifname());
+  if (ipv4_it != ipv4_addrs.end()) {
+    in_addr ipv4_addr = StringToIPv4Address(ipv4_it->second);
+    output->set_dns_proxy_ipv4_addr(reinterpret_cast<const char*>(&ipv4_addr),
+                                    sizeof(in_addr));
+  }
+  const auto& ipv6_it = ipv6_addrs.find(virtual_device.host_ifname());
+  if (ipv6_it != ipv6_addrs.end()) {
+    in6_addr ipv6_addr = StringToIPv6Address(ipv6_it->second);
+    output->set_dns_proxy_ipv6_addr(reinterpret_cast<const char*>(&ipv6_addr),
+                                    sizeof(in6_addr));
+  }
+}
+
 void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
                      DbusUmaEvent event) {
   metrics->SendEnumToUMA(kDbusUmaEventMetrics, event);
@@ -658,6 +677,8 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
   for (const auto* arc_device : arc_svc_->GetDevices()) {
     auto* dev = response.add_devices();
     FillDeviceProto(*arc_device, dev);
+    FillDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
+                            dns_proxy_ipv6_addrs_);
     dev->set_guest_type(arc_guest_type);
     if (const auto* subnet = arc_device->config().ipv4_subnet()) {
       FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
@@ -1376,13 +1397,30 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     return;
   }
   auto dns_redirection_it = dns_redirection_rules_.find(client_fd);
-  if (dns_redirection_it != dns_redirection_rules_.end()) {
-    datapath_->StopDnsRedirection(dns_redirection_it->second);
-    LOG(INFO) << "Stopped DNS redirection " << dns_redirection_it->second;
-    dns_redirection_rules_.erase(dns_redirection_it);
+  if (dns_redirection_it == dns_redirection_rules_.end()) {
+    LOG(ERROR) << "No client_fd found for " << client_fd;
     return;
   }
-  LOG(ERROR) << "No client_fd found for " << client_fd;
+  auto rule = dns_redirection_it->second;
+  datapath_->StopDnsRedirection(rule);
+  LOG(INFO) << "Stopped DNS redirection " << rule;
+  dns_redirection_rules_.erase(dns_redirection_it);
+
+  // Propagate DNS proxy addresses change.
+  if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
+    switch (GetIpFamily(rule.proxy_address)) {
+      case AF_INET:
+        dns_proxy_ipv4_addrs_.erase(rule.input_ifname);
+        break;
+      case AF_INET6:
+        dns_proxy_ipv6_addrs_.erase(rule.input_ifname);
+        break;
+      default:
+        LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
+        return;
+    }
+    // TODO(jasongustaman): Signal DNS proxy addresses change.
+  }
 }
 
 bool Manager::RedirectDns(
@@ -1411,6 +1449,24 @@ bool Manager::RedirectDns(
     if (!DeleteLifelineFd(local_client_fd.release()))
       LOG(ERROR) << "Failed to delete lifeline fd";
     return false;
+  }
+
+  // Propagate DNS proxy addresses change.
+  if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
+    switch (GetIpFamily(rule.proxy_address)) {
+      case AF_INET:
+        dns_proxy_ipv4_addrs_.emplace(rule.input_ifname, rule.proxy_address);
+        break;
+      case AF_INET6:
+        dns_proxy_ipv6_addrs_.emplace(rule.input_ifname, rule.proxy_address);
+        break;
+      default:
+        LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
+        if (!DeleteLifelineFd(local_client_fd.release()))
+          LOG(ERROR) << "Failed to delete lifeline fd";
+        return false;
+    }
+    // TODO(jasongustaman): Signal DNS proxy addresses change.
   }
 
   // Store DNS proxy's redirection request.

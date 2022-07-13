@@ -90,6 +90,7 @@ TEST(Ipv4, CreationAndStringConversion) {
     uint32_t addr = Ipv4Addr(test_case.bytes[0], test_case.bytes[1],
                              test_case.bytes[2], test_case.bytes[3]);
     EXPECT_EQ(test_case.literal_address, IPv4AddressToString(addr));
+    EXPECT_EQ(addr, StringToIPv4Address(test_case.literal_address).s_addr);
   }
 }
 
@@ -110,6 +111,9 @@ TEST(Ipv6, CreationAndStringConversion) {
     struct in6_addr addr = {};
     memcpy(addr.s6_addr, test_case.bytes, sizeof(addr.s6_addr));
     EXPECT_EQ(test_case.literal_address, IPv6AddressToString(addr));
+    EXPECT_EQ(0, memcmp(addr.s6_addr,
+                        StringToIPv6Address(test_case.literal_address).s6_addr,
+                        sizeof(addr.s6_addr)));
   }
 }
 

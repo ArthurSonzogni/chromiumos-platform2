@@ -72,6 +72,14 @@ std::string IPv6AddressToString(const struct in6_addr& addr) {
   return !inet_ntop(AF_INET6, &addr, buf, sizeof(buf)) ? "" : buf;
 }
 
+struct in_addr StringToIPv4Address(const std::string& buf) {
+  struct in_addr addr = {};
+  if (!inet_pton(AF_INET, buf.c_str(), &addr)) {
+    memset(&addr, 0, sizeof(addr));
+  }
+  return addr;
+}
+
 struct in6_addr StringToIPv6Address(const std::string& buf) {
   struct in6_addr addr = {};
   if (!inet_pton(AF_INET6, buf.c_str(), &addr)) {

@@ -82,6 +82,9 @@ BRILLO_EXPORT std::string IPv4AddressToString(uint32_t addr);
 // Returns the literal representation of the IPv6 address given.
 BRILLO_EXPORT std::string IPv6AddressToString(const struct in6_addr& addr);
 
+// Returns the IPv4 address struct of the IPv4 address string given.
+BRILLO_EXPORT struct in_addr StringToIPv4Address(const std::string& buf);
+
 // Returns the IPv6 address struct of the IPv6 address string given.
 BRILLO_EXPORT struct in6_addr StringToIPv6Address(const std::string& buf);
 
