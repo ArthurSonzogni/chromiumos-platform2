@@ -158,7 +158,8 @@ get_class_driver() {
 
 # The "status" command can't be run as non-root, so we fake it here
 get_status() {
-  pid="$(pgrep $1)"
+  local pid
+  pid="$(pgrep "$1")"
   if [ -n "${pid}" ] ; then
     pass "$1 is running, pid ${pid}"
     return 0
@@ -202,7 +203,7 @@ read_dhcp_lease() {
   local now="$(date +%s)"
   local lease_start="$(stat -c %Y "${file}")"
   local lease_age="$((now-lease_start))"
-  echo "  Lease file age: $lease_age"
+  echo "  Lease file age: ${lease_age}"
   local lease_int=($(od --address-radix=n --format=u1 \
                          --output-duplicates "${file}"))
   local lease_hex=($(od --address-radix=n --format=x1 \
@@ -221,10 +222,10 @@ read_dhcp_lease() {
   while [ -n "${lease_int[$idx]}" -a -n "${lease_int[$((idx+1))]}" ] ; do
     local opt="${lease_int[$idx]}"
     local len="${lease_int[$((idx+1))]}"
-    local data_int=(${lease_int[*]:$((idx+2)):$len})
-    local data_hex=(${lease_hex[*]:$((idx+2)):$len})
+    local data_int=(${lease_int[*]:$((idx+2)):${len}})
+    local data_hex=(${lease_hex[*]:$((idx+2)):${len}})
     idx="$((idx + 2 + len))"
-    case $opt in
+    case "${opt}" in
       0)
         break
         ;;
@@ -246,7 +247,8 @@ read_dhcp_lease() {
         ;;
       51)
         local lease_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
-        local lease_time_comment="$(seconds_compare "$lease_time" "$lease_age")"
+        local lease_time_comment="$(seconds_compare \
+                                    "${lease_time}" "${lease_age}")"
         echo "  Lease Time: ${lease_time} seconds (${lease_time_comment})"
         ;;
       53)
@@ -254,14 +256,15 @@ read_dhcp_lease() {
         ;;
       58)
         local renew_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
-        local renew_time_comment="$(seconds_compare "$renew_time" "$lease_age")"
-        echo "  Renew Time: $renew_time seconds (${renew_time_comment})"
+        local renew_time_comment="$(seconds_compare \
+                                    "${renew_time}" "${lease_age}")"
+        echo "  Renew Time: ${renew_time} seconds (${renew_time_comment})"
         ;;
       59)
         local rebind_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
         local rebind_time_comment="$(seconds_compare \
-                                     "$rebind_time" "$lease_age")"
-        echo "  Rebinding Time: $rebind_time seconds (${rebind_time_comment})"
+                                     "${rebind_time}" "${lease_age}")"
+        echo "  Rebinding Time: ${rebind_time} seconds (${rebind_time_comment})"
         ;;
     esac
   done
@@ -336,7 +339,7 @@ diag_date() {
   fi
   date_out="$( "${cmd[@]}" 2>&1 >/dev/null )"
   date_exit="$?"
-  offset="$(echo "$date_out" | grep 'difference is' | cut -f8 -d' ')"
+  offset="$(echo "${date_out}" | grep 'difference is' | cut -f8 -d' ')"
   if [ "${date_exit}" != 0 ]; then
     fail "Unable to get date via tlsdate from ${host}: ${date_out}"
   elif [ "${offset}" = 0 ] ; then
@@ -692,7 +695,7 @@ diag_nameservers() {
 diag_connectivity() {
   fn_enter_once "$@" || exit 0
   local host="$1"
-  local ip="$(get_host_addr "$host")"
+  local ip="$(get_host_addr "${host}")"
   if [ -z "${ip}" ] ; then
     fail "Could not lookup host ${host}"
     diag_route
@@ -945,7 +948,7 @@ diag_webget() {
       get_device_list
       diag_flimflam
   fi
-  return "$err"
+  return "${err}"
 }
 
 # Do standard run of tests
@@ -953,9 +956,9 @@ diag_run() {
   local host="$1"
   local proxy="$2"
   if run_webget "https://${host}" "${proxy}"; then
-    pass "Loaded $host via HTTPS"
+    pass "Loaded ${host} via HTTPS"
   elif run_webget "http://${host}" "${proxy}"; then
-    pass "Loaded $host via HTTP (ignore any tlsdate failure below)"
+    pass "Loaded ${host} via HTTP (ignore any tlsdate failure below)"
   else
     diag_webget "${host}" "${proxy}"
   fi
@@ -1108,7 +1111,7 @@ main() {
         exit 0
         ;;
       *)
-        echo "Unknown option: $option"
+        echo "Unknown option: ${option}"
         usage
         exit 1
         ;;
