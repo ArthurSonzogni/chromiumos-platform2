@@ -47,4 +47,3 @@
 [10108612.097462] mtk-msdc 11240000.mmc: phase: [map:fc1fffff] [maxlen:21] [final:7]
 [10108612.097503] ieee80211 phy0: Hardware restart was requested
 [10108612.491897] ath10k_sdio mmc1:0001:1: device successfully recovered
-

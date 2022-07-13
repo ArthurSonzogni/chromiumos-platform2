@@ -297,7 +297,8 @@ TEST_F(CrashReporterParserTest, UnmatchedCallFromKernelTest) {
 
 TEST_F(CrashReporterParserTest, InterleavedMessagesTest) {
   auto log_msgs = GetTestLogMessages(
-      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt"));
+      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt",
+                                 /*use_testdata=*/true));
   std::sort(log_msgs.begin(), log_msgs.end());
   do {
     auto metrics = std::make_unique<MetricsLibraryMock>();
@@ -319,7 +320,8 @@ TEST_F(CrashReporterParserTest, InterleavedMismatchedMessagesTest) {
       "--recent_match_count=2",  // The other 2 PIDs in the file.
       "--pending_miss_count=0"};
   auto log_msgs = GetTestLogMessages(
-      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt"));
+      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt",
+                                 /*use_testdata=*/true));
 
   ReplaceMsgContent(&log_msgs,
                     "Received crash notification for chrome[1570] user 1000 "
@@ -344,7 +346,8 @@ TEST_F(CrashReporterParserTest, InterleavedMismatchedMessagesTest) {
 
 TEST_F(CrashReporterParserTest, PendingAndRecentMissCount) {
   auto log_msgs = GetTestLogMessages(
-      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt"));
+      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt",
+                                 /*use_testdata=*/true));
 
   ReplaceMsgContent(&log_msgs,
                     "Received crash notification for chrome[1570] user 1000 "

@@ -21,7 +21,8 @@ using FileReaderRun = std::vector<std::string>;
 
 std::unique_ptr<TextFileReader> InitializeFileReaderForTest(
     const std::string& input_file_name) {
-  base::FilePath input_file_path = test_util::GetTestDataPath(input_file_name);
+  base::FilePath input_file_path =
+      test_util::GetTestDataPath(input_file_name, /*use_testdata=*/true);
 
   return std::make_unique<TextFileReader>(input_file_path);
 }

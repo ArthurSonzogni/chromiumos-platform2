@@ -67,7 +67,8 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
                                  base::FilePath* found_file_path);
 
 // Return path to an input files used by unit tests.
-base::FilePath GetTestDataPath(const std::string& name);
+// use_testdata: Whether to add "testdata/" in front of the filename.
+base::FilePath GetTestDataPath(const std::string& name, bool use_testdata);
 
 // Helper function for calling base::TouchFile() concisely for tests.
 bool TouchFileHelper(const base::FilePath& file_name, base::Time modified_time);

@@ -24,7 +24,8 @@ const char kChromeExecName[] = "chrome";
 // Tests that the config file is parsable and that Chrome is listed.
 TEST(CrashReporterLogsTest, ReadConfig) {
   brillo::KeyValueStore store;
-  ASSERT_TRUE(store.Load(test_util::GetTestDataPath(kLogConfigFileName)));
+  ASSERT_TRUE(store.Load(
+      test_util::GetTestDataPath(kLogConfigFileName, /*use_testdata=*/false)));
   std::string command;
   EXPECT_TRUE(store.GetString(kChromeExecName, &command));
   EXPECT_FALSE(command.empty());

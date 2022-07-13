@@ -24,7 +24,8 @@ using ReaderRun = std::vector<LogEntry>;
 template <typename T>
 std::unique_ptr<LogReader> InitializeLogReaderForTest(
     const std::string& input_file_name, const char* pattern) {
-  base::FilePath input_file_path = test_util::GetTestDataPath(input_file_name);
+  base::FilePath input_file_path =
+      test_util::GetTestDataPath(input_file_name, /*use_testdata=*/true);
   auto r = std::make_unique<T>(input_file_path, pattern);
 
   return r;

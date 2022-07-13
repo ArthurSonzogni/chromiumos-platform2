@@ -99,8 +99,12 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
   return !path.empty();
 }
 
-base::FilePath GetTestDataPath(const std::string& name) {
-  return base::FilePath(getenv("SRC")).Append(name);
+base::FilePath GetTestDataPath(const std::string& name, bool use_testdata) {
+  base::FilePath src = base::FilePath(getenv("SRC"));
+  if (use_testdata) {
+    src = src.Append("testdata");
+  }
+  return src.Append(name);
 }
 
 bool TouchFileHelper(const base::FilePath& file_name,

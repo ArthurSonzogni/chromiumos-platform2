@@ -60,7 +60,8 @@ void ParserTest(const std::string& input_file_name,
                 std::initializer_list<ParserRun> parser_runs,
                 anomaly::Parser* parser) {
   auto log_msgs =
-      GetTestLogMessages(test_util::GetTestDataPath(input_file_name));
+      GetTestLogMessages(test_util::GetTestDataPath(input_file_name,
+                                                    /*use_testdata=*/true));
   for (auto& run : parser_runs) {
     if (run.find_this && run.replace_with)
       ReplaceMsgContent(&log_msgs, *run.find_this, *run.replace_with);

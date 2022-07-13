@@ -52,7 +52,9 @@ class GenericFailureCollectorTest : public ::testing::Test {
     CreateDirectory(test_failure_directory_);
     collector_.set_crash_directory_for_test(test_failure_directory_);
     collector_.set_log_config_path(
-        test_util::GetTestDataPath(kLogConfigFileName).value());
+        test_util::GetTestDataPath(kLogConfigFileName,
+                                   /*use_testdata=*/false)
+            .value());
   }
 
  protected:
