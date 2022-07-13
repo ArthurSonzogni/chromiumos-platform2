@@ -20,10 +20,6 @@ set -f
 # cleanup code in command handlers a chance to run.
 trap '' HUP
 
-# Do not let CTRL+C or CTRL+\ kill crosh itself.  This does let the user kill
-# commands that are run by crosh (like `ping`).
-trap : INT QUIT
-
 # If it exists, use $DATA_DIR to define the $HOME location, as a first step
 # to entirely removing the use of $HOME. (Though HOME should be used as
 # fall-back when DATA_DIR is unset.)
@@ -49,16 +45,6 @@ try_bash() {
   exec /bin/bash "$0" "$@"
 }
 try_bash "$@"
-
-INTRO_TEXT="Welcome to crosh, the Chrome OS developer shell.
-
-If you got here by mistake, don't panic!  Just close this tab and carry on.
-
-Type 'help' for a list of commands.
-
-If you want to customize the look/behavior, you can use the options page.
-Load it by using the Ctrl+Shift+P keyboard shortcut.
-"
 
 # Gets set to "1" when in dev mode.
 CROSH_DEVMODE=
@@ -1914,74 +1900,11 @@ dispatch() {
   fi
 }
 
-# Run a command with the argv in a single string.
-dispatch_line() {
-  local line="$1"
-  local command=""
-  local params=""
-  local p
-
-  local space_pos="$(expr index "${line}" ' ')"
-
-  if [ "${space_pos}" = "0" ]; then
-    command="${line}"
-  else
-    command="$(substr "${line}" "0" "${space_pos}")"
-    command="${command% *}"
-    params="$(substr "${line}" "${space_pos}")"
-  fi
-
-  dispatch "${command}" ${params}
-}
-
-repl() {
-  echo "${INTRO_TEXT}"
-  if [ "${IS_BASH}" != "1" ]; then
-    echo "Sorry, line editing disabled due to shell limitations."
-  fi
-
-  # This will be set by the 'exit' command to tell us to quit.
-  local exit
-
-  # Create a colorized prompt to make it easier to see commands start/finish.
-  local prompt
-  prompt="$(printf '%bcrosh>%b ' '\001\033[1;33m\002' '\001\033[0m\002')"
-
-  while [ -z "${exit}" ]; do
-    if shell_read "${prompt}" LINE_; then
-      if [ ! -z "${LINE_}" ]; then
-        dispatch_line "${LINE_}"
-      fi
-    else
-      echo
-      return 1
-    fi
-  done
-}
-
 usage() {
-  if [ $# -ne 0 ]; then
-    # Send stdout below to stderr instead.
-    exec 1>&2
+  if [ $# -gt 0 ]; then
+    echo "ERROR: $*" >&2
   fi
-  cat <<EOF
-Usage: crosh [options] [-- [args]]
-
-Options:
-  --dash        Force running through dash.
-  --dev         Force dev mode.
-  --removable   Force removable (USB) mode.
-  --usb         Same as above.
-  --help, -h    Show this help string.
-  -- <all args after this are a command to run>
-                Execute a single command and exit.
-EOF
-  if [ $# -ne 0 ]; then
-    echo "ERROR: $*"
-    exit 1
-  else
-    exit 0
-  fi
+  exit 1
 }
 
 main() {
@@ -2002,9 +1925,6 @@ main() {
     --removable|--usb)
       CROSH_REMOVABLE="1"
       ;;
-    --help|-h)
-      usage
-      ;;
     --)
       CROSH_SINGLE_COMMAND=1
       shift
@@ -2019,16 +1939,11 @@ main() {
 
   load_extra_crosh
 
-  if [ "${CROSH_SINGLE_COMMAND}" = "1" ]; then
-    # Don't trap anymore.
-    trap 'exit 1' INT QUIT
-
-    dispatch "$@"
-    exit $?
+  if [ "${CROSH_SINGLE_COMMAND}" != "1" ]; then
+    usage "Interactive mode no longer supported."
   fi
 
-  INPUTRC="${CROSH_MODPATH}/inputrc.crosh"
-
-  repl
+  dispatch "$@"
+  exit $?
 }
 main "$@"
