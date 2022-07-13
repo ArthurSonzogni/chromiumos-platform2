@@ -320,6 +320,23 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state);
 
+  // Persists key blocks for a new secret to the USS and onto disk. Upon
+  // completion the |on_done| callback will be called. Designed to be used in
+  // conjunction with an async CreateKeyBlobs calls by binding all of the
+  // initial parameters to make an AuthBlock::CreateCallback.
+  void PersistAuthFactorToUserSecretStash(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+          on_done,
+      CryptoStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
+
   // Creates a new per-credential secret, adds the key block for the new secret
   // to the USS and persists it to disk.
   void AddAuthFactorViaUserSecretStash(

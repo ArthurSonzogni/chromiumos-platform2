@@ -500,15 +500,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionCreateKeyBlobsFailedInAddViaUSS = 337,
   /* ./auth_session.cc */
-  kLocAuthSessionDeriveUSSSecretFailedInAddViaUSS = 338,
+  kLocAuthSessionDeriveUSSSecretFailedInPersistToUSS = 338,
   /* ./auth_session.cc */
-  kLocAuthSessionAddMainKeyFailedInAddViaUSS = 339,
+  kLocAuthSessionAddMainKeyFailedInPersistToUSS = 339,
   /* ./auth_session.cc */
-  kLocAuthSessionEncryptFailedInAddViaUSS = 340,
+  kLocAuthSessionEncryptFailedInPersistToUSS = 340,
   /* ./auth_session.cc */
-  kLocAuthSessionPersistFactorFailedInAddViaUSS = 341,
+  kLocAuthSessionPersistFactorFailedInPersistToUSS = 341,
   /* ./auth_session.cc */
-  kLocAuthSessionPersistUSSFailedInAddViaUSS = 342,
+  kLocAuthSessionPersistUSSFailedInPersistToUSS = 342,
   /* ./auth_session.cc */
   kLocAuthSessionAuthFactorAuthFailedInAuthUSS = 343,
   /* ./auth_session.cc */
@@ -740,7 +740,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./user_session/real_user_session.cc */
   kLocUserSessionMountFailedInMountEphemeral = 457,
   /* ./auth_session.cc */
-  kLocAuthSessionAddResetSecretFailedInAddViaUSS = 458,
+  kLocAuthSessionAddResetSecretFailedInPersistToUSS = 458,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockStateInvalidInGenerateRecoveryRequest = 459,
   /* ./auth_blocks/auth_block_utility_impl.cc */
