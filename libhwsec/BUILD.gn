@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/flatbuffer.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -9,6 +10,7 @@ group("all") {
     ":install_error_h",
     ":install_headers",
     ":install_headers_overalls",
+    ":install_headers_structures",
     ":libhwsec",
   ]
   if (use.test) {
@@ -124,10 +126,84 @@ config("libhwsec_tpm2_config") {
   libs = [ "trunks" ]
 }
 
+flatbuffer("python-flatbuffers-reflection") {
+  flatc_out_dir = "python"
+  flatc_args = [ "--python" ]
+  sources = [ "${sysroot}/usr/include/flatbuffers/reflection.fbs" ]
+}
+
+flatbuffer("signature-sealed-data-flatbuffers") {
+  flatc_out_dir = "include/libhwsec/structures"
+  flatc_args = [
+    # Default flatbuffer flags used in Chrome OS.
+    "--cpp",
+    "--keep-prefix",
+
+    # Generate code for enums using C++11 scoped enums.
+    "--scoped-enums",
+  ]
+  sources = [ "structures/signature_sealed_data.fbs" ]
+}
+
+flatbuffer("signature-sealed-data-flatbuffers-binding-binary") {
+  flatc_out_dir = "bfbs"
+  flatc_args = [
+    "--binary",
+    "--schema",
+  ]
+  sources = [ "structures/signature_sealed_data.fbs" ]
+}
+
+# Put the generator in the same folder that the generated flatbuffers
+# reflection python library exist.
+copy("flatbuffers-binding-generator") {
+  sources = [
+    "../libhwsec-foundation/flatbuffers/flatbuffer_cpp_binding_generator.py",
+  ]
+  outputs = [ "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py" ]
+  deps = [ ":python-flatbuffers-reflection" ]
+}
+
+action("signature-sealed-data-flatbuffers-binding-generate") {
+  script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
+  inputs = [ "structures/signature_sealed_data.fbs" ]
+  outputs = [
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.h",
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data_flatbuffer.h",
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data_test_utils.h",
+  ]
+  args = [
+    "--output_dir=${root_gen_dir}/include/libhwsec/structures",
+    "--guard_prefix=LIBLWSEC_STRUCTURES_SIGNATURE_SEALED_DATA",
+    "--flatbuffer_header_include_paths",
+    "libhwsec/structures/signature_sealed_data.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec/structures/signature_sealed_data_generated.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec-foundation/flatbuffers/basic_objects.h",
+    "--impl_include_paths",
+    "libhwsec/structures/signature_sealed_data.h",
+    "--impl_include_paths",
+    "libhwsec/structures/signature_sealed_data_flatbuffer.h",
+    "--impl_include_paths",
+    "libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h",
+    "--test_utils_header_include_path",
+    "libhwsec/structures/signature_sealed_data.h",
+    "${root_gen_dir}/bfbs/signature_sealed_data.bfbs",
+  ]
+  deps = [
+    ":flatbuffers-binding-generator",
+    ":signature-sealed-data-flatbuffers",
+    ":signature-sealed-data-flatbuffers-binding-binary",
+  ]
+}
+
 # The sources that contain HWSEC_EXPORT.
 # The exported symbols should only be linked to one shared library.
 source_set("hardware_abstraction_external_library") {
   sources = [
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
     "frontend/cryptohome/frontend_impl.cc",
     "frontend/pinweaver/frontend_impl.cc",
@@ -141,6 +217,8 @@ source_set("hardware_abstraction_external_library") {
     ":target_defaults",
     "//common-mk:pic",
   ]
+
+  deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
 }
 
 # The sources that don't contain HWSEC_EXPORT.
@@ -216,6 +294,18 @@ shared_library("libhwsec") {
 install_config("install_headers") {
   sources = [ "hwsec_export.h" ]
   install_path = "/usr/include/chromeos/libhwsec"
+}
+
+install_config("install_headers_structures") {
+  sources = [
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.h",
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data_flatbuffer.h",
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data_generated.h",
+    "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data_test_utils.h",
+  ]
+  install_path = "/usr/include/chromeos/libhwsec/structures"
+
+  deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
 }
 
 install_config("install_headers_overalls") {

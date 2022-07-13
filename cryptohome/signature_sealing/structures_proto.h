@@ -18,8 +18,8 @@ ChallengeSignatureAlgorithm ToProto(structure::ChallengeSignatureAlgorithm obj);
 structure::ChallengeSignatureAlgorithm FromProto(
     ChallengeSignatureAlgorithm obj);
 
-SignatureSealedData ToProto(const structure::SignatureSealedData& obj);
-structure::SignatureSealedData FromProto(const SignatureSealedData& obj);
+SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj);
+hwsec::SignatureSealedData FromProto(const SignatureSealedData& obj);
 
 SerializedVaultKeyset_SignatureChallengeInfo ToProto(
     const structure::SignatureChallengeInfo& obj);

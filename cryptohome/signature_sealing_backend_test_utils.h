@@ -22,7 +22,7 @@ class MockUnsealingSession;
 
 // Creates the SignatureSealedData protobuf message filled with some fake
 // values.
-structure::SignatureSealedData MakeFakeSignatureSealedData(
+hwsec::SignatureSealedData MakeFakeSignatureSealedData(
     const brillo::Blob& public_key_spki_der);
 
 // Helper for setting up mock expectation and mock response for the

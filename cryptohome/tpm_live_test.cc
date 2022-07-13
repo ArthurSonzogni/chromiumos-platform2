@@ -577,7 +577,7 @@ class SignatureSealedSecretTestCase final {
     }
     // Create a secret.
     SecureBlob secret_value;
-    structure::SignatureSealedData sealed_secret_data;
+    hwsec::SignatureSealedData sealed_secret_data;
     if (!CreateSecret(&secret_value, &sealed_secret_data)) {
       LOG(ERROR) << "Error creating a secret";
       return false;
@@ -706,7 +706,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CreateSecret(SecureBlob* secret_value,
-                    structure::SignatureSealedData* sealed_secret_data) {
+                    hwsec::SignatureSealedData* sealed_secret_data) {
     if (hwsec::Status err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
             secret_value, sealed_secret_data);
@@ -719,7 +719,7 @@ class SignatureSealedSecretTestCase final {
 
   bool CheckSecretCreationFails() {
     SecureBlob secret_value;
-    structure::SignatureSealedData sealed_secret_data;
+    hwsec::SignatureSealedData sealed_secret_data;
     if (hwsec::Status err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
             &secret_value, &sealed_secret_data);
@@ -733,7 +733,7 @@ class SignatureSealedSecretTestCase final {
     return false;
   }
 
-  bool Unseal(const structure::SignatureSealedData& sealed_secret_data,
+  bool Unseal(const hwsec::SignatureSealedData& sealed_secret_data,
               Blob* challenge_value,
               Blob* challenge_signature,
               SecureBlob* unsealed_value) {
@@ -775,7 +775,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithOldSignature(
-      const structure::SignatureSealedData& sealed_secret_data,
+      const hwsec::SignatureSealedData& sealed_secret_data,
       const Blob& challenge_signature) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
@@ -797,7 +797,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithBadAlgorithmSignature(
-      const structure::SignatureSealedData& sealed_secret_data) {
+      const hwsec::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
@@ -825,7 +825,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithBadSignature(
-      const structure::SignatureSealedData& sealed_secret_data) {
+      const hwsec::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
@@ -852,7 +852,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithWrongAlgorithm(
-      const structure::SignatureSealedData& sealed_secret_data) {
+      const hwsec::SignatureSealedData& sealed_secret_data) {
     const structure::ChallengeSignatureAlgorithm wrong_algorithm =
         *param_.expected_algorithm ==
                 structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1
@@ -873,7 +873,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithWrongKey(
-      const structure::SignatureSealedData& sealed_secret_data) {
+      const hwsec::SignatureSealedData& sealed_secret_data) {
     crypto::ScopedEVP_PKEY other_pkey;
     Blob other_key_spki_der;
     if (!GenerateRsaKey(param_.key_size_bits, &other_pkey,
@@ -897,7 +897,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFail(
-      const structure::SignatureSealedData& sealed_secret_data) {
+      const hwsec::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
@@ -956,7 +956,7 @@ class SignatureSealedSecretTestCase final {
   crypto::ScopedEVP_PKEY pkey_;
   Blob key_spki_der_;
 
-  structure::SignatureSealedData another_sealed_secret_data_;
+  hwsec::SignatureSealedData another_sealed_secret_data_;
 };
 
 }  // namespace

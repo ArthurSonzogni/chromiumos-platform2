@@ -156,10 +156,14 @@ action("structures-flatbuffers-binding-generate") {
   args = [
     "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
     "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS_STRUCTURES",
+    "--header_include_paths",
+    "libhwsec/structures/signature_sealed_data.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/structures.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/structures_generated.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec/structures/signature_sealed_data_flatbuffer.h",
     "--flatbuffer_header_include_paths",
     "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
@@ -170,6 +174,8 @@ action("structures-flatbuffers-binding-generate") {
     "libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h",
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/structures.h",
+    "--test_utils_header_include_path",
+    "libhwsec/structures/signature_sealed_data_test_utils.h",
     "${root_gen_dir}/bfbs/structures.bfbs",
     "--filter_by_namespace",
     "cryptohome::structure",
@@ -248,11 +254,6 @@ flatbuffer("cryptohome-flatbuffers") {
     # Generate code for enums using C++11 scoped enums.
     "--scoped-enums",
   ]
-  if (use.test || use.fuzzer) {
-    # Tests and fuzzers use Flatbuffers Object based API (which is more
-    # convenient but doesn't allow to use a secure allocator).
-    flatc_args += [ "--gen-object-api" ]
-  }
   sources = [
     "../flatbuffer_schemas/auth_block_state.fbs",
     "../flatbuffer_schemas/auth_factor.fbs",

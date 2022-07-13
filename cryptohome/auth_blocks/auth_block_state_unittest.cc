@@ -199,7 +199,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm12) {
           .keyset_challenge_info = structure::SignatureChallengeInfo{
               .public_key_spki_der = BlobFromString("public_key_spki_der"),
               .sealed_secret =
-                  structure::Tpm12CertifiedMigratableKeyData{
+                  hwsec::Tpm12CertifiedMigratableKeyData{
                       .public_key_spki_der =
                           BlobFromString("public_key_spki_der"),
                       .srk_wrapped_cmk = BlobFromString("srk_wrapped_cmk"),
@@ -236,7 +236,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm2) {
           .keyset_challenge_info = structure::SignatureChallengeInfo{
               .public_key_spki_der = BlobFromString("public_key_spki_der"),
               .sealed_secret =
-                  structure::Tpm2PolicySignedData{
+                  hwsec::Tpm2PolicySignedData{
                       .public_key_spki_der =
                           BlobFromString("public_key_spki_der"),
                       .srk_wrapped_secret =
@@ -273,7 +273,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateEmpty) {
           .keyset_challenge_info = structure::SignatureChallengeInfo{
               .public_key_spki_der = BlobFromString(""),
               .sealed_secret =
-                  structure::Tpm2PolicySignedData{
+                  hwsec::Tpm2PolicySignedData{
                       .public_key_spki_der = BlobFromString(""),
                       .srk_wrapped_secret = BlobFromString(""),
                       .default_pcr_policy_digest = BlobFromString(""),
@@ -312,7 +312,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateDefault) {
   AuthBlockState state = {
       .state = ChallengeCredentialAuthBlockState{
           .keyset_challenge_info = structure::SignatureChallengeInfo{
-              .sealed_secret = structure::Tpm2PolicySignedData{},
+              .sealed_secret = hwsec::Tpm2PolicySignedData{},
           }}};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -324,7 +324,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateDefault) {
       .keyset_challenge_info = structure::SignatureChallengeInfo{
           .public_key_spki_der = BlobFromString(""),
           .sealed_secret =
-              structure::Tpm2PolicySignedData{
+              hwsec::Tpm2PolicySignedData{
                   .public_key_spki_der = BlobFromString(""),
                   .srk_wrapped_secret = BlobFromString(""),
                   .default_pcr_policy_digest = BlobFromString(""),

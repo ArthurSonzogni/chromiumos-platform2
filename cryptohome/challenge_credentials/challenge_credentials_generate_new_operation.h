@@ -101,7 +101,7 @@ class ChallengeCredentialsGenerateNewOperation final
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
   std::unique_ptr<brillo::Blob> salt_signature_;
   std::unique_ptr<brillo::SecureBlob> tpm_protected_secret_value_;
-  structure::SignatureSealedData tpm_sealed_secret_data_;
+  hwsec::SignatureSealedData tpm_sealed_secret_data_;
   base::WeakPtrFactory<ChallengeCredentialsGenerateNewOperation>
       weak_ptr_factory_{this};
 };

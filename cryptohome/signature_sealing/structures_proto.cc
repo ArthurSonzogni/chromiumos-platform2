@@ -19,7 +19,7 @@ namespace proto {
 // We don't need to export these functions.
 namespace {
 SignatureSealedData_Tpm2PolicySignedData ToProto(
-    const structure::Tpm2PolicySignedData& obj) {
+    const hwsec::Tpm2PolicySignedData& obj) {
   SignatureSealedData_Tpm2PolicySignedData result;
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
   result.set_srk_wrapped_secret(BlobToString(obj.srk_wrapped_secret));
@@ -57,9 +57,9 @@ SignatureSealedData_Tpm2PolicySignedData ToProto(
   return result;
 }
 
-structure::Tpm2PolicySignedData FromProto(
+hwsec::Tpm2PolicySignedData FromProto(
     const SignatureSealedData_Tpm2PolicySignedData& obj) {
-  structure::Tpm2PolicySignedData result;
+  hwsec::Tpm2PolicySignedData result;
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   result.srk_wrapped_secret = BlobFromString(obj.srk_wrapped_secret());
   if (obj.has_scheme()) {
@@ -83,7 +83,7 @@ structure::Tpm2PolicySignedData FromProto(
 }
 
 SignatureSealedData_Tpm12CertifiedMigratableKeyData ToProto(
-    const structure::Tpm12CertifiedMigratableKeyData& obj) {
+    const hwsec::Tpm12CertifiedMigratableKeyData& obj) {
   SignatureSealedData_Tpm12CertifiedMigratableKeyData result;
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
   result.set_srk_wrapped_cmk(BlobToString(obj.srk_wrapped_cmk));
@@ -117,9 +117,9 @@ SignatureSealedData_Tpm12CertifiedMigratableKeyData ToProto(
   return result;
 }
 
-structure::Tpm12CertifiedMigratableKeyData FromProto(
+hwsec::Tpm12CertifiedMigratableKeyData FromProto(
     const SignatureSealedData_Tpm12CertifiedMigratableKeyData& obj) {
-  structure::Tpm12CertifiedMigratableKeyData result;
+  hwsec::Tpm12CertifiedMigratableKeyData result;
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   result.srk_wrapped_cmk = BlobFromString(obj.srk_wrapped_cmk());
   result.cmk_pubkey = BlobFromString(obj.cmk_pubkey());
@@ -167,13 +167,12 @@ structure::ChallengeSignatureAlgorithm FromProto(
   }
 }
 
-SignatureSealedData ToProto(const structure::SignatureSealedData& obj) {
+SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj) {
   SignatureSealedData result;
-  if (auto* data = std::get_if<structure::Tpm2PolicySignedData>(&obj)) {
+  if (auto* data = std::get_if<hwsec::Tpm2PolicySignedData>(&obj)) {
     *result.mutable_tpm2_policy_signed_data() = ToProto(*data);
   } else if (auto* data =
-                 std::get_if<structure::Tpm12CertifiedMigratableKeyData>(
-                     &obj)) {
+                 std::get_if<hwsec::Tpm12CertifiedMigratableKeyData>(&obj)) {
     *result.mutable_tpm12_certified_migratable_key_data() = ToProto(*data);
   } else {
     NOTREACHED() << "Unknown signature sealed data type.";
@@ -181,7 +180,7 @@ SignatureSealedData ToProto(const structure::SignatureSealedData& obj) {
   return result;
 }
 
-structure::SignatureSealedData FromProto(const SignatureSealedData& obj) {
+hwsec::SignatureSealedData FromProto(const SignatureSealedData& obj) {
   if (obj.has_tpm2_policy_signed_data())
     return FromProto(obj.tpm2_policy_signed_data());
   else if (obj.has_tpm12_certified_migratable_key_data())

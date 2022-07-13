@@ -37,7 +37,7 @@ TEST(ChallengeSignatureAlgorithmTest, FromProtoToProto) {
 }
 
 TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
-  structure::Tpm2PolicySignedData data{
+  hwsec::Tpm2PolicySignedData data{
       .public_key_spki_der = BlobFromString("public_key_spki_der"),
       .srk_wrapped_secret = BlobFromString("srk_wrapped_secret"),
       .scheme = 0x54321,
@@ -47,17 +47,15 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
           BlobFromString("extended_pcr_policy_digest"),
   };
 
-  structure::SignatureSealedData struct_data = data;
-  ASSERT_TRUE(
-      std::holds_alternative<structure::Tpm2PolicySignedData>(struct_data));
+  hwsec::SignatureSealedData struct_data = data;
+  ASSERT_TRUE(std::holds_alternative<hwsec::Tpm2PolicySignedData>(struct_data));
 
-  structure::SignatureSealedData final_data =
+  hwsec::SignatureSealedData final_data =
       proto::FromProto(proto::ToProto(struct_data));
-  ASSERT_TRUE(
-      std::holds_alternative<structure::Tpm2PolicySignedData>(final_data));
+  ASSERT_TRUE(std::holds_alternative<hwsec::Tpm2PolicySignedData>(final_data));
 
-  const structure::Tpm2PolicySignedData& tpm2_data =
-      std::get<structure::Tpm2PolicySignedData>(final_data);
+  const hwsec::Tpm2PolicySignedData& tpm2_data =
+      std::get<hwsec::Tpm2PolicySignedData>(final_data);
 
   EXPECT_EQ(tpm2_data.public_key_spki_der, data.public_key_spki_der);
   EXPECT_EQ(tpm2_data.srk_wrapped_secret, data.srk_wrapped_secret);
@@ -70,7 +68,7 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
 }
 
 TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
-  structure::Tpm12CertifiedMigratableKeyData data{
+  hwsec::Tpm12CertifiedMigratableKeyData data{
       .public_key_spki_der = BlobFromString("public_key_spki_der"),
       .srk_wrapped_cmk = BlobFromString("srk_wrapped_cmk"),
       .cmk_pubkey = BlobFromString("cmk_pubkey"),
@@ -79,19 +77,17 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
       .extended_pcr_bound_secret = BlobFromString("extended_pcr_bound_secret"),
   };
 
-  structure::SignatureSealedData struct_data = data;
-  ASSERT_TRUE(
-      std::holds_alternative<structure::Tpm12CertifiedMigratableKeyData>(
-          struct_data));
+  hwsec::SignatureSealedData struct_data = data;
+  ASSERT_TRUE(std::holds_alternative<hwsec::Tpm12CertifiedMigratableKeyData>(
+      struct_data));
 
-  structure::SignatureSealedData final_data =
+  hwsec::SignatureSealedData final_data =
       proto::FromProto(proto::ToProto(struct_data));
-  ASSERT_TRUE(
-      std::holds_alternative<structure::Tpm12CertifiedMigratableKeyData>(
-          final_data));
+  ASSERT_TRUE(std::holds_alternative<hwsec::Tpm12CertifiedMigratableKeyData>(
+      final_data));
 
-  const structure::Tpm12CertifiedMigratableKeyData& tpm1_data =
-      std::get<structure::Tpm12CertifiedMigratableKeyData>(final_data);
+  const hwsec::Tpm12CertifiedMigratableKeyData& tpm1_data =
+      std::get<hwsec::Tpm12CertifiedMigratableKeyData>(final_data);
 
   EXPECT_EQ(tpm1_data.public_key_spki_der, data.public_key_spki_der);
   EXPECT_EQ(tpm1_data.srk_wrapped_cmk, data.srk_wrapped_cmk);
@@ -103,7 +99,7 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
 }
 
 TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
-  structure::Tpm2PolicySignedData policy_data = {
+  hwsec::Tpm2PolicySignedData policy_data = {
       .public_key_spki_der = BlobFromString("public_key_spki_der"),
       .srk_wrapped_secret = BlobFromString("srk_wrapped_secret"),
       .scheme = 0x54321,
@@ -126,10 +122,10 @@ TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
   EXPECT_EQ(final_data.salt, data.salt);
   EXPECT_EQ(final_data.salt_signature_algorithm, data.salt_signature_algorithm);
 
-  ASSERT_TRUE(std::holds_alternative<structure::Tpm2PolicySignedData>(
+  ASSERT_TRUE(std::holds_alternative<hwsec::Tpm2PolicySignedData>(
       final_data.sealed_secret));
-  const structure::Tpm2PolicySignedData& tpm2_data =
-      std::get<structure::Tpm2PolicySignedData>(final_data.sealed_secret);
+  const hwsec::Tpm2PolicySignedData& tpm2_data =
+      std::get<hwsec::Tpm2PolicySignedData>(final_data.sealed_secret);
 
   EXPECT_EQ(tpm2_data.public_key_spki_der, policy_data.public_key_spki_der);
   EXPECT_EQ(tpm2_data.srk_wrapped_secret, policy_data.srk_wrapped_secret);

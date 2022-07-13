@@ -44,9 +44,9 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::string& obfuscated_username,
       brillo::SecureBlob* secret_value,
-      structure::SignatureSealedData* sealed_secret_data) override;
+      hwsec::SignatureSealedData* sealed_secret_data) override;
   hwsec::Status CreateUnsealingSession(
-      const structure::SignatureSealedData& sealed_secret_data,
+      const hwsec::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::set<uint32_t>& pcr_set,

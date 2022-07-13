@@ -33,12 +33,12 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
                const std::vector<structure::ChallengeSignatureAlgorithm>&,
                const std::string&,
                brillo::SecureBlob*,
-               structure::SignatureSealedData*),
+               hwsec::SignatureSealedData*),
               (override));
 
   MOCK_METHOD(hwsec::Status,
               CreateUnsealingSession,
-              (const structure::SignatureSealedData& sealed_secret_data,
+              (const hwsec::SignatureSealedData& sealed_secret_data,
                const brillo::Blob& public_key_spki_der,
                const std::vector<structure::ChallengeSignatureAlgorithm>&
                    key_algorithms,

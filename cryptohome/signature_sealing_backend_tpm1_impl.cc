@@ -1121,7 +1121,7 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::string& obfuscated_username,
     SecureBlob* secret_value,
-    structure::SignatureSealedData* sealed_secret_data) {
+    hwsec::SignatureSealedData* sealed_secret_data) {
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
                 structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1) ==
@@ -1244,7 +1244,7 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
 
   // Fill the resulting proto with data required for unsealing.
-  structure::Tpm12CertifiedMigratableKeyData data;
+  hwsec::Tpm12CertifiedMigratableKeyData data;
   data.public_key_spki_der = public_key_spki_der;
   data.srk_wrapped_cmk = srk_wrapped_cmk;
   data.cmk_pubkey = cmk_pubkey;
@@ -1256,7 +1256,7 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
 }
 
 hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
-    const structure::SignatureSealedData& sealed_secret_data,
+    const hwsec::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::set<uint32_t>& /* pcr_set */,
@@ -1265,15 +1265,13 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
         unsealing_session) {
   // Validate the parameters.
   auto* sealed_secret_data_ptr =
-      std::get_if<structure::Tpm12CertifiedMigratableKeyData>(
-          &sealed_secret_data);
+      std::get_if<hwsec::Tpm12CertifiedMigratableKeyData>(&sealed_secret_data);
   if (!sealed_secret_data_ptr) {
     return CreateError<TPMError>(
         "Sealed data is empty or uses unexpected method",
         TPMRetryAction::kNoRetry);
   }
-  const structure::Tpm12CertifiedMigratableKeyData& data =
-      *sealed_secret_data_ptr;
+  const hwsec::Tpm12CertifiedMigratableKeyData& data = *sealed_secret_data_ptr;
 
   if (data.public_key_spki_der.empty()) {
     return CreateError<TPMError>("Empty public key", TPMRetryAction::kNoRetry);

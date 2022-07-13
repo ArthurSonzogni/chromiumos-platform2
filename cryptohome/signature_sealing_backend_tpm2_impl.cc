@@ -270,7 +270,7 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::string& obfuscated_username,
     SecureBlob* secret_value,
-    structure::SignatureSealedData* sealed_secret_data) {
+    hwsec::SignatureSealedData* sealed_secret_data) {
   // Choose the algorithm. Respect the input's algorithm prioritization, with
   // the exception of considering SHA-1 as the least preferred option.
   TPM_ALG_ID scheme = TPM_ALG_NULL;
@@ -407,7 +407,7 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     return WrapError<TPMError>(std::move(err), "Error sealing secret data");
   }
   // Fill the resulting proto with data required for unsealing.
-  structure::Tpm2PolicySignedData data;
+  hwsec::Tpm2PolicySignedData data;
   data.public_key_spki_der = public_key_spki_der;
   data.srk_wrapped_secret = BlobFromString(sealed_value);
   data.scheme = scheme;
@@ -419,7 +419,7 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
 }
 
 hwsec::Status SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
-    const structure::SignatureSealedData& sealed_secret_data,
+    const hwsec::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::set<uint32_t>& pcr_set,
@@ -428,13 +428,13 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
         unsealing_session) {
   // Validate the parameters.
   auto* sealed_secret_data_ptr =
-      std::get_if<structure::Tpm2PolicySignedData>(&sealed_secret_data);
+      std::get_if<hwsec::Tpm2PolicySignedData>(&sealed_secret_data);
   if (!sealed_secret_data_ptr) {
     return CreateError<TPMError>(
         "Sealed data is empty or uses unexpected method",
         TPMRetryAction::kNoRetry);
   }
-  const structure::Tpm2PolicySignedData& data = *sealed_secret_data_ptr;
+  const hwsec::Tpm2PolicySignedData& data = *sealed_secret_data_ptr;
 
   if (data.public_key_spki_der.empty()) {
     return CreateError<TPMError>("Empty public key", TPMRetryAction::kNoRetry);

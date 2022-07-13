@@ -78,7 +78,7 @@ class SignatureSealingBackend {
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::string& obfuscated_username,
       brillo::SecureBlob* secret_value,
-      structure::SignatureSealedData* sealed_secret_data) = 0;
+      hwsec::SignatureSealedData* sealed_secret_data) = 0;
 
   // Initiates a session for unsealing the passed sealed data.
   // Note: the implementation may impose restrictions on the number of unsealing
@@ -96,7 +96,7 @@ class SignatureSealingBackend {
   //   pcr_set - The PCR values set; the set would be used to unseal the secret.
   //   locked_to_single_user - Should use extended PCR to unseal or not.
   virtual hwsec::Status CreateUnsealingSession(
-      const structure::SignatureSealedData& sealed_secret_data,
+      const hwsec::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::set<uint32_t>& pcr_set,

@@ -667,8 +667,10 @@ if (use.fuzzer) {
         "tpm_impl.cc",
         "tpm_metrics.cc",
       ]
-      libs += [ "tspi" ]
-      deps += [ "//libhwsec:overalls_library" ]
+      libs += [
+        "hwsec",
+        "tspi",
+      ]
     }
   }
 

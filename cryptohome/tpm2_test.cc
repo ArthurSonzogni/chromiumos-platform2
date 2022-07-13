@@ -1589,16 +1589,15 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
 
   // Trigger the secret creation.
   SecureBlob secret_value;
-  structure::SignatureSealedData sealed_data;
+  hwsec::SignatureSealedData sealed_data;
   std::string obfuscated_username = "obfuscated_username";
   EXPECT_EQ(nullptr, signature_sealing_backend()->CreateSealedSecret(
                          key_spki_der_, supported_algorithms(),
                          obfuscated_username, &secret_value, &sealed_data));
   EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
-  ASSERT_TRUE(
-      std::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));
-  const structure::Tpm2PolicySignedData& sealed_data_contents =
-      std::get<structure::Tpm2PolicySignedData>(sealed_data);
+  ASSERT_TRUE(std::holds_alternative<hwsec::Tpm2PolicySignedData>(sealed_data));
+  const hwsec::Tpm2PolicySignedData& sealed_data_contents =
+      std::get<hwsec::Tpm2PolicySignedData>(sealed_data);
   EXPECT_EQ(key_spki_der_, sealed_data_contents.public_key_spki_der);
   EXPECT_EQ(kSealedSecretValue,
             BlobToString(sealed_data_contents.srk_wrapped_secret));
@@ -1619,8 +1618,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   const std::string kPolicyDigest("fake digest");
   const std::string kPcrValue("fake PCR");
 
-  structure::SignatureSealedData sealed_data;
-  structure::Tpm2PolicySignedData sealed_data_contents;
+  hwsec::SignatureSealedData sealed_data;
+  hwsec::Tpm2PolicySignedData sealed_data_contents;
   sealed_data_contents.public_key_spki_der = key_spki_der_;
   sealed_data_contents.srk_wrapped_secret = BlobFromString(kSealedSecretValue);
   sealed_data_contents.scheme = chosen_scheme();

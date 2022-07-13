@@ -33,14 +33,14 @@ using testing::StrictMock;
 
 namespace cryptohome {
 
-structure::SignatureSealedData MakeFakeSignatureSealedData(
+hwsec::SignatureSealedData MakeFakeSignatureSealedData(
     const Blob& public_key_spki_der) {
   constexpr char kFakeTpm2SrkWrappedSecret[] = "ab";
-  structure::SignatureSealedData sealed_data;
+  hwsec::SignatureSealedData sealed_data;
   // Fill some fields of the protobuf message just to make test/mock assertions
   // more meaningful. Note that it's unimportant that we use TPM2-specific
   // fields here.
-  structure::Tpm2PolicySignedData sealed_data_contents;
+  hwsec::Tpm2PolicySignedData sealed_data_contents;
   sealed_data_contents.public_key_spki_der = public_key_spki_der;
   sealed_data_contents.srk_wrapped_secret =
       BlobFromString(kFakeTpm2SrkWrappedSecret);
@@ -55,7 +55,7 @@ SignatureSealedCreationMocker::SignatureSealedCreationMocker(
 SignatureSealedCreationMocker::~SignatureSealedCreationMocker() = default;
 
 void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
-  const structure::SignatureSealedData sealed_data_to_return =
+  const hwsec::SignatureSealedData sealed_data_to_return =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
@@ -87,7 +87,7 @@ void SignatureSealedUnsealingMocker::SetUpSuccessfulMock() {
 
 void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
     bool mock_repeatedly) {
-  const structure::SignatureSealedData expected_sealed_data =
+  const hwsec::SignatureSealedData expected_sealed_data =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   auto& expected_call = EXPECT_CALL(
       *mock_backend_, CreateUnsealingSession(
@@ -117,7 +117,7 @@ MockUnsealingSession* SignatureSealedUnsealingMocker::AddSessionCreationMock() {
   // ownership to its caller.
   StrictMock<MockUnsealingSession>* mock_unsealing_session =
       new StrictMock<MockUnsealingSession>;
-  const structure::SignatureSealedData expected_sealed_data =
+  const hwsec::SignatureSealedData expected_sealed_data =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
               CreateUnsealingSession(StructureEquals(expected_sealed_data),
