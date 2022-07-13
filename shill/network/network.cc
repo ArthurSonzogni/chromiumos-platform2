@@ -56,26 +56,38 @@ void Network::Start(const Network::StartOptions& opts) {
   Stop();
   CHECK(opts.accept_ra);
   StartIPv6();
-  CHECK(opts.dhcp.has_value());
-  set_dhcp_controller(dhcp_provider_->CreateController(
-      interface_name_, opts.dhcp.value(), technology_));
-  dhcp_controller()->RegisterCallbacks(
-      base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-      base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
-  set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
-                                          IPConfig::kTypeDHCP));
 
-  bool dhcp_started = dhcp_controller()->RequestIP();
+  // Note that currently, the existence of ipconfig_ indicates if the IPv4 part
+  // of Network has been started.
+  bool dhcp_started = false;
+  if (opts.dhcp) {
+    set_dhcp_controller(dhcp_provider_->CreateController(
+        interface_name_, opts.dhcp.value(), technology_));
+    dhcp_controller()->RegisterCallbacks(
+        base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
+        base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
+    set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
+                                            IPConfig::kTypeDHCP));
+    dhcp_started = dhcp_controller()->RequestIP();
+  } else if (link_protocol_ipv4_properties_) {
+    set_ipconfig(
+        std::make_unique<IPConfig>(control_interface_, interface_name_));
+    ipconfig_->set_properties(*link_protocol_ipv4_properties_);
+  } else {
+    NOTREACHED();
+  }
 
-  if (static_network_config_.ipv4_address_cidr.has_value()) {
+  if (link_protocol_ipv4_properties_ ||
+      static_network_config_.ipv4_address_cidr) {
     // If the parameters contain an IP address, apply them now and bring the
     // interface up.  When DHCP information arrives, it will supplement the
     // static information.
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
+    return;
   } else if (!dhcp_started) {
-    // We don't have static config, and DHCP failed immediately. Triggers a
-    // failure here.
+    // We don't have any kind of IPv4 config, and DHCP failed immediately.
+    // Triggers a failure here.
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&Network::StopInternal, AsWeakPtr(),
                                          /*is_failure*/ true));
@@ -114,6 +126,7 @@ void Network::StopInternal(bool is_failure) {
   }
   if (ipconfig()) {
     set_ipconfig(nullptr);
+    link_protocol_ipv4_properties_ = {};
     ipconfig_changed = true;
   }
   // Make sure the timer is stopped regardless of the ip6config state. Just in

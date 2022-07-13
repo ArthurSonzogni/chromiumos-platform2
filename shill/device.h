@@ -437,9 +437,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // connection, if any.
   virtual void DropConnection();
 
-  // Assigns the IPv4 configuration |properties| to |ipconfig_|.
-  void AssignIPConfig(const IPConfig::Properties& properties);
-
   // Applies the static address from IPv6 configuration |properties|.
   // |ip6config_| will be created later when SLAAC address is available.
   void AssignStaticIPv6Config(const IPConfig::Properties& properties);

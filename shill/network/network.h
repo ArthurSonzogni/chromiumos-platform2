@@ -104,6 +104,13 @@ class Network {
   // finally be removed.
   mockable bool HasConnectionObject() const;
 
+  // Sets IPv4 properties specific to technology. Currently this is used by
+  // cellular and VPN.
+  void set_link_protocol_ipv4_properties(
+      std::optional<IPConfig::Properties> props) {
+    link_protocol_ipv4_properties_ = props;
+  }
+
   // Triggers a reconfiguration on connection for an IPv4 config change.
   void OnIPv4ConfigUpdated();
 
@@ -227,6 +234,12 @@ class Network {
   // |ip6config_| which is used to setup the connection. GetCurrentIPConfig()
   // should be used to get this property so that its validity can be checked.
   IPConfig* current_ipconfig_ = nullptr;
+
+  // The technology-specific IPv4 config properties. Currently only used by
+  // cellular and VPN. Assume that when this field is not empty, it must have
+  // valid values to set up the connection (e.g., at least address and prefix
+  // len).
+  std::optional<IPConfig::Properties> link_protocol_ipv4_properties_;
 
   // The static NetworkConfig from the associated Service.
   NetworkConfig static_network_config_;

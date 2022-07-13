@@ -1380,7 +1380,11 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
            serving_operator_info_->mtu() < properties.mtu)) {
         properties.mtu = serving_operator_info_->mtu();
       }
-      AssignIPConfig(properties);
+      network()->set_link_protocol_ipv4_properties(properties);
+      network()->Start(Network::StartOptions{
+          .dhcp = std::nullopt,
+          .accept_ra = true,
+      });
       return;
     }
 
@@ -1394,6 +1398,7 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       };
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
+      network()->set_link_protocol_ipv4_properties(std::nullopt);
       network()->Start(opts);
       SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
     }

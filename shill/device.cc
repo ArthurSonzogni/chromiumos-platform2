@@ -532,16 +532,6 @@ void Device::OnNeighborReachabilityEvent(
   // Does nothing in the general case.
 }
 
-void Device::AssignIPConfig(const IPConfig::Properties& properties) {
-  network_->Stop();
-  network()->StartIPv6();
-  set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name_));
-  ipconfig()->set_properties(properties);
-  dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Network::OnIPv4ConfigUpdated, network_->AsWeakPtr()));
-}
-
 void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
   network()->StartIPv6();
 
