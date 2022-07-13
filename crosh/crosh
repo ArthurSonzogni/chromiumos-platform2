@@ -61,13 +61,13 @@ load_extra_crosh() {
   # Load the removable modules, if the rootfs is on removable
   # media.  e.g. It's a USB stick.
   if [ -z "${CROSH_REMOVABLE}" ]; then
-    local src
+    local src removable
     if [ -e /usr/share/misc/chromeos-common.sh ]; then
       # shellcheck source=../chromeos-common-script/share/chromeos-common.sh
       . "/usr/share/misc/chromeos-common.sh" || exit 1
 
       src="$(get_block_dev_from_partition_dev "$(rootdev -s)")"
-      local removable="$(cat "/sys/block/${src#/dev/}/removable" 2>/dev/null)"
+      removable="$(cat "/sys/block/${src#/dev/}/removable" 2>/dev/null)"
       if [ "${removable}" = "1" ]; then
         CROSH_REMOVABLE="1"
       fi
@@ -165,8 +165,9 @@ cmd_help() (
 
       elif var_is_set "USAGE_${cmd}"; then
         # Only show this function if the usage strings are actually set.
-        local usage="$(expand_var "USAGE_${cmd}")"
-        local help="$(expand_var "HELP_${cmd}")"
+        local usage help
+        usage="$(expand_var "USAGE_${cmd}")"
+        help="$(expand_var "HELP_${cmd}")"
         printf '%s %s  %s\n\n' "${cmd}" "${usage}" "${help}"
       fi
     fi
@@ -634,8 +635,9 @@ cmd_network_diag() (
     # Create a mostly unique filename.  We won't care about clobbering existing
     # files here as this is a user generated request, and we scope the filename
     # to this specific use case.
+    local timestamp
+    timestamp="$(date +'%Y-%m-%d.%H-%M-%S')"
     local downloads_dir="/home/user/${CROS_USER_ID_HASH}/Downloads"
-    local timestamp="$(date +'%Y-%m-%d.%H-%M-%S')"
     local logname="network_diagnostics_${timestamp}.txt"
     local logpath="${downloads_dir}/${logname}"
     rm -f "${logpath}"
@@ -731,7 +733,8 @@ debugd_poll() (
 # Run a shill script via debugd.
 debugd_shill() {
   local script="$1"; shift
-  local args="$(printf '%s,' "$@")"
+  local args
+  args="$(printf '%s,' "$@")"
   debugd_poll RunShillScript "fd:1" "string:${script}" "array:string:${args%,}"
 }
 
@@ -789,16 +792,18 @@ cmd_ping() (
   if [ "${dest}" = "gw" ]; then
     # The default route with the lowest metric represents the default
     # route for the primary device for that IP version.
-    local metric="$(ip "${ip_flag}" route show table 0 | \
+    local metric main_route
+    metric="$(ip "${ip_flag}" route show table 0 | \
         sed -nE 's/^default .* metric ([0-9]+).*/\1/p' | sort -n | head -n1)"
-    local main_route="$(ip "${ip_flag}" route show table 0 | \
+    main_route="$(ip "${ip_flag}" route show table 0 | \
         grep "^default .* metric ${metric} ")"
     dest="$(echo "${main_route}" | awk '{print $3}')"
     # Ping cannot handle link-local v6 addresses like v4 or global v6
     # addresses. It is necessary to provide ping with the format
     # ${addr}%${interface} OR -I ${interface} when that is the case.
     if [ "${ip_flag}" = "-6" ]; then
-      local dev="$(echo "${main_route}" | awk '{print $5}')"
+      local dev
+      dev="$(echo "${main_route}" | awk '{print $5}')"
       option="${option}interface,string:${dev},"
     fi
     if [ -z "${dest}" ]; then
@@ -1403,10 +1408,11 @@ cmd_battery_test() (
     local bat_discharging=0
   fi
 
-  local bat_pct="$(get_power_status_field 'battery_percent')"
-  local bat_full="$(get_power_status_field 'battery_charge_full')"
-  local bat_full_design="$(get_power_status_field 'battery_charge_full_design')"
-  local bat_health="$(echo "${bat_full}" "${bat_full_design}" | \
+  local bat_pct bat_full bat_full_design bat_health
+  bat_pct="$(get_power_status_field 'battery_percent')"
+  bat_full="$(get_power_status_field 'battery_charge_full')"
+  bat_full_design="$(get_power_status_field 'battery_charge_full_design')"
+  bat_health="$(echo "${bat_full}" "${bat_full_design}" | \
       awk '{ printf "%.2f", 100.0 * $1 / $2 }')"
 
   echo "Battery is ${bat_status} (${bat_pct}% left)"
@@ -1420,8 +1426,9 @@ cmd_battery_test() (
   echo "Please wait..."
   sleep "${test_length}"
 
-  local bat_after="$(get_power_status_field 'battery_percent')"
-  local bat_diff="$(echo "${bat_pct}" "${bat_after}" | \
+  local bat_after bat_diff
+  bat_after="$(get_power_status_field 'battery_percent')"
+  bat_diff="$(echo "${bat_pct}" "${bat_after}" | \
       awk '{ printf "%.2f", $1 - $2 }')"
   echo "Battery discharged ${bat_diff}% in ${test_length} second(s)."
 )
@@ -1732,14 +1739,16 @@ cmd_gesture_prop() (
   local property_name
   local value
   local remaining_args="$*"
-  local first_char="$(substr "${remaining_args}" "0" "2")"
+  local first_char
+  first_char="$(substr "${remaining_args}" "0" "2")"
   if [ "${first_char}" != '"' ] && [ "${first_char}" != "'" ]; then
     property_name=$1
     value=$2
   else
-    local args_without_quote="$(substr "${remaining_args}" "1")"
+    local args_without_quote quote_2_pos
+    args_without_quote="$(substr "${remaining_args}" "1")"
     # shellcheck disable=SC2003
-    local quote_2_pos="$(expr index "${args_without_quote}" "${first_char}")"
+    quote_2_pos="$(expr index "${args_without_quote}" "${first_char}")"
     property_name="$(substr "${args_without_quote}" "0" "${quote_2_pos}")"
     # $value will have the quote and a space at the front, so trim that.
     value="$(substr "${remaining_args}" "$((quote_2_pos + 2))")"
@@ -1833,7 +1842,8 @@ registered_crosh_command_help() {
 # commands that do define EXEC_<command> variable, we
 # ensure that it contains name of a valid shell command.
 check_command_available() {
-  local exec="$(expand_var "EXEC_$1")"
+  local exec
+  exec="$(expand_var "EXEC_$1")"
   [ -z "${exec}" ] || command -v "${exec}" >/dev/null
 }
 
