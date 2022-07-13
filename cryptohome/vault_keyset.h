@@ -14,11 +14,11 @@
 #include <base/gtest_prod_util.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"

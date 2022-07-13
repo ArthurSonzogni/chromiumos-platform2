@@ -15,10 +15,10 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {

@@ -8,7 +8,7 @@
 
 #include <base/logging.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {

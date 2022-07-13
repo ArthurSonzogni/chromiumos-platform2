@@ -28,7 +28,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
@@ -39,6 +38,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"

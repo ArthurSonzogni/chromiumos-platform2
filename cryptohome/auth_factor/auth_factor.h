@@ -12,13 +12,13 @@
 #include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {

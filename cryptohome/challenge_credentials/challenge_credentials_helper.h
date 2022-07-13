@@ -15,8 +15,8 @@
 #include <base/callback.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 

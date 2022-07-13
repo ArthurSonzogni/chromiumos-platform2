@@ -4,7 +4,6 @@
 # Copyright 2022 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """A C++ binding code generator for flatbuffers schema in cryptohome.
 
 This generator generates four kinds of files form flatbuffers schema:
@@ -73,13 +72,14 @@ This generator introduces three new custom attributes in the schema:
   splitting files.
 """
 
+import argparse
 from datetime import date
 from functools import lru_cache
-from subprocess import run, PIPE
-import argparse
 import logging
 import os
 import re
+from subprocess import PIPE
+from subprocess import run
 import sys
 
 # The following imports will be available in the build system.
@@ -87,6 +87,7 @@ import sys
 from jinja2 import Template
 from reflection.BaseType import BaseType
 from reflection.Schema import Schema
+
 
 _SERIALIZED_NAMESPACE = '_serialized_'
 
@@ -107,6 +108,10 @@ _ARRAY_TEMPLATE = Template('{{inner_type}}[{{size}}]')
 _OPTIONAL_TEMPLATE = Template('%(optional_type)s<{{inner_type}}>' % {
     'optional_type': _CPP_OPTIONAL_TYPE,
 })
+
+# The prefix to export the serializer symbol, so we can export the serializer
+# in the shared library.
+_EXPORT_ATTRIBUTE = '__attribute__((visibility("default")))'
 
 _ENUM_TOPOSORT_TYPE = 0
 _OBJECT_TOPOSORT_TYPE = 1
@@ -272,6 +277,15 @@ def GetNamespaces(obj, serialized_namespace=False):
     if not serialized_namespace:
         namespaces = namespaces[:-1]
     return tuple(namespaces)
+
+
+@lru_cache(maxsize=None)
+def IsNamespaceAllowed(obj, namespace_filter):
+    # Allow everything if the namespace_filter is empty.
+    if not namespace_filter:
+        return True
+    namespace = '::'.join(GetNamespaces(obj))
+    return namespace in namespace_filter
 
 
 @lru_cache(maxsize=None)
@@ -628,6 +642,7 @@ def OutputStructureToFlatBuffer(schema, obj):
 def OutputStructureSerializer(obj):
     template = Template("""
         {{ namespace_head }}
+        {{ export_attribute }}
         {{ result_type }} {{ simple_name }}::Serialize() const {
           {% if is_secure %} \
             FlatbufferSecureAllocatorBridge allocator;
@@ -670,6 +685,7 @@ def OutputStructureSerializer(obj):
 
     return template.render(namespace_head=namespace_head,
                            namespace_foot=namespace_foot,
+                           export_attribute=_EXPORT_ATTRIBUTE,
                            result_type=result_type,
                            is_secure=is_secure,
                            obj_type=obj_type,
@@ -839,6 +855,7 @@ def OutputStructureDeserializer(obj):
     template = Template("""
         {{ namespace_head }}
         // static
+        {{ export_attribute }}
         {{ result_type }} {{ simple_name }}::Deserialize(const {{ blob_type }}& blob) {
           flatbuffers::Verifier verifier(blob.data(), blob.size());
           if (!{{ serial_verify }}(verifier)) {
@@ -877,6 +894,7 @@ def OutputStructureDeserializer(obj):
 
     return template.render(namespace_head=namespace_head,
                            namespace_foot=namespace_foot,
+                           export_attribute=_EXPORT_ATTRIBUTE,
                            result_type=result_type,
                            obj_type=obj_type,
                            serialized_type=serialized_type,
@@ -1054,7 +1072,7 @@ def ClangFormatCode(code):
 
 
 @lru_cache(maxsize=None)
-def OutputBindingHeader(schema, guard_name, include_paths):
+def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
     template = Template("""\
         {{ copyright }}
 
@@ -1087,9 +1105,13 @@ def OutputBindingHeader(schema, guard_name, include_paths):
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
+            if not IsNamespaceAllowed(obj, namespace_filter):
+                continue
             definitions.append(OutputStructure(schema, obj))
         elif node_type == _ENUM_TOPOSORT_TYPE:
             enum = GetEnum(schema, entity_id)
+            if not IsNamespaceAllowed(enum, namespace_filter):
+                continue
             if enum.IsUnion():
                 definitions.append(OutputVariant(schema, enum))
             else:
@@ -1104,7 +1126,8 @@ def OutputBindingHeader(schema, guard_name, include_paths):
 
 
 @lru_cache(maxsize=None)
-def OutputBindingFlatbufferHeader(schema, guard_name, include_paths):
+def OutputBindingFlatbufferHeader(schema, guard_name, include_paths,
+                                  namespace_filter):
     template = Template("""\
         {{ copyright }}
 
@@ -1139,10 +1162,14 @@ def OutputBindingFlatbufferHeader(schema, guard_name, include_paths):
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
+            if not IsNamespaceAllowed(obj, namespace_filter):
+                continue
             implementations.append(OutputStructureToFlatBuffer(schema, obj))
             implementations.append(OutputStructureFromFlatBuffer(schema, obj))
         elif node_type == _ENUM_TOPOSORT_TYPE:
             enum = GetEnum(schema, entity_id)
+            if not IsNamespaceAllowed(enum, namespace_filter):
+                continue
             if enum.IsUnion():
                 implementations.append(
                     OutputUnionTypeToFlatBuffer(schema, enum))
@@ -1160,7 +1187,7 @@ def OutputBindingFlatbufferHeader(schema, guard_name, include_paths):
 
 
 @lru_cache(maxsize=None)
-def OutputBindingImpl(schema, include_paths):
+def OutputBindingImpl(schema, include_paths, namespace_filter):
     template = Template("""\
         {{ copyright }}
 
@@ -1195,6 +1222,8 @@ def OutputBindingImpl(schema, include_paths):
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
+            if not IsNamespaceAllowed(obj, namespace_filter):
+                continue
             if IsSerializable(schema, obj):
                 implementations.append(OutputStructureSerializer(obj))
                 implementations.append(OutputStructureDeserializer(obj))
@@ -1207,7 +1236,8 @@ def OutputBindingImpl(schema, include_paths):
 
 
 @lru_cache(maxsize=None)
-def OutputBindingTestUtilsHeader(schema, guard_name, include_paths):
+def OutputBindingTestUtilsHeader(schema, guard_name, include_paths,
+                                 namespace_filter):
     template = Template("""\
         {{ copyright }}
 
@@ -1232,6 +1262,8 @@ def OutputBindingTestUtilsHeader(schema, guard_name, include_paths):
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
+            if not IsNamespaceAllowed(obj, namespace_filter):
+                continue
             implementations.append(OutputTestStructure(obj))
 
     header = template.render(copyright=_COPYRIGHT_HEADER,
@@ -1267,6 +1299,10 @@ def main():
                         default=[],
                         help='The include path for testing utils header',
                         action='append')
+    parser.add_argument('--filter_by_namespace',
+                        default=[],
+                        help='Output the objects that match filter namespace',
+                        action='append')
     parser.add_argument('input_files', nargs='*')
     args = parser.parse_args()
 
@@ -1300,23 +1336,27 @@ def main():
         with open(header_file_path, 'w') as output_file:
             output_file.write(
                 OutputBindingHeader(schema, guard_name,
-                                    tuple(args.header_include_paths)))
+                                    tuple(args.header_include_paths),
+                                    tuple(args.filter_by_namespace)))
 
         with open(header_flatbuffer_file_path, 'w') as output_file:
             output_file.write(
                 OutputBindingFlatbufferHeader(
                     schema, header_flatbuffer_guard_name,
-                    tuple(args.flatbuffer_header_include_paths)))
+                    tuple(args.flatbuffer_header_include_paths),
+                    tuple(args.filter_by_namespace)))
 
         with open(impl_file_path, 'w') as output_file:
             output_file.write(
-                OutputBindingImpl(schema, tuple(args.impl_include_paths)))
+                OutputBindingImpl(schema, tuple(args.impl_include_paths),
+                                  tuple(args.filter_by_namespace)))
 
         with open(test_utils_header_file_path, 'w') as output_file:
             output_file.write(
                 OutputBindingTestUtilsHeader(
                     schema, test_utils_guard_name,
-                    tuple(args.test_utils_header_include_paths)))
+                    tuple(args.test_utils_header_include_paths),
+                    tuple(args.filter_by_namespace)))
 
 
 if __name__ == '__main__':

@@ -59,13 +59,22 @@ flatbuffer("python-flatbuffers-reflection") {
   sources = [ "${sysroot}/usr/include/flatbuffers/reflection.fbs" ]
 }
 
-flatbuffer("cryptohome-flatbuffers-binding-binary") {
+flatbuffer("auth-block-state-flatbuffers-binding-binary") {
   flatc_out_dir = "bfbs"
   flatc_args = [
     "--binary",
     "--schema",
   ]
   sources = [ "../flatbuffer_schemas/auth_block_state.fbs" ]
+}
+
+flatbuffer("structures-flatbuffers-binding-binary") {
+  flatc_out_dir = "bfbs"
+  flatc_args = [
+    "--binary",
+    "--schema",
+  ]
+  sources = [ "../flatbuffer_schemas/structures.fbs" ]
 }
 
 flatbuffer("user-secret-stash-flatbuffers-binding-binary") {
@@ -82,13 +91,13 @@ flatbuffer("user-secret-stash-flatbuffers-binding-binary") {
 
 # Put the generator in the same folder that the generated flatbuffers
 # reflection python library exist.
-copy("cryptohome-flatbuffers-binding-generator") {
+copy("flatbuffers-binding-generator") {
   sources = [ "../flatbuffer_schemas/flatbuffer_cpp_binding_generator.py" ]
   outputs = [ "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py" ]
   deps = [ ":python-flatbuffers-reflection" ]
 }
 
-action("cryptohome-flatbuffers-binding-generate") {
+action("auth-block-state-flatbuffers-binding-generate") {
   script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
   inputs = [ "../flatbuffer_schemas/auth_block_state.fbs" ]
   outputs = [
@@ -99,7 +108,9 @@ action("cryptohome-flatbuffers-binding-generate") {
   ]
   args = [
     "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
-    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS",
+    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS_AUTH_BLOCK_STATE",
+    "--header_include_paths",
+    "cryptohome/flatbuffer_schemas/structures.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/auth_block_state_generated.h",
     "--flatbuffer_header_include_paths",
@@ -107,20 +118,63 @@ action("cryptohome-flatbuffers-binding-generate") {
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/basic_objects.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/structures_generated.h",
+    "cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h",
     "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
+    "--impl_include_paths",
     "cryptohome/flatbuffer_secure_allocator_bridge.h",
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/structures_test_utils.h",
     "${root_gen_dir}/bfbs/auth_block_state.bfbs",
+    "--filter_by_namespace",
+    "cryptohome",
   ]
   deps = [
-    ":cryptohome-flatbuffers-binding-binary",
-    ":cryptohome-flatbuffers-binding-generator",
+    ":auth-block-state-flatbuffers-binding-binary",
+    ":flatbuffers-binding-generator",
+    ":structures-flatbuffers-binding-generate",
+  ]
+}
+
+action("structures-flatbuffers-binding-generate") {
+  script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
+  inputs = [ "../flatbuffer_schemas/structures.fbs" ]
+  outputs = [
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/structures.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/structures.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/structures_test_utils.h",
+  ]
+  args = [
+    "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
+    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS_STRUCTURES",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/basic_objects.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/structures.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/structures_generated.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/structures.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_secure_allocator_bridge.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/structures.h",
+    "${root_gen_dir}/bfbs/structures.bfbs",
+    "--filter_by_namespace",
+    "cryptohome::structure",
+  ]
+  deps = [
+    ":flatbuffers-binding-generator",
+    ":structures-flatbuffers-binding-binary",
   ]
 }
 
@@ -162,7 +216,7 @@ action("user-secret-stash-flatbuffers-binding-generate") {
     "${root_gen_dir}/bfbs/user_secret_stash_payload.bfbs",
   ]
   deps = [
-    ":cryptohome-flatbuffers-binding-generator",
+    ":flatbuffers-binding-generator",
     ":user-secret-stash-flatbuffers-binding-binary",
   ]
 }
@@ -170,12 +224,14 @@ action("user-secret-stash-flatbuffers-binding-generate") {
 source_set("cryptohome-flatbuffers-binding") {
   sources = [
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/structures.cc",
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_container.cc",
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_payload.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
-    ":cryptohome-flatbuffers-binding-generate",
+    ":auth-block-state-flatbuffers-binding-generate",
+    ":structures-flatbuffers-binding-generate",
     ":user-secret-stash-flatbuffers-binding-generate",
   ]
 }

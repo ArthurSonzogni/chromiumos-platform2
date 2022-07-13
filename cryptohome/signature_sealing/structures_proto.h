@@ -7,8 +7,8 @@
 
 #include <cryptohome/proto_bindings/key.pb.h>
 
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/signature_sealed_data.pb.h"
-#include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {

@@ -19,7 +19,6 @@
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
@@ -34,6 +33,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_tpm.h"

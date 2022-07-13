@@ -18,7 +18,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
-#include "cryptohome/signature_sealing/structures.h"
+#include "cryptohome/flatbuffer_schemas/structures.h"
 
 using brillo::Blob;
 using brillo::SecureBlob;

@@ -28,13 +28,13 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"

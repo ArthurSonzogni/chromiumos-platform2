@@ -20,7 +20,6 @@
 
 #include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
@@ -43,6 +42,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/tpm.h"

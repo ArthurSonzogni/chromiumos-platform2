@@ -18,7 +18,6 @@
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/revocation.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -26,6 +25,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/tpm.h"
 
 using cryptohome::cryptorecovery::HsmPayload;

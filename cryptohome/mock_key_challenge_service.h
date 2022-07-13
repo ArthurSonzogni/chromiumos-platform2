@@ -13,8 +13,8 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 

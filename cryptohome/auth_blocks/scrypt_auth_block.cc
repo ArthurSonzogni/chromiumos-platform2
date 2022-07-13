@@ -13,9 +13,9 @@
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::ErrorAction;

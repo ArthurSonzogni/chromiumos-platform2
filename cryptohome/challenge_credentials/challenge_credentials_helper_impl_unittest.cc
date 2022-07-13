@@ -22,10 +22,10 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/signature_sealing_backend_test_utils.h"
 

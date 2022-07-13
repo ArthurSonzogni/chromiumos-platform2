@@ -10,13 +10,13 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_platform.h"
 
 using brillo::SecureBlob;

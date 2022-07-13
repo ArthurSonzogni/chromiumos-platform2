@@ -12,13 +12,13 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_objects.h"
 

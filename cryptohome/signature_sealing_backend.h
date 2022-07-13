@@ -16,8 +16,8 @@
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/status.h>
 
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/signature_sealed_data.pb.h"
-#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 

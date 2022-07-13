@@ -25,8 +25,8 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;

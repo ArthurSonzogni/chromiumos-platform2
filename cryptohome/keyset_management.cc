@@ -25,12 +25,12 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"

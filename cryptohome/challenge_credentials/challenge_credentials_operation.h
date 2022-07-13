@@ -15,7 +15,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/error/cryptohome_tpm_error.h"
-#include "cryptohome/signature_sealing/structures.h"
+#include "cryptohome/flatbuffer_schemas/structures.h"
 
 namespace cryptohome {
 

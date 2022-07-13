@@ -11,9 +11,9 @@
 
 #include <base/gtest_prod_util.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
 

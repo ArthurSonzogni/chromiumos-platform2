@@ -9,7 +9,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
 
 using brillo::Blob;

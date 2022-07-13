@@ -16,12 +16,12 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"

@@ -25,7 +25,6 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -35,6 +34,7 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"

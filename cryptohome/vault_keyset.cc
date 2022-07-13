@@ -25,7 +25,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
@@ -39,6 +38,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/platform.h"

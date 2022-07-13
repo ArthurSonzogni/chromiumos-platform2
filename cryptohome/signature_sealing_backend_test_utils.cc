@@ -10,9 +10,9 @@
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/protobuf_test_utils.h"
-#include "cryptohome/signature_sealing/structures.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;

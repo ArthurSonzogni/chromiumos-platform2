@@ -18,7 +18,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
-#include "cryptohome/signature_sealing/structures.h"
+#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/signature_sealing_backend.h"
 
 namespace cryptohome {

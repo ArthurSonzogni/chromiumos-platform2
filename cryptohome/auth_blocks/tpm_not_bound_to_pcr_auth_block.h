@@ -12,10 +12,10 @@
 #include <base/gtest_prod_util.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 

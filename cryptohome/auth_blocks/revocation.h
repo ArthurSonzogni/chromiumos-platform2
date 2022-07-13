@@ -7,9 +7,9 @@
 
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"

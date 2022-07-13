@@ -33,7 +33,6 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <metrics/timer.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -52,6 +51,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"

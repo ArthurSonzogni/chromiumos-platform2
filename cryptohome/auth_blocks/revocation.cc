@@ -14,9 +14,9 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hkdf.h>
 
-#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
