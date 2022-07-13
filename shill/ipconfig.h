@@ -155,6 +155,10 @@ class IPConfig {
   Properties properties_;
 };
 
+bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs);
+bool operator==(const IPConfig::Properties& lhs,
+                const IPConfig::Properties& rhs);
+
 }  // namespace shill
 
 #endif  // SHILL_IPCONFIG_H_

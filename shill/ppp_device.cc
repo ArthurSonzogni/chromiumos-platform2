@@ -28,7 +28,6 @@ extern "C" {
 namespace shill {
 
 namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kPPP;
 static std::string ObjectID(const PPPDevice* p) {
   return p->link_name();
 }
@@ -40,16 +39,6 @@ PPPDevice::PPPDevice(Manager* manager,
     : VirtualDevice(manager, link_name, interface_index, Technology::kPPP) {}
 
 PPPDevice::~PPPDevice() = default;
-
-void PPPDevice::UpdateIPConfigFromPPP(
-    const std::map<std::string, std::string>& configuration,
-    bool blackhole_ipv6) {
-  SLOG(this, 2) << __func__ << " on " << link_name();
-  IPConfig::Properties properties = ParseIPConfiguration(configuration);
-  properties.blackhole_ipv6 = blackhole_ipv6;
-  properties.use_if_addrs = true;
-  UpdateIPConfig(properties);
-}
 
 // static
 std::string PPPDevice::GetInterfaceName(

@@ -218,4 +218,32 @@ void IPConfig::EmitChanges() {
   adaptor_->EmitStringsChanged(kNameServersProperty, properties_.dns_servers);
 }
 
+bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs) {
+  return lhs.host == rhs.host && lhs.prefix == rhs.prefix &&
+         lhs.gateway == rhs.gateway;
+}
+
+// TODO(b/232177767): Ignore the order for vector properties.
+bool operator==(const IPConfig::Properties& lhs,
+                const IPConfig::Properties& rhs) {
+  return lhs.address_family == rhs.address_family &&
+         lhs.address == rhs.address && lhs.subnet_prefix == rhs.subnet_prefix &&
+         lhs.broadcast_address == rhs.broadcast_address &&
+         lhs.dns_servers == rhs.dns_servers &&
+         lhs.domain_name == rhs.domain_name &&
+         lhs.domain_search == rhs.domain_search && lhs.gateway == rhs.gateway &&
+         lhs.method == rhs.method && lhs.peer_address == rhs.peer_address &&
+         lhs.blackholed_uids == rhs.blackholed_uids &&
+         lhs.default_route == rhs.default_route &&
+         lhs.inclusion_list == rhs.inclusion_list &&
+         lhs.exclusion_list == rhs.exclusion_list &&
+         lhs.blackhole_ipv6 == rhs.blackhole_ipv6 &&
+         lhs.use_if_addrs == rhs.use_if_addrs && lhs.mtu == rhs.mtu &&
+         lhs.dhcp_classless_static_routes == rhs.dhcp_classless_static_routes &&
+         lhs.vendor_encapsulated_options == rhs.vendor_encapsulated_options &&
+         lhs.isns_option_data == rhs.isns_option_data &&
+         lhs.web_proxy_auto_discovery == rhs.web_proxy_auto_discovery &&
+         lhs.lease_duration_seconds == rhs.lease_duration_seconds;
+}
+
 }  // namespace shill

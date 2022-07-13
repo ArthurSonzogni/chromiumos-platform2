@@ -1781,7 +1781,10 @@ void Cellular::OnPPPConnected(
   CHECK(!selected_service());
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);
-  ppp_device_->UpdateIPConfigFromPPP(params, false /* blackhole_ipv6 */);
+
+  auto properties = PPPDevice::ParseIPConfiguration(params);
+  properties.use_if_addrs = true;
+  ppp_device_->UpdateIPConfig(properties);
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {

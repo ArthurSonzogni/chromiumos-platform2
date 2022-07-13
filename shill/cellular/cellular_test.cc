@@ -107,10 +107,7 @@ class MockPPPDevice : public PPPDevice {
               (Service::ConnectFailure),
               (override));
   MOCK_METHOD(void, SetEnabled, (bool), (override));
-  MOCK_METHOD(void,
-              UpdateIPConfigFromPPP,
-              ((const std::map<std::string, std::string>&), bool),
-              (override));
+  MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
 };
 
 class CellularPropertyTest : public PropertyStoreTest {
@@ -438,6 +435,14 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                                                            kTestDeviceName);
     ON_CALL(*controller, ReleaseIP(_)).WillByDefault(Return(true));
     return controller;
+  }
+
+  static IPConfig::Properties GetExpectedIPPropsFromPPPConfig(
+      std::map<std::string, std::string>& ppp_config) {
+    auto ip_props = PPPDevice::ParseIPConfiguration(ppp_config);
+    ip_props.blackhole_ipv6 = false;
+    ip_props.use_if_addrs = true;
+    return ip_props;
   }
 
   MOCK_METHOD(void, TestCallback, (const Error&));
@@ -1298,7 +1303,7 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device1,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
   EXPECT_CALL(*ppp_device1,
-              UpdateIPConfigFromPPP(ppp_config, false /* blackhole_ipv6 */));
+              UpdateIPConfig(GetExpectedIPPropsFromPPPConfig(ppp_config)));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device1);
@@ -1312,7 +1317,7 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device1,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
   EXPECT_CALL(*ppp_device1,
-              UpdateIPConfigFromPPP(ppp_config, false /* blackhole_ipv6 */));
+              UpdateIPConfig(GetExpectedIPPropsFromPPPConfig(ppp_config)));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device1);
@@ -1335,7 +1340,7 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device2,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
   EXPECT_CALL(*ppp_device2,
-              UpdateIPConfigFromPPP(ppp_config2, false /* blackhole_ipv6 */));
+              UpdateIPConfig(GetExpectedIPPropsFromPPPConfig(ppp_config2)));
   device_->Notify(kPPPReasonConnect, ppp_config2);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device1);
@@ -1455,8 +1460,7 @@ TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device)));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(static_cast<ServiceRefPtr>(service)));
-  EXPECT_CALL(*ppp_device,
-              UpdateIPConfigFromPPP(_, false /* blackhole_ipv6 */));
+  EXPECT_CALL(*ppp_device, UpdateIPConfig(_));
   EXPECT_CALL(*ppp_device, SetServiceFailure(Service::kFailureUnknown));
   ExpectDisconnectCapability3gpp();
   device_->Notify(kPPPReasonAuthenticating, ppp_config);

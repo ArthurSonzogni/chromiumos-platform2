@@ -53,13 +53,6 @@ class WireGuardDriverTestPeer {
   std::unique_ptr<WireGuardDriver> driver_;
 };
 
-// This function should exist outside the anonymous namespace, otherwise it
-// cannot be found by the gmock framework.
-bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs) {
-  return lhs.host == rhs.host && lhs.prefix == rhs.prefix &&
-         lhs.gateway == rhs.gateway;
-}
-
 namespace {
 
 constexpr pid_t kWireGuardPid = 12345;
