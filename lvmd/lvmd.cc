@@ -185,6 +185,25 @@ bool Lvmd::CreateLogicalVolume(
   return true;
 }
 
+bool Lvmd::RemoveLogicalVolume(brillo::ErrorPtr* error,
+                               const lvmd::LogicalVolume& in_logical_volume) {
+  auto vg_name = in_logical_volume.volume_group().name();
+  auto vg = brillo::VolumeGroup(vg_name, {});
+
+  std::string lv_name = in_logical_volume.name();
+
+  if (!lvm_->RemoveLogicalVolume(vg, lv_name)) {
+    *error =
+        CreateError(FROM_HERE, kErrorInternal,
+                    base::StringPrintf("Failed to RemoveLogicalVolume for lv "
+                                       "name (%s) in vg (%s)",
+                                       lv_name.c_str(), vg_name.c_str()));
+    return false;
+  }
+
+  return true;
+}
+
 int Lvmd::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK)

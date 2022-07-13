@@ -66,6 +66,11 @@ class Lvmd : public brillo::DBusServiceDaemon,
       const lvmd::LogicalVolumeConfiguration& in_logical_volume_configuration,
       lvmd::LogicalVolume* out_logical_volume) override;
 
+  // Removes the logical volume, if it exists.
+  bool RemoveLogicalVolume(
+      brillo::ErrorPtr* error,
+      const lvmd::LogicalVolume& in_logical_volume) override;
+
  protected:
   int OnInit() override;
   void RegisterDBusObjectsAsync(
