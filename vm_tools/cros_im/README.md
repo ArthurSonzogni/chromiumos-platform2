@@ -35,7 +35,7 @@ is recommended.
 ```bash
 git clone https://chromium.googlesource.com/chromiumos/platform2
 cd platform2/vm_tools/cros_im
-sudo apt install clang cmake googletest libgtk-3-dev libgtkmm-3.0-dev libwayland-bin meson pkg-config
+sudo apt install clang cmake googletest libgtk-3-dev libgtkmm-3.0-dev libwayland-bin meson pkg-config dpkg-dev
 meson build && cd build && ninja
 
 DEB_TARGET_GNU_TYPE=$(dpkg-architecture -q DEB_TARGET_GNU_TYPE)
@@ -49,6 +49,7 @@ sudo /usr/lib/${DEB_TARGET_GNU_TYPE}/libgtk-3-0/gtk-query-immodules-3.0 --update
 Enabling the #crostini-ime-support flag in chrome://flags is currently required. It is also recommended to set the default GTK IM module:
 
 ```bash
+mkdir -p ~/.config/environment.d
 echo "GTK_IM_MODULE=cros" >> ~/.config/environment.d/ime.conf
 ```
 
