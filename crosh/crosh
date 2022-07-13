@@ -142,67 +142,6 @@ shell_read() {
   fi
 }
 
-shell_history() {
-  if [ "${IS_BASH}" -eq "1" ]; then
-    # In bash, the history builtin can be used to manage readline history
-    history "$@"
-  fi
-}
-
-shell_history_init() {
-  # Do not set any HISTXXX vars until after security check below.
-  local histfile="${HOME}/.crosh_history"
-
-  # Limit the history to the last 100 entries to keep the file from growing
-  # out of control (unlikely, but let's be safe).
-  local histsize="100"
-
-  # For security sake, let's clean up the file before we let the shell get a
-  # chance to read it.  Clean out any non-printable ASCII chars (sorry UTF8
-  # users) as it's the easiest way to be sure.  We limit to 4k to be rational.
-  # We need a tempfile on the same device to avoid races w/multiple crosh
-  # tabs opening at the same time.
-  local tmpfile
-  if ! tmpfile="$(mktemp "${histfile}.XXXXXX")"; then
-    echo "warning: could not clean up history; ignoring it"
-    return
-  fi
-  # Ignore cat errors in case it doesn't exist yet.
-  cat "${histfile}" 2>/dev/null |
-    tr -dc '[:print:]\t\n' |
-    tail -n "${histsize}" |
-    tail -c 4096 > "${tmpfile}"
-  if ! mv "${tmpfile}" "${histfile}"; then
-    echo "warning: could not clean up history; ignoring it"
-    rm -f "${tmpfile}"
-    return
-  fi
-
-  # Set this before any other history settings as some of them implicitly
-  # operate on this file.
-  HISTFILE="${histfile}"
-
-  # Now we can limit the size of the history file.
-  HISTSIZE="${histsize}"
-  HISTFILESIZE="${histsize}"
-
-  # Do not add entries that begin with a space, and dedupe sequential commands.
-  HISTCONTROL="ignoreboth"
-
-  # Initialize pseudo completion support.  Do it before we load the user's
-  # history so that new entries don't come after old ones.
-  if [ "${IS_BASH}" -eq 1 ]; then
-    local f
-    for f in $(registered_visible_commands); do
-      # Do not add duplicates to avoid ballooning history.
-      grep -qs "^${f} *$" "${HISTFILE}" || shell_history -s "${f}"
-    done
-  fi
-
-  # Now load the user's history.
-  shell_history -r "${HISTFILE}"
-}
-
 # Returns status 0 if the argument is a valid positive integer
 # (i.e. it's not the null string, and contains only digits).
 is_numeric() {
@@ -1961,11 +1900,6 @@ dispatch() {
   elif ! check_command_available "${command}"; then
     help "command '${command}' is not available"
   else
-    # Only add valid commands to the history.
-    if [ -n "${LINE_}" ]; then
-      shell_history -s "${LINE_}"
-    fi
-
     # See if --help was requested; if so, handle it directly so each command
     # doesn't have to deal with it directly.
     for p in "$@"; do
@@ -2003,8 +1937,7 @@ dispatch_line() {
 repl() {
   echo "${INTRO_TEXT}"
   if [ "${IS_BASH}" != "1" ]; then
-    echo "Sorry, line editing and command history disabled due to" \
-      "shell limitations."
+    echo "Sorry, line editing disabled due to shell limitations."
   fi
 
   # This will be set by the 'exit' command to tell us to quit.
@@ -2096,11 +2029,6 @@ main() {
 
   INPUTRC="${CROSH_MODPATH}/inputrc.crosh"
 
-  shell_history_init
-
   repl
-
-  # Save the history after the clean exit.
-  shell_history -w "${HISTFILE}"
 }
 main "$@"
