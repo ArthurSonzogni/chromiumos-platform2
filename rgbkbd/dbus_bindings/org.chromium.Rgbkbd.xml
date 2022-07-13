@@ -13,7 +13,7 @@
         platform2/system_api/dbus/rgbkbd/dbus-constants.h
       </tp:docstring>
       <arg name="keyboard_capabilities" type="u" direction="out"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
     <method name="SetCapsLockState">
       <tp:docstring>

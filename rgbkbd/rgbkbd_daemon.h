@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "rgbkbd/dbus_adaptors/org.chromium.Rgbkbd.h"
@@ -18,10 +19,12 @@
 
 namespace rgbkbd {
 
+class RgbkbdDaemon;
+
 class DBusAdaptor : public org::chromium::RgbkbdInterface,
                     public org::chromium::RgbkbdAdaptor {
  public:
-  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus);
+  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus, RgbkbdDaemon* daemon);
   DBusAdaptor(const DBusAdaptor&) = delete;
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
@@ -30,7 +33,9 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   void RegisterAsync(
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
-  uint32_t GetRgbKeyboardCapabilities() override;
+  void GetRgbKeyboardCapabilities(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<uint32_t>>
+          response) override;
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint8_t r, uint8_t g, uint8_t b) override;
   void SetRainbowMode() override;
@@ -42,6 +47,7 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   std::unique_ptr<InternalRgbKeyboard> internal_keyboard_;
   std::unique_ptr<KeyboardBacklightLogger> logger_keyboard_;
   RgbKeyboardControllerImpl rgb_keyboard_controller_;
+  RgbkbdDaemon* daemon_;
 };
 
 class RgbkbdDaemon : public brillo::DBusServiceDaemon {

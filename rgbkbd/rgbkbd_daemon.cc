@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/rgbkbd/dbus-constants.h>
@@ -23,11 +24,12 @@ constexpr char kLogFilePathForTesting[] = "/run/rgbkbd/log";
 }  // namespace
 
 namespace rgbkbd {
-DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
+DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, RgbkbdDaemon* daemon)
     : org::chromium::RgbkbdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)),
       internal_keyboard_(std::make_unique<InternalRgbKeyboard>()),
-      rgb_keyboard_controller_(internal_keyboard_.get()) {}
+      rgb_keyboard_controller_(internal_keyboard_.get()),
+      daemon_(daemon) {}
 
 void DBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
@@ -35,10 +37,21 @@ void DBusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-uint32_t DBusAdaptor::GetRgbKeyboardCapabilities() {
-  // TODO(michaelcheco): Shutdown DBus service if the keyboard is not
-  // supported.
-  return rgb_keyboard_controller_.GetRgbKeyboardCapabilities();
+void DBusAdaptor::GetRgbKeyboardCapabilities(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<uint32_t>>
+        response) {
+  const uint32_t capabilities =
+      rgb_keyboard_controller_.GetRgbKeyboardCapabilities();
+  response->Return(capabilities);
+
+  // After we return capabilities we want to schedule the Daemon to quit.
+  // DBusServiceDaemon runs tasks based on a sequential message loop so it is
+  // guaranteed RgbkbdDaemon will exit only after all tasks are completed.
+  if (capabilities == static_cast<uint32_t>(RgbKeyboardCapabilities::kNone)) {
+    base::SequencedTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&RgbkbdDaemon::Quit, base::Unretained(daemon_)));
+  }
 }
 
 void DBusAdaptor::SetCapsLockState(bool enabled) {
@@ -79,7 +92,7 @@ RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServiceName) {}
 
 void RgbkbdDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  adaptor_.reset(new DBusAdaptor(bus_));
+  adaptor_.reset(new DBusAdaptor(bus_, this));
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }
