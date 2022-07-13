@@ -549,7 +549,7 @@ cmd_authpolicy_debug() (
       --dest=org.chromium.AuthPolicy /org/chromium/AuthPolicy \
       "org.chromium.AuthPolicy.SetDefaultLogLevel" "int32:$1" 2>&1)"
   status="$?"
-  if [ ${status} -ne 0 ]; then
+  if [ "${status}" -ne 0 ]; then
     echo "ERROR: ${reply}"
     return 1
   fi
@@ -558,7 +558,7 @@ cmd_authpolicy_debug() (
   error_message="$(echo "${reply}" | sed -n -E '$s/.*string "(.*)"/\1/p')"
   if [ "${error_message}" = "" ]; then
     echo "Successfully set debugging level to ${level}."
-    if [ ${level} -gt 0 ]; then
+    if [ "${level}" -gt 0 ]; then
       echo "Debug logs turned on for 30 minutes. Be sure to turn them off again"
       echo "when you are done, e.g. by rebooting the device or setting the"
       echo "level to 0. Authpolicy debugging info will be written into"
@@ -1224,7 +1224,7 @@ cmd_rlz() (
       return 1
       ;;
   esac
-  if [ ${changed} -eq 1 ]; then
+  if [ "${changed}" -eq 1 ]; then
     echo "You must reboot for this to take effect."
   else
     echo "No change."
