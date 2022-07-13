@@ -657,21 +657,6 @@ help_ff_debug() (
   cmd_ff_debug --help
 )
 
-# Set the vars to pass the unittests ...
-# shellcheck disable=SC2034
-USAGE_wpa_debug=''
-# shellcheck disable=SC2034
-HELP_wpa_debug=''
-# ... then unset them to hide the command from "help" output.
-unset USAGE_wpa_debug HELP_wpa_debug
-cmd_wpa_debug() (
-  cat <<EOF
-This command has been removed.  Please use the Chrome page instead, and select
-Wi-Fi there:
-chrome://net-internals/#chromeos
-EOF
-)
-
 # shellcheck disable=SC2034
 USAGE_authpolicy_debug='<level>'
 # shellcheck disable=SC2034

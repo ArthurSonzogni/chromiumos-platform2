@@ -59,7 +59,6 @@ const BASE_COMMANDS: &[&str] = &[
     "vsh",
     "wifi_fw_dump",
     "wifi_power_save",
-    "wpa_debug",
 ];
 
 const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "systrace"];
