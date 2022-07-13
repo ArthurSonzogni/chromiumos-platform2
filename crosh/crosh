@@ -1,15 +1,7 @@
-#!/bin/dash
+#!/bin/sh
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-#
-# NOTE: This script works in dash, but is not as featureful.  Specifically,
-# dash omits readline support (history & command line editing).  So we try
-# to run through bash if it exists, otherwise we stick to dash.  All other
-# code should be coded to the POSIX standard and avoid bashisms.
-#
-# Please test that any changes continue to work in dash by running
-# '/build/$BOARD/bin/dash crosh --dash' before checking them in.
 
 # Disable path expansion at the command line.  None of our builtins need or want
 # it, and it's safer to disallow it in the first place.
@@ -27,24 +19,6 @@ trap '' HUP
 if [ "${DATA_DIR+set}" = "set" ]; then
   export HOME="${DATA_DIR}/user"
 fi
-
-IS_BASH=0
-try_bash() {
-  # If dash was explicitly requested, then nothing to do.
-  case " $* " in
-  *" --dash "*) return 0;;
-  esac
-
-  # If we're already bash, then nothing to do.
-  if type "history" 2>/dev/null | grep -q "shell builtin"; then
-    IS_BASH=1
-    return 0
-  fi
-
-  # Still here?  Relaunch in bash.
-  exec /bin/bash "$0" "$@"
-}
-try_bash "$@"
 
 # Gets set to "1" when in dev mode.
 CROSH_DEVMODE=
@@ -120,12 +94,7 @@ shell_read() {
   local prompt="$1"
   shift
 
-  if [ "${IS_BASH}" -eq "1" ]; then
-    # In bash, -e gives readline support.
-    read -p "${prompt}" -e "$@"
-  else
-    read -p "${prompt}" "$@"
-  fi
+  read -p "${prompt}" "$@"
 }
 
 # Returns status 0 if the argument is a valid positive integer
@@ -1901,9 +1870,6 @@ main() {
 
   while [ $# -gt 0 ]; do
     case $1 in
-    --dash)
-      # This was handled above in try_bash.
-      ;;
     --dev)
       CROSH_DEVMODE="1"
       ;;
