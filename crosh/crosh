@@ -16,6 +16,7 @@ trap '' HUP
 # to entirely removing the use of $HOME. (Though HOME should be used as
 # fall-back when DATA_DIR is unset.)
 # TODO(keescook): remove $HOME entirely crbug.com/333031
+# shellcheck disable=SC2154
 if [ "${DATA_DIR+set}" = "set" ]; then
   export HOME="${DATA_DIR}/user"
 fi
@@ -47,6 +48,7 @@ load_modules() {
       if [ "${CROSH_SINGLE_COMMAND}" != "1" ]; then
         echo "Loading extra module: ${mod}"
       fi
+      # shellcheck disable=SC1090
       . "${mod}" || :
     fi
   done
@@ -61,6 +63,7 @@ load_extra_crosh() {
   if [ -z "${CROSH_REMOVABLE}" ]; then
     local src
     if [ -e /usr/share/misc/chromeos-common.sh ]; then
+      # shellcheck source=../chromeos-common-script/share/chromeos-common.sh
       . "/usr/share/misc/chromeos-common.sh" || exit 1
 
       src="$(get_block_dev_from_partition_dev "$(rootdev -s)")"
@@ -79,6 +82,7 @@ load_extra_crosh() {
   if [ -z "${CROSH_DEVMODE}" ]; then
     if type crossystem >/dev/null 2>&1; then
       crossystem "cros_debug?1"
+      # shellcheck disable=SC2181
       CROSH_DEVMODE="$((!$?))"
     else
       echo "Could not locate 'crossystem'; assuming devmode is off."
@@ -212,6 +216,7 @@ cmd_help_advanced() (
 is_chrome_feature_enabled() {
   local method="$1"
   local reply status
+  # shellcheck disable=SC2154
   reply="$(dbus-send --system --type=method_call --print-reply \
     --dest=org.chromium.ChromeFeaturesService \
     /org/chromium/ChromeFeaturesService \
@@ -872,6 +877,7 @@ HELP_route='
   -6: Only show IPv6 routes.
   --all: Show all routing tables.
 '
+# shellcheck disable=SC2120
 cmd_route() (
   local option="dict:string:variant:"
   local ipver=''
@@ -1731,6 +1737,7 @@ cmd_gesture_prop() (
     value=$2
   else
     local args_without_quote="$(substr "${remaining_args}" "1")"
+    # shellcheck disable=SC2003
     local quote_2_pos="$(expr index "${args_without_quote}" "${first_char}")"
     property_name="$(substr "${args_without_quote}" "0" "${quote_2_pos}")"
     # $value will have the quote and a space at the front, so trim that.
