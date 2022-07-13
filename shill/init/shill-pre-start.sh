@@ -20,6 +20,7 @@ systemd-tmpfiles --create --remove --clean /usr/lib/tmpfiles.d/shill.conf
   chown -c -R vpn:vpn \
     /run/ipsec \
     /run/l2tpipsec_vpn \
+    /run/xl2tpd \
     /run/wireguard
 
   chown -c -R dhcp:dhcp /run/dhcpcd

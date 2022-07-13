@@ -280,6 +280,37 @@ TEST_F(L2TPConnectionTest, Xl2tpdExitedUnexpectedly) {
   dispatcher_.task_environment().RunUntilIdle();
 }
 
+TEST_F(L2TPConnectionTest, Disconnect) {
+  l2tp_connection_->SetTempDir();
+  l2tp_connection_->set_state(VPNConnection::State::kConnected);
+
+  // Just to make |external_task_| not empty.
+  l2tp_connection_->InvokeStartXl2tpd();
+
+  base::OnceCallback<void(int)> exit_cb;
+  const base::FilePath kExpectedProgramPath("/usr/sbin/xl2tpd-control");
+  constexpr uint64_t kExpectedCapMask = 0;
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(
+                  _, kExpectedProgramPath, _, _,
+                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
+                  _))
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
+
+  l2tp_connection_->Disconnect();
+  dispatcher_.task_environment().RunUntilIdle();
+  ASSERT_TRUE(!exit_cb.is_null());
+  std::move(exit_cb).Run(0);
+
+  EXPECT_CALL(callbacks_, OnStopped());
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
 TEST_F(L2TPConnectionTest, PPPGetLogin) {
   constexpr char kUser[] = "user";
   constexpr char kPassword[] = "password";

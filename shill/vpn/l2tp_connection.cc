@@ -27,9 +27,9 @@ namespace shill {
 
 namespace {
 
-// TODO(b/165170125): Consider using /run/xl2tpd folder.
-constexpr char kRunDir[] = "/run/l2tpipsec_vpn";
+constexpr char kRunDir[] = "/run/xl2tpd";
 constexpr char kXl2tpdPath[] = "/usr/sbin/xl2tpd";
+constexpr char kXl2tpdControlPath[] = "/usr/sbin/xl2tpd-control";
 constexpr char kL2TPDConfigFileName[] = "l2tpd.conf";
 constexpr char kL2TPDControlFileName[] = "l2tpd.control";
 constexpr char kPPPDConfigFileName[] = "pppd.conf";
@@ -67,16 +67,9 @@ L2TPConnection::L2TPConnection(std::unique_ptr<Config> config,
       process_manager_(process_manager),
       vpn_util_(VPNUtil::New()) {}
 
-L2TPConnection::~L2TPConnection() {
-  if (state() == State::kIdle || state() == State::kStopped) {
-    return;
-  }
-
-  // This is unexpected but cannot be fully avoided. Call OnDisconnect() to make
-  // sure resources are released.
-  LOG(WARNING) << "Destructor called but the current state is " << state();
-  OnDisconnect();
-}
+// |external_task_| will be killed in its dtor if it is still running so no
+// explicit cleanup is needed here.
+L2TPConnection::~L2TPConnection() {}
 
 void L2TPConnection::OnConnect() {
   temp_dir_ = vpn_util_->CreateScopedTempDir(base::FilePath(kRunDir));
@@ -187,12 +180,24 @@ void L2TPConnection::Notify(const std::string& reason,
 }
 
 void L2TPConnection::OnDisconnect() {
-  // TODO(b/165170125): Terminate the connection before stopping xl2tpd.
-  external_task_ = nullptr;
-
-  if (state() == State::kDisconnecting) {
-    NotifyStopped();
+  // Do the cleanup directly if xl2tpd is not running.
+  if (!external_task_) {
+    OnXl2tpdControlDisconnectDone(/*exit_code=*/0);
+    return;
   }
+
+  const std::vector<std::string> args = {"-c", l2tpd_control_path_.value(),
+                                         "disconnect", kL2TPConnectionName};
+  int pid = process_manager_->StartProcessInMinijail(
+      FROM_HERE, base::FilePath(kXl2tpdControlPath), args, {},
+      VPNUtil::BuildMinijailOptions(0),
+      base::BindOnce(&L2TPConnection::OnXl2tpdControlDisconnectDone,
+                     weak_factory_.GetWeakPtr()));
+  if (pid != -1) {
+    return;
+  }
+  LOG(ERROR) << "Failed to start xl2tpd-control";
+  OnXl2tpdControlDisconnectDone(/*exit_code=*/0);
 }
 
 bool L2TPConnection::WritePPPDConfig() {
@@ -291,11 +296,10 @@ bool L2TPConnection::WriteL2TPDConfig() {
 }
 
 void L2TPConnection::StartXl2tpd() {
-  const base::FilePath l2tpd_control_path =
-      temp_dir_.GetPath().Append(kL2TPDControlFileName);
+  l2tpd_control_path_ = temp_dir_.GetPath().Append(kL2TPDControlFileName);
 
   std::vector<std::string> args = {
-      "-c", l2tpd_config_path_.value(), "-C", l2tpd_control_path.value(),
+      "-c", l2tpd_config_path_.value(), "-C", l2tpd_control_path_.value(),
       "-D",  // prevents xl2tpd from detaching from the terminal and daemonizing
       "-l",  // lets xl2tpd use syslog
   };
@@ -335,6 +339,7 @@ void L2TPConnection::OnLinkReady(const IPConfig::Properties& ip_properties,
 }
 
 void L2TPConnection::OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code) {
+  external_task_ = nullptr;
   const std::string message =
       base::StringPrintf("xl2tpd exited unexpectedly with code=%d", exit_code);
   if (!IsConnectingOrConnected()) {
@@ -342,6 +347,23 @@ void L2TPConnection::OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code) {
     return;
   }
   NotifyFailure(Service::kFailureInternal, message);
+}
+
+void L2TPConnection::OnXl2tpdControlDisconnectDone(int exit_code) {
+  // Since this is only called in the disconnecting procedure, we only log this
+  // uncommon event instead of reporting it to the upper layer.
+  if (exit_code != 0) {
+    LOG(ERROR) << "xl2tpd-control exited with code=" << exit_code;
+  }
+
+  // Kill xl2tpd if it is still running. Note that it is usually the case that
+  // xl2tpd has disconnected the connection at this time, but this cannot be
+  // guaranteed, but we don't have better signal for that. Some servers might be
+  // unhappy when that happens (see b/234162302).
+  external_task_ = nullptr;
+  if (state() == State::kDisconnecting) {
+    NotifyStopped();
+  }
 }
 
 }  // namespace shill

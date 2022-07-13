@@ -84,13 +84,17 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
                    int if_index);
   void OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code);
 
+  // Callback for running `xl2tpd-control` to disconnect the connection.
+  void OnXl2tpdControlDisconnectDone(int exit_code);
+
   std::unique_ptr<Config> config_;
 
   base::ScopedTempDir temp_dir_;
 
-  // Paths to the config files. All the files are stored in |temp_dir_| and thus
-  // will be removed when this class is destroyed.
+  // Paths to the runtime files. All the files are stored in |temp_dir_| and
+  // thus will be removed when this class is destroyed.
   base::FilePath l2tpd_config_path_;
+  base::FilePath l2tpd_control_path_;
   base::FilePath pppd_config_path_;
 
   std::unique_ptr<ExternalTask> external_task_;
