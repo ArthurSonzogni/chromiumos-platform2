@@ -231,4 +231,21 @@ std::optional<LogicalVolume> LogicalVolumeManager::CreateLogicalVolume(
              : std::nullopt;
 }
 
+bool LogicalVolumeManager::RemoveLogicalVolume(const VolumeGroup& vg,
+                                               const std::string& lv_name) {
+  std::optional<LogicalVolume> lv = GetLogicalVolume(vg, lv_name);
+
+  if (!lv || !lv->IsValid()) {
+    LOG(WARNING) << "Logical volume " << lv_name << " does not exist.";
+    return true;
+  }
+
+  bool ret = lv->Remove();
+  if (!ret) {
+    LOG(ERROR) << "Failed to remove logical volume.";
+  }
+
+  return ret;
+}
+
 }  // namespace brillo

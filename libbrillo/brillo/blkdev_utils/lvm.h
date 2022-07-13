@@ -66,6 +66,11 @@ class BRILLO_EXPORT LogicalVolumeManager {
       const Thinpool& thinpool,
       const base::Value& config);
 
+  // Removes a logical volume, if it exists. Returns false if the logical volume
+  // exists and failed removal.
+  virtual bool RemoveLogicalVolume(const VolumeGroup& vg,
+                                   const std::string& lv_name);
+
  private:
   // Validates whether |lv_name| exists as either a logical volume or thinpool
   // (depending on |is_thinpool|) on volume group |vg|.

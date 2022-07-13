@@ -81,6 +81,10 @@ class MockLogicalVolumeManager : public LogicalVolumeManager {
               CreateLogicalVolume,
               (const VolumeGroup&, const Thinpool&, const base::Value&),
               (override));
+  MOCK_METHOD(bool,
+              RemoveLogicalVolume,
+              (const VolumeGroup&, const std::string&),
+              (override));
 };
 
 }  // namespace brillo

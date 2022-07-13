@@ -176,4 +176,51 @@ TEST(ListLogicalVolumesTest, ValidReportTest) {
   }
 }
 
+TEST(RemoveLogicalVolumeTest, NonexistingLvTest) {
+  auto lvm = std::make_shared<MockLvmCommandRunner>();
+  LogicalVolumeManager lvmanager(lvm);
+  VolumeGroup vg("bar", lvm);
+  std::string report(kSampleReport);
+
+  EXPECT_CALL(*lvm, RunProcess(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(report), Return(true)));
+
+  // Expect the remove function to return true for a non-existent volume.
+  EXPECT_TRUE(lvmanager.RemoveLogicalVolume(vg, "foo"));
+}
+
+TEST(RemoveLogicalVolumeTest, FailedRemovalTest) {
+  auto lvm = std::make_shared<MockLvmCommandRunner>();
+  LogicalVolumeManager lvmanager(lvm);
+  VolumeGroup vg("bar", lvm);
+  std::string report = base::StringPrintf(kSampleReport, "lv", "lv_name", "foo",
+                                          "vg_name", "bar");
+  std::vector<std::string> lv_remove = {"lvremove", "--force", "bar/foo"};
+
+  EXPECT_CALL(*lvm, RunCommand(lv_remove)).WillOnce(Return(false));
+
+  EXPECT_CALL(*lvm, RunProcess(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(report), Return(true)));
+
+  // Expect the remove function to return false for failed deletion.
+  EXPECT_FALSE(lvmanager.RemoveLogicalVolume(vg, "foo"));
+}
+
+TEST(RemoveLogicalVolumeTest, SuccessfulRemovalTest) {
+  auto lvm = std::make_shared<MockLvmCommandRunner>();
+  LogicalVolumeManager lvmanager(lvm);
+  VolumeGroup vg("bar", lvm);
+  std::string report = base::StringPrintf(kSampleReport, "lv", "lv_name", "foo",
+                                          "vg_name", "bar");
+  std::vector<std::string> lv_remove = {"lvremove", "--force", "bar/foo"};
+
+  EXPECT_CALL(*lvm, RunCommand(lv_remove)).WillOnce(Return(true));
+
+  EXPECT_CALL(*lvm, RunProcess(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(report), Return(true)));
+
+  // Expect the remove function to return true if deletion succeeded.
+  EXPECT_TRUE(lvmanager.RemoveLogicalVolume(vg, "foo"));
+}
+
 }  // namespace brillo
