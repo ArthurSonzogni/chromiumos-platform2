@@ -524,15 +524,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
   kLocTpmNotBoundToPcrAuthBlockNoUserInputInCreate = 349,
   /* ./auth_factor/auth_factor_manager.cc */
-  kLocAuthFactorManagerWrongTypeStringInSave = 350,
+  kLocGetAuthFactorPathWrongTypeString = 350,
   /* ./auth_factor/auth_factor_manager.cc */
-  kLocAuthFactorManagerInvalidLabelInSave = 351,
+  kLocGetAuthFactorPathInvalidLabel = 351,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerSerializeFailedInSave = 352,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerWriteFailedInSave = 353,
   /* ./auth_factor/auth_factor_manager.cc */
-  kLocAuthFactorManagerWrongTypeStringInLoad = 354,
+  kLocAuthFactorManagerGetPathFailedInLoad = 354,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerReadFailedInLoad = 355,
   /* ./auth_factor/auth_factor_manager.cc */
@@ -1025,6 +1025,24 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockNoLEManagerInPrepareForRemoval = 599,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockRevocationFailedInPrepareForRemoval = 600,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInRemoveAuthFactor = 601,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInRemoveAuthFactor = 602,
+  /* ./auth_session.cc */
+  kLocAuthSessionLastFactorInRemoveAuthFactor = 603,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFactorFailedInRemoveAuthFactor = 604,
+  /* ./auth_factor/auth_factor.cc */
+  kLocAuthFactorPrepareForRemovalFailed = 605,
+  /* ./auth_factor/auth_factor_manager.cc */
+  kLocAuthFactorManagerGetPathFailedInSave = 606,
+  /* ./auth_factor/auth_factor_manager.cc */
+  kLocAuthFactorManagerGetPathFailedInRemove = 607,
+  /* ./auth_factor/auth_factor_manager.cc */
+  kLocAuthFactorManagerPrepareForRemovalFailedInRemove = 608,
+  /* ./auth_factor/auth_factor_manager.cc */
+  kLocAuthFactorManagerDeleteFailedInRemove = 609,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

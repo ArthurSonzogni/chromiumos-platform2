@@ -4712,10 +4712,25 @@ void UserDataAuth::RemoveAuthFactor(
     base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  // TODO(b/208357933): Implement RemoveAuthFactor.
   user_data_auth::RemoveAuthFactorReply reply;
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-  std::move(on_done).Run(reply);
+
+  AuthSession* const auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
+    LOG(ERROR) << "Invalid AuthSession token provided.";
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthSessionNotFoundInRemoveAuthFactor),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                       ErrorAction::kReboot}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+    return;
+  }
+
+  // For now, removals don't require any authentication.
+  auth_session->RemoveAuthFactor(request, std::move(on_done));
 }
 
 void UserDataAuth::GetAuthSessionStatus(

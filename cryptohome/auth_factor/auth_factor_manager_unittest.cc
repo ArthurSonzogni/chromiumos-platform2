@@ -8,8 +8,10 @@
 #include <absl/types/variant.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -19,9 +21,13 @@
 
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeError;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::StatusChain;
 using testing::ElementsAre;
 using testing::IsEmpty;
+using testing::NiceMock;
+using testing::Not;
 using testing::Pair;
 
 namespace cryptohome {
@@ -237,5 +243,66 @@ TEST_F(AuthFactorManagerTest, ListBadUnknownType) {
 
 // TODO(b:208348570): Test clash of labels once more than one factor type is
 // supported by AuthFactorManager.
+
+TEST_F(AuthFactorManagerTest, RemoveSuccess) {
+  std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
+
+  // Persist the auth factor.
+  EXPECT_THAT(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
+      IsOk());
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+
+  // Delete auth factor.
+  EXPECT_THAT(auth_factor_manager_.RemoveAuthFactor(
+                  kObfuscatedUsername, *auth_factor, &auth_block_utility),
+              IsOk());
+
+  // Try to load the auth factor.
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor_1 =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  EXPECT_THAT(loaded_auth_factor_1, Not(IsOk()));
+}
+
+TEST_F(AuthFactorManagerTest, RemoveFailure) {
+  const CryptohomeError::ErrorLocationPair
+      error_location_for_testing_auth_factor =
+          CryptohomeError::ErrorLocationPair(
+              static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(
+                  1),
+              std::string("MockErrorLocationAuthFactor"));
+
+  std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
+
+  // Persist the auth factor.
+  EXPECT_THAT(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
+      IsOk());
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_))
+      .WillOnce([&](const AuthBlockState& auth_state) {
+        return MakeStatus<error::CryptohomeCryptoError>(
+            error_location_for_testing_auth_factor,
+            error::ErrorActionSet(
+                {error::ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO);
+      });
+
+  // Try to delete auth factor.
+  EXPECT_THAT(auth_factor_manager_.RemoveAuthFactor(
+                  kObfuscatedUsername, *auth_factor, &auth_block_utility),
+              Not(IsOk()));
+}
 
 }  // namespace cryptohome

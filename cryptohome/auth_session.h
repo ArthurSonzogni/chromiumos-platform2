@@ -127,6 +127,14 @@ class AuthSession final {
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
 
+  // RemoveAuthFactor is called when the user wants to remove auth factor
+  // provided in the `request`. Note: only USS users are supported currently.
+  // TODO(b/236869367): Implement for VaultKeyset users.
+  bool RemoveAuthFactor(
+      const user_data_auth::RemoveAuthFactorRequest& request,
+      base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
+          on_done);
+
   // Generates a payload that will be sent to the server for cryptohome recovery
   // AuthFactor authentication. GetRecoveryRequest saves data in the
   // AuthSession state. This call is required before the AuthenticateAuthFactor
@@ -484,6 +492,7 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss);
+  FRIEND_TEST(AuthSessionWithUssExperimentTest, RemoveAuthFactor);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);

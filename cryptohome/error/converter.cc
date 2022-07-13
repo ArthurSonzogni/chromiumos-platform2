@@ -304,7 +304,11 @@ template void ReplyWithError(
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)> on_done,
     const user_data_auth::AddAuthFactorReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
-
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
+        on_done,
+    const user_data_auth::RemoveAuthFactorReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
 template void ReplyWithError(
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
         on_done,

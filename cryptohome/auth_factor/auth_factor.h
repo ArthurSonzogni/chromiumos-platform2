@@ -65,6 +65,10 @@ class AuthFactor {
                             KeyBlobs& out_key_blobs,
                             AuthBlockType& out_auth_block_type);
 
+  // Executes additional steps needed for auth factor removal before it's
+  // deleted from disk.
+  CryptoStatus PrepareForRemoval(AuthBlockUtility* auth_block_utility);
+
  private:
   // The auth factor public information.
   const AuthFactorType type_;

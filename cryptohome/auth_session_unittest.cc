@@ -71,6 +71,13 @@ constexpr char kFakeOtherPass[] = "test_other_pass";
 // Fake username to be used in this test suite.
 constexpr char kFakeUsername[] = "test_username";
 
+// Returns a blob "derived" from provided blob to generate fake vkk_key from
+// user secret in tests.
+brillo::SecureBlob GetFakeDerivedSecret(const brillo::SecureBlob& blob) {
+  return brillo::SecureBlob::Combine(blob,
+                                     brillo::SecureBlob(" derived secret"));
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -1426,6 +1433,136 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     // Reset this global variable to avoid affecting unrelated test cases.
     SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
   }
+
+  user_data_auth::CryptohomeErrorCode AddPasswordAuthFactor(
+      const std::string& password, AuthSession& auth_session) {
+    EXPECT_CALL(
+        auth_block_utility_,
+        CreateKeyBlobsWithAuthFactorType(
+            AuthFactorType::kPassword, AuthFactorStorageType::kUserSecretStash,
+            /*auth_input=*/_,
+            /*out_auth_block_state=*/_,
+            /*out_key_blobs=*/_,
+            /*out_auth_block_type=*/_))
+        .WillOnce([](AuthFactorType auth_factor_type,
+                     const AuthFactorStorageType auth_factor_storage_type,
+                     const AuthInput& auth_input,
+                     AuthBlockState& out_auth_block_state,
+                     KeyBlobs& out_key_blobs,
+                     AuthBlockType& out_auth_block_type) {
+          out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
+          out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
+          out_key_blobs.vkk_key =
+              GetFakeDerivedSecret(auth_input.user_input.value());
+          return OkStatus<CryptohomeCryptoError>();
+        });
+
+    user_data_auth::AddAuthFactorRequest request;
+    request.mutable_auth_factor()->set_type(
+        user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+    request.mutable_auth_factor()->set_label(kFakeLabel);
+    request.mutable_auth_factor()->mutable_password_metadata();
+    request.mutable_auth_input()->mutable_password_input()->set_secret(
+        password);
+    request.set_auth_session_id(auth_session.serialized_token());
+    bool called = false;
+    user_data_auth::CryptohomeErrorCode error =
+        user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    auth_session.AddAuthFactor(
+        request,
+        base::BindOnce(
+            [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+               const user_data_auth::AddAuthFactorReply& reply) {
+              called = true;
+              error = reply.error();
+            },
+            std::ref(called), std::ref(error)));
+
+    EXPECT_TRUE(called);
+    return error;
+  }
+
+  user_data_auth::CryptohomeErrorCode AuthenticatePasswordAuthFactor(
+      const std::string& password, AuthSession& auth_session) {
+    EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _, _))
+        .WillOnce([&](const AuthInput& auth_input,
+                      const AuthBlockState& auth_block_state,
+                      KeyBlobs& out_key_blobs,
+                      AuthBlockType& out_auth_block_type) {
+          out_key_blobs.vkk_key =
+              GetFakeDerivedSecret(auth_input.user_input.value());
+          out_auth_block_type = AuthBlockType::kTpmBoundToPcr;
+          return OkStatus<CryptohomeCryptoError>();
+        });
+
+    user_data_auth::AuthenticateAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(kFakeLabel);
+    request.mutable_auth_input()->mutable_password_input()->set_secret(
+        password);
+    bool called = false;
+    user_data_auth::CryptohomeErrorCode error =
+        user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    auth_session.AuthenticateAuthFactor(
+        request,
+        base::BindOnce(
+            [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+               const user_data_auth::AuthenticateAuthFactorReply& reply) {
+              called = true;
+              error = reply.error();
+            },
+            std::ref(called), std::ref(error)));
+
+    // Verify.
+    EXPECT_TRUE(called);
+    return error;
+  }
+
+  user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
+      const std::string& pin, AuthSession& auth_session) {
+    EXPECT_CALL(
+        auth_block_utility_,
+        CreateKeyBlobsWithAuthFactorType(
+            AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
+            /*auth_input=*/_,
+            /*out_auth_block_state=*/_,
+            /*out_key_blobs=*/_,
+            /*out_auth_block_type=*/_))
+        .WillOnce([](AuthFactorType auth_factor_type,
+                     const AuthFactorStorageType auth_factor_storage_type,
+                     const AuthInput& auth_input,
+                     AuthBlockState& out_auth_block_state,
+                     KeyBlobs& out_key_blobs,
+                     AuthBlockType& out_auth_block_type) {
+          out_auth_block_state.state = PinWeaverAuthBlockState();
+          out_auth_block_type = AuthBlockType::kPinWeaver;
+          out_key_blobs.vkk_key =
+              GetFakeDerivedSecret(auth_input.user_input.value());
+          return OkStatus<CryptohomeCryptoError>();
+        });
+    // Calling AddAuthFactor.
+    user_data_auth::AddAuthFactorRequest add_pin_request;
+    add_pin_request.set_auth_session_id(auth_session.serialized_token());
+    add_pin_request.mutable_auth_factor()->set_type(
+        user_data_auth::AUTH_FACTOR_TYPE_PIN);
+    add_pin_request.mutable_auth_factor()->set_label(kFakePinLabel);
+    add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
+    add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
+    bool called = false;
+    user_data_auth::CryptohomeErrorCode error =
+        user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    auth_session.AddAuthFactor(
+        add_pin_request,
+        base::BindOnce(
+            [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+               const user_data_auth::AddAuthFactorReply& reply) {
+              called = true;
+              error = reply.error();
+            },
+            std::ref(called), std::ref(error)));
+    EXPECT_TRUE(called);
+    return error;
+  }
 };
 
 // Test that the UserSecretStash is created on the user creation, in case the
@@ -2047,6 +2184,134 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  error = AddPasswordAuthFactor(kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  error = AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Both password and pin are available.
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                          Pair(kFakePinLabel, AuthFactorType::kPin)));
+  EXPECT_NE(auth_session.label_to_auth_factor_.find(kFakeLabel),
+            auth_session.label_to_auth_factor_.end());
+  EXPECT_NE(auth_session.label_to_auth_factor_.find(kFakePinLabel),
+            auth_session.label_to_auth_factor_.end());
+
+  // Test.
+
+  // Calling RemoveAuthFactor for pin.
+  user_data_auth::RemoveAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakePinLabel);
+  bool called = false;
+  EXPECT_TRUE(auth_session.RemoveAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::RemoveAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error))));
+
+  ASSERT_TRUE(called);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Only password is available.
+  std::map<std::string, AuthFactorType> stored_factors_1 =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors_1,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_NE(auth_session.label_to_auth_factor_.find(kFakeLabel),
+            auth_session.label_to_auth_factor_.end());
+  EXPECT_EQ(auth_session.label_to_auth_factor_.find(kFakePinLabel),
+            auth_session.label_to_auth_factor_.end());
+
+  // Calling AuthenticateAuthFactor for password succeeds.
+  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Calling AuthenticateAuthFactor for pin fails.
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session.serialized_token());
+  auth_request.set_auth_factor_label(kFakePinLabel);
+  auth_request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
+  called = false;
+  auth_session.AuthenticateAuthFactor(
+      auth_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(called), std::ref(error)));
+  // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  error = AddPasswordAuthFactor(kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+
+  // Calling RemoveAuthFactor for password.
+  user_data_auth::RemoveAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  bool called = false;
+  EXPECT_FALSE(auth_session.RemoveAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::RemoveAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error))));
+
+  ASSERT_TRUE(called);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
 }
 
 }  // namespace cryptohome

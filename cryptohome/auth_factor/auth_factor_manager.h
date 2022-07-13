@@ -50,6 +50,14 @@ class AuthFactorManager final {
   // Loads the list of configured auth factors from the user's data vault.
   LabelToTypeMap ListAuthFactors(const std::string& obfuscated_username);
 
+  // Removes the auth factor:
+  // 1. Calls PrepareForRemoval() on the AuthBlock.
+  // 2. Removes the file containing state (AuthBlockState) of the given auth
+  // factor from the user's data vault.
+  CryptohomeStatus RemoveAuthFactor(const std::string& obfuscated_username,
+                                    AuthFactor& auth_factor,
+                                    AuthBlockUtility* auth_block_utility);
+
  private:
   // Unowned pointer that must outlive this object.
   Platform* const platform_;

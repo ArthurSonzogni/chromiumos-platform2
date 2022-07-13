@@ -75,4 +75,18 @@ CryptoStatus AuthFactor::Authenticate(const AuthInput& auth_input,
   return OkStatus<CryptohomeCryptoError>();
 }
 
+CryptoStatus AuthFactor::PrepareForRemoval(
+    AuthBlockUtility* auth_block_utility) {
+  CryptoStatus crypto_error =
+      auth_block_utility->PrepareAuthBlockForRemoval(auth_block_state_);
+  if (!crypto_error.ok()) {
+    LOG(ERROR) << "Prepare auth factor for removal failed: error "
+               << crypto_error;
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthFactorPrepareForRemovalFailed))
+        .Wrap(std::move(crypto_error));
+  }
+  return OkStatus<CryptohomeCryptoError>();
+}
+
 }  // namespace cryptohome

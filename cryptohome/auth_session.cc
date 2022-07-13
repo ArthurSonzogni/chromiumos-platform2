@@ -1040,6 +1040,57 @@ bool AuthSession::AuthenticateAuthFactor(
       std::move(on_done));
 }
 
+bool AuthSession::RemoveAuthFactor(
+    const user_data_auth::RemoveAuthFactorRequest& request,
+    base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
+        on_done) {
+  user_data_auth::RemoveAuthFactorReply reply;
+
+  auto label_to_auth_factor_iter =
+      label_to_auth_factor_.find(request.auth_factor_label());
+  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
+    LOG(ERROR) << "AuthSession: Key to remove not found: "
+               << request.auth_factor_label();
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return false;
+  }
+
+  if (label_to_auth_factor_.size() == 1) {
+    LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
+    return false;
+  }
+
+  AuthFactor auth_factor = *label_to_auth_factor_iter->second;
+  CryptohomeStatus status = auth_factor_manager_->RemoveAuthFactor(
+      obfuscated_username_, auth_factor, auth_block_utility_);
+  if (!status.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocAuthSessionRemoveFactorFailedInRemoveAuthFactor),
+                       user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
+                       .Wrap(std::move(status)));
+    return false;
+  }
+
+  label_to_auth_factor_.erase(label_to_auth_factor_iter);
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+  return true;
+}
+
 bool AuthSession::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>

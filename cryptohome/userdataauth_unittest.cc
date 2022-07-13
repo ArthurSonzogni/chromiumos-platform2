@@ -804,11 +804,16 @@ static_assert(
         static_cast<int>(cryptohome::CRYPTOHOME_ERROR_UNUSABLE_VAULT),
     "Enum member CRYPTOHOME_ERROR_UNUSABLE_VAULT differs between "
     "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED),
+    "Enum member CRYPTOHOME_REMOVE_CREDENTIALS_FAILED differs between "
+    "user_data_auth:: and cryptohome::");
 
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 53,
+    user_data_auth::CryptohomeErrorCode_MAX == 54,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 53,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 54,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
