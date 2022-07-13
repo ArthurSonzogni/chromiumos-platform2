@@ -65,6 +65,8 @@ constexpr char kInputAttr[] = "input";
 constexpr int kNumberOfAxes = 3;
 constexpr char kChannelFormat[] = "%s_%c";
 constexpr char kChannelAxes[kNumberOfAxes] = {'x', 'y', 'z'};
+constexpr char kAccel3d[] = "accel_3d";
+constexpr char kAccelMatrixAttribute[] = "in_accel_mount_matrix";
 
 constexpr char kSamplingFrequencyAvailableFormat[] = "0.000000 %.6f %.6f";
 std::string GetSamplingFrequencyAvailable(double min_frequency,

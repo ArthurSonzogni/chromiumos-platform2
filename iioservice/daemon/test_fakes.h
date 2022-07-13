@@ -41,6 +41,7 @@ class FakeSamplesHandler : public SamplesHandler {
   static ScopedFakeSamplesHandler Create(
       scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      DeviceData* const device_data,
       libmems::fakes::FakeIioDevice* fake_iio_device);
 
   void ResumeReading();
@@ -50,6 +51,7 @@ class FakeSamplesHandler : public SamplesHandler {
   FakeSamplesHandler(
       scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      DeviceData* const device_data,
       libmems::fakes::FakeIioDevice* fake_iio_device,
       double min_freq,
       double max_freq);
@@ -135,6 +137,7 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   void OnObserverDisconnect();
 
   int GetStep() const;
+  int64_t GetFakeAccelSamples(int sample_index, int chnIndex);
 
   libmems::IioDevice* device_;
 
@@ -145,6 +148,8 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   double dev_frequency_;
   double dev_frequency2_;
   int pause_index_;
+
+  bool with_accel_matrix_ = false;
 
   int sample_index_ = 0;
   // Latest sample.

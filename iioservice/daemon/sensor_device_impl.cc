@@ -270,9 +270,8 @@ void SensorDeviceImpl::StartReadingSamples(
     SamplesHandler::ScopedSamplesHandler handler = {
         nullptr, SamplesHandler::SamplesHandlerDeleter};
 
-    handler =
-        SamplesHandler::Create(ipc_task_runner_, sample_thread_->task_runner(),
-                               client.device_data->iio_device);
+    handler = SamplesHandler::Create(
+        ipc_task_runner_, sample_thread_->task_runner(), client.device_data);
 
     if (!handler) {
       LOGF(ERROR) << "Failed to create the samples handler for device: "

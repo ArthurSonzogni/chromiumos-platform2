@@ -38,7 +38,7 @@ class SamplesHandler : public SamplesHandlerBase {
   static ScopedSamplesHandler Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
-      libmems::IioDevice* iio_device);
+      DeviceData* const device_data);
 
   virtual ~SamplesHandler();
 
@@ -72,7 +72,7 @@ class SamplesHandler : public SamplesHandlerBase {
   // use fifo
   SamplesHandler(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
                  scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
-                 libmems::IioDevice* iio_device,
+                 DeviceData* const device_data,
                  double min_freq,
                  double max_freq);
 
@@ -113,6 +113,9 @@ class SamplesHandler : public SamplesHandlerBase {
 
   double dev_min_frequency_ = 0.0;
   double dev_max_frequency_ = 0.0;
+
+  int accel_axis_indices_[3] = {-1, -1, -1};
+  double accel_matrix_[3][3];
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 

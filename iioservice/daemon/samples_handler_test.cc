@@ -47,6 +47,8 @@ constexpr int kFakeLightId = 2;
 constexpr int kFakeLightData = 100;
 constexpr char kGreenChannel[] = "illuminance_green";
 
+constexpr char kFakeAccelMatrixAttribute[] = "-1, 0, 0; 0, -1, 0; 0, 0, 1";
+
 double FixFrequency(double frequency) {
   if (frequency < libmems::kFrequencyEpsilon)
     return 0.0;
@@ -90,9 +92,14 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
   }
 
  protected:
-  void SetUpAccelBase(bool with_hrtimer) {
+  void SetUpAccelBase(bool with_hrtimer, bool with_matrix = false) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
+
+    if (with_matrix) {
+      EXPECT_TRUE(device_->WriteStringAttribute(kAccelMatrixAttribute,
+                                                kFakeAccelMatrixAttribute));
+    }
 
     for (const auto& channel : libmems::fakes::kFakeAccelChns) {
       device_->AddChannel(
@@ -141,7 +148,8 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
 
     handler_ = fakes::FakeSamplesHandler::Create(
         task_environment_.GetMainThreadTaskRunner(),
-        task_environment_.GetMainThreadTaskRunner(), device_.get());
+        task_environment_.GetMainThreadTaskRunner(), device_data_.get(),
+        device_.get());
     EXPECT_TRUE(handler_);
   }
 
@@ -366,13 +374,14 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
 }
 
 class SamplesHandlerTestWithParam
-    : public ::testing::TestWithParam<std::vector<std::pair<double, double>>>,
+    : public ::testing::TestWithParam<
+          std::tuple<std::vector<std::pair<double, double>>, bool>>,
       public SamplesHandlerTestBase {
  protected:
   void SetUp() override {
     SensorMetricsMock::InitializeForTesting();
 
-    SetUpAccelBase(/*with_hrtimer=*/false);
+    SetUpAccelBase(/*with_hrtimer=*/false, std::get<1>(GetParam()));
   }
 
   void TearDown() override {
@@ -389,19 +398,19 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  clients_data_.reserve(GetParam().size());
+  clients_data_.reserve(std::get<0>(GetParam()).size());
 
   std::multiset<double> frequencies;
 
   // Add clients
-  for (size_t i = 0; i < GetParam().size(); ++i) {
+  for (size_t i = 0; i < std::get<0>(GetParam()).size(); ++i) {
     clients_data_.emplace_back(ClientData(i, device_data_.get()));
     ClientData& client_data = clients_data_[i];
 
     // At least one channel enabled
     client_data.enabled_chn_indices.emplace(3);  // timestamp
     client_data.timeout = 0;
-    client_data.frequency = GetParam()[i].first;
+    client_data.frequency = std::get<0>(GetParam())[i].first;
 
     handler_->AddClient(&client_data, GetRemote());
 
@@ -410,10 +419,10 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   }
 
   // Update clients' frequencies
-  for (size_t i = 0; i < GetParam().size(); ++i) {
+  for (size_t i = 0; i < std::get<0>(GetParam()).size(); ++i) {
     ClientData& client_data = clients_data_[i];
 
-    double new_freq = GetParam()[i].second;
+    double new_freq = std::get<0>(GetParam())[i].second;
     handler_->UpdateFrequency(
         &client_data, new_freq,
         base::BindOnce(
@@ -424,7 +433,7 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
             },
             &client_data, FixFrequency(new_freq)));
 
-    auto it = frequencies.find(FixFrequency(GetParam()[i].first));
+    auto it = frequencies.find(FixFrequency(std::get<0>(GetParam())[i].first));
     EXPECT_TRUE(it != frequencies.end());
     frequencies.erase(it);
     frequencies.emplace(FixFrequency(new_freq));
@@ -433,16 +442,16 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   }
 
   // Remove clients
-  for (size_t i = 0; i < GetParam().size(); ++i) {
+  for (size_t i = 0; i < std::get<0>(GetParam()).size(); ++i) {
     ClientData& client_data = clients_data_[i];
 
     handler_->RemoveClient(&client_data, base::DoNothing());
-    auto it = frequencies.find(FixFrequency(GetParam()[i].second));
+    auto it = frequencies.find(FixFrequency(std::get<0>(GetParam())[i].second));
     EXPECT_TRUE(it != frequencies.end());
     frequencies.erase(it);
 
     handler_->CheckRequestedFrequency(
-        i == GetParam().size() - 1 ? 0.0 : *frequencies.rbegin());
+        i == std::get<0>(GetParam()).size() - 1 ? 0.0 : *frequencies.rbegin());
   }
 }
 
@@ -464,28 +473,28 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
         std::make_pair(k, cros::mojom::ObserverErrorType::READ_FAILED));
   }
 
-  clients_data_.reserve(GetParam().size());
+  clients_data_.reserve(std::get<0>(GetParam()).size());
 
   double max_freq = -1, max_freq2 = -1;
-  for (size_t i = 0; i < GetParam().size(); ++i) {
-    max_freq = std::max(max_freq, GetParam()[i].first);
-    max_freq2 = std::max(max_freq2, GetParam()[i].second);
+  for (size_t i = 0; i < std::get<0>(GetParam()).size(); ++i) {
+    max_freq = std::max(max_freq, std::get<0>(GetParam())[i].first);
+    max_freq2 = std::max(max_freq2, std::get<0>(GetParam())[i].second);
   }
 
   max_freq = FixFrequencyWithMin(max_freq);
   max_freq2 = FixFrequencyWithMin(max_freq2);
 
-  for (size_t i = 0; i < GetParam().size(); ++i) {
+  for (size_t i = 0; i < std::get<0>(GetParam()).size(); ++i) {
     clients_data_.emplace_back(ClientData(i, device_data_.get()));
     ClientData& client_data = clients_data_[i];
 
     client_data.enabled_chn_indices.emplace(0);  // accel_x
     client_data.enabled_chn_indices.emplace(2);  // accel_z
     client_data.enabled_chn_indices.emplace(3);  // timestamp
-    client_data.frequency = GetParam()[i].first;
+    client_data.frequency = std::get<0>(GetParam())[i].first;
 
     auto failures = rf_failures;
-    if (GetParam()[i].first == 0.0) {
+    if (std::get<0>(GetParam())[i].first == 0.0) {
       while (!failures.empty() && failures.begin()->first < fakes::kPauseIndex)
         failures.erase(failures.begin());
 
@@ -496,8 +505,9 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
     // The fake observer needs |max_freq| and |max_freq2| to calculate the
     // correct values of samples
     auto fake_observer = fakes::FakeSamplesObserver::Create(
-        device_.get(), std::move(failures), FixFrequency(GetParam()[i].first),
-        FixFrequency(GetParam()[i].second), max_freq, max_freq2);
+        device_.get(), std::move(failures),
+        FixFrequency(std::get<0>(GetParam())[i].first),
+        FixFrequency(std::get<0>(GetParam())[i].second), max_freq, max_freq2);
 
     handler_->AddClient(&client_data, fake_observer->GetRemote());
 
@@ -524,12 +534,12 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
 
               // Update to the second frequency
               handler->UpdateFrequency(
-                  &client_data, GetParam()[i].second,
+                  &client_data, std::get<0>(GetParam())[i].second,
                   base::BindOnce(
                       [](double fixed_new_freq, double result_freq) {
                         EXPECT_EQ(result_freq, fixed_new_freq);
                       },
-                      FixFrequency(GetParam()[i].second)));
+                      FixFrequency(std::get<0>(GetParam())[i].second)));
 
               // Enable accel_y
               handler->UpdateChannelsEnabled(
@@ -567,25 +577,44 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
 INSTANTIATE_TEST_SUITE_P(
     SamplesHandlerTestWithParamRun,
     SamplesHandlerTestWithParam,
-    ::testing::Values(std::vector<std::pair<double, double>>(3, {10.0, 10.0}),
-                      std::vector<std::pair<double, double>>{
-                          {20.0, 50.0}, {10.0, 10.0}, {2.0, 3.0}},
-                      std::vector<std::pair<double, double>>{
-                          {10.0, 20.0}, {20.0, 30.0}, {0.0, 0.0}},
-                      std::vector<std::pair<double, double>>{
-                          {80.0, 50.0}, {10.0, 10.0}, {2.0, 3.0}},
-                      std::vector<std::pair<double, double>>{
-                          {10.0, 40.0}, {0.0, 20.0}, {2.0, 3.0}, {40.0, 10.0}},
-                      std::vector<std::pair<double, double>>{
-                          {2.0, 10.0}, {10.0, 30.0}, {80.0, 0.0}},
-                      std::vector<std::pair<double, double>>{
-                          {0.0, 10.0}, {10.0, 30.0}, {80.0, 60.0}},
-                      std::vector<std::pair<double, double>>{
-                          {2.0, 10.0}, {50.0, 30.0}, {80.0, 60.0}},
-                      std::vector<std::pair<double, double>>{
-                          {2.0, 10.0}, {3.0, 30.0}, {1.0, 60.0}},
-                      std::vector<std::pair<double, double>>{{20.0, 30.0},
-                                                             {10.0, 10.0}}));
+    ::testing::Values(
+        std::make_tuple(std::vector<std::pair<double, double>>(3, {10.0, 10.0}),
+                        false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{20.0, 50.0},
+                                                               {10.0, 10.0},
+                                                               {2.0, 3.0}},
+                        false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{10.0, 20.0},
+                                                               {20.0, 30.0},
+                                                               {0.0, 0.0}},
+                        false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{80.0, 50.0},
+                                                               {10.0, 10.0},
+                                                               {2.0, 3.0}},
+                        false),
+        std::make_tuple(
+            std::vector<std::pair<double, double>>{
+                {10.0, 40.0}, {0.0, 20.0}, {2.0, 3.0}, {40.0, 10.0}},
+            false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{2.0, 10.0},
+                                                               {10.0, 30.0},
+                                                               {80.0, 0.0}},
+                        false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{0.0, 10.0},
+                                                               {10.0, 30.0},
+                                                               {80.0, 60.0}},
+                        false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{2.0, 10.0},
+                                                               {50.0, 30.0},
+                                                               {80.0, 60.0}},
+                        false),
+        std::make_tuple(std::vector<std::pair<double, double>>{{2.0, 10.0},
+                                                               {3.0, 30.0},
+                                                               {1.0, 60.0}},
+                        true),
+        std::make_tuple(std::vector<std::pair<double, double>>{{20.0, 30.0},
+                                                               {10.0, 10.0}},
+                        true)));
 
 class SamplesHandlerWithTriggerTest : public ::testing::Test,
                                       public SamplesHandlerTestBase {

@@ -38,6 +38,7 @@ int64_t CalcMovingAverage(const std::vector<int64_t>& values) {
 FakeSamplesHandler::ScopedFakeSamplesHandler FakeSamplesHandler::Create(
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    DeviceData* const device_data,
     libmems::fakes::FakeIioDevice* fake_iio_device) {
   ScopedFakeSamplesHandler handler(nullptr, SamplesHandlerDeleter);
   double min_freq, max_freq;
@@ -45,8 +46,8 @@ FakeSamplesHandler::ScopedFakeSamplesHandler FakeSamplesHandler::Create(
     return handler;
 
   handler.reset(new FakeSamplesHandler(std::move(ipc_task_runner),
-                                       std::move(task_runner), fake_iio_device,
-                                       min_freq, max_freq));
+                                       std::move(task_runner), device_data,
+                                       fake_iio_device, min_freq, max_freq));
   return handler;
 }
 
@@ -66,12 +67,13 @@ void FakeSamplesHandler::CheckRequestedFrequency(double max_freq) {
 FakeSamplesHandler::FakeSamplesHandler(
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    DeviceData* const device_data,
     libmems::fakes::FakeIioDevice* fake_iio_device,
     double min_freq,
     double max_freq)
     : SamplesHandler(std::move(ipc_task_runner),
                      std::move(task_runner),
-                     fake_iio_device,
+                     device_data,
                      min_freq,
                      max_freq),
       fake_iio_device_(fake_iio_device) {}
@@ -139,8 +141,7 @@ void FakeSamplesObserver::OnSampleUpdated(
                   libmems::kTimestampAttr,
                   strlen(libmems::kTimestampAttr)) == 0) {
         CHECK_EQ(it->second,
-                 libmems::fakes::kFakeAccelSamples[sample_index_ + step - 1]
-                                                  [chnIndex]);
+                 GetFakeAccelSamples(sample_index_ + step - 1, chnIndex));
         continue;
       }
 
@@ -148,11 +149,10 @@ void FakeSamplesObserver::OnSampleUpdated(
       std::vector<int64_t> values;
       for (int index = 0; index < step; ++index) {
         if (chnIndex == 1 && sample_index_ + index < pause_index_) {
-          values.push_back(
-              libmems::fakes::kFakeAccelSamples[pause_index_][chnIndex]);
+          values.push_back(GetFakeAccelSamples(pause_index_, chnIndex));
         } else {
-          values.push_back(libmems::fakes::kFakeAccelSamples[sample_index_ +
-                                                             index][chnIndex]);
+          values.push_back(
+              GetFakeAccelSamples(sample_index_ + index, chnIndex));
         }
       }
 
@@ -256,6 +256,11 @@ FakeSamplesObserver::FakeSamplesObserver(
     else
       sample_index_ = pause_index_;
   }
+
+  if (device_) {
+    with_accel_matrix_ =
+        device_->ReadStringAttribute(kAccelMatrixAttribute).has_value();
+  }
 }
 
 void FakeSamplesObserver::OnObserverDisconnect() {
@@ -281,6 +286,17 @@ int FakeSamplesObserver::GetStep() const {
   int step2 = dev_frequency2_ / frequency2_;
 
   return std::max(pause_index_ - sample_index_ + 1, step2);
+}
+
+int64_t FakeSamplesObserver::GetFakeAccelSamples(int sample_index,
+                                                 int chnIndex) {
+  int64_t value = libmems::fakes::kFakeAccelSamples[sample_index][chnIndex];
+  if (with_accel_matrix_) {
+    if (chnIndex == 0 || chnIndex == 1)
+      value *= -1;
+  }
+
+  return value;
 }
 
 FakeEventsObserver::FakeEventsObserver(

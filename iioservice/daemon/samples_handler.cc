@@ -13,7 +13,9 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/time/time.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
@@ -28,6 +30,8 @@ namespace iioservice {
 namespace {
 
 constexpr char kHWFifoFlushPath[] = "buffer/hwfifo_flush";
+
+constexpr char kAccelChannelNameFormat[] = "%s_%c";
 
 constexpr double kAcpiAlsMinFrequency = 0.1;
 constexpr double kAcpiAlsMaxFrequency = 2.0;
@@ -84,9 +88,10 @@ bool SamplesHandler::DisableBufferAndEnableChannels(
 SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
-    libmems::IioDevice* iio_device) {
+    DeviceData* const device_data) {
   ScopedSamplesHandler handler(nullptr, SamplesHandlerDeleter);
 
+  auto* iio_device = device_data->iio_device;
   if (!iio_device->HasFifo() && !iio_device->GetTrigger() &&
       !iio_device->GetHrtimer()) {
     LOGF(ERROR) << "Device " << iio_device->GetId()
@@ -108,7 +113,7 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
   }
 
   handler.reset(new SamplesHandler(std::move(ipc_task_runner),
-                                   std::move(sample_task_runner), iio_device,
+                                   std::move(sample_task_runner), device_data,
                                    min_freq, max_freq));
   return handler;
 }
@@ -210,13 +215,13 @@ void SamplesHandler::GetChannelsEnabled(
 SamplesHandler::SamplesHandler(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
-    libmems::IioDevice* iio_device,
+    DeviceData* const device_data,
     double min_freq,
     double max_freq)
     : SamplesHandlerBase(sample_task_runner),
       ipc_task_runner_(std::move(ipc_task_runner)),
       sample_task_runner_(std::move(sample_task_runner)),
-      iio_device_(iio_device),
+      iio_device_(device_data->iio_device),
       dev_min_frequency_(min_freq),
       dev_max_frequency_(max_freq) {
   DCHECK_GE(dev_max_frequency_, dev_min_frequency_);
@@ -226,6 +231,73 @@ SamplesHandler::SamplesHandler(
     channel_ids.push_back(channel->GetId());
 
   SetNoBatchChannels(channel_ids);
+
+  // Set |accel_matrix_|.
+  if (!base::Contains(device_data->types, cros::mojom::DeviceType::ACCEL))
+    return;
+
+  for (int i = 0; i < kNumberOfAxes; ++i) {
+    std::string channel_name =
+        base::StringPrintf(kAccelChannelNameFormat,
+                           cros::mojom::kAccelerometerChannel, kChannelAxes[i]);
+
+    std::vector<libmems::IioChannel*> channels = iio_device_->GetAllChannels();
+    for (int j = 0; j < channels.size(); ++j) {
+      if (channel_name.compare(channels[j]->GetId()) == 0) {
+        accel_axis_indices_[i] = j;
+        break;
+      }
+    }
+
+    if (accel_axis_indices_[i] == -1) {
+      for (int k = 0; k < kNumberOfAxes; ++k)
+        accel_axis_indices_[k] = -1;
+
+      return;
+    }
+  }
+
+  bool read_matrix_attribute = false;
+  auto accel_mount_matrix =
+      iio_device_->ReadStringAttribute(kAccelMatrixAttribute);
+
+  if (accel_mount_matrix.has_value()) {
+    std::vector<std::string> matrix =
+        base::SplitString(accel_mount_matrix.value(), ";",
+                          base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    if (matrix.size() == kNumberOfAxes) {
+      read_matrix_attribute = true;
+      for (int i = 0; read_matrix_attribute && i < matrix.size(); ++i) {
+        std::vector<std::string> values = base::SplitString(
+            matrix[i], ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+        if (values.size() != kNumberOfAxes) {
+          read_matrix_attribute = false;
+          break;
+        }
+
+        for (int j = 0; j < values.size(); ++j) {
+          if (!base::StringToDouble(values[j], &accel_matrix_[i][j])) {
+            read_matrix_attribute = false;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (!read_matrix_attribute) {
+    for (int i = 0; i < kNumberOfAxes; ++i) {
+      for (int j = 0; j < kNumberOfAxes; ++j) {
+        accel_matrix_[i][j] = (i == j)
+                                  ? (strncmp(iio_device_->GetName(), kAccel3d,
+                                             std::size(kAccel3d)) == 0
+                                         ? -1
+                                         : 1)
+                                  : 0;
+      }
+    }
+  }
 }
 
 void SamplesHandler::SetSampleWatcherOnThread() {
@@ -562,6 +634,18 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
     }
 
     return;
+  }
+
+  if (accel_axis_indices_[0] != -1) {
+    DCHECK(accel_axis_indices_[1] != -1 && accel_axis_indices_[2] != -1);
+    auto sample_orig = sample.value();
+    for (int i = 0; i < kNumberOfAxes; ++i) {
+      sample.value()[i] = 0;
+      for (int j = 0; j < kNumberOfAxes; ++j) {
+        sample.value()[i] +=
+            sample_orig[accel_axis_indices_[j]] * accel_matrix_[i][j];
+      }
+    }
   }
 
   OnSampleAvailableOnThread(sample.value());
