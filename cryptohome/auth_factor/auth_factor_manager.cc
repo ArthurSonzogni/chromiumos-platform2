@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
+#include <libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
@@ -27,7 +28,6 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h"
-#include "cryptohome/flatbuffer_secure_allocator_bridge.h"
 #include "cryptohome/platform.h"
 
 using brillo::Blob;
@@ -170,12 +170,13 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
 
 // Serializes the auth factor into a flatbuffer blob. Returns null on failure.
 std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
-  FlatbufferSecureAllocatorBridge allocator;
+  hwsec_foundation::FlatbufferSecureAllocatorBridge allocator;
   flatbuffers::FlatBufferBuilder builder(kFlatbufferAllocatorInitialSize,
                                          &allocator);
 
   auto auth_block_state_offset =
-      ToFlatBuffer<AuthBlockState>()(&builder, auth_factor.auth_block_state());
+      hwsec_foundation::ToFlatBuffer<AuthBlockState>()(
+          &builder, auth_factor.auth_block_state());
   if (auth_block_state_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize auth block state";
     return std::nullopt;
@@ -241,8 +242,8 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
     LOG(ERROR) << "SerializedAuthFactor has no auth block state";
     return false;
   }
-  *auth_block_state =
-      FromFlatBuffer<AuthBlockState>()(auth_factor_table->auth_block_state());
+  *auth_block_state = hwsec_foundation::FromFlatBuffer<AuthBlockState>()(
+      auth_factor_table->auth_block_state());
 
   if (!auth_factor_table->metadata()) {
     LOG(ERROR) << "SerializedAuthFactor has no metadata";

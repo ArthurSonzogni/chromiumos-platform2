@@ -4,7 +4,7 @@
 # Copyright 2022 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-"""A C++ binding code generator for flatbuffers schema in cryptohome.
+"""A C++ binding code generator for flatbuffers schema.
 
 This generator generates four kinds of files form flatbuffers schema:
 1. Structure Definition Header (<Name>.h)
@@ -101,7 +101,7 @@ _CPP_VISIT = 'std::visit'
 _CPP_MONOSTATE_TYPE = 'std::monostate'
 _CPP_NULLOPT = 'std::nullopt'
 
-_CONVERTER_NAMESPACE = tuple(['cryptohome'])
+_CONVERTER_NAMESPACE = tuple(['hwsec_foundation'])
 
 _VECTOR_TEMPLATE = Template('std::vector<{{inner_type}}>')
 _ARRAY_TEMPLATE = Template('{{inner_type}}[{{size}}]')
@@ -645,13 +645,15 @@ def OutputStructureSerializer(obj):
         {{ export_attribute }}
         {{ result_type }} {{ simple_name }}::Serialize() const {
           {% if is_secure %} \
-            FlatbufferSecureAllocatorBridge allocator;
+            {{ converter|join("::") }}::FlatbufferSecureAllocatorBridge
+                allocator;
             flatbuffers::FlatBufferBuilder builder(
                 kFlatbufferAllocatorInitialSize, &allocator); \
           {% else %} \
             flatbuffers::FlatBufferBuilder builder; \
           {% endif%}
-          auto buffer = cryptohome::ToFlatBuffer<{{ obj_type }}>()(&builder, *this);
+          auto buffer = {{ converter|join("::") }}::ToFlatBuffer<
+                    {{ obj_type }}>()(&builder, *this);
           if (buffer.IsNull()) {
             LOG(ERROR) << "{{ simple_name }} cannot be serialized.";
             return {{ nullopt }};
@@ -686,6 +688,7 @@ def OutputStructureSerializer(obj):
     return template.render(namespace_head=namespace_head,
                            namespace_foot=namespace_foot,
                            export_attribute=_EXPORT_ATTRIBUTE,
+                           converter=_CONVERTER_NAMESPACE,
                            result_type=result_type,
                            is_secure=is_secure,
                            obj_type=obj_type,
@@ -865,7 +868,7 @@ def OutputStructureDeserializer(obj):
 
           const {{ serialized_type }}* object = flatbuffers::GetRoot<{{ serialized_type }}>(blob.data());
 
-          return cryptohome::FromFlatBuffer<{{ obj_type }}>()(object);
+          return {{ converter|join("::") }}::FromFlatBuffer<{{ obj_type }}>()(object);
         }
         {{ namespace_foot }}
     """)
@@ -895,6 +898,7 @@ def OutputStructureDeserializer(obj):
     return template.render(namespace_head=namespace_head,
                            namespace_foot=namespace_foot,
                            export_attribute=_EXPORT_ATTRIBUTE,
+                           converter=_CONVERTER_NAMESPACE,
                            result_type=result_type,
                            obj_type=obj_type,
                            serialized_type=serialized_type,

@@ -15,8 +15,8 @@
 //       AuthBlockState::Deserialize(blob.value());
 //   // The state2 would have value when the deserialization success.
 
-#ifndef CRYPTOHOME_FLATBUFFER_SCHEMAS_BASIC_OBJECTS_H_
-#define CRYPTOHOME_FLATBUFFER_SCHEMAS_BASIC_OBJECTS_H_
+#ifndef LIBHWSEC_FOUNDATION_FLATBUFFERS_BASIC_OBJECTS_H_
+#define LIBHWSEC_FOUNDATION_FLATBUFFERS_BASIC_OBJECTS_H_
 
 #include <optional>
 #include <string>
@@ -27,7 +27,7 @@
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
 
-namespace cryptohome {
+namespace hwsec_foundation {
 
 // A helper struct to indicate the output type of ToFlatBuffer.
 struct IsUnionEnum {};
@@ -325,6 +325,6 @@ struct FromFlatBuffer<brillo::SecureBlob> {
   }
 };
 
-}  // namespace cryptohome
+}  // namespace hwsec_foundation
 
-#endif  // CRYPTOHOME_FLATBUFFER_SCHEMAS_BASIC_OBJECTS_H_
+#endif  // LIBHWSEC_FOUNDATION_FLATBUFFERS_BASIC_OBJECTS_H_

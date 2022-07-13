@@ -92,7 +92,9 @@ flatbuffer("user-secret-stash-flatbuffers-binding-binary") {
 # Put the generator in the same folder that the generated flatbuffers
 # reflection python library exist.
 copy("flatbuffers-binding-generator") {
-  sources = [ "../flatbuffer_schemas/flatbuffer_cpp_binding_generator.py" ]
+  sources = [
+    "../../libhwsec-foundation/flatbuffers/flatbuffer_cpp_binding_generator.py",
+  ]
   outputs = [ "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py" ]
   deps = [ ":python-flatbuffers-reflection" ]
 }
@@ -116,9 +118,9 @@ action("auth-block-state-flatbuffers-binding-generate") {
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/flatbuffer_schemas/basic_objects.h",
-    "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
     "--impl_include_paths",
@@ -126,7 +128,7 @@ action("auth-block-state-flatbuffers-binding-generate") {
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
     "--impl_include_paths",
-    "cryptohome/flatbuffer_secure_allocator_bridge.h",
+    "libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h",
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
     "--test_utils_header_include_path",
@@ -155,17 +157,17 @@ action("structures-flatbuffers-binding-generate") {
     "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
     "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS_STRUCTURES",
     "--flatbuffer_header_include_paths",
-    "cryptohome/flatbuffer_schemas/basic_objects.h",
-    "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/structures.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/structures_generated.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/structures.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/structures_flatbuffer.h",
     "--impl_include_paths",
-    "cryptohome/flatbuffer_secure_allocator_bridge.h",
+    "libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h",
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/structures.h",
     "${root_gen_dir}/bfbs/structures.bfbs",
@@ -199,7 +201,7 @@ action("user-secret-stash-flatbuffers-binding-generate") {
     "--flatbuffer_header_include_paths",
     "cryptohome/user_secret_stash_payload_generated.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/flatbuffer_schemas/basic_objects.h",
+    "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/user_secret_stash_container.h",
     "--impl_include_paths",
@@ -209,7 +211,7 @@ action("user-secret-stash-flatbuffers-binding-generate") {
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/user_secret_stash_payload_flatbuffer.h",
     "--impl_include_paths",
-    "cryptohome/flatbuffer_secure_allocator_bridge.h",
+    "libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h",
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/user_secret_stash.h",
     "${root_gen_dir}/bfbs/user_secret_stash_container.bfbs",
