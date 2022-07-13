@@ -39,7 +39,7 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
   // Utilizes DBus to send a list of encrypted records to Chrome. Caller can
   // expect a response via the |response_callback|.
   virtual void SendEncryptedRecords(
-      std::unique_ptr<std::vector<EncryptedRecord>> records,
+      std::vector<EncryptedRecord> records,
       bool need_encryption_keys,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
@@ -65,7 +65,7 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
  private:
   friend base::RefCountedThreadSafe<UploadClient>;
 
-  void MaybeMakeCall(std::unique_ptr<std::vector<EncryptedRecord>> records,
+  void MaybeMakeCall(std::vector<EncryptedRecord> records,
                      const bool need_encryption_keys,
                      uint64_t remaining_storage_capacity,
                      std::optional<uint64_t> new_events_rate,

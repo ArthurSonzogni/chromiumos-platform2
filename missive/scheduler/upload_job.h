@@ -17,6 +17,7 @@
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
@@ -26,9 +27,10 @@ namespace reporting {
 
 class UploadJob : public Scheduler::Job {
  public:
-  using Records = std::unique_ptr<std::vector<EncryptedRecord>>;
-  using SetRecordsCb = base::OnceCallback<void(Records)>;
-  using DoneCb = base::OnceCallback<void(StatusOr<Records>)>;
+  using EncryptedRecords = std::vector<EncryptedRecord>;
+  using SetRecordsCb = base::OnceCallback<void(EncryptedRecords)>;
+  using DoneCb =
+      base::OnceCallback<void(StatusOr<EncryptedRecords>, ScopedReservation)>;
 
   class UploadDelegate : public Job::JobDelegate {
    public:
@@ -46,11 +48,13 @@ class UploadJob : public Scheduler::Job {
     Status Complete() override;
     Status Cancel(Status status) override;
 
-    void SetRecords(Records records);
+    void SetRecords(EncryptedRecords records);
 
     const scoped_refptr<UploadClient> upload_client_;
     const bool need_encryption_key_;
-    Records records_;
+    EncryptedRecords encrypted_records_;
+    ScopedReservation encrypted_records_reservation_;
+
     uint64_t remaining_storage_capacity_;
     std::optional<uint64_t> new_events_rate_;
   };
@@ -63,6 +67,7 @@ class UploadJob : public Scheduler::Job {
     ~RecordProcessor() override;
 
     void ProcessRecord(EncryptedRecord record,
+                       ScopedReservation scoped_reservation,
                        base::OnceCallback<void(bool)> processed_cb) override;
 
     void ProcessGap(SequenceInformation start,
@@ -74,7 +79,8 @@ class UploadJob : public Scheduler::Job {
    private:
     DoneCb done_cb_;
 
-    Records records_;
+    EncryptedRecords encrypted_records_;
+    ScopedReservation encrypted_records_reservation_;
 
     size_t current_size_{0};
 
@@ -93,7 +99,8 @@ class UploadJob : public Scheduler::Job {
 
  protected:
   void StartImpl() override;
-  void Done(StatusOr<Records> record_result);
+  void Done(StatusOr<EncryptedRecords> records_result,
+            ScopedReservation records_reservation);
 
  private:
   UploadJob(std::unique_ptr<UploadDelegate> upload_delegate,

@@ -13,6 +13,7 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -62,6 +63,7 @@ class UploaderInterface {
   // the record or error status has been processed, with true if next record
   // needs to be delivered and false if the Uploader should stop.
   virtual void ProcessRecord(EncryptedRecord record,
+                             ScopedReservation scoped_reservation,
                              base::OnceCallback<void(bool)> processed_cb) = 0;
 
   // Makes a note of a gap [start, start + count). Expects |processed_cb| to

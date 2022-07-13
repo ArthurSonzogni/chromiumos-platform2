@@ -83,7 +83,7 @@ struct RecordHeader {
 // static
 void StorageQueue::Create(
     const QueueOptions& options,
-    AsyncStartUploaderCb async_start_upload_cb,
+    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
@@ -137,7 +137,7 @@ void StorageQueue::Create(
 StorageQueue::StorageQueue(
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
     const QueueOptions& options,
-    AsyncStartUploaderCb async_start_upload_cb,
+    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module)
     : base::RefCountedDeleteOnSequence<StorageQueue>(sequenced_task_runner),
@@ -318,7 +318,6 @@ Status StorageQueue::EnumerateDataFiles(
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
                                 base::StrCat({options_.file_prefix(), ".*"}));
-
   for (auto full_name = dir_enum.Next(); !full_name.empty();
        full_name = dir_enum.Next()) {
     const auto file_sequencing_id_result =
@@ -999,14 +998,22 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     google::protobuf::io::ArrayInputStream blob_stream(  // Zero-copy stream.
         blob.data(), blob.size());
     EncryptedRecord encrypted_record;
+    ScopedReservation scoped_reservation(
+        blob.size(), storage_queue_->options().memory_resource());
+    if (!scoped_reservation.reserved()) {
+      Response(
+          Status(error::RESOURCE_EXHAUSTED, "Insufficient memory for upload"));
+      return;
+    }
     if (!encrypted_record.ParseFromZeroCopyStream(&blob_stream)) {
       LOG(ERROR) << "Failed to parse record, seq="
                  << sequence_info_.sequencing_id();
-      CallGapUpload(/*count=*/1);
+      CallGapUpload(/*count=*/1);  // Do not reserve space for Gap record.
       // Resume at ScheduleNextRecord.
       return;
     }
-    CallRecordUpload(std::move(encrypted_record));
+    CallRecordUpload(std::move(encrypted_record),
+                     std::move(scoped_reservation));
   }
 
   // Completes sequence information and makes a call to UploaderInterface
@@ -1015,7 +1022,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // sequential thread runner of this StorageQueue. If |encrypted_record| is
   // empty (has no |encrypted_wrapped_record| and/or |encryption_info|), it
   // indicates a gap notification.
-  void CallRecordUpload(EncryptedRecord encrypted_record) {
+  void CallRecordUpload(EncryptedRecord encrypted_record,
+                        ScopedReservation scoped_reservation) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     if (encrypted_record.has_sequence_information()) {
@@ -1029,6 +1037,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // Priority is attached by the Storage layer.
     *encrypted_record.mutable_sequence_information() = sequence_info_;
     uploader_->ProcessRecord(std::move(encrypted_record),
+                             std::move(scoped_reservation),
                              base::BindOnce(&ReadContext::ScheduleNextRecord,
                                             base::Unretained(this)));
     // Move sequencing id forward (ScheduleNextRecord will see this).
@@ -1210,6 +1219,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void InstantiateUploader(base::OnceCallback<void()> continuation) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(
@@ -1258,7 +1269,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   SequenceInformation sequence_info_;
   uint32_t current_pos_;
   std::map<int64_t, scoped_refptr<SingleFile>>::iterator current_file_;
-  const AsyncStartUploaderCb async_start_upload_cb_;
+  const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
   const bool must_invoke_upload_;
   std::unique_ptr<UploaderInterface> uploader_;
   base::WeakPtr<StorageQueue> storage_queue_;

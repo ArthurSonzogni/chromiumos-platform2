@@ -24,9 +24,12 @@
 
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
+#include "missive/resources/memory_resource_impl.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
+using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -45,8 +48,10 @@ class UploadClientProducer : public UploadClient {
 
 class TestRecordUploader {
  public:
-  explicit TestRecordUploader(std::vector<EncryptedRecord> records)
+  TestRecordUploader(std::vector<EncryptedRecord> records,
+                     scoped_refptr<ResourceInterface> memory_resource)
       : records_(std::move(records)),
+        memory_resource_(memory_resource),
         sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
             {base::TaskPriority::BEST_EFFORT})) {
     DETACH_FROM_SEQUENCE(sequence_checker_);
@@ -67,9 +72,12 @@ class TestRecordUploader {
       uploader_interface_.reset();  // Do not need it anymore.
       return;
     }
+    ScopedReservation record_reservation(records_.front().ByteSizeLong(),
+                                         memory_resource_);
     uploader_interface_->ProcessRecord(
-        records_.front(), base::BindOnce(&TestRecordUploader::PostNextUpload,
-                                         base::Unretained(this)));
+        std::move(records_.front()), std::move(record_reservation),
+        base::BindOnce(&TestRecordUploader::PostNextUpload,
+                       base::Unretained(this)));
     records_.erase(records_.begin());
   }
 
@@ -80,6 +88,7 @@ class TestRecordUploader {
   }
 
   std::vector<EncryptedRecord> records_;
+  const scoped_refptr<ResourceInterface> memory_resource_;
   std::unique_ptr<UploaderInterface> uploader_interface_;
 
   // To protect |records_| running uploads on sequence.
@@ -125,11 +134,15 @@ class UploadJobTest : public ::testing::Test {
         mock_bus_, mock_chrome_proxy_.get());
 
     upload_client_->SetAvailabilityForTest(/*is_available=*/true);
+
+    memory_resource_ = base::MakeRefCounted<MemoryResourceImpl>(
+        4u * 1024LLu * 1024LLu);  // 4 MiB
   }
 
   void TearDown() override {
     // Let everything ongoing to finish.
     task_environment_.RunUntilIdle();
+    EXPECT_THAT(memory_resource_->GetUsed(), Eq(0uL));
   }
 
   static void CreateMockDBus(
@@ -150,6 +163,7 @@ class UploadJobTest : public ::testing::Test {
   scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
   scoped_refptr<NiceMock<dbus::MockBus>> mock_bus_;
   scoped_refptr<NiceMock<dbus::MockObjectProxy>> mock_chrome_proxy_;
+  scoped_refptr<ResourceInterface> memory_resource_;
   scoped_refptr<UploadClient> upload_client_;
 };
 
@@ -212,7 +226,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
             std::move(*response).Run(dbus_response_ptr);
           })));
 
-  TestRecordUploader record_uploader(std::move(records));
+  TestRecordUploader record_uploader(std::move(records), memory_resource_);
 
   auto job_result =
       UploadJob::Create(upload_client_,

@@ -73,7 +73,7 @@ scoped_refptr<UploadClient> UploadClient::Create(
 class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
  public:
   UploadEncryptedRecordDelegate(
-      std::unique_ptr<std::vector<EncryptedRecord>> records,
+      std::vector<EncryptedRecord> records,
       const bool need_encryption_keys,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
@@ -84,7 +84,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
         chrome_proxy_(chrome_proxy),
         response_callback_(std::move(response_callback)) {
     // Build the request.
-    for (const auto& record : *records) {
+    for (const auto& record : records) {
       request_.add_encrypted_record()->CheckTypeAndMergeFrom(record);
     }
     request_.set_need_encryption_keys(need_encryption_keys);
@@ -179,7 +179,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 };
 
 void UploadClient::MaybeMakeCall(
-    std::unique_ptr<std::vector<EncryptedRecord>> records,
+    std::vector<EncryptedRecord> records,
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
@@ -204,7 +204,7 @@ DisconnectableClient* UploadClient::GetDisconnectableClient() {
 }
 
 void UploadClient::SendEncryptedRecords(
-    std::unique_ptr<std::vector<EncryptedRecord>> records,
+    std::vector<EncryptedRecord> records,
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
