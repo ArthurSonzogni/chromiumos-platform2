@@ -272,6 +272,13 @@ void Network::OnDHCPFailure() {
   StopInternal(/*is_failure=*/true);
 }
 
+bool Network::RenewDHCPLease() {
+  if (!dhcp_controller_) {
+    return false;
+  }
+  return dhcp_controller_->RenewIP();
+}
+
 void Network::DestroyDHCPLease(const std::string& name) {
   dhcp_provider_->DestroyLease(name);
 }

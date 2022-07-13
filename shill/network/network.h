@@ -131,6 +131,9 @@ class Network {
   }
 
   // Functions for DHCP.
+  // Initiate renewal of existing DHCP lease. Return false if the renewal failed
+  // immediately, or we don't have active lease now.
+  bool RenewDHCPLease();
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
   mockable void DestroyDHCPLease(const std::string& name);

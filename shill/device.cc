@@ -473,9 +473,8 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
 void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
   LOG(INFO) << LoggingTag() << ": " << __func__;
 
-  if (dhcp_controller()) {
+  if (network()->RenewDHCPLease()) {
     SLOG(this, 3) << "Renewing IPv4 Address";
-    dhcp_controller()->RenewIP();
   }
   if (ip6config() && !from_dbus) {
     SLOG(this, 3) << "Waiting for new IPv6 configuration";

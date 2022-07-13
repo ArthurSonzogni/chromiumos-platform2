@@ -2492,10 +2492,10 @@ void WiFi::StateChanged(const std::string& new_state) {
         // AP is on a different subnet than where we started.
         // TODO(matthewmwang): Handle the IPv6 roam case.
         is_roaming_in_progress_ = false;
-        if (dhcp_controller()) {
+        if (TimeToNextDHCPLeaseRenewal() != std::nullopt) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
           RetrieveLinkStatistics(NetworkEvent::kDHCPRenewOnRoam);
-          dhcp_controller()->RenewIP();
+          network()->RenewDHCPLease();
           affected_service->SetRoamState(Service::kRoamStateConfiguring);
         }
       } else if (affected_service->is_rekey_in_progress()) {

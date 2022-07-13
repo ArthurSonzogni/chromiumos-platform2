@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
 
 #include <string>
+#include <optional>
 
 #include <gmock/gmock.h>
 
@@ -29,6 +30,10 @@ class MockDHCPController : public DHCPController {
   MOCK_METHOD(bool, RequestIP, (), (override));
   MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
   MOCK_METHOD(bool, RenewIP, (), (override));
+  MOCK_METHOD(std::optional<base::TimeDelta>,
+              TimeToLeaseExpiry,
+              (),
+              (override));
 };
 
 }  // namespace shill

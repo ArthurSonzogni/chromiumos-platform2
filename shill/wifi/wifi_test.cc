@@ -631,6 +631,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         .WillRepeatedly(InvokeWithoutArgs([this]() {
           auto controller = CreateMockDHCPController();
           ON_CALL(*controller, RequestIP()).WillByDefault(Return(true));
+          ON_CALL(*controller, TimeToLeaseExpiry())
+              .WillByDefault(Return(base::Minutes(1)));
           return controller;
         }));
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
@@ -3049,6 +3051,8 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   auto* dhcp_controller_ptr = dhcp_controller.get();
   SetDHCPController(std::move(dhcp_controller));
   EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
+  EXPECT_CALL(*dhcp_controller_ptr, TimeToLeaseExpiry())
+      .WillOnce(Return(base::Minutes(1)));
   EXPECT_CALL(*dhcp_controller_ptr, RenewIP());
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   Mock::VerifyAndClearExpectations(dhcp_controller_ptr);

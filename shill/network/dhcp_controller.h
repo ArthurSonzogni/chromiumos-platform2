@@ -103,7 +103,7 @@ class DHCPController {
   // Returns the time left (in seconds) till the current DHCP lease is to be
   // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
   // lease has already expired or no current DHCP lease), true otherwise.
-  std::optional<base::TimeDelta> TimeToLeaseExpiry();
+  mockable std::optional<base::TimeDelta> TimeToLeaseExpiry();
 
   std::string device_name() const { return device_name_; }
 
