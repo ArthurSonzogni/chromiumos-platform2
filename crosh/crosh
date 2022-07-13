@@ -1682,36 +1682,6 @@ check_enterprise_mode() {
   fi
 }
 
-# Set the vars to pass the unittests ...
-# shellcheck disable=SC2034
-USAGE_tpm_status=''
-# shellcheck disable=SC2034
-HELP_tpm_status=''
-# ... then unset them to hide the command from "help" output.
-unset USAGE_tpm_status HELP_tpm_status
-cmd_tpm_status() (
-  # TODO: Delete this after the R91 release branch.
-  cat <<EOF
-This command has been removed. Please use the Chrome page instead:
-chrome://cryptohome
-EOF
-)
-
-# Set the vars to pass the unittests ...
-# shellcheck disable=SC2034
-USAGE_cryptohome_status=''
-# shellcheck disable=SC2034
-HELP_cryptohome_status=''
-# ... then unset them to hide the command from "help" output.
-unset USAGE_cryptohome_status HELP_cryptohome_status
-cmd_cryptohome_status() (
-  # TODO: Delete this after the R91 release branch.
-  cat <<EOF
-This command has been removed. Please use the Chrome page instead:
-chrome://cryptohome
-EOF
-)
-
 # shellcheck disable=SC2034
 USAGE_free='[options]'
 # shellcheck disable=SC2034
