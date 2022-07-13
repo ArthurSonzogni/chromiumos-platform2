@@ -74,7 +74,6 @@ constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 // nat PREROUTING chains for forwarding ingress traffic.
 constexpr char kIngressDefaultForwardingChain[] = "ingress_default_forwarding";
 // nat PREROUTING chains for egress traffic from downstream guests.
-constexpr char kRedirectArcDnsChain[] = "redirect_arc_dns";
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 // nat OUTPUT chains for egress traffic from processes running on the host.
 constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
@@ -180,7 +179,6 @@ void Datapath::Start() {
       {IpFamily::Dual, "mangle", kApplyVpnMarkChain},
       // Set up nat chains for redirecting egress DNS queries to the DNS proxy
       // instances.
-      {IpFamily::Dual, "nat", kRedirectArcDnsChain},
       {IpFamily::Dual, "nat", kRedirectDefaultDnsChain},
       {IpFamily::Dual, "nat", kRedirectUserDnsChain},
       {IpFamily::Dual, "nat", kRedirectChromeDnsChain},
@@ -227,7 +225,6 @@ void Datapath::Start() {
     std::string op;
   } jumpCommands[] = {
       {IpFamily::Dual, "mangle", "OUTPUT", kApplyLocalSourceMarkChain},
-      {IpFamily::Dual, "nat", "PREROUTING", kRedirectArcDnsChain},
       {IpFamily::Dual, "nat", "PREROUTING", kRedirectDefaultDnsChain},
       // "ingress_port_forwarding" must be traversed before
       // "ingress_default_forwarding".
@@ -451,9 +448,6 @@ void Datapath::ResetIptables() {
   ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
                  kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
-  ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
-                 kRedirectArcDnsChain, "" /*iif*/, "" /*oif*/,
-                 false /*log_failures*/);
   ModifyFwmarkSkipVpnJumpRule("OUTPUT", "-D", kChronosUid,
                               false /*log_failures*/);
   ModifyJumpRule(IpFamily::Dual, "filter", "-D", "OUTPUT",
@@ -491,7 +485,6 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "nat", "OUTPUT", false},
       {IpFamily::IPv4, "nat", "POSTROUTING", false},
       {IpFamily::Dual, "nat", kRedirectDefaultDnsChain, true},
-      {IpFamily::Dual, "nat", kRedirectArcDnsChain, true},
       {IpFamily::Dual, "nat", kRedirectChromeDnsChain, true},
       {IpFamily::Dual, "nat", kRedirectUserDnsChain, true},
       {IpFamily::Dual, "nat", kSnatChromeDnsChain, true},
@@ -1022,12 +1015,6 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       return true;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
-      if (!ModifyDnsProxyDNAT(family, rule, "-A", rule.input_ifname,
-                              kRedirectArcDnsChain)) {
-        LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
-        return false;
-      }
-
       // Add IPv6 route to the namespace so that the address is reachable.
       if (family == IpFamily::IPv6 &&
           !AddIPv6HostRoute(rule.host_ifname, rule.proxy_address, 128)) {
@@ -1121,8 +1108,6 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
-      ModifyDnsProxyDNAT(family, rule, "-D", rule.input_ifname,
-                         kRedirectArcDnsChain);
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {

@@ -328,7 +328,6 @@ TEST(DatapathTest, Start) {
       {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
-      {Dual, "nat -D PREROUTING -j redirect_arc_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
@@ -338,9 +337,6 @@ TEST(DatapathTest, Start) {
       {Dual, "nat -L redirect_default_dns -w"},
       {Dual, "nat -F redirect_default_dns -w"},
       {Dual, "nat -X redirect_default_dns -w"},
-      {Dual, "nat -L redirect_arc_dns -w"},
-      {Dual, "nat -F redirect_arc_dns -w"},
-      {Dual, "nat -X redirect_arc_dns -w"},
       {Dual, "nat -L redirect_chrome_dns -w"},
       {Dual, "nat -F redirect_chrome_dns -w"},
       {Dual, "nat -X redirect_chrome_dns -w"},
@@ -480,11 +476,9 @@ TEST(DatapathTest, Start) {
       {IPv4, "nat -A PREROUTING -j ingress_default_forwarding -w"},
       {IPv4, "nat -A PREROUTING -j ingress_port_forwarding -w"},
       {Dual, "nat -N redirect_default_dns -w"},
-      {Dual, "nat -N redirect_arc_dns -w"},
       {Dual, "nat -N redirect_chrome_dns -w"},
       {Dual, "nat -N redirect_user_dns -w"},
       {Dual, "nat -A PREROUTING -j redirect_default_dns -w"},
-      {Dual, "nat -A PREROUTING -j redirect_arc_dns -w"},
       {Dual, "nat -A OUTPUT -j redirect_chrome_dns -w"},
       {Dual,
        "nat -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
@@ -562,7 +556,6 @@ TEST(DatapathTest, Stop) {
       {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
-      {Dual, "nat -D PREROUTING -j redirect_arc_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
@@ -572,9 +565,6 @@ TEST(DatapathTest, Stop) {
       {Dual, "nat -L redirect_default_dns -w"},
       {Dual, "nat -F redirect_default_dns -w"},
       {Dual, "nat -X redirect_default_dns -w"},
-      {Dual, "nat -L redirect_arc_dns -w"},
-      {Dual, "nat -F redirect_arc_dns -w"},
-      {Dual, "nat -X redirect_arc_dns -w"},
       {Dual, "nat -L redirect_chrome_dns -w"},
       {Dual, "nat -F redirect_chrome_dns -w"},
       {Dual, "nat -X redirect_chrome_dns -w"},
@@ -1400,38 +1390,6 @@ TEST(DatapathTest, StartDnsRedirection_Default) {
   datapath.StartDnsRedirection(rule6);
 }
 
-TEST(DatapathTest, StartDnsRedirection_Arc) {
-  auto runner = new MockProcessRunner();
-  auto firewall = new MockFirewall();
-  FakeSystem system;
-
-  Verify_iptables(*runner, IPv4,
-                  "nat -A redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
-                  "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner, IPv4,
-                  "nat -A redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
-                  "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner, IPv6,
-                  "nat -A redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
-                  "DNAT --to-destination ::1 -w");
-  Verify_iptables(*runner, IPv6,
-                  "nat -A redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
-                  "DNAT --to-destination ::1 -w");
-
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
-  rule4.input_ifname = "arc_eth0";
-  rule4.proxy_address = "100.115.92.130";
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
-  rule6.input_ifname = "arc_eth0";
-  rule6.proxy_address = "::1";
-
-  Datapath datapath(runner, firewall, &system);
-  datapath.StartDnsRedirection(rule4);
-  datapath.StartDnsRedirection(rule6);
-}
-
 TEST(DatapathTest, StartDnsRedirection_User) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
@@ -1619,38 +1577,6 @@ TEST(DatapathTest, StopDnsRedirection_Default) {
   DnsRedirectionRule rule6 = {};
   rule6.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
   rule6.input_ifname = "vmtap0";
-  rule6.proxy_address = "::1";
-
-  Datapath datapath(runner, firewall, &system);
-  datapath.StopDnsRedirection(rule4);
-  datapath.StopDnsRedirection(rule6);
-}
-
-TEST(DatapathTest, StopDnsRedirection_Arc) {
-  auto runner = new MockProcessRunner();
-  auto firewall = new MockFirewall();
-  FakeSystem system;
-
-  Verify_iptables(*runner, IPv4,
-                  "nat -D redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
-                  "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner, IPv4,
-                  "nat -D redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
-                  "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner, IPv6,
-                  "nat -D redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
-                  "DNAT --to-destination ::1 -w");
-  Verify_iptables(*runner, IPv6,
-                  "nat -D redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
-                  "DNAT --to-destination ::1 -w");
-
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
-  rule4.input_ifname = "arc_eth0";
-  rule4.proxy_address = "100.115.92.130";
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
-  rule6.input_ifname = "arc_eth0";
   rule6.proxy_address = "::1";
 
   Datapath datapath(runner, firewall, &system);
