@@ -54,8 +54,10 @@ Network::Network(int interface_index,
 
 void Network::Start(const Network::StartOptions& opts) {
   Stop();
-  CHECK(opts.accept_ra);
-  StartIPv6();
+
+  if (opts.accept_ra) {
+    StartIPv6();
+  }
 
   // Note that currently, the existence of ipconfig_ indicates if the IPv4 part
   // of Network has been started.

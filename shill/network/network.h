@@ -111,9 +111,6 @@ class Network {
     link_protocol_ipv4_properties_ = props;
   }
 
-  // Triggers a reconfiguration on connection for an IPv4 config change.
-  void OnIPv4ConfigUpdated();
-
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
 
@@ -134,12 +131,6 @@ class Network {
   }
 
   // Functions for DHCP.
-  // Callback registered with DHCPController. Also see the comment for
-  // DHCPController::UpdateCallback.
-  void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
-                                 bool new_lease_acquired);
-  // Callback invoked on DHCP failures.
-  void OnDHCPFailure();
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
   mockable void DestroyDHCPLease(const std::string& name);
@@ -213,7 +204,20 @@ class Network {
   }
 
  private:
+  // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
+  friend class DeviceTest;
+
   void StopInternal(bool is_failure);
+
+  // Functions for IPv4.
+  // Triggers a reconfiguration on connection for an IPv4 config change.
+  void OnIPv4ConfigUpdated();
+  // Callback registered with DHCPController. Also see the comment for
+  // DHCPController::UpdateCallback.
+  void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
+                                 bool new_lease_acquired);
+  // Callback invoked on DHCP failures.
+  void OnDHCPFailure();
 
   const int interface_index_;
   const std::string interface_name_;

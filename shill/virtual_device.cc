@@ -73,11 +73,11 @@ void VirtualDevice::Stop(Error* error,
 
 void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
   SLOG(this, 2) << __func__ << " on " << link_name();
-  if (!ipconfig()) {
-    set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name()));
-  }
-  ipconfig()->set_properties(properties);
-  network()->OnIPv4ConfigUpdated();
+  network()->set_link_protocol_ipv4_properties(properties);
+  network()->Start(Network::StartOptions{
+      .dhcp = std::nullopt,
+      .accept_ra = false,
+  });
 }
 
 void VirtualDevice::DropConnection() {
