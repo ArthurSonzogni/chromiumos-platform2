@@ -164,7 +164,7 @@ cmd_help() (
 
   case $# in
   0)
-    local cmds="exit help help_advanced ping top"
+    local cmds="help help_advanced ping top"
     for cmd in ${cmds}; do
       cmd_help "${cmd}"
     done
@@ -237,21 +237,6 @@ cmd_help_advanced() (
     fi
   done
 )
-
-# We move the trailing brace to the next line so that we avoid the style
-# checker from rejecting the use of braces.  We cannot use subshells here
-# as we want the set the exit variable in crosh itself.
-# http://crbug.com/318368
-# shellcheck disable=SC2034
-USAGE_exit=''
-# shellcheck disable=SC2034
-HELP_exit='
-  Exit crosh.
-'
-cmd_exit()
-{
-  exit='y'
-}
 
 # Check if a particular Chrome feature is enabled.
 # Use the DBus method name as the parameter.
