@@ -334,7 +334,9 @@ class SessionManagerImplTest : public ::testing::Test,
         system_clock_proxy_(new dbus::MockObjectProxy(
             nullptr, "", dbus::ObjectPath("/fake/clock"))),
         debugd_proxy_(new dbus::MockObjectProxy(
-            nullptr, "", dbus::ObjectPath("/fake/debugd"))) {}
+            nullptr, "", dbus::ObjectPath("/fake/debugd"))),
+        fwmp_proxy_(new dbus::MockObjectProxy(
+            nullptr, "", dbus::ObjectPath("/fake/fwmp"))) {}
   SessionManagerImplTest(const SessionManagerImplTest&) = delete;
   SessionManagerImplTest& operator=(const SessionManagerImplTest&) = delete;
 
@@ -386,7 +388,8 @@ class SessionManagerImplTest : public ::testing::Test,
         &key_gen_, &device_identifier_generator_, &manager_, &metrics_, &nss_,
         std::nullopt, &utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
-        system_clock_proxy_.get(), debugd_proxy_.get(), arc_sideload_status_);
+        system_clock_proxy_.get(), debugd_proxy_.get(), fwmp_proxy_.get(),
+        arc_sideload_status_);
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
     impl_->SetUiLogSymlinkPathForTesting(log_symlink_);
 
@@ -1009,6 +1012,7 @@ class SessionManagerImplTest : public ::testing::Test,
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
 
   scoped_refptr<dbus::MockObjectProxy> debugd_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> fwmp_proxy_;
 
   password_provider::FakePasswordProvider* password_provider_ = nullptr;
 

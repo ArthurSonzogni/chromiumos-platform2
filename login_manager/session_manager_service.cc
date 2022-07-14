@@ -233,6 +233,10 @@ bool SessionManagerService::Initialize() {
   ArcSideloadStatusInterface* arc_sideload_status = new ArcSideloadStatusStub();
 #endif
 
+  fwmp_dbus_proxy_ = bus_->GetObjectProxy(
+      user_data_auth::kUserDataAuthServiceName,
+      dbus::ObjectPath(user_data_auth::kUserDataAuthServicePath));
+
   chrome_features_service_client_ =
       std::make_unique<ChromeFeaturesServiceClient>(bus_->GetObjectProxy(
           chromeos::kChromeFeaturesServiceName,
@@ -248,7 +252,7 @@ bool SessionManagerService::Initialize() {
       nss_.get(), chrome_mount_ns_path_, system_, &crossystem_, &vpd_process_,
       &owner_key_, android_container_.get(), &install_attributes_reader_,
       powerd_dbus_proxy_, system_clock_proxy, debugd_dbus_proxy_,
-      arc_sideload_status);
+      fwmp_dbus_proxy_, arc_sideload_status);
   if (!InitializeImpl())
     return false;
 

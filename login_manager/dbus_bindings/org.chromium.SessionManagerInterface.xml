@@ -734,6 +734,51 @@
     <method name="StartBrowserDataMigration">
       <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
     </method>
+
+    <!--
+        UnblockDevModeForInitialStateDetermination:
+
+        Dev mode unblocking broker API to unblock the developer mode
+        for ZTE. Broker will unblock the developer mode once all
+        related modules unblock the developer mode.
+    -->
+    <method name="UnblockDevModeForInitialStateDetermination">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
+        UnblockDevModeForEnrollment:
+
+        Dev mode unblocking broker API to unblock the developer mode
+        for enterprise enrollment. Broker will unblock the developer mode
+        once all related modules unblock the developer mode.
+    -->
+    <method name="UnblockDevModeForEnrollment">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
+        UnblockDevModeForCarrierLock:
+
+        Dev mode unblocking broker API to unblock the developer mode
+        for Carrier Lock. Broker will unblock the developer mode once all
+        related modules unblock the developer mode.
+    -->
+    <method name="UnblockDevModeForCarrierLock">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
+        IsDevModeBlockedForCarrierLock:
+
+        Broker method to check if developer mode is blocked for
+        Carrier Lock.
+    -->
+    <method name="IsDevModeBlockedForCarrierLock">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="b" name="is_blocked" direction="out" />
+    </method>
+
   </interface>
   <!-- ********************************************************************* -->
 </node>

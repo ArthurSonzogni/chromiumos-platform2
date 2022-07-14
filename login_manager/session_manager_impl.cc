@@ -432,6 +432,7 @@ SessionManagerImpl::SessionManagerImpl(
     dbus::ObjectProxy* powerd_proxy,
     dbus::ObjectProxy* system_clock_proxy,
     dbus::ObjectProxy* debugd_proxy,
+    dbus::ObjectProxy* fwmp_proxy,
     ArcSideloadStatusInterface* arc_sideload_status)
     : init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
@@ -455,6 +456,7 @@ SessionManagerImpl::SessionManagerImpl(
       powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
       debugd_proxy_(debugd_proxy),
+      fwmp_proxy_(fwmp_proxy),
       arc_sideload_status_(arc_sideload_status),
       mitigator_(key_gen),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
@@ -590,6 +592,10 @@ bool SessionManagerImpl::Initialize() {
   }
 
   arc_sideload_status_->Initialize();
+
+  dev_mode_unblock_broker_ = DevModeUnblockBroker::Create(
+      system_, crossystem_, vpd_process_, fwmp_proxy_);
+  DCHECK(dev_mode_unblock_broker_);
 
   return true;
 }
@@ -1747,6 +1753,33 @@ void SessionManagerImpl::QueryAdbSideload(
   arc_sideload_status_->QueryAdbSideload(base::BindOnce(
       &SessionManagerImpl::QueryAdbSideloadCallbackAdaptor,
       weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
+}
+
+void SessionManagerImpl::UnblockDevModeForInitialStateDetermination(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  dev_mode_unblock_broker_->UnblockDevModeForInitialStateDetermination(
+      dbus_service_->CreatePolicyServiceCompletionCallback(
+          std::move(response)));
+}
+
+void SessionManagerImpl::UnblockDevModeForEnrollment(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  dev_mode_unblock_broker_->UnblockDevModeForEnrollment(
+      dbus_service_->CreatePolicyServiceCompletionCallback(
+          std::move(response)));
+}
+
+void SessionManagerImpl::UnblockDevModeForCarrierLock(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  dev_mode_unblock_broker_->UnblockDevModeForCarrierLock(
+      dbus_service_->CreatePolicyServiceCompletionCallback(
+          std::move(response)));
+}
+
+void SessionManagerImpl::IsDevModeBlockedForCarrierLock(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  bool is_blocked = dev_mode_unblock_broker_->IsDevModeBlockedForCarrierLock();
+  response->Return(is_blocked);
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {

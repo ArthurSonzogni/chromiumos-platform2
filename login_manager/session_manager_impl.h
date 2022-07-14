@@ -28,6 +28,7 @@
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
+#include "login_manager/dev_mode_unblock_broker.h"
 #include "login_manager/device_identifier_generator.h"
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
@@ -180,6 +181,7 @@ class SessionManagerImpl
                      dbus::ObjectProxy* powerd_proxy,
                      dbus::ObjectProxy* system_clock_proxy,
                      dbus::ObjectProxy* debugd_proxy,
+                     dbus::ObjectProxy* fwmp_proxy,
                      ArcSideloadStatusInterface* arc_sideload_status);
   SessionManagerImpl(const SessionManagerImpl&) = delete;
   SessionManagerImpl& operator=(const SessionManagerImpl&) = delete;
@@ -333,6 +335,19 @@ class SessionManagerImpl
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
   void QueryAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
+
+  void UnblockDevModeForInitialStateDetermination(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
+  void UnblockDevModeForEnrollment(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
+  void UnblockDevModeForCarrierLock(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
+  void IsDevModeBlockedForCarrierLock(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
 
@@ -521,9 +536,11 @@ class SessionManagerImpl
   dbus::ObjectProxy* powerd_proxy_;
   dbus::ObjectProxy* system_clock_proxy_;
   dbus::ObjectProxy* debugd_proxy_;
+  dbus::ObjectProxy* fwmp_proxy_;
   std::unique_ptr<DevicePolicyService> device_policy_;
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
   std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager_;
+  std::unique_ptr<DevModeUnblockBroker> dev_mode_unblock_broker_;
 
   std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
 

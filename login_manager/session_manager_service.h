@@ -262,6 +262,7 @@ class SessionManagerService
 #if USE_ARC_ADB_SIDELOADING
   dbus::ObjectProxy* boot_lockbox_dbus_proxy_ = nullptr;
 #endif
+  dbus::ObjectProxy* fwmp_dbus_proxy_ = nullptr;
 
   // True when the vm_concierge service is available.
   bool vm_concierge_available_ = false;
