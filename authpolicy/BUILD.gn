@@ -69,7 +69,7 @@ action("policy_code_generator") {
 
   sources = [
     "${policy_resources_dir}/VERSION",
-    "${policy_resources_dir}/policy_templates.json",
+    "${policy_resources_dir}/generated_policy_templates.json",
   ]
   outputs = [
     "${out_dir}/policy_constants.h",
@@ -80,7 +80,7 @@ action("policy_code_generator") {
     "--cros-policy-constants-source=${out_dir}/policy_constants.cc",
     "--chrome-version-file=${policy_resources_dir}/VERSION",
     "--target-platform=chromeos",
-    "--policy-templates-file=${policy_resources_dir}/policy_templates.json",
+    "--policy-templates-file=${policy_resources_dir}/generated_policy_templates.json",
   ]
 }
 

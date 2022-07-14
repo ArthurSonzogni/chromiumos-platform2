@@ -50,14 +50,14 @@ action("cloud_policy_proto_generator") {
   script = "${policy_tools_dir}/generate_policy_source.py"
   sources = [
     "${policy_resources_dir}/VERSION",
-    "${policy_resources_dir}/policy_templates.json",
+    "${policy_resources_dir}/generated_policy_templates.json",
   ]
   outputs = [ "${proto_out_dir}/cloud_policy.proto" ]
   args = [
     "--cloud-policy-protobuf=${proto_out_dir}/cloud_policy.proto",
     "--chrome-version-file=${policy_resources_dir}/VERSION",
     "--target-platform=chromeos",
-    "--policy-templates-file=${policy_resources_dir}/policy_templates.json",
+    "--policy-templates-file=${policy_resources_dir}/generated_policy_templates.json",
   ]
 }
 
