@@ -48,9 +48,9 @@ ManagerDBusAdaptor::~ManagerDBusAdaptor() {
 }
 
 void ManagerDBusAdaptor::RegisterAsync(
-    const base::Callback<void(bool)>& completion_callback) {
+    base::OnceCallback<void(bool)> completion_callback) {
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(completion_callback);
+  dbus_object()->RegisterAsync(std::move(completion_callback));
 }
 
 void ManagerDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {

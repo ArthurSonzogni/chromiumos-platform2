@@ -14,6 +14,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -337,8 +338,8 @@ Manager::~Manager() {
 }
 
 void Manager::RegisterAsync(
-    const base::Callback<void(bool)>& completion_callback) {
-  adaptor_->RegisterAsync(completion_callback);
+    base::OnceCallback<void(bool)> completion_callback) {
+  adaptor_->RegisterAsync(std::move(completion_callback));
 }
 
 void Manager::OnDhcpPropertyChanged(const std::string& key,

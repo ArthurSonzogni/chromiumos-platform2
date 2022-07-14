@@ -5,6 +5,7 @@
 #include "shill/dbus/dbus_control.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <brillo/dbus/async_event_sequencer.h>
@@ -79,11 +80,11 @@ RpcIdentifier DBusControl::NullRpcIdentifier() {
 }
 
 void DBusControl::RegisterManagerObject(
-    Manager* manager, const base::Closure& registration_done_callback) {
-  registration_done_callback_ = registration_done_callback;
+    Manager* manager, base::OnceClosure registration_done_callback) {
+  registration_done_callback_ = std::move(registration_done_callback);
   scoped_refptr<brillo::dbus_utils::AsyncEventSequencer> sequencer(
       new brillo::dbus_utils::AsyncEventSequencer());
-  manager->RegisterAsync(base::Bind(
+  manager->RegisterAsync(base::BindOnce(
       &DBusControl::OnDBusServiceRegistered, base::Unretained(this),
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
   sequencer->OnAllTasksCompletedCall(base::BindOnce(
@@ -91,15 +92,15 @@ void DBusControl::RegisterManagerObject(
 }
 
 void DBusControl::OnDBusServiceRegistered(
-    const base::Callback<void(bool)>& completion_action, bool success) {
+    base::OnceCallback<void(bool)> completion_action, bool success) {
   // The DBus control interface will take over the ownership of the DBus service
   // in this callback.  The daemon will crash if registration failed.
-  completion_action.Run(success);
+  std::move(completion_action).Run(success);
 
   // We can start the manager now that we have ownership of the D-Bus service.
   // Doing so earlier would allow the manager to emit signals before service
   // ownership was acquired.
-  registration_done_callback_.Run();
+  std::move(registration_done_callback_).Run();
 }
 
 void DBusControl::TakeServiceOwnership(bool success) {
@@ -151,8 +152,8 @@ DBusControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) {
 std::unique_ptr<PowerManagerProxyInterface>
 DBusControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback) {
+    const base::RepeatingClosure& service_appeared_callback,
+    const base::RepeatingClosure& service_vanished_callback) {
   return std::make_unique<PowerManagerProxy>(dispatcher_, proxy_bus_, delegate,
                                              service_appeared_callback,
                                              service_vanished_callback);
@@ -161,8 +162,8 @@ DBusControl::CreatePowerManagerProxy(
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 std::unique_ptr<SupplicantProcessProxyInterface>
 DBusControl::CreateSupplicantProcessProxy(
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback) {
+    const base::RepeatingClosure& service_appeared_callback,
+    const base::RepeatingClosure& service_vanished_callback) {
   return std::make_unique<SupplicantProcessProxy>(dispatcher_, proxy_bus_,
                                                   service_appeared_callback,
                                                   service_vanished_callback);
@@ -215,8 +216,8 @@ std::unique_ptr<DBusObjectManagerProxyInterface>
 DBusControl::CreateDBusObjectManagerProxy(
     const RpcIdentifier& path,
     const std::string& service,
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback) {
+    const base::RepeatingClosure& service_appeared_callback,
+    const base::RepeatingClosure& service_vanished_callback) {
   return std::make_unique<DBusObjectManagerProxy>(
       dispatcher_, proxy_bus_, path, service, service_appeared_callback,
       service_vanished_callback);

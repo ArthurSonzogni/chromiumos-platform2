@@ -57,18 +57,19 @@ MockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 std::unique_ptr<SupplicantProcessProxyInterface>
-MockControl::CreateSupplicantProcessProxy(const base::Closure& appear,
-                                          const base::Closure& vanish) {
+MockControl::CreateSupplicantProcessProxy(
+    const base::RepeatingClosure& appear,
+    const base::RepeatingClosure& vanish) {
   supplicant_appear_ = appear;
   supplicant_vanish_ = vanish;
   return std::make_unique<NiceMock<MockSupplicantProcessProxy>>();
 }
 
-const base::Closure& MockControl::supplicant_appear() const {
+const base::RepeatingClosure& MockControl::supplicant_appear() const {
   return supplicant_appear_;
 }
 
-const base::Closure& MockControl::supplicant_vanish() const {
+const base::RepeatingClosure& MockControl::supplicant_vanish() const {
   return supplicant_vanish_;
 }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X

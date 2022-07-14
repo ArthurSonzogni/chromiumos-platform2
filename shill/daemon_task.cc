@@ -96,7 +96,8 @@ void DaemonTask::Init() {
                              config_->GetStorageDirectory(),
                              config_->GetUserStorageDirectory()));
   control_->RegisterManagerObject(
-      manager_.get(), base::Bind(&DaemonTask::Start, base::Unretained(this)));
+      manager_.get(),
+      base::BindOnce(&DaemonTask::Start, base::Unretained(this)));
   ApplySettings();
 }
 

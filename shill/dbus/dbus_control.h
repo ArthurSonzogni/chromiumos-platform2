@@ -25,8 +25,7 @@ class DBusControl : public ControlInterface {
   ~DBusControl() override;
 
   void RegisterManagerObject(
-      Manager* manager,
-      const base::Closure& registration_done_callback) override;
+      Manager* manager, base::OnceClosure registration_done_callback) override;
   std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) override;
   std::unique_ptr<IPConfigAdaptorInterface> CreateIPConfigAdaptor(
@@ -48,13 +47,13 @@ class DBusControl : public ControlInterface {
   // the proxy.
   std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) override;
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) override;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<SupplicantProcessProxyInterface> CreateSupplicantProcessProxy(
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) override;
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) override;
 
   std::unique_ptr<SupplicantInterfaceProxyInterface>
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
@@ -85,8 +84,8 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<DBusObjectManagerProxyInterface> CreateDBusObjectManagerProxy(
       const RpcIdentifier& path,
       const std::string& service,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) override;
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) override;
 
   // Proxies for ModemManager1 interfaces
   std::unique_ptr<mm1::ModemLocationProxyInterface> CreateMM1ModemLocationProxy(
@@ -118,8 +117,8 @@ class DBusControl : public ControlInterface {
 #endif  // DISABLE_CELLULAR
 
  private:
-  void OnDBusServiceRegistered(
-      const base::Callback<void(bool)>& completion_action, bool success);
+  void OnDBusServiceRegistered(base::OnceCallback<void(bool)> completion_action,
+                               bool success);
   void TakeServiceOwnership(bool success);
 
   static const char kNullPath[];
@@ -130,7 +129,7 @@ class DBusControl : public ControlInterface {
   scoped_refptr<dbus::Bus> adaptor_bus_;
   scoped_refptr<dbus::Bus> proxy_bus_;
   EventDispatcher* dispatcher_;
-  base::Closure registration_done_callback_;
+  base::OnceClosure registration_done_callback_;
 };
 
 }  // namespace shill

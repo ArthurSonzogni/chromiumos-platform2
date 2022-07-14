@@ -33,10 +33,10 @@ SupplicantManager::~SupplicantManager() = default;
 
 void SupplicantManager::Start() {
   proxy_ = control_interface_->CreateSupplicantProcessProxy(
-      base::Bind(&SupplicantManager::OnSupplicantPresence,
-                 base::Unretained(this), true),
-      base::Bind(&SupplicantManager::OnSupplicantPresence,
-                 base::Unretained(this), false));
+      base::BindRepeating(&SupplicantManager::OnSupplicantPresence,
+                          base::Unretained(this), true),
+      base::BindRepeating(&SupplicantManager::OnSupplicantPresence,
+                          base::Unretained(this), false));
 }
 
 void SupplicantManager::AddSupplicantListener(

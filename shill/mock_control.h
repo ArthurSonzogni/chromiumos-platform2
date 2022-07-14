@@ -54,7 +54,7 @@ class MockControl : public ControlInterface {
 
   void RegisterManagerObject(
       Manager* manager,
-      const base::Closure& registration_done_callback) override{};
+      base::OnceClosure registration_done_callback) override{};
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
@@ -78,12 +78,12 @@ class MockControl : public ControlInterface {
   MOCK_METHOD(std::unique_ptr<PowerManagerProxyInterface>,
               CreatePowerManagerProxy,
               (PowerManagerProxyDelegate*,
-               const base::Closure&,
-               const base::Closure&),
+               const base::RepeatingClosure&,
+               const base::RepeatingClosure&),
               (override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<SupplicantProcessProxyInterface> CreateSupplicantProcessProxy(
-      const base::Closure&, const base::Closure&) override;
+      const base::RepeatingClosure&, const base::RepeatingClosure&) override;
   MOCK_METHOD(std::unique_ptr<SupplicantInterfaceProxyInterface>,
               CreateSupplicantInterfaceProxy,
               (SupplicantEventDelegateInterface*, const RpcIdentifier&),
@@ -92,8 +92,8 @@ class MockControl : public ControlInterface {
               CreateSupplicantNetworkProxy,
               (const RpcIdentifier&),
               (override));
-  const base::Closure& supplicant_appear() const;
-  const base::Closure& supplicant_vanish() const;
+  const base::RepeatingClosure& supplicant_appear() const;
+  const base::RepeatingClosure& supplicant_vanish() const;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
   MOCK_METHOD(std::unique_ptr<SupplicantBSSProxyInterface>,
@@ -125,8 +125,8 @@ class MockControl : public ControlInterface {
               CreateDBusObjectManagerProxy,
               (const RpcIdentifier&,
                const std::string&,
-               const base::Closure&,
-               const base::Closure&),
+               const base::RepeatingClosure&,
+               const base::RepeatingClosure&),
               (override));
   MOCK_METHOD(std::unique_ptr<mm1::ModemLocationProxyInterface>,
               CreateMM1ModemLocationProxy,
@@ -166,8 +166,8 @@ class MockControl : public ControlInterface {
   RpcIdentifier null_identifier_;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  base::Closure supplicant_appear_;
-  base::Closure supplicant_vanish_;
+  base::RepeatingClosure supplicant_appear_;
+  base::RepeatingClosure supplicant_vanish_;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 };
 

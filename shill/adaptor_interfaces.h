@@ -70,7 +70,7 @@ class ManagerAdaptorInterface {
   virtual ~ManagerAdaptorInterface() = default;
 
   virtual void RegisterAsync(
-      const base::Callback<void(bool)>& completion_callback) = 0;
+      base::OnceCallback<void(bool)> completion_callback) = 0;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.

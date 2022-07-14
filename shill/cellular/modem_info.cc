@@ -72,8 +72,10 @@ std::unique_ptr<DBusObjectManagerProxyInterface> ModemInfo::CreateProxy() {
       control_interface_->CreateDBusObjectManagerProxy(
           RpcIdentifier(modemmanager::kModemManager1ServicePath),
           modemmanager::kModemManager1ServiceName,
-          base::Bind(&ModemInfo::OnAppeared, weak_ptr_factory_.GetWeakPtr()),
-          base::Bind(&ModemInfo::OnVanished, weak_ptr_factory_.GetWeakPtr()));
+          base::BindRepeating(&ModemInfo::OnAppeared,
+                              weak_ptr_factory_.GetWeakPtr()),
+          base::BindRepeating(&ModemInfo::OnVanished,
+                              weak_ptr_factory_.GetWeakPtr()));
   proxy->set_interfaces_added_callback(Bind(&ModemInfo::OnInterfacesAddedSignal,
                                             weak_ptr_factory_.GetWeakPtr()));
   proxy->set_interfaces_removed_callback(Bind(

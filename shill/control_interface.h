@@ -71,7 +71,7 @@ class ControlInterface {
  public:
   virtual ~ControlInterface() = default;
   virtual void RegisterManagerObject(
-      Manager* manager, const base::Closure& registration_done_callback) = 0;
+      Manager* manager, base::OnceClosure registration_done_callback) = 0;
   virtual std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) = 0;
   virtual std::unique_ptr<IPConfigAdaptorInterface> CreateIPConfigAdaptor(
@@ -93,14 +93,14 @@ class ControlInterface {
   // the proxy.
   virtual std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) = 0;
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) = 0;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   virtual std::unique_ptr<SupplicantProcessProxyInterface>
   CreateSupplicantProcessProxy(
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) = 0;
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) = 0;
 
   virtual std::unique_ptr<SupplicantInterfaceProxyInterface>
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
@@ -132,8 +132,8 @@ class ControlInterface {
   CreateDBusObjectManagerProxy(
       const RpcIdentifier& path,
       const std::string& service,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) = 0;
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) = 0;
 
   virtual std::unique_ptr<mm1::ModemLocationProxyInterface>
   CreateMM1ModemLocationProxy(const RpcIdentifier& path,

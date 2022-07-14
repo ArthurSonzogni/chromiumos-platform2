@@ -113,7 +113,7 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
 
   MOCK_METHOD(void,
               RegisterAsync,
-              (const base::Callback<void(bool)>&),
+              (base::OnceCallback<void(bool)>),
               (override));
   MOCK_METHOD(void, EmitBoolChanged, (const std::string&, bool), (override));
   MOCK_METHOD(void,

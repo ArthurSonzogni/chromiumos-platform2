@@ -48,9 +48,10 @@ void PowerManager::Start(
     const DarkSuspendImminentCallback& dark_suspend_imminent_callback) {
   power_manager_proxy_ = control_interface_->CreatePowerManagerProxy(
       this,
-      base::Bind(&PowerManager::OnPowerManagerAppeared, base::Unretained(this)),
-      base::Bind(&PowerManager::OnPowerManagerVanished,
-                 base::Unretained(this)));
+      base::BindRepeating(&PowerManager::OnPowerManagerAppeared,
+                          base::Unretained(this)),
+      base::BindRepeating(&PowerManager::OnPowerManagerVanished,
+                          base::Unretained(this)));
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
   suspend_done_callback_ = suspend_done_callback;

@@ -40,8 +40,8 @@ SupplicantProcessProxy::PropertySet::PropertySet(
 SupplicantProcessProxy::SupplicantProcessProxy(
     EventDispatcher* dispatcher,
     const scoped_refptr<dbus::Bus>& bus,
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback)
+    const base::RepeatingClosure& service_appeared_callback,
+    const base::RepeatingClosure& service_vanished_callback)
     : supplicant_proxy_(new fi::w1::wpa_supplicant1Proxy(
           bus,
           WPASupplicant::kDBusAddr,

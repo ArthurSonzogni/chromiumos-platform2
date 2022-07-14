@@ -41,8 +41,8 @@ class FakeControl : public MockControl {
 
   std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) override {
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) override {
     CHECK(power_manager_proxy_);
     delegate_ = delegate;
     // Passes ownership.

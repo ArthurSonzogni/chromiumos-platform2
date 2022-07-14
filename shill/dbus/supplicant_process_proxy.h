@@ -22,10 +22,11 @@ class EventDispatcher;
 
 class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
  public:
-  SupplicantProcessProxy(EventDispatcher* dispatcher,
-                         const scoped_refptr<dbus::Bus>& bus,
-                         const base::Closure& service_appeared_callback,
-                         const base::Closure& service_vanished_callback);
+  SupplicantProcessProxy(
+      EventDispatcher* dispatcher,
+      const scoped_refptr<dbus::Bus>& bus,
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback);
   SupplicantProcessProxy(const SupplicantProcessProxy&) = delete;
   SupplicantProcessProxy& operator=(const SupplicantProcessProxy&) = delete;
 

@@ -137,7 +137,7 @@ class Manager {
 
   virtual ~Manager();
 
-  void RegisterAsync(const base::Callback<void(bool)>& completion_callback);
+  void RegisterAsync(base::OnceCallback<void(bool)> completion_callback);
 
   mockable void OnDhcpPropertyChanged(const std::string& key,
                                       const std::string& value);
