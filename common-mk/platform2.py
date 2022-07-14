@@ -42,6 +42,7 @@ _IUSE = [
     "bluetooth_suspend_management",
     "camera_feature_auto_framing",
     "camera_feature_face_detection",
+    "camera_feature_frame_annotator",
     "camera_feature_hdrnet",
     "camera_feature_portrait_mode",
     "cdm_factory_daemon",

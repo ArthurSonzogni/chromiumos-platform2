@@ -30,6 +30,10 @@
 #include "features/face_detection/face_detection_stream_manipulator.h"
 #endif
 
+#if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
+#include "features/frame_annotator/frame_annotator_stream_manipulator.h"
+#endif
+
 namespace cros {
 
 namespace {
@@ -112,6 +116,12 @@ StreamManipulator::GetEnabledStreamManipulators(
     CameraMojoChannelManagerToken* mojo_manager_token) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
+
+#if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
+  stream_manipulators.emplace_back(
+      std::make_unique<FrameAnnotatorStreamManipulator>());
+  LOGF(INFO) << "FrameAnnotatorStreamManipulator enabled";
+#endif
 
   MaybeEnableAutoFramingStreamManipulator(feature_profile, &stream_manipulators,
                                           runtime_options);

@@ -28,6 +28,7 @@ config("cros_camera_common") {
   defines += [
     "USE_CAMERA_FEATURE_AUTO_FRAMING=${use.camera_feature_auto_framing}",
     "USE_CAMERA_FEATURE_FACE_DETECTION=${use.camera_feature_face_detection}",
+    "USE_CAMERA_FEATURE_FRAME_ANNOTATOR=${use.camera_feature_frame_annotator}",
     "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}",
     "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
     "USE_IPU6=${use.ipu6}",
