@@ -4,20 +4,25 @@
 
 #include "shill/metrics.h"
 
+#include <cstdint>
 #include <iterator>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece_forward.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <crypto/random.h>
 #include <crypto/sha2.h>
 #include <metrics/bootstat.h>
 #include <metrics/structured/structured_events.h>
@@ -44,6 +49,22 @@ namespace {
 // Name prefix used for Shill UMA metrics whose names are generated
 // dynamically at event recording time.
 constexpr char kMetricPrefix[] = "Network.Shill";
+
+// Length of the random salt used to pseudonymize logs.
+constexpr int kPseudoTagSaltLen = 32;
+// How many bytes of the hash are printed.
+constexpr int kPseudoTagHashLen = 8;
+
+bool IsInvalidTag(uint64_t tag) {
+#if !defined(DISABLE_WIFI)
+  return tag == WiFiService::kSessionTagInvalid;
+#else   // DISABLE_WIFI
+  // Tags aren't currently used outside of the context of WiFi. In case that
+  // ever changes, trigger a loud-and-clear error in the default case to make
+  // sure that the change is done carefully.
+  return true;
+#endif  // DISABLE_WIFI
+}
 
 Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
     const Error::Type& error) {
@@ -167,6 +188,10 @@ Metrics::Metrics()
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_(Time::GetInstance()) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
+
+  char salt[kPseudoTagSaltLen];
+  crypto::RandBytes(salt, kPseudoTagSaltLen);
+  pseudo_tag_salt_ = base::StringPiece(salt, kPseudoTagSaltLen);
 }
 
 Metrics::~Metrics() = default;
@@ -1293,7 +1318,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
-      << __func__ << ": Session Tag 0x" << std::hex << session_tag;
+      << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   metrics::structured::events::wi_fi::WiFiConnectionAttempt()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
@@ -1337,7 +1362,7 @@ void Metrics::NotifyWiFiConnectionAttemptResult(NetworkServiceError result_code,
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
-      << __func__ << ": Session Tag 0x" << std::hex << session_tag;
+      << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   SLOG(this, 2) << __func__ << ": ResultCode " << result_code;
   metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
       .SetBootId(GetBootId())
@@ -1359,7 +1384,7 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
-      << __func__ << ": Session Tag 0x" << std::hex << session_tag;
+      << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   SLOG(this, 2) << __func__ << ": Type " << type << " Reason " << reason;
   metrics::structured::events::wi_fi::WiFiConnectionEnd()
       .SetBootId(GetBootId())
@@ -1467,6 +1492,20 @@ Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {
     return nullptr;
   }
   return it->second.get();
+}
+
+std::string Metrics::PseudonymizeTag(uint64_t tag) {
+  if (pseudo_tag_salt_.empty()) {
+    return "INVALID SALT";
+  }
+  if (IsInvalidTag(tag)) {
+    return "INVALID TAG";
+  }
+  uint8_t hash[kPseudoTagHashLen];
+  std::string salted_tag =
+      base::StrCat({pseudo_tag_salt_, base::NumberToString(tag)});
+  crypto::SHA256HashString(salted_tag, hash, std::size(hash));
+  return base::HexEncode(base::span<uint8_t>(hash, std::size(hash)));
 }
 
 // static
