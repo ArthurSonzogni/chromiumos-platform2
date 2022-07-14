@@ -5,6 +5,7 @@
 #include "u2fd/u2fhid_service_impl.h"
 
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,6 +29,10 @@ namespace {
 
 constexpr char kDeviceName[] = "Integrated U2F";
 constexpr char kKeyLabelEmk[] = "attest-ent-machine";
+
+// Use (VendorId, ProductId) which is 8 bytes as the fixed device identifier we
+// return for u2f corp protocol callers.
+constexpr uint8_t kDevId[8] = {0x00, 0x00, 0x18, 0xd1, 0x00, 0x00, 0x52, 0x12};
 
 constexpr uint32_t kDefaultVendorId = 0x18d1;
 constexpr uint32_t kDefaultProductId = 0x502c;
@@ -66,7 +71,6 @@ bool U2fHidServiceImpl::CreateU2fHid(
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics) {
   U2fCorpFirmwareVersion fw_version;
-  std::string dev_id(8, '\x00');
 
   if (enable_corp_protocol) {
     TpmRwVersion rw_version;
@@ -76,15 +80,10 @@ bool U2fHidServiceImpl::CreateU2fHid(
                  << ".";
     } else {
       fw_version = U2fCorpFirmwareVersion::FromTpmRwVersion(rw_version);
-      status = tpm_proxy_.GetDeviceId(&dev_id);
-      if (status != 0) {
-        LOG(ERROR) << "GetDeviceId failed with status " << std::hex << status
-                   << ".";
-      } else {
-        u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-        u2f_corp_processor_->Initialize(fw_version, sm_proxy, &tpm_proxy_,
-                                        metrics, request_user_presence);
-      }
+
+      u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
+      u2f_corp_processor_->Initialize(fw_version, sm_proxy, &tpm_proxy_,
+                                      metrics, request_user_presence);
     }
   }
 
@@ -107,8 +106,8 @@ bool U2fHidServiceImpl::CreateU2fHid(
   u2fhid_ = std::make_unique<u2f::U2fHid>(
       std::make_unique<u2f::UHidDevice>(vendor_id, product_id, kDeviceName,
                                         "u2fd-tpm-cr50"),
-      fw_version, std::move(dev_id), u2f_msg_handler_.get(),
-      u2f_corp_processor_.get());
+      fw_version, std::string(kDevId, kDevId + std::size(kDevId)),
+      u2f_msg_handler_.get(), u2f_corp_processor_.get());
 
   return u2fhid_->Init();
 }

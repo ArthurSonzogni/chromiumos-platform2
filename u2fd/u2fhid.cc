@@ -345,7 +345,7 @@ int U2fHid::CmdSysInfo(std::string* resp) {
 int U2fHid::CmdMetrics(std::string* resp) {
   if (u2f_corp_processor_) {
     VLOG(1) << "Received Metrics command";
-    *resp = std::string("built-in") + dev_id_;
+    *resp = dev_id_;
     return 0;
   }
 
