@@ -15,6 +15,7 @@
 #include <base/process/launch.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libhwsec-foundation/profiling/profiling.h>
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
@@ -113,6 +114,10 @@ bool PerformPreinit() {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
+
+  // Start code profiling.
+  hwsec_foundation::SetUpProfiling();
+
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int flags = brillo::kLogToSyslog;
   if (cl->HasSwitch(kLogToStderrSwitch)) {

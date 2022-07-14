@@ -131,7 +131,10 @@ executable("tpm_managerd") {
     ":target_defaults",
     ":tpm_managerd_config",
   ]
-  libs = [ "rootdev" ]
+  libs = [
+    "rootdev",
+    "hwsec-profiling",
+  ]
   deps = [ ":server_library" ]
 
   # NOSORT
