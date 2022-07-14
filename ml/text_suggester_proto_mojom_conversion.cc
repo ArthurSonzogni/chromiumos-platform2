@@ -63,7 +63,7 @@ TextSuggesterResultPtr TextSuggesterResultFromProto(
 
   // For candidates.
   for (const auto& candidate_proto : result_proto.candidates()) {
-    TextSuggestionCandidatePtr candidate = TextSuggestionCandidate::New();
+    TextSuggestionCandidatePtr candidate;
     if (candidate_proto.has_multi_word()) {
       MultiWordSuggestionCandidatePtr multi_word_candidate =
           MultiWordSuggestionCandidate::New();
@@ -71,8 +71,8 @@ TextSuggesterResultPtr TextSuggesterResultFromProto(
       multi_word_candidate->normalized_score =
           candidate_proto.multi_word().normalized_score();
 
-      TextSuggestionCandidatePtr candidate = TextSuggestionCandidate::New();
-      candidate->set_multi_word(std::move(multi_word_candidate));
+      candidate = TextSuggestionCandidate::NewMultiWord(
+          std::move(multi_word_candidate));
 
       result->candidates.push_back(std::move(candidate));
     }

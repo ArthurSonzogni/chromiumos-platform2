@@ -29,9 +29,10 @@ TEST(SodaProtoMojomConversionTest, AudioLevelsTest) {
 
   // now for the full mojom
   auto actual_mojom = SpeechRecognizerEventFromProto(response);
-  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr expected_mojom =
-      chromeos::machine_learning::mojom::SpeechRecognizerEvent::New();
-  expected_mojom->set_audio_event(std::move(expected_audio_mojom));
+  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr expected_mojom;
+  expected_mojom =
+      chromeos::machine_learning::mojom::SpeechRecognizerEvent::NewAudioEvent(
+          std::move(expected_audio_mojom));
   EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
 
   // Let's check the other tests.
@@ -63,9 +64,8 @@ TEST(SodaProtoMojomConversionTest, PartialResultsTest) {
 
   // now for the full mojom
   auto actual_mojom = SpeechRecognizerEventFromProto(response);
-  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr expected_mojom =
-      chromeos::machine_learning::mojom::SpeechRecognizerEvent::New();
-  expected_mojom->set_partial_result(std::move(actual_rec_mojom));
+  auto expected_mojom = chromeos::machine_learning::mojom::
+      SpeechRecognizerEvent::NewPartialResult(std::move(actual_rec_mojom));
   EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
 
   // Let's check the other tests.
@@ -92,9 +92,8 @@ TEST(SodaProtoMojomConversionTest, PrefetchResultsTest) {
 
   // now for the full mojom
   auto actual_mojom = SpeechRecognizerEventFromProto(response);
-  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr expected_mojom =
-      chromeos::machine_learning::mojom::SpeechRecognizerEvent::New();
-  expected_mojom->set_partial_result(std::move(actual_rec_mojom));
+  auto expected_mojom = chromeos::machine_learning::mojom::
+      SpeechRecognizerEvent::NewPartialResult(std::move(actual_rec_mojom));
   EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
 
   // Let's check the other tests.
@@ -158,9 +157,9 @@ TEST(SodaProtoMojomConversionTest, FinalResultsTest) {
 
   // now for the full mojom
   auto actual_mojom = SpeechRecognizerEventFromProto(response);
-  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr expected_mojom =
-      chromeos::machine_learning::mojom::SpeechRecognizerEvent::New();
-  expected_mojom->set_final_result(std::move(actual_rec_mojom));
+  auto expected_mojom =
+      chromeos::machine_learning::mojom::SpeechRecognizerEvent::NewFinalResult(
+          std::move(actual_rec_mojom));
   EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
 
   // Let's check the other tests.
@@ -185,9 +184,8 @@ TEST(SodaProtoMojomConversionTest, EndpointTest) {
 
   // now for the full mojom
   auto actual_mojom = SpeechRecognizerEventFromProto(response);
-  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr expected_mojom =
-      chromeos::machine_learning::mojom::SpeechRecognizerEvent::New();
-  expected_mojom->set_endpointer_event(std::move(actual_end_mojom));
+  auto expected_mojom = chromeos::machine_learning::mojom::
+      SpeechRecognizerEvent::NewEndpointerEvent(std::move(actual_end_mojom));
   EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
 
   // Let's check the other tests.

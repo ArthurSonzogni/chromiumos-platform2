@@ -77,7 +77,6 @@ class TensorView {
   // Allocate memory for the members of the tensor object (including values).
   void Allocate() {
     tensor_->shape = chromeos::machine_learning::mojom::Int64List::New();
-    tensor_->data = chromeos::machine_learning::mojom::ValueList::New();
     AllocateValues();
   }
 

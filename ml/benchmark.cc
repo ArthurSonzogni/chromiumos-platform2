@@ -275,10 +275,10 @@ void AccumulateDistance(const TensorPtr& tensor1,
                         const TensorPtr& tensor2,
                         AccumulativeResult* const accumulative_result) {
   switch (tensor1->data->which()) {
-    case ValueList::Tag::INT64_LIST:
+    case ValueList::Tag::kInt64List:
       AccumulateDistance<int64_t>(tensor1, tensor2, accumulative_result);
       return;
-    case ValueList::Tag::FLOAT_LIST:
+    case ValueList::Tag::kFloatList:
       AccumulateDistance<double>(tensor1, tensor2, accumulative_result);
       return;
     default:

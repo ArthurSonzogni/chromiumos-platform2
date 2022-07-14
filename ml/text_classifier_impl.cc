@@ -30,6 +30,7 @@ using ::chromeos::machine_learning::mojom::TextAnnotationRequestPtr;
 using ::chromeos::machine_learning::mojom::TextClassifier;
 using ::chromeos::machine_learning::mojom::TextEntity;
 using ::chromeos::machine_learning::mojom::TextEntityData;
+using ::chromeos::machine_learning::mojom::TextEntityDataPtr;
 using ::chromeos::machine_learning::mojom::TextEntityPtr;
 using ::chromeos::machine_learning::mojom::TextLanguage;
 using ::chromeos::machine_learning::mojom::TextLanguagePtr;
@@ -135,15 +136,16 @@ void TextClassifierImpl::Annotate(TextAnnotationRequestPtr request,
     std::vector<TextEntityPtr> entities;
     for (const auto& classification : annotated_result.classification) {
       // First, get entity data.
-      auto entity_data = TextEntityData::New();
+      TextEntityDataPtr entity_data;
       if (classification.collection == "number") {
-        entity_data->set_numeric_value(classification.numeric_double_value);
+        entity_data = TextEntityData::NewNumericValue(
+            classification.numeric_double_value);
       } else {
         // For the other types, just encode the substring into string_value.
         // TODO(honglinyu): add data extraction for more types when needed
         // and available.
         // Note that the returned indices by annotator is unicode codepoints.
-        entity_data->set_string_value(
+        entity_data = TextEntityData::NewStringValue(
             libtextclassifier3::UTF8ToUnicodeText(request->text, false)
                 .UTF8Substring(annotated_result.span.first,
                                annotated_result.span.second));

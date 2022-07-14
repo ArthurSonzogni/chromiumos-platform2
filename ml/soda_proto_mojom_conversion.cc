@@ -18,30 +18,36 @@ namespace ml {
 
 chromeos::machine_learning::mojom::SpeechRecognizerEventPtr
 SpeechRecognizerEventFromProto(const SodaResponse& soda_response) {
-  auto speech_recognizer_event =
-      chromeos::machine_learning::mojom::SpeechRecognizerEvent::New();
+  chromeos::machine_learning::mojom::SpeechRecognizerEventPtr
+      speech_recognizer_event;
   if (soda_response.soda_type() == SodaResponse::AUDIO_LEVEL) {
     auto audio_level_event = internal::AudioLevelEventFromProto(soda_response);
-    speech_recognizer_event->set_audio_event(std::move(audio_level_event));
+    speech_recognizer_event =
+        chromeos::machine_learning::mojom::SpeechRecognizerEvent::NewAudioEvent(
+            std::move(audio_level_event));
   } else if (soda_response.soda_type() == SodaResponse::RECOGNITION) {
     const auto& rec_result = soda_response.recognition_result();
     if (rec_result.result_type() == SodaRecognitionResult::PARTIAL) {
-      speech_recognizer_event->set_partial_result(
-          internal::PartialResultFromProto(soda_response));
+      speech_recognizer_event =
+          chromeos::machine_learning::mojom::SpeechRecognizerEvent::
+              NewPartialResult(internal::PartialResultFromProto(soda_response));
     } else if (rec_result.result_type() == SodaRecognitionResult::FINAL) {
-      speech_recognizer_event->set_final_result(
-          internal::FinalResultFromProto(soda_response));
+      speech_recognizer_event =
+          chromeos::machine_learning::mojom::SpeechRecognizerEvent::
+              NewFinalResult(internal::FinalResultFromProto(soda_response));
     } else if (rec_result.result_type() == SodaRecognitionResult::PREFETCH) {
-      speech_recognizer_event->set_partial_result(
-          internal::PartialResultFromPrefetchProto(soda_response));
+      speech_recognizer_event = chromeos::machine_learning::mojom::
+          SpeechRecognizerEvent::NewPartialResult(
+              internal::PartialResultFromPrefetchProto(soda_response));
     } else {
       LOG(ERROR) << "Only partial/prefetch/final results are supported, not "
                  << speech::soda::chrome::SodaRecognitionResult_ResultType_Name(
                         rec_result.result_type());
     }
   } else if (soda_response.soda_type() == SodaResponse::ENDPOINT) {
-    speech_recognizer_event->set_endpointer_event(
-        internal::EndpointerEventFromProto(soda_response));
+    speech_recognizer_event = chromeos::machine_learning::mojom::
+        SpeechRecognizerEvent::NewEndpointerEvent(
+            internal::EndpointerEventFromProto(soda_response));
   } else {
     LOG(DFATAL) << "Unexpected type of soda type to convert: "
                 << speech::soda::chrome::SodaResponse_SodaMessageType_Name(

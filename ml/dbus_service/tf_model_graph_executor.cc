@@ -152,8 +152,7 @@ bool TfModelGraphExecutor::Execute(
   tensor->shape = Int64List::New();
   tensor->shape->value = std::vector<int64_t>(
       {1, static_cast<int64_t>(vectorized_features.size())});
-  tensor->data = ValueList::New();
-  tensor->data->set_float_list(FloatList::New());
+  tensor->data = ValueList::NewFloatList(FloatList::New());
   tensor->data->get_float_list()->value = std::vector<double>(
       std::begin(vectorized_features), std::end(vectorized_features));
   // "input" is the input node name hardcoded in ../model_metadata.cc.

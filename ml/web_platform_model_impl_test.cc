@@ -35,8 +35,7 @@ TEST(WebPlatformModelTest, InvalidBuffer) {
   WebPlatformModelLoaderImpl::Create(loader.BindNewPipeAndPassReceiver(),
                                      std::move(options));
 
-  auto buffer = mojo_base::mojom::BigBuffer::New();
-  buffer->set_invalid_buffer(true);
+  auto buffer = mojo_base::mojom::BigBuffer::NewInvalidBuffer(true);
   bool model_callback_done = false;
   loader->Load(
       std::move(buffer),
@@ -70,8 +69,7 @@ TEST(WebPlatformModelTest, LoadEmptyBytes) {
 
   WebPlatformModelLoaderImpl::Create(loader.BindNewPipeAndPassReceiver(),
                                      std::move(options));
-  auto buffer = mojo_base::mojom::BigBuffer::New();
-  buffer->set_bytes(std::vector<uint8_t>());
+  auto buffer = mojo_base::mojom::BigBuffer::NewBytes(std::vector<uint8_t>());
 
   bool model_callback_done = false;
   loader->Load(
@@ -106,8 +104,8 @@ TEST(WebPlatformModelTest, LoadBadBytes) {
 
   WebPlatformModelLoaderImpl::Create(loader.BindNewPipeAndPassReceiver(),
                                      std::move(options));
-  auto buffer = mojo_base::mojom::BigBuffer::New();
-  buffer->set_bytes(std::vector<uint8_t>({1, 2, 3}));  // a wrong model.
+  auto buffer = mojo_base::mojom::BigBuffer::NewBytes(
+      std::vector<uint8_t>({1, 2, 3}));  // a wrong model.
 
   bool model_callback_done = false;
   loader->Load(
@@ -159,8 +157,8 @@ TEST(WebPlatformModelTest, LoadBadSharedBuffer) {
       mojo::WrapWritableSharedMemoryRegion(std::move(shared_region));
   shared_memory->size = 0;
 
-  auto big_buffer = mojo_base::mojom::BigBuffer::New();
-  big_buffer->set_shared_memory(std::move(shared_memory));
+  auto big_buffer =
+      mojo_base::mojom::BigBuffer::NewSharedMemory(std::move(shared_memory));
 
   bool model_callback_done = false;
   loader->Load(
@@ -218,8 +216,8 @@ TEST(WebPlatformModelTest, LoadAndComputeWithSharedBufferInput) {
       mojo::WrapWritableSharedMemoryRegion(std::move(shared_region));
   shared_memory->size = model_string.size();
 
-  auto big_buffer = mojo_base::mojom::BigBuffer::New();
-  big_buffer->set_shared_memory(std::move(shared_memory));
+  auto big_buffer =
+      mojo_base::mojom::BigBuffer::NewSharedMemory(std::move(shared_memory));
 
   mojo::Remote<model_loader::mojom::Model> model;
 
@@ -434,8 +432,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithBytesInput) {
   std::vector<uint8_t> model_vector(model_string.size());
   memcpy(model_vector.data(), model_string.c_str(), model_string.size());
 
-  auto buffer = mojo_base::mojom::BigBuffer::New();
-  buffer->set_bytes(std::move(model_vector));
+  auto buffer = mojo_base::mojom::BigBuffer::NewBytes(std::move(model_vector));
 
   mojo::Remote<model_loader::mojom::Model> model;
 
