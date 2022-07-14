@@ -9,6 +9,7 @@
 
 import argparse
 import collections.abc
+import functools
 import glob
 import itertools
 import json
@@ -65,6 +66,7 @@ CAMERA_CONFIG_SOURCE_PATH_TEMPLATE = (
     "sw_build_config/platform/chromeos-config/camera/camera_config_{}.json"
 )
 
+DTD_FILE = "media_profiles.dtd"
 DPTF_PATH = "sw_build_config/platform/chromeos-config/thermal"
 DPTF_FILE = "dptf.dv"
 
@@ -103,6 +105,12 @@ def parse_args(argv):
     )
     parser.add_argument(
         "-o", "--output", type=str, help="Output file that will be generated"
+    )
+    parser.add_argument(
+        "--dtd-path",
+        default=pathlib.Path(__file__).parent / DTD_FILE,
+        type=pathlib.Path,
+        help="Path to media_profiles.dtd. Defaults to the script's cwd.",
     )
     return parser.parse_args(argv)
 
@@ -1674,12 +1682,13 @@ def _generate_arc_hardware_features(hw_features):
     return XML_DECLARATION + etree.tostring(root, pretty_print=True)
 
 
-def _generate_arc_media_profiles(hw_features, sw_config):
+def _generate_arc_media_profiles(hw_features, sw_config, dtd_path):
     """Generates ARC media_profiles.xml file content.
 
     Args:
       hw_features: HardwareFeatures proto message.
       sw_config: SoftwareConfig proto message.
+      dtd_path: Full path to dtd media profiles file.
 
     Returns:
       bytes of the media_profiles.xml content, or None if |sw_config| disables the
@@ -1821,8 +1830,11 @@ def _generate_arc_media_profiles(hw_features, sw_config):
         ]
     )
 
-    dtd_path = os.path.dirname(__file__)
-    dtd = etree.DTD(os.path.join(dtd_path, "media_profiles.dtd"))
+    if not dtd_path.exists():
+        raise Exception(
+            "%s file does not exist. Please specify correct path." % dtd_path
+        )
+    dtd = etree.DTD(str(dtd_path))
     if not dtd.validate(root):
         raise etree.DTDValidateError(
             "Invalid media_profiles.xml generated:\n{}".format(dtd.error_log)
@@ -1910,14 +1922,14 @@ def _write_arc_hardware_feature_files(configs, output_root_dir, build_root_dir):
     )
 
 
-def _write_arc_media_profile_files(configs, output_root_dir, build_root_dir):
+def _write_arc_media_profile_files(configs, output_root_dir, build_root_dir, dtd_path):
     return _write_files_by_design_config(
         configs,
         output_root_dir + "/arc",
         build_root_dir + "/arc",
         "/etc",
         "media_profiles_{}.xml",
-        _generate_arc_media_profiles,
+        functools.partial(_generate_arc_media_profiles, dtd_path=dtd_path),
     )
 
 
@@ -2518,7 +2530,9 @@ def _create_intel_sar_file_content(intel_config):
     return marker + header + payload
 
 
-def Main(project_configs, program_config, output):  # pylint: disable=invalid-name
+def Main(
+    project_configs, program_config, output, dtd_path
+):  # pylint: disable=invalid-name
     """Transforms source proto config into platform JSON.
 
     Args:
@@ -2561,7 +2575,10 @@ def Main(project_configs, program_config, output):  # pylint: disable=invalid-na
         configs, output_dir, build_root_dir
     )
     arc_media_profile_files = _write_arc_media_profile_files(
-        configs, output_dir, build_root_dir
+        configs=configs,
+        output_root_dir=output_dir,
+        build_root_dir=build_root_dir,
+        dtd_path=dtd_path,
     )
     config_files = ConfigFiles(
         arc_hw_features=arc_hw_feature_files,
@@ -2583,7 +2600,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     opts = parse_args(argv)
-    Main(opts.project_configs, opts.program_config, opts.output)
+    Main(opts.project_configs, opts.program_config, opts.output, opts.dtd_path)
 
 
 if __name__ == "__main__":
