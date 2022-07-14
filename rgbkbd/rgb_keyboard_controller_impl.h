@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
+#include <base/containers/span.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "rgbkbd/constants.h"
@@ -62,6 +63,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   Color GetRainbowColorForKey(uint32_t key_idx) const;
   void PopulateRainbowModeMap();
   bool IsZonedKeyboard() const;
+  const base::span<const KeyColor> GetRainbowModeForKeyboard() const;
 
   base::flat_map<uint32_t, Color> individual_key_rainbow_mode_map_;
   std::optional<RgbKeyboardCapabilities> capabilities_;

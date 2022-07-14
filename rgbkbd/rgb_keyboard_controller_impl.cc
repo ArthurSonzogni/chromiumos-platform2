@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "base/check.h"
-#include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 
@@ -81,18 +80,34 @@ void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
   }
 }
 
-void RgbKeyboardControllerImpl::SetRainbowMode() {
-  base::span<const KeyColor> rainbow_mode;
-  background_type_ = BackgroundType::kStaticRainbow;
-
-  if (IsZonedKeyboard()) {
-    rainbow_mode = base::span<const KeyColor>(
-        kRainbowModeFourZoneFortyLed, std::size(kRainbowModeFourZoneFortyLed));
-  } else {
-    rainbow_mode = base::span<const KeyColor>(
-        kRainbowModeIndividualKey, std::size(kRainbowModeIndividualKey));
+const base::span<const KeyColor>
+RgbKeyboardControllerImpl::GetRainbowModeForKeyboard() const {
+  DCHECK(capabilities_.has_value());
+  switch (capabilities_.value()) {
+    case RgbKeyboardCapabilities::kNone:
+      NOTREACHED();
+      return base::span<const KeyColor>();
+    case RgbKeyboardCapabilities::kIndividualKey:
+      return base::span<const KeyColor>(kRainbowModeIndividualKey,
+                                        std::size(kRainbowModeIndividualKey));
+    case RgbKeyboardCapabilities::kFourZoneFortyLed:
+      return base::span<const KeyColor>(
+          kRainbowModeFourZoneFortyLed,
+          std::size(kRainbowModeFourZoneFortyLed));
+    case RgbKeyboardCapabilities::kFourZoneTwelveLed:
+      return base::span<const KeyColor>(
+          kRainbowModeFourZoneTwelveLed,
+          std::size(kRainbowModeFourZoneTwelveLed));
+    case RgbKeyboardCapabilities::kFourZoneFifteenLed:
+      return base::span<const KeyColor>(
+          kRainbowModeFourZoneFifteenLed,
+          std::size(kRainbowModeFourZoneFifteenLed));
   }
-  for (const auto& entry : rainbow_mode) {
+}
+
+void RgbKeyboardControllerImpl::SetRainbowMode() {
+  background_type_ = BackgroundType::kStaticRainbow;
+  for (const auto& entry : GetRainbowModeForKeyboard()) {
     // Check if caps lock is enabled to avoid overriding the caps lock
     // highlight keys.
     if (caps_lock_enabled_ && IsShiftKey(entry.key)) {

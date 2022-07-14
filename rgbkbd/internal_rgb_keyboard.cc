@@ -15,7 +15,6 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <libec/rgb_keyboard_command.h>
 
 namespace rgbkbd {
@@ -43,8 +42,10 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
       LOG(INFO) << "Device supports per-key keyboard over USB";
       break;
     case RgbKeyboardCapabilities::kFourZoneTwelveLed:
+      LOG(INFO) << "Device supports four zone - twelve led keyboard";
+      break;
     case RgbKeyboardCapabilities::kFourZoneFifteenLed:
-      NOTIMPLEMENTED();
+      LOG(INFO) << "Device supports four zone - fifteen led keyboard";
       break;
   }
 }
