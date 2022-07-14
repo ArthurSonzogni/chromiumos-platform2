@@ -500,7 +500,7 @@ void WiFi::ScanDone(const bool& success) {
   }
 
   // Defer handling of scan result processing, because that processing
-  // may require the the registration of new D-Bus objects. And such
+  // may require the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
   if (pending_scan_results_) {
