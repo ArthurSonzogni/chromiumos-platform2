@@ -277,6 +277,7 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
 
   const bool is_ippusb =
       base::StartsWith(uri, "ippusb://", base::CompareCase::INSENSITIVE_ASCII);
+  LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
   const int result =
       Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}, is_ippusb);
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/true);
@@ -296,6 +297,7 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
     return CupsResult::CUPS_BAD_URI;
   }
 
+  LOG(INFO) << "Adding manual printer " << name << " at " << uri;
   const int result =
       Lpadmin({"-v", uri, "-p", name, "-P", "-", "-E"}, false, &ppd_contents);
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/false);
@@ -303,6 +305,7 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
 
 // Invokes lpadmin with -x to delete a printer.
 bool CupsTool::RemovePrinter(const std::string& name) {
+  LOG(INFO) << "Removing printer " << name;
   return Lpadmin({"-x", name}) == EXIT_SUCCESS;
 }
 
