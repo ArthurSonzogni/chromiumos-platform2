@@ -18,6 +18,7 @@
 
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 
 namespace power_manager {
@@ -75,7 +76,7 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
     base::Time file_time;
     base::TimeDelta duration;
     if (!JSONFileNameToTime(path, &file_time)) {
-      CHECK(base::DeleteFile(path));
+      CHECK(util::DeleteFile(path));
     } else if (events_dir.GetInfo().GetSize() == 0) {
       // Only delete charge events "from the future" if they are incomplete.
       // This is because we don't have a reasonable way to figure out the
@@ -87,7 +88,7 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
         LOG(WARNING) << "AC connect time: " << file_time << " written to disk "
                      << "without duration is in the future. Possibly caused by "
                      << "loss of RTC state. Deleting file";
-        CHECK(base::DeleteFile(path));
+        CHECK(util::DeleteFile(path));
       } else if (ac_connect_time_ != base::Time()) {
         // There should only be up to one empty charge event. If there's more
         // than one, only keep the newest one.
@@ -97,7 +98,7 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
           ac_connect_ticks_ = clock_.GetCurrentBootTime();
           ac_connect_ticks_offset_ = now - file_time;
         } else {
-          CHECK(base::DeleteFile(path));
+          CHECK(util::DeleteFile(path));
         }
       } else if (status.external_power ==
                  PowerSupplyProperties_ExternalPower_AC) {
@@ -106,9 +107,9 @@ void ChargeHistory::Init(const system::PowerStatus& status) {
         ac_connect_ticks_offset_ = now - file_time;
       }
     } else if (!ReadTimeDeltaFromFile(path, &duration)) {
-      CHECK(base::DeleteFile(path));
+      CHECK(util::DeleteFile(path));
     } else if (file_time + duration < now - kRetentionDays) {
-      CHECK(base::DeleteFile(path));
+      CHECK(util::DeleteFile(path));
     } else {
       charge_events_[file_time] = duration;
     }
@@ -370,12 +371,12 @@ void ChargeHistory::ReadChargeDaysFromFiles(
     base::Time file_time;
     base::TimeDelta duration;
     if (!JSONFileNameToTime(path, &file_time)) {
-      CHECK(base::DeleteFile(path));
+      CHECK(util::DeleteFile(path));
     } else if (!ReadTimeDeltaFromFile(path, &duration)) {
-      CHECK(base::DeleteFile(path));
+      CHECK(util::DeleteFile(path));
     } else if (file_time < now - kRetentionDays) {
       // Delete files that are older than our retention limit.
-      CHECK(base::DeleteFile(path));
+      CHECK(util::DeleteFile(path));
     } else {
       days->insert(std::make_pair(file_time, duration));
       *total_duration += duration;
@@ -412,7 +413,7 @@ void ChargeHistory::RemoveOldChargeDays(
       continue;
     }
 
-    CHECK(base::DeleteFile(dir.Append(path)));
+    CHECK(util::DeleteFile(dir.Append(path)));
   }
 }
 
@@ -548,7 +549,7 @@ bool ChargeHistory::WriteTimeDeltaToFile(const base::FilePath& path,
     LOG(ERROR) << "Failed to serialize TimeDelta: " << delta
                << " to a string. Deleting file: " << path
                << " that it would be written to";
-    CHECK(base::DeleteFile(path));
+    CHECK(util::DeleteFile(path));
     return false;
   }
 
