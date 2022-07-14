@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/containers/contains.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <gmock/gmock.h>
@@ -107,6 +108,26 @@ TEST(ArcVmTest, IioservicePresentParam) {
   EXPECT_TRUE(base::Contains(
       params,
       base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE)));
+}
+
+TEST(ArcVmTest, SwappinessNotPresentByDefault) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  for (const auto& oneParam : params) {
+    EXPECT_FALSE(base::StartsWith(oneParam, "sysctl.vm.swappiness="));
+  }
+}
+
+TEST(ArcVmTest, SwappinessPresentParam) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_guest_swappiness(55);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  EXPECT_TRUE(base::Contains(
+      params, base::StringPrintf("sysctl.vm.swappiness=%d", 55)));
 }
 
 }  // namespace concierge

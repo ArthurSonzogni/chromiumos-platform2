@@ -423,6 +423,14 @@ message StartArcVmRequest {
 
   // Size of Guest Zram in bytes
   int32 guest_zram_size = 32;
+
+  // Likelihood of sending cold memory to swap.
+  // Default value of zero means "unset" - will use the system default.
+  // Positive values will be used to set the guest's vm.swappiness parameter.
+  // NOTE: we are intentionally making it impossible to set vm.swappiness=0,
+  //       as that disables swap - which can be done more appropriately by
+  //       setting |guest_zram_size| to zero.
+  int32 guest_swappiness = 33;
 }
 
 enum VmStatus {

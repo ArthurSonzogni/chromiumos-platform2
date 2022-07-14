@@ -861,6 +861,12 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "androidboot.enable_consumer_auto_update_toggle=" +
           std::to_string(request.enable_consumer_auto_update_toggle()),
   };
+
+  auto guest_swappiness = request.guest_swappiness();
+  if (guest_swappiness > 0) {
+    params.push_back(
+        base::StringPrintf("sysctl.vm.swappiness=%d", guest_swappiness));
+  }
   // We run vshd under a restricted domain on non-test images.
   // (go/arcvm-android-sh-restricted)
   if (channel == "testimage")
