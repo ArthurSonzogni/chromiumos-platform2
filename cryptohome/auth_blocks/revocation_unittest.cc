@@ -66,14 +66,17 @@ TEST(RevocationTest, Revoke) {
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
       .WillOnce(
           DoAll(SaveArg<0>(&label), ReturnError<CryptohomeLECredError>()));
-  EXPECT_EQ(CryptoError::CE_NONE, Revoke(&le_cred_manager, state));
+  EXPECT_EQ(CryptoError::CE_NONE, Revoke(AuthBlockType::kCryptohomeRecovery,
+                                         &le_cred_manager, state));
   EXPECT_EQ(label, state.le_label.value());
 }
 
 TEST(RevocationTest, RevokeFailsWithoutLabel) {
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state;
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO, Revoke(&le_cred_manager, state));
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state));
 }
 
 }  // namespace revocation

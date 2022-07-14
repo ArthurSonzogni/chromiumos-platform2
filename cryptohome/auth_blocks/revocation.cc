@@ -16,6 +16,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
@@ -208,7 +209,8 @@ CryptoError Derive(LECredentialManager* le_manager,
   return CryptoError::CE_NONE;
 }
 
-CryptoError Revoke(LECredentialManager* le_manager,
+CryptoError Revoke(AuthBlockType auth_block_type,
+                   LECredentialManager* le_manager,
                    const RevocationState& revocation_state) {
   DCHECK(le_manager);
   if (!revocation_state.le_label.has_value()) {
@@ -222,9 +224,13 @@ CryptoError Revoke(LECredentialManager* le_manager,
 
   if (!ret.ok()) {
     LOG(ERROR) << "RemoveCredential failed with error: " << ret;
+    ReportCredentialRevocationResult(auth_block_type,
+                                     ret->local_lecred_error());
     return RevokeLECredErrorToCryptoError(ret->local_lecred_error());
   }
 
+  ReportCredentialRevocationResult(auth_block_type,
+                                   LECredError::LE_CRED_SUCCESS);
   return CryptoError::CE_NONE;
 }
 

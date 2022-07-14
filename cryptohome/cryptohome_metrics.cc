@@ -28,6 +28,8 @@ constexpr char kWrappingKeyDerivationMountHistogram[] =
     "Cryptohome.WrappingKeyDerivation.Mount";
 constexpr char kCryptohomeErrorHistogram[] = "Cryptohome.Errors";
 constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
+constexpr char kCredentialRevocationResultHistogram[] =
+    "Cryptohome.%s.CredentialRevocationResult";
 constexpr char kCryptohomeTpmResultsHistogram[] = "Cryptohome.TpmResults";
 constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
     "Cryptohome.DeletedUserProfiles";
@@ -94,6 +96,8 @@ constexpr char kOOPMountCleanupResultHistogram[] =
     "Cryptohome.OOPMountCleanupResult";
 constexpr char kInvalidateDirCryptoKeyResultHistogram[] =
     "Cryptohome.InvalidateDirCryptoKeyResult";
+constexpr char kRecoveryPrepareForRemovalResultHistogram[] =
+    "Cryptohome.%s.PrepareForRemovalResult";
 constexpr char kRestoreSELinuxContextResultForHome[] =
     "Cryptohome.RestoreSELinuxContextResultForHome";
 constexpr char kRestoreSELinuxContextResultForShadow[] =
@@ -239,6 +243,35 @@ chromeos_metrics::TimerReporter* GetTimer(cryptohome::TimerType timer_type) {
         kTimerHistogramParams[timer_type].num_buckets);
   }
   return g_timers[timer_type];
+}
+
+// These values are persisted to logs.
+// Keep in sync with respective variant enum in
+// tools/metrics/histograms/metadata/cryptohome/histograms.xml
+char const* GetAuthBlockTypeStringVariant(cryptohome::AuthBlockType type) {
+  switch (type) {
+    case cryptohome::AuthBlockType::kPinWeaver:
+      return "PinWeaver";
+    case cryptohome::AuthBlockType::kChallengeCredential:
+      return "ChallengeCredential";
+    case cryptohome::AuthBlockType::kDoubleWrappedCompat:
+      return "DoubleWrappedCompat";
+    case cryptohome::AuthBlockType::kTpmBoundToPcr:
+      return "TpmBoundToPcr";
+    case cryptohome::AuthBlockType::kTpmNotBoundToPcr:
+      return "TpmNotBoundToPcr";
+    case cryptohome::AuthBlockType::kLibScryptCompat:
+      return "LibScryptCompat";
+    case cryptohome::AuthBlockType::kCryptohomeRecovery:
+      return "CryptohomeRecovery";
+    case cryptohome::AuthBlockType::kTpmEcc:
+      return "TpmEcc";
+    case cryptohome::AuthBlockType::kScrypt:
+      return "Scrypt";
+    case cryptohome::AuthBlockType::kMaxValue:
+      NOTREACHED();
+      return "";
+  }
 }
 
 }  // namespace
@@ -389,6 +422,18 @@ void ReportChecksum(ChecksumStatus status) {
   }
   g_metrics->SendEnumToUMA(kChecksumStatusHistogram, status,
                            kChecksumStatusNumBuckets);
+}
+
+void ReportCredentialRevocationResult(AuthBlockType auth_block_type,
+                                      LECredError result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(
+      base::StringPrintf(kCredentialRevocationResultHistogram,
+                         GetAuthBlockTypeStringVariant(auth_block_type)),
+      result, LE_CRED_ERROR_MAX);
 }
 
 void ReportFreedGCacheDiskSpaceInMb(int mb) {
@@ -717,6 +762,18 @@ void ReportAttestationOpsStatus(const std::string& operation,
       std::string(kAttestationStatusHistogramPrefix) + "." + operation;
   g_metrics->SendEnumToUMA(histogram, static_cast<int>(status),
                            static_cast<int>(AttestationOpsStatus::kMaxValue));
+}
+
+void ReportPrepareForRemovalResult(AuthBlockType auth_block_type,
+                                   CryptoError result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(
+      base::StringPrintf(kRecoveryPrepareForRemovalResultHistogram,
+                         GetAuthBlockTypeStringVariant(auth_block_type)),
+      static_cast<int>(result), static_cast<int>(CryptoError::CE_MAX_VALUE));
 }
 
 void ReportRestoreSELinuxContextResultForHomeDir(bool success) {

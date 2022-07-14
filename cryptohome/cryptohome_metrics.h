@@ -591,6 +591,11 @@ void ReportTimerDuration(const TimerType& timer_type,
 
 void ReportChecksum(ChecksumStatus status);
 
+// Reports the result of credentials revocation for `auth_block_type` to the
+// "Cryptohome.{AuthBlockType}.CredentialRevocationResult" histogram.
+void ReportCredentialRevocationResult(AuthBlockType auth_block_type,
+                                      LECredError result);
+
 // Reports number of deleted user profiles to the
 // "Cryptohome.DeletedUserProfiles" histogram.
 void ReportDeletedUserProfiles(int user_profile_count);
@@ -735,6 +740,11 @@ void ReportAttestationOpsStatus(const std::string& operation,
 
 // Reports the result of an InvalidateDirCryptoKey operation.
 void ReportInvalidateDirCryptoKeyResult(bool result);
+
+// Reports the result of PrepareForRemoval() for `auth_block_type`
+// to the "Cryptohome.{AuthBlockType}.PrepareForRemovalResult" histogram.
+void ReportPrepareForRemovalResult(AuthBlockType auth_block_type,
+                                   CryptoError result);
 
 // Reports the result of a RestoreSELinuxContexts operation for /home/.shadow.
 void ReportRestoreSELinuxContextResultForShadowDir(bool success);

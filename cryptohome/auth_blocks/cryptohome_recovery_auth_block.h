@@ -52,6 +52,8 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   CryptoStatus PrepareForRemoval(const AuthBlockState& state) override;
 
  private:
+  CryptoStatus PrepareForRemovalInternal(const AuthBlockState& state);
+
   hwsec::CryptohomeFrontend* const hwsec_;
   cryptorecovery::RecoveryCryptoTpmBackend* const tpm_backend_;
   // Low Entropy credentials manager, needed for revocation support.

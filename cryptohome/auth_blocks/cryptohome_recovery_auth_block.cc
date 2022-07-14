@@ -308,6 +308,24 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
 
 CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
     const AuthBlockState& state) {
+  CryptoStatus crypto_err = PrepareForRemovalInternal(state);
+  if (!crypto_err.ok()) {
+    LOG(WARNING) << "PrepareForRemoval failed for cryptohome recovery auth "
+                    "block. Error: "
+                 << crypto_err;
+    ReportPrepareForRemovalResult(AuthBlockType::kCryptohomeRecovery,
+                                  crypto_err->local_crypto_error());
+    // This error is not fatal, proceed to deleting from disk.
+  } else {
+    ReportPrepareForRemovalResult(AuthBlockType::kCryptohomeRecovery,
+                                  CryptoError::CE_NONE);
+  }
+
+  return OkStatus<CryptohomeCryptoError>();
+}
+
+CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
+    const AuthBlockState& state) {
   if (!std::holds_alternative<CryptohomeRecoveryAuthBlockState>(state.state)) {
     NOTREACHED() << "Invalid AuthBlockState";
     return MakeStatus<CryptohomeCryptoError>(
@@ -347,7 +365,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
   }
 
   CryptoError crypto_err =
-      revocation::Revoke(le_manager_, state.revocation_state.value());
+      revocation::Revoke(AuthBlockType::kCryptohomeRecovery, le_manager_,
+                         state.revocation_state.value());
   if (crypto_err != CryptoError::CE_NONE) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
