@@ -233,21 +233,23 @@ struct UntrustedVMCheckResult {
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::OnceCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  std::unique_ptr<dbus::Response> response = handler.Run(method_call);
+  std::unique_ptr<dbus::Response> response =
+      std::move(handler).Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
   std::move(response_sender).Run(std::move(response));
 }
 
 void HandleAsynchronousDBusMethodCall(
-    base::Callback<void(dbus::MethodCall*,
-                        dbus::ExportedObject::ResponseSender)> handler,
+    base::OnceCallback<void(dbus::MethodCall*,
+                            dbus::ExportedObject::ResponseSender)> handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  handler.Run(method_call, std::move(response_sender));
+  std::move(handler).Run(method_call, std::move(response_sender));
 }
 
 // Posted to a grpc thread to startup a listener service. Puts a copy of
@@ -1114,7 +1116,7 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
   return true;
 }
 
-std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
+std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
   auto service = base::WrapUnique(new Service(std::move(quit_closure)));
 
   if (!service->Init()) {
@@ -1124,7 +1126,7 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
   return service;
 }
 
-Service::Service(base::Closure quit_closure)
+Service::Service(base::OnceClosure quit_closure)
     : next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
       host_kernel_version_(GetKernelVersion()),
@@ -1329,7 +1331,8 @@ bool Service::Init() {
                        kVmConciergeInterface, iter.first,
                        base::BindRepeating(
                            &HandleSynchronousDBusMethodCall,
-                           base::Bind(iter.second, base::Unretained(service))));
+                           base::BindRepeating(iter.second,
+                                               base::Unretained(service))));
                    if (!ret) {
                      LOG(ERROR) << "Failed to export method " << iter.first;
                      return false;
@@ -1340,7 +1343,8 @@ bool Service::Init() {
                        kVmConciergeInterface, iter.first,
                        base::BindRepeating(
                            &HandleAsynchronousDBusMethodCall,
-                           base::Bind(iter.second, base::Unretained(service))));
+                           base::BindRepeating(iter.second,
+                                               base::Unretained(service))));
                    if (!ret) {
                      LOG(ERROR)
                          << "Failed to export async method " << iter.first;
@@ -1375,9 +1379,10 @@ bool Service::Init() {
   // Set up the D-Bus client for powerd and register suspend/resume handlers.
   power_manager_client_ = std::make_unique<PowerManagerClient>(bus_);
   power_manager_client_->RegisterSuspendDelay(
-      base::Bind(&Service::HandleSuspendImminent,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Service::HandleSuspendDone, weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Service::HandleSuspendImminent,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Service::HandleSuspendDone,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   // Get the D-Bus proxy for communicating with cicerone.
   cicerone_service_proxy_ = bus_->GetObjectProxy(
@@ -1549,7 +1554,10 @@ void Service::HandleSigterm() {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
   StopAllVmsImpl(SERVICE_SHUTDOWN);
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure_);
+  if (!quit_closure_.is_null()) {
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  std::move(quit_closure_));
+  }
 }
 
 StartVmResponse Service::StartVm(StartVmRequest request,
@@ -3137,8 +3145,10 @@ std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
 
   auto op = VmResizeOperation::Create(
       VmId(request.cryptohome_id(), request.vm_name()), location, disk_path,
-      size, base::Bind(&Service::ResizeDisk, weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Service::ProcessResize, weak_ptr_factory_.GetWeakPtr()));
+      size,
+      base::BindOnce(&Service::ResizeDisk, weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Service::ProcessResize,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());

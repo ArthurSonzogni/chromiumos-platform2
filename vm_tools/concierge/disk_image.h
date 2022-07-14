@@ -273,20 +273,28 @@ class PluginVmImportOperation : public DiskImageOperation {
 
 class VmResizeOperation : public DiskImageOperation {
  public:
-  using ResizeCallback = base::Callback<void(const std::string& owner_id,
-                                             const std::string& vm_name,
-                                             StorageLocation location,
-                                             uint64_t target_size,
-                                             DiskImageStatus* status,
-                                             std::string* failure_reason)>;
+  using StartResizeCallback =
+      base::OnceCallback<void(const std::string& owner_id,
+                              const std::string& vm_name,
+                              StorageLocation location,
+                              uint64_t target_size,
+                              DiskImageStatus* status,
+                              std::string* failure_reason)>;
+  using ProcessResizeCallback =
+      base::RepeatingCallback<void(const std::string& owner_id,
+                                   const std::string& vm_name,
+                                   StorageLocation location,
+                                   uint64_t target_size,
+                                   DiskImageStatus* status,
+                                   std::string* failure_reason)>;
 
   static std::unique_ptr<VmResizeOperation> Create(
       const VmId vm_id,
       StorageLocation location,
       const base::FilePath disk_path,
       uint64_t disk_size,
-      ResizeCallback start_resize_cb,
-      ResizeCallback process_resize_cb);
+      StartResizeCallback start_resize_cb,
+      ProcessResizeCallback process_resize_cb);
 
  protected:
   bool ExecuteIo(uint64_t io_limit) override;
@@ -297,11 +305,11 @@ class VmResizeOperation : public DiskImageOperation {
                     StorageLocation location,
                     const base::FilePath disk_path,
                     uint64_t size,
-                    ResizeCallback process_resize_cb);
+                    ProcessResizeCallback process_resize_cb);
   VmResizeOperation(const VmResizeOperation&) = delete;
   VmResizeOperation& operator=(const VmResizeOperation&) = delete;
 
-  ResizeCallback process_resize_cb_;
+  ProcessResizeCallback process_resize_cb_;
 
   StorageLocation location_;
 

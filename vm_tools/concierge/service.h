@@ -59,7 +59,7 @@ class Service final {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
-  static std::unique_ptr<Service> Create(base::Closure quit_closure);
+  static std::unique_ptr<Service> Create(base::OnceClosure quit_closure);
   ~Service();
 
  private:
@@ -83,7 +83,7 @@ class Service final {
     VMGpuCacheSpec() = default;
   };
 
-  explicit Service(base::Closure quit_closure);
+  explicit Service(base::OnceClosure quit_closure);
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
 
@@ -424,7 +424,7 @@ class Service final {
 
   // Closure that's posted to the current thread's TaskRunner when the service
   // receives a SIGTERM.
-  base::Closure quit_closure_;
+  base::OnceClosure quit_closure_;
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
