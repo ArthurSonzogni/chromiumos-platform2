@@ -102,8 +102,6 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
 
   SetState(ConnectState::kStateConfiguring);
   ConfigureDevice();
-  SetState(ConnectState::kStateConnected);
-  SetState(ConnectState::kStateOnline);
 }
 
 void VPNService::OnDriverFailure(ConnectFailure failure,

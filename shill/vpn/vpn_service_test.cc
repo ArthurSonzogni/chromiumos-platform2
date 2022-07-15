@@ -412,7 +412,7 @@ TEST_F(VPNServiceTest, ConnectFlow) {
       .WillOnce(Return(IPConfig::Properties()));
   driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(service_->device_);
-  EXPECT_EQ(Service::kStateOnline, service_->state());
+  EXPECT_EQ(Service::kStateConfiguring, service_->state());
 
   // Driver-originated reconnection
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
