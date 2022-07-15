@@ -1420,6 +1420,10 @@ class UserDataAuth {
   // default_uss_experiment_config_fetcher_, but can be overridden for testing.
   UssExperimentConfigFetcher* uss_experiment_config_fetcher_;
 
+  friend class AuthSessionTestWithKeysetManagement;
+  FRIEND_TEST(AuthSessionTestWithKeysetManagement,
+              StartAuthSessionWithoutKeyData);
+
   friend class UserDataAuthTestTasked;
   FRIEND_TEST(UserDataAuthTest, Unmount_AllDespiteFailures);
   FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);

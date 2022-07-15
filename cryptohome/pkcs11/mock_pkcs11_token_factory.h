@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/pkcs11/pkcs11_token.h"
+#include "cryptohome/pkcs11/pkcs11_token_factory.h"
 
 namespace cryptohome {
 
