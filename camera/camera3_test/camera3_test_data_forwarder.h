@@ -5,6 +5,8 @@
 #ifndef CAMERA_CAMERA3_TEST_CAMERA3_TEST_DATA_FORWARDER_H_
 #define CAMERA_CAMERA3_TEST_CAMERA3_TEST_DATA_FORWARDER_H_
 
+#include <stdint.h>
+
 #include <base/synchronization/lock.h>
 
 namespace camera3_test {

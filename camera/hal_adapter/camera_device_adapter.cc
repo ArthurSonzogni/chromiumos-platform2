@@ -1028,7 +1028,6 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::PrepareNotifyMsg(
   // Fill in the data from msg...
   mojom::Camera3NotifyMsgPtr m = mojom::Camera3NotifyMsg::New();
   m->type = static_cast<mojom::Camera3MsgType>(msg->type);
-  m->message = mojom::Camera3NotifyMsgMessage::New();
 
   if (msg->type == CAMERA3_MSG_ERROR) {
     mojom::Camera3ErrorMsgPtr error = mojom::Camera3ErrorMsg::New();
@@ -1046,12 +1045,12 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::PrepareNotifyMsg(
     error->error_stream_id = stream_id;
     error->error_code =
         static_cast<mojom::Camera3ErrorMsgCode>(msg->message.error.error_code);
-    m->message->set_error(std::move(error));
+    m->message = mojom::Camera3NotifyMsgMessage::NewError(std::move(error));
   } else if (msg->type == CAMERA3_MSG_SHUTTER) {
     mojom::Camera3ShutterMsgPtr shutter = mojom::Camera3ShutterMsg::New();
     shutter->frame_number = msg->message.shutter.frame_number;
     shutter->timestamp = msg->message.shutter.timestamp;
-    m->message->set_shutter(std::move(shutter));
+    m->message = mojom::Camera3NotifyMsgMessage::NewShutter(std::move(shutter));
   } else {
     LOGF(ERROR) << "Invalid notify message type: " << msg->type;
   }
