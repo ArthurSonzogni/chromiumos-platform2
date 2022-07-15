@@ -5,6 +5,7 @@
 // This is a small setuid-root program that runs a few commands on behalf of
 // the powerd process.
 
+#include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -15,9 +16,11 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <brillo/userdb_utils.h>
+#include <libec/set_force_lid_open_command.h>
 
 // Maximum number of arguments supported for internally-defined commands.
 const size_t kMaxArgs = 64;
@@ -113,8 +116,13 @@ int main(int argc, char* argv[]) {
     RunCommand("initctl", "emit", "--no-wait", "runlevel", runlevel_arg.c_str(),
                (reason_arg.empty() ? nullptr : reason_arg.c_str()), nullptr);
   } else if (FLAGS_action == "set_force_lid_open") {
-    const char* state = FLAGS_force_lid_open ? "1" : "0";
-    RunCommand("ectool", "forcelidopen", state, nullptr);
+    base::ScopedFD ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+    ec::SetForceLidOpenCommand cmd(FLAGS_force_lid_open);
+    if (!cmd.Run(ec_fd.get())) {
+      // This is expected if system does not have a cros_ec
+      LOG(WARNING) << "Failed to set force_lid_open to "
+                   << FLAGS_force_lid_open;
+    }
   } else if (FLAGS_action == "set_cellular_transmit_power") {
     std::string mode = FLAGS_cellular_transmit_power_low ? "--low" : "";
     std::string target =
