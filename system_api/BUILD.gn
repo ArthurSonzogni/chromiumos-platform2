@@ -35,6 +35,7 @@ group("all") {
     ":system_api-metrics_event-goprotos",
     ":system_api-metrics_event-protos",
     ":system_api-minios-protos",
+    ":system_api-ml-goprotos",
     ":system_api-ml-protos",
     ":system_api-oobe_config-protos",
     ":system_api-patchpanel-goprotos",
@@ -589,4 +590,10 @@ proto_library("system_api-ml-protos") {
   proto_out_dir = "include/ml/proto_bindings"
   sources = [ "${proto_in_dir}/ranker_example.proto" ]
   standalone = true
+}
+
+goproto_library("system_api-ml-goprotos") {
+  proto_in_dir = "dbus/ml"
+  proto_out_dir = "go/src"
+  sources = [ "${proto_in_dir}/ranker_example.proto" ]
 }
