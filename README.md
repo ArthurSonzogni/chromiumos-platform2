@@ -74,6 +74,7 @@ copies.
 | [hiberman](./hiberman/) | Chrome OS Hibernation Manager |
 | [hps](./hps/) | Chrome OS HPS daemon and utilities |
 | [hwsec-test-utils](./hwsec-test-utils/) | Hwsec-related test-only features |
+| [hwsec-utils](./hwsec-utils/) | Hwsec-related features |
 | [iioservice](./iioservice/) | Daemon and libraries that provide sensor data to all processes |
 | [image-burner](./image-burner/) | Daemon for writing disk images (e.g. recovery) to USB sticks & SD cards |
 | [imageloader](./imageloader/) | Daemon for mounting signed disk images |

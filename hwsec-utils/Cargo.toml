@@ -1,0 +1,12 @@
+[package]
+name = "hwsec-utils"
+version = "0.1.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+
+[profile.release]
+lto = true
+panic = "abort"
+overflow-checks = true
+
+[dependencies]
