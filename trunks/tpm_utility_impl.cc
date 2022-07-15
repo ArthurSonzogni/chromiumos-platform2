@@ -1399,13 +1399,6 @@ TPM_RC TpmUtilityImpl::LoadRSAPublicKey(AsymmetricKeyUsage key_type,
                                         AuthorizationDelegate* delegate,
                                         TPM_HANDLE* key_handle) {
   TPM_RC result;
-  if (delegate == nullptr) {
-    result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << __func__
-               << ": This method needs a valid authorization delegate: "
-               << GetErrorString(result);
-    return result;
-  }
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
   switch (key_type) {
     case AsymmetricKeyUsage::kDecryptKey:
@@ -1477,14 +1470,6 @@ TPM_RC TpmUtilityImpl::LoadECPublicKey(AsymmetricKeyUsage key_type,
                                        AuthorizationDelegate* delegate,
                                        TPM_HANDLE* key_handle) {
   TPM_RC result;
-  if (delegate == nullptr) {
-    result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << __func__
-               << ": This method needs a valid authorization delegate: "
-               << GetErrorString(result);
-    return result;
-  }
-
   // Create public area.
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
   public_area.parameters.ecc_detail.curve_id = curve_id;
