@@ -43,7 +43,7 @@ class AcPowerRoutineTest : public testing::Test {
 
   mojo_ipc::RoutineUpdatePtr GetUpdate() {
     mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnion::New()};
+                                   mojo_ipc::RoutineUpdateUnionPtr()};
     routine_->PopulateStatusUpdate(&update, true);
     return chromeos::cros_healthd::mojom::RoutineUpdate::New(
         update.progress_percent, std::move(update.output),

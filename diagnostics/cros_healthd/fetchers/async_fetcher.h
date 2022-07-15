@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
+#include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -32,9 +33,12 @@ class AsyncFetcherInterface : public BaseFetcher {
 
   // A mojo union type contains |error| field which is a |mojom::ProbeError|.
   using ResultType = T;
-  // The ptr type of ResultType. It is gotten from the return type of
-  // |ResultType::New()|.
-  using ResultPtrType = typename std::invoke_result<decltype(&T::New)>::type;
+  // The ptr type of ResultType.
+  // Note that this is only valid for ResultType (a mojo union type) that does
+  // not have a reference kind field (otherwise it should be
+  // mojo::InlinedStructPtr<ResultType>), which is true for the current
+  // result types.
+  using ResultPtrType = mojo::StructPtr<ResultType>;
   // The callback type to get the fetch result.
   using ResultCallback = base::OnceCallback<void(ResultPtrType)>;
 

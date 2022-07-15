@@ -27,11 +27,12 @@ namespace {
 
 void SetErrorRoutineUpdate(const std::string& status_message,
                            mojo_ipc::RoutineUpdate* response) {
-  mojo_ipc::NonInteractiveRoutineUpdate noninteractive_update;
-  noninteractive_update.status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
-  noninteractive_update.status_message = status_message;
-  response->routine_update_union->set_noninteractive_update(
-      noninteractive_update.Clone());
+  auto noninteractive_update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  noninteractive_update->status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+  noninteractive_update->status_message = status_message;
+  response->routine_update_union =
+      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
+          std::move(noninteractive_update));
   response->progress_percent = 0;
 }
 
@@ -72,7 +73,7 @@ void CrosHealthdRoutineService::GetRoutineUpdate(
     bool include_output,
     GetRoutineUpdateCallback callback) {
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
 
   auto itr = active_routines_.find(id);
   if (itr == active_routines_.end()) {

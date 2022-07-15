@@ -43,7 +43,7 @@ class LanConnectivityRoutineTest : public testing::Test {
   mojo_ipc::RoutineUpdatePtr RunRoutineAndWaitForExit() {
     DCHECK(routine_);
     mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnion::New()};
+                                   mojo_ipc::RoutineUpdateUnionPtr()};
     routine_->Start();
     routine_->PopulateStatusUpdate(&update, true);
     return mojo_ipc::RoutineUpdate::New(update.progress_percent,

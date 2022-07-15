@@ -100,7 +100,7 @@ class SimpleRoutineTest : public testing::Test {
  private:
   std::unique_ptr<SimpleRoutine> routine_;
   mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnion::New()};
+                                  mojo_ipc::RoutineUpdateUnionPtr()};
 };
 
 // Test that we can run a noninteractive routine and retrieve its status update.

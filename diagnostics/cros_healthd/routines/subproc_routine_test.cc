@@ -139,7 +139,7 @@ class SubprocRoutineTest : public Test {
   base::SimpleTestTickClock* tick_clock_;             // Owned by |routine_|.
   std::unique_ptr<SubprocRoutine> routine_;
   mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnion::New()};
+                                  mojo_ipc::RoutineUpdateUnionPtr()};
 };
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithSuccess) {
@@ -153,7 +153,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithSuccess) {
   routine()->Start();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
@@ -173,7 +173,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsWithSuccess) {
   routine()->Start();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   tick_clock()->Advance(base::Seconds(5));
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
@@ -198,7 +198,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithPreStartCallbackSuccess) {
   routine()->Start();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
                      mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
@@ -233,7 +233,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithPostStopCallback) {
   routine()->Start();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
                      mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
@@ -265,7 +265,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsAndPreStartCallback) {
   routine()->Start();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   tick_clock()->Advance(base::Seconds(5));
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
@@ -285,7 +285,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
   routine()->Start();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(100, kSubprocRoutineFailedMessage,
@@ -316,7 +316,7 @@ TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
   tick_clock()->Advance(base::Seconds(5));
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
@@ -340,7 +340,7 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
 
   tick_clock()->Advance(base::Seconds(5));
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
@@ -382,7 +382,7 @@ TEST_F(SubprocRoutineTest, RepeatedCancelCommands) {
   routine()->Cancel();
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   VerifyNonInteractiveUpdate(update.routine_update_union,
@@ -461,7 +461,7 @@ TEST(SubprocRoutineTestNoFixture, ProductionConstructor) {
           base::CommandLine({"/dev/null"}),
           /*predicted_duration=*/base::TimeDelta());
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnion::New()};
+                                 mojo_ipc::RoutineUpdateUnionPtr()};
   prod_routine->PopulateStatusUpdate(&update, false);
   VerifyNonInteractiveUpdate(update.routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kReady,

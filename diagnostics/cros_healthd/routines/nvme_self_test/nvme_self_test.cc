@@ -153,11 +153,12 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(
                                 std::move(error_callback));
   }
 
-  mojo_ipc::NonInteractiveRoutineUpdate update;
-  update.status = status_;
-  update.status_message = status_message_;
+  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  update->status = status_;
+  update->status_message = status_message_;
 
-  response->routine_update_union->set_noninteractive_update(update.Clone());
+  response->routine_update_union =
+      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
   if (include_output && !output_dict_.DictEmpty()) {

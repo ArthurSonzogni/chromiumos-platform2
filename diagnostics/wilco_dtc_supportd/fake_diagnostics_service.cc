@@ -241,10 +241,11 @@ void FakeDiagnosticsService::SetInteractiveUpdate(
   routine_update_response_.progress_percent = progress_percent;
   routine_update_response_.output =
       CreateReadOnlySharedMemoryRegionMojoHandle(output);
-  mojo_ipc::InteractiveRoutineUpdate interactive_update;
-  interactive_update.user_message = user_message;
-  routine_update_response_.routine_update_union->set_interactive_update(
-      interactive_update.Clone());
+  auto interactive_update = mojo_ipc::InteractiveRoutineUpdate::New();
+  interactive_update->user_message = user_message;
+  routine_update_response_.routine_update_union =
+      mojo_ipc::RoutineUpdateUnion::NewInteractiveUpdate(
+          std::move(interactive_update));
 }
 
 void FakeDiagnosticsService::SetNonInteractiveUpdate(
@@ -255,11 +256,12 @@ void FakeDiagnosticsService::SetNonInteractiveUpdate(
   routine_update_response_.progress_percent = progress_percent;
   routine_update_response_.output =
       CreateReadOnlySharedMemoryRegionMojoHandle(output);
-  mojo_ipc::NonInteractiveRoutineUpdate noninteractive_update;
-  noninteractive_update.status = status;
-  noninteractive_update.status_message = status_message;
-  routine_update_response_.routine_update_union->set_noninteractive_update(
-      noninteractive_update.Clone());
+  auto noninteractive_update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  noninteractive_update->status = status;
+  noninteractive_update->status_message = status_message;
+  routine_update_response_.routine_update_union =
+      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
+          std::move(noninteractive_update));
 }
 
 void FakeDiagnosticsService::SetRunSomeRoutineResponse(

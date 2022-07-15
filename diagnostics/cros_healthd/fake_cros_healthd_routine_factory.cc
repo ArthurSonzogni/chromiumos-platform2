@@ -166,10 +166,11 @@ FakeNonInteractiveDiagnosticRoutine::~FakeNonInteractiveDiagnosticRoutine() =
 void FakeNonInteractiveDiagnosticRoutine::PopulateStatusUpdate(
     mojo_ipc::RoutineUpdate* response, bool include_output) {
   FakeDiagnosticRoutine::PopulateStatusUpdate(response, include_output);
-  mojo_ipc::NonInteractiveRoutineUpdate update;
-  update.status = GetStatus();
-  update.status_message = status_message_;
-  response->routine_update_union->set_noninteractive_update(update.Clone());
+  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  update->status = GetStatus();
+  update->status_message = status_message_;
+  response->routine_update_union =
+      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
 }
 
 }  // namespace

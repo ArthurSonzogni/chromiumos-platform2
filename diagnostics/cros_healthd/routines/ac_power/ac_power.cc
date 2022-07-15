@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
 
 #include <optional>
+#include <utility>
 
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
@@ -89,20 +90,22 @@ void AcPowerRoutine::Cancel() {
 void AcPowerRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
                                           bool include_output) {
   if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting) {
-    mojo_ipc::InteractiveRoutineUpdate interactive_update;
-    interactive_update.user_message =
+    auto interactive_update = mojo_ipc::InteractiveRoutineUpdate::New();
+    interactive_update->user_message =
         (expected_power_status_ == mojo_ipc::AcPowerStatusEnum::kConnected)
             ? mojo_ipc::DiagnosticRoutineUserMessageEnum::kPlugInACPower
             : mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower;
-    response->routine_update_union->set_interactive_update(
-        interactive_update.Clone());
+    response->routine_update_union =
+        mojo_ipc::RoutineUpdateUnion::NewInteractiveUpdate(
+            std::move(interactive_update));
   } else {
-    mojo_ipc::NonInteractiveRoutineUpdate noninteractive_update;
-    noninteractive_update.status = status_;
-    noninteractive_update.status_message = status_message_;
+    auto noninteractive_update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+    noninteractive_update->status = status_;
+    noninteractive_update->status_message = status_message_;
 
-    response->routine_update_union->set_noninteractive_update(
-        noninteractive_update.Clone());
+    response->routine_update_union =
+        mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
+            std::move(noninteractive_update));
   }
 
   CalculateProgressPercent();

@@ -106,7 +106,7 @@ class BatteryHealthRoutineTest : public testing::Test {
   MockContext mock_context_;
   std::unique_ptr<DiagnosticRoutine> routine_;
   mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnion::New()};
+                                  mojo_ipc::RoutineUpdateUnionPtr()};
 };
 
 // Test that the battery health routine fails if the cycle count is too high.

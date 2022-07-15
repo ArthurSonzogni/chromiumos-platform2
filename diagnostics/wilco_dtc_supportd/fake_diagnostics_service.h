@@ -157,7 +157,7 @@ class FakeDiagnosticsService final
   // Used as the return value for any GetRoutineUpdate IPCs received.
   chromeos::cros_healthd::mojom::RoutineUpdate routine_update_response_{
       0, mojo::ScopedHandle(),
-      chromeos::cros_healthd::mojom::RoutineUpdateUnion::New()};
+      chromeos::cros_healthd::mojom::RoutineUpdateUnionPtr()};
   // Used as the return value for any RunSomeRoutine IPCs received.
   chromeos::cros_healthd::mojom::RunRoutineResponse run_routine_response_;
 

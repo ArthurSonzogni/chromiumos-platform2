@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
-#include <base/task/post_task.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <base/values.h>
@@ -104,7 +103,7 @@ class MemoryRoutineTest : public testing::Test {
 
   mojom::RoutineUpdatePtr GetUpdate() {
     mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                mojom::RoutineUpdateUnion::New()};
+                                mojom::RoutineUpdateUnionPtr()};
     routine_->PopulateStatusUpdate(&update, true);
     return chromeos::cros_healthd::mojom::RoutineUpdate::New(
         update.progress_percent, std::move(update.output),
@@ -147,7 +146,7 @@ class MemoryRoutineTest : public testing::Test {
   MockContext mock_context_;
   std::unique_ptr<DiagnosticRoutine> routine_;
   mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                               mojom::RoutineUpdateUnion::New()};
+                               mojom::RoutineUpdateUnionPtr()};
 };
 
 // Test that we can create a memory routine with the default tick clock.

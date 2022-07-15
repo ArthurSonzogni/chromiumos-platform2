@@ -58,7 +58,7 @@ class NvmeSelfTestRoutineTest : public testing::Test {
   void RunRoutineCancel() { routine_->Cancel(); }
   mojo_ipc::RoutineUpdatePtr RunRoutinePopulate() {
     mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnion::New()};
+                                   mojo_ipc::RoutineUpdateUnionPtr()};
 
     routine_->PopulateStatusUpdate(&update, true);
     return chromeos::cros_healthd::mojom::RoutineUpdate::New(

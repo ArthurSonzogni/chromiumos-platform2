@@ -131,11 +131,12 @@ void MemoryRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
 
   // Because the memory routine is non-interactive, we will never include a user
   // message.
-  mojom::NonInteractiveRoutineUpdate update;
-  update.status = status_;
-  update.status_message = status_message_;
+  auto update = mojom::NonInteractiveRoutineUpdate::New();
+  update->status = status_;
+  update->status_message = status_message_;
 
-  response->routine_update_union->set_noninteractive_update(update.Clone());
+  response->routine_update_union =
+      mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
 
   if (include_output && !output_dict_.DictEmpty()) {
     std::string json;

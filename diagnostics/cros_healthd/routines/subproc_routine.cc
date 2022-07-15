@@ -148,13 +148,14 @@ void SubprocRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
   // include a user message.
   CheckProcessStatus();
 
-  mojo_ipc::NonInteractiveRoutineUpdate update;
-  update.status =
+  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  update->status =
       GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_);
-  update.status_message =
+  update->status_message =
       GetStatusMessageFromSubprocRoutineStatus(subproc_status_);
 
-  response->routine_update_union->set_noninteractive_update(update.Clone());
+  response->routine_update_union =
+      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = CalculateProgressPercent();
 }
 

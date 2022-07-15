@@ -32,8 +32,8 @@ void HandleNetworkInfoResponse(
     return;
   }
 
-  auto info = cros_healthd_ipc::NetworkResult::New();
-  info->set_network_health(std::move(result.value()));
+  auto info = cros_healthd_ipc::NetworkResult::NewNetworkHealth(
+      std::move(result.value()));
   std::move(callback).Run(std::move(info));
 }
 
