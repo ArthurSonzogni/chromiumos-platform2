@@ -96,8 +96,10 @@ bool MapperGetEntry(const std::string& name,
   return true;
 }
 
-// Fetches the length of the device mapper table entries for the specified name.
-bool MapperTableLength(const std::string& name, uint64_t* length) {
+// TODO(b/172220337): Consolidate with libbrillo/blkdevutils.
+// Executes the equivalent of: dmsetup wipe_table <name>
+// Returns true on success.
+bool MapperWipeTable(const std::string& name) {
   auto task = dm_task_ptr(dm_task_create(DM_DEVICE_TABLE), &dm_task_destroy);
   struct dm_info info;
 
@@ -121,49 +123,37 @@ bool MapperTableLength(const std::string& name, uint64_t* length) {
     return false;
   }
 
-  *length = 0;
   void* next = nullptr;
   uint64_t start;
-  uint64_t length_part;
+  uint64_t length;
   char* type;
   char* parameters;
   do {
-    next = dm_get_next_target(task.get(), next, &start, &length_part, &type,
+    next = dm_get_next_target(task.get(), next, &start, &length, &type,
                               &parameters);
-    *length += length_part;
+    auto task = dm_task_ptr(dm_task_create(DM_DEVICE_RELOAD), &dm_task_destroy);
+
+    if (!task) {
+      LOG(ERROR) << "dm_task_create failed!";
+      return false;
+    }
+
+    if (!dm_task_set_name(task.get(), name.c_str())) {
+      LOG(ERROR) << "dm_task_set_name failed!";
+      return false;
+    }
+
+    if (!dm_task_add_target(task.get(), 0, length, type, parameters)) {
+      LOG(ERROR) << "dm_task_add_target failed!";
+      return false;
+    }
+
+    if (!dm_task_run(task.get())) {
+      LOG(ERROR) << "dm_task_run failed!";
+      return false;
+    }
   } while (next);
-  return true;
-}
 
-// Executes the equivalent of: dmsetup wipe_table <name>
-// Returns true on success.
-bool MapperWipeTable(const std::string& name) {
-  uint64_t length;
-  if (!MapperTableLength(name, &length)) {
-    return false;
-  }
-
-  auto task = dm_task_ptr(dm_task_create(DM_DEVICE_RELOAD), &dm_task_destroy);
-
-  if (!task) {
-    LOG(ERROR) << "dm_task_create failed!";
-    return false;
-  }
-
-  if (!dm_task_set_name(task.get(), name.c_str())) {
-    LOG(ERROR) << "dm_task_set_name failed!";
-    return false;
-  }
-
-  if (!dm_task_add_target(task.get(), 0, length, "error", "")) {
-    LOG(ERROR) << "dm_task_add_target failed!";
-    return false;
-  }
-
-  if (!dm_task_run(task.get())) {
-    LOG(ERROR) << "dm_task_run failed!";
-    return false;
-  }
   return true;
 }
 
@@ -542,8 +532,9 @@ bool CleanupImpl(const base::FilePath& mount_point,
 
   // Clear Verity device.
   if (!MapperWipeTable(source_path.value())) {
-    PLOG(ERROR) << "Device mapper wipe table failed";
-    return false;
+    PLOG(ERROR) << "Device mapper wipe table failed, "
+                   "still continuing to remove the device mapper";
+    // Do not return here, proceed to remove.
   }
   if (!MapperRemove(source_path.value())) {
     PLOG(ERROR) << "Device mapper remove failed";
