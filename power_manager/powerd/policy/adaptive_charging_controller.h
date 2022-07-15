@@ -530,6 +530,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // button.
   // USER_DISABLED - User does not have the Adaptive Charging feature enabled
   // (but it is supported).
+  // SHUTDOWN - The system has initiated shutdown, so starting any new Adaptive
+  // Charging logic is prevented (metrics may still be reported on AC unplug).
   // NOT_SUPPORTED - EC functionality required for Adaptive Charging does not
   // exist on this platform.
   AdaptiveChargingState state_;
@@ -581,9 +583,9 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   //                       HEURISTIC_DISABLED, or USER_CANCELED.
   // 1       | 0         | Scenario does not exist.
   // 0       | 1         | Evaluate predictions but do not delay charging.
-  //                       `state_` is set to USER_DISABLED
+  //                       `state_` is set to USER_DISABLED or SHUTDOWN.
   // 0       | 0         | Evaluate predictions but do not delay charging.
-  //                       `state_` is set to NOT_SUPPORTED
+  //                       `state_` is set to NOT_SUPPORTED or SHUTDOWN.
   //
   // Whether Adaptive Charging will delay charging. Predictions are still
   // evaluated if this is false.

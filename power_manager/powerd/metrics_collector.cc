@@ -544,6 +544,9 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
     case AdaptiveChargingState::USER_DISABLED:
       metric_name = kAdaptiveChargingMinutesDeltaUserDisabledName;
       break;
+    case AdaptiveChargingState::SHUTDOWN:
+      metric_name = kAdaptiveChargingMinutesDeltaShutdownName;
+      break;
     case AdaptiveChargingState::NOT_SUPPORTED:
       metric_name = kAdaptiveChargingMinutesDeltaNotSupportedName;
       break;

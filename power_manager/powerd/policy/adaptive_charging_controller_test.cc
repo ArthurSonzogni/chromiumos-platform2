@@ -364,6 +364,16 @@ TEST_F(AdaptiveChargingControllerTest, TestStoppedOnShutdown) {
   EXPECT_FALSE(charge_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
   EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that a policy update doesn't start Adaptive Charging
+  PowerManagementPolicy policy;
+  policy.set_adaptive_charging_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
 }
 
 // Test that the sustain settings are set based on

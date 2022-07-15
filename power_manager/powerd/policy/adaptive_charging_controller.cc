@@ -675,6 +675,9 @@ void AdaptiveChargingController::Init(
 
 void AdaptiveChargingController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {
+  if (state_ == AdaptiveChargingState::SHUTDOWN)
+    return;
+
   bool restart_adaptive = false;
   if (policy.has_adaptive_charging_hold_percent() &&
       policy.adaptive_charging_hold_percent() != hold_percent_) {
@@ -738,6 +741,7 @@ void AdaptiveChargingController::HandleFullResume() {
 
 void AdaptiveChargingController::HandleShutdown() {
   adaptive_charging_enabled_ = false;
+  state_ = AdaptiveChargingState::SHUTDOWN;
   StopAdaptiveCharging();
   charge_history_.OnEnterLowPowerState();
 }
@@ -920,6 +924,11 @@ bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
 
 bool AdaptiveChargingController::StartAdaptiveCharging(
     const UserChargingEvent::Event::Reason& reason) {
+  // Keep the current value of `started_` just in case AC unplug happens right
+  // before shutdown.
+  if (state_ == AdaptiveChargingState::SHUTDOWN)
+    return false;
+
   const system::PowerStatus status = power_supply_->GetPowerStatus();
   if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
     started_ = false;

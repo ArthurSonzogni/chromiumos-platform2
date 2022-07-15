@@ -75,6 +75,7 @@ extern const char kAdaptiveChargingMinutesDeltaActiveName[];
 extern const char kAdaptiveChargingMinutesDeltaHeuristicDisabledName[];
 extern const char kAdaptiveChargingMinutesDeltaUserCanceledName[];
 extern const char kAdaptiveChargingMinutesDeltaUserDisabledName[];
+extern const char kAdaptiveChargingMinutesDeltaShutdownName[];
 extern const char kAdaptiveChargingMinutesDeltaNotSupportedName[];
 extern const char kAdaptiveChargingMinutesDeltaLateSuffix[];
 extern const char kAdaptiveChargingMinutesDeltaEarlySuffix[];
@@ -209,6 +210,7 @@ enum class AdaptiveChargingState {
   HEURISTIC_DISABLED,
   USER_CANCELED,
   USER_DISABLED,
+  SHUTDOWN,
   NOT_SUPPORTED,
   MAX
 };

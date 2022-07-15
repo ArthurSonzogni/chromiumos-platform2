@@ -911,6 +911,8 @@ TEST_F(AdaptiveChargingMetricsTest, AdaptiveChargingUnplugMetrics) {
                       kAdaptiveChargingMinutesDeltaUserCanceledName);
   TestMetricsForState(AdaptiveChargingState::USER_DISABLED,
                       kAdaptiveChargingMinutesDeltaUserDisabledName);
+  TestMetricsForState(AdaptiveChargingState::SHUTDOWN,
+                      kAdaptiveChargingMinutesDeltaShutdownName);
   TestMetricsForState(AdaptiveChargingState::NOT_SUPPORTED,
                       kAdaptiveChargingMinutesDeltaNotSupportedName);
 }

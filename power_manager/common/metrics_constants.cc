@@ -82,6 +82,8 @@ const char kAdaptiveChargingMinutesDeltaUserCanceledName[] =
     "Power.AdaptiveChargingMinutesDelta.UserCanceled";
 const char kAdaptiveChargingMinutesDeltaUserDisabledName[] =
     "Power.AdaptiveChargingMinutesDelta.UserDisabled";
+const char kAdaptiveChargingMinutesDeltaShutdownName[] =
+    "Power.AdaptiveChargingMinutesDelta.Shutdown";
 const char kAdaptiveChargingMinutesDeltaNotSupportedName[] =
     "Power.AdaptiveChargingMinutesDelta.NotSupported";
 
