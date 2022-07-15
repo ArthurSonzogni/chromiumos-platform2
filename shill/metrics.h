@@ -18,7 +18,6 @@
 #include "shill/default_service_observer.h"
 #include "shill/error.h"
 #include "shill/portal_detector.h"
-#include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 

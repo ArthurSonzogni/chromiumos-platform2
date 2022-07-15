@@ -89,7 +89,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"

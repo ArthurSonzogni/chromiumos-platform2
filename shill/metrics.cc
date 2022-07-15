@@ -22,7 +22,6 @@
 #include <metrics/bootstat.h>
 #include <metrics/structured/structured_events.h>
 
-#include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
