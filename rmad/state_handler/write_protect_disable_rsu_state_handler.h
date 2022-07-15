@@ -33,7 +33,7 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
   // |power_manager_client_| for testing.
-  WriteProtectDisableRsuStateHandler(
+  explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
@@ -81,7 +81,7 @@ namespace fake {
 class FakeWriteProtectDisableRsuStateHandler
     : public WriteProtectDisableRsuStateHandler {
  public:
-  FakeWriteProtectDisableRsuStateHandler(
+  explicit FakeWriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);

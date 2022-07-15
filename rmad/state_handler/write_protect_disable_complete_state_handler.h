@@ -42,7 +42,7 @@ namespace fake {
 class FakeWriteProtectDisableCompleteStateHandler
     : public WriteProtectDisableCompleteStateHandler {
  public:
-  FakeWriteProtectDisableCompleteStateHandler(
+  explicit FakeWriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
 

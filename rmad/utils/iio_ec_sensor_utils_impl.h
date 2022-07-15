@@ -16,7 +16,8 @@ namespace rmad {
 
 class IioEcSensorUtilsImpl : public IioEcSensorUtils {
  public:
-  IioEcSensorUtilsImpl(const std::string& location, const std::string& name);
+  explicit IioEcSensorUtilsImpl(const std::string& location,
+                                const std::string& name);
   ~IioEcSensorUtilsImpl() = default;
 
   bool GetAvgData(const std::vector<std::string>& channels,

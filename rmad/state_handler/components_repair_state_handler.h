@@ -20,11 +20,12 @@ namespace rmad {
 
 class ComponentsRepairStateHandler : public BaseStateHandler {
  public:
-  ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store,
-                               scoped_refptr<DaemonCallback> daemon_callback);
+  explicit ComponentsRepairStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mocked |cryptohome_client_|, |runtime_probe_client_|,
   // |cr50_utils_| and |crossystem_utils_| for testing.
-  ComponentsRepairStateHandler(
+  explicit ComponentsRepairStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CryptohomeClient> cryptohome_client,
@@ -60,7 +61,7 @@ namespace fake {
 
 class FakeComponentsRepairStateHandler : public ComponentsRepairStateHandler {
  public:
-  FakeComponentsRepairStateHandler(
+  explicit FakeComponentsRepairStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);

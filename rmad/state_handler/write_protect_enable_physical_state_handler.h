@@ -29,7 +29,7 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |crossystem_utils_| and |flashrom_utils_| for testing.
-  WriteProtectEnablePhysicalStateHandler(
+  explicit WriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
@@ -60,7 +60,7 @@ namespace fake {
 class FakeWriteProtectEnablePhysicalStateHandler
     : public WriteProtectEnablePhysicalStateHandler {
  public:
-  FakeWriteProtectEnablePhysicalStateHandler(
+  explicit FakeWriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);

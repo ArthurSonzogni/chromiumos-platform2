@@ -22,7 +22,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |hardware_verifier_client_| for testing.
-  WelcomeScreenStateHandler(
+  explicit WelcomeScreenStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<HardwareVerifierClient> hardware_verifier_client);
@@ -49,9 +49,10 @@ namespace fake {
 
 class FakeWelcomeScreenStateHandler : public WelcomeScreenStateHandler {
  public:
-  FakeWelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store,
-                                scoped_refptr<DaemonCallback> daemon_callback,
-                                const base::FilePath& working_dir_path);
+  explicit FakeWelcomeScreenStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeWelcomeScreenStateHandler() override = default;

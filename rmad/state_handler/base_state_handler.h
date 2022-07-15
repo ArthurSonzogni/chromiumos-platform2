@@ -24,8 +24,8 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
     RmadState::StateCase state_case;
   };
 
-  BaseStateHandler(scoped_refptr<JsonStore> json_store,
-                   scoped_refptr<DaemonCallback> daemon_callback);
+  explicit BaseStateHandler(scoped_refptr<JsonStore> json_store,
+                            scoped_refptr<DaemonCallback> daemon_callback);
 
   // Returns the RmadState that the class handles. This can be declared by the
   // macro ASSIGN_STATE(state).

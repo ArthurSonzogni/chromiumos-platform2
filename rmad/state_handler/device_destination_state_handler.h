@@ -21,7 +21,7 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cryptohome_client_|, |cr50_utils_| and
   // |crossystem_utils_| for testing.
-  DeviceDestinationStateHandler(
+  explicit DeviceDestinationStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CryptohomeClient> cryptohome_client,
@@ -49,7 +49,7 @@ namespace fake {
 
 class FakeDeviceDestinationStateHandler : public DeviceDestinationStateHandler {
  public:
-  FakeDeviceDestinationStateHandler(
+  explicit FakeDeviceDestinationStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);

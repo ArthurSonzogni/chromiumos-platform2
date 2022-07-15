@@ -36,7 +36,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cmd_utils_|, |crossystem_utils|, |flashrom_utils|,
   // |cros_disks_client_| and |power_manager_client_| for testing.
-  UpdateRoFirmwareStateHandler(
+  explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CmdUtils> cmd_utils,

@@ -31,12 +31,13 @@ class FinalizeStateHandler : public BaseStateHandler {
                                 scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path_|, and mocked |cr50_utils_|,
   // |crossystem_utils_| and |flashrom_utils_| for testing.
-  FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
-                       scoped_refptr<DaemonCallback> daemon_callback,
-                       const base::FilePath& working_dir_path,
-                       std::unique_ptr<Cr50Utils> cr50_utils,
-                       std::unique_ptr<CrosSystemUtils> crossystem_utils,
-                       std::unique_ptr<FlashromUtils> flashrom_utils);
+  explicit FinalizeStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path,
+      std::unique_ptr<Cr50Utils> cr50_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<FlashromUtils> flashrom_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
@@ -71,9 +72,10 @@ namespace fake {
 
 class FakeFinalizeStateHandler : public FinalizeStateHandler {
  public:
-  FakeFinalizeStateHandler(scoped_refptr<JsonStore> json_store,
-                           scoped_refptr<DaemonCallback> daemon_callback,
-                           const base::FilePath& working_dir_path);
+  explicit FakeFinalizeStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeFinalizeStateHandler() override = default;

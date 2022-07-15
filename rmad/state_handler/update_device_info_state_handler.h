@@ -24,7 +24,7 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cbi_utils_|, |cros_config_utils_|,
   // |crossystem_utils_|, |regions_utils_|, and |vpd_utils_| for testing.
-  UpdateDeviceInfoStateHandler(
+  explicit UpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CbiUtils> cbi_utils,
@@ -57,7 +57,7 @@ namespace fake {
 
 class FakeUpdateDeviceInfoStateHandler : public UpdateDeviceInfoStateHandler {
  public:
-  FakeUpdateDeviceInfoStateHandler(
+  explicit FakeUpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);

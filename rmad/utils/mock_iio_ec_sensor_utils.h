@@ -16,7 +16,8 @@ namespace rmad {
 
 class MockIioEcSensorUtils : public IioEcSensorUtils {
  public:
-  MockIioEcSensorUtils(const std::string& location, const std::string& name)
+  explicit MockIioEcSensorUtils(const std::string& location,
+                                const std::string& name)
       : IioEcSensorUtils(location, name) {}
   ~MockIioEcSensorUtils() override = default;
 

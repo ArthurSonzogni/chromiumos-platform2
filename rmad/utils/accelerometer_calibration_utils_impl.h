@@ -20,7 +20,7 @@ namespace rmad {
 
 class AccelerometerCalibrationUtilsImpl : public SensorCalibrationUtils {
  public:
-  AccelerometerCalibrationUtilsImpl(
+  explicit AccelerometerCalibrationUtilsImpl(
       scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe,
       const std::string& location,
       const std::string& name = "cros-ec-accel");

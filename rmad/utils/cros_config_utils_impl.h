@@ -20,8 +20,9 @@ namespace rmad {
 class CrosConfigUtilsImpl : public CrosConfigUtils {
  public:
   CrosConfigUtilsImpl();
-  CrosConfigUtilsImpl(const std::string& config_file_path,
-                      std::unique_ptr<brillo::CrosConfigInterface> cros_config);
+  explicit CrosConfigUtilsImpl(
+      const std::string& config_file_path,
+      std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   ~CrosConfigUtilsImpl() override = default;
 
   bool GetModelName(std::string* model_name) const override;

@@ -45,7 +45,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Used to inject mock |cbi_utils_|, |cmd_utils_|, |cr50_utils_|,
   // |cros_config_utils_|, |power_manager_client_|, |ssfc_utils_|, and
   // |vpd_utils_| for testing.
-  ProvisionDeviceStateHandler(
+  explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<PowerManagerClient> power_manager_client,
@@ -119,9 +119,10 @@ namespace fake {
 
 class FakeProvisionDeviceStateHandler : public ProvisionDeviceStateHandler {
  public:
-  FakeProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store,
-                                  scoped_refptr<DaemonCallback> daemon_callback,
-                                  const base::FilePath& working_dir_path);
+  explicit FakeProvisionDeviceStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeProvisionDeviceStateHandler() override = default;

@@ -54,12 +54,12 @@ class DBusService : public brillo::DBusServiceDaemon {
  public:
   explicit DBusService(RmadInterface* rmad_interface);
   // Used to inject a mock bus.
-  DBusService(const scoped_refptr<dbus::Bus>& bus,
-              RmadInterface* rmad_interface,
-              const base::FilePath& state_file_path,
-              std::unique_ptr<TpmManagerClient> tpm_manager_client,
-              std::unique_ptr<CrosConfigUtils> cros_config_utils,
-              std::unique_ptr<CrosSystemUtils> crossystem_utils);
+  explicit DBusService(const scoped_refptr<dbus::Bus>& bus,
+                       RmadInterface* rmad_interface,
+                       const base::FilePath& state_file_path,
+                       std::unique_ptr<TpmManagerClient> tpm_manager_client,
+                       std::unique_ptr<CrosConfigUtils> cros_config_utils,
+                       std::unique_ptr<CrosSystemUtils> crossystem_utils);
   DBusService(const DBusService&) = delete;
   DBusService& operator=(const DBusService&) = delete;
 

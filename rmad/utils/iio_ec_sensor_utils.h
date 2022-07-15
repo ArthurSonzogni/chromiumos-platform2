@@ -12,7 +12,8 @@ namespace rmad {
 
 class IioEcSensorUtils {
  public:
-  IioEcSensorUtils(const std::string& location, const std::string& name)
+  explicit IioEcSensorUtils(const std::string& location,
+                            const std::string& name)
       : location_(location), name_(name) {}
   virtual ~IioEcSensorUtils() = default;
 

@@ -31,7 +31,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |cr50_utils_|, |crossystem_utils_|,
   // and |power_manager_client_| for testing.
-  WriteProtectDisablePhysicalStateHandler(
+  explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
@@ -83,7 +83,7 @@ namespace fake {
 class FakeWriteProtectDisablePhysicalStateHandler
     : public WriteProtectDisablePhysicalStateHandler {
  public:
-  FakeWriteProtectDisablePhysicalStateHandler(
+  explicit FakeWriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path);

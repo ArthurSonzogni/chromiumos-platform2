@@ -33,7 +33,7 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
   // Used to inject |base_acc_utils|, |lid_acc_utils|, |base_gyro_utils|, and
   // |lid_gyro_utils| to mock |sensor_calibration_utils_map_| for testing.
-  RunCalibrationStateHandler(
+  explicit RunCalibrationStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<SensorCalibrationUtils> base_acc_utils,

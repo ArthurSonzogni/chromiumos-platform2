@@ -11,7 +11,8 @@ namespace rmad {
 
 class SensorCalibrationUtils {
  public:
-  SensorCalibrationUtils(const std::string& location, const std::string& name)
+  explicit SensorCalibrationUtils(const std::string& location,
+                                  const std::string& name)
       : location_(location), name_(name) {}
   virtual ~SensorCalibrationUtils() = default;
 

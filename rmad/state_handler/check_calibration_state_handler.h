@@ -16,8 +16,9 @@ namespace rmad {
 
 class CheckCalibrationStateHandler : public BaseStateHandler {
  public:
-  CheckCalibrationStateHandler(scoped_refptr<JsonStore> json_store,
-                               scoped_refptr<DaemonCallback> daemon_callback);
+  explicit CheckCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback);
 
   ASSIGN_STATE(RmadState::StateCase::kCheckCalibration);
   SET_REPEATABLE;

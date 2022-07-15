@@ -24,9 +24,10 @@ class RestockStateHandler : public BaseStateHandler {
   explicit RestockStateHandler(scoped_refptr<JsonStore> json_store,
                                scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mocked |power_manager_client_| for testing.
-  RestockStateHandler(scoped_refptr<JsonStore> json_store,
-                      scoped_refptr<DaemonCallback> daemon_callback,
-                      std::unique_ptr<PowerManagerClient> power_manager_client);
+  explicit RestockStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kRestock);
   SET_REPEATABLE;
@@ -50,9 +51,10 @@ namespace fake {
 
 class FakeRestockStateHandler : public RestockStateHandler {
  public:
-  FakeRestockStateHandler(scoped_refptr<JsonStore> json_store,
-                          scoped_refptr<DaemonCallback> daemon_callback,
-                          const base::FilePath& working_dir_path);
+  explicit FakeRestockStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeRestockStateHandler() override = default;
