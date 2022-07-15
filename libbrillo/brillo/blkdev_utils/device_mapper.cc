@@ -204,33 +204,31 @@ bool DeviceMapper::WipeTable(const std::string& name) {
 
   // Arguments for fetching dm target.
   bool ret = false;
-  uint64_t start = 0, size = 0, total_size = 0;
+  uint64_t start = 0, size = 0;
   std::string type;
   SecureBlob parameters;
 
   // Get maximum size of the device to be wiped.
   do {
     ret = size_task->GetNextTarget(&start, &size, &type, &parameters);
-    total_size = std::max(start + size, total_size);
+    // Setup wipe task.
+    auto wipe_task = dm_task_factory_.Run(DM_DEVICE_RELOAD);
+
+    if (!wipe_task->SetName(name)) {
+      LOG(ERROR) << "WipeTable: SetName failed.";
+      return false;
+    }
+
+    if (!wipe_task->AddTarget(0, size, type, parameters)) {
+      LOG(ERROR) << "WipeTable: AddTarget failed.";
+      return false;
+    }
+
+    if (!wipe_task->Run()) {
+      LOG(ERROR) << "WipeTable: RunTask failed.";
+      return false;
+    }
   } while (ret);
-
-  // Setup wipe task.
-  auto wipe_task = dm_task_factory_.Run(DM_DEVICE_RELOAD);
-
-  if (!wipe_task->SetName(name)) {
-    LOG(ERROR) << "WipeTable: SetName failed.";
-    return false;
-  }
-
-  if (!wipe_task->AddTarget(0, total_size, "error", SecureBlob())) {
-    LOG(ERROR) << "WipeTable: AddTarget failed.";
-    return false;
-  }
-
-  if (!wipe_task->Run()) {
-    LOG(ERROR) << "WipeTable: RunTask failed.";
-    return false;
-  }
 
   return true;
 }
