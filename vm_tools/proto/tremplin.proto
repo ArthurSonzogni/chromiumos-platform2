@@ -165,6 +165,10 @@ message StartContainerRequest {
   }
 
   PrivilegeLevel privilege_level = 6;
+
+  // Audio capture should not be allowed in the container even if the host VM
+  // supports it.
+  bool disable_audio_capture = 7;
 }
 
 // OsRelease encapsulates a subset of the os-release info as documented
@@ -948,6 +952,61 @@ message DetachUsbFromContainerResponse {
   string failure_reason = 2;
 }
 
+enum VmDevice {
+  MICROPHONE = 0;
+  CAMERA = 1;
+}
+
+message UpdateContainerDevicesRequest {
+  enum Action {
+    // VmDevice should be enabled.
+    ENABLE = 0;
+    // VmDevice should be disabled.
+    DISABLE = 1;
+  }
+  // Name of the container of the VmDevices.
+  string container_name = 1;
+
+  // Actions to take per VmDevice.
+  // The keys are really VmDevice, but proto doesn't allow enum keys.
+  map<int32, Action> updates = 2;
+}
+
+message UpdateContainerDevicesResponse {
+  enum Status {
+    // The status is unknown.
+    UNKNOWN = 0;
+
+    // The actions were applied to the container where possible.
+    OK = 1;
+
+    // The requested container wasn't found.
+    NO_SUCH_CONTAINER = 2;
+  }
+
+  enum UpdateResult {
+    // The VmDevice action was successful.
+    SUCCESS = 0;
+
+    // The VM had no such device so the action didn't apply.
+    NO_SUCH_VM_DEVICE = 1;
+
+    // The action could not be applied to the VmDevice.
+    FAILED = 2;
+  }
+
+  // Status of the entire operation. Individual results should be checked even
+  // if status is OK.
+  Status status = 1;
+
+  // Human readable failure reason.
+  string failure_reason = 2;
+
+  // Results of actions per VmDevice.
+  // The keys are really VmDevice, but proto doesn't allow enum keys.
+  map<int32, UpdateResult> results = 3;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc StartLxd(StartLxdRequest) returns (StartLxdResponse);
@@ -978,6 +1037,8 @@ service Tremplin {
       returns (AttachUsbToContainerResponse);
   rpc DetachUsbFromContainer(DetachUsbFromContainerRequest)
       returns (DetachUsbFromContainerResponse);
+  rpc UpdateContainerDevices(UpdateContainerDevicesRequest)
+      returns (UpdateContainerDevicesResponse);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.
