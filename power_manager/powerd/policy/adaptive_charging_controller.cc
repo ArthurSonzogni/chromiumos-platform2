@@ -655,12 +655,15 @@ void AdaptiveChargingController::Init(
   // enabled.
   adaptive_charging_supported_ = SetSustain(100, 100);
   if (!adaptive_charging_supported_) {
+    // AdaptiveChargingController still runs the predictions to report how well
+    // the ML model performs, even if the system isn't supported.
     adaptive_charging_enabled_ = false;
     state_ = AdaptiveChargingState::NOT_SUPPORTED;
+  } else if (adaptive_charging_enabled_) {
+    state_ = AdaptiveChargingState::INACTIVE;
+  } else {
+    state_ = AdaptiveChargingState::USER_DISABLED;
   }
-
-  state_ = adaptive_charging_enabled_ ? AdaptiveChargingState::INACTIVE
-                                      : AdaptiveChargingState::USER_DISABLED;
 
   LOG(INFO) << "Adaptive Charging is "
             << (adaptive_charging_supported_ ? "supported" : "not supported")
