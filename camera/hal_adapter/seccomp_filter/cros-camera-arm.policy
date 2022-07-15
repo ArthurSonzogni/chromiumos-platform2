@@ -6,6 +6,7 @@ rseq: 1
 
 _llseek: 1
 _newselect: 1
+accept4: 1
 access: 1
 bind: 1
 brk: 1
