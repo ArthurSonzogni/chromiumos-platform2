@@ -173,7 +173,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
 
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
-    case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+    case mojom::NetworkInterfaceInfo::Tag::kWirelessInterfaceInfo: {
       const auto& wireless_info = network_info->get_wireless_interface_info();
       ASSERT_FALSE(wireless_info.is_null());
       EXPECT_EQ(wireless_info->interface_name, kExpectedInterfaceName);
@@ -250,7 +250,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
   const auto& network_info = network_infos.at(0);
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
-    case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+    case mojom::NetworkInterfaceInfo::Tag::kWirelessInterfaceInfo: {
       const auto& wireless_info = network_info->get_wireless_interface_info();
       ASSERT_FALSE(wireless_info.is_null());
       EXPECT_EQ(wireless_info->interface_name, kExpectedInterfaceName);
@@ -288,7 +288,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
 
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
-    case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+    case mojom::NetworkInterfaceInfo::Tag::kWirelessInterfaceInfo: {
       const auto& wireless_info = network_info->get_wireless_interface_info();
       EXPECT_FALSE(wireless_info->power_management_on);
       break;

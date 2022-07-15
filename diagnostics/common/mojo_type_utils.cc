@@ -17,11 +17,11 @@ bool operator<(const BusInfo& a, const BusInfo& b) {
   if (a.which() != b.which())
     return a.which() < b.which();
   switch (a.which()) {
-    case BusInfo::Tag::PCI_BUS_INFO:
+    case BusInfo::Tag::kPciBusInfo:
       return a.get_pci_bus_info() < b.get_pci_bus_info();
-    case BusInfo::Tag::USB_BUS_INFO:
+    case BusInfo::Tag::kUsbBusInfo:
       return a.get_usb_bus_info() < b.get_usb_bus_info();
-    case BusInfo::Tag::THUNDERBOLT_BUS_INFO:
+    case BusInfo::Tag::kThunderboltBusInfo:
       return a.get_thunderbolt_bus_info() < b.get_thunderbolt_bus_info();
   }
 }

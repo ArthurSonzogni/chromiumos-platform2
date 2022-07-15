@@ -220,13 +220,13 @@ class BusFetcherTest : public BaseFileTest {
     for (size_t i = 0; i < expected_bus_devices_.size(); ++i) {
       const auto& bus_info = expected_bus_devices_[i]->bus_info;
       switch (bus_info->which()) {
-        case mojom::BusInfo::Tag::PCI_BUS_INFO:
+        case mojom::BusInfo::Tag::kPciBusInfo:
           SetPciBusInfo(bus_info->get_pci_bus_info(), i);
           break;
-        case mojom::BusInfo::Tag::USB_BUS_INFO:
+        case mojom::BusInfo::Tag::kUsbBusInfo:
           SetUsbBusInfo(bus_info->get_usb_bus_info(), i);
           break;
-        case mojom::BusInfo::Tag::THUNDERBOLT_BUS_INFO:
+        case mojom::BusInfo::Tag::kThunderboltBusInfo:
           SetThunderboltBusInfo(bus_info->get_thunderbolt_bus_info(), i);
           break;
       }

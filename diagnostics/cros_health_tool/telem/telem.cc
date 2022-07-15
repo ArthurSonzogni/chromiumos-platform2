@@ -916,7 +916,7 @@ void DisplayNetworkInterfaceInfo(
   for (const auto& network_interface : infos) {
     base::Value out_network_interface{base::Value::Type::DICTIONARY};
     switch (network_interface->which()) {
-      case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+      case mojom::NetworkInterfaceInfo::Tag::kWirelessInterfaceInfo: {
         const auto& wireless_interface =
             network_interface->get_wireless_interface_info();
         auto* out_wireless_interface = out_network_interface.SetKey(
@@ -1140,7 +1140,7 @@ base::Value GetBusDeviceJson(const mojom::BusDevicePtr& device) {
   auto* out_bus_info =
       out_device.SetKey("bus_info", base::Value{base::Value::Type::DICTIONARY});
   switch (device->bus_info->which()) {
-    case mojom::BusInfo::Tag::PCI_BUS_INFO: {
+    case mojom::BusInfo::Tag::kPciBusInfo: {
       auto* out_pci_info = out_bus_info->SetKey(
           "pci_bus_info", base::Value{base::Value::Type::DICTIONARY});
       const auto& pci_info = device->bus_info->get_pci_bus_info();
@@ -1152,7 +1152,7 @@ base::Value GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       SET_DICT(driver, pci_info, out_pci_info);
       break;
     }
-    case mojom::BusInfo::Tag::USB_BUS_INFO: {
+    case mojom::BusInfo::Tag::kUsbBusInfo: {
       const auto& usb_info = device->bus_info->get_usb_bus_info();
       auto* out_usb_info = out_bus_info->SetKey(
           "usb_bus_info", base::Value{base::Value::Type::DICTIONARY});
@@ -1183,7 +1183,7 @@ base::Value GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       }
       break;
     }
-    case mojom::BusInfo::Tag::THUNDERBOLT_BUS_INFO: {
+    case mojom::BusInfo::Tag::kThunderboltBusInfo: {
       const auto& thunderbolt_info =
           device->bus_info->get_thunderbolt_bus_info();
       auto* out_thunderbolt_info = out_bus_info->SetKey(
