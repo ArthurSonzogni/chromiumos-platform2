@@ -937,23 +937,26 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
 
   started_ = true;
   report_charge_time_ = status.display_battery_percentage <= hold_percent_;
-  if (adaptive_charging_enabled_) {
-    base::TimeDelta time_full_on_ac = charge_history_.GetTimeFullOnAC();
-    base::TimeDelta time_on_ac = charge_history_.GetTimeOnAC();
-    double ratio =
-        time_on_ac == base::TimeDelta() ? 0.0 : time_full_on_ac / time_on_ac;
-    if (charge_history_.DaysOfHistory() < kHeuristicMinDaysHistory ||
-        ratio < kHeuristicMinFullOnACRatio) {
-      LOG(INFO) << "Adaptive Charging not started due to heuristic. "
-                << charge_history_.DaysOfHistory()
-                << " days of charge history and " << ratio
-                << " time on AC with full charge over time on AC ratio.";
-      state_ = AdaptiveChargingState::HEURISTIC_DISABLED;
+  base::TimeDelta time_full_on_ac = charge_history_.GetTimeFullOnAC();
+  base::TimeDelta time_on_ac = charge_history_.GetTimeOnAC();
+  double ratio =
+      time_on_ac == base::TimeDelta() ? 0.0 : time_full_on_ac / time_on_ac;
+  if (charge_history_.DaysOfHistory() < kHeuristicMinDaysHistory ||
+      ratio < kHeuristicMinFullOnACRatio) {
+    LOG(INFO) << "Adaptive Charging not started due to heuristic. "
+              << charge_history_.DaysOfHistory()
+              << " days of charge history and " << ratio
+              << " time on AC with full charge over time on AC ratio.";
+    state_ = AdaptiveChargingState::HEURISTIC_DISABLED;
+    if (adaptive_charging_enabled_)
       power_supply_->SetAdaptiveChargingHeuristicEnabled(false);
-    } else {
-      state_ = AdaptiveChargingState::ACTIVE;
-      power_supply_->SetAdaptiveChargingHeuristicEnabled(true);
-    }
+  } else if (!adaptive_charging_supported_) {
+    state_ = AdaptiveChargingState::NOT_SUPPORTED;
+  } else if (adaptive_charging_enabled_) {
+    state_ = AdaptiveChargingState::ACTIVE;
+    power_supply_->SetAdaptiveChargingHeuristicEnabled(true);
+  } else {
+    state_ = AdaptiveChargingState::USER_DISABLED;
   }
 
   UpdateAdaptiveCharging(reason, true /* async */);
