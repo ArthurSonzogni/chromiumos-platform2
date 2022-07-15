@@ -104,7 +104,10 @@ static_library("libhermes") {
       "uim_cmd.cc",
     ]
   } else {
-    sources += [ "modem_mbim.cc" ]
+    sources += [
+      "libmbim_impl.cc",
+      "modem_mbim.cc",
+    ]
   }
 
   configs += [ ":target_defaults" ]
@@ -132,6 +135,8 @@ if (use.test) {
     sources = [ "apdu_test.cc" ]
     if (use.qrtr) {
       sources += [ "modem_qrtr_test.cc" ]
+    } else {
+      sources += [ "modem_mbim_test.cc" ]
     }
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845

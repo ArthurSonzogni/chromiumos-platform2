@@ -1,6 +1,6 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+//  Copyright 2019 The ChromiumOS Authors.
+//  Use of this source code is governed by a BSD-style license that can be
+//  found in the LICENSE file.
 
 #ifndef HERMES_DAEMON_H_
 #define HERMES_DAEMON_H_
@@ -17,6 +17,7 @@
 #include "hermes/adaptor_factory.h"
 #include "hermes/euicc_interface.h"
 #include "hermes/executor.h"
+#include "hermes/libmbim_impl.h"
 #include "hermes/logger.h"
 #include "hermes/manager.h"
 #include "hermes/smdp.h"
@@ -41,6 +42,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   SmdpFactory smdp_;
   SmdsFactory smds_;
   std::unique_ptr<EuiccInterface> modem_;
+  std::unique_ptr<LibmbimImpl> libmbim_;
   std::unique_ptr<lpa::core::Lpa> lpa_;
   AdaptorFactory adaptor_factory_;
   std::unique_ptr<Manager> manager_;

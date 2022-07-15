@@ -1,10 +1,9 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+//  Copyright 2019 The ChromiumOS Authors.
+//  Use of this source code is governed by a BSD-style license that can be
+//  found in the LICENSE file.
 
 #include "hermes/daemon.h"
 
-#include <cstdlib>
 #include <memory>
 #include <utility>
 
@@ -19,6 +18,7 @@
 #include "hermes/modem_qrtr.h"
 #include "hermes/socket_qrtr.h"
 #else
+#include "hermes/libmbim_impl.h"
 #include "hermes/modem_mbim.h"
 #endif
 
@@ -39,8 +39,9 @@ void Daemon::RegisterDBusObjectsAsync(
   modem_ = ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_,
                              &executor_, std::move(modem_manager_proxy));
 #else
-  modem_ =
-      ModemMbim::Create(&logger_, &executor_, std::move(modem_manager_proxy));
+  libmbim_ = std::make_unique<LibmbimImpl>();
+  modem_ = ModemMbim::Create(&logger_, &executor_, std::move(libmbim_),
+                             std::move(modem_manager_proxy));
 #endif
 
   lpa::core::Lpa::Builder b;

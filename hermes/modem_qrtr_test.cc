@@ -23,6 +23,7 @@
 
 #include "hermes/apdu.h"
 #include "hermes/fake_euicc_manager.h"
+#include "hermes/mock_executor.h"
 #include "hermes/sgp_22.h"
 #include "hermes/socket_qrtr.h"
 #include "hermes/type_traits.h"
@@ -222,16 +223,6 @@ hermes::EnableIfIterator_t<Iterator, std::vector<uint8_t>> CreateQrtrFromApdu(
           })))
 
 namespace hermes {
-
-class MockExecutor : public Executor {
- public:
-  MockExecutor() : Executor(new base::TestMockTimeTaskRunner()) {}
-  void FastForwardBy(base::TimeDelta duration) {
-    scoped_refptr<base::TestMockTimeTaskRunner> mock_task_runner_(
-        dynamic_cast<base::TestMockTimeTaskRunner*>(task_runner().get()));
-    mock_task_runner_->FastForwardBy(duration);
-  }
-};
 
 // Socket class which mocks the outgoing (host -> modem) socket calls and
 // provides implementations for incoming (modem -> host) socket calls that reads

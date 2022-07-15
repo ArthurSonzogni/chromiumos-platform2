@@ -18,10 +18,11 @@
 #include "hermes/dbus_bindings/mm-proxies.h"
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
+#include "hermes/modem_manager_proxy_interface.h"
 
 namespace hermes {
 
-class ModemManagerProxy {
+class ModemManagerProxy : public ModemManagerProxyInterface {
  public:
   using DBusInterfaceToProperties =
       std::map<std::string, brillo::VariantDictionary>;
@@ -30,15 +31,15 @@ class ModemManagerProxy {
   explicit ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus);
 
   // cb is executed when a new modem appears on DBus. Executed only once.
-  void RegisterModemAppearedCallback(base::OnceClosure cb);
+  void RegisterModemAppearedCallback(base::OnceClosure cb) override;
   // If MM has exported a DBus object, executes cb immediately. If not,
   // waits for MM to export a DBus object.
-  void WaitForModem(base::OnceClosure cb);
+  void WaitForModem(base::OnceClosure cb) override;
 
-  std::string GetPrimaryPort() const;
+  std::string GetPrimaryPort() const override;
 
-  void ScheduleUninhibit(base::TimeDelta timeout);
-  void WaitForModemAndInhibit(ResultCallback cb);
+  void ScheduleUninhibit(base::TimeDelta timeout) override;
+  void WaitForModemAndInhibit(ResultCallback cb) override;
 
  protected:
   // To be used by mocks only

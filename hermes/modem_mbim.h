@@ -18,10 +18,9 @@
 #include <glib-bridge/glib_logger.h>
 #include <glib-bridge/glib_scopers.h>
 #include <google-lpa/lpa/card/euicc_card.h>
-#include <libmbim-glib/libmbim-glib.h>
-#include <libmbim-glib/mbim-enums.h>
 #include "hermes/euicc_interface.h"
 #include "hermes/executor.h"
+#include "hermes/libmbim_interface.h"
 #include "hermes/logger.h"
 #include "hermes/mbim_cmd.h"
 #include "hermes/modem.h"
@@ -37,7 +36,8 @@ class ModemMbim : public Modem<MbimCmd> {
   static std::unique_ptr<ModemMbim> Create(
       Logger* logger,
       Executor* executor,
-      std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+      std::unique_ptr<LibmbimInterface> libmbim,
+      std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy);
   virtual ~ModemMbim();
   // EuiccInterface overrides
   void Initialize(EuiccManagerInterface* euicc_manager,
@@ -62,7 +62,8 @@ class ModemMbim : public Modem<MbimCmd> {
   };
   ModemMbim(Logger* logger,
             Executor* executor,
-            std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+            std::unique_ptr<LibmbimInterface> libmbim,
+            std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy);
   void Shutdown() override;
   void TransmitFromQueue() override;
   std::unique_ptr<MbimCmd> GetTagForSendApdu() override;
@@ -210,6 +211,7 @@ class ModemMbim : public Modem<MbimCmd> {
 
   State current_state_;
   ResultCallback init_done_cb_;
+  std::unique_ptr<LibmbimInterface> libmbim_;
   guint32 channel_;
   glib_bridge::ScopedGObject<MbimDevice> device_;
   uint8_t indication_id_;

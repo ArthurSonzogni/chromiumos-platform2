@@ -45,7 +45,7 @@ class Modem : public EuiccInterface {
  public:
   Modem(Logger* logger,
         Executor* executor,
-        std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
+        std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy)
       : euicc_manager_(nullptr),
         logger_(logger),
         executor_(executor),
@@ -164,7 +164,7 @@ class Modem : public EuiccInterface {
   std::string imei_;
   int retry_count_;
   base::OnceClosure retry_initialization_callback_;
-  std::unique_ptr<ModemManagerProxy> modem_manager_proxy_;
+  std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy_;
 
  private:
   uint16_t current_transaction_id_;

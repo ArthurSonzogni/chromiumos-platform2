@@ -9,9 +9,6 @@
 #include <base/logging.h>
 #include <glib.h>
 #include <gio/gio.h>
-#include <gmodule.h>
-#include <gio/gunixsocketaddress.h>
-#include <libmbim-glib/libmbim-glib.h>
 #include "hermes/apdu.h"
 #include "hermes/euicc_manager_interface.h"
 #include "hermes/hermes_common.h"
@@ -35,44 +32,6 @@ std::vector<uint8_t> AidIsdr() {
   return {hermes::kAidIsdr.begin(), hermes::kAidIsdr.end()};
 }
 
-bool GetReadyState(MbimDevice* device,
-                   bool is_notification,
-                   MbimMessage* notification,
-                   MbimSubscriberReadyState* ready_state) {
-  g_autoptr(GError) error = NULL;
-
-  if (mbim_device_check_ms_mbimex_version(device, 3, 0)) {
-    MbimSubscriberReadyStatusFlag flags =
-        MBIM_SUBSCRIBER_READY_STATUS_FLAG_NONE;
-    auto parser_v3 =
-        is_notification
-            ? &mbim_message_ms_basic_connect_v3_subscriber_ready_status_notification_parse
-            : &mbim_message_ms_basic_connect_v3_subscriber_ready_status_response_parse;
-    if (!parser_v3(notification, ready_state, &flags, NULL, NULL,
-                   NULL, /* ready_info */
-                   NULL, /* telephone_numbers_count */
-                   NULL, /* telephone_numbers */
-                   &error)) {
-      LOG(ERROR) << __func__ << ": Failed due to error: " << error->message;
-      return false;
-    }
-  } else {
-    auto parser = is_notification
-                      ? &mbim_message_subscriber_ready_status_notification_parse
-                      : &mbim_message_subscriber_ready_status_response_parse;
-    if (!parser(notification, ready_state,
-                /* subscriber_id */ NULL,
-                /* sim_iccid */ NULL,
-                /* ready_info */ NULL,
-                /* telephone_numbers_count */ NULL,
-                /* telephone_numbers */ NULL, &error)) {
-      LOG(ERROR) << __func__ << ": Failed due to error: " << error->message;
-      return false;
-    }
-  }
-  return true;
-}
-
 }  // namespace
 
 namespace hermes {
@@ -81,16 +40,20 @@ namespace hermes {
 std::unique_ptr<ModemMbim> ModemMbim::Create(
     Logger* logger,
     Executor* executor,
-    std::unique_ptr<ModemManagerProxy> modem_manager_proxy) {
+    std::unique_ptr<LibmbimInterface> libmbim,
+    std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy) {
   VLOG(2) << __func__;
-  return std::unique_ptr<ModemMbim>(
-      new ModemMbim(logger, executor, std::move(modem_manager_proxy)));
+  return std::unique_ptr<ModemMbim>(new ModemMbim(
+      logger, executor, std::move(libmbim), std::move(modem_manager_proxy)));
 }
 
-ModemMbim::ModemMbim(Logger* logger,
-                     Executor* executor,
-                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
+ModemMbim::ModemMbim(
+    Logger* logger,
+    Executor* executor,
+    std::unique_ptr<LibmbimInterface> libmbim,
+    std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy)
     : Modem<MbimCmd>(logger, executor, std::move(modem_manager_proxy)),
+      libmbim_(std::move(libmbim)),
       channel_(kInvalidChannel),
       is_ready_state_valid(false),
       ready_state_(MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED),
@@ -198,16 +161,17 @@ void ModemMbim::MbimCreateNewDeviceCb(GObject* source,
   CHECK(modem_mbim) << "modem_mbim does not exist";
   g_autoptr(GError) error = NULL;
   glib_bridge::ScopedGObject<MbimDevice> mbimdevice(
-      mbim_device_new_finish(res, &error));
+      modem_mbim->libmbim_->MbimDeviceNewFinish(res, &error));
   modem_mbim->device_ = std::move(mbimdevice);
   if (!modem_mbim->device_.get() || error != NULL) {
     LOG(INFO) << "The modem may be booting ...";
     modem_mbim->RetryInitialization(std::move(modem_mbim->init_done_cb_));
     return;
   }
-  mbim_device_open_full(modem_mbim->device_.get(), MBIM_DEVICE_OPEN_FLAGS_PROXY,
-                        kMbimTimeoutSeconds, /* cancellable */ NULL,
-                        (GAsyncReadyCallback)MbimDeviceOpenReadyCb, modem_mbim);
+  modem_mbim->libmbim_->MbimDeviceOpenFull(
+      modem_mbim->device_.get(), MBIM_DEVICE_OPEN_FLAGS_PROXY,
+      kMbimTimeoutSeconds, /* cancellable */ NULL,
+      (GAsyncReadyCallback)MbimDeviceOpenReadyCb, modem_mbim);
 }
 
 /* static */
@@ -260,10 +224,10 @@ void ModemMbim::InitializationStep(ModemMbim::State::Value next_state,
       const gchar* const path = dev_path.c_str();
       LOG(INFO) << __func__ << ": Opening path:" << path;
       file_ = g_file_new_for_path(path);
-      mbim_device_new(file_, /* cancellable */ NULL,
-                      (GAsyncReadyCallback)MbimCreateNewDeviceCb,
-                      this);  // MbimCreateNewDeviceCb will call
-                              // InitializationStep(kReadImei)
+      libmbim_->MbimDeviceNew(file_, /* cancellable */ NULL,
+                              (GAsyncReadyCallback)MbimCreateNewDeviceCb,
+                              this);  // MbimCreateNewDeviceCb will call
+                                      // InitializationStep(kReadImei)
       break;
     }
     case State::kReadImei:
@@ -278,7 +242,7 @@ void ModemMbim::InitializationStep(ModemMbim::State::Value next_state,
                   &ModemMbim::InitializationStep, State::kCheckSingleSim);
       break;
     case State::kCheckSingleSim: {
-      if (!mbim_device_check_ms_mbimex_version(device_.get(), 2, 0)) {
+      if (!libmbim_->MbimDeviceCheckMsMbimexVersion(device_.get(), 2, 0)) {
         // we have a single sim device. Skip to reading EID if a SIM was seen.
         if (ready_state_ == MBIM_SUBSCRIBER_READY_STATE_SIM_NOT_INSERTED) {
           VLOG(2) << "Sim not inserted";
@@ -404,9 +368,9 @@ void ModemMbim::TransmitSysCapsQuery() {
     ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)QuerySysCapsReady, this);
+  libmbim_->MbimDeviceCommand(device_.get(), message, kMbimTimeoutSeconds,
+                              /* cancellable */ NULL,
+                              (GAsyncReadyCallback)QuerySysCapsReady, this);
 }
 
 void ModemMbim::TransmitSubscriberStatusReady() {
@@ -418,9 +382,10 @@ void ModemMbim::TransmitSubscriberStatusReady() {
     ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)SubscriberReadyStatusRspCb, this);
+  libmbim_->MbimDeviceCommand(device_.get(), message, kMbimTimeoutSeconds,
+                              /* cancellable */ NULL,
+                              (GAsyncReadyCallback)SubscriberReadyStatusRspCb,
+                              this);
 }
 
 void ModemMbim::TransmitDeviceCaps() {
@@ -432,9 +397,9 @@ void ModemMbim::TransmitDeviceCaps() {
     ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /*cancellable*/ NULL,
-                      (GAsyncReadyCallback)DeviceCapsQueryReady, this);
+  libmbim_->MbimDeviceCommand(device_.get(), message, kMbimTimeoutSeconds,
+                              /*cancellable*/ NULL,
+                              (GAsyncReadyCallback)DeviceCapsQueryReady, this);
 }
 
 void ModemMbim::TransmitCloseChannel() {
@@ -448,10 +413,10 @@ void ModemMbim::TransmitCloseChannel() {
     ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)UiccLowLevelAccessCloseChannelSetCb,
-                      this);
+  libmbim_->MbimDeviceCommand(
+      device_.get(), message, kMbimTimeoutSeconds,
+      /* cancellable */ NULL,
+      (GAsyncReadyCallback)UiccLowLevelAccessCloseChannelSetCb, this);
 }
 
 void ModemMbim::TransmitOpenChannel() {
@@ -471,10 +436,10 @@ void ModemMbim::TransmitOpenChannel() {
     ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /*cancellable*/ NULL,
-                      (GAsyncReadyCallback)UiccLowLevelAccessOpenChannelSetCb,
-                      this);
+  libmbim_->MbimDeviceCommand(
+      device_.get(), message, kMbimTimeoutSeconds,
+      /*cancellable*/ NULL,
+      (GAsyncReadyCallback)UiccLowLevelAccessOpenChannelSetCb, this);
 }
 
 void ModemMbim::TransmitSendEidApdu() {
@@ -488,10 +453,10 @@ void ModemMbim::TransmitSendEidApdu() {
   message = (mbim_message_ms_uicc_low_level_access_apdu_set_new(
       channel_, secure_messaging, class_byte_type, kMbimEidReqApduSize,
       eid_apduCmd, NULL));
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)UiccLowLevelAccessApduEidParse,
-                      this);
+  libmbim_->MbimDeviceCommand(
+      device_.get(), message, kMbimTimeoutSeconds,
+      /* cancellable */ NULL,
+      (GAsyncReadyCallback)UiccLowLevelAccessApduEidParse, this);
 }
 
 void ModemMbim::TransmitSlotInfoStatus() {
@@ -507,9 +472,10 @@ void ModemMbim::TransmitSlotInfoStatus() {
     LOG(ERROR) << "Mbim message creation failed";
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)DeviceSlotStatusInfoRspCb, this);
+  libmbim_->MbimDeviceCommand(device_.get(), message, kMbimTimeoutSeconds,
+                              /* cancellable */ NULL,
+                              (GAsyncReadyCallback)DeviceSlotStatusInfoRspCb,
+                              this);
 }
 
 void ModemMbim::TransmitDeviceSlotMapping() {
@@ -522,9 +488,10 @@ void ModemMbim::TransmitDeviceSlotMapping() {
     LOG(ERROR) << "Mbim message creation failed";
     return;
   }
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)DeviceSlotStatusMappingRspCb, this);
+  libmbim_->MbimDeviceCommand(device_.get(), message, kMbimTimeoutSeconds,
+                              /* cancellable */ NULL,
+                              (GAsyncReadyCallback)DeviceSlotStatusMappingRspCb,
+                              this);
 }
 
 void ModemMbim::TransmitSetDeviceSlotMapping() {
@@ -547,10 +514,11 @@ void ModemMbim::TransmitSetDeviceSlotMapping() {
     LOG(ERROR) << "Mbim message creation failed";
     return;
   }
-  LOG(INFO) << __func__ << ": before mbim_device_command";
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)SetDeviceSlotMappingsRspCb, this);
+  LOG(INFO) << __func__ << ": before MbimDeviceCommand";
+  libmbim_->MbimDeviceCommand(device_.get(), message, kMbimTimeoutSeconds,
+                              /* cancellable */ NULL,
+                              (GAsyncReadyCallback)SetDeviceSlotMappingsRspCb,
+                              this);
 }
 
 void ModemMbim::TransmitMbimSendApdu(TxElement* tx_element) {
@@ -573,10 +541,10 @@ void ModemMbim::TransmitMbimSendApdu(TxElement* tx_element) {
   VLOG(2) << "APDU:" << base::HexEncode(apduCmd, apdu_len);
   message = (mbim_message_ms_uicc_low_level_access_apdu_set_new(
       channel_, secure_messaging, class_byte_type, apdu_len, apduCmd, NULL));
-  mbim_device_command(device_.get(), message, kMbimTimeoutSeconds,
-                      /* cancellable */ NULL,
-                      (GAsyncReadyCallback)UiccLowLevelAccessApduResponseParse,
-                      this);
+  libmbim_->MbimDeviceCommand(
+      device_.get(), message, kMbimTimeoutSeconds,
+      /* cancellable */ NULL,
+      (GAsyncReadyCallback)UiccLowLevelAccessApduResponseParse, this);
   return;
 }
 
@@ -612,9 +580,10 @@ void ModemMbim::SubscriberReadyStatusRspCb(MbimDevice* device,
   g_autoptr(MbimMessage) response = NULL;
   VLOG(2) << __func__;
   g_autoptr(GError) error = NULL;
-  response = mbim_device_command_finish(device, res, &error);
-  if (!GetReadyState(device, false /* is_notification */, response,
-                     &modem_mbim->ready_state_)) {
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
+  if (!modem_mbim->libmbim_->GetReadyState(device, false /* is_notification */,
+                                           response,
+                                           &modem_mbim->ready_state_)) {
     LOG(ERROR) << "Could not parse ready state";
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
@@ -630,24 +599,24 @@ void ModemMbim::DeviceCapsQueryReady(MbimDevice* device,
   g_autoptr(MbimMessage) response = NULL;
   g_autoptr(GError) error = NULL;
   g_autofree gchar* caps_device_id = NULL;
-  VLOG(2) << __func__;
-  response = mbim_device_command_finish(device, res, &error);
+  LOG(INFO) << __func__;
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (!response ||
-      !mbim_message_response_get_result(
+      !modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) ||
-      !mbim_message_device_caps_response_parse(response, NULL, /* device_type */
-                                               NULL, /* cellular class  */
-                                               NULL, /* voice_class  */
-                                               NULL, /* sim_class  */
-                                               NULL, /* data_class */
-                                               NULL, /* sms_caps */
-                                               NULL, /* ctrl_caps */
-                                               NULL, /* max_sessions */
-                                               NULL, /* custom_data_class */
-                                               &caps_device_id,
-                                               NULL, /* firmware_info */
-                                               NULL, /* hardware_info */
-                                               &error)) {
+      !modem_mbim->libmbim_->MbimMessageDeviceCapsResponseParse(
+          response, NULL,        /* device_type */
+          NULL,                  /* cellular class  */
+          NULL,                  /* voice_class  */
+          NULL,                  /* sim_class  */
+          NULL,                  /* data_class */
+          NULL,                  /* sms_caps */
+          NULL,                  /* ctrl_caps */
+          NULL,                  /* max_sessions */
+          NULL,                  /* custom_data_class */
+          &caps_device_id, NULL, /* firmware_info */
+          NULL,                  /* hardware_info */
+          &error)) {
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
@@ -664,10 +633,10 @@ void ModemMbim::UiccLowLevelAccessCloseChannelSetCb(MbimDevice* device,
   g_autoptr(MbimMessage) response = NULL;
   guint32 status;
   LOG(INFO) << __func__;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (response &&
-      mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
-                                       &error) &&
+      modem_mbim->libmbim_->MbimMessageResponseGetResult(
+          response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
       mbim_message_ms_uicc_low_level_access_close_channel_response_parse(
           response, &status, &error)) {
     modem_mbim->channel_ = kInvalidChannel;
@@ -694,10 +663,10 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
   guint32 rsp_size;
   const guint8* rsp = NULL;
   LOG(INFO) << __func__;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (response &&
-      mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
-                                       &error) &&
+      modem_mbim->libmbim_->MbimMessageResponseGetResult(
+          response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
       mbim_message_ms_uicc_low_level_access_open_channel_response_parse(
           response, &status, &chl, &rsp_size, &rsp, &error)) {
     if (status != kMbimMessageSuccess) {
@@ -744,7 +713,7 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
   std::vector<uint8_t> kGetEidDgiTag = {0xBF, 0x3E, 0x12, 0x5A, 0x10};
   if (!response)
     return false;
-  if (!mbim_message_response_get_result(
+  if (!modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error)) {
     LOG(ERROR) << "Could not parse EID: " << error->message;
     if (modem_mbim) {
@@ -781,7 +750,7 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
   g_autoptr(GError) error = NULL;
   std::string eid;
   g_autoptr(MbimMessage) response = NULL;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (ParseEidApduResponse(response, &eid, modem_mbim)) {
     VLOG(2) << "EID for physical slot:"
             << modem_mbim->slot_info_.cached_active_slot_ << " is " << eid;
@@ -822,10 +791,10 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
   CHECK(base_info);
   static ResponseApdu payload;
   ApduTxInfo* info = static_cast<ApduTxInfo*>(base_info);
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (response &&
-      mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
-                                       &error) &&
+      modem_mbim->libmbim_->MbimMessageResponseGetResult(
+          response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
       mbim_message_ms_uicc_low_level_access_apdu_response_parse(
           response, &status, &response_size, &out_response, &error)) {
     LOG(INFO) << "Adding to payload from APDU response (" << response_size
@@ -870,12 +839,13 @@ void ModemMbim::DeviceSlotStatusInfoRspCb(MbimDevice* device,
   g_autoptr(GError) error = NULL;
   guint32 slot_index;
   MbimUiccSlotState slot_status;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (response &&
-      mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
-                                       &error) &&
-      mbim_message_ms_basic_connect_extensions_slot_info_status_response_parse(
-          response, &slot_index, &slot_status, &error)) {
+      modem_mbim->libmbim_->MbimMessageResponseGetResult(
+          response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
+      modem_mbim->libmbim_
+          ->MbimMessageMsBasicConnectExtensionsSlotInfoStatusResponseParse(
+              response, &slot_index, &slot_status, &error)) {
     modem_mbim->slot_info_.slot_state_[slot_index] = slot_status;
     VLOG(2) << "Response received with slot_index:" << slot_index
             << " & status:" << slot_status;
@@ -896,13 +866,14 @@ void ModemMbim::QuerySysCapsReady(MbimDevice* device,
   guint32 concurrency;
   guint64 modem_id;
   LOG(INFO) << __func__;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (!response ||
-      !mbim_message_response_get_result(
+      !modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) ||
-      !mbim_message_ms_basic_connect_extensions_sys_caps_response_parse(
-          response, &number_executors, &number_slots, &concurrency, &modem_id,
-          &error)) {
+      !modem_mbim->libmbim_
+           ->MbimMessageMsBasicConnectExtensionsSysCapsResponseParse(
+               response, &number_executors, &number_slots, &concurrency,
+               &modem_id, &error)) {
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
@@ -919,12 +890,13 @@ void ModemMbim::DeviceSlotStatusMappingRspCb(MbimDevice* device,
   g_autoptr(GError) error = NULL;
   guint32 map_count = 0;
   g_autoptr(MbimSlotArray) slot_mappings = NULL;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (response &&
-      mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
-                                       &error) &&
-      mbim_message_ms_basic_connect_extensions_device_slot_mappings_response_parse(
-          response, &map_count, &slot_mappings, &error)) {
+      modem_mbim->libmbim_->MbimMessageResponseGetResult(
+          response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
+      modem_mbim->libmbim_
+          ->MbimMessageMsBasicConnectExtensionsDeviceSlotMappingsResponseParse(
+              response, &map_count, &slot_mappings, &error)) {
     CHECK_EQ(map_count, 1) << "Unexpected multi radio modem";
     modem_mbim->slot_info_.map_count_ = map_count;
     modem_mbim->slot_info_.cached_active_slot_ =
@@ -951,9 +923,9 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
   auto switch_slot_tx_info =
       dynamic_cast<SwitchSlotTxInfo*>(modem_mbim->tx_queue_[0].info_.get());
   physical_switch_slot = switch_slot_tx_info->physical_slot_;
-  response = mbim_device_command_finish(device, res, &error);
+  response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
   if (!response ||
-      !mbim_message_response_get_result(
+      !modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) ||
       !mbim_message_ms_basic_connect_extensions_device_slot_mappings_response_parse(
           response, &map_count, &slot_mappings, &error)) {
@@ -1002,9 +974,9 @@ void ModemMbim::ClientIndicationCb(MbimDevice* device,
     case MBIM_SERVICE_BASIC_CONNECT:
       if (mbim_message_indicate_status_get_cid(notification) ==
           MBIM_CID_BASIC_CONNECT_SUBSCRIBER_READY_STATUS) {
-        modem_mbim->is_ready_state_valid =
-            GetReadyState(device, true /*is_notification*/, notification,
-                          &modem_mbim->ready_state_);
+        modem_mbim->is_ready_state_valid = modem_mbim->libmbim_->GetReadyState(
+            device, true /*is_notification*/, notification,
+            &modem_mbim->ready_state_);
         LOG(INFO) << "Current sim status:" << modem_mbim->ready_state_;
         if (modem_mbim->ready_state_ ==
             MBIM_SUBSCRIBER_READY_STATE_INITIALIZED) {
@@ -1119,12 +1091,13 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
             physical_slot, switch_slot_only, next_step);
         init_done_cb_ = base::BindOnce(
             &RunNextStep, std::move(get_slot_mapping), std::move(cb));
-        mbim_device_new(file_, /* cancellable */ NULL,
-                        (GAsyncReadyCallback)MbimCreateNewDeviceCb, this);
+        libmbim_->MbimDeviceNew(file_, /* cancellable */ NULL,
+                                (GAsyncReadyCallback)MbimCreateNewDeviceCb,
+                                this);
       }
       break;
     case EuiccEventStep::GET_SLOT_MAPPING:
-      if (!mbim_device_check_ms_mbimex_version(device_.get(), 2, 0)) {
+      if (!libmbim_->MbimDeviceCheckMsMbimexVersion(device_.get(), 2, 0)) {
         OnEuiccEventStart(physical_slot, false /* switch_slot_only */
                           ,
                           EuiccEventStep::CLOSE_CHANNEL, std::move(cb));
@@ -1155,7 +1128,7 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
       // Bypass slot switch if we are already on the requested slot or if slot
       // switch isn't supported
       if (physical_slot == slot_info_.cached_active_slot_ ||
-          !mbim_device_check_ms_mbimex_version(device_.get(), 2, 0)) {
+          !libmbim_->MbimDeviceCheckMsMbimexVersion(device_.get(), 2, 0)) {
         OnEuiccEventStart(physical_slot, switch_slot_only, next_step,
                           std::move(cb));
         break;
@@ -1305,7 +1278,7 @@ void ModemMbim::CloseDeviceAndUninhibit(ResultCallback cb) {
 
 void ModemMbim::RestoreActiveSlot(ResultCallback cb) {
   LOG(INFO) << __func__;
-  if (!mbim_device_check_ms_mbimex_version(device_.get(), 2, 0)) {
+  if (!libmbim_->MbimDeviceCheckMsMbimexVersion(device_.get(), 2, 0)) {
     std::move(cb).Run(kModemSuccess);
     return;
   }
