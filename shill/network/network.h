@@ -18,6 +18,7 @@
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/technology.h"
@@ -151,6 +152,14 @@ class Network {
   void StopIPv6DNSServerTimer();
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
+  const std::optional<IPConfig::Properties>& ipv6_static_properties() {
+    return ipv6_static_properties_;
+  }
+  void set_ipv6_static_properties(const IPConfig::Properties& props) {
+    ipv6_static_properties_ = props;
+  }
+  // Configures static IP address received from cellular bearer.
+  void ConfigureStaticIPv6Address();
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
@@ -251,6 +260,15 @@ class Network {
   // len).
   std::optional<IPConfig::Properties> link_protocol_ipv4_properties_;
 
+  // TODO(b/227563210): We currently use ip6config() for IPv6 network properties
+  // from SLAAC and this separated |ipv6_static_properties_| for static
+  // configurations from cellular. This is temporary and only works because we
+  // always expect a SLAAC config to be available (which will not be true for
+  // VPN). Will come back to rework after the Device-Network refactor. Note that
+  // in the current implementation this variable will not be reset by Network
+  // class itself.
+  std::optional<IPConfig::Properties> ipv6_static_properties_;
+
   // The static NetworkConfig from the associated Service.
   NetworkConfig static_network_config_;
   // The NetworkConfig before applying a static one. This will be used for 1)
@@ -274,6 +292,7 @@ class Network {
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
+  RTNLHandler* rtnl_handler_;
 
   base::WeakPtrFactory<Network> weak_factory_{this};
 };

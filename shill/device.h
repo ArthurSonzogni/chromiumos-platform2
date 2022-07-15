@@ -537,9 +537,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // state shouldn't be changed.
   void BringNetworkInterfaceDown();
 
-  // Configure static IP address received from cellular bearer.
-  void ConfigureStaticIPv6Address();
-
   // Disable ARP filtering on the device.  The interface will exhibit the
   // default Linux behavior -- incoming ARP requests are responded to by all
   // interfaces.  Outgoing ARP requests can contain any local address.
@@ -628,12 +625,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
-  // TODO(b/227563210): We currently use ip6config() for IPv6 network properties
-  // from SLAAC and this separated |ipv6_static_properties_| for static
-  // configurations from cellular. This is temporary and only works because we
-  // always expect a SLAAC configu to be available (which will not be true for
-  // VPN). Will come back to rework after the Device-Network refactor.
-  std::optional<IPConfig::Properties> ipv6_static_properties_;
   std::unique_ptr<Network> network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;

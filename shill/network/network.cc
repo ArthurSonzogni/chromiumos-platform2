@@ -14,6 +14,7 @@
 
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -50,7 +51,8 @@ Network::Network(int interface_index,
       control_interface_(control_interface),
       device_info_(device_info),
       dispatcher_(dispatcher),
-      dhcp_provider_(DHCPProvider::GetInstance()) {}
+      dhcp_provider_(DHCPProvider::GetInstance()),
+      rtnl_handler_(RTNLHandler::GetInstance()) {}
 
 void Network::Start(const Network::StartOptions& opts) {
   Stop();
@@ -106,6 +108,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   const auto& blackhole_uids = event_handler_->GetBlackholedUids();
   ipconfig->SetBlackholedUids(blackhole_uids);
   connection_->UpdateFromIPConfig(ipconfig->properties());
+  ConfigureStaticIPv6Address();
   event_handler_->OnConnectionUpdated(ipconfig);
 
   const bool ipconfig_changed = current_ipconfig_ == ipconfig;
@@ -328,6 +331,22 @@ void Network::IPv6DNSServerExpired() {
   }
   ip6config()->UpdateDNSServers(std::vector<std::string>());
   event_handler_->OnIPConfigsPropertyUpdated();
+}
+
+void Network::ConfigureStaticIPv6Address() {
+  if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
+    return;
+  }
+  IPAddress local(IPAddress::kFamilyIPv6);
+  if (!local.SetAddressFromString(ipv6_static_properties_->address)) {
+    LOG(ERROR) << interface_name_ << ": Local address "
+               << ipv6_static_properties_->address << " is invalid";
+    return;
+  }
+  local.set_prefix(ipv6_static_properties_->subnet_prefix);
+  rtnl_handler_->AddInterfaceAddress(interface_index_, local,
+                                     local.GetDefaultBroadcast(),
+                                     IPAddress(IPAddress::kFamilyIPv6));
 }
 
 bool Network::SetIPFlag(IPAddress::Family family,

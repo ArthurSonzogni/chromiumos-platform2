@@ -397,9 +397,9 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config()->properties().dns_servers;
-  if (ipv6_static_properties_ &&
-      !ipv6_static_properties_->dns_servers.empty()) {
-    properties.dns_servers = ipv6_static_properties_->dns_servers;
+  if (network()->ipv6_static_properties() &&
+      !network()->ipv6_static_properties()->dns_servers.empty()) {
+    properties.dns_servers = network()->ipv6_static_properties()->dns_servers;
   }
   ip6config()->set_properties(properties);
   OnIPConfigsPropertyUpdated();
@@ -541,10 +541,10 @@ void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
     return;
   }
 
-  ipv6_static_properties_ = properties;
-  dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Device::ConfigureStaticIPv6Address, AsWeakPtr()));
+  network()->set_ipv6_static_properties(properties);
+  dispatcher()->PostTask(FROM_HERE,
+                         base::BindOnce(&Network::ConfigureStaticIPv6Address,
+                                        network()->AsWeakPtr()));
   // OnIPConfigsPropertyUpdated() will be called later when SLAAC finishes, that
   // is also where static DNS configuration will be applied.
 }
@@ -594,25 +594,7 @@ void Device::OnIPv6ConfigUpdated() {
   }
 }
 
-void Device::ConfigureStaticIPv6Address() {
-  if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
-    return;
-  }
-  IPAddress local(IPAddress::kFamilyIPv6);
-  if (!local.SetAddressFromString(ipv6_static_properties_->address)) {
-    LOG(ERROR) << LoggingTag() << ": Local address "
-               << ipv6_static_properties_->address << " is invalid";
-    return;
-  }
-  local.set_prefix(ipv6_static_properties_->subnet_prefix);
-  rtnl_handler_->AddInterfaceAddress(interface_index_, local,
-                                     local.GetDefaultBroadcast(),
-                                     IPAddress(IPAddress::kFamilyIPv6));
-}
-
 void Device::OnConnectionUpdated(IPConfig* ipconfig) {
-  ConfigureStaticIPv6Address();
-
   // Report connection type.
   Metrics::NetworkConnectionIPType ip_type =
       network_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
