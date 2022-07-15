@@ -199,6 +199,11 @@ bool CompareFormat(const SupportedFormat& fmt1, const SupportedFormat& fmt2) {
   return get_key(fmt1) > get_key(fmt2);
 }
 
+bool IsSameRect(const v4l2_rect& rect1, const v4l2_rect& rect2) {
+  return rect1.top == rect2.top && rect1.left == rect2.left &&
+         rect1.height == rect2.height && rect1.width == rect2.width;
+}
+
 }  // namespace
 
 class V4L2TestEnvironment : public ::testing::Environment {
@@ -574,11 +579,52 @@ class V4L2Test : public ::testing::Test {
       LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
       return false;
     }
-    if (rect.left != selection.r.left || rect.top != selection.r.top ||
-        rect.width != selection.r.width || rect.height != selection.r.height) {
+    if (!IsSameRect(rect, selection.r)) {
       LOG(ERROR) << "V4L2_SEL_TGT_ROI set and get mismatch";
       return false;
     }
+
+    // ROI should remain unchanged after resolution change.
+    SupportedFormat format = max_resolution;
+    for (const SupportedFormat& fmt : GetSupportedFormats()) {
+      // Picking a format that's different from the current/max resolution.
+      // We've seen some camera modules unexpectedly change the ROI with it.
+      if (fmt.width != max_resolution.width ||
+          fmt.height != max_resolution.height) {
+        format = fmt;
+        break;
+      }
+    }
+    ExerciseFormat(format.width, format.height, GetMaxFrameRate(format));
+
+    v4l2_selection new_selection;
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI, &new_selection)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
+      return false;
+    }
+    if (!IsSameRect(new_selection.r, selection.r)) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI changed after format change";
+      return false;
+    }
+
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MAX, &new_selection)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MAX";
+      return false;
+    }
+    if (!IsSameRect(new_selection.r, selection_max.r)) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX changed after format change";
+      return false;
+    }
+
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MIN, &new_selection)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
+      return false;
+    }
+    if (!IsSameRect(new_selection.r, selection_min.r)) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN changed after format change";
+      return false;
+    }
+
     return true;
   }
 
