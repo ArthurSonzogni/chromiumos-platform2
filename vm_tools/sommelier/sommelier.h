@@ -41,6 +41,7 @@ struct sl_aura_shell;
 struct sl_viewporter;
 struct sl_linux_dmabuf;
 struct sl_keyboard_extension;
+struct sl_text_input_extension;
 struct sl_text_input_manager;
 struct sl_relative_pointer_manager;
 struct sl_pointer_constraints;
@@ -290,6 +291,13 @@ struct sl_text_input_manager {
   struct zwp_text_input_manager_v1* internal;
 };
 
+struct sl_text_input_extension {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_global;
+  struct zcr_text_input_extension_v1* internal;
+};
+
 #ifdef GAMEPAD_SUPPORT
 struct sl_gaming_input_manager {
   struct sl_context* ctx;
@@ -421,6 +429,8 @@ struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx);
+
+struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx);
 

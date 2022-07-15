@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "text-input-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "text-input-extension-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
 
@@ -23,6 +25,19 @@ struct sl_host_text_input {
   struct zwp_text_input_v1* proxy;
 };
 MAP_STRUCTS(zwp_text_input_v1, sl_host_text_input);
+
+struct sl_host_text_input_extension {
+  struct sl_context* ctx;
+  struct wl_resource* resource;
+  struct zcr_text_input_extension_v1* proxy;
+};
+
+struct sl_host_extended_text_input {
+  struct sl_context* ctx;
+  struct wl_resource* resource;
+  struct zcr_extended_text_input_v1* proxy;
+};
+MAP_STRUCTS(zcr_extended_text_input_v1, sl_host_extended_text_input);
 
 static const struct zwp_text_input_v1_interface sl_text_input_implementation = {
     ForwardRequest<zwp_text_input_v1_activate>,
@@ -251,4 +266,164 @@ static void sl_bind_host_text_input_manager(struct wl_client* client,
 struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx) {
   return sl_global_create(ctx, &zwp_text_input_manager_v1_interface, 1, ctx,
                           sl_bind_host_text_input_manager);
+}
+
+static void sl_extended_text_input_destroy(struct wl_client* client,
+                                           struct wl_resource* resource) {
+  wl_resource_destroy(resource);
+}
+
+static const struct zcr_extended_text_input_v1_interface
+    sl_extended_text_input_implementation = {
+        sl_extended_text_input_destroy,
+        ForwardRequest<zcr_extended_text_input_v1_set_input_type>,
+        ForwardRequest<
+            zcr_extended_text_input_v1_set_grammar_fragment_at_cursor>,
+        ForwardRequest<zcr_extended_text_input_v1_set_autocorrect_info>,
+};
+
+static void sl_extended_text_input_set_preedit_region(
+    void* data,
+    struct zcr_extended_text_input_v1* extended_text_input,
+    int32_t index,
+    uint32_t length) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          zcr_extended_text_input_v1_get_user_data(extended_text_input));
+
+  zcr_extended_text_input_v1_send_set_preedit_region(host->resource, index,
+                                                     length);
+}
+
+static void sl_extended_text_input_clear_grammar_fragments(
+    void* data,
+    struct zcr_extended_text_input_v1* extended_text_input,
+    uint32_t start,
+    uint32_t end) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          zcr_extended_text_input_v1_get_user_data(extended_text_input));
+
+  zcr_extended_text_input_v1_send_clear_grammar_fragments(host->resource, start,
+                                                          end);
+}
+
+static void sl_extended_text_input_add_grammar_fragment(
+    void* data,
+    struct zcr_extended_text_input_v1* extended_text_input,
+    uint32_t start,
+    uint32_t end,
+    const char* suggestion) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          zcr_extended_text_input_v1_get_user_data(extended_text_input));
+
+  zcr_extended_text_input_v1_send_add_grammar_fragment(host->resource, start,
+                                                       end, suggestion);
+}
+
+static void sl_extended_text_input_set_autocorrect_range(
+    void* data,
+    struct zcr_extended_text_input_v1* extended_text_input,
+    uint32_t start,
+    uint32_t end) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          zcr_extended_text_input_v1_get_user_data(extended_text_input));
+
+  zcr_extended_text_input_v1_send_set_autocorrect_range(host->resource, start,
+                                                        end);
+}
+
+static const struct zcr_extended_text_input_v1_listener
+    sl_extended_text_input_listener = {
+        sl_extended_text_input_set_preedit_region,
+        sl_extended_text_input_clear_grammar_fragments,
+        sl_extended_text_input_add_grammar_fragment,
+        sl_extended_text_input_set_autocorrect_range,
+};
+
+static void sl_destroy_host_extended_text_input(struct wl_resource* resource) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          wl_resource_get_user_data(resource));
+
+  zcr_extended_text_input_v1_destroy(host->proxy);
+  wl_resource_set_user_data(resource, NULL);
+  free(host);
+}
+
+static void sl_text_input_extension_get_extended_text_input(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t id,
+    struct wl_resource* text_input) {
+  struct sl_host_text_input_extension* host =
+      static_cast<sl_host_text_input_extension*>(
+          wl_resource_get_user_data(resource));
+  struct sl_host_text_input* host_text_input =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(text_input));
+  struct wl_resource* extended_text_input_resource =
+      wl_resource_create(client, &zcr_extended_text_input_v1_interface, 1, id);
+  struct sl_host_extended_text_input* extended_text_input_host =
+      static_cast<sl_host_extended_text_input*>(
+          malloc(sizeof(struct sl_host_extended_text_input)));
+
+  extended_text_input_host->resource = extended_text_input_resource;
+  extended_text_input_host->ctx = host->ctx;
+  extended_text_input_host->proxy =
+      zcr_text_input_extension_v1_get_extended_text_input(
+          host->ctx->text_input_extension->internal, host_text_input->proxy);
+  wl_resource_set_implementation(
+      extended_text_input_resource, &sl_extended_text_input_implementation,
+      extended_text_input_host, sl_destroy_host_extended_text_input);
+  zcr_extended_text_input_v1_set_user_data(extended_text_input_host->proxy,
+                                           extended_text_input_host);
+  zcr_extended_text_input_v1_add_listener(extended_text_input_host->proxy,
+                                          &sl_extended_text_input_listener,
+                                          extended_text_input_host);
+}  // NOLINT(whitespace/indent)
+
+static void sl_destroy_host_text_input_extension(struct wl_resource* resource) {
+  struct sl_host_text_input_extension* host =
+      static_cast<sl_host_text_input_extension*>(
+          wl_resource_get_user_data(resource));
+
+  zcr_text_input_extension_v1_destroy(host->proxy);
+  wl_resource_set_user_data(resource, NULL);
+  free(host);
+}
+
+static struct zcr_text_input_extension_v1_interface
+    sl_text_input_extension_implementation = {
+        sl_text_input_extension_get_extended_text_input,
+};
+
+static void sl_bind_host_text_input_extension(struct wl_client* client,
+                                              void* data,
+                                              uint32_t version,
+                                              uint32_t id) {
+  struct sl_context* ctx = (struct sl_context*)data;
+  struct sl_text_input_extension* text_input_extension =
+      ctx->text_input_extension;
+  struct sl_host_text_input_extension* host =
+      static_cast<sl_host_text_input_extension*>(malloc(sizeof(*host)));
+  assert(host);
+  host->ctx = ctx;
+  host->resource =
+      wl_resource_create(client, &zcr_text_input_extension_v1_interface, 1, id);
+  wl_resource_set_implementation(host->resource,
+                                 &sl_text_input_extension_implementation, host,
+                                 sl_destroy_host_text_input_extension);
+  host->proxy = static_cast<zcr_text_input_extension_v1*>(wl_registry_bind(
+      wl_display_get_registry(ctx->display), text_input_extension->id,
+      &zcr_text_input_extension_v1_interface,
+      wl_resource_get_version(host->resource)));
+  zcr_text_input_extension_v1_set_user_data(host->proxy, host);
+}
+
+struct sl_global* sl_text_input_extension_global_create(
+    struct sl_context* ctx) {
+  return sl_global_create(ctx, &zcr_text_input_extension_v1_interface, 1, ctx,
+                          sl_bind_host_text_input_extension);
 }

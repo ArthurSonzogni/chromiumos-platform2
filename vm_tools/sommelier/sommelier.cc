@@ -41,6 +41,7 @@
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "pointer-constraints-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "relative-pointer-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "text-input-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -656,6 +657,20 @@ void sl_registry_handler(void* data,
     text_input_manager->host_global = sl_text_input_manager_global_create(ctx);
     assert(!ctx->text_input_manager);
     ctx->text_input_manager = text_input_manager;
+  } else if (strcmp(interface, "zcr_text_input_extension_v1") == 0) {
+    struct sl_text_input_extension* text_input_extension =
+        static_cast<sl_text_input_extension*>(
+            malloc(sizeof(struct sl_text_input_extension)));
+    assert(text_input_extension);
+    text_input_extension->ctx = ctx;
+    text_input_extension->id = id;
+    text_input_extension->internal =
+        static_cast<zcr_text_input_extension_v1*>(wl_registry_bind(
+            registry, id, &zcr_text_input_extension_v1_interface, 1));
+    text_input_extension->host_global =
+        sl_text_input_extension_global_create(ctx);
+    assert(!ctx->text_input_extension);
+    ctx->text_input_extension = text_input_extension;
 #ifdef GAMEPAD_SUPPORT
   } else if (strcmp(interface, "zcr_gaming_input_v2") == 0) {
     struct sl_gaming_input_manager* gaming_input_manager =
@@ -783,6 +798,12 @@ static void sl_registry_remover(void* data,
     sl_global_destroy(ctx->text_input_manager->host_global);
     free(ctx->text_input_manager);
     ctx->text_input_manager = NULL;
+    return;
+  }
+  if (ctx->text_input_extension && ctx->text_input_extension->id == id) {
+    sl_global_destroy(ctx->text_input_extension->host_global);
+    free(ctx->text_input_extension);
+    ctx->text_input_extension = NULL;
     return;
   }
 #ifdef GAMEPAD_SUPPORT

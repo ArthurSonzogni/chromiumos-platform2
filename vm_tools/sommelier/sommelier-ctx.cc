@@ -111,6 +111,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->linux_dmabuf = NULL;
   ctx->keyboard_extension = NULL;
   ctx->text_input_manager = NULL;
+  ctx->text_input_extension = NULL;
   ctx->xdg_output_manager = NULL;
 #ifdef GAMEPAD_SUPPORT
   ctx->gaming_input_manager = NULL;
