@@ -16,8 +16,6 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/time/time.h>
 
-#include "dns-proxy/metrics.h"
-
 namespace dns_proxy {
 
 // AresClient resolves DNS queries by forwarding wire-format DNS queries to the

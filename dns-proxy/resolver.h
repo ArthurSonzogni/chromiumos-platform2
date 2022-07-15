@@ -258,9 +258,6 @@ class Resolver {
   std::map<std::string, std::unique_ptr<ProbeState>> name_servers_;
   std::map<std::string, std::unique_ptr<ProbeState>> doh_providers_;
 
-  // Map of SocketFds keyed by its SocketFd ID.
-  std::map<int, std::unique_ptr<SocketFd>> sock_fds_;
-
   // Provided for testing only. Boolean to disable probe.
   bool disable_probe_ = false;
 
@@ -270,7 +267,11 @@ class Resolver {
   // Maximum number of retries before giving up.
   int max_num_retries_;
 
+  // Metrics must outlive SocketFd as it is called on SocketFd's destructor.
   std::unique_ptr<Metrics> metrics_;
+
+  // Map of SocketFds keyed by its SocketFd ID.
+  std::map<int, std::unique_ptr<SocketFd>> sock_fds_;
 
   // Ares client to resolve DNS through standard plain-text DNS.
   std::unique_ptr<AresClient> ares_client_;

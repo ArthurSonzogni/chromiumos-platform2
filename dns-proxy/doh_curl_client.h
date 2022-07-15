@@ -16,8 +16,6 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/time/time.h>
 
-#include "dns-proxy/metrics.h"
-
 namespace dns_proxy {
 
 // List of HTTP status codes.
@@ -222,8 +220,6 @@ class DoHCurlClient : public DoHCurlClientInterface {
 
   // CURL multi handle to do asynchronous requests.
   CURLM* curlm_;
-
-  Metrics* metrics_;
 
   base::WeakPtrFactory<DoHCurlClient> weak_factory_{this};
 };
