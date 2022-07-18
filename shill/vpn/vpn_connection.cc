@@ -14,7 +14,6 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/task/post_task.h>
 
 namespace shill {
 
