@@ -44,6 +44,7 @@ generate_dbus_proxies("spaced_proxy") {
 
 shared_library("libspaced") {
   sources = [
+    "calculator/stateful_free_space_calculator.cc",
     "disk_usage_impl.cc",
     "disk_usage_proxy.cc",
   ]
@@ -95,7 +96,10 @@ install_config("install_headers") {
 
 if (use.test) {
   executable("libspaced_unittests") {
-    sources = [ "disk_usage_test.cc" ]
+    sources = [
+      "calculator/stateful_free_space_calculator_test.cc",
+      "disk_usage_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
