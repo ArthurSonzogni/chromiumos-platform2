@@ -49,11 +49,25 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   void DisableProfile(std::unique_ptr<DBusResponse<>> response);
 
   // Sends notifications to smdp if !err. Always returns success on dbus
-  void FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response, int err);
+  void FinishProfileOpCb(EuiccOp euicc_op,
+                         std::shared_ptr<DBusResponse<>> response,
+                         int err);
 
   void SetNicknameMethod(std::string nickname,
                          std::unique_ptr<DBusResponse<>> response);
   void OnRestoreActiveSlot(std::shared_ptr<DBusResponse<>> response, int error);
+  void SendDBusError(EuiccOp euicc_op,
+                     std::shared_ptr<Profile::DBusResponse<>> response,
+                     int lpa_error,
+                     int modem_error);
+  template <typename T>
+  void RunOnSuccess(EuiccOp euicc_op,
+                    base::OnceCallback<void(T)> cb,
+                    T response,
+                    int err);
+  void SendDBusSuccess(EuiccOp euicc_op,
+                       std::shared_ptr<Profile::DBusResponse<>> response);
+  int GetMCCMNCAsInt();
 
   // Used to set other profiles as disabled when a new profile is enabled
   base::RepeatingCallback<void(const std::string&)> on_profile_enabled_cb_;

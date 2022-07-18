@@ -587,6 +587,28 @@
       </summary>
     </metric>
   </event>
+  <event name="HermesOp">
+    <summary>
+      Records information about eSIM operations
+    </summary>
+    <metric name="Operation" type="int">
+      <summary>
+        Indicates the eSIM operation being performed.
+      </summary>
+    </metric>
+    <metric name="Result" type="int">
+      <summary>
+        Indicates the result of the eSIM operation. See
+        hermes/lpa_util.cc for list of values.
+      </summary>
+    </metric>
+    <metric name="home_mccmnc" type="int">
+      <summary>
+        Indicates the mccmnc of the profile on which the eSIM operation was
+        performed.
+      </summary>
+    </metric>
+  </event>
 </project>
 
 <project name="rmad">

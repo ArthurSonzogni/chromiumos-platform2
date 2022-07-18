@@ -21,10 +21,11 @@ constexpr auto kLpaRetryDelay = base::Seconds(2);
 constexpr auto kHermesTimeout = base::Minutes(4);
 
 constexpr int kSuccess = 0;
+constexpr int kDefaultError = -1;
 // This error will be returned when a received mbim/qmi message cannot be parsed
 // or when it is received in an unexpected state.
-constexpr int kModemMessageProcessingError = -1;
-constexpr int kModemManagerError = -2;
+constexpr int kModemMessageProcessingError = -2;
+constexpr int kModemManagerError = -3;
 
 std::string GetTrailingChars(const std::string& pii, int num_chars);
 // Used to redact PII in logs

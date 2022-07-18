@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
 #include <google-lpa/lpa/data/proto/euicc_info_1.pb.h>
+#include <metrics/structured/structured_events.h>
 
 // USE_INTERNAL is set if ChromeOS is being compiled.
 #if USE_INTERNAL
@@ -189,7 +190,8 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START},
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(delete_profile), std::move(dbus_result)));
+                     EuiccOp::UNINSTALL, std::move(delete_profile),
+                     std::move(dbus_result)));
 }
 
 void Euicc::DeleteProfile(dbus::ObjectPath profile_path,
@@ -236,7 +238,7 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
-    EndEuiccOp(dbus_result, std::move(decoded_error));
+    EndEuiccOp(EuiccOp::INSTALL, dbus_result, std::move(decoded_error), error);
     return;
   }
 
@@ -266,7 +268,8 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
     auto profile_error = brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorInternalLpaFailure,
         "Failed to create Profile object");
-    EndEuiccOp(dbus_result, std::move(profile_error));
+    EndEuiccOp(EuiccOp::INSTALL, dbus_result, std::move(profile_error),
+               kDefaultError);
     return;
   }
 
@@ -288,7 +291,9 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
             context_->executor(),
             [this, dbus_result{std::move(dbus_result)}, profile_path](
                 std::vector<lpa::proto::ProfileInfo>& profile_infos,
-                int /*error*/) { EndEuiccOp(dbus_result, profile_path); });
+                int /*error*/) {
+              EndEuiccOp(EuiccOp::INSTALL, dbus_result, profile_path);
+            });
       });
 }
 
@@ -306,7 +311,8 @@ void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
-    EndEuiccOp(dbus_result, std::move(decoded_error));
+    EndEuiccOp(EuiccOp::UNINSTALL, dbus_result, std::move(decoded_error),
+               error);
     return;
   }
 
@@ -319,20 +325,21 @@ void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
   CHECK(iter != installed_profiles_.end());
   installed_profiles_.erase(iter);
   UpdateInstalledProfilesProperty();
-  SendNotifications(std::move(dbus_result));
+  SendNotifications(EuiccOp::UNINSTALL, std::move(dbus_result));
 }
 void Euicc::SendNotifications(
+    EuiccOp euicc_op,
     DbusResult<> dbus_result) {  // Send notifications and refresh LPA profile
                                  // cache. No errors will be raised
   // if these operations fail since the profile operation already succeeded.
   context_->lpa()->SendNotifications(
       context_->executor(),
-      [this, dbus_result{std::move(dbus_result)}](int /*err*/) {
+      [this, euicc_op, dbus_result{std::move(dbus_result)}](int /*err*/) {
         context_->lpa()->GetInstalledProfiles(
             context_->executor(),
-            [this, dbus_result{std::move(dbus_result)}](
+            [this, euicc_op, dbus_result{std::move(dbus_result)}](
                 std::vector<lpa::proto::ProfileInfo>& profile_infos,
-                int /*error*/) { EndEuiccOp(dbus_result); });
+                int /*error*/) { EndEuiccOp(euicc_op, dbus_result); });
       });
 }
 
@@ -374,7 +381,8 @@ void Euicc::OnInstalledProfilesReceived(
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(ERROR) << "Failed to retrieve installed profiles";
-    EndEuiccOp(dbus_result, std::move(decoded_error));
+    EndEuiccOp(EuiccOp::REFRESH_INSTALLED, dbus_result,
+               std::move(decoded_error), error);
     return;
   }
   installed_profiles_.clear();
@@ -393,15 +401,17 @@ void Euicc::OnInstalledProfilesReceived(
   }
   UpdateInstalledProfilesProperty();
   if (!restore_slot) {
-    EndEuiccOp(dbus_result);
+    EndEuiccOp(EuiccOp::REFRESH_INSTALLED, dbus_result);
     return;
   }
   // Restore the active slot and Run end_euicc_op.
   auto end_euicc_op =
-      base::BindOnce(&Euicc::EndEuiccOpNoObject, weak_factory_.GetWeakPtr());
+      base::BindOnce(&Euicc::EndEuiccOpNoObject, weak_factory_.GetWeakPtr(),
+                     EuiccOp::REFRESH_INSTALLED);
   context_->modem_control()->RestoreActiveSlot(
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(end_euicc_op), std::move(dbus_result)));
+                     EuiccOp::REFRESH_INSTALLED, std::move(end_euicc_op),
+                     std::move(dbus_result)));
 }
 
 void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
@@ -445,7 +455,8 @@ void Euicc::OnPendingProfilesReceived(
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(ERROR) << "Failed to retrieve pending profiles";
-    EndEuiccOp(dbus_result, std::move(decoded_error));
+    EndEuiccOp(EuiccOp::REQUEST_PENDING, dbus_result, std::move(decoded_error),
+               error);
     return;
   }
 
@@ -461,7 +472,7 @@ void Euicc::OnPendingProfilesReceived(
     }
   }
   UpdatePendingProfilesProperty();
-  EndEuiccOp(dbus_result);
+  EndEuiccOp(EuiccOp::REQUEST_PENDING, dbus_result);
 }
 
 void Euicc::SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result) {
@@ -478,9 +489,9 @@ void Euicc::SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result) {
   auto set_test_mode_internal = base::BindOnce(
       &Euicc::SetTestMode, weak_factory_.GetWeakPtr(), is_test_mode);
   context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
+      {physical_slot_, EuiccStep::START, EuiccOp::SET_TEST_MODE},
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(set_test_mode_internal),
+                     EuiccOp::SET_TEST_MODE, std::move(set_test_mode_internal),
                      std::move(dbus_result)));
 }
 
@@ -491,10 +502,11 @@ void Euicc::SetTestMode(bool is_test_mode, DbusResult<> dbus_result) {
       [this, dbus_result{std::move(dbus_result)}](int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          EndEuiccOp(dbus_result, std::move(decoded_error));
+          EndEuiccOp(EuiccOp::SET_TEST_MODE, dbus_result,
+                     std::move(decoded_error), error);
           return;
         }
-        EndEuiccOp(dbus_result);
+        EndEuiccOp(EuiccOp::SET_TEST_MODE, dbus_result);
       });
 }
 
@@ -538,12 +550,13 @@ void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
       [this, dbus_result{std::move(dbus_result)}](int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          EndEuiccOp(dbus_result, std::move(decoded_error));
+          EndEuiccOp(EuiccOp::RESET_MEMORY, dbus_result,
+                     std::move(decoded_error), error);
           return;
         }
         installed_profiles_.clear();
         UpdateInstalledProfilesProperty();
-        SendNotifications(std::move(dbus_result));
+        SendNotifications(EuiccOp::RESET_MEMORY, std::move(dbus_result));
       });
 }
 
@@ -560,9 +573,10 @@ void Euicc::IsTestEuicc(DbusResult<bool> dbus_result) {
   auto get_euicc_info_1 =
       base::BindOnce(&Euicc::GetEuiccInfo1, weak_factory_.GetWeakPtr());
   context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
+      {physical_slot_, EuiccStep::START, EuiccOp::GET_EUICC_INFO1},
       base::BindOnce(&Euicc::RunOnSuccess<bool>, weak_factory_.GetWeakPtr(),
-                     std::move(get_euicc_info_1), std::move(dbus_result)));
+                     EuiccOp::GET_EUICC_INFO1, std::move(get_euicc_info_1),
+                     std::move(dbus_result)));
 }
 
 void Euicc::GetEuiccInfo1(DbusResult<bool> dbus_result) {
@@ -575,53 +589,72 @@ void Euicc::GetEuiccInfo1(DbusResult<bool> dbus_result) {
         LOG(INFO) << "euicc_info_1:" << euicc_info_1.DebugString();
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          EndEuiccOp(dbus_result, std::move(decoded_error));
+          EndEuiccOp(EuiccOp::GET_EUICC_INFO1, dbus_result,
+                     std::move(decoded_error), error);
           return;
         }
         constexpr char kTestEuiccInfo1[] =
             "665A1433D67C1A2C5DB8B52C967F10A057BA5CB2";
         for (const auto& pkid : euicc_info_1.pkid_for_verif()) {
           if (pkid == kTestEuiccInfo1) {
-            EndEuiccOp(dbus_result, true);
+            EndEuiccOp(EuiccOp::GET_EUICC_INFO1, dbus_result, true);
             return;
           }
         }
-        EndEuiccOp(dbus_result, false);
+        EndEuiccOp(EuiccOp::GET_EUICC_INFO1, dbus_result, false);
       });
 }
 
 template <typename... T>
-void Euicc::EndEuiccOp(DbusResult<T...> dbus_result, T... object) {
+void Euicc::EndEuiccOp(EuiccOp euicc_op,
+                       DbusResult<T...> dbus_result,
+                       T... object) {
   auto send_dbus_response = base::BindOnce(
-      [](const DbusResult<T...>& dbus_result, const T&... object, int err) {
+      [](EuiccOp euicc_op, const DbusResult<T...>& dbus_result,
+         const T&... object, int err) {
         PrintEuiccEventResult(err);
         dbus_result.Success(object...);
+        ::metrics::structured::events::cellular::HermesOp()
+            .SetOperation(to_underlying(euicc_op))
+            .SetResult(kSuccess)
+            .Record();
       },
-      dbus_result, object...);
+      euicc_op, dbus_result, object...);
   context_->modem_control()->ProcessEuiccEvent({physical_slot_, EuiccStep::END},
                                                std::move(send_dbus_response));
 }
 
 // Remove variadic template, and polymorphism on EndEuiccOp for use in lambdas
 // and callbacks.
-void Euicc::EndEuiccOpNoObject(DbusResult<> dbus_result) {
-  EndEuiccOp(std::move(dbus_result));
+void Euicc::EndEuiccOpNoObject(EuiccOp euicc_op, DbusResult<> dbus_result) {
+  EndEuiccOp(euicc_op, std::move(dbus_result));
 }
 
 template <typename... T>
-void Euicc::EndEuiccOp(DbusResult<T...> dbus_result, brillo::ErrorPtr error) {
+void Euicc::EndEuiccOp(EuiccOp euicc_op,
+                       DbusResult<T...> dbus_result,
+                       brillo::ErrorPtr error,
+                       int error_code_for_metrics) {
   auto send_dbus_response = base::BindOnce(
-      [](const DbusResult<T...>& dbus_result, brillo::ErrorPtr error, int err) {
-        PrintEuiccEventResult(err);
+      [](const EuiccOp euicc_op, const DbusResult<T...>& dbus_result,
+         brillo::ErrorPtr error, int error_code_for_metrics,
+         int euicc_event_err) {
+        PrintEuiccEventResult(euicc_event_err);
         dbus_result.Error(error);
+        ::metrics::structured::events::cellular::HermesOp()
+            .SetOperation(to_underlying(euicc_op))
+            .SetResult(error_code_for_metrics)
+            .Record();
       },
-      dbus_result, std::move(error));
-  context_->modem_control()->ProcessEuiccEvent({physical_slot_, EuiccStep::END},
-                                               std::move(send_dbus_response));
+      euicc_op, dbus_result, std::move(error), error_code_for_metrics);
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::END, euicc_op},
+      std::move(send_dbus_response));
 }
 
 template <typename... T>
-void Euicc::RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
+void Euicc::RunOnSuccess(EuiccOp euicc_op,
+                         base::OnceCallback<void(DbusResult<T...>)> cb,
                          DbusResult<T...> dbus_result,
                          int err) {
   if (err) {
@@ -629,7 +662,7 @@ void Euicc::RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
     auto decoded_error = brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
         "QMI/MBIM operation failed with code: " + std::to_string(err));
-    EndEuiccOp(dbus_result, std::move(decoded_error));
+    EndEuiccOp(euicc_op, dbus_result, std::move(decoded_error), err);
     return;
   }
   std::move(cb).Run(std::move(dbus_result));
@@ -647,7 +680,8 @@ void Euicc::OnFWUpdated(
     auto decoded_error =
         brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                               kErrorUnknown, "eSIM OS update failed");
-    EndEuiccOp(dbus_result, std::move(decoded_error));
+    EndEuiccOp(EuiccOp::FW_UPDATE, dbus_result, std::move(decoded_error),
+               kDefaultError);
     return;
   }
   auto start_get_card_version = base::BindOnce(
@@ -656,7 +690,7 @@ void Euicc::OnFWUpdated(
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::END, EuiccOp::FW_UPDATE},
       base::BindOnce(&Euicc::RunOnSuccess<T...>, weak_factory_.GetWeakPtr(),
-                     std::move(start_get_card_version),
+                     EuiccOp::FW_UPDATE, std::move(start_get_card_version),
                      std::move(dbus_result)));
 }
 #endif
@@ -672,8 +706,8 @@ void Euicc::InitEuicc(InitEuiccStep step,
         context_->modem_control()->ProcessEuiccEvent(
             {physical_slot_, EuiccStep::START},
             base::BindOnce(&Euicc::RunOnSuccess<T...>,
-                           weak_factory_.GetWeakPtr(), std::move(cb),
-                           std::move(dbus_result)));
+                           weak_factory_.GetWeakPtr(), EuiccOp::UNKNOWN,
+                           std::move(cb), std::move(dbus_result)));
         return;
       }
 
@@ -688,8 +722,8 @@ void Euicc::InitEuicc(InitEuiccStep step,
         context_->modem_control()->ProcessEuiccEvent(
             {physical_slot_, EuiccStep::START, EuiccOp::FW_UPDATE},
             base::BindOnce(&Euicc::RunOnSuccess<T...>,
-                           weak_factory_.GetWeakPtr(), std::move(update_fw),
-                           std::move(dbus_result)));
+                           weak_factory_.GetWeakPtr(), EuiccOp::FW_UPDATE,
+                           std::move(update_fw), std::move(dbus_result)));
         return;
 #else
         LOG(ERROR) << "FW path specified but fw update library does not exist";
@@ -721,9 +755,10 @@ void Euicc::InitEuicc(InitEuiccStep step,
           base::BindOnce(&Euicc::InitEuicc<T...>, weak_factory_.GetWeakPtr(),
                          InitEuiccStep::GET_CARD_VERSION, std::move(cb));
       context_->modem_control()->ProcessEuiccEvent(
-          {physical_slot_, EuiccStep::START},
+          {physical_slot_, EuiccStep::START, EuiccOp::GET_EUICC_INFO1},
           base::BindOnce(&Euicc::RunOnSuccess<T...>, weak_factory_.GetWeakPtr(),
-                         std::move(get_card_version), std::move(dbus_result)));
+                         EuiccOp::GET_EUICC_INFO1, std::move(get_card_version),
+                         std::move(dbus_result)));
       return;
     }
     case InitEuiccStep::GET_CARD_VERSION: {
@@ -742,7 +777,8 @@ void Euicc::InitEuicc(InitEuiccStep step,
             LOG(INFO) << "euicc_info_1:" << euicc_info_1.DebugString();
             auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
             if (decoded_error) {
-              EndEuiccOp(dbus_result, std::move(decoded_error));
+              EndEuiccOp(EuiccOp::GET_EUICC_INFO1, dbus_result,
+                         std::move(decoded_error), error);
               return;
             }
             euicc_initialized_ = true;

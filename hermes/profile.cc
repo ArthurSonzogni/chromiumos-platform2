@@ -12,11 +12,14 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
+#include <metrics/structured/structured_events.h>
 
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 #include "hermes/lpa_util.h"
+#include "hermes/type_traits.h"
 
 namespace hermes {
 
@@ -50,30 +53,6 @@ std::optional<profile::ProfileClass> LpaProfileClassToHermes(
       LOG(ERROR) << "Unrecognized lpa ProfileClass: " << cls;
       return std::nullopt;
   }
-}
-
-void SendDBusError(std::shared_ptr<Profile::DBusResponse<>> response,
-                   brillo::ErrorPtr lpa_error,
-                   int modem_error) {
-  if (modem_error != kSuccess) {
-    LOG(ERROR) << "Modem finished with error code: " << modem_error;
-  }
-  response->ReplyWithError(lpa_error.get());
-}
-
-template <typename T>
-void RunOnSuccess(base::OnceCallback<void(T)> cb, T response, int err) {
-  if (err) {
-    LOG(ERROR) << "Received modem error: " << err;
-    auto decoded_error = LpaErrorToBrillo(FROM_HERE, err);
-    if (decoded_error) {
-      response->ReplyWithError(
-          FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
-          "QMI/MBIM operation failed with code: " + std::to_string(err));
-    }
-    return;
-  }
-  std::move(cb).Run(std::move(response));
 }
 
 }  // namespace
@@ -157,7 +136,8 @@ void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
       base::BindOnce(&Profile::EnableProfile, weak_factory_.GetWeakPtr());
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START, EuiccOp::ENABLE},
-      base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+      base::BindOnce(&Profile::RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+                     weak_factory_.GetWeakPtr(), EuiccOp::ENABLE,
                      std::move(enable_profile), std::move(response)));
 }
 
@@ -196,7 +176,8 @@ void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
       base::BindOnce(&Profile::DisableProfile, weak_factory_.GetWeakPtr());
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START, EuiccOp::DISABLE},
-      base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+      base::BindOnce(&Profile::RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+                     weak_factory_.GetWeakPtr(), EuiccOp::DISABLE,
                      std::move(disable_profile), std::move(response)));
 }
 
@@ -215,21 +196,18 @@ void Profile::DisableProfile(std::unique_ptr<DBusResponse<>> response) {
 
 void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
-  auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-  if (decoded_error) {
-    LOG(ERROR) << "Failed enabling profile: " << object_path_.value()
-               << " (error " << decoded_error << ")";
+  if (error) {
     context_->modem_control()->ProcessEuiccEvent(
         {physical_slot_, EuiccStep::END},
-        base::BindOnce(&SendDBusError, std::move(response),
-                       std::move(decoded_error)));
+        base::BindOnce(&Profile::SendDBusError, weak_factory_.GetWeakPtr(),
+                       EuiccOp::ENABLE, std::move(response), error));
     return;
   }
   on_profile_enabled_cb_.Run(GetIccid());
   VLOG(2) << "Enabled profile: " << object_path_.value();
   auto send_notifs =
       base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
-                     std::move(response));
+                     EuiccOp::ENABLE, std::move(response));
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::PENDING_NOTIFICATIONS},
       std::move(send_notifs));
@@ -237,28 +215,26 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
 
 void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
-  auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-  if (decoded_error) {
-    LOG(ERROR) << "Failed disabling profile: " << object_path_.value()
-               << " (error " << decoded_error << ")";
+  if (error) {
     context_->modem_control()->ProcessEuiccEvent(
-        {physical_slot_, EuiccStep::END},
-        base::BindOnce(&SendDBusError, std::move(response),
-                       std::move(decoded_error)));
+        {physical_slot_, EuiccStep::END, EuiccOp::DISABLE},
+        base::BindOnce(&Profile::SendDBusError, weak_factory_.GetWeakPtr(),
+                       EuiccOp::DISABLE, std::move(response), error));
     return;
   }
-  LOG(INFO) << "Disabled profile: " << object_path_.value();
+  VLOG(2) << "Disabled profile: " << object_path_.value();
   SetState(profile::kInactive);
 
   auto send_notifs =
       base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
-                     std::move(response));
+                     EuiccOp::DISABLE, std::move(response));
   context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::PENDING_NOTIFICATIONS},
+      {physical_slot_, EuiccStep::PENDING_NOTIFICATIONS, EuiccOp::DISABLE},
       std::move(send_notifs));
 }
 
-void Profile::FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response,
+void Profile::FinishProfileOpCb(EuiccOp euicc_op,
+                                std::shared_ptr<DBusResponse<>> response,
                                 int err) {
   LOG(INFO) << __func__;
   if (err) {
@@ -266,7 +242,7 @@ void Profile::FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response,
     // Notifications are optional by the standard. Since FinishProfileOp failed,
     // it means notifications cannot be sent, but our enable/disable succeeded.
     // return success on DBus anyway since only notifications cannot be sent.
-    response->Return();
+    SendDBusSuccess(euicc_op, response);
     return;
   }
   context_->lpa()->SendNotifications(
@@ -301,8 +277,9 @@ void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
       base::BindOnce(&Profile::SetNicknameMethod, weak_factory_.GetWeakPtr(),
                      std::move(nickname));
   context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
-      base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+      {physical_slot_, EuiccStep::START, EuiccOp::RENAME},
+      base::BindOnce(&Profile::RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+                     weak_factory_.GetWeakPtr(), EuiccOp::RENAME,
                      std::move(set_nickname), std::move(response)));
 }
 
@@ -315,11 +292,12 @@ void Profile::SetNicknameMethod(std::string nickname,
       [this, nickname,
        response{std::shared_ptr<DBusResponse<>>(std::move(response))}](
           int error) mutable {
-        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-        if (decoded_error) {
-          LOG(ERROR) << "Failed to set profile nickname: "
-                     << decoded_error->GetMessage();
-          response->ReplyWithError(decoded_error.get());
+        if (error) {
+          SendDBusError(
+              EuiccOp::RENAME, response, error /* lpa_error */,
+              kSuccess /* modem_error */);  // kSuccess indicates that the modem
+                                            // did not return an error but the
+                                            // LPA did.
           return;
         }
         this->SetNickname(nickname);
@@ -333,23 +311,72 @@ void Profile::SetNicknameMethod(std::string nickname,
 void Profile::OnRestoreActiveSlot(std::shared_ptr<DBusResponse<>> response,
                                   int error) {
   if (error) {
-    auto decoded_error = brillo::Error::Create(
-        FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
-        "QMI/MBIM operation failed with code: " + std::to_string(error));
-    LOG(ERROR) << "Failed to restore slot: " << object_path_.value() << " ("
-               << decoded_error << ")";
     context_->modem_control()->ProcessEuiccEvent(
         {physical_slot_, EuiccStep::END},
-        base::BindOnce(&SendDBusError, std::move(response),
-                       std::move(decoded_error)));
+        base::BindOnce(&Profile::SendDBusError, weak_factory_.GetWeakPtr(),
+                       EuiccOp::RENAME, std::move(response), error));
     return;
   }
   auto return_dbus_success = base::BindOnce(
-      [](std::shared_ptr<DBusResponse<>> response) { response->Return(); });
+      &Profile::SendDBusSuccess, weak_factory_.GetWeakPtr(), EuiccOp::RENAME);
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::END},
-      base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+      base::BindOnce(&Profile::RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+                     weak_factory_.GetWeakPtr(), EuiccOp::RENAME,
                      std::move(return_dbus_success), std::move(response)));
+}
+
+void Profile::SendDBusError(EuiccOp euicc_op,
+                            std::shared_ptr<Profile::DBusResponse<>> response,
+                            int lpa_error,
+                            int modem_error) {
+  if (modem_error != kSuccess) {
+    LOG(ERROR) << "Modem finished with error code: " << modem_error;
+  }
+  ::metrics::structured::events::cellular::HermesOp()
+      .SetOperation(to_underlying(euicc_op))
+      .SetResult(lpa_error)
+      .Sethome_mccmnc(GetMCCMNCAsInt())
+      .Record();
+  auto decoded_error = LpaErrorToBrillo(FROM_HERE, lpa_error);
+  LOG(ERROR) << euicc_op << " failed: " << decoded_error;
+  response->ReplyWithError(decoded_error.get());
+}
+
+void Profile::SendDBusSuccess(
+    EuiccOp euicc_op, std::shared_ptr<Profile::DBusResponse<>> response) {
+  ::metrics::structured::events::cellular::HermesOp()
+      .SetOperation(to_underlying(euicc_op))
+      .Sethome_mccmnc(GetMCCMNCAsInt())
+      .Record();
+  response->Return();
+}
+
+template <typename T>
+void Profile::RunOnSuccess(EuiccOp euicc_op,
+                           base::OnceCallback<void(T)> cb,
+                           T response,
+                           int err) {
+  if (err) {
+    LOG(ERROR) << "Received modem error: " << err;
+    ::metrics::structured::events::cellular::HermesOp()
+        .SetOperation(to_underlying(euicc_op))
+        .SetResult(err)
+        .Sethome_mccmnc(GetMCCMNCAsInt())
+        .Record();
+    response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
+        "QMI/MBIM operation failed with code: " + std::to_string(err));
+    return;
+  }
+  std::move(cb).Run(std::move(response));
+}
+
+int Profile::GetMCCMNCAsInt() {
+  int res;
+  std::string mccmnc = GetMccMnc();
+  base::StringToInt(mccmnc, &res);
+  return res;
 }
 
 Profile::~Profile() {

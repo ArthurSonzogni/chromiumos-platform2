@@ -64,7 +64,7 @@ class Euicc {
                             DbusResult<> dbus_result);
 
   void UpdateInstalledProfilesProperty();
-  void SendNotifications(DbusResult<> dbus_result);
+  void SendNotifications(EuiccOp euicc_op, DbusResult<> dbus_result);
 
   // Update |installed_profiles_| with all profiles installed on the eUICC.
   void OnInstalledProfilesReceived(
@@ -97,12 +97,16 @@ class Euicc {
   void ResetMemory(int reset_options, DbusResult<> dbus_result);
   void GetEuiccInfo1(DbusResult<bool> dbus_result);
   template <typename... T>
-  void EndEuiccOp(DbusResult<T...> dbus_result, T... object);
+  void EndEuiccOp(EuiccOp euicc_op, DbusResult<T...> dbus_result, T... object);
   template <typename... T>
-  void EndEuiccOp(DbusResult<T...> dbus_result, brillo::ErrorPtr error);
-  void EndEuiccOpNoObject(DbusResult<> dbus_result);
+  void EndEuiccOp(EuiccOp euicc_op,
+                  DbusResult<T...> dbus_result,
+                  brillo::ErrorPtr error,
+                  int error_code_for_metrics);
+  void EndEuiccOpNoObject(EuiccOp euicc_op, DbusResult<> dbus_result);
   template <typename... T>
-  void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
+  void RunOnSuccess(EuiccOp euicc_op,
+                    base::OnceCallback<void(DbusResult<T...>)> cb,
                     DbusResult<T...> dbus_result,
                     int err);
 #if USE_INTERNAL

@@ -33,6 +33,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libglib_bridge",
+    "libmetrics",
     "openssl",
     "protobuf-lite",
     "re2",
@@ -117,6 +118,7 @@ static_library("libhermes") {
     ":hermes-protos",
     ":hermes_adaptors",
     ":modemmanager_proxies",
+    "//metrics/structured:libstructuredmetrics",
   ]
 }
 
