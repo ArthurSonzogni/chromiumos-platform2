@@ -12,7 +12,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
-#include "libhwsec/error/elliptic_curve_error.h"
 
 // Prevent the conflict definition from tss.h
 #undef TPM_ALG_RSA
@@ -240,11 +239,8 @@ TEST_F(BackendDeriveTpm2Test, DeriveEccOutOfRange) {
                                                                   fake_blob);
 
   ASSERT_FALSE(result.ok());
-
-  auto ecc_err = result.status().Find<EllipticCurveError>();
-
-  ASSERT_NE(ecc_err, nullptr);
-  EXPECT_EQ(EllipticCurveErrorCode::kScalarOutOfRange, ecc_err->ErrorCode());
+  EXPECT_EQ(result.status()->ToTPMRetryAction(),
+            TPMRetryAction::kEllipticCurveScalarOutOfRange);
 }
 
 }  // namespace hwsec

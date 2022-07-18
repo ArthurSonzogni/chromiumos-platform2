@@ -12,7 +12,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
-#include "libhwsec/error/elliptic_curve_error.h"
 
 // Prevent the conflict definition from tss.h
 #undef TPM_ALG_RSA

@@ -15,7 +15,6 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/error/elliptic_curve_error.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -59,8 +58,8 @@ hwsec::StatusOr<trunks::TPMS_ECC_POINT> DeriveTpmEccPointFromSeed(
 
   if (!ec->IsScalarValid(*private_key)) {
     // Generate another blob may resolve this issue.
-    return MakeStatus<EllipticCurveError>(
-        EllipticCurveErrorCode::kScalarOutOfRange);
+    return MakeStatus<TPMError>("ECC scalar out of range",
+                                TPMRetryAction::kEllipticCurveScalarOutOfRange);
   }
 
   crypto::ScopedEC_POINT public_point =

@@ -14,7 +14,6 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
-#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 

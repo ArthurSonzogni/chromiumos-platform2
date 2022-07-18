@@ -23,7 +23,6 @@
 #include <base/strings/stringprintf.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
-#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm2_error.h>
 #include <libhwsec/status.h>
@@ -53,8 +52,6 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using hwsec::EllipticCurveError;
-using hwsec::EllipticCurveErrorCode;
 using hwsec::TPM2Error;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
@@ -148,8 +145,9 @@ hwsec::Status DeriveTpmEccPointFromSeed(const SecureBlob& seed,
 
   if (!ec->IsScalarValid(*private_key)) {
     // Generate another pass_blob may resolve this issue.
-    return CreateError<EllipticCurveError>(
-        EllipticCurveErrorCode::kScalarOutOfRange);
+    return CreateError<TPMError>(
+        "ECC scalar out of range",
+        TPMRetryAction::kEllipticCurveScalarOutOfRange);
   }
 
   crypto::ScopedEC_POINT public_point =

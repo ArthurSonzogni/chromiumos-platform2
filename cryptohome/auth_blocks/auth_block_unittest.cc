@@ -13,7 +13,6 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
-#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -46,8 +45,6 @@ using cryptohome::error::CryptohomeLECredError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 
-using ::hwsec::EllipticCurveError;
-using ::hwsec::EllipticCurveErrorCode;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
@@ -1561,8 +1558,9 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
   // daemon.
   EXPECT_CALL(hwsec, GetAuthValue(_, _))
       .Times(Exactly(6))
-      .WillOnce(ReturnError<EllipticCurveError>(
-          EllipticCurveErrorCode::kScalarOutOfRange))
+      .WillOnce(
+          ReturnError<TPMError>("ECC scalar out of range",
+                                TPMRetryAction::kEllipticCurveScalarOutOfRange))
       .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)))
       .WillRepeatedly(ReturnValue(auth_value));
 

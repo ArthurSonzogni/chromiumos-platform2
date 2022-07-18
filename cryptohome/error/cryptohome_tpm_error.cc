@@ -45,6 +45,7 @@ void PopulateActionFromRetry(const hwsec::TPMRetryAction retry,
       actions->insert(ErrorAction::kAuth);
       break;
     case hwsec::TPMRetryAction::kNoRetry:
+    case hwsec::TPMRetryAction::kEllipticCurveScalarOutOfRange:
       actions->insert(ErrorAction::kDevCheckUnexpectedState);
       break;
     case hwsec::TPMRetryAction::kNone:

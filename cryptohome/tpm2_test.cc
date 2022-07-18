@@ -30,7 +30,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
@@ -57,8 +56,6 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using hwsec::EllipticCurveError;
-using hwsec::EllipticCurveErrorCode;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::Sha256;
@@ -1323,9 +1320,8 @@ TEST_F(Tpm2Test, GetEccAuthValueScalarOutOfRange) {
                                             pass_blob, &auth_value);
 
   EXPECT_NE(nullptr, err);
-  auto ecc_err = err.Find<EllipticCurveError>();
-  EXPECT_NE(nullptr, ecc_err);
-  EXPECT_EQ(EllipticCurveErrorCode::kScalarOutOfRange, ecc_err->ErrorCode());
+  EXPECT_EQ(err->ToTPMRetryAction(),
+            TPMRetryAction::kEllipticCurveScalarOutOfRange);
 }
 
 TEST_F(Tpm2Test, SealToPcrWithAuthorizationSuccess) {

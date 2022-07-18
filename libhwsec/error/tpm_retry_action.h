@@ -44,6 +44,10 @@ enum class TPMRetryAction {
   // Recommended action: The upper layer should know what to do. And handles it
   // correctly.
   kNoRetry,
+
+  // Action failed - The elliptic curve scalar out of range.
+  // Recommended action: Retry the operation with different scalar.
+  kEllipticCurveScalarOutOfRange,
 };
 
 }  // namespace hwsec
