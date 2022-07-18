@@ -16,6 +16,7 @@
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <base/gtest_prod_util.h>
+#include <crypto/scoped_openssl_types.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
@@ -76,6 +77,44 @@ class BackendTpm1 : public Backend {
    private:
     StatusOr<ScopedTssKey> GetAuthValueKey(
         const brillo::SecureBlob& auth_value);
+  };
+
+  class SignatureSealingTpm1 : public SignatureSealing,
+                               public SubClassHelper<BackendTpm1> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<SignatureSealedData> Seal(
+        const std::vector<OperationPolicySetting>& policies,
+        const brillo::SecureBlob& unsealed_data,
+        const brillo::Blob& public_key_spki_der,
+        const std::vector<Algorithm>& key_algorithms) override;
+    StatusOr<ChallengeResult> Challenge(
+        const OperationPolicy& policy,
+        const SignatureSealedData& sealed_data,
+        const brillo::Blob& public_key_spki_der,
+        const std::vector<Algorithm>& key_algorithms) override;
+    StatusOr<brillo::SecureBlob> Unseal(
+        ChallengeID challenge, const brillo::Blob& challenge_response) override;
+
+    const auto& get_current_challenge_data_for_test() const {
+      return current_challenge_data_;
+    }
+
+   private:
+    struct InternalChallengeData {
+      NoDefault<ChallengeID> challenge_id;
+      OperationPolicy policy;
+      brillo::Blob srk_wrapped_cmk;
+      brillo::Blob cmk_wrapped_auth_data;
+      brillo::Blob pcr_bound_secret;
+      brillo::Blob public_key_spki_der;
+      brillo::Blob cmk_pubkey;
+      brillo::Blob protection_key_pubkey;
+      crypto::ScopedRSA migration_destination_rsa;
+      brillo::Blob migration_destination_key_pubkey;
+    };
+
+    std::optional<InternalChallengeData> current_challenge_data_;
   };
 
   class DerivingTpm1 : public Deriving, public SubClassHelper<BackendTpm1> {
@@ -285,7 +324,9 @@ class BackendTpm1 : public Backend {
   Storage* GetStorage() override { return &storage_; }
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
-  SignatureSealing* GetSignatureSealing() override { return nullptr; }
+  SignatureSealing* GetSignatureSealing() override {
+    return &signature_sealing_;
+  }
   Deriving* GetDeriving() override { return &deriving_; }
   Encryption* GetEncryption() override { return &encryption_; }
   Signing* GetSigning() override { return nullptr; }
@@ -307,6 +348,7 @@ class BackendTpm1 : public Backend {
   DAMitigationTpm1 da_mitigation_{*this};
   StorageTpm1 storage_{*this};
   SealingTpm1 sealing_{*this};
+  SignatureSealingTpm1 signature_sealing_{*this};
   DerivingTpm1 deriving_{*this};
   EncryptionTpm1 encryption_{*this};
   KeyManagementTpm1 key_management_{*this};
@@ -323,6 +365,7 @@ class BackendTpm1 : public Backend {
   FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetDelegateTpmHandle);
 
   friend class BackendTpm1TestBase;
+  friend class BackendSignatureSealingTpm1Test;
 };
 
 }  // namespace hwsec
