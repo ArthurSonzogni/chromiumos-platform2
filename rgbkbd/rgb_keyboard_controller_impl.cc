@@ -71,7 +71,6 @@ void RgbKeyboardControllerImpl::SetKeyboardClient(RgbKeyboard* keyboard) {
 
 void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
     RgbKeyboardCapabilities capability) {
-  DCHECK(!capabilities_.has_value());
   capabilities_ = capability;
   if (capabilities_.value() == RgbKeyboardCapabilities::kIndividualKey) {
     PopulateRainbowModeMap();
