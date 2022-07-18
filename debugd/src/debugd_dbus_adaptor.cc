@@ -225,10 +225,6 @@ void DebugdDBusAdaptor::DeleteArcBugReportBackup(const std::string& username) {
   log_tool_->DeleteArcBugReportBackup(username);
 }
 
-void DebugdDBusAdaptor::GetJournalLog(const base::ScopedFD& fd) {
-  log_tool_->GetJournalLog(fd);
-}
-
 std::string DebugdDBusAdaptor::GetExample() {
   return example_tool_->GetExample();
 }

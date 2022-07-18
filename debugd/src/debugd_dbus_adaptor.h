@@ -121,7 +121,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
 
   void BackupArcBugReport(const std::string& username) override;
   void DeleteArcBugReportBackup(const std::string& username) override;
-  void GetJournalLog(const base::ScopedFD& fd) override;
   std::string GetExample() override;
   int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
                                        const std::string& uri) override;

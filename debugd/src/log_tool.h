@@ -111,7 +111,6 @@ class LogTool : public debugd::LogProvider {
                           const std::string& username);
   void BackupArcBugReport(const std::string& username);
   void DeleteArcBugReportBackup(const std::string& username);
-  void GetJournalLog(const base::ScopedFD& fd);
 
   // Returns a representation of |value| with the specified encoding.
   static std::string EncodeString(std::string value, Encoding source_encoding);

@@ -1182,13 +1182,6 @@ void LogTool::DeleteArcBugReportBackup(const std::string& username) {
   }
 }
 
-void LogTool::GetJournalLog(const base::ScopedFD& fd) {
-  Log journal(kCommand, "journal.export", "journalctl -n 10000 -o export",
-              "syslog", "syslog", 10 * 1024 * 1024, LogTool::Encoding::kBinary);
-  std::string output = journal.GetLogData();
-  base::WriteFileDescriptor(fd.get(), output);
-}
-
 // static
 string LogTool::EncodeString(string value, LogTool::Encoding source_encoding) {
   if (source_encoding == LogTool::Encoding::kBinary)
