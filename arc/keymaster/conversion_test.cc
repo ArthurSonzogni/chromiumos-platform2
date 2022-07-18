@@ -72,28 +72,25 @@ constexpr std::array<uint8_t, 5> kBlob3{{1, 2, 3, 4, 5}};
 std::vector<arc::mojom::KeyParameterPtr> KeyParameterVector() {
   std::vector<arc::mojom::KeyParameterPtr> parameters(5);
   // bool
-  auto paramBool = arc::mojom::IntegerKeyParam::New();
-  paramBool->set_boolean_value(true);
+  auto paramBool = arc::mojom::IntegerKeyParam::NewBooleanValue(true);
   parameters[0] =
       arc::mojom::KeyParameter::New(KM_TAG_CALLER_NONCE, std::move(paramBool));
   // enum, enum_rep, int, int_rep
-  auto paramInt = arc::mojom::IntegerKeyParam::New();
-  paramInt->set_integer(KM_ALGORITHM_TRIPLE_DES);
+  auto paramInt =
+      arc::mojom::IntegerKeyParam::NewInteger(KM_ALGORITHM_TRIPLE_DES);
   parameters[1] =
       arc::mojom::KeyParameter::New(KM_TAG_ALGORITHM, std::move(paramInt));
   // long
-  auto paramLong = arc::mojom::IntegerKeyParam::New();
-  paramLong->set_long_integer(65537);
+  auto paramLong = arc::mojom::IntegerKeyParam::NewLongInteger(65537);
   parameters[2] = arc::mojom::KeyParameter::New(KM_TAG_RSA_PUBLIC_EXPONENT,
                                                 std::move(paramLong));
   // date
-  auto paramDate = arc::mojom::IntegerKeyParam::New();
-  paramDate->set_date_time(1337);
+  auto paramDate = arc::mojom::IntegerKeyParam::NewDateTime(1337);
   parameters[3] = arc::mojom::KeyParameter::New(KM_TAG_ACTIVE_DATETIME,
                                                 std::move(paramDate));
   // bignum, bytes
-  auto paramBlob = arc::mojom::IntegerKeyParam::New();
-  paramBlob->set_blob(std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()));
+  auto paramBlob = arc::mojom::IntegerKeyParam::NewBlob(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()));
   parameters[4] = arc::mojom::KeyParameter::New(KM_TAG_APPLICATION_DATA,
                                                 std::move(paramBlob));
   return parameters;
@@ -136,7 +133,7 @@ TEST(ConvertToMessage, Buffer) {
   // Convert.
   ::keymaster::Buffer buffer;
   ConvertToMessage(input, &buffer);
-  uint8_t output[input.size()];
+  uint8_t output[kBlob1.size()];
 
   // Verify.
   EXPECT_TRUE(buffer.read(output, input.size()));

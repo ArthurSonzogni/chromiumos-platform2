@@ -345,29 +345,30 @@ std::vector<arc::mojom::KeyParameterPtr> ConvertToMojo(
   keymaster_key_param_t* params = param_set.params;
   for (size_t i = 0; i < param_set.length; ++i) {
     keymaster_tag_t tag = params[i].tag;
-    arc::mojom::IntegerKeyParamPtr param = arc::mojom::IntegerKeyParam::New();
+    arc::mojom::IntegerKeyParamPtr param;
     switch (keymaster_tag_get_type(tag)) {
       case KM_ENUM:
       case KM_ENUM_REP:
-        param->set_integer(params[i].enumerated);
+        param = arc::mojom::IntegerKeyParam::NewInteger(params[i].enumerated);
         break;
       case KM_UINT:
       case KM_UINT_REP:
-        param->set_integer(params[i].integer);
+        param = arc::mojom::IntegerKeyParam::NewInteger(params[i].integer);
         break;
       case KM_ULONG:
       case KM_ULONG_REP:
-        param->set_long_integer(params[i].long_integer);
+        param =
+            arc::mojom::IntegerKeyParam::NewLongInteger(params[i].long_integer);
         break;
       case KM_DATE:
-        param->set_date_time(params[i].date_time);
+        param = arc::mojom::IntegerKeyParam::NewDateTime(params[i].date_time);
         break;
       case KM_BOOL:
-        param->set_boolean_value(params[i].boolean);
+        param = arc::mojom::IntegerKeyParam::NewBooleanValue(params[i].boolean);
         break;
       case KM_BIGNUM:
       case KM_BYTES:
-        param->set_blob(
+        param = arc::mojom::IntegerKeyParam::NewBlob(
             ConvertToMojo(params[i].blob.data, params[i].blob.data_length));
         break;
       case KM_INVALID:
