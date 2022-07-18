@@ -137,6 +137,13 @@ class BacklightController {
   using GetToggledOffCallback =
       base::RepeatingCallback<void(bool* toggled_off)>;
 
+  using AmbientLightOnResumeMetricsCallback =
+      base::RepeatingCallback<void(int lux)>;
+  // Optionally register a handler for collecting ambient light on resume
+  // metrics.
+  virtual void RegisterAmbientLightResumeMetricsHandler(
+      AmbientLightOnResumeMetricsCallback callback) {}
+
  protected:
   // Helper methods that implementations can use to register D-Bus method call
   // handlers.

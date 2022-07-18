@@ -158,6 +158,7 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
 
 void AmbientLightHandler::HandleResume() {
   hysteresis_state_ = HysteresisState::RESUMING;
+  report_on_resuming_ = true;
 }
 
 std::string AmbientLightHandler::GetRecentReadingsString() const {
@@ -177,7 +178,12 @@ void AmbientLightHandler::OnAmbientLightUpdated(
 
   // Discard first reading after resume as it is probably cached value.
   if (hysteresis_state_ == HysteresisState::RESUMING) {
-    hysteresis_state_ = HysteresisState::IMMEDIATE;
+    if (delegate_->IsUsingAmbientLight()) {
+      hysteresis_state_ = HysteresisState::IMMEDIATE;
+    } else {
+      // Return to stable state if ALS is not being used by delegate
+      hysteresis_state_ = HysteresisState::STABLE;
+    }
     return;
   }
 
@@ -185,6 +191,11 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   if (raw_lux < 0) {
     LOG(WARNING) << "Sensor doesn't have valid value";
     return;
+  }
+
+  if (report_on_resuming_) {
+    report_on_resuming_ = false;
+    delegate_->ReportAmbientLightOnResumeMetrics(raw_lux);
   }
 
   // Currently we notify on every color temperature change.

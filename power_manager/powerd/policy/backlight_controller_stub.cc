@@ -137,5 +137,11 @@ int64_t BacklightControllerStub::PercentToLevel(double percent) const {
   return 0;
 }
 
+void BacklightControllerStub::RegisterAmbientLightResumeMetricsHandler(
+    AmbientLightOnResumeMetricsCallback callback) {
+  DCHECK(callback);
+  ambient_light_metrics_callback_registered_ = true;
+}
+
 }  // namespace policy
 }  // namespace power_manager

@@ -159,6 +159,11 @@ extern const char kStandardDimDurationBeforeRevertedByUserSec[];
 extern const char kStandardDimDeferredByHpsSec[];
 
 extern const char kLockEvent[];
+
+extern const char kAmbientLightOnResumeName[];
+extern const int kAmbientLightOnResumeMin;
+extern const int kAmbientLightOnResumeMax;
+
 // Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,

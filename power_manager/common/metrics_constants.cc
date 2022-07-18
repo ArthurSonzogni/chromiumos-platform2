@@ -194,5 +194,10 @@ const char kStandardDimDeferredByHpsSec[] =
     "Power.StandardDimDeferredByHps.DurationSeconds";
 
 const char kLockEvent[] = "Power.LockEvent";
+
+const char kAmbientLightOnResumeName[] = "Power.AmbientLightOnResume";
+const int kAmbientLightOnResumeMin = 0;
+const int kAmbientLightOnResumeMax = 100000;
+
 }  // namespace metrics
 }  // namespace power_manager

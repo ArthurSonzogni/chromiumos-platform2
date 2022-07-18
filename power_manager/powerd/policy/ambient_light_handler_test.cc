@@ -23,7 +23,8 @@ class TestDelegate : public AmbientLightHandler::Delegate {
  public:
   TestDelegate()
       : percent_(-1.0),
-        cause_(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT) {}
+        cause_(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT),
+        resume_lux_(0) {}
   TestDelegate(const TestDelegate&) = delete;
   TestDelegate& operator=(const TestDelegate&) = delete;
 
@@ -31,6 +32,7 @@ class TestDelegate : public AmbientLightHandler::Delegate {
 
   double percent() const { return percent_; }
   AmbientLightHandler::BrightnessChangeCause cause() const { return cause_; }
+  int lux_on_resume() const { return resume_lux_; }
 
   void SetBrightnessPercentForAmbientLight(
       double brightness_percent,
@@ -41,9 +43,14 @@ class TestDelegate : public AmbientLightHandler::Delegate {
 
   void OnColorTemperatureChanged(int color_temperature) override {}
 
+  void ReportAmbientLightOnResumeMetrics(int lux) override {
+    resume_lux_ = lux;
+  }
+
  private:
   double percent_;
   AmbientLightHandler::BrightnessChangeCause cause_;
+  int resume_lux_;
 };
 
 class AmbientLightHandlerTest : public ::testing::Test {
@@ -181,10 +188,13 @@ TEST_F(AmbientLightHandlerTest, HandleResume) {
   // brightness to go to lower level
   handler_.HandleResume();
   UpdateSensor(50);  // First reading is discard as it is probably cached value.
+  EXPECT_EQ(delegate_.lux_on_resume(), 0);
   UpdateSensor(10);
   EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
   EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
             delegate_.cause());
+  // Second lux reading after resume is reported for metrics
+  EXPECT_EQ(delegate_.lux_on_resume(), 10);
 }
 
 TEST_F(AmbientLightHandlerTest, PowerSources) {

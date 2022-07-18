@@ -161,6 +161,9 @@ class MetricsCollector {
     prefix_path_for_testing_ = file;
   }
 
+  // Generates UMA metrics about Ambient Light level on Resume.
+  void GenerateAmbientLightResumeMetrics(int lux);
+
  private:
   friend class MetricsCollectorTest;
   FRIEND_TEST(MetricsCollectorTest, BacklightLevel);

@@ -61,6 +61,9 @@ class BacklightControllerStub : public policy::BacklightController {
   bool suspended() const { return suspended_; }
   bool shutting_down() const { return shutting_down_; }
   bool forced_off() const { return forced_off_; }
+  bool ambient_light_metrics_callback_registered() const {
+    return ambient_light_metrics_callback_registered_;
+  }
 
   void set_percent(double percent) { percent_ = percent; }
   void set_num_als_adjustments(int num) { num_als_adjustments_ = num; }
@@ -101,6 +104,9 @@ class BacklightControllerStub : public policy::BacklightController {
   double LevelToPercent(int64_t level) const override;
   int64_t PercentToLevel(double percent) const override;
 
+  void RegisterAmbientLightResumeMetricsHandler(
+      AmbientLightOnResumeMetricsCallback callback) override;
+
  private:
   base::ObserverList<BacklightControllerObserver> observers_;
 
@@ -125,6 +131,7 @@ class BacklightControllerStub : public policy::BacklightController {
   bool suspended_ = false;
   bool shutting_down_ = false;
   bool forced_off_ = false;
+  bool ambient_light_metrics_callback_registered_ = false;
 
   // Counts to be returned by GetNum*Adjustments().
   int num_als_adjustments_ = 0;

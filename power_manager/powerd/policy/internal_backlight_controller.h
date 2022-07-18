@@ -119,6 +119,11 @@ class InternalBacklightController : public BacklightController,
       double brightness_percent,
       AmbientLightHandler::BrightnessChangeCause cause) override;
   void OnColorTemperatureChanged(int color_temperature) override;
+  void ReportAmbientLightOnResumeMetrics(int lux) override;
+  bool IsUsingAmbientLight() const override;
+
+  void RegisterAmbientLightResumeMetricsHandler(
+      AmbientLightOnResumeMetricsCallback callback) override;
 
  private:
   // Snaps |percent| to the nearest step, as defined by |step_percent_|.
@@ -207,6 +212,9 @@ class InternalBacklightController : public BacklightController,
   // Ambient-light-sensor-derived brightness percent supplied by
   // |ambient_light_handler_|.
   double ambient_light_brightness_percent_ = 100.0;
+
+  // Ambient Light Sensor On Resume metrics reporting callback;
+  AmbientLightOnResumeMetricsCallback ambient_light_metrics_callback_;
 
   // User- or policy-set brightness percent when on AC or battery power.
   double ac_explicit_brightness_percent_ = 100.0;

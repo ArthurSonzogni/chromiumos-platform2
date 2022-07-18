@@ -134,6 +134,13 @@ void MetricsCollector::Init(
         &MetricsCollector::GenerateBacklightLevelMetrics);
   }
 
+  if (display_backlight_controller_) {
+    display_backlight_controller_->RegisterAmbientLightResumeMetricsHandler(
+        base::BindRepeating(
+            &MetricsCollector::GenerateAmbientLightResumeMetrics,
+            base::Unretained(this)));
+  }
+
   bool pref_val = false;
   suspend_to_idle_ = prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val;
 
@@ -647,6 +654,11 @@ void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
   SendMetric(kNumOfSessionsPerChargeName, sample, kNumOfSessionsPerChargeMin,
              kNumOfSessionsPerChargeMax, kDefaultBuckets);
+}
+
+void MetricsCollector::GenerateAmbientLightResumeMetrics(int lux) {
+  SendMetric(kAmbientLightOnResumeName, lux, kAmbientLightOnResumeMin,
+             kAmbientLightOnResumeMax, kDefaultBuckets);
 }
 
 void MetricsCollector::TrackS0ixResidency(bool pre_suspend) {

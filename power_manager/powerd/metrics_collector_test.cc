@@ -496,6 +496,16 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
   collector_.HandlePowerButtonEvent(ButtonState::UP);
 }
 
+TEST_F(MetricsCollectorTest, AmbientLightResumeMetric) {
+  Init();
+  ASSERT_TRUE(display_backlight_controller_
+                  .ambient_light_metrics_callback_registered());
+
+  ExpectMetric(kAmbientLightOnResumeName, 2400, kAmbientLightOnResumeMin,
+               kAmbientLightOnResumeMax, kDefaultBuckets);
+  collector_.GenerateAmbientLightResumeMetrics(2400);
+}
+
 TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
   Init();
 

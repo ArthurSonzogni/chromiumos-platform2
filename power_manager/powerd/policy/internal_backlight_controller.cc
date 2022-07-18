@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -415,7 +416,7 @@ void InternalBacklightController::SetSuspended(bool suspended) {
   suspended_ = suspended;
   UpdateState(BacklightBrightnessChange_Cause_OTHER);
 
-  if (!suspended && use_ambient_light_)
+  if (!suspended && ambient_light_handler_)
     ambient_light_handler_->HandleResume();
 }
 
@@ -527,6 +528,21 @@ void InternalBacklightController::OnColorTemperatureChanged(
                       kAmbientColorTemperatureChangedSignal);
   dbus::MessageWriter(&signal).AppendInt32(color_temperature);
   dbus_wrapper_->EmitSignal(&signal);
+}
+
+bool InternalBacklightController::IsUsingAmbientLight() const {
+  return use_ambient_light_;
+}
+
+void InternalBacklightController::ReportAmbientLightOnResumeMetrics(int lux) {
+  if (ambient_light_metrics_callback_) {
+    ambient_light_metrics_callback_.Run(lux);
+  }
+}
+
+void InternalBacklightController::RegisterAmbientLightResumeMetricsHandler(
+    AmbientLightOnResumeMetricsCallback callback) {
+  ambient_light_metrics_callback_ = std::move(callback);
 }
 
 double InternalBacklightController::SnapBrightnessPercentToNearestStep(

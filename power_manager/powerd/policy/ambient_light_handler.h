@@ -55,6 +55,12 @@ class AmbientLightHandler : public system::AmbientLightObserver {
 
     // Invoked when the color temperature changes.
     virtual void OnColorTemperatureChanged(int color_temperature) = 0;
+
+    // Invoked when ALS reading is taken after resume from suspension.
+    virtual void ReportAmbientLightOnResumeMetrics(int lux) {}
+
+    // Used to shortcut ALS calculations if they are not being used by Delegate.
+    virtual bool IsUsingAmbientLight() const { return true; }
   };
 
   AmbientLightHandler(system::AmbientLightSensorInterface* sensor,
@@ -200,6 +206,9 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // around). Used for logging.
   std::vector<int> recent_lux_readings_;
   int recent_lux_start_index_ = 0;
+
+  // Does the ambient light sensor need to report its next reading.
+  bool report_on_resuming_ = false;
 };
 
 }  // namespace policy
