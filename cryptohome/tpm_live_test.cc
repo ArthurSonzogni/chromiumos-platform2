@@ -58,7 +58,6 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
 using hwsec::TPMErrorBase;
-using hwsec_foundation::CreateRsaKey;
 using hwsec_foundation::Sha256;
 
 namespace cryptohome {
@@ -155,8 +154,8 @@ bool TpmLiveTest::RunLiveTests() {
     LOG(ERROR) << "Error running Decryption test.";
     return false;
   }
-  if (!SealToPcrWithAuthorizationTest()) {
-    LOG(ERROR) << "Error running SealToPcrWithAuthorizationTest.";
+  if (!SealWithCurrentUserTest()) {
+    LOG(ERROR) << "Error running SealWithCurrentUserTest.";
     return false;
   }
   if (!NvramTest()) {
@@ -306,117 +305,98 @@ bool TpmLiveTest::PCRKeyTest() {
 
 bool TpmLiveTest::DecryptionKeyTest() {
   LOG(INFO) << "DecryptionKeyTest started";
-  SecureBlob n;
-  SecureBlob p;
-  uint32_t tpm_key_bits = 2048;
-  if (!CreateRsaKey(tpm_key_bits, &n, &p)) {
-    LOG(ERROR) << "Error creating RSA key.";
+
+  hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> cryptohome_key =
+      tpm_->GetHwsec()->CreateCryptohomeKey(hwsec::KeyAlgoType::kRsa);
+  if (!cryptohome_key.ok()) {
+    LOG(ERROR) << "Failed to create RSA cryptohome key: "
+               << cryptohome_key.status();
     return false;
   }
-  SecureBlob wrapped_key;
-  if (!tpm_->WrapRsaKey(n, p, &wrapped_key)) {
-    LOG(ERROR) << "Error wrapping RSA key.";
-    return false;
-  }
-  ScopedKeyHandle handle;
-  if (hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &handle);
-      !err.ok()) {
-    LOG(ERROR) << "Error loading key: " << err;
-    return false;
-  }
-  SecureBlob aes_key(32, 'a');
+
+  hwsec::Key key = cryptohome_key->key.GetKey();
+
   SecureBlob plaintext(32, 'b');
-  SecureBlob ciphertext;
-  if (hwsec::Status err =
-          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext);
-      !err.ok()) {
-    LOG(ERROR) << "Error encrypting blob: " << err;
+  hwsec::StatusOr<Blob> ciphertext = tpm_->GetHwsec()->Encrypt(key, plaintext);
+  if (!ciphertext.ok()) {
+    LOG(ERROR) << "Error encrypting blob: " << ciphertext.status();
     return false;
   }
-  SecureBlob decrypted_plaintext;
-  if (hwsec::Status err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
-                                            &decrypted_plaintext);
-      !err.ok()) {
-    LOG(ERROR) << "Error decrypting blob: " << err;
+
+  hwsec::StatusOr<SecureBlob> decrypted_plaintext =
+      tpm_->GetHwsec()->Decrypt(key, ciphertext.value());
+  if (!decrypted_plaintext.ok()) {
+    LOG(ERROR) << "Error decrypting blob: " << decrypted_plaintext.status();
     return false;
   }
-  if (plaintext != decrypted_plaintext) {
+
+  if (plaintext != decrypted_plaintext.value()) {
     LOG(ERROR) << "Decrypted plaintext does not match plaintext.";
     return false;
   }
+
   LOG(INFO) << "DecryptionKeyTest ended successfully.";
   return true;
 }
 
-bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
-  LOG(INFO) << "SealToPcrWithAuthorizationTest started";
-  SecureBlob n;
-  SecureBlob p;
-  uint32_t tpm_key_bits = 2048;
-  if (!CreateRsaKey(tpm_key_bits, &n, &p)) {
-    LOG(ERROR) << "Error creating RSA key.";
-    return false;
-  }
-  SecureBlob wrapped_key;
-  if (!tpm_->WrapRsaKey(n, p, &wrapped_key)) {
-    LOG(ERROR) << "Error wrapping RSA key.";
-    return false;
-  }
-  ScopedKeyHandle handle;
-  if (hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &handle);
-      !err.ok()) {
-    LOG(ERROR) << "Error loading key: " << err;
+bool TpmLiveTest::SealWithCurrentUserTest() {
+  LOG(INFO) << "SealWithCurrentUserTest started";
+
+  hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> cryptohome_key =
+      tpm_->GetHwsec()->CreateCryptohomeKey(hwsec::KeyAlgoType::kRsa);
+  if (!cryptohome_key.ok()) {
+    LOG(ERROR) << "Failed to create RSA cryptohome key: "
+               << cryptohome_key.status();
     return false;
   }
 
-  uint32_t index1 = 4;
-  uint32_t index2 = 11;
-  std::map<uint32_t, brillo::Blob> pcr_map(
-      {{index1, brillo::Blob()}, {index2, brillo::Blob()}});
+  hwsec::Key key = cryptohome_key->key.GetKey();
+
   SecureBlob plaintext(32, 'a');
   SecureBlob pass_blob(256, 'b');
-  SecureBlob ciphertext;
-  brillo::SecureBlob auth_value;
-  if (hwsec::Status err =
-          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value);
-      !err.ok()) {
-    LOG(ERROR) << "Failed to get auth value: " << err;
+  hwsec::StatusOr<SecureBlob> auth_value =
+      tpm_->GetHwsec()->GetAuthValue(key, pass_blob);
+  if (!auth_value.ok()) {
+    LOG(ERROR) << "Failed to get auth value: " << auth_value.status();
     return false;
   }
-  if (hwsec::Status err = tpm_->SealToPcrWithAuthorization(
-          plaintext, auth_value, pcr_map, &ciphertext);
-      !err.ok()) {
-    LOG(ERROR) << "Error sealing the blob: " << err;
+
+  hwsec::StatusOr<Blob> ciphertext = tpm_->GetHwsec()->SealWithCurrentUser(
+      std::nullopt, auth_value.value(), plaintext);
+  if (!ciphertext.ok()) {
+    LOG(ERROR) << "Error sealing the blob: " << ciphertext.status();
     return false;
   }
-  SecureBlob unsealed_text;
-  if (hwsec::Status err = tpm_->UnsealWithAuthorization(
-          std::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text);
-      !err.ok()) {
-    LOG(ERROR) << "Error unsealing blob: " << err;
+
+  hwsec::StatusOr<SecureBlob> unsealed_text =
+      tpm_->GetHwsec()->UnsealWithCurrentUser(std::nullopt, auth_value.value(),
+                                              ciphertext.value());
+  if (!unsealed_text.ok()) {
+    LOG(ERROR) << "Error unsealing the blob: " << unsealed_text.status();
     return false;
   }
-  if (plaintext != unsealed_text) {
+
+  if (plaintext != unsealed_text.value()) {
     LOG(ERROR) << "Unsealed plaintext does not match plaintext.";
     return false;
   }
 
   // Check that unsealing doesn't work with wrong pass_blob.
   pass_blob.char_data()[255] = 'a';
-  if (hwsec::Status err =
-          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value);
-      !err.ok()) {
-    LOG(ERROR) << "Failed to get auth value: " << err;
-    return false;
-  }
-  if (tpm_->UnsealWithAuthorization(std::nullopt, ciphertext, auth_value,
-                                    pcr_map, &unsealed_text) == nullptr &&
-      plaintext == unsealed_text) {
-    LOG(ERROR) << "UnsealWithAuthorization failed to fail.";
+  auth_value = tpm_->GetHwsec()->GetAuthValue(key, pass_blob);
+  if (!auth_value.ok()) {
+    LOG(ERROR) << "Failed to get auth value: " << auth_value.status();
     return false;
   }
 
-  LOG(INFO) << "SealToPcrWithAuthorizationTest ended successfully.";
+  unsealed_text = tpm_->GetHwsec()->UnsealWithCurrentUser(
+      std::nullopt, auth_value.value(), ciphertext.value());
+  if (unsealed_text.ok() && plaintext == unsealed_text.value()) {
+    LOG(ERROR) << "SealWithCurrentUser failed to fail.";
+    return false;
+  }
+
+  LOG(INFO) << "SealWithCurrentUserTest ended successfully.";
   return true;
 }
 
