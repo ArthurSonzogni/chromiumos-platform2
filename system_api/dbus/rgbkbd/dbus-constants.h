@@ -24,9 +24,6 @@ const char kCapabilityUpdatedForTesting[] = "CapabilityUpdatedForTesting";
 enum class RgbKeyboardCapabilities {
   kNone = 0,
   kIndividualKey = 1,
-  // TODO(dpad): Remove kFiveZone once Chrome has rolled constants and has been
-  // updated to use kFourZoneFortyLed
-  kFiveZone = 2,
   kFourZoneFortyLed = 2,
   kFourZoneTwelveLed = 3,
   kFourZoneFifteenLed = 4,
