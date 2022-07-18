@@ -131,6 +131,7 @@ use libsirenia::transport::DEFAULT_SERVER_PORT;
 use log::error;
 use log::info;
 use log::warn;
+use sirenia::install_crash_handler;
 use sirenia::log_error;
 use sirenia::pstore;
 
@@ -141,9 +142,10 @@ const SYSLOG_PATH_SHORT_NAME: &str = "L";
 const PSTORE_PATH_LONG_NAME: &str = "pstore-path";
 const SAVE_PSTORE_LONG_NAME: &str = "save-pstore";
 const RESTORE_PSTORE_LONG_NAME: &str = "restore-pstore";
-const SAVE_HYPERVISOR_DMESG: &str = "save-hypervisor-dmesg";
+const SAVE_HYPERVISOR_DMESG_LONG_NAME: &str = "save-hypervisor-dmesg";
 const MMS_BRIDGE_SHORT_NAME: &str = "M";
 const LOG_TO_STDERR_LONG_NAME: &str = "log-to-stderr";
+const INIT_LONG_NAME: &str = "init";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
 
@@ -1053,8 +1055,13 @@ fn main() -> Result<()> {
     );
     opts.optflag(
         "",
-        SAVE_HYPERVISOR_DMESG,
+        SAVE_HYPERVISOR_DMESG_LONG_NAME,
         "add hypervisor dmesg to pstore console log.",
+    );
+    opts.optflag(
+        "",
+        INIT_LONG_NAME,
+        "run as init: create /dev/log and install crash handler.",
     );
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
     let log_to_stderr = matches.opt_present(LOG_TO_STDERR_LONG_NAME);
@@ -1063,7 +1070,10 @@ fn main() -> Result<()> {
         syslog::init(IDENT.to_string(), log_to_stderr)
             .map_err(|e| anyhow!("failed to setup logging: {}", e))?;
         if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
-            return pstore::save_pstore(&pstore_path, matches.opt_present(SAVE_HYPERVISOR_DMESG));
+            return pstore::save_pstore(
+                &pstore_path,
+                matches.opt_present(SAVE_HYPERVISOR_DMESG_LONG_NAME),
+            );
         } else if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
             return pstore::restore_pstore(&pstore_path);
         } else {
@@ -1073,7 +1083,7 @@ fn main() -> Result<()> {
 
     if matches.opt_present(SAVE_PSTORE_LONG_NAME)
         || matches.opt_present(RESTORE_PSTORE_LONG_NAME)
-        || matches.opt_present(SAVE_HYPERVISOR_DMESG)
+        || matches.opt_present(SAVE_HYPERVISOR_DMESG_LONG_NAME)
     {
         bail!("{} is required for pstore actions", PSTORE_PATH_LONG_NAME);
     }
@@ -1099,24 +1109,28 @@ fn main() -> Result<()> {
         gsc_secret,
     )));
 
-    // Create /dev/log if it doesn't already exist since trichechus is the first thing to run after
-    // the kernel on the hypervisor.
-    let log_path = PathBuf::from(
-        matches
-            .opt_str(SYSLOG_PATH_SHORT_NAME)
-            .unwrap_or_else(|| SYSLOG_PATH.to_string()),
-    );
-    let syslog: Option<Syslog> = if !log_path.exists() {
+    let is_init = matches.opt_present(INIT_LONG_NAME);
+    let syslog_listener = if is_init {
+        let log_path = PathBuf::from(
+            matches
+                .opt_str(SYSLOG_PATH_SHORT_NAME)
+                .unwrap_or_else(|| SYSLOG_PATH.to_string()),
+        );
         eprintln!("Creating syslog.");
         Some(Syslog::new(log_path, state.clone()).unwrap())
     } else {
-        eprintln!("Syslog exists.");
         None
     };
 
     syslog::init(IDENT.to_string(), log_to_stderr)
         .map_err(|e| anyhow!("failed to setup logging: {}", e))?;
     info!("starting {}: {}", IDENT, BUILD_TIMESTAMP);
+
+    if is_init {
+        if let Err(e) = install_crash_handler() {
+            error!("error installing crash handler (ignoring): {}", e);
+        }
+    }
 
     if let Some(path) = matches.opt_str(MMS_BRIDGE_SHORT_NAME) {
         let path = PathBuf::from(path);
@@ -1157,7 +1171,7 @@ fn main() -> Result<()> {
     }
 
     let mut ctx = EventMultiplexer::new().unwrap();
-    if let Some(event_source) = syslog {
+    if let Some(event_source) = syslog_listener {
         ctx.add_event(Box::new(event_source)).unwrap();
     }
 

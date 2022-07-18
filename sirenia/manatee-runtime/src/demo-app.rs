@@ -54,6 +54,10 @@ fn main() {
         info!("Reading data");
         match io::stdin().read_line(&mut buffer) {
             Ok(_) => {
+                // Used for testing crash reporting
+                if buffer == "please crash\n" {
+                    panic!("bye bye!");
+                }
                 s.push_str(&buffer);
             }
             Err(error) => println!("error: {}", error),

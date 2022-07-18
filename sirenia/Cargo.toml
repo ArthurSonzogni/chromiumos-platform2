@@ -38,6 +38,11 @@ path = "src/manatee_memory_service.rs"
 required-features = ["hypervisor"]
 
 [[bin]]
+name = "manatee_crash_handler"
+path = "src/manatee_crash_handler.rs"
+required-features = ["hypervisor"]
+
+[[bin]]
 name = "tee_app_info_lint"
 path = "src/tee_app_info_lint.rs"
 required-features = ["sdk"]
