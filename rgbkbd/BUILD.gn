@@ -17,6 +17,10 @@ group("all") {
   if (use.test) {
     deps += [ ":rgbkbd_test" ]
   }
+
+  if (use.fuzzer) {
+    deps += [ ":rgb_daemon_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -104,5 +108,16 @@ if (use.test) {
       ":librgbkbd",
       "//common-mk/testrunner",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("rgb_daemon_fuzzer") {
+    sources = [ "rgbkbd_daemon_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":librgbkbd" ]
   }
 }
