@@ -510,7 +510,10 @@ class Platform2(object):
         if os.environ.get('NINJA_ARGS'):
             ninja_args.extend(os.environ['NINJA_ARGS'].split())
 
-        cros_build_lib.run(ninja_args)
+        try:
+            cros_build_lib.run(ninja_args)
+        except cros_build_lib.RunCommandError:
+            cros_build_lib.Die('Ninja failed')
 
     def deviterate(self, args):
         """Runs the configure and compile steps of the Platform2 build.
