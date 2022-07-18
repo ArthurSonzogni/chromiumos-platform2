@@ -276,7 +276,13 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
           CryptoError::CE_OTHER_FATAL);
     }
   } else {
-    PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL);
+    if (!PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL)) {
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocTpmNotBoundToPcrAuthBlockPasskeyToAesKeyFailedInDecrypt),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO);
+    }
   }
 
   brillo::SecureBlob unobscure_key;

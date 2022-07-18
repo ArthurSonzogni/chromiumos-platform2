@@ -60,11 +60,12 @@ size_t HWSEC_FOUNDATION_EXPORT GetAesBlockSize();
 //            using a large number of candidate passwords.
 //    key - On success, the derived key.
 //    iv - On success, the derived iv.
-bool HWSEC_FOUNDATION_EXPORT PasskeyToAesKey(const brillo::SecureBlob& passkey,
-                                             const brillo::SecureBlob& salt,
-                                             unsigned int rounds,
-                                             brillo::SecureBlob* key,
-                                             brillo::SecureBlob* iv);
+[[nodiscard]] bool HWSEC_FOUNDATION_EXPORT
+PasskeyToAesKey(const brillo::SecureBlob& passkey,
+                const brillo::SecureBlob& salt,
+                unsigned int rounds,
+                brillo::SecureBlob* key,
+                brillo::SecureBlob* iv);
 
 // AES encrypts the plain text data using the specified key and IV.  This
 // method uses custom padding and is not inter-operable with other crypto
