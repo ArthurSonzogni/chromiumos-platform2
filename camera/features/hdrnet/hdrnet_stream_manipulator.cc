@@ -299,8 +299,7 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
   std::vector<camera3_stream_t*> modified_streams;
   int num_yuv_streams = 0;
   int num_blob_streams = 0;
-  for (size_t i = 0; i < client_requested_streams.size(); ++i) {
-    camera3_stream_t* s = client_requested_streams[i];
+  for (auto s : client_requested_streams) {
     if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
       // Only output buffers are supported.
       modified_streams.push_back(s);
@@ -322,10 +321,11 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
       // HAL_PIXEL_FORMAT_YCBCR_P010);
       HdrNetStreamContext* context =
           CreateHdrNetStreamContext(s, HAL_PIXEL_FORMAT_YCbCr_420_888);
-      // TODO(jcliang): We may need to treat YUV stream with maximum resolution
-      // specially and mark it here, since it's what we use in YUV reprocessing.
       switch (context->mode) {
         case HdrNetStreamContext::Mode::kReplaceYuv:
+          // TODO(jcliang): We may need to treat YUV stream with maximum
+          // resolution specially and mark it here, since it's what we use in
+          // YUV reprocessing.
           modified_streams.push_back(context->hdrnet_stream.get());
           ++num_yuv_streams;
           hdrnet_metrics_.max_yuv_stream_size =
@@ -1099,6 +1099,13 @@ HdrNetStreamManipulator::CreateHdrNetStreamContext(camera3_stream_t* requested,
     // We still need the BLOB stream for extracting the JPEG APPs segments, so
     // we add a new YUV stream instead of replacing the BLOB stream.
     context->mode = HdrNetStreamContext::Mode::kAppendWithBlob;
+
+#if USE_IPU6 || USE_IPU6EP
+    // On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the
+    // camera HAL to process the stream using the still pipe for higher quality
+    // output.
+    context->hdrnet_stream->usage |= GRALLOC_USAGE_PRIVATE_1;
+#endif  // USE_IPU6 || USE_IPU6EP
   }
 
   HdrNetStreamContext* addr = context.get();
