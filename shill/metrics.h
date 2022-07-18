@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/strings/string_piece_forward.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -1669,9 +1668,6 @@ class Metrics : public DefaultServiceObserver {
 
   static std::string GetBootId();
 
-  // Return a pseudonymized string (salted+hashed) version of the session tag.
-  std::string PseudonymizeTag(uint64_t tag);
-
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
   // MetricsLibraryMock object instead.
@@ -1680,8 +1676,6 @@ class Metrics : public DefaultServiceObserver {
   ServiceMetricsLookupMap services_metrics_;
   Technology last_default_technology_;
   bool was_last_online_;
-  // Randomly generated 32 bytes used as a salt to pseudonymize session tags.
-  base::StringPiece pseudo_tag_salt_;
   std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
