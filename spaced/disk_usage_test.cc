@@ -32,10 +32,7 @@ constexpr const char kSampleReport[] =
 class DiskUsageUtilMock : public DiskUsageUtilImpl {
  public:
   DiskUsageUtilMock(struct statvfs st, std::optional<brillo::Thinpool> thinpool)
-      : st_(st) {
-    if (thinpool)
-      set_thinpool_for_test(*thinpool);
-  }
+      : DiskUsageUtilImpl(base::FilePath("/dev/foo"), thinpool), st_(st) {}
 
  protected:
   int StatVFS(const base::FilePath& path, struct statvfs* st) override {
@@ -158,13 +155,11 @@ TEST(DiskUsageUtilTest, OverprovisionedVolumeSpace) {
 class DiskUsageRootdevMock : public DiskUsageUtilImpl {
  public:
   DiskUsageRootdevMock(int64_t size, const base::FilePath& path)
-      : rootdev_size_(size), rootdev_path_(path) {}
+      : DiskUsageUtilImpl(path, std::nullopt),
+        rootdev_size_(size),
+        rootdev_path_(path) {}
 
  protected:
-  std::optional<base::FilePath> GetRootDevice() override {
-    return rootdev_path_;
-  }
-
   int64_t GetBlockDeviceSize(const base::FilePath& device) override {
     // At the moment, only the root device size is queried from spaced.
     // Once more block devices are queried, move this into a map.

@@ -21,33 +21,24 @@ namespace spaced {
 
 class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
  public:
-  DiskUsageUtilImpl();
+  DiskUsageUtilImpl(const base::FilePath& rootdev,
+                    std::optional<brillo::Thinpool> thinpool);
   ~DiskUsageUtilImpl() override = default;
 
   int64_t GetFreeDiskSpace(const base::FilePath& path) override;
   int64_t GetTotalDiskSpace(const base::FilePath& path) override;
   int64_t GetRootDeviceSize() override;
 
-  void set_thinpool_for_test(const brillo::Thinpool& thinpool) {
-    thinpool_ = std::make_unique<brillo::Thinpool>(thinpool);
-  }
-
  protected:
   // Runs statvfs() on a given path.
   virtual int StatVFS(const base::FilePath& path, struct statvfs* st);
-
-  // Retrieves the stateful partition's thinpool.
-  virtual std::optional<brillo::Thinpool> GetThinpool();
-
-  // Retrieves the root device.
-  virtual std::optional<base::FilePath> GetRootDevice();
 
   // Gets the block device size in bytes for a given device.
   virtual int64_t GetBlockDeviceSize(const base::FilePath& device);
 
  private:
-  std::unique_ptr<brillo::Thinpool> thinpool_;
-  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
+  const base::FilePath rootdev_;
+  std::optional<brillo::Thinpool> thinpool_;
 };
 
 }  // namespace spaced

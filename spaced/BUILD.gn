@@ -48,7 +48,6 @@ shared_library("libspaced") {
     "disk_usage_impl.cc",
     "disk_usage_proxy.cc",
   ]
-  libs = [ "rootdev" ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
   deps = [ ":spaced_proxy" ]
@@ -61,6 +60,7 @@ executable("spaced") {
   ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
+  libs = [ "rootdev" ]
   deps = [
     ":libspaced",
     ":spaced_adaptor",

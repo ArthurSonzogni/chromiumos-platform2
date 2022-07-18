@@ -10,6 +10,7 @@
 #include <string>
 
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/blkdev_utils/lvm.h>
 
 #include "spaced/dbus_adaptors/org.chromium.Spaced.h"
 #include "spaced/disk_usage.h"
