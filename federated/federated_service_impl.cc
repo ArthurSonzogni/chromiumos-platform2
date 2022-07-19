@@ -11,6 +11,7 @@
 #include "federated/utils.h"
 
 #include <base/check.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 namespace federated {
 
@@ -22,7 +23,7 @@ FederatedServiceImpl::FederatedServiceImpl(
       registered_clients_(GetClientNames()),
       receiver_(
           this,
-          mojo::InterfaceRequest<chromeos::federated::mojom::FederatedService>(
+          mojo::PendingReceiver<chromeos::federated::mojom::FederatedService>(
               std::move(pipe))) {
   receiver_.set_disconnect_handler(std::move(disconnect_handler));
 }
