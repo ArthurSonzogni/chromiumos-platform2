@@ -120,7 +120,7 @@ constexpr char kArcVmName[] = "arcvm";
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
 // large compressed files), it could take 10 seconds to boot.
-constexpr base::TimeDelta kVmStartupDefaultTimeout = base::Seconds(30);
+constexpr base::TimeDelta kVmStartupDefaultTimeout = base::Seconds(60);
 
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
