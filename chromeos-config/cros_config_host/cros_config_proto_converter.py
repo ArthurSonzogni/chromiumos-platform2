@@ -93,6 +93,7 @@ def parse_args(argv):
     parser.add_argument(
         "-c",
         "--project_configs",
+        "--project-configs",
         nargs="+",
         type=str,
         help="Space delimited list of source protobinary project config files.",
@@ -100,6 +101,7 @@ def parse_args(argv):
     parser.add_argument(
         "-p",
         "--program_config",
+        "--program-config",
         type=str,
         help="Path to the source program-level protobinary file",
     )
