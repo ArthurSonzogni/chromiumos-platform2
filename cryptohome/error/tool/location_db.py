@@ -27,8 +27,7 @@ from xml.dom import pulldom
 class Symbol:
     """Represents a symbol for error location."""
 
-    HEADER_TEMPLATE = ('/* %s */\n'
-                       '%s = %d,\n')
+    HEADER_TEMPLATE = "/* %s */\n%s = %d,\n"
 
     def __init__(self, symbol: str):
         """Constructor for Symbol.
@@ -71,18 +70,20 @@ class Symbol:
         """
 
         assert self.value is not None
-        return [Symbol.HEADER_TEMPLATE % (self._generate_comments(),
-                                          self.symbol, self.value),]
+        return [
+            Symbol.HEADER_TEMPLATE
+            % (self._generate_comments(), self.symbol, self.value),
+        ]
 
     def _generate_comments(self) -> str:
         if self.allow_dup:
-            return '=Duplicate Allowed='
+            return "=Duplicate Allowed="
         if len(self.line_num) == 0 and len(self.path) == 0:
-            return '=Obsolete='
+            return "=Obsolete="
         assert len(self.line_num) == 1 and len(self.path) == 1
-        return '%s' % (self.path[0],)
+        return "%s" % (self.path[0],)
 
-    def merge(self, target: 'Symbol'):
+    def merge(self, target: "Symbol"):
         """Merges information from another symbol into this object.
 
         The caller is responsible for destroying target after the call.
@@ -94,10 +95,10 @@ class Symbol:
 
         assert self.symbol == target.symbol
         assert self.allow_dup == target.allow_dup
-        assert (len(self.line_num) == len(self.index_in_file) and
-                len(self.line_num) == len(self.path))
-        assert (len(target.line_num) == len(target.index_in_file) and
-                len(target.line_num) == len(target.path))
+        assert len(self.line_num) == len(self.index_in_file)
+        assert len(self.line_num) == len(self.path)
+        assert len(target.line_num) == len(target.index_in_file)
+        assert len(target.line_num) == len(target.path)
 
         self.line_num += target.line_num
         self.path += target.path
@@ -109,11 +110,10 @@ class Symbol:
             self.value = target.value
 
     def __str__(self) -> str:
-        locs = ','.join(['%s:%d' % x for x in
-                         zip(self.path, self.line_num)])
-        result = '%s=%s @ %s' % (self.symbol, self.value, locs)
+        locs = ",".join(["%s:%d" % x for x in zip(self.path, self.line_num)])
+        result = "%s=%s @ %s" % (self.symbol, self.value, locs)
         if self.allow_dup:
-            result += ' duplicates allowed'
+            result += " duplicates allowed"
         return result
 
 
@@ -137,14 +137,15 @@ class LineNumberFinder:
         # '_line_num_of_index' is the mapping from line number to index.
         # -1 here so that binary search is guaranteed to be bounded and that
         # the line number starts from 1.
-        self._line_num_of_index = [-1, 0,]
+        self._line_num_of_index = [-1, 0]
 
         self._preprocess()
 
     def _preprocess(self):
         """Populate self._line_num_of_index."""
-        self._line_num_of_index.extend(i for i, c in enumerate(self._content)
-                                       if c == '\n')
+        self._line_num_of_index.extend(
+            i for i, c in enumerate(self._content) if c == "\n"
+        )
         self._line_num_of_index.append(len(self._content))
 
     def find_by_pos(self, idx: int) -> int:
@@ -156,13 +157,13 @@ class LineNumberFinder:
         Returns:
             An integer that is the line number, it starts from 1.
         """
-        return bisect.bisect_right(self._line_num_of_index, idx)-1
+        return bisect.bisect_right(self._line_num_of_index, idx) - 1
 
 
 class SourceScanner:
     """This scans for error location usage in the source"""
 
-    ERROR_LOC_USAGE_RE = r'CRYPTOHOME_ERR_LOC\(\s*([a-zA-Z][a-zA-Z0-9]*)\s*\)'
+    ERROR_LOC_USAGE_RE = r"CRYPTOHOME_ERR_LOC\(\s*([a-zA-Z][a-zA-Z0-9]*)\s*\)"
 
     @staticmethod
     def scan_single_file(path: str) -> List[Symbol]:
@@ -175,8 +176,8 @@ class SourceScanner:
             A list of Symbol, representing the symbols found in the given file.
         """
 
-        logging.debug('Scanning file %s', path)
-        with open(path, 'r') as f:
+        logging.debug("Scanning file %s", path)
+        with open(path, "r") as f:
             content = f.read()
         linenum_util = LineNumberFinder(content)
         results = []
@@ -207,14 +208,16 @@ class SourceScanner:
             A list of Symbol, representing the symbols found in the directory.
         """
 
-        logging.debug('Scanning directory %s', path)
+        logging.debug("Scanning directory %s", path)
         result = []
         for f in os.scandir(path):
             if f.is_dir():
                 result += SourceScanner.scan_directory(f.path, allowed_ext)
                 continue
-            if (f.is_file() and
-                    os.path.splitext(f.name.lower())[1] in allowed_ext):
+            if (
+                f.is_file()
+                and os.path.splitext(f.name.lower())[1] in allowed_ext
+            ):
                 result += SourceScanner.scan_single_file(f.path)
         return result
 
@@ -246,8 +249,9 @@ class Verifier:
             if sym.symbol in self._dup_allowlist:
                 sym.allow_dup = True
 
-    def collate_and_verify(self, input_symbols: List[Symbol]) -> \
-            Tuple[Dict[str, Symbol], Dict[str, Symbol]]:
+    def collate_and_verify(
+        self, input_symbols: List[Symbol]
+    ) -> Tuple[Dict[str, Symbol], Dict[str, Symbol]]:
         """Collate the list of symbols and check for duplications.
 
         This function collate the symbols by merging the same symbol in the
@@ -289,11 +293,14 @@ class LocationDB:
     values in locations.h.
     """
 
-    GENERATED_START = ('// Start of generated content. '
-                       'Do NOT modify after this line.')
-    GENERATED_END = '// End of generated content.'
-    EXISTING_RECORDS_RE = (r'\/\*\s*([a-zA-Z0-9:/_.= \n]|\s)*\s*\*\/\s*'
-                           r'\s+([a-zA-Z][a-zA-Z0-9]*)\s*\=\s*([0-9]+)\s*,')
+    GENERATED_START = (
+        "// Start of generated content. Do NOT modify after this line."
+    )
+    GENERATED_END = "// End of generated content."
+    EXISTING_RECORDS_RE = (
+        r"\/\*\s*([a-zA-Z0-9:/_.= \n]|\s)*\s*\*\/\s*"
+        r"\s+([a-zA-Z][a-zA-Z0-9]*)\s*\=\s*([0-9]+)\s*,"
+    )
 
     def __init__(self, path: str, dup_allowlist: Set[str]):
         """Constructor for LocationDB.
@@ -352,21 +359,27 @@ class LocationDB:
             line_num = line_num_index + 1
             if line.strip() == LocationDB.GENERATED_START:
                 if self._start_line is not None:
-                    logging.error(('Multiple generated starting marker at %d'
-                                   ' and %d'), self._start_line, line_num)
+                    logging.error(
+                        ("Multiple generated starting marker at %d and %d"),
+                        self._start_line,
+                        line_num,
+                    )
                     return False
                 self._start_line = line_num
             if line.strip() == LocationDB.GENERATED_END:
                 if self._end_line is not None:
-                    logging.error(('Multiple generated ending marker at %d '
-                                   'and %d'), self._end_line, line_num)
+                    logging.error(
+                        ("Multiple generated ending marker at %d and %d"),
+                        self._end_line,
+                        line_num,
+                    )
                     return False
                 self._end_line = line_num
         if self._start_line is None:
-            logging.error('No generated starting marker in locations.h')
+            logging.error("No generated starting marker in locations.h")
             return False
         if self._end_line is None:
-            logging.error('No generated ending marker in locations.h')
+            logging.error("No generated ending marker in locations.h")
             return False
         return True
 
@@ -393,7 +406,7 @@ class LocationDB:
     def _get_generated_lines(self):
         assert self._start_line is not None
         assert self._end_line is not None
-        return '\n'.join(self._lines[self._start_line:self._end_line-1])
+        return "\n".join(self._lines[self._start_line : self._end_line - 1])
 
     def load(self) -> bool:
         """Load from locations.h.
@@ -404,7 +417,7 @@ class LocationDB:
             bool: True if successful.
         """
 
-        with open(self.path, 'r') as f:
+        with open(self.path, "r") as f:
             self._lines = f.readlines()
         if not self._find_generated_marker():
             return False
@@ -414,7 +427,7 @@ class LocationDB:
 
     def _generate_header_lines(self):
         symbols_list = [s for s in self.symbols.values()]
-        symbols_list.sort(key=operator.attrgetter('value'))
+        symbols_list.sort(key=operator.attrgetter("value"))
         return [sym.generate_lines() for sym in symbols_list]
 
     def store(self) -> None:
@@ -428,13 +441,13 @@ class LocationDB:
         assert self._lines is not None and self.symbols is not None
         result_lines = []
         # Include the portion that is before the generated content.
-        result_lines += self._lines[0:self._start_line]
+        result_lines += self._lines[0 : self._start_line]
         # Add the generated portion
         result_lines += sum(self._generate_header_lines(), [])
         # Include the portion that is after the generated content.
-        result_lines += self._lines[self._end_line-1:]
-        with open(self.path, 'w') as f:
-            f.write(''.join(result_lines))
+        result_lines += self._lines[self._end_line - 1 :]
+        with open(self.path, "w") as f:
+            f.write("".join(result_lines))
         # Invalidate the variables to ensure stale data isn't left behind.
         self.symbols = None
         self._lines = None
@@ -443,7 +456,7 @@ class LocationDB:
         self._next_value = None
         self.value_to_symbol = None
         # Format the result
-        subprocess.call(['clang-format', '-i', self.path])
+        subprocess.call(["clang-format", "-i", self.path])
 
     def update_from_scan_result(self, result: Dict[str, Symbol]) -> None:
         """Update the state of this object.
@@ -465,7 +478,7 @@ class LocationDB:
             sym.index_in_file = []
             sym.allow_dup = sym.symbol in self._dup_allowlist
             if sym.value:
-                self._next_value = max(self._next_value, sym.value+1)
+                self._next_value = max(self._next_value, sym.value + 1)
 
         for sym in result.values():
             if sym.symbol in self.symbols:
@@ -477,6 +490,7 @@ class LocationDB:
 
         self._build_reverse_map()
 
+
 class EnumsXmlDB:
     """For reading and writing enums.xml
 
@@ -486,7 +500,7 @@ class EnumsXmlDB:
     """
 
     ERROR_LOCATION_ENUM_START_MARKER = '<enum name="CryptohomeErrorLocation">'
-    ENUM_STOP_MARKER = '</enum>'
+    ENUM_STOP_MARKER = "</enum>"
     ERROR_LOCATION_COMMENTS = """<!--
   This enum is intended to be populated automatically by
   platform2/cryptohome/error/tool/location_db.py. It populates all values
@@ -526,22 +540,30 @@ class EnumsXmlDB:
         found_error_loc = False
         result = []
         for event, node in event_stream:
-            if (event == 'START_ELEMENT' and node.tagName == 'enum' and
-                    node.hasAttribute('name') and
-                    node.getAttribute('name') == 'CryptohomeErrorLocation'):
+            if (
+                event == "START_ELEMENT"
+                and node.tagName == "enum"
+                and node.hasAttribute("name")
+                and node.getAttribute("name") == "CryptohomeErrorLocation"
+            ):
                 # Found the CryptohomeErrorLocation enum node.
                 found_error_loc = True
-            if event == 'END_ELEMENT' and node.tagName == 'enum':
+            if event == "END_ELEMENT" and node.tagName == "enum":
                 # Went out of scope of CryptohomeErrorLocation enum node.
                 found_error_loc = False
-            if (found_error_loc and event == 'START_ELEMENT' and
-                    node.tagName == 'int' and node.hasAttribute('value')):
+            if (
+                found_error_loc
+                and event == "START_ELEMENT"
+                and node.tagName == "int"
+                and node.hasAttribute("value")
+            ):
                 # Found a record of error location in enums.xml.
-                result.append(int(node.getAttribute('value')))
+                result.append(int(node.getAttribute("value")))
         self.error_locs = result
 
     def update_enums_xml_with_error_loc(
-            self, values_to_write: List[Tuple[int, str]]) -> bool:
+        self, values_to_write: List[Tuple[int, str]]
+    ) -> bool:
         """Updates enums.xml with the given error locations.
 
         Args:
@@ -553,32 +575,40 @@ class EnumsXmlDB:
             True for success.
         """
 
-        with open(self.enums_xml_path, 'r') as f:
+        with open(self.enums_xml_path, "r") as f:
             lines = f.readlines()
 
         # Verify that there's only 1 error location enum in the DB.
-        if ('\n'.join(lines).count(EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER)
-                != 1):
-            logging.error('Invalid number of CryptohomeErrorLocation <enum> tag'
-                          ' in enums.xml')
+        if (
+            "\n".join(lines).count(EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER)
+            != 1
+        ):
+            logging.error(
+                "Invalid number of CryptohomeErrorLocation <enum> tag"
+                " in enums.xml"
+            )
             return False
 
         idx = 0
         while idx < len(lines):
-            if (lines[idx].strip() ==
-                    EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER):
+            if (
+                lines[idx].strip()
+                == EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER
+            ):
                 break
             idx += 1
         if idx == len(lines):
-            logging.error('No CryptohomeErrorLocation enum tag found in'
-                          ' enums.xml')
+            logging.error(
+                "No CryptohomeErrorLocation enum tag found in enums.xml"
+            )
             return False
 
-        result = lines[0:idx+1]
+        result = lines[0 : idx + 1]
         result.append(EnumsXmlDB.ERROR_LOCATION_COMMENTS)
         for value, label in values_to_write:
-            result.append(EnumsXmlDB.ERROR_LOCATION_INT_TEMPLATE %
-                          (value, label))
+            result.append(
+                EnumsXmlDB.ERROR_LOCATION_INT_TEMPLATE % (value, label)
+            )
 
         # Note that we do not have nested <enum> tag for
         # CryptohomeErrorLocation, if that changes, we might need to change
@@ -588,21 +618,25 @@ class EnumsXmlDB:
                 break
             idx += 1
         if idx == len(lines):
-            logging.error('No end of enum tag found for '
-                          'CryptohomeErrorLocation in enums.xml')
+            logging.error(
+                "No end of enum tag found for "
+                "CryptohomeErrorLocation in enums.xml"
+            )
             return False
 
         result += lines[idx:]
 
-        with open(self.enums_xml_path, 'w') as f:
-            f.write(''.join(result))
+        with open(self.enums_xml_path, "w") as f:
+            f.write("".join(result))
 
         # Pretty print for conformance with the style.
         enums_xml_dir = pathlib.Path(self.enums_xml_path)
-        subprocess.call(['./pretty_print.py', '--non-interactive',
-                         'enums.xml'],
-                        cwd=enums_xml_dir.parent)
+        subprocess.call(
+            ["./pretty_print.py", "--non-interactive", "enums.xml"],
+            cwd=enums_xml_dir.parent,
+        )
         return True
+
 
 class DBTool:
     """Bridge for various classes above.
@@ -611,9 +645,9 @@ class DBTool:
     their input/outputs to each other.
     """
 
-    ALLOWED_SRC_EXT = frozenset({'.cc', '.h'})
-    SCAN_DENYLIST = frozenset({'./error/location_utils.h'})
-    LOCATIONS_H_PATH = './error/locations.h'
+    ALLOWED_SRC_EXT = frozenset({".cc", ".h"})
+    SCAN_DENYLIST = frozenset({"./error/location_utils.h"})
+    LOCATIONS_H_PATH = "./error/locations.h"
 
     def __init__(self, allowlist_path: str):
         """Constructor for DBTool.
@@ -646,10 +680,10 @@ class DBTool:
     def _load_dup_allowlist(self):
         """Load self._dup_allowlist from file."""
 
-        with open(self.allowlist_path, 'r') as f:
+        with open(self.allowlist_path, "r") as f:
             lines = f.readlines()
         lines = [line.strip() for line in lines]
-        lines = [line for line in lines if len(line) > 0 and line[0] != '#']
+        lines = [line for line in lines if len(line) > 0 and line[0] != "#"]
         for line in lines:
             self._dup_allowlist.add(line)
 
@@ -663,14 +697,16 @@ class DBTool:
         """
 
         # Scan for all symbols.
-        all_symbols = SourceScanner.scan_directory('.', DBTool.ALLOWED_SRC_EXT)
-        all_symbols = [r for r in all_symbols
-                       if r.path[0] not in DBTool.SCAN_DENYLIST]
+        all_symbols = SourceScanner.scan_directory(".", DBTool.ALLOWED_SRC_EXT)
+        all_symbols = [
+            r for r in all_symbols if r.path[0] not in DBTool.SCAN_DENYLIST
+        ]
         collated_symbols, violations = self.verifier.collate_and_verify(
-            all_symbols)
+            all_symbols
+        )
         # Notify the user on any violations.
         if len(violations) != 0:
-            print('Please remove duplicate usage of error location in code:')
+            print("Please remove duplicate usage of error location in code:")
             for s in violations:
                 print(violations[s])
             return False, None
@@ -714,13 +750,15 @@ class DBTool:
 
         self._load_full_db()
         if value not in self.db.value_to_symbol:
-            print('Value %s not found' % value)
+            print("Value %s not found" % value)
             return False
         symbol = self.db.symbols[self.db.value_to_symbol[value]]
-        print('Value %s is %s and can be found at:' % (symbol.value,
-                                                       symbol.symbol))
+        print(
+            "Value %s is %s and can be found at:"
+            % (symbol.value, symbol.symbol)
+        )
         for path, line in zip(symbol.path, symbol.line_num):
-            print('%s:%d'  % (path, line))
+            print("%s:%d" % (path, line))
         return True
 
     def decode_stack(self, locs: str) -> None:
@@ -735,13 +773,13 @@ class DBTool:
 
         self._load_full_db()
 
-        stack = [int(x) for x in locs.split('-')]
+        stack = [int(x) for x in locs.split("-")]
         for val in stack:
             if val not in self.db.value_to_symbol:
-                print('Value %s not found' % val)
+                print("Value %s not found" % val)
             else:
                 symbol = self.db.symbols[self.db.value_to_symbol[val]]
-                print('%s' % (symbol,))
+                print("%s" % (symbol,))
 
     def update_enums_xml_with_error_loc(self, chromium_src_path: str) -> None:
         """Updates the enums.xml with the error location symbols used.
@@ -759,8 +797,9 @@ class DBTool:
         chromium_src_path = chromium_src_path.expanduser().resolve()
 
         # Find path to enums.xml
-        enums_xml_path = (chromium_src_path / 'tools' / 'metrics' /
-                          'histograms' / 'enums.xml')
+        enums_xml_path = (
+            chromium_src_path / "tools" / "metrics" / "histograms" / "enums.xml"
+        )
 
         # Load enums.xml
         enums_db = EnumsXmlDB(str(enums_xml_path))
@@ -774,31 +813,41 @@ class DBTool:
                 return True
             except ValueError:
                 return False
+
         inputs = sys.stdin.readlines()
         inputs = [x.strip() for x in inputs]
         inputs = [int(x) for x in inputs if is_integer(x)]
 
         # Load the DB and grab all values.
         self._load_full_db()
-        result_error_loc_values = list(set(inputs)
-                                       .union(set(enums_db.error_locs)))
+        result_error_loc_values = list(
+            set(inputs).union(set(enums_db.error_locs))
+        )
         result_error_loc_values.sort()
-        result_error_locs = [(x, self.db.value_to_symbol[x])
-                             for x in result_error_loc_values
-                             if x in self.db.value_to_symbol]
-        invalid_locs = [x for x in result_error_loc_values
-                        if x not in self.db.value_to_symbol]
+        result_error_locs = [
+            (x, self.db.value_to_symbol[x])
+            for x in result_error_loc_values
+            if x in self.db.value_to_symbol
+        ]
+        invalid_locs = [
+            x
+            for x in result_error_loc_values
+            if x not in self.db.value_to_symbol
+        ]
 
         # Log warnings for invalid inputs.
         for loc in invalid_locs:
             # Note that currently TPM errors are not handled.
             # TODO(b/236378423): Support TPM Error Locations.
-            logging.warning('Invalid error location value: %d', loc)
+            logging.warning("Invalid error location value: %d", loc)
 
         # Write all valid output to enums.xml
         if not enums_db.update_enums_xml_with_error_loc(result_error_locs):
-            logging.error('Failed to update enums.xml, call to '
-                          'update_enums_xml_with_error_loc failed.')
+            logging.error(
+                "Failed to update enums.xml, call to "
+                "update_enums_xml_with_error_loc failed."
+            )
+
 
 class DBToolCommandLine:
     """This class handles the command line operations for the tool."""
@@ -825,49 +874,60 @@ class DBToolCommandLine:
         logging.basicConfig(level=logging.INFO)
 
     def _parse_args(self):
-        self.parser = argparse.ArgumentParser(description=
-                                              'Tool for handling error '
-                                              'location in locations.h')
-        self.parser.add_argument('--update',
-                                 help=('Scan the source directory'
-                                       ' and update the locations.h db'),
-                                 action='store_true')
-        self.parser.add_argument('--check',
-                                 help=('Scan the source directory and check '
-                                       'that cryptohome error is used '
-                                       'correctly.'),
-                                 action='store_true')
-        self.parser.add_argument('--lookup',
-                                 help='Lookup a single error location code',
-                                 default=None)
-        self.parser.add_argument('--decode',
-                                 help=('Decode a stack of error location, ex.'
-                                       '42-7-15'),
-                                 default=None)
-        self.parser.add_argument('--update-enums-xml-with-error-loc',
-                                 help=('Update the enums.xml, will need to'
-                                       'supply chromium source directory'),
-                                 action='store_true')
+        self.parser = argparse.ArgumentParser(
+            description="Tool for handling error location in locations.h"
+        )
+        self.parser.add_argument(
+            "--update",
+            help="Scan the source directory and update the locations.h db",
+            action="store_true",
+        )
+        self.parser.add_argument(
+            "--check",
+            help=(
+                "Scan the source directory and check that cryptohome error is "
+                "used correctly."
+            ),
+            action="store_true",
+        )
+        self.parser.add_argument(
+            "--lookup", help="Lookup a single error location code", default=None
+        )
+        self.parser.add_argument(
+            "--decode",
+            help="Decode a stack of error location, ex.42-7-15",
+            default=None,
+        )
+        self.parser.add_argument(
+            "--update-enums-xml-with-error-loc",
+            help=(
+                "Update the enums.xml, will need to supply chromium source "
+                "directory"
+            ),
+            action="store_true",
+        )
 
-        self.parser.add_argument('--chromium-src',
-                                 help='Path to Chromium source code',
-                                 default='~/chromium/src')
-        self.parser.add_argument('--src',
-                                 help=('The cryptohome source '
-                                       'directory'), default=None)
+        self.parser.add_argument(
+            "--chromium-src",
+            help="Path to Chromium source code",
+            default="~/chromium/src",
+        )
+        self.parser.add_argument(
+            "--src", help=("The cryptohome source directory"), default=None
+        )
         self.args = self.parser.parse_args()
 
     def _goto_srcdir(self):
         assert self.args is not None
         srcdir = self.args.src
         if srcdir is None:
-            srcdir = os.path.join(os.path.dirname(__file__), '..', '..')
+            srcdir = os.path.join(os.path.dirname(__file__), "..", "..")
         srcdir = os.path.abspath(srcdir)
-        logging.info('Using cryptohome source at: %s', srcdir)
+        logging.info("Using cryptohome source at: %s", srcdir)
         os.chdir(srcdir)
 
     def _get_dup_allowlist_path(self):
-        path = os.path.join(os.path.dirname(__file__), 'dup_allowlist.txt')
+        path = os.path.join(os.path.dirname(__file__), "dup_allowlist.txt")
         path = os.path.abspath(path)
         return path
 
@@ -895,13 +955,13 @@ class DBToolCommandLine:
         elif self.args.update_enums_xml_with_error_loc:
             self.db_tool.update_enums_xml_with_error_loc(self.args.chromium_src)
         else:
-            logging.error('No action specified, please see --help')
+            logging.error("No action specified, please see --help")
             return 1
         return 0
 
 
 # Invoke the main function for the tool.
-if __name__ == '__main__':
+if __name__ == "__main__":
     cmdline = DBToolCommandLine()
     return_value = cmdline.main()
     sys.exit(return_value)
