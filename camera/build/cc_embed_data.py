@@ -65,57 +65,65 @@ CC_SOURCE_FILE_FOOTER = """
 
 
 def ToCamelCase(in_str: str) -> str:
-    return ''.join(s.title() for s in in_str.split('_'))
+    return "".join(s.title() for s in in_str.split("_"))
 
 
 def ToVariableName(in_str: str) -> str:
-    result = re.sub(r'\W+', r'_', in_str)
+    result = re.sub(r"\W+", r"_", in_str)
     return result.lower()
 
 
 def ToCameraIncludePath(in_path: str, base_path: str) -> str:
-    return os.path.relpath(in_path, os.path.join(base_path, 'camera'))
+    return os.path.relpath(in_path, os.path.join(base_path, "camera"))
 
 
 def ToHeaderGuard(in_path: str, base_path: str) -> str:
     header_guard = os.path.relpath(in_path, base_path)
-    header_guard = re.sub(r'\W+', r'_', header_guard)
-    header_guard = header_guard.upper().rstrip('_')
-    header_guard += '_'
+    header_guard = re.sub(r"\W+", r"_", header_guard)
+    header_guard = header_guard.upper().rstrip("_")
+    header_guard += "_"
     return header_guard
 
 
 def ClangFormatFile(file_path: str):
-    subprocess.check_call(['/usr/bin/clang-format', '-i', file_path])
+    subprocess.check_call(["/usr/bin/clang-format", "-i", file_path])
 
 
 def PrepareSourceContent(file_path: str):
     if not os.path.exists(file_path):
-        raise IOError('Cannot find source file: %s' % (file_path))
+        raise IOError("Cannot find source file: %s" % (file_path))
 
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         return f.read()
 
 
 def CreateHeaderFile(args):
-    with open(args.output_header_file, 'w+') as f:
-        f.write(CC_HEADER_FILE.format(
+    with open(args.output_header_file, "w+") as f:
+        f.write(
+            CC_HEADER_FILE.format(
                 copyright=COPYRIGHT,
-                header_guard=ToHeaderGuard(args.output_header_file,
-                                           args.target_base_path),
+                header_guard=ToHeaderGuard(
+                    args.output_header_file, args.target_base_path
+                ),
                 namespace=args.namespace,
-                toc_name=ToCamelCase(args.toc_name)))
+                toc_name=ToCamelCase(args.toc_name),
+            )
+        )
 
     ClangFormatFile(args.output_header_file)
 
 
 def CreateCcFile(args, toc: dict):
-    with open(args.output_cc_file, 'w+') as f:
-        f.write(CC_SOURCE_FILE_HEADER.format(
+    with open(args.output_cc_file, "w+") as f:
+        f.write(
+            CC_SOURCE_FILE_HEADER.format(
                 copyright=COPYRIGHT,
-                header_file=ToCameraIncludePath(args.output_header_file,
-                                                args.target_base_path),
-                namespace=args.namespace))
+                header_file=ToCameraIncludePath(
+                    args.output_header_file, args.target_base_path
+                ),
+                namespace=args.namespace,
+            )
+        )
 
         for k, v in toc.items():
             f.write(CC_CONTENT_ENTRY.format(key=ToVariableName(k), value=v))
@@ -127,30 +135,53 @@ def CreateCcFile(args, toc: dict):
 
         f.write(CC_TOC_GETTER_LOWER)
 
-        f.write(CC_SOURCE_FILE_FOOTER.format(
-                namespace=args.namespace,
-                toc_name=args.toc_name))
+        f.write(
+            CC_SOURCE_FILE_FOOTER.format(
+                namespace=args.namespace, toc_name=args.toc_name
+            )
+        )
 
     ClangFormatFile(args.output_cc_file)
 
 
 def ParseArguments(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--source-files', type=str, required=True,
-                        help='a list of comma separated source files to embed')
-    parser.add_argument('--output-header-file', type=str, required=True,
-                        help='the output header file name')
-    parser.add_argument('--output-cc-file', type=str, required=True,
-                        help='the output cc file name')
-    parser.add_argument('--target-base-path', type=str,
-                        default='/mnt/host/source/src/platform2',
-                        help=('base filepath to where the generated files will '
-                              'be written into (default: %(default)s)'))
-    parser.add_argument('--toc-name', type=str, required=True,
-                        help='the TOC getter name')
-    parser.add_argument('--namespace', type=str, default='cros',
-                        help=('C++ namespace for the generated code '
-                              '(default: %(default)s)'))
+    parser.add_argument(
+        "--source-files",
+        type=str,
+        required=True,
+        help="a list of comma separated source files to embed",
+    )
+    parser.add_argument(
+        "--output-header-file",
+        type=str,
+        required=True,
+        help="the output header file name",
+    )
+    parser.add_argument(
+        "--output-cc-file",
+        type=str,
+        required=True,
+        help="the output cc file name",
+    )
+    parser.add_argument(
+        "--target-base-path",
+        type=str,
+        default="/mnt/host/source/src/platform2",
+        help=(
+            "base filepath to where the generated files will "
+            "be written into (default: %(default)s)"
+        ),
+    )
+    parser.add_argument(
+        "--toc-name", type=str, required=True, help="the TOC getter name"
+    )
+    parser.add_argument(
+        "--namespace",
+        type=str,
+        default="cros",
+        help=("C++ namespace for the generated code " "(default: %(default)s)"),
+    )
 
     return parser.parse_args(argv)
 
@@ -158,10 +189,10 @@ def ParseArguments(argv):
 def main(argv: list) -> int:
     args = ParseArguments(argv)
     toc = {}
-    for source_file in args.source_files.split(','):
+    for source_file in args.source_files.split(","):
         index = os.path.basename(source_file)
         if index in toc:
-            raise KeyError('Duplicated source file: %s' % (source_file))
+            raise KeyError("Duplicated source file: %s" % (source_file))
         toc[index] = PrepareSourceContent(source_file)
 
     CreateHeaderFile(args)
@@ -169,5 +200,5 @@ def main(argv: list) -> int:
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
