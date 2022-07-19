@@ -686,5 +686,25 @@ bool ContainerListenerImpl::CheckOpenRateLimit() {
   return false;
 }
 
+grpc::Status ContainerListenerImpl::InstallShaderCache(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::InstallShaderCacheRequest* request,
+    vm_tools::EmptyMessage* response) {
+  LOG(INFO) << "Install shader request for app id: " << request->steam_app_id()
+            << ", token: " << request->token();
+  // TOOD(b/239494222): Implement this method
+  return grpc::Status(grpc::INTERNAL, "Not implemented");
+}
+
+grpc::Status ContainerListenerImpl::UninstallShaderCache(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UninstallShaderCacheRequest* request,
+    vm_tools::EmptyMessage* response) {
+  LOG(INFO) << "Uninstall shader request for app id: "
+            << request->steam_app_id() << ", token: " << request->token();
+  // TOOD(b/239494222): Implement this method
+  return grpc::Status(grpc::INTERNAL, "Not implemented");
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

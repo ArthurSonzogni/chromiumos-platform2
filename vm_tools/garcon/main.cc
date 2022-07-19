@@ -70,6 +70,12 @@ constexpr char kSelectFileTitleSwitch[] = "title";
 constexpr char kSelectFilePathSwitch[] = "path";
 constexpr char kSelectFileExtensionsSwitch[] = "extensions";
 constexpr char kDiskSwitch[] = "disk";
+constexpr char kShaderSwitch[] = "borealis-shader-cache";
+constexpr char kShaderAppIDSwitch[] = "app-id";
+constexpr char kShaderInstallSwitch[] = "install";
+constexpr char kShaderUninstallSwitch[] = "uninstall";
+constexpr char kShaderMountSwitch[] = "mount";
+constexpr char kShaderWaitSwitch[] = "wait";
 constexpr char kGetDiskInfoArg[] = "get_disk_info";
 constexpr char kRequestSpaceArg[] = "request_space";
 constexpr char kReleaseSpaceArg[] = "release_space";
@@ -237,6 +243,16 @@ void PrintUsage() {
             << "  --selectfile: open file dialog and return file: URL list\n"
             << "  --disk: handles requests relating to disk management\n"
             << "  --metrics: reports metrics to the host\n"
+            << "  --borealis-shader-cache: (un)install shader cache\n"
+            << "Borealis Shader Cache Switches "
+            << "(only with --client --borealis-shader-cache):\n"
+            << "  --app-id: Steam app ID\n"
+            << "  --install: (optional) Install shader cache DLC\n"
+            << "  --uninstall: (optional) Unmount and uninstall shader cache\n"
+            << "               DLC\n"
+            << "  --mount: (optional) Upon shader cache DLC installation,\n"
+            << "           mount the DLC contents to VM's GPU cache\n"
+            << "  --wait: (optional) Wait for the operation to complete\n"
             << "Select File Switches (only with --client --selectfile):\n"
             << "  --type: "
                "open-file|open-multi-file|saveas-file|folder|upload-folder\n"
@@ -374,6 +390,62 @@ int HandleMetricsArgs(std::vector<std::string> args) {
   return 0;
 }
 
+int HandleShaderCacheArgs(base::CommandLine* cl) {
+  uint64_t app_id = 0;
+  std::string app_id_string = cl->GetSwitchValueNative(kShaderAppIDSwitch);
+  if (app_id_string.empty()) {
+    LOG(ERROR) << "Missing --" << kShaderAppIDSwitch << "=<Steam appid>";
+    return -1;
+  }
+  base::StringToUint64(app_id_string, &app_id);
+  if (app_id == 0) {
+    LOG(ERROR) << "Invalid app ID";
+    return -1;
+  }
+
+  auto flag_set = {kShaderInstallSwitch, kShaderUninstallSwitch};
+  int flag_count = 0;
+  std::ostringstream flags_combined;
+  for (auto flag : flag_set) {
+    flag_count += cl->HasSwitch(flag);
+    flags_combined << flag << " ";
+  }
+  if (flag_count > 1) {
+    LOG(ERROR) << "Only one of the following flags is allowed: "
+               << flags_combined.str();
+    return -1;
+  } else if (flag_count == 0) {
+    LOG(ERROR) << "One of the following flags must be specified: "
+               << flags_combined.str();
+    return -1;
+  }
+
+  bool success = false;
+  if (cl->HasSwitch(kShaderInstallSwitch)) {
+    LOG(INFO) << "Installing shader cache for " << app_id_string;
+    if (cl->HasSwitch(kShaderMountSwitch)) {
+      LOG(INFO) << "Upon successful installation, shader cache will be mounted";
+    }
+    success = vm_tools::garcon::HostNotifier::InstallShaderCache(
+        app_id, cl->HasSwitch(kShaderMountSwitch),
+        cl->HasSwitch(kShaderWaitSwitch));
+
+  } else if (cl->HasSwitch(kShaderUninstallSwitch)) {
+    if (cl->HasSwitch(kShaderMountSwitch)) {
+      LOG(WARNING) << "Shader cache being uninstalled, ignoring --"
+                   << kShaderMountSwitch;
+    }
+    if (cl->HasSwitch(kShaderWaitSwitch)) {
+      LOG(WARNING) << "Shader cache uninstall always waits, --"
+                   << kShaderWaitSwitch << " flag is redundant";
+    }
+    LOG(INFO) << "Unmounting and uninstalling shader cache for "
+              << app_id_string;
+    success = vm_tools::garcon::HostNotifier::UninstallShaderCache(app_id);
+  }
+
+  return success ? 0 : -1;
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -438,6 +510,8 @@ int main(int argc, char** argv) {
       return HandleDiskArgs(cl->GetArgs());
     } else if (cl->HasSwitch(kMetricsSwitch)) {
       return HandleMetricsArgs(cl->GetArgs());
+    } else if (cl->HasSwitch(kShaderSwitch)) {
+      return HandleShaderCacheArgs(cl);
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();

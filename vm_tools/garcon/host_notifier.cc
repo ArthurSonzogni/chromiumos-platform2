@@ -31,6 +31,8 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/constants/vm_tools.h>
+#include <vm_protos/proto_bindings/common.pb.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 
 #include "vm_tools/common/paths.h"
 #include "vm_tools/garcon/desktop_file.h"
@@ -265,6 +267,66 @@ bool HostNotifier::RequestSpace(
   grpc::Status status = stub->RequestSpace(&ctx, request, response);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to expand the disk: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
+bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
+                                      bool mount,
+                                      bool wait) {
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+
+  vm_tools::container::InstallShaderCacheRequest request;
+  EmptyMessage response;
+  request.set_token(GetSecurityToken());
+  request.set_steam_app_id(steam_app_id);
+  request.set_mount(mount);
+  request.set_wait(wait);
+
+  // Request Cicerone to download and install shader cache
+  grpc::Status status = stub->InstallShaderCache(&ctx, request, &response);
+
+  if (!status.ok()) {
+    if (mount) {
+      LOG(ERROR) << "Failed to install and mount shader cache: "
+                 << status.error_message();
+    } else {
+      LOG(ERROR) << "Failed to trigger shader cache installation: "
+                 << status.error_message();
+    }
+    return false;
+  }
+  if (mount) {
+    LOG(INFO) << "Successfully installed and mounted shader cache DLC";
+  } else {
+    LOG(INFO) << "Successfully triggered shader cache DLC installation";
+  }
+  return true;
+}
+
+bool HostNotifier::UninstallShaderCache(uint64_t steam_app_id) {
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+
+  vm_tools::container::UninstallShaderCacheRequest request;
+  EmptyMessage response;
+  request.set_token(GetSecurityToken());
+  request.set_steam_app_id(steam_app_id);
+
+  grpc::Status status = stub->UninstallShaderCache(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to unmount and uninstall shader cache: "
+               << status.error_message();
     return false;
   }
   return true;

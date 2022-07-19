@@ -369,6 +369,26 @@ message ReportMetricsResponse {
   int64 error = 1;
 }
 
+// Request shader cache DLC installation and optionally mount in host-side VM
+// gpu cache.
+message InstallShaderCacheRequest {
+  // The security token the container was given.
+  string token = 1;
+  // Steam application id
+  uint64 steam_app_id = 2;
+  // If true, mount the DLC contents in host-side VM gpu cache
+  bool mount = 3;
+  // If true, wait for shader cache DLC installation (and mount) to complete.
+  bool wait = 4;
+}
+
+message UninstallShaderCacheRequest {
+  // The security token the container was given.
+  string token = 1;
+  // Steam application id
+  uint64 steam_app_id = 2;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -438,6 +458,12 @@ service ContainerListener {
   rpc ReleaseSpace(ReleaseSpaceRequest) returns (ReleaseSpaceResponse);
 
   rpc ReportMetrics(ReportMetricsRequest) returns (ReportMetricsResponse);
+
+  // Called by the VM to trigger Shader DLC install.
+  rpc InstallShaderCache(InstallShaderCacheRequest) returns (EmptyMessage);
+
+  // Called by the VM to trigger Shader DLC uninstall.
+  rpc UninstallShaderCache(UninstallShaderCacheRequest) returns (EmptyMessage);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.

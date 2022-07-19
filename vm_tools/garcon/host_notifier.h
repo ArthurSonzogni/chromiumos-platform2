@@ -72,6 +72,12 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
       vm_tools::container::ReportMetricsRequest request,
       vm_tools::container::ReportMetricsResponse* response);
 
+  // Install Shader Cache DLC and optionally mount it
+  static bool InstallShaderCache(uint64_t steam_app_id, bool mount, bool wait);
+
+  // Unmount and uninstall shader cache DLC
+  static bool UninstallShaderCache(uint64_t steam_app_id);
+
   ~HostNotifier() override;
 
   // Notifies the host that garcon is ready. This will send the initial update
