@@ -47,7 +47,10 @@ void DBusAdaptor::GetRgbKeyboardCapabilities(
   // After we return capabilities we want to schedule the Daemon to quit.
   // DBusServiceDaemon runs tasks based on a sequential message loop so it is
   // guaranteed RgbkbdDaemon will exit only after all tasks are completed.
-  if (capabilities == static_cast<uint32_t>(RgbKeyboardCapabilities::kNone)) {
+  // Note that a nullptr `daemon_` is valid for tests, tests will own lifetime
+  // of the daemon.
+  if (daemon_ &&
+      capabilities == static_cast<uint32_t>(RgbKeyboardCapabilities::kNone)) {
     base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE,
         base::BindOnce(&RgbkbdDaemon::Quit, base::Unretained(daemon_)));
@@ -68,6 +71,12 @@ void DBusAdaptor::SetRainbowMode() {
 
 void DBusAdaptor::SetTestingMode(bool enable_testing, uint32_t capability) {
   if (enable_testing) {
+    if (capability >
+        static_cast<uint32_t>(RgbKeyboardCapabilities::kMaxValue)) {
+      LOG(ERROR) << "Attempted to set unsupported capability.";
+      return;
+    }
+
     if (!logger_keyboard_) {
       logger_keyboard_ = std::make_unique<KeyboardBacklightLogger>(
           base::FilePath(kLogFilePathForTesting));
