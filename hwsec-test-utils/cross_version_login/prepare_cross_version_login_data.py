@@ -36,9 +36,12 @@ class Version(NamedTuple):
     major: int
     minor: int
     patch: int
+    # An optional suffix in the "-custombuildYYYYMMDD" format.
+    custombuild: str
 
     def __str__(self) -> str:
-        return f'R{self.milestone}-{self.major}.{self.minor}.{self.patch}'
+        return (f'R{self.milestone}-{self.major}.{self.minor}.{self.patch}'
+                f'{self.custombuild}')
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
@@ -46,7 +49,8 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser.add_argument('--board', help='ChromiumOS board, e.g., betty',
                         required=True)
     parser.add_argument('--version',
-                        help='ChromiumOS version, e.g., R100-14526.89.0',
+                        help='ChromiumOS version, e.g., R100-14526.89.0 or '
+                             'R100-14526.89.0-custombuild20220130',
                         required=True)
     parser.add_argument('--output-dir',
                         help='path to the directory to place output files in',
@@ -74,11 +78,16 @@ def run(board: str, version_str: str, output_dir: Path,
             stop_vm()
 
 def parse_version(version: str) -> Version:
-    """Parses a ChromeOS version string, like "R100-14526.89.0"."""
-    match = re.fullmatch(r'R(\d+)-(\d+)\.(\d+)\.(\d+)', version)
+    """Parses a ChromeOS version string, like "R100-14526.89.0".
+
+    Also allows the "R100-14526.89.0-custombuild20220130" format.
+    """
+    match = re.fullmatch(r'R(\d+)-(\d+)\.(\d+)\.(\d+)(-custombuild\d{8}|)',
+                         version)
     if not match:
         raise RuntimeError(f'Failed to parse version {version}')
-    return Version(*(int(x) for x in match.groups()))
+    return Version(int(match.group(1)), int(match.group(2)),
+                   int(match.group(3)), int(match.group(4)), match.group(5))
 
 def setup_ssh_identity(ssh_identity_file: Optional[Path],
                        temp_path: Path) -> Path:
@@ -97,11 +106,21 @@ def default_ssh_identity_file() -> Path:
 
 def download_vm_image(board: str, version: Version, temp_path: Path) -> Path:
     """Fetches the ChromiumOS image from Google Cloud Storage."""
-    image_url = (f'gs://chromeos-image-archive/{board}-release/{version}/'
-                 f'chromiumos_test_image.tar.xz')
-    check_run('gsutil', 'cp', image_url, temp_path)
-    # Unpack the .tar.xz archive.
+    if version.custombuild:
+        # Download the custom-built VM image from a special GS folder (which is
+        # populated manually by developers).
+        image_url = (
+            f'gs://chromeos-test-assets-private/tast/cros/hwsec/'
+            f'cross_version_login/custombuilds/{version}_{board}.tar.xz')
+    else:
+        # No "custombuild" in the specified version, hence use the standard GS
+        # folder (it's populated by build bots).
+        image_url = (
+            f'gs://chromeos-image-archive/{board}-release/{version}/'
+            f'chromiumos_test_image.tar.xz')
     archive_path = Path(f'{temp_path}/chromiumos_test_image.tar.xz')
+    check_run('gsutil', 'cp', image_url, archive_path)
+    # Unpack the .tar.xz archive.
     check_run('tar', 'Jxf', archive_path, '-C', temp_path)
     target_path = Path(f'{temp_path}/chromiumos_test_image.bin')
     if not target_path.exists():
