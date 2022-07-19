@@ -61,7 +61,9 @@ void ValidateLog(base::span<const KeyColor> expected) {
 class RgbKeyboardControllerTest : public testing::Test {
  public:
   RgbKeyboardControllerTest() {
-    logger_ = std::make_unique<KeyboardBacklightLogger>(kTempLogFilePath);
+    // Default to RgbKeyboardCapabilities::kIndividualKey
+    logger_ = std::make_unique<KeyboardBacklightLogger>(
+        kTempLogFilePath, RgbKeyboardCapabilities::kIndividualKey);
 
     controller_ = std::make_unique<RgbKeyboardControllerImpl>(logger_.get());
   }
@@ -75,13 +77,6 @@ class RgbKeyboardControllerTest : public testing::Test {
   std::unique_ptr<RgbKeyboardControllerImpl> controller_;
   std::unique_ptr<KeyboardBacklightLogger> logger_;
 };
-
-// TODO(michaelcheco): Update when we are able to test the real implementation.
-TEST_F(RgbKeyboardControllerTest,
-       GetRgbKeyboardCapabilitiesReturnsFourZoneFortyLed) {
-  EXPECT_EQ(controller_->GetRgbKeyboardCapabilities(),
-            static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFortyLed));
-}
 
 TEST_F(RgbKeyboardControllerTest, SetCapabilityIndividualKey) {
   controller_->SetKeyboardCapabilityForTesting(

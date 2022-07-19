@@ -25,8 +25,10 @@ const char kTempLogFilePath[] = "/tmp/rgbkbd_log";
 class KeyboardBacklightLoggerTest : public testing::Test {
  public:
   KeyboardBacklightLoggerTest() {
+    // Default to RgbKeyboardCapabilities::kIndividualKey
     logger_ = std::make_unique<KeyboardBacklightLogger>(
-        base::FilePath(kTempLogFilePath));
+        base::FilePath(kTempLogFilePath),
+        RgbKeyboardCapabilities::kIndividualKey);
   }
 
   KeyboardBacklightLoggerTest(const KeyboardBacklightLoggerTest&) = delete;

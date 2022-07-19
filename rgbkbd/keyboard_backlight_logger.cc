@@ -15,8 +15,9 @@
 
 namespace rgbkbd {
 
-KeyboardBacklightLogger::KeyboardBacklightLogger(const base::FilePath& path)
-    : log_path_(path) {
+KeyboardBacklightLogger::KeyboardBacklightLogger(
+    const base::FilePath& path, RgbKeyboardCapabilities capability)
+    : log_path_(path), capabilities_(capability) {
   if (!InitializeFile()) {
     LOG(ERROR) << "Failed to initially create or open log file.";
   }
@@ -40,7 +41,7 @@ bool KeyboardBacklightLogger::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 RgbKeyboardCapabilities KeyboardBacklightLogger::GetRgbKeyboardCapabilities() {
-  return RgbKeyboardCapabilities::kFourZoneFortyLed;
+  return capabilities_;
 }
 
 bool KeyboardBacklightLogger::InitializeFile() {

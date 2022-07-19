@@ -18,7 +18,8 @@ namespace rgbkbd {
 
 class KeyboardBacklightLogger : public RgbKeyboard {
  public:
-  explicit KeyboardBacklightLogger(const base::FilePath& path);
+  KeyboardBacklightLogger(const base::FilePath& path,
+                          RgbKeyboardCapabilities capability);
   KeyboardBacklightLogger(const KeyboardBacklightLogger&) = delete;
   KeyboardBacklightLogger& operator=(const KeyboardBacklightLogger&) = delete;
   ~KeyboardBacklightLogger() override = default;
@@ -37,6 +38,7 @@ class KeyboardBacklightLogger : public RgbKeyboard {
 
   std::unique_ptr<base::File> file_;
   base::FilePath log_path_;
+  RgbKeyboardCapabilities capabilities_;
 };
 
 }  // namespace rgbkbd
