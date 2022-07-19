@@ -320,9 +320,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Unmounts image files that have been mounted in MountOnOnetimeSetup.
   void UnmountOnOnetimeStop();
 
-  // Performs sensor setup.
-  void SetupSensorOnPreChroot(const base::FilePath& rootfs);
-
   // Various bind-mounts inside the container's mount namespace on pre-chroot
   // stage.
   void BindMountInContainerNamespaceOnPreChroot(

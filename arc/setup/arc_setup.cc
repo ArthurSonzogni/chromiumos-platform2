@@ -38,7 +38,6 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
@@ -534,29 +533,6 @@ std::string GetDisableDownloadProvider(bool disable_download_provider) {
 // Converts Generate PAI bool to androidboot property if applicable.
 std::string GetGeneratePaiParam(bool arc_generate_pai) {
   return arc_generate_pai ? "androidboot.arc_generate_pai=1 " : std::string();
-}
-
-// Allows the container to write the sensor attribute.
-bool AllowContainerToWriteSensorAttribute(const base::FilePath& path) {
-  // If the attribute doesn't exist, do nothing.
-  if (!base::PathExists(path))
-    return true;
-
-  // Change the owner gid to arc-sensor.
-  constexpr gid_t kArcSensorGid = 604;
-  if (chown(path.value().c_str(), -1, kArcSensorGid) < 0) {
-    PLOG(ERROR) << "chown failed " << path.value();
-    return false;
-  }
-  // Allow group to write.
-  if (chmod(path.value().c_str(), 0664) < 0) {
-    PLOG(ERROR) << "chmod failed " << path.value();
-    return false;
-  }
-  // Change the SELinux context.
-  constexpr char kCrosSensorHalSysfsContext[] =
-      "u:object_r:cros_sensor_hal_sysfs:s0";
-  return Chcon(kCrosSensorHalSysfsContext, path);
 }
 
 std::string GetSELinuxContext(const base::FilePath& path) {
@@ -1366,7 +1342,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "%s" /* PAI Generation */
       "androidboot.boottime_offset=%" PRId64
       " " /* in nanoseconds */
-      "androidboot.iioservice_present=%d "
       "androidboot.enable_notifications_refresh=%d "
       "androidboot.arc.tts.caching=%d "
       "androidboot.enable_consumer_auto_update_toggle=%d\n",
@@ -1379,7 +1354,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetDisableDownloadProvider(disable_download_provider).c_str(),
       GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
-      USE_IIOSERVICE, enable_notifications_refresh, enable_tts_caching,
+      enable_notifications_refresh, enable_tts_caching,
       enable_consumer_auto_update_toggle);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
@@ -2157,98 +2132,6 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
-void ArcSetup::SetupSensorOnPreChroot(const base::FilePath& rootfs) {
-  if (USE_IIOSERVICE) {
-    // If iioservice is used, the container needs no access to the device.
-    return;
-  }
-
-  // Wait for the cros-ec-ring device.
-  EXIT_IF(!LaunchAndWait({"/bin/udevadm", "trigger", "--action=add",
-                          "--property-match=DRIVER-cros-ec-ring", "--settle"}));
-
-  // Find the cros-ec-ring device directory.
-  base::FileEnumerator enumerator(base::FilePath("/sys/bus/iio/devices"),
-                                  false /* recursive */,
-                                  base::FileEnumerator::DIRECTORIES);
-  base::FilePath cros_ec_ring_dir;
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    const base::FilePath name_path = path.Append("name");
-    if (!base::PathExists(name_path))
-      continue;
-
-    std::string name;
-    EXIT_IF(!base::ReadFileToString(name_path, &name));
-    base::TrimString(name, "\n", &name);
-    if (base::StartsWith(name, "cros-ec-")) {
-      // Make sensor attributes writable.
-      EXIT_IF(!AllowContainerToWriteSensorAttribute(
-          path.Append("buffer/hwfifo_flush")));
-      EXIT_IF(!AllowContainerToWriteSensorAttribute(
-          path.Append("buffer/hwfifo_timeout")));
-      EXIT_IF(!AllowContainerToWriteSensorAttribute(
-          path.Append("sampling_frequency")));
-      if (name == "cros-ec-ring")
-        cros_ec_ring_dir = path;
-    }
-  }
-
-  if (cros_ec_ring_dir.empty())
-    return;
-  const base::FilePath device_name = cros_ec_ring_dir.BaseName();
-
-  // Get the device number of cros-ec-ring.
-  struct stat st = {};
-  EXIT_IF(stat(base::FilePath("/dev").Append(device_name).value().c_str(),
-               &st) < 0);
-
-  // cros-ec-ring specific attributes.
-  EXIT_IF(!AllowContainerToWriteSensorAttribute(
-      cros_ec_ring_dir.Append("trigger/current_trigger")));
-  EXIT_IF(!AllowContainerToWriteSensorAttribute(
-      cros_ec_ring_dir.Append("buffer/enable")));
-  EXIT_IF(!AllowContainerToWriteSensorAttribute(
-      cros_ec_ring_dir.Append("buffer/length")));
-
-  // Disable cros-ec-ring buffer.
-  EXIT_IF(!base::WriteFile(cros_ec_ring_dir.Append("buffer/enable"), "0"));
-
-  // Turn on all cros-ec-ring channels.
-  base::FileEnumerator channel_enumerator(
-      cros_ec_ring_dir.Append("scan_elements"), false /* recursive */,
-      base::FileEnumerator::FILES);
-  for (base::FilePath path = channel_enumerator.Next(); !path.empty();
-       path = channel_enumerator.Next()) {
-    if (base::EndsWith(path.value(), "_en"))
-      EXIT_IF(!base::WriteFile(path, "1"));
-  }
-
-  // Allow the container to use cros-ec-ring.
-  // TODO(gwendal): This is fragile, needs to find a better way.
-  const std::string allow_str =
-      base::StringPrintf("c %d:%d r", major(st.st_rdev), minor(st.st_rdev));
-  EXIT_IF(!base::AppendToFile(
-      base::FilePath("/sys/fs/cgroup/devices/session_manager_containers/"
-                     "android/devices.allow"),
-      allow_str));
-
-  // Create the device file for the container.
-  base::ScopedFD container_dev_dir_fd(
-      brillo::OpenSafely(rootfs.Append("dev"), O_DIRECTORY | O_RDONLY, 0));
-  EXIT_IF(!container_dev_dir_fd.is_valid());
-  EXIT_IF(mknodat(container_dev_dir_fd.get(), device_name.value().c_str(),
-                  S_IFCHR | S_IRWXU, st.st_rdev) < 0);
-
-  // Set the owner.
-  // NOTE: Here openat() and fchown() are used instead of Chown() or
-  // brillo::OpenAtSafely() because they reject device files.
-  base::ScopedFD device_fd(HANDLE_EINTR(openat(
-      container_dev_dir_fd.get(), device_name.value().c_str(), O_RDONLY)));
-  EXIT_IF(!device_fd.is_valid());
-  EXIT_IF(fchown(device_fd.get(), kSystemUid, kSystemGid) < 0);
-}
-
 void ArcSetup::BindMountInContainerNamespaceOnPreChroot(
     const base::FilePath& rootfs,
     const ArcBinaryTranslationType binary_translation_type) {
@@ -2506,7 +2389,6 @@ void ArcSetup::OnPreChroot() {
   PLOG_IF(FATAL, !container_mount_ns)
       << "Failed to enter the container mount namespace";
 
-  SetupSensorOnPreChroot(rootfs);
   BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
   RestoreContextOnPreChroot(rootfs);
   CreateDevColdbootDoneOnPreChroot(rootfs);
