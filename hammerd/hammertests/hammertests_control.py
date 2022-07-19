@@ -23,32 +23,34 @@ import sys
 
 
 def main(argv):
-  if len(argv) > 0:
-    sys.exit('Test takes no args!')
-  iterations = 10
-  test_list = ['verify_pairing',
-               'ro_stay_ro',
-               'flash_wrong_address',
-               'rb_rw_protected',
-               'ro_boot_valid_rw',
-               'rw_no_update_ro',
-               'ro_update_rw',
-              ]
+    if len(argv) > 0:
+        sys.exit("Test takes no args!")
+    iterations = 10
+    test_list = [
+        "verify_pairing",
+        "ro_stay_ro",
+        "flash_wrong_address",
+        "rb_rw_protected",
+        "ro_boot_valid_rw",
+        "rw_no_update_ro",
+        "ro_update_rw",
+    ]
 
-  for test in test_list:
-    logs_dir = 'logs/' + test
-    if os.path.exists(logs_dir):
-      shutil.rmtree(logs_dir)
-    os.makedirs(logs_dir)
-    for i in range(iterations):
-      iteration_num = i + 1
-      print('==========================================================')
-      print('TEST NAME: ' + test)
-      print('ITERATION ' + str(iteration_num) + ' OF ' + str(iterations))
-      print('==========================================================')
-      cmd = f'set -o pipefail; python3 "{test}.py" 2>&1 '
-      cmd += f'| tee "{logs_dir}/{test}{iteration_num}.log"'
-      subprocess.check_call(['/bin/bash', '-c', cmd])
+    for test in test_list:
+        logs_dir = "logs/" + test
+        if os.path.exists(logs_dir):
+            shutil.rmtree(logs_dir)
+        os.makedirs(logs_dir)
+        for i in range(iterations):
+            iteration_num = i + 1
+            print("==========================================================")
+            print("TEST NAME: " + test)
+            print("ITERATION " + str(iteration_num) + " OF " + str(iterations))
+            print("==========================================================")
+            cmd = f'set -o pipefail; python3 "{test}.py" 2>&1 '
+            cmd += f'| tee "{logs_dir}/{test}{iteration_num}.log"'
+            subprocess.check_call(["/bin/bash", "-c", cmd])
 
-if __name__ == '__main__':
-  sys.exit(main(sys.argv[1:]))
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
