@@ -66,6 +66,8 @@ std::optional<mojom::ProbeErrorPtr> GetProcessState(
     *mojo_state_out = mojom::ProcessState::kTracingStop;
   } else if (raw_state == "X") {
     *mojo_state_out = mojom::ProcessState::kDead;
+  } else if (raw_state == "I") {
+    *mojo_state_out = mojom::ProcessState::kIdle;
   } else {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,

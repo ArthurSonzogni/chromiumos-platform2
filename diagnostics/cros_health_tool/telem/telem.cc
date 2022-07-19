@@ -88,6 +88,8 @@ std::string EnumToString(mojom::ProcessState state) {
       return "Tracing Stop";
     case mojom::ProcessState::kDead:
       return "Dead";
+    case mojom::ProcessState::kIdle:
+      return "Idle";
   }
 }
 

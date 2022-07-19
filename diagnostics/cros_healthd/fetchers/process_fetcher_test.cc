@@ -574,7 +574,9 @@ INSTANTIATE_TEST_SUITE_P(
                     ParseProcessStateTestParams{
                         /*raw_state=*/"t", mojom::ProcessState::kTracingStop},
                     ParseProcessStateTestParams{/*raw_state=*/"X",
-                                                mojom::ProcessState::kDead}));
+                                                mojom::ProcessState::kDead},
+                    ParseProcessStateTestParams{/*raw_state=*/"I",
+                                                mojom::ProcessState::kIdle}));
 
 }  // namespace
 }  // namespace diagnostics
