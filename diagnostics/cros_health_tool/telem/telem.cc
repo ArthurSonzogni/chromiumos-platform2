@@ -497,13 +497,17 @@ void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
   SET_DICT(cancelled_bytes_written, info, &output);
   SET_DICT(command, info, &output);
   SET_DICT(free_memory_kib, info, &output);
+  SET_DICT(name, info, &output);
   SET_DICT(nice, info, &output);
+  SET_DICT(parent_process_id, info, &output);
+  SET_DICT(process_group_id, info, &output);
   SET_DICT(physical_bytes_read, info, &output);
   SET_DICT(physical_bytes_written, info, &output);
   SET_DICT(priority, info, &output);
   SET_DICT(read_system_calls, info, &output);
   SET_DICT(resident_memory_kib, info, &output);
   SET_DICT(state, info, &output);
+  SET_DICT(threads, info, &output);
   SET_DICT(total_memory_kib, info, &output);
   SET_DICT(uptime_ticks, info, &output);
   SET_DICT(user_id, info, &output);

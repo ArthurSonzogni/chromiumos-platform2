@@ -55,6 +55,10 @@ constexpr mojom::ProcessState kExpectedMojoState =
     mojom::ProcessState::kSleeping;
 constexpr int8_t kExpectedPriority = 20;
 constexpr int8_t kExpectedNice = 0;
+constexpr char kExpectedName[] = "fake_exe";
+constexpr uint32_t kExpectedParentProcessID = 1;
+constexpr uint32_t kExpectedProcessGroupID = 1015;
+constexpr uint32_t kExpectedThreads = 1;
 // Invalid /proc/|kPid|/stat: not enough tokens.
 constexpr char kProcPidStatContentsInsufficientTokens[] =
     "6098 (fake_exe) S 1 1015 1015 0 -1 4210944";
@@ -68,6 +72,12 @@ constexpr char kOverflowingPriority[] = "128";
 constexpr char kInvalidNice[] = "InvalidNice";
 // Invalid starttime value.
 constexpr char kInvalidStarttime[] = "InvalidStarttime";
+// Invalid parent process id value.
+constexpr char kInvalidParentProcessID[] = "InvalidParentProcessID";
+// Invalid process group id value.
+constexpr char kInvalidProcessGroupID[] = "InvalidProcessGroupID";
+// Invalid threads value.
+constexpr char kInvalidThreads[] = "InvalidThreads";
 
 // Valid fake data for /proc/|kPid|/statm.
 constexpr char kFakeProcPidStatmContents[] = "25648 2657 2357 151 0 18632 0";
@@ -259,6 +269,10 @@ TEST_F(ProcessFetcherTest, FetchProcessInfo) {
             kExpectedPhysicalBytesWritten);
   EXPECT_EQ(process_info->cancelled_bytes_written,
             kExpectedCancelledBytesWritten);
+  EXPECT_EQ(process_info->name, kExpectedName);
+  EXPECT_EQ(process_info->parent_process_id, kExpectedParentProcessID);
+  EXPECT_EQ(process_info->process_group_id, kExpectedProcessGroupID);
+  EXPECT_EQ(process_info->threads, kExpectedThreads);
 }
 
 // Test that we handle a missing /proc/uptime file.
@@ -399,6 +413,42 @@ TEST_F(ProcessFetcherTest, OverflowingPriorityRead) {
 TEST_F(ProcessFetcherTest, InvalidProcessStarttimeRead) {
   ASSERT_TRUE(
       WriteProcPidStatData(kInvalidStarttime, ProcPidStatIndices::kStartTime));
+
+  auto process_result = FetchProcessInfo();
+
+  ASSERT_TRUE(process_result->is_error());
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
+}
+
+// Test that we handle an invalid parent process id value read from the
+// /proc/|kPid|/stat file.
+TEST_F(ProcessFetcherTest, InvalidParentProcessIDRead) {
+  ASSERT_TRUE(WriteProcPidStatData(kInvalidParentProcessID,
+                                   ProcPidStatIndices::kParentProcessID));
+
+  auto process_result = FetchProcessInfo();
+
+  ASSERT_TRUE(process_result->is_error());
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
+}
+
+// Test that we handle an invalid process group id value read from the
+// /proc/|kPid|/stat file.
+TEST_F(ProcessFetcherTest, InvalidProcessGroupIDRead) {
+  ASSERT_TRUE(WriteProcPidStatData(kInvalidProcessGroupID,
+                                   ProcPidStatIndices::kProcessGroupID));
+
+  auto process_result = FetchProcessInfo();
+
+  ASSERT_TRUE(process_result->is_error());
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
+}
+
+// Test that we handle an invalid threads value read from the /proc/|kPid|/stat
+// file.
+TEST_F(ProcessFetcherTest, InvalidThreadsRead) {
+  ASSERT_TRUE(
+      WriteProcPidStatData(kInvalidThreads, ProcPidStatIndices::kThreads));
 
   auto process_result = FetchProcessInfo();
 

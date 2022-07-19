@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -39,12 +40,17 @@ class ProcessFetcher final : public BaseFetcher {
  private:
   // Parses relevant fields from /proc/|process_id_|/stat. Returns the first
   // error encountered or std::nullopt if no errors occurred. |priority|,
-  // |nice| and |start_time_ticks| are only valid if std::nullopt was returned.
+  // |nice|, |start_time_ticks|, |name|, |parent_process_id|, |process_group_id|
+  // and |threads| are only valid if std::nullopt was returned.
   std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
       mojom::ProcessState* state,
       int8_t* priority,
       int8_t* nice,
-      uint64_t* start_time_ticks);
+      uint64_t* start_time_ticks,
+      std::optional<std::string>* name,
+      uint32_t* parent_process_id,
+      uint32_t* process_group_id,
+      uint32_t* threads);
 
   // Parses relevant fields from /proc/|process_id_|/statm. Returns the first
   // error encountered or std::nullopt if no errors occurred.

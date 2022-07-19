@@ -218,8 +218,10 @@ void ProcessFetcher::FetchProcessInfo(
 
   // Number of ticks after system boot that the process started.
   uint64_t start_time_ticks;
-  auto error = ParseProcPidStat(&process_info.state, &process_info.priority,
-                                &process_info.nice, &start_time_ticks);
+  auto error = ParseProcPidStat(
+      &process_info.state, &process_info.priority, &process_info.nice,
+      &start_time_ticks, &process_info.name, &process_info.parent_process_id,
+      &process_info.process_group_id, &process_info.threads);
   if (error.has_value()) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(std::move(error.value())));
@@ -282,11 +284,20 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
     mojom::ProcessState* state,
     int8_t* priority,
     int8_t* nice,
-    uint64_t* start_time_ticks) {
-  // Note that start_time_ticks is the only pointer actually dereferenced in
-  // this function. The helper functions which set |state|, |priority| and
-  // |nice| are responsible for checking the validity of those three pointers.
+    uint64_t* start_time_ticks,
+    std::optional<std::string>* name,
+    uint32_t* parent_process_id,
+    uint32_t* process_group_id,
+    uint32_t* threads) {
+  // Note that start_time_ticks, name, parent_process_id, process_group_id,
+  // threads are the only pointers actually dereferenced in this function.
+  // The helper functions which set |state|, |priority| and |nice| are
+  // responsible for checking the validity of those three pointers.
   DCHECK(start_time_ticks);
+  DCHECK(name);
+  DCHECK(parent_process_id);
+  DCHECK(process_group_id);
+  DCHECK(threads);
 
   std::string stat_contents;
   const base::FilePath kProcPidStatFile =
@@ -325,6 +336,37 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
     return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to convert starttime to uint64: " +
                                       std::string(start_time_str));
+  }
+
+  // In "/proc/{PID}/stat", the filename of the executable is displayed in
+  // parentheses, we need to remove them to get original value.
+  std::string name_str = std::string(stat_tokens[ProcPidStatIndices::kName]);
+  name_str = name_str.substr(1, name_str.size() - 2);
+  *name = std::optional<std::string>(name_str);
+
+  base::StringPiece parent_process_id_str =
+      stat_tokens[ProcPidStatIndices::kParentProcessID];
+  if (!base::StringToUint(parent_process_id_str, parent_process_id)) {
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                  "Failed to convert " +
+                                      std::string(parent_process_id_str) +
+                                      " to uint32_t.");
+  }
+
+  base::StringPiece process_group_id_str =
+      stat_tokens[ProcPidStatIndices::kProcessGroupID];
+  if (!base::StringToUint(process_group_id_str, process_group_id)) {
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                  "Failed to convert " +
+                                      std::string(process_group_id_str) +
+                                      " to uint32_t.");
+  }
+
+  base::StringPiece threads_str = stat_tokens[ProcPidStatIndices::kThreads];
+  if (!base::StringToUint(threads_str, threads)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert " + std::string(threads_str) + " to uint32_t.");
   }
 
   return std::nullopt;
