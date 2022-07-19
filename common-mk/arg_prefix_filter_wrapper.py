@@ -20,7 +20,7 @@ import sys
 
 def get_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--prefix', type=str, default='-l')
+    parser.add_argument("--prefix", type=str, default="-l")
     return parser
 
 
@@ -29,10 +29,10 @@ def main(argv):
     opts, cmd_list = parser.parse_known_args(argv)
 
     prefix_len = len(opts.prefix)
-    flags = shlex.split(subprocess.check_output(cmd_list, encoding='utf-8'))
+    flags = shlex.split(subprocess.check_output(cmd_list, encoding="utf-8"))
     filtered = [x[prefix_len:] for x in flags if x.startswith(opts.prefix)]
-    print('\n'.join(filtered))
+    print("\n".join(filtered))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

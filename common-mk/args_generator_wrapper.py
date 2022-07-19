@@ -22,7 +22,7 @@ import sys
 import common_utils
 
 
-output = subprocess.check_output(sys.argv[1:], encoding='utf-8').strip()
+output = subprocess.check_output(sys.argv[1:], encoding="utf-8").strip()
 unescaped = common_utils.parse_shell_args(output)
 
-print('\n'.join(unescaped))
+print("\n".join(unescaped))

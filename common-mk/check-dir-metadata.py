@@ -34,11 +34,11 @@ def GetActiveProjects() -> Generator[Path, None, None]:
     """Return the list of active projects."""
     # Look at all the paths (files & dirs) in the top of the git repo.  This way
     # we ignore local directories devs created that aren't actually committed.
-    cmd = ['ls-tree', '--name-only', '-z', 'HEAD']
+    cmd = ["ls-tree", "--name-only", "-z", "HEAD"]
     result = git.RunGit(TOP_DIR, cmd)
 
     # Split the output on NULs to avoid whitespace/etc... issues.
-    paths = result.stdout.split('\0')
+    paths = result.stdout.split("\0")
 
     # ls-tree -z will include a trailing NUL on all entries, not just
     # separation, so filter it out if found (in case ls-tree behavior changes on
@@ -51,115 +51,115 @@ def GetActiveProjects() -> Generator[Path, None, None]:
 # Legacy projects that don't have a DIR_METADATA file.
 # Someone should claim them :D.
 LEGACYLIST = {
-    'arc',
-    'authpolicy',
-    'avtest_label_detect',
-    'bootid-logger',
-    'bootstat',
-    'camera',
-    'cfm-dfu-notification',
-    'chromeos-common-script',
-    'chromeos-dbus-bindings',
-    'chromeos-nvt-tcon-updater',
-    'client_id',
-    'codelab',
-    'cronista',
-    'crosdns',
-    'crosh',
-    'croslog',
-    'cups_proxy',
-    'disk_updater',
-    'dlcservice',
-    'dlp',
-    'dns-proxy',
-    'easy-unlock',
-    'featured',
-    'fitpicker',
-    'foomatic_shell',
-    'glib-bridge',
-    'goldfishd',
-    'hammerd',
-    'hardware_verifier',
-    'hermes',
-    'hiberman',
-    'iioservice',
-    'image-burner',
-    'imageloader',
-    'init',
-    'installer',
-    'ippusb_bridge',
-    'kerberos',
-    'libbrillo',
-    'libchromeos-rs',
-    'libchromeos-ui',
-    'libcontainer',
-    'libipp',
-    'libmems',
-    'libpasswordprovider',
-    'login_manager',
-    'media_capabilities',
-    'media_perception',
-    'mems_setup',
-    'metrics',
-    'midis',
-    'minios',
-    'missive',
-    'mist',
-    'ml_benchmark',
-    'modemfwd',
-    'modem-utilities',
-    'mojo_service_manager',
-    'nnapi',
-    'ocr',
-    'oobe_config',
-    'os_install_service',
-    'p2p',
-    'patchpanel',
-    'pciguard',
-    'perfetto_simple_producer',
-    'permission_broker',
-    'policy_proto',
-    'policy_utils',
-    'power_manager',
-    'print_tools',
-    'regions',
-    'resourced',
-    'rmad',
-    'run_oci',
-    'runtime_probe',
-    'screen-capture-utils',
-    'secanomalyd',
-    'secure_erase_file',
-    'secure-wipe',
-    'sepolicy',
-    'shill',
-    'sirenia',
-    'smogcheck',
-    'spaced',
-    'st_flash',
-    'storage_info',
-    'syslog-cat',
-    'system_api',
-    'system-proxy',
-    'timberslide',
-    'touch_firmware_calibration',
-    'trim',
-    'typecd',
-    'ureadahead-diff',
-    'usb_bouncer',
-    'verity',
-    'virtual_file_provider',
-    'vm_tools',
-    'vpn-manager',
-    'webserver',
-    'wifi-testbed',
+    "arc",
+    "authpolicy",
+    "avtest_label_detect",
+    "bootid-logger",
+    "bootstat",
+    "camera",
+    "cfm-dfu-notification",
+    "chromeos-common-script",
+    "chromeos-dbus-bindings",
+    "chromeos-nvt-tcon-updater",
+    "client_id",
+    "codelab",
+    "cronista",
+    "crosdns",
+    "crosh",
+    "croslog",
+    "cups_proxy",
+    "disk_updater",
+    "dlcservice",
+    "dlp",
+    "dns-proxy",
+    "easy-unlock",
+    "featured",
+    "fitpicker",
+    "foomatic_shell",
+    "glib-bridge",
+    "goldfishd",
+    "hammerd",
+    "hardware_verifier",
+    "hermes",
+    "hiberman",
+    "iioservice",
+    "image-burner",
+    "imageloader",
+    "init",
+    "installer",
+    "ippusb_bridge",
+    "kerberos",
+    "libbrillo",
+    "libchromeos-rs",
+    "libchromeos-ui",
+    "libcontainer",
+    "libipp",
+    "libmems",
+    "libpasswordprovider",
+    "login_manager",
+    "media_capabilities",
+    "media_perception",
+    "mems_setup",
+    "metrics",
+    "midis",
+    "minios",
+    "missive",
+    "mist",
+    "ml_benchmark",
+    "modemfwd",
+    "modem-utilities",
+    "mojo_service_manager",
+    "nnapi",
+    "ocr",
+    "oobe_config",
+    "os_install_service",
+    "p2p",
+    "patchpanel",
+    "pciguard",
+    "perfetto_simple_producer",
+    "permission_broker",
+    "policy_proto",
+    "policy_utils",
+    "power_manager",
+    "print_tools",
+    "regions",
+    "resourced",
+    "rmad",
+    "run_oci",
+    "runtime_probe",
+    "screen-capture-utils",
+    "secanomalyd",
+    "secure_erase_file",
+    "secure-wipe",
+    "sepolicy",
+    "shill",
+    "sirenia",
+    "smogcheck",
+    "spaced",
+    "st_flash",
+    "storage_info",
+    "syslog-cat",
+    "system_api",
+    "system-proxy",
+    "timberslide",
+    "touch_firmware_calibration",
+    "trim",
+    "typecd",
+    "ureadahead-diff",
+    "usb_bouncer",
+    "verity",
+    "virtual_file_provider",
+    "vm_tools",
+    "vpn-manager",
+    "webserver",
+    "wifi-testbed",
 }
 
 # Mapping between tracker & component key name.
 DIR_MD_COMPONENT_KEY = (
-    ('buganizer', 'componentId'),
-    ('buganizer_public', 'componentId'),
-    ('monorail', 'component'),
+    ("buganizer", "componentId"),
+    ("buganizer_public", "componentId"),
+    ("monorail", "component"),
 )
 
 
@@ -172,60 +172,71 @@ def CheckSubdirs() -> int:
 
     ret = 0
     for proj in GetActiveProjects():
-        path = TOP_DIR / proj / 'DIR_METADATA'
+        path = TOP_DIR / proj / "DIR_METADATA"
         if path.exists():
             if str(proj) in LEGACYLIST:
                 logging.error(
                     '*** Project "%s" is in no-DIR_METADATA LEGACYLIST, but '
-                    'actually has one. Please remove it from %s:LEGACYLIST!',
-                    proj, __file__)
+                    "actually has one. Please remove it from %s:LEGACYLIST!",
+                    proj,
+                    __file__,
+                )
                 ret = 1
         else:
             if str(proj) not in LEGACYLIST:
                 logging.error(
                     '*** Project "%s" needs a DIR_METADATA file; see common-mk/'
-                    'DIR_METADATA for an example', proj)
+                    "DIR_METADATA for an example",
+                    proj,
+                )
                 ret = 1
             continue
 
         data = path.read_text()
         for i, line in enumerate(data.splitlines(), start=1):
             if line.rstrip() != line:
-                logging.error('*** %s:%i: Trim trailing whitespace', path, i)
+                logging.error("*** %s:%i: Trim trailing whitespace", path, i)
                 ret = 1
 
         if not data:
-            logging.error('*** %s: File is empty', path)
+            logging.error("*** %s: File is empty", path)
             ret = 1
 
-        if not data.endswith('\n'):
-            logging.error('*** %s: Missing trailing newline', path)
+        if not data.endswith("\n"):
+            logging.error("*** %s: Missing trailing newline", path)
             ret = 1
 
-        if data.startswith('\n'):
-            logging.error('*** %s: Trim leading blanklines', path)
+        if data.startswith("\n"):
+            logging.error("*** %s: Trim leading blanklines", path)
             ret = 1
 
-        if data.endswith('\n\n'):
-            logging.error('*** %s: Trim trailing blanklines', path)
+        if data.endswith("\n\n"):
+            logging.error("*** %s: Trim trailing blanklines", path)
             ret = 1
 
     # Make sure the projects have declared how to route bugs.
     result = cros_build_lib.dbg_run(
-        [os.path.join(constants.DEPOT_TOOLS_DIR, 'dirmd'), 'read'],
-        cwd=TOP_DIR, capture_output=True, check=True)
+        [os.path.join(constants.DEPOT_TOOLS_DIR, "dirmd"), "read"],
+        cwd=TOP_DIR,
+        capture_output=True,
+        check=True,
+    )
     dirmd = json.loads(result.stdout)
-    for project, data in dirmd['dirs'].items():
+    for project, data in dirmd["dirs"].items():
         bug_component_found = False
         for tracker, key in DIR_MD_COMPONENT_KEY:
             if tracker in data:
                 if key not in data[tracker]:
-                    logging.error('*** %s: Missing tracker "%s" component "%s"',
-                                  project, tracker, key)
+                    logging.error(
+                        '*** %s: Missing tracker "%s" component "%s"',
+                        project,
+                        tracker,
+                        key,
+                    )
                 else:
                     bug_component_found = True
         if not bug_component_found:
-            logging.error('*** %s: Missing bug component information', project)
+            logging.error("*** %s: Missing bug component information", project)
 
     return ret
 
@@ -245,5 +256,5 @@ def main(argv: List[str]) -> Optional[int]:
     return CheckSubdirs()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     commandline.ScriptWrapperMain(lambda _: main)

@@ -22,20 +22,20 @@ import sys
 
 def get_shell_output(cmd):
     """Run |cmd| and return output as a list."""
-    output = subprocess.check_output(cmd, encoding='utf-8')
+    output = subprocess.check_output(cmd, encoding="utf-8")
     return shlex.split(output)
 
 
 def main(argv):
-    cflags = get_shell_output(argv + ['--cflags'])
+    cflags = get_shell_output(argv + ["--cflags"])
     libs = []
     lib_dirs = []
     ldflags = []
-    for ldflag in get_shell_output(argv + ['--libs']):
-        if ldflag.startswith('-l'):
+    for ldflag in get_shell_output(argv + ["--libs"]):
+        if ldflag.startswith("-l"):
             # Strip -l.
             libs.append(ldflag[2:])
-        elif ldflag.startswith('-L'):
+        elif ldflag.startswith("-L"):
             # Strip -L.
             lib_dirs.append(ldflag[2:])
         else:
@@ -43,13 +43,13 @@ def main(argv):
 
     # Set sort_keys=True for stabilization.
     result = {
-        'cflags': cflags,
-        'libs': libs,
-        'lib_dirs': lib_dirs,
-        'ldflags': ldflags,
+        "cflags": cflags,
+        "libs": libs,
+        "lib_dirs": lib_dirs,
+        "ldflags": ldflags,
     }
     json.dump(result, sys.stdout, sort_keys=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

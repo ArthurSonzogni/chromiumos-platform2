@@ -20,13 +20,13 @@ import sys
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', required=True, help='the output file name')
-    parser.add_argument('args', nargs='*')
+    parser.add_argument("--output", required=True, help="the output file name")
+    parser.add_argument("args", nargs="*")
     options = parser.parse_args(argv)
 
-    with open(options.output, 'w', encoding='utf-8') as f:
-        f.write(' '.join(options.args) + '\n')
+    with open(options.output, "w", encoding="utf-8") as f:
+        f.write(" ".join(options.args) + "\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

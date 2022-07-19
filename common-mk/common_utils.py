@@ -24,5 +24,7 @@ def parse_shell_args(s):
     # a flag for echo. IFS is set to separate $* with newlines.
     output = subprocess.check_output(
         ['eval "set -- dummy $0"; IFS=$\'\\n\'; printf "%s" "$*"', s],
-        shell=True, encoding='utf-8')
+        shell=True,
+        encoding="utf-8",
+    )
     return output.splitlines()[1:]

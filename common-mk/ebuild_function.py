@@ -12,7 +12,8 @@ https://dev.gentoo.org/~zmedico/portage/doc/man/ebuild.5.html
 import os
 
 
-VALID_INSTALL_TYPES = ('bin', 'ins', 'lib.a', 'lib.so', 'sbin', 'exe')
+VALID_INSTALL_TYPES = ("bin", "ins", "lib.a", "lib.so", "sbin", "exe")
+
 
 class EbuildFunctionError(Exception):
     """The base exception for ebuild_function."""
@@ -20,13 +21,21 @@ class EbuildFunctionError(Exception):
 
 class InvalidInstallTypeError(EbuildFunctionError):
     """Invalid type exception that is raised when install type is invalid."""
+
     def __init__(self):
         message = f'install_type must be {", ".join(VALID_INSTALL_TYPES)}'
         super().__init__(message)
 
 
-def generate(sources, install_path=None, outputs=None, symlinks=None,
-             recursive=False, options=None, command_type=None):
+def generate(
+    sources,
+    install_path=None,
+    outputs=None,
+    symlinks=None,
+    recursive=False,
+    options=None,
+    command_type=None,
+):
     """Generates commandlines for installing files using a ebuild function.
 
     Args:
@@ -86,43 +95,50 @@ def generate(sources, install_path=None, outputs=None, symlinks=None,
     """
     if not command_type:
         if not symlinks:
-            install_type = 'ins'
+            install_type = "ins"
         else:
-            install_type = 'sym'
+            install_type = "sym"
             if install_path:
-                outputs = [os.path.join(install_path, symlink)
-                           for symlink in symlinks]
+                outputs = [
+                    os.path.join(install_path, symlink) for symlink in symlinks
+                ]
             else:
                 outputs = symlinks
 
-    elif command_type == 'executable':
-        assert install_path, ('install_path is required for'
-                              ' command_type="executable"')
+    elif command_type == "executable":
+        assert install_path, (
+            "install_path is required for" ' command_type="executable"'
+        )
         # dobin and dosbin adds subdirectory "bin" and "sbin" respectively.
         # Therefore install path needs to be trimmed.
         new_install_path, install_type = os.path.split(install_path)
-        if install_type not in ('bin', 'sbin'):
+        if install_type not in ("bin", "sbin"):
             assert os.path.isabs(install_path), (
-                'install_path must be absolute for executables'
-                ' other than */bin or */sbin.')
-            install_type = 'exe'
+                "install_path must be absolute for executables"
+                " other than */bin or */sbin."
+            )
+            install_type = "exe"
         else:
             install_path = new_install_path
 
-    elif command_type == 'shared_library':
+    elif command_type == "shared_library":
         install_path, lib = os.path.split(install_path)
-        assert lib == 'lib', ('install_path must end in lib in a shared_library'
-                              ' target')
-        install_type = 'lib.so'
+        assert (
+            lib == "lib"
+        ), "install_path must end in lib in a shared_library target"
+        install_type = "lib.so"
 
-    elif command_type == 'static_library':
+    elif command_type == "static_library":
         install_path, lib = os.path.split(install_path)
-        assert lib == 'lib', ('install_path must end in lib in a static_library'
-                              ' target')
-        install_type = 'lib.a'
+        assert (
+            lib == "lib"
+        ), "install_path must end in lib in a static_library target"
+        install_type = "lib.a"
     else:
-        raise AssertionError('unknown type. type must be executable,'
-                             ' shared_library or static_library')
+        raise AssertionError(
+            "unknown type. type must be executable,"
+            " shared_library or static_library"
+        )
     cmd_list = option_cmd(install_type, install_path, options)
     cmd_list += install(install_type, sources, outputs, recursive)
     return cmd_list
@@ -143,13 +159,15 @@ def sym_install(sources, symlinks):
           ...
         ]
     """
-    assert len(sources) == len(symlinks), ('the number of symlinks must be the'
-                                           ' same as sources')
-    return [['dosym', source, symlink]
-            for source, symlink in zip(sources, symlinks)]
+    assert len(sources) == len(
+        symlinks
+    ), "the number of symlinks must be the same as sources"
+    return [
+        ["dosym", source, symlink] for source, symlink in zip(sources, symlinks)
+    ]
 
 
-def option_cmd(install_type, install_path='', options=None):
+def option_cmd(install_type, install_path="", options=None):
     """Generates commandlines of options appropriate for the |install_type|.
 
     Args:
@@ -171,16 +189,16 @@ def option_cmd(install_type, install_path='', options=None):
           ['into', 'path/to/install']
         ]
     """
-    if install_type == 'ins':
+    if install_type == "ins":
         return [
-            ['insinto', install_path or '/'],
-            ['insopts', options or '-m0644'],
+            ["insinto", install_path or "/"],
+            ["insopts", options or "-m0644"],
         ]
-    if install_type == 'exe':
+    if install_type == "exe":
         assert install_path
-        return [['exeinto', install_path]]
+        return [["exeinto", install_path]]
     if install_type in VALID_INSTALL_TYPES:
-        return [['into', install_path or '/usr']]
+        return [["into", install_path or "/usr"]]
     return []
 
 
@@ -200,7 +218,7 @@ def install(install_type, sources, outputs=None, recursive=False):
     Returns:
         A list of commandlines for installation.
     """
-    if install_type == 'sym':
+    if install_type == "sym":
         return sym_install(sources, outputs)
     if not outputs:
         return do_command(install_type, sources, recursive)
@@ -231,9 +249,9 @@ def do_command(install_type, sources, recursive=False):
     if install_type not in VALID_INSTALL_TYPES:
         raise InvalidInstallTypeError()
     recursive_opts = []
-    if install_type == 'ins' and recursive:
-        recursive_opts = ['-r']
-    return [['do%s' % install_type] + recursive_opts + sources]
+    if install_type == "ins" and recursive:
+        recursive_opts = ["-r"]
+    return [["do%s" % install_type] + recursive_opts + sources]
 
 
 def new_command(install_type, sources, outputs):
@@ -255,7 +273,10 @@ def new_command(install_type, sources, outputs):
     """
     if install_type not in VALID_INSTALL_TYPES:
         raise InvalidInstallTypeError()
-    assert len(sources) == len(outputs), ('the number of outputs must be the'
-                                          ' same as sources')
-    return [['new%s' % install_type, source, output]
-            for source, output in zip(sources, outputs)]
+    assert len(sources) == len(
+        outputs
+    ), "the number of outputs must be the same as sources"
+    return [
+        ["new%s" % install_type, source, output]
+        for source, output in zip(sources, outputs)
+    ]

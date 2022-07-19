@@ -26,10 +26,11 @@ import sys
 
 def main(argv):
     subprocess.check_call(argv[2:])
-    subprocess.check_call(argv[2:] + ['--generate_non_variant_code'])
-    subprocess.check_call(argv[2:] + ['--generate_non_variant_code',
-                                      '--generate_message_ids'])
+    subprocess.check_call(argv[2:] + ["--generate_non_variant_code"])
+    subprocess.check_call(
+        argv[2:] + ["--generate_non_variant_code", "--generate_message_ids"]
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv))
