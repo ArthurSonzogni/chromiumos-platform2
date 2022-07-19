@@ -1361,22 +1361,12 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
     if (bearer && bearer->ipv6_config_method() != IPConfig::kMethodUnknown) {
       SLOG(this, 2) << "Assign static IPv6 configuration from bearer.";
-      SelectService(service_);
-      SetServiceState(Service::kStateConfiguring);
-
-      network()->StartIPv6();
       const auto& ipv6_props = *bearer->ipv6_config_properties();
       // Only apply static config if the address is link local. This is a
       // workaround for b/230336493.
       IPAddress link_local_mask("fe80::", 10);
       if (link_local_mask.CanReachAddress(IPAddress(ipv6_props.address))) {
         network()->set_ipv6_static_properties(ipv6_props);
-        dispatcher()->PostTask(
-            FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPv6Address,
-                                      network()->AsWeakPtr()));
-        // Device::OnIPConfigsPropertyUpdated() will be called later when SLAAC
-        // finishes, that is also where static DNS configuration will be
-        // applied.
       }
 
       ipv6_configured = true;
@@ -1401,9 +1391,6 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
       dhcp_opts = DHCPProvider::Options::Create(*manager());
       dhcp_opts->use_arp_gateway = false;
-    } else {
-      // Do not call Network::Start() if v4 is unknown and v6 is configured.
-      return;
     }
 
     Network::StartOptions opts = {

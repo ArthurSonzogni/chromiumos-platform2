@@ -55,10 +55,19 @@ Network::Network(int interface_index,
       rtnl_handler_(RTNLHandler::GetInstance()) {}
 
 void Network::Start(const Network::StartOptions& opts) {
+  // TODO(b/232177767): Log the StartOptions and other parameters.
   Stop();
 
+  bool ipv6_started = false;
   if (opts.accept_ra) {
     StartIPv6();
+    ipv6_started = true;
+  }
+  if (ipv6_static_properties_) {
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Network::ConfigureStaticIPv6Address, AsWeakPtr()));
+    ipv6_started = true;
   }
 
   // Note that currently, the existence of ipconfig_ indicates if the IPv4 part
@@ -78,7 +87,8 @@ void Network::Start(const Network::StartOptions& opts) {
         std::make_unique<IPConfig>(control_interface_, interface_name_));
     ipconfig_->set_properties(*link_protocol_ipv4_properties_);
   } else {
-    NOTREACHED();
+    // This could happen on IPv6-only networks.
+    DCHECK(ipv6_started);
   }
 
   if (link_protocol_ipv4_properties_ ||
@@ -88,10 +98,8 @@ void Network::Start(const Network::StartOptions& opts) {
     // static information.
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
-    return;
-  } else if (!dhcp_started) {
-    // We don't have any kind of IPv4 config, and DHCP failed immediately.
-    // Triggers a failure here.
+  } else if (!dhcp_started && !ipv6_started) {
+    // Neither v4 nor v6 is running, trigger the failure callback directly.
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&Network::StopInternal, AsWeakPtr(),
                                          /*is_failure*/ true));

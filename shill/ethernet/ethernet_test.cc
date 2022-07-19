@@ -362,22 +362,6 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   StopEthernet();
 }
 
-TEST_F(EthernetTest, ConnectToFailure) {
-  auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
-  StartEthernet();
-  SetLinkUp(true);
-  EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _))
-      .WillOnce(
-          Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
-  EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(false));
-  EXPECT_CALL(*mock_service_, SetFailure(Service::kFailureDHCP));
-  ethernet_->ConnectTo(mock_service_.get());
-  dispatcher_.task_environment().RunUntilIdle();
-  EXPECT_EQ(mock_service_, GetSelectedService());
-  StopEthernet();
-}
-
 TEST_F(EthernetTest, ConnectToSuccess) {
   auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
   StartEthernet();
