@@ -326,7 +326,7 @@ class AuthSession final {
 
   // Persists key blocks for a new secret to the USS and onto disk. Upon
   // completion the |on_done| callback will be called. Designed to be used in
-  // conjunction with an async CreateKeyBlobs calls by binding all of the
+  // conjunction with an async CreateKeyBlobs call by binding all of the
   // initial parameters to make an AuthBlock::CreateCallback.
   void PersistAuthFactorToUserSecretStash(
       AuthFactorType auth_factor_type,
@@ -365,12 +365,17 @@ class AuthSession final {
           on_done);
 
   // Loads and decrypts the USS payload with |auth_factor_label| using the
-  // given KeyBlobs.
-  CryptohomeStatus LoadUSSMainKeyAndFsKeyset(
+  // given KeyBlobs. Designed to be used in conjunction with an async
+  // DeriveKeyBlobs call by binding all of the initial parameters to make an
+  // AuthBlock::DeriveCallback.
+  void LoadUSSMainKeyAndFsKeyset(
       const std::string& auth_factor_label,
-      const KeyBlobs& key_blobs,
       std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer);
+          auth_session_performance_timer,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
+      CryptoStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs);
 
   // This function is used to reset the attempt count for a low entropy
   // credential. Currently, this resets all low entropy credentials. In the
@@ -380,12 +385,14 @@ class AuthSession final {
 
   // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
   // and the |auth_factor|.
-  CryptohomeStatus AuthenticateViaUserSecretStash(
+  void AuthenticateViaUserSecretStash(
       const std::string& auth_factor_label,
       const AuthInput auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
-      AuthFactor& auth_factor);
+      const AuthFactor& auth_factor,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
   // TODO(b/232852086) - Once Authentication through AuthSession/

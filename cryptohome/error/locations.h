@@ -471,7 +471,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionFactorNotFoundInAuthAuthFactor = 322,
   /* ./auth_session.cc */
   kLocAuthSessionInputParseFailedInAuthAuthFactor = 323,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionUSSAuthFailedInAuthAuthFactor = 324,
   /* ./auth_session.cc */
   kLocAuthSessionVKConverterFailedInAuthAuthFactor = 325,
@@ -509,9 +509,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPersistFactorFailedInPersistToUSS = 341,
   /* ./auth_session.cc */
   kLocAuthSessionPersistUSSFailedInPersistToUSS = 342,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionAuthFactorAuthFailedInAuthUSS = 343,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionLoadUSSFailedInAuthUSS = 344,
   /* ./auth_session.cc */
   kLocAuthSessionDeriveUSSSecretFailedInLoadUSS = 345,
@@ -539,8 +539,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerParseFailedInLoad = 356,
   /* =Obsolete= */
   kLocAuthFactorCreateKeyBlobsFailedInCreate = 357,
-  /* ./auth_factor/auth_factor.cc */
-  kLocAuthFactorDeriveFailedInAuth = 358,
+  /* ./auth_session.cc */
+  kLocAuthSessionDeriveFailedInAuthUSS = 358,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
   kLocTpmEccAuthBlockNoUserInputInCreate = 359,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */

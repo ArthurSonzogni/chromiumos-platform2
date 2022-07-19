@@ -31,21 +31,6 @@ AuthFactor::AuthFactor(AuthFactorType type,
       metadata_(metadata),
       auth_block_state_(auth_block_state) {}
 
-CryptoStatus AuthFactor::Authenticate(const AuthInput& auth_input,
-                                      AuthBlockUtility* auth_block_utility,
-                                      KeyBlobs& out_key_blobs,
-                                      AuthBlockType& out_auth_block_type) {
-  CryptoStatus crypto_error = auth_block_utility->DeriveKeyBlobs(
-      auth_input, auth_block_state_, out_key_blobs, out_auth_block_type);
-  if (!crypto_error.ok()) {
-    LOG(ERROR) << "Auth factor authentication failed: error " << crypto_error;
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthFactorDeriveFailedInAuth))
-        .Wrap(std::move(crypto_error));
-  }
-  return OkStatus<CryptohomeCryptoError>();
-}
-
 CryptoStatus AuthFactor::PrepareForRemoval(
     AuthBlockUtility* auth_block_utility) {
   CryptoStatus crypto_error =
