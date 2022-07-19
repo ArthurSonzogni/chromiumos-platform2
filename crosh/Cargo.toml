@@ -25,7 +25,7 @@ libchromeos = { path = "../libchromeos-rs", features = ['chromeos-module'] } # p
 rand = "0.7"
 remain = "*"
 regex = "1.0.6"
-rustyline = "7.0.0"
+rustyline = "9.1.1"
 shell-words = "1.0.0"
 sys_util = "0.1.0"
 system_api = { path = "../system_api" } # provided by ebuild
