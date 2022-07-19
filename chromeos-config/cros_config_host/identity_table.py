@@ -66,7 +66,9 @@ def WriteIdentityStruct(config, output_file):
             index += len(entry)
 
     # Write the header of the struct.
-    output_file.write(struct.pack(HEADER_FORMAT, STRUCT_VERSION, len(device_configs)))
+    output_file.write(
+        struct.pack(HEADER_FORMAT, STRUCT_VERSION, len(device_configs))
+    )
 
     # Write each of the entry structs.
     for device_config in device_configs:

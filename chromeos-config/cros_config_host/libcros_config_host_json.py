@@ -57,7 +57,9 @@ class DeviceConfigJson(DeviceConfig):
     def GetProperty(self, path, name):
         schema_props = self._schema_properties.get(path, None)
         if not schema_props or not name in schema_props:
-            raise Exception("Property not present in schema: %s:%s" % (path, name))
+            raise Exception(
+                "Property not present in schema: %s:%s" % (path, name)
+            )
         props = self.GetProperties(path)
         if props and name in props:
             return str(props[name])
@@ -72,7 +74,9 @@ class DeviceConfigJson(DeviceConfig):
         if file_region and "files" in file_region:
             for item in file_region["files"]:
                 if "build-path" in item:
-                    result.append(BaseFile(item["build-path"], item["system-path"]))
+                    result.append(
+                        BaseFile(item["build-path"], item["system-path"])
+                    )
                 else:
                     result.append(BaseFile(item["source"], item["destination"]))
         return result
@@ -83,7 +87,9 @@ class DeviceConfigJson(DeviceConfig):
         if items and "files" in items:
             for item in items["files"]:
                 result.append(
-                    SymlinkedFile(item["source"], item["destination"], item["symlink"])
+                    SymlinkedFile(
+                        item["source"], item["destination"], item["symlink"]
+                    )
                 )
 
         return result
@@ -96,7 +102,9 @@ class DeviceConfigJson(DeviceConfig):
         for path in paths:
             config = self.GetProperties(path)
             if config:
-                result.append(BaseFile(config["build-path"], config["system-path"]))
+                result.append(
+                    BaseFile(config["build-path"], config["system-path"])
+                )
         return result
 
     def GetFirmwareConfig(self):
@@ -115,7 +123,9 @@ class DeviceConfigJson(DeviceConfig):
         return self._GetSymlinkedFiles("/detachable-base")
 
     def GetArcFiles(self):
-        return self._GetSystemFilesV2(["/arc/hardware-features", "/arc/media-profiles"])
+        return self._GetSystemFilesV2(
+            ["/arc/hardware-features", "/arc/media-profiles"]
+        )
 
     def GetAudioFiles(self):
         return self._GetFiles("/audio/main")
@@ -159,7 +169,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
           model_filter_regex: Only returns configs that match the filter.
         """
         self._json = json.loads(
-            TransformConfig(infile.read(), model_filter_regex=model_filter_regex)
+            TransformConfig(
+                infile.read(), model_filter_regex=model_filter_regex
+            )
         )
         self._configs = []
         for config in self._json["chromeos"]["configs"]:
@@ -191,10 +203,14 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
                 build_config = config.GetProperties("/firmware/build-targets")
                 if build_config:
-                    bios_build_target = config.GetValue(build_config, "coreboot")
+                    bios_build_target = config.GetValue(
+                        build_config, "coreboot"
+                    )
                     ec_build_target = config.GetValue(build_config, "ec")
                     if not ec_build_target:
-                        ec_build_target = config.GetValue(build_config, "zephyr-ec")
+                        ec_build_target = config.GetValue(
+                            build_config, "zephyr-ec"
+                        )
                 else:
                     bios_build_target, ec_build_target = None, None
 
@@ -238,14 +254,20 @@ class CrosConfigJson(CrosConfigBaseImpl):
                 if sig_in_customization_id:
                     for wl_config in self._configs:
                         if wl_config.GetName() == name:
-                            wl_brand_code = wl_config.GetProperty("/", "brand-code")
-                            wl_identity_str = str(wl_config.GetProperties("/identity"))
+                            wl_brand_code = wl_config.GetProperty(
+                                "/", "brand-code"
+                            )
+                            wl_identity_str = str(
+                                wl_config.GetProperties("/identity")
+                            )
                             wl_identity = wl_config.GetName() + wl_identity_str
                             processed.add(wl_identity)
                             fw_signer_config = wl_config.GetProperties(
                                 "/firmware-signing"
                             )
-                            wl_key_id = wl_config.GetValue(fw_signer_config, "key-id")
+                            wl_key_id = wl_config.GetValue(
+                                fw_signer_config, "key-id"
+                            )
                             wl_sig_id = wl_config.GetValue(
                                 fw_signer_config, "signature-id"
                             )
@@ -256,7 +278,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
                             if wl_sig_id == name:
                                 wl_config.firmware_info[
                                     wl_sig_id
-                                ] = wl_fw_info._replace(brand_code=wl_brand_code)
+                                ] = wl_fw_info._replace(
+                                    brand_code=wl_brand_code
+                                )
                             else:
                                 wl_config.firmware_info[
                                     wl_sig_id
@@ -322,7 +346,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
     def GetDeviceSignerInfo(self):
         return {
-            value.model: DeviceSignerInfo(key_id=value.key_id, sig_id=value.sig_id)
+            value.model: DeviceSignerInfo(
+                key_id=value.key_id, sig_id=value.sig_id
+            )
             for value in self.GetFirmwareInfo().values()
             if value.key_id
         }

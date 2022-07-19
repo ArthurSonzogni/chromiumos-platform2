@@ -63,7 +63,8 @@ class MainTest(unittest.TestCase):
 
         changed = (
             subprocess.run(
-                ["git", "diff", "--exit-code", "payload_utils/test_data"], check=False
+                ["git", "diff", "--exit-code", "payload_utils/test_data"],
+                check=False,
             ).returncode
             != 0
         )
@@ -109,7 +110,9 @@ class TransformBuildConfigsTest(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(Exception, "Multiple software configs"):
-            cros_config_proto_converter._transform_build_configs(duplicate_config)
+            cros_config_proto_converter._transform_build_configs(
+                duplicate_config
+            )
 
 
 if __name__ == "__main__":

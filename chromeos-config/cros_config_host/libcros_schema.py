@@ -179,6 +179,10 @@ def _GetSchemaPropertyAttrs(schema_node, path, result):
         elif node_type == "object":
             if "oneOf" in current_node:
                 for element in current_node["oneOf"]:
-                    _GetSchemaPropertyAttrs(element["properties"], new_path, result)
+                    _GetSchemaPropertyAttrs(
+                        element["properties"], new_path, result
+                    )
             elif "properties" in current_node:
-                _GetSchemaPropertyAttrs(current_node["properties"], new_path, result)
+                _GetSchemaPropertyAttrs(
+                    current_node["properties"], new_path, result
+                )

@@ -306,7 +306,9 @@ def GetFirmwareRecoveryInput(config, build_target_name, build_target_value):
       build_target_name: Build target name (e.g. "depthcharge")
       build_target_value: Build target for the associated name
     """
-    print(config.GetFirmwareRecoveryInput(build_target_name, build_target_value))
+    print(
+        config.GetFirmwareRecoveryInput(build_target_name, build_target_value)
+    )
 
 
 def GetParser(description):
@@ -344,13 +346,16 @@ def GetParser(description):
     )
     # Parser: get
     get_parser = subparsers.add_parser(
-        "get", help="Gets a model property at the given path, with the given name."
+        "get",
+        help="Gets a model property at the given path, with the given name.",
     )
     get_parser.add_argument(
-        "path", help="Relative path (within the model) to the property's parent node"
+        "path",
+        help="Relative path (within the model) to the property's parent node",
     )
     get_parser.add_argument(
-        "prop", help="The name of the property to get within the node at <path>."
+        "prop",
+        help="The name of the property to get within the node at <path>.",
     )
     # Parser: get-touch-firmware-files
     subparsers.add_parser(
@@ -401,7 +406,8 @@ def GetParser(description):
         epilog="Each build-target will be printed on its own line.",
     )
     build_target_parser.add_argument(
-        "type", help="The build-targets type to get (ex. coreboot, ec, depthcharge)"
+        "type",
+        help="The build-targets type to get (ex. coreboot, ec, depthcharge)",
     )
     # Parser: get-fpmcu-firmware-ro-version
     fpmcu_firmware_ro_parser = subparsers.add_parser(
@@ -423,7 +429,8 @@ def GetParser(description):
     )
     # Parser: file-tree
     file_tree_parser = subparsers.add_parser(
-        "file-tree", help="Shows all files installed by the BSP in a tree structure"
+        "file-tree",
+        help="Shows all files installed by the BSP in a tree structure",
     )
     file_tree_parser.add_argument(
         "root", help="Part to the root directory for this board"
@@ -441,7 +448,8 @@ def GetParser(description):
     )
     build_combination_parser.add_argument(
         "components",
-        help="Comma-separated list of firmware components to get combinations " "for.",
+        help="Comma-separated list of firmware components to get combinations "
+        "for.",
     )
     # Parser: get-wallpaper-files
     subparsers.add_parser(

@@ -59,7 +59,11 @@ class CrosConfigHostTest(unittest.TestCase):
     def _check_output(self, *args, **kwargs):
         call_args, kwargs = self._call_args(*args, **kwargs)
         return subprocess.run(
-            call_args, encoding="utf-8", check=True, stdout=subprocess.PIPE, **kwargs
+            call_args,
+            encoding="utf-8",
+            check=True,
+            stdout=subprocess.PIPE,
+            **kwargs
         ).stdout
 
     def testListModels(self):
@@ -89,7 +93,11 @@ class CrosConfigHostTest(unittest.TestCase):
     def testGetPropSingleWrongPath(self):
         with self.assertRaises(subprocess.CalledProcessError):
             self._check_output(
-                "get", "/dne", "wallpaper", model="another", stderr=subprocess.DEVNULL
+                "get",
+                "/dne",
+                "wallpaper",
+                model="another",
+                stderr=subprocess.DEVNULL,
             )
 
     def testGetPropSingleWrongProp(self):
@@ -103,13 +111,17 @@ class CrosConfigHostTest(unittest.TestCase):
         self.CheckManyLines(output)
 
     def testGetFingerprintFirmwareROVersionFound(self):
-        output = self._check_output("get-fpmcu-firmware-ro-version", "bloonchipper")
+        output = self._check_output(
+            "get-fpmcu-firmware-ro-version", "bloonchipper"
+        )
         self.assertEqual(output, "VERSION1\n")
 
     def testGetFingerprintFirmwareROVersionNotSpecified(self):
         # If the ro-version is not specified, nothing is returned and the exit code
         # should be 0.
-        output = self._check_output("get-fpmcu-firmware-ro-version", "some_fpmcu")
+        output = self._check_output(
+            "get-fpmcu-firmware-ro-version", "some_fpmcu"
+        )
         self.assertEqual(output, "")
 
     def testGetTouchFirmwareFiles(self):

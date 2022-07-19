@@ -57,11 +57,15 @@ def make_fake_sysroot(
     smbios_sysfs_path = path / "sys" / "class" / "dmi" / "id"
     if smbios_name is not None:
         smbios_sysfs_path.mkdir(exist_ok=True, parents=True)
-        (smbios_sysfs_path / "product_name").write_text("{}\n".format(smbios_name))
+        (smbios_sysfs_path / "product_name").write_text(
+            "{}\n".format(smbios_name)
+        )
 
     if smbios_sku is not None:
         smbios_sysfs_path.mkdir(exist_ok=True, parents=True)
-        (smbios_sysfs_path / "product_sku").write_text("sku{}\n".format(smbios_sku))
+        (smbios_sysfs_path / "product_sku").write_text(
+            "sku{}\n".format(smbios_sku)
+        )
 
     proc_fdt_path = path / "proc" / "device-tree"
     if fdt_compatible is not None:
@@ -85,7 +89,9 @@ def make_fake_sysroot(
     config_path = path / "usr" / "share" / "chromeos-config"
     config_path.mkdir(exist_ok=True, parents=True)
     with open(config_path / "identity.bin", "wb") as output_file:
-        cros_config_host.identity_table.WriteIdentityStruct(configs_full, output_file)
+        cros_config_host.identity_table.WriteIdentityStruct(
+            configs_full, output_file
+        )
 
 
 REEF_CONFIGS = [
@@ -270,11 +276,18 @@ TROGDOR_CONFIGS = [
     make_config("lazor", fdt_match="google,lazor", sku_id=1),
     make_config("lazor", fdt_match="google,lazor", sku_id=2),
     make_config("lazor", fdt_match="google,lazor", sku_id=3),
-    make_config("limozeen", fdt_match="google,lazor", sku_id=5, custom_label_tag=""),
     make_config(
-        "limozeen", fdt_match="google,lazor", sku_id=6, custom_label_tag="lazorwl"
+        "limozeen", fdt_match="google,lazor", sku_id=5, custom_label_tag=""
     ),
-    make_config("limozeen", fdt_match="google,lazor", sku_id=6, custom_label_tag=""),
+    make_config(
+        "limozeen",
+        fdt_match="google,lazor",
+        sku_id=6,
+        custom_label_tag="lazorwl",
+    ),
+    make_config(
+        "limozeen", fdt_match="google,lazor", sku_id=6, custom_label_tag=""
+    ),
     make_config("lazor", fdt_match="google,lazor"),
 ]
 
@@ -370,7 +383,9 @@ def test_missing_identity_table(tmp_path, executable_path):
 )
 def test_corrupted_identity_table(tmp_path, executable_path, contents):
     # When identity.bin is corrupted, crosid should exit with an error.
-    identity_file = tmp_path / "usr" / "share" / "chromeos-config" / "identity.bin"
+    identity_file = (
+        tmp_path / "usr" / "share" / "chromeos-config" / "identity.bin"
+    )
     identity_file.parent.mkdir(exist_ok=True, parents=True)
     identity_file.write_bytes(contents)
 
@@ -451,7 +466,9 @@ def test_corrupted_sku_arm(tmp_path, executable_path, contents):
         configs=TROGDOR_CONFIGS,
     )
 
-    sku_file = tmp_path / "proc" / "device-tree" / "firmware" / "coreboot" / "sku-id"
+    sku_file = (
+        tmp_path / "proc" / "device-tree" / "firmware" / "coreboot" / "sku-id"
+    )
     sku_file.write_bytes(contents)
 
     result = subprocess.run(

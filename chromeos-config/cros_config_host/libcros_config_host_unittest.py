@@ -87,7 +87,8 @@ class CrosConfigHostTest(unittest.TestCase):
 
     def _assertEqualsListNamedTuplesDict(self, expected, result):
         self.assertEqual(
-            _FormatListNamedTuplesDict(expected), _FormatListNamedTuplesDict(result)
+            _FormatListNamedTuplesDict(expected),
+            _FormatListNamedTuplesDict(result),
         )
 
     def testGetProperty(self):
@@ -108,7 +109,9 @@ class CrosConfigHostTest(unittest.TestCase):
         firmware_uris = config.GetConfig("another").GetFirmwareUris()
         self.assertSequenceEqual(
             firmware_uris,
-            sorted([ANOTHER_BUCKET + fname for fname in ANOTHER_FIRMWARE_FILES]),
+            sorted(
+                [ANOTHER_BUCKET + fname for fname in ANOTHER_FIRMWARE_FILES]
+            ),
         )
 
     def testGetSharedFirmwareUris(self):
@@ -144,7 +147,9 @@ class CrosConfigHostTest(unittest.TestCase):
             thermal_files,
             [
                 BaseFile("another/dptf.dv", "/etc/dptf/another/dptf.dv"),
-                BaseFile("some_notouch/dptf.dv", "/etc/dptf/some_notouch/dptf.dv"),
+                BaseFile(
+                    "some_notouch/dptf.dv", "/etc/dptf/some_notouch/dptf.dv"
+                ),
                 BaseFile("some_touch/dptf.dv", "/etc/dptf/some_touch/dptf.dv"),
             ],
         )
@@ -170,7 +175,9 @@ class CrosConfigHostTest(unittest.TestCase):
         config = CrosConfig(self.filepath)
         node = config.GetFileTree()
         self.assertEqual(node.name, "")
-        self.assertEqual(sorted(node.children.keys()), ["etc", "lib", "opt", "usr"])
+        self.assertEqual(
+            sorted(node.children.keys()), ["etc", "lib", "opt", "usr"]
+        )
         etc = node.children["etc"]
         self.assertEqual(etc.name, "etc")
         cras = etc.children["cras"]
@@ -203,7 +210,9 @@ class CrosConfigHostTest(unittest.TestCase):
                 ("some2", [None, None]),
             ]
         )
-        result = config.GetFirmwareBuildCombinations(["coreboot", "depthcharge"])
+        result = config.GetFirmwareBuildCombinations(
+            ["coreboot", "depthcharge"]
+        )
         self.assertEqual(result, expected)
 
         # Unspecified targets should be represented as None.
@@ -221,7 +230,9 @@ class CrosConfigHostTest(unittest.TestCase):
 
         os.environ["FW_NAME"] = "another"
         expected = OrderedDict([("another", ["another", "another"])])
-        result = config.GetFirmwareBuildCombinations(["coreboot", "depthcharge"])
+        result = config.GetFirmwareBuildCombinations(
+            ["coreboot", "depthcharge"]
+        )
         self.assertEqual(result, expected)
         del os.environ["FW_NAME"]
 
@@ -236,7 +247,9 @@ class CrosConfigHostTest(unittest.TestCase):
         # Use test config with recovery-input set to POWER_BUTTON
         # Manually set recovery-input differs from auto generate option
         expected = "POWER_BUTTON"
-        result = config.GetFirmwareRecoveryInput("zephyr-ec", "experimental/some2")
+        result = config.GetFirmwareRecoveryInput(
+            "zephyr-ec", "experimental/some2"
+        )
         self.assertEqual(result, expected)
 
         # Use test config with form-factor set to CHROMEBOX
@@ -347,23 +360,33 @@ class CrosConfigHostTest(unittest.TestCase):
         audio_files = config.GetAudioFiles()
         expected = [
             BaseFile(
-                source="cras-config/another/dsp.ini", dest="/etc/cras/another/dsp.ini"
+                source="cras-config/another/dsp.ini",
+                dest="/etc/cras/another/dsp.ini",
             ),
             BaseFile(
-                source="cras-config/another/a-card", dest="/etc/cras/another/a-card"
+                source="cras-config/another/a-card",
+                dest="/etc/cras/another/a-card",
             ),
-            BaseFile(source="cras-config/some/dsp.ini", dest="/etc/cras/some/dsp.ini"),
-            BaseFile(source="cras-config/some/a-card", dest="/etc/cras/some/a-card"),
             BaseFile(
-                source="cras-config/some2/dsp.ini", dest="/etc/cras/some2/dsp.ini"
+                source="cras-config/some/dsp.ini", dest="/etc/cras/some/dsp.ini"
             ),
-            BaseFile(source="cras-config/some2/a-card", dest="/etc/cras/some2/a-card"),
+            BaseFile(
+                source="cras-config/some/a-card", dest="/etc/cras/some/a-card"
+            ),
+            BaseFile(
+                source="cras-config/some2/dsp.ini",
+                dest="/etc/cras/some2/dsp.ini",
+            ),
+            BaseFile(
+                source="cras-config/some2/a-card", dest="/etc/cras/some2/a-card"
+            ),
             BaseFile(
                 source="topology/another-tplg.bin",
                 dest="/lib/firmware/another-tplg.bin",
             ),
             BaseFile(
-                source="topology/some-tplg.bin", dest="/lib/firmware/some-tplg.bin"
+                source="topology/some-tplg.bin",
+                dest="/lib/firmware/some-tplg.bin",
             ),
             BaseFile(
                 source="ucm-config/a-card.another/HiFi.conf",

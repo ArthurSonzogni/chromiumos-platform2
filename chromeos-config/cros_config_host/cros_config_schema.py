@@ -175,7 +175,9 @@ def _GetVarTemplateValue(val, template_input, template_vars):
         replace_string = "{{%s}}" % template_var
         if template_var not in template_vars:
             formatted_vars = json.dumps(template_vars, sort_keys=True, indent=2)
-            formatted_input = json.dumps(template_input, sort_keys=True, indent=2)
+            formatted_input = json.dumps(
+                template_input, sort_keys=True, indent=2
+            )
             error_vals = (template_var, val, formatted_input, formatted_vars)
             raise ValidationError(
                 "Referenced template variable '%s' doesn't "
@@ -299,7 +301,9 @@ def _TransformDeprecatedConfigs(config):
     firmware = config.get("firmware", {})
     build_targets = firmware.get("build-targets", {})
     if "ec_extras" in build_targets and "ec-extras" not in build_targets:
-        build_targets["ec-extras"] = build_targets.pop("ec_extras")  # b/218973795
+        build_targets["ec-extras"] = build_targets.pop(
+            "ec_extras"
+        )  # b/218973795
 
     identity = config.get("identity", {})
     if "whitelabel-tag" in identity and "custom-label-tag" not in identity:
@@ -344,7 +348,9 @@ def TransformConfig(config, model_filter_regex=None):
 
     if model_filter_regex:
         matcher = re.compile(model_filter_regex)
-        configs = [config for config in configs if matcher.match(config["name"])]
+        configs = [
+            config for config in configs if matcher.match(config["name"])
+        ]
 
     for config in configs:
         _TransformDeprecatedConfigs(config)
@@ -395,17 +401,23 @@ def _GenerateInferredAshSwitches(device_config):
 
     display_properties = device_config.get("displays")
     if display_properties:
-        ash_switches.add("--display-properties=%s" % json.dumps(display_properties))
+        ash_switches.add(
+            "--display-properties=%s" % json.dumps(display_properties)
+        )
 
     if ash_enabled_features:
         ash_switches.add(
             "--enable-features=%s"
-            % ",".join(sorted(feature for feature in ash_enabled_features if feature))
+            % ",".join(
+                sorted(feature for feature in ash_enabled_features if feature)
+            )
         )
     if ash_disabled_features:
         ash_switches.add(
             "--disable-features=%s"
-            % ",".join(sorted(feature for feature in ash_disabled_features if feature))
+            % ",".join(
+                sorted(feature for feature in ash_disabled_features if feature)
+            )
         )
 
     if not ash_switches:
@@ -508,14 +520,18 @@ def FilterNonZephyrDevices(config):
     json_config = json.loads(config)
     new_device_configs = []
     for device_config in json_config[CHROMEOS][CONFIGS]:
-        build_targets = device_config.get("firmware", {}).get("build-targets", {})
+        build_targets = device_config.get("firmware", {}).get(
+            "build-targets", {}
+        )
         if "zephyr-ec" in build_targets:
             new_device_configs.append(device_config)
     return libcros_schema.FormatJson({CHROMEOS: {CONFIGS: new_device_configs}})
 
 
 @functools.lru_cache()
-def GetValidSchemaProperties(schema=os.path.join(this_dir, "cros_config_schema.yaml")):
+def GetValidSchemaProperties(
+    schema=os.path.join(this_dir, "cros_config_schema.yaml")
+):
     """Returns all valid properties from the given schema
 
     Iterates over the config payload for devices and returns the list of
@@ -606,7 +622,9 @@ def _ValidateUniqueIdentities(json_config):
     """
     for config in json_config["chromeos"]["configs"]:
         if "identity" not in config and "name" not in config:
-            raise ValidationError("Missing identity for config: %s" % str(config))
+            raise ValidationError(
+                "Missing identity for config: %s" % str(config)
+            )
 
     for config_a, config_b in itertools.combinations(
         json_config["chromeos"]["configs"], 2
@@ -627,9 +645,14 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
     custom_labels = {}
     for config in json_config["chromeos"]["configs"]:
         if "custom-label-tag" in config.get("identity", {}):
-            if "bobba" in config["name"]:  # Remove after crbug.com/1036381 resolved
+            if (
+                "bobba" in config["name"]
+            ):  # Remove after crbug.com/1036381 resolved
                 continue
-            name = "%s - %s" % (config["name"], config["identity"].get("sku-id", 0))
+            name = "%s - %s" % (
+                config["name"],
+                config["identity"].get("sku-id", 0),
+            )
             config_list = custom_labels.get(name, [])
 
             config_minus_brand = copy.deepcopy(config)
@@ -653,7 +676,9 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
             if "ash-enabled-features" in config_minus_brand["ui"]:
                 config_minus_brand["ui"]["ash-enabled-features"] = sorted(
                     feature
-                    for feature in set(config_minus_brand["ui"]["ash-enabled-features"])
+                    for feature in set(
+                        config_minus_brand["ui"]["ash-enabled-features"]
+                    )
                     if feature and feature not in ALLOWED_CUSTOM_LABEL_FEATURES
                 )
 
@@ -798,7 +823,9 @@ def MergeConfigs(configs):
                         source_identity, to_merge_identity_extended
                     )
                 elif to_merge_name:
-                    identity_match = to_merge_name == source_config.get("name", "")
+                    identity_match = to_merge_name == source_config.get(
+                        "name", ""
+                    )
 
                 if identity_match:
                     MergeDictionaries(source_config, to_merge_config)
@@ -875,7 +902,9 @@ def Main(
         for path in schema_attrs:
             if schema_attrs[path].build_only_element:
                 build_only_elements.append(path)
-        json_transform = FilterBuildElements(json_transform, build_only_elements)
+        json_transform = FilterBuildElements(
+            json_transform, build_only_elements
+        )
     if output:
         with open(output, "w") as output_stream:
             # Using print function adds proper trailing newline.
@@ -883,7 +912,9 @@ def Main(
     else:
         print(json_transform)
     if configfs_output:
-        configfs.GenerateConfigFSData(json.loads(json_transform), configfs_output)
+        configfs.GenerateConfigFSData(
+            json.loads(json_transform), configfs_output
+        )
     if identity_table_out:
         identity_table.WriteIdentityStruct(
             json.loads(json_transform), identity_table_out

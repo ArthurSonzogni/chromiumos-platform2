@@ -140,11 +140,15 @@ def main():
 
     args = parser.parse_args()
     config_bundle = _parse_config_bundle(args.config_bundle)
-    backfilled_config_bundle = _parse_config_bundle(args.backfilled_config_bundle)
+    backfilled_config_bundle = _parse_config_bundle(
+        args.backfilled_config_bundle
+    )
 
     merge_config_bundles(config_bundle, backfilled_config_bundle)
 
-    args.output.write_text(json_format.MessageToJson(config_bundle, sort_keys=True))
+    args.output.write_text(
+        json_format.MessageToJson(config_bundle, sort_keys=True)
+    )
 
 
 if __name__ == "__main__":

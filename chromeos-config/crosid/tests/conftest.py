@@ -36,7 +36,13 @@ def coverage_dir(request, tmp_path_factory):
 
         # Merge coverage after tests finish
         subprocess.run(
-            ["llvm-profdata", "merge", *coverage_dir.iterdir(), "-o", coverage_out],
+            [
+                "llvm-profdata",
+                "merge",
+                *coverage_dir.iterdir(),
+                "-o",
+                coverage_out,
+            ],
             check=True,
         )
     else:

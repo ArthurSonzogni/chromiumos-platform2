@@ -12,7 +12,9 @@ import sys
 
 THIS_DIR = os.path.dirname(__file__)
 
-PREF_DEF_FILE = os.path.join(THIS_DIR, "../../power_manager/common/power_constants.cc")
+PREF_DEF_FILE = os.path.join(
+    THIS_DIR, "../../power_manager/common/power_constants.cc"
+)
 PREF_DEFAULTS_DIR = os.path.join(THIS_DIR, "../../power_manager/default_prefs")
 
 

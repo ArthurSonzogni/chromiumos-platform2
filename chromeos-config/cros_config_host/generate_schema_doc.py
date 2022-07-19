@@ -60,7 +60,9 @@ def QuoteRegex(text):
     return "```%s```" % text.replace("|", "\\|")
 
 
-def PopulateTypeDef(name, type_def, ref_types, output, inherited_build_only=False):
+def PopulateTypeDef(
+    name, type_def, ref_types, output, inherited_build_only=False
+):
     """Populates type definitions in the output (recursive)
 
     Args:
@@ -83,10 +85,14 @@ def PopulateTypeDef(name, type_def, ref_types, output, inherited_build_only=Fals
     )
 
     attrs_by_group = {
-        "": collections.OrderedDict(sorted(type_def.get("properties", {}).items()))
+        "": collections.OrderedDict(
+            sorted(type_def.get("properties", {}).items())
+        )
     }
     group_index = 0
-    for group in itertools.chain(type_def.get("oneOf", []), type_def.get("anyOf", [])):
+    for group in itertools.chain(
+        type_def.get("oneOf", []), type_def.get("anyOf", [])
+    ):
         group_attrs = collections.OrderedDict(
             sorted(group.get("properties", {}).items())
         )
@@ -154,9 +160,13 @@ def PopulateTypeDef(name, type_def, ref_types, output, inherited_build_only=Fals
                     attr_type = "array - %s" % type_attrs["items"]["type"]
             elif type_attrs["type"] == "integer":
                 if "minimum" in type_attrs:
-                    description += " Minimum value: %s." % hex(type_attrs["minimum"])
+                    description += " Minimum value: %s." % hex(
+                        type_attrs["minimum"]
+                    )
                 if "maximum" in type_attrs:
-                    description += " Maximum value: %s." % hex(type_attrs["maximum"])
+                    description += " Maximum value: %s." % hex(
+                        type_attrs["maximum"]
+                    )
 
             output_tuple = (
                 attr_name,
@@ -171,9 +181,9 @@ def PopulateTypeDef(name, type_def, ref_types, output, inherited_build_only=Fals
 
     output.append("")
     for child_type in child_types:
-        child_is_build_only = inherited_build_only or child_types[child_type].get(
-            "build-only-element", False
-        )
+        child_is_build_only = inherited_build_only or child_types[
+            child_type
+        ].get("build-only-element", False)
         PopulateTypeDef(
             child_type,
             child_types[child_type],
@@ -193,7 +203,9 @@ def Main(schema, output):
     schema_yaml = libcros_schema.LoadYaml(libcros_schema.ApplyImports(schema))
     ref_types = {}
     for type_def in schema_yaml.get("typeDefs", []):
-        ref_types["#/typeDefs/%s" % type_def] = schema_yaml["typeDefs"][type_def]
+        ref_types["#/typeDefs/%s" % type_def] = schema_yaml["typeDefs"][
+            type_def
+        ]
 
     type_def_outputs = []
     type_def_outputs.append("[](begin_definitions)")

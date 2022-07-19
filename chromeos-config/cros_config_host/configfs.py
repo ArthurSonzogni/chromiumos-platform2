@@ -48,7 +48,9 @@ def WriteConfigFSFiles(config, base_path):
             path = os.path.join(base_path, str(name))
             WriteConfigFSFiles(entry, path)
     else:
-        with open(os.open(base_path, os.O_CREAT | os.O_WRONLY, 0o644), "wb") as f:
+        with open(
+            os.open(base_path, os.O_CREAT | os.O_WRONLY, 0o644), "wb"
+        ) as f:
             f.write(Serialize(config))
 
 

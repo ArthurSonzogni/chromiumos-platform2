@@ -204,7 +204,9 @@ chromeos:
         json_dict = json.loads(result)
         config = json_dict["chromeos"]["configs"][0]
         audio_main = config["audio"]["main"]
-        self.assertEqual("overridden-by-product-scope", audio_main["cras-config-dir"])
+        self.assertEqual(
+            "overridden-by-product-scope", audio_main["cras-config-dir"]
+        )
         self.assertEqual("overridden-by-device-scope", audio_main["ucm-suffix"])
 
 
@@ -246,7 +248,8 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
             )
         if version.parse(jsonschema.__version__) >= version.Version("3.0.0"):
             self.assertIn(
-                "%i is greater than the maximum" % 0x80000000, str(ctx.exception)
+                "%i is greater than the maximum" % 0x80000000,
+                str(ctx.exception),
             )
             self.assertIn("sku-id", str(ctx.exception))
         else:
@@ -265,7 +268,10 @@ class ValidateFingerprintSchema(cros_test_lib.TestCase):
                     {
                         "identity": {"platform-name": "foo", "sku-id": 1},
                         "name": "foo",
-                        "fingerprint": {"board": "dartmonkey", "ro-version": "123"},
+                        "fingerprint": {
+                            "board": "dartmonkey",
+                            "ro-version": "123",
+                        },
                     },
                 ],
             },
@@ -376,7 +382,9 @@ class ValidateCameraSchema(cros_test_lib.TestCase):
                 libcros_schema.ValidateConfigSchema(
                     self._schema, libcros_schema.FormatJson(config)
                 )
-            self.assertIn("%r does not match" % invalid_usb_id, str(ctx.exception))
+            self.assertIn(
+                "%r does not match" % invalid_usb_id, str(ctx.exception)
+            )
 
 
 CUSTOM_LABEL_CONFIG = """
@@ -507,7 +515,9 @@ chromeos:
 
     def testCustomLabelWithExternalStylusAndCloudGamingFeature(self):
         config = CUSTOM_LABEL_CONFIG
-        cros_config_schema.ValidateConfig(cros_config_schema.TransformConfig(config))
+        cros_config_schema.ValidateConfig(
+            cros_config_schema.TransformConfig(config)
+        )
 
     def testCustomLabelWithOtherThanBrandChanges(self):
         config = CUSTOM_LABEL_CONFIG + INVALID_CUSTOM_LABEL_CONFIG
@@ -569,7 +579,9 @@ chromeos:
               has-base-magnetometer: true
               has-touchscreen: false
 """
-        cros_config_schema.ValidateConfig(cros_config_schema.TransformConfig(config))
+        cros_config_schema.ValidateConfig(
+            cros_config_schema.TransformConfig(config)
+        )
 
     def testMultipleFingerprintFirmwareROVersionInvalid(self):
         config = {
@@ -577,16 +589,25 @@ chromeos:
                 "configs": [
                     {
                         "identity": {"platform-name": "foo", "sku-id": 1},
-                        "fingerprint": {"board": "bloonchipper", "ro-version": "123"},
+                        "fingerprint": {
+                            "board": "bloonchipper",
+                            "ro-version": "123",
+                        },
                     },
                     {
                         "identity": {"platform-name": "foo", "sku-id": 2},
-                        "fingerprint": {"board": "bloonchipper", "ro-version": "123"},
+                        "fingerprint": {
+                            "board": "bloonchipper",
+                            "ro-version": "123",
+                        },
                     },
                     # This causes the ValidationError.
                     {
                         "identity": {"platform-name": "foo", "sku-id": 3},
-                        "fingerprint": {"board": "bloonchipper", "ro-version": "456"},
+                        "fingerprint": {
+                            "board": "bloonchipper",
+                            "ro-version": "456",
+                        },
                     },
                 ],
             },
@@ -608,11 +629,17 @@ chromeos:
                 "configs": [
                     {
                         "identity": {"platform-name": "foo", "sku-id": 1},
-                        "fingerprint": {"board": "bloonchipper", "ro-version": "123"},
+                        "fingerprint": {
+                            "board": "bloonchipper",
+                            "ro-version": "123",
+                        },
                     },
                     {
                         "identity": {"platform-name": "foo", "sku-id": 2},
-                        "fingerprint": {"board": "dartmonkey", "ro-version": "456"},
+                        "fingerprint": {
+                            "board": "dartmonkey",
+                            "ro-version": "456",
+                        },
                     },
                 ],
             },
@@ -699,9 +726,13 @@ class MainTests(cros_test_lib.TempDirTestCase):
             "Actual file does not exist at path: {}".format(file_actual),
         )
 
-        regen_message = "Please run ./regen.sh in the chromeos-config directory."
+        regen_message = (
+            "Please run ./regen.sh in the chromeos-config directory."
+        )
 
-        with open(file_expected, "r") as expected, open(file_actual, "r") as actual:
+        with open(file_expected, "r") as expected, open(
+            file_actual, "r"
+        ) as actual:
             for line_num, (line_expected, line_actual) in enumerate(
                 zip_longest(expected, actual)
             ):
@@ -735,7 +766,9 @@ class MainTests(cros_test_lib.TempDirTestCase):
                 line_expected,
                 line_actual,
                 (
-                    "Strings differ at line {0}\n" "Expected: {1}\n" "Actual  : {2}\n"
+                    "Strings differ at line {0}\n"
+                    "Expected: {1}\n"
+                    "Actual  : {2}\n"
                 ).format(line_num, repr(line_expected), repr(line_actual)),
             )
 
@@ -747,7 +780,9 @@ class MainTests(cros_test_lib.TempDirTestCase):
             json_output,
         )
 
-        expected_json_file = os.path.join(this_dir, "../test_data/test_build.json")
+        expected_json_file = os.path.join(
+            this_dir, "../test_data/test_build.json"
+        )
         self.assertFileEqual(expected_json_file, json_output)
 
     def testMainWithExampleWithoutBuild(self):
@@ -771,13 +806,17 @@ class MainTests(cros_test_lib.TempDirTestCase):
             filter_build_details=True,
         )
 
-        expected_json_file = os.path.join(this_dir, "../test_data/test_arm.json")
+        expected_json_file = os.path.join(
+            this_dir, "../test_data/test_arm.json"
+        )
         self.assertFileEqual(expected_json_file, json_output)
 
     def testMainImportExample(self):
         output = os.path.join(self.tempdir, "output")
         cros_config_schema.Main(
-            None, os.path.join(this_dir, "../test_data/test_import.yaml"), output
+            None,
+            os.path.join(this_dir, "../test_data/test_import.yaml"),
+            output,
         )
         expected_file = os.path.join(this_dir, "../test_data/test_import.json")
         self.assertFileEqual(expected_file, output)

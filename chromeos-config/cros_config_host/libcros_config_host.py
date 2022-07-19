@@ -42,7 +42,10 @@ def CrosConfig(fname=None, model_filter_regex=None):
                 "ebuild environemnt. You must specify one"
             )
         fname = os.path.join(
-            os.environ["SYSROOT"], UNIBOARD_CONFIG_INSTALL_DIR, "yaml", "config.yaml"
+            os.environ["SYSROOT"],
+            UNIBOARD_CONFIG_INSTALL_DIR,
+            "yaml",
+            "config.yaml",
         )
     if fname == "-":
         infile = sys.stdin

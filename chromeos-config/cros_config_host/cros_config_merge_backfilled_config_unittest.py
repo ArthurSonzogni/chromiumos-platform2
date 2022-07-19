@@ -57,7 +57,9 @@ class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):
             ],
             brand_configs=[
                 brand_config_pb2.BrandConfig(
-                    brand_id=device_brand_id_pb2.DeviceBrandId(value="DeviceBrandA"),
+                    brand_id=device_brand_id_pb2.DeviceBrandId(
+                        value="DeviceBrandA"
+                    ),
                     wallpaper="DefaultWallpaper",
                 ),
             ],
@@ -136,7 +138,9 @@ class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):
             ],
             brand_configs=[
                 brand_config_pb2.BrandConfig(
-                    brand_id=device_brand_id_pb2.DeviceBrandId(value="DeviceBrandA"),
+                    brand_id=device_brand_id_pb2.DeviceBrandId(
+                        value="DeviceBrandA"
+                    ),
                     wallpaper="DefaultWallpaper",
                 ),
             ],

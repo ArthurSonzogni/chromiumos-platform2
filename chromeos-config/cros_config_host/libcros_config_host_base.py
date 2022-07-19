@@ -78,7 +78,9 @@ FirmwareInfo = namedtuple(
 #   type\: one of ‘ap’, ‘ec’, ‘pd’, ‘rw’.
 #   build_target: The build target for given firmware image.
 #   image_uri: The BCS image URI.
-FirmwareImage = namedtuple("FirmwareImage", ["type", "build_target", "image_uri"])
+FirmwareImage = namedtuple(
+    "FirmwareImage", ["type", "build_target", "image_uri"]
+)
 
 # Represents the signer data for a device.
 #   key_id: The key ID of the device.
@@ -131,8 +133,13 @@ class PathComponent(object):
         else:
             status = "missing"
         print(
-            u"%-10s%s%s%s"
-            % (status, "   " * indent, str(self.name), self.children and "/" or "")
+            "%-10s%s%s%s"
+            % (
+                status,
+                "   " * indent,
+                str(self.name),
+                self.children and "/" or "",
+            )
         )
         for child in sorted(self.children.keys()):
             self.children[child].ShowTree(base_path, path, indent + 1)
@@ -351,7 +358,9 @@ class CrosConfigBaseImpl(object):
         result["ListModels"] = self.GetModelList()
         result["GetFirmwareUris"] = self.GetFirmwareUris()
         result["GetTouchFirmwareFiles"] = self.GetTouchFirmwareFiles()
-        result["GetDetachableBaseFirmwareFiles"] = self.GetDetachableBaseFirmwareFiles()
+        result[
+            "GetDetachableBaseFirmwareFiles"
+        ] = self.GetDetachableBaseFirmwareFiles()
         result["GetArcFiles"] = self.GetArcFiles()
         result["GetAudioFiles"] = self.GetAudioFiles()
         bluetooth_files = self.GetBluetoothFiles()
@@ -365,13 +374,14 @@ class CrosConfigBaseImpl(object):
             result[
                 "GetFirmwareBuildTargets_%s" % target
             ] = self.GetFirmwareBuildTargets(target)
-        result["GetFirmwareBuildCombinations"] = self.GetFirmwareBuildCombinations(
-            ["coreboot", "ec"]
-        )
+        result[
+            "GetFirmwareBuildCombinations"
+        ] = self.GetFirmwareBuildCombinations(["coreboot", "ec"])
         for target_name in ["depthcharge", "bmpblk"]:
             for target_value in self.GetFirmwareBuildTargets(target_name):
                 result[
-                    "GetFirmwareRecoveryInput_%s_%s" % (target_name, target_value)
+                    "GetFirmwareRecoveryInput_%s_%s"
+                    % (target_name, target_value)
                 ] = self.GetFirmwareRecoveryInput(target_name, target_value)
         result["GetWallpaperFiles"] = self.GetWallpaperFiles()
         result["GetAutobrightnessFiles"] = self.GetAutobrightnessFiles()
@@ -385,7 +395,9 @@ class CrosConfigBaseImpl(object):
                     # Only dump populated values; this makes it so the config dumps
                     # don't need to be updated when new schema attributes are added.
                     if prop_value:
-                        value_map["%s::%s" % (path, schema_property)] = prop_value
+                        value_map[
+                            "%s::%s" % (path, schema_property)
+                        ] = prop_value
             result["GetProperty_%s" % device.GetName()] = value_map
         return result
 
@@ -456,10 +468,13 @@ class CrosConfigBaseImpl(object):
             return None
         # Strip "overlay-" from bcs_overlay.
         bcs_overlay = overlay[8:]
-        return "gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s" % {
-            "bcs": bcs_overlay,
-            "path": path,
-        }
+        return (
+            "gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s"
+            % {
+                "bcs": bcs_overlay,
+                "path": path,
+            }
+        )
 
     def GetArcFiles(self):
         """Get a list of unique Arc++ files for all devices
@@ -619,7 +634,7 @@ class CrosConfigBaseImpl(object):
         return self._GetFiles("GetIntelWifiSarFiles")
 
     def ShowTree(self, base_path, tree):
-        print(u"%-10s%s" % ("Size", "Path"))
+        print("%-10s%s" % ("Size", "Path"))
         tree.ShowTree(base_path)
 
     def GetFileTree(self):
@@ -650,7 +665,9 @@ class CrosConfigBaseImpl(object):
         Returns:
           List of model names, each a string
         """
-        return sorted(set([device.GetName() for device in self.GetDeviceConfigs()]))
+        return sorted(
+            set([device.GetName() for device in self.GetDeviceConfigs()])
+        )
 
     def GetFirmwareInfo(self):
         firmware_info = OrderedDict()
@@ -697,12 +714,16 @@ class CrosConfigBaseImpl(object):
         # Try to retrieve recovery-input first
         methods = OrderedDict()
         for device in self.GetDeviceConfigs():
-            key = device.GetProperties("/firmware/build-targets/%s" % build_target_name)
+            key = device.GetProperties(
+                "/firmware/build-targets/%s" % build_target_name
+            )
             # Skip targets that aren't specified in the JSON or don't match target
             if not key or key != build_target_value:
                 continue
 
-            recovery_input = device.GetProperties("/hardware-properties/recovery-input")
+            recovery_input = device.GetProperties(
+                "/hardware-properties/recovery-input"
+            )
             if recovery_input:
                 if key in methods and recovery_input != methods[key]:
                     raise ValidationError(
@@ -717,12 +738,16 @@ class CrosConfigBaseImpl(object):
 
         # recovery-input not set, auto-generate based on form factor
         for device in self.GetDeviceConfigs():
-            key = device.GetProperties("/firmware/build-targets/%s" % build_target_name)
+            key = device.GetProperties(
+                "/firmware/build-targets/%s" % build_target_name
+            )
             # Skip targets that aren't specified in the JSON or don't match target
             if not key or key != build_target_value:
                 continue
 
-            form_factor = device.GetProperties("/hardware-properties/form-factor")
+            form_factor = device.GetProperties(
+                "/hardware-properties/form-factor"
+            )
             mapping = {
                 "CLAMSHELL": "KEYBOARD",
                 "CONVERTIBLE": "KEYBOARD",
