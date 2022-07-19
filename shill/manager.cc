@@ -2423,6 +2423,9 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
     return false;
   }
   props_.check_portal_list = portal_list;
+  for (const auto& device : devices_) {
+    device->UpdatePortalDetector(/*restart=*/false);
+  }
   return true;
 }
 

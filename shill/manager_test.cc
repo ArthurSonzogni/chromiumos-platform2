@@ -2453,6 +2453,18 @@ TEST_F(ManagerTest, FindDeviceFromService) {
 }
 #endif
 
+TEST_F(ManagerTest, SetCheckPortalList) {
+  SetMockDevices({Technology::kEthernet, Technology::kWiFi});
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+
+  EXPECT_CALL(*mock_devices_[0], UpdatePortalDetector(false));
+  EXPECT_CALL(*mock_devices_[1], UpdatePortalDetector(false));
+
+  Error error;
+  SetCheckPortalList("ethernet,cellular", &error);
+}
+
 TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
