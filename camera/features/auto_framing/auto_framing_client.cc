@@ -71,10 +71,12 @@ bool AutoFramingClient::SetUp(const Options& options) {
   detector_input_buffer_.resize(kDetectorInputWidth * kDetectorInputHeight);
 
   region_of_interest_ = std::nullopt;
-  full_crop_ = NormalizeRect(
+  full_crop_ =
       GetCenteringFullCrop(options.input_size, options.target_aspect_ratio_x,
-                           options.target_aspect_ratio_y),
-      image_size_);
+                           options.target_aspect_ratio_y)
+          .AsRect<int>();
+  full_crop_normalized_ =
+      NormalizeRect(full_crop_.AsRect<uint32_t>(), image_size_);
 
   constexpr float kMaxDetectionInterval = std::numeric_limits<float>::max();
   min_detection_interval_ = base::Seconds(options.detection_rate > 0.0f
@@ -97,7 +99,7 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
 
   // Skip detecting this frame if there's an inflight detection or limited by
   // the detection rate.
-  if (detector_input_buffer_timestamp_.has_value() ||
+  if (!buffer || detector_input_buffer_timestamp_.has_value() ||
       (detection_timer_ &&
        detection_timer_->Elapsed() < min_detection_interval_)) {
     return true;
@@ -122,6 +124,19 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
   return true;
 }
 
+bool AutoFramingClient::ResetCropWindow(int64_t timestamp) {
+  base::AutoLock lock(lock_);
+  DCHECK_NE(auto_framing_, nullptr);
+  VLOGF(1) << "Reset crop window @" << timestamp;
+  if (!auto_framing_->SetTargetCropWindow(timestamp, full_crop_.left,
+                                          full_crop_.top, full_crop_.right(),
+                                          full_crop_.bottom())) {
+    LOGF(ERROR) << "Failed to reset crop window @" << timestamp;
+    return false;
+  }
+  return true;
+}
+
 std::optional<Rect<float>> AutoFramingClient::TakeNewRegionOfInterest() {
   base::AutoLock lock(lock_);
   std::optional<Rect<float>> roi;
@@ -138,7 +153,7 @@ Rect<float> AutoFramingClient::GetCropWindow(int64_t timestamp) {
     base::TimeDelta elapsed_time = timer.Elapsed();
     if (elapsed_time >= kCropCalculationTimeout) {
       LOGF(WARNING) << "Calculating crop window timed out; using the last";
-      return crop_windows_.empty() ? full_crop_
+      return crop_windows_.empty() ? full_crop_normalized_
                                    : crop_windows_.rbegin()->second;
     }
     crop_window_received_cv_.TimedWait(kCropCalculationTimeout - elapsed_time);

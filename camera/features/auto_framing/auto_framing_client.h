@@ -42,8 +42,12 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   // Set up the pipeline.
   bool SetUp(const Options& options);
 
-  // Process one frame.  |buffer| is only used during this function call.
+  // Process one frame.  |buffer| is used for detection if not null, and is only
+  // read during this function call.
   bool ProcessFrame(int64_t timestamp, buffer_handle_t buffer);
+
+  // Reset crop window to the full image ignoring previous detections.
+  bool ResetCropWindow(int64_t timestamp);
 
   // Return the stored ROI if a new detection is available, or nullopt if not.
   // After this call the stored ROI is cleared, waiting for another new
@@ -74,7 +78,8 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   base::Lock lock_;
   base::ConditionVariable crop_window_received_cv_ GUARDED_BY(lock_);
   Size image_size_ GUARDED_BY(lock_);
-  Rect<float> full_crop_ GUARDED_BY(lock_);
+  Rect<int> full_crop_ GUARDED_BY(lock_);
+  Rect<float> full_crop_normalized_ GUARDED_BY(lock_);
   std::unique_ptr<AutoFramingCrOS> auto_framing_ GUARDED_BY(lock_);
   std::vector<uint8_t> detector_input_buffer_ GUARDED_BY(lock_);
   std::optional<int64_t> detector_input_buffer_timestamp_ GUARDED_BY(lock_);

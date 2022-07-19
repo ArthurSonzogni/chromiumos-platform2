@@ -40,6 +40,8 @@ constexpr char kDetectorKey[] = "detector";
 constexpr char kMotionModelKey[] = "motion_model";
 constexpr char kOutputFilterModeKey[] = "output_filter_mode";
 constexpr char kDetectionRateKey[] = "detection_rate";
+constexpr char kEnableDelayKey[] = "enable_delay";
+constexpr char kDisableDelayKey[] = "disable_delay";
 
 constexpr int32_t kRequiredFrameRate = 30;
 constexpr uint32_t kFramingBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
@@ -217,6 +219,7 @@ struct AutoFramingStreamManipulator::CaptureContext {
   std::vector<camera3_stream_buffer_t> client_buffers;
   std::optional<CameraBufferPool::Buffer> full_frame_buffer;
   std::optional<int64_t> timestamp;
+  std::optional<std::pair<State, State>> state_transition;
 };
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
@@ -369,8 +372,8 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   client_streams_ = CopyToVector(stream_config->GetStreams());
   std::vector<camera3_stream_t*> hal_streams;
   for (auto* s : client_streams_) {
-    hal_streams.push_back(s);
     if (IsStreamBypassed(s)) {
+      hal_streams.push_back(s);
       continue;
     }
     // Choose the output stream of the largest resolution for matching the crop
@@ -484,10 +487,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     }
   }
 
-  if (!GetEnabled()) {
-    auto_framing_client_.ResetDetectionTimer();
-    return true;
-  }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
     return false;
@@ -552,6 +551,11 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   ctx->num_pending_buffers -= result->num_output_buffers();
   ctx->metadata_received |= result->partial_result() == partial_result_count_;
 
+  // Update state when the first result is received for each frame number.
+  if (!ctx->state_transition) {
+    ctx->state_transition = StateTransitionOnThread();
+  }
+
   if (face_tracker_) {
     // Using face detector.
     if (result->feature_metadata().faces) {
@@ -611,8 +615,22 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
       full_frame_buffer.release_fence = -1;
     }
 
-    if (!auto_framing_client_.ProcessFrame(*ctx->timestamp,
-                                           *full_frame_buffer.buffer)) {
+    if (ctx->state_transition->first != State::kOff &&
+        ctx->state_transition->second == State::kOff) {
+      if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
+        LOGF(ERROR) << "Failed to reset crop window at result "
+                    << result->frame_number();
+        return false;
+      }
+    }
+    if (ctx->state_transition->first != State::kOn &&
+        ctx->state_transition->second == State::kOn) {
+      auto_framing_client_.ResetDetectionTimer();
+    }
+    if (!auto_framing_client_.ProcessFrame(
+            *ctx->timestamp, ctx->state_transition->second == State::kOn
+                                 ? *full_frame_buffer.buffer
+                                 : nullptr)) {
       LOGF(ERROR) << "Failed to process frame " << result->frame_number();
       return false;
     }
@@ -854,6 +872,7 @@ void AutoFramingStreamManipulator::ResetOnThread() {
   face_tracker_.reset();
   framer_.reset();
 
+  state_ = State::kOff;
   client_streams_.clear();
   full_frame_stream_ = {};
   target_output_stream_ = nullptr;
@@ -870,7 +889,7 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   DCHECK(thread_.IsCurrentThread());
 
   int detector, motion_model, filter_mode;
-  float detection_rate;
+  float detection_rate, enable_delay, disable_delay;
   if (LoadIfExist(json_values, kDetectorKey, &detector)) {
     options_.detector = static_cast<Detector>(detector);
   }
@@ -883,6 +902,12 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   if (LoadIfExist(json_values, kDetectionRateKey, &detection_rate)) {
     options_.detection_rate = std::max(detection_rate, 0.0f);
   }
+  if (LoadIfExist(json_values, kEnableDelayKey, &enable_delay)) {
+    options_.enable_delay = base::Seconds(enable_delay);
+  }
+  if (LoadIfExist(json_values, kDisableDelayKey, &disable_delay)) {
+    options_.disable_delay = base::Seconds(disable_delay);
+  }
   options_.enable = json_values.FindBoolKey(kEnableKey);
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
@@ -891,7 +916,9 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
            << " motion_model=" << static_cast<int>(options_.motion_model)
            << " output_filter_mode="
            << static_cast<int>(options_.output_filter_mode)
-           << " detection_rate=" << options_.detection_rate << " enable="
+           << " detection_rate=" << options_.detection_rate
+           << " enable_delay=" << options_.enable_delay
+           << " disable_delay=" << options_.disable_delay << " enable="
            << (options_.enable ? base::NumberToString(*options_.enable)
                                : "(not set)")
            << " debug=" << options_.debug;
@@ -912,6 +939,36 @@ void AutoFramingStreamManipulator::OnOptionsUpdated(
                      base::Unretained(this), json_values.Clone()));
 }
 
+std::pair<AutoFramingStreamManipulator::State,
+          AutoFramingStreamManipulator::State>
+AutoFramingStreamManipulator::StateTransitionOnThread() {
+  DCHECK(thread_.IsCurrentThread());
+
+  const State prev_state = state_;
+  if (GetEnabled()) {
+    if (state_ == State::kOff || state_ == State::kTransitionToOff) {
+      state_ = State::kTransitionToOn;
+      state_transition_timer_ = base::ElapsedTimer();
+    } else if (state_ == State::kTransitionToOn &&
+               state_transition_timer_.Elapsed() >= options_.enable_delay) {
+      state_ = State::kOn;
+    }
+  } else {
+    if (state_ == State::kOn || state_ == State::kTransitionToOn) {
+      state_ = State::kTransitionToOff;
+      state_transition_timer_ = base::ElapsedTimer();
+    } else if (state_ == State::kTransitionToOff &&
+               state_transition_timer_.Elapsed() >= options_.disable_delay) {
+      state_ = State::kOff;
+    }
+  }
+  if (prev_state != state_) {
+    LOGF(INFO) << "State: " << static_cast<int>(prev_state) << " -> "
+               << static_cast<int>(state_);
+  }
+  return std::make_pair(prev_state, state_);
+}
+
 AutoFramingStreamManipulator::CaptureContext*
 AutoFramingStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
   CHECK(!base::Contains(capture_contexts_, frame_number));
@@ -928,8 +985,8 @@ AutoFramingStreamManipulator::CaptureContext*
 AutoFramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
   auto it = capture_contexts_.find(frame_number);
   if (it == capture_contexts_.end()) {
-    DVLOGF(2) << "Cannot find capture context with frame number "
-              << frame_number;
+    LOGF(ERROR) << "Cannot find capture context with frame number "
+                << frame_number;
     return nullptr;
   }
   return it->second.get();

@@ -11,7 +11,11 @@
 
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
+
+#include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 
 #include "common/camera_buffer_pool.h"
 #include "common/metadata_logger.h"
@@ -66,6 +70,12 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     // auto-framing enabled period.
     float detection_rate = 0.1f;
 
+    // Delay when enabling auto-framing.
+    base::TimeDelta enable_delay = base::Seconds(0.5);
+
+    // Delay when disabling auto-framing.
+    base::TimeDelta disable_delay = base::Seconds(0.5);
+
     // Whether the CrOS Auto Framing is enabled.
     std::optional<bool> enable;
 
@@ -98,6 +108,19 @@ class AutoFramingStreamManipulator : public StreamManipulator {
  private:
   struct CaptureContext;
 
+  enum class State {
+    // The state when auto-framing is turned off. Settles the crop window to the
+    // full image.
+    kOff,
+    // The intermediate state before transitioning to |kOn| state.
+    kTransitionToOn,
+    // The state when auto-framing is turned on. Moves the crop window
+    // continuously based on the detection rate.
+    kOn,
+    // The intermediate state before transitioning to |kOff| state.
+    kTransitionToOff,
+  };
+
   bool InitializeOnThread(const camera_metadata_t* static_info,
                           CaptureResultCallback result_callback);
   bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
@@ -111,6 +134,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   void HandleFramingErrorOnThread(Camera3CaptureDescriptor* result);
   void ResetOnThread();
   void UpdateOptionsOnThread(const base::Value& json_values);
+  std::pair<State, State> StateTransitionOnThread();
 
   void OnOptionsUpdated(const base::Value& json_values);
 
@@ -142,6 +166,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   int partial_result_count_ = 0;
 
   // Per-stream-config contexts.
+  State state_ = State::kOff;
+  base::ElapsedTimer state_transition_timer_;
   std::vector<camera3_stream_t*> client_streams_;
   camera3_stream_t full_frame_stream_ = {};
   const camera3_stream_t* target_output_stream_ = nullptr;
