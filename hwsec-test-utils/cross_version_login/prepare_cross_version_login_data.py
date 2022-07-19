@@ -14,17 +14,31 @@ google storage so that we could use it in cross-version login testing.
 import argparse
 import hashlib
 from pathlib import Path
+import re
 import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 import time
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 
 
 VM_HOST = '127.0.0.1'
 VM_PORT = '9222'
+SSH_COMMON_ARGS = (
+    '-o', 'StrictHostKeyChecking=no', '-o', 'GlobalKnownHostsFile=/dev/null',
+    '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=quiet')
+
+class Version(NamedTuple):
+    """Represents a parsed ChromiumOS version."""
+    milestone: int
+    major: int
+    minor: int
+    patch: int
+
+    def __str__(self) -> str:
+        return f'R{self.milestone}-{self.major}.{self.minor}.{self.patch}'
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
@@ -44,18 +58,27 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
     opts = parser.parse_args(argv)
     run(opts.board, opts.version, opts.output_dir, opts.ssh_identity_file)
 
-def run(board: str, version: str, output_dir: Path,
+def run(board: str, version_str: str, output_dir: Path,
         ssh_identity_file: Optional[Path]) -> None:
+    version = parse_version(version_str)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         ssh_identity = setup_ssh_identity(ssh_identity_file, temp_path)
         image_path = download_vm_image(board, version, temp_path)
         start_vm(image_path, board)
         try:
+            init_vm(version, ssh_identity)
             generate_data()
             upload_data(board, version, output_dir, temp_path, ssh_identity)
         finally:
             stop_vm()
+
+def parse_version(version: str) -> Version:
+    """Parses a ChromeOS version string, like "R100-14526.89.0"."""
+    match = re.fullmatch(r'R(\d+)-(\d+)\.(\d+)\.(\d+)', version)
+    if not match:
+        raise RuntimeError(f'Failed to parse version {version}')
+    return Version(*(int(x) for x in match.groups()))
 
 def setup_ssh_identity(ssh_identity_file: Optional[Path],
                        temp_path: Path) -> Path:
@@ -72,7 +95,7 @@ def default_ssh_identity_file() -> Path:
     home = Path.home()
     return Path(f'{home}/chromiumos/chromite/ssh_keys/testing_rsa')
 
-def download_vm_image(board: str, version: str, temp_path: Path) -> Path:
+def download_vm_image(board: str, version: Version, temp_path: Path) -> Path:
     """Fetches the ChromiumOS image from Google Cloud Storage."""
     image_url = (f'gs://chromeos-image-archive/{board}-release/{version}/'
                  f'chromiumos_test_image.tar.xz')
@@ -94,6 +117,14 @@ def stop_vm() -> None:
     """Stops the VM emulator."""
     check_run('cros_vm', '--stop')
 
+def init_vm(version: Version, ssh_identity: Path) -> None:
+    """Makes sure the VM is in the right state for collecting the state."""
+    if version.milestone < 96:
+        # Normally the Tast framework takes care of the TPM ownership, however
+        # it doesn't support pre-M96 images (as Tast ToT uses the
+        # "get_supported_features" tpm_manager command that was added later).
+        execute_on_dut('tpm_manager_client take_ownership', ssh_identity)
+
 def generate_data() -> None:
     """Generates a data snapshot by running the Tast test."""
     # "tpm2_simulator" is added by crrev.com/c/3312977, so this test cannot run
@@ -102,7 +133,7 @@ def generate_data() -> None:
         'tast', 'run', '-failfortests', '-extrauseflags', 'tpm2_simulator',
         f'{VM_HOST}:{VM_PORT}', 'hwsec.PrepareCrossVersionLoginData')
 
-def upload_data(board: str, version: str, output_dir: Path,
+def upload_data(board: str, version: Version, output_dir: Path,
                 temp_path: Path, ssh_identity: Path) -> None:
     """Creates resulting artifacts and uploads to the GS."""
     DUT_ARTIFACTS_DIR = '/tmp/cross_version_login'
@@ -134,11 +165,13 @@ def upload_data(board: str, version: str, output_dir: Path,
 def copy_from_dut(remote_path: Path, local_path: Path,
                   ssh_identity: Path) -> None:
     """Fetches a file from the DUT."""
-    check_run(
-        'scp', '-o', 'StrictHostKeyChecking=no', '-o',
-        'GlobalKnownHostsFile=/dev/null', '-o', 'UserKnownHostsFile=/dev/null',
-        '-o', 'LogLevel=quiet', '-i', ssh_identity, '-P', VM_PORT,
-        f'root@{VM_HOST}:{remote_path}', local_path)
+    check_run('scp', *SSH_COMMON_ARGS, '-i', ssh_identity, '-P', VM_PORT,
+              f'root@{VM_HOST}:{remote_path}', local_path)
+
+def execute_on_dut(command: str, ssh_identity: Path) -> None:
+    """Runs the command on the DUT remotely."""
+    check_run('ssh', *SSH_COMMON_ARGS, '-i', ssh_identity, '-p', VM_PORT,
+              f'root@{VM_HOST}', command)
 
 def generate_external_data(gs_url: str, data_path: Path) -> str:
     """Generates external data in the Tast format (JSON)."""
