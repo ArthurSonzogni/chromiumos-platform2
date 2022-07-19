@@ -98,12 +98,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   void AssignAuthBlockStateToVaultKeyset(
       const AuthBlockState& state, VaultKeyset& vault_keyset) const override;
 
-  CryptoStatus DeriveKeyBlobs(
-      const AuthInput& auth_input,
-      const AuthBlockState& auth_block_state,
-      KeyBlobs& out_key_blobs,
-      AuthBlockType& out_auth_block_type) const override;
-
   CryptoStatus PrepareAuthBlockForRemoval(
       const AuthBlockState& auth_block_state) override;
 

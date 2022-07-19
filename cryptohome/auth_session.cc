@@ -1713,30 +1713,36 @@ void AuthSession::AuthenticateViaUserSecretStash(
         on_done) {
   user_data_auth::AuthenticateAuthFactorReply reply;
 
-  // TODO(b/223207622): This step is the same for both USS and
-  // VaultKeyset other than how the AuthBlock state is obtained. Make the
-  // derivation for USS asynchronous and merge these two.
-  auto key_blobs = std::make_unique<KeyBlobs>();
-  AuthBlockType auth_block_type;
-  CryptoStatus crypto_error = auth_block_utility_->DeriveKeyBlobs(
-      auth_input, auth_factor.auth_block_state(), *key_blobs, auth_block_type);
-  if (!crypto_error.ok()) {
-    LOG(ERROR) << "Auth factor authentication failed: error " << crypto_error;
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeCryptoError>(
-                       CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInAuthUSS))
-                       .Wrap(std::move(crypto_error)));
+  // Determine the auth block type to use.
+  // TODO(b/223207622): This step is the same for both USS and VaultKeyset other
+  // than how the AuthBlock state is obtained, they can be merged.
+  AuthBlockType auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeFromState(
+          auth_factor.auth_block_state());
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Failed to determine auth block type for the loaded factor "
+                  "with label "
+               << auth_factor.label();
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAuthViaUSS),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO));
     return;
   }
 
   // Parameterize timer by AuthBlockType.
   auth_session_performance_timer->auth_block_type = auth_block_type;
 
-  // Use USS to finish the authentication.
-  LoadUSSMainKeyAndFsKeyset(
+  // Derive the keyset and then use USS to complete the authentication.
+  auto derive_callback = base::BindOnce(
+      &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
       auth_factor_label, std::move(auth_session_performance_timer),
-      std::move(on_done), OkStatus<CryptohomeCryptoError>(),
-      std::move(key_blobs));
+      std::move(on_done));
+  auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input, auth_factor.auth_block_state(),
+      std::move(derive_callback));
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(
@@ -1747,6 +1753,27 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     CryptoStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs) {
   user_data_auth::AuthenticateAuthFactorReply reply;
+
+  // Check the status of the callback error, to see if the key blob derivation
+  // was actually successful.
+  if (!callback_error.ok() || !key_blobs) {
+    if (callback_error.ok()) {
+      callback_error = MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInLoadUSS),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO,
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    }
+    LOG(ERROR) << "KeyBlob derivation failed before loading USS";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInLoadUSS),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
+            .Wrap(std::move(callback_error)));
+    return;
+  }
 
   // Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =

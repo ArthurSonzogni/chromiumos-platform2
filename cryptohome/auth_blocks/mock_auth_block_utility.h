@@ -80,13 +80,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (const AuthBlockState& state, VaultKeyset& vault_keyset),
               (const, override));
   MOCK_METHOD(CryptoStatus,
-              DeriveKeyBlobs,
-              (const AuthInput& auth_input,
-               const AuthBlockState& auth_block_state,
-               KeyBlobs& out_key_blobs,
-               AuthBlockType& out_auth_block_type),
-              (const, override));
-  MOCK_METHOD(CryptoStatus,
               PrepareAuthBlockForRemoval,
               (const AuthBlockState& auth_block_state),
               (override));

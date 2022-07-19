@@ -163,7 +163,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType = 168,
   /* =Obsolete= */
   kLocAuthBlockUtilChalCredUnsupportedInCreateKeyBlobsAuthFactor = 169,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilUnsupportedInDeriveKeyBlobs = 170,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockCantCreateRecoveryInCreate = 171,
@@ -539,7 +539,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerParseFailedInLoad = 356,
   /* =Obsolete= */
   kLocAuthFactorCreateKeyBlobsFailedInCreate = 357,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionDeriveFailedInAuthUSS = 358,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
   kLocTpmEccAuthBlockNoUserInputInCreate = 359,
@@ -1065,6 +1065,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerSaveFailedInUpdate = 619,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerPrepareForRemovalFailedInUpdate = 620,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidBlockTypeInAuthViaUSS = 621,
+  /* ./auth_session.cc */
+  kLocAuthSessionNullParamInLoadUSS = 622,
+  /* ./auth_session.cc */
+  kLocAuthSessionDeriveFailedInLoadUSS = 623,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
