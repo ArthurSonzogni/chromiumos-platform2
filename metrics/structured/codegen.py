@@ -10,25 +10,26 @@ import os
 import re
 import struct
 
+
 class Util:
     """Helpers for generating C++."""
 
     @staticmethod
     def sanitize_name(name):
-        return re.sub('[^0-9a-zA-Z_]', '_', name)
+        return re.sub("[^0-9a-zA-Z_]", "_", name)
 
     @staticmethod
     def camel_to_snake(name):
-        pat = '((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))'
-        return re.sub(pat, r'_\1', name).lower()
+        pat = "((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))"
+        return re.sub(pat, r"_\1", name).lower()
 
     @staticmethod
     def hash_name(name):
         # This must match the hash function in chromium's
         # //base/metrics/metric_hashes.cc. >Q means 8 bytes, big endian.
-        name = name.encode('utf-8')
+        name = name.encode("utf-8")
         md5 = hashlib.md5(name)
-        return struct.unpack('>Q', md5.digest()[:8])[0]
+        return struct.unpack(">Q", md5.digest()[:8])[0]
 
     @staticmethod
     def event_name_hash(project_name, event_name):
@@ -52,7 +53,7 @@ class Util:
         project_name = Util.sanitize_name(project_name)
         # TODO(crbug.com/1148168): Once the minimum python version is 3.6+,
         # rewrite this .format and others using f-strings.
-        return Util.hash_name('cros::{}::{}'.format(project_name, event_name))
+        return Util.hash_name("cros::{}::{}".format(project_name, event_name))
 
 
 class FileInfo:
@@ -78,23 +79,24 @@ class ProjectInfo:
         self.name_hash = Util.hash_name(self.name)
 
         # Set ID Type.
-        if project.id == 'uma':
-            self.id_type = 'kUmaId'
-        elif project.id == 'per-project':
-            self.id_type = 'kProjectId'
-        elif project.id == 'none':
-            self.id_type = 'kUnidentified'
+        if project.id == "uma":
+            self.id_type = "kUmaId"
+        elif project.id == "per-project":
+            self.id_type = "kProjectId"
+        elif project.id == "none":
+            self.id_type = "kUnidentified"
 
         # Set event type. This is inferred by checking all metrics within the
         # project. If any of a project's metrics is a raw string, then its
         # events are considered raw string events, even if they also contain
         # non-strings.
-        self.event_type = 'REGULAR'
+        self.event_type = "REGULAR"
         for event in project.events:
             for metric in event.metrics:
-                if metric.type == 'raw-string':
-                    self.event_type = 'RAW_STRING'
+                if metric.type == "raw-string":
+                    self.event_type = "RAW_STRING"
                     break
+
 
 class EventInfo:
     """Codegen-related info about an event."""
@@ -111,24 +113,32 @@ class MetricInfo:
         self.name = Util.sanitize_name(metric.name)
         self.hash = Util.hash_name(metric.name)
 
-        if metric.type == 'hmac-string':
-            self.type = 'std::string&'
-            self.setter = 'AddHmacMetric'
-        elif metric.type == 'int':
-            self.type = 'int64_t'
-            self.setter = 'AddIntMetric'
-        elif metric.type == 'raw-string':
-            self.type = 'std::string&'
-            self.setter = 'AddRawStringMetric'
+        if metric.type == "hmac-string":
+            self.type = "std::string&"
+            self.setter = "AddHmacMetric"
+        elif metric.type == "int":
+            self.type = "int64_t"
+            self.setter = "AddIntMetric"
+        elif metric.type == "raw-string":
+            self.type = "std::string&"
+            self.setter = "AddRawStringMetric"
         else:
-            raise ValueError('Invalid metric type.')
+            raise ValueError("Invalid metric type.")
 
 
 class Template:
     """Template for producing code from structured.xml."""
 
-    def __init__(self, model, dirname, basename, file_template,
-                 project_template, event_template, metric_template):
+    def __init__(
+        self,
+        model,
+        dirname,
+        basename,
+        file_template,
+        project_template,
+        event_template,
+        metric_template,
+    ):
         self.model = model
         self.dirname = dirname
         self.basename = basename
@@ -139,41 +149,50 @@ class Template:
 
     def write_file(self):
         file_info = FileInfo(self.dirname, self.basename)
-        with open(file_info.filepath, 'w') as f:
+        with open(file_info.filepath, "w") as f:
             f.write(self._stamp_file(file_info))
 
     def _stamp_file(self, file_info):
-        project_code = ''.join(self._stamp_project(file_info, p)
-            for p in self.model.projects)
+        project_code = "".join(
+            self._stamp_project(file_info, p) for p in self.model.projects
+        )
 
         project_names = sorted([p.name for p in self.model.projects])
-        project_hashes_list = ['UINT64_C({})'.format(Util.hash_name(n))
-            for n in project_names]
-        project_hashes_literal = '{' + ', '.join(project_hashes_list) + '}'
+        project_hashes_list = [
+            "UINT64_C({})".format(Util.hash_name(n)) for n in project_names
+        ]
+        project_hashes_literal = "{" + ", ".join(project_hashes_list) + "}"
 
-        return self.file_template.format(file=file_info,
+        return self.file_template.format(
+            file=file_info,
             project_code=project_code,
-            project_hashes=project_hashes_literal)
+            project_hashes=project_hashes_literal,
+        )
 
     def _stamp_project(self, file_info, project):
         project_info = ProjectInfo(project)
-        event_code = ''.join(self._stamp_event(file_info, project_info, event)
-            for event in project.events)
-        return self.project_template.format(file=file_info,
-            project=project_info,
-            event_code=event_code)
+        event_code = "".join(
+            self._stamp_event(file_info, project_info, event)
+            for event in project.events
+        )
+        return self.project_template.format(
+            file=file_info, project=project_info, event_code=event_code
+        )
 
     def _stamp_event(self, file_info, project_info, event):
         event_info = EventInfo(event, project_info)
-        metric_code = ''.join(self._stamp_metric(file_info, event_info, metric)
-                                                    for metric in event.metrics)
-        return self.event_template.format(file=file_info,
+        metric_code = "".join(
+            self._stamp_metric(file_info, event_info, metric)
+            for metric in event.metrics
+        )
+        return self.event_template.format(
+            file=file_info,
             project=project_info,
             event=event_info,
-            metric_code=metric_code)
+            metric_code=metric_code,
+        )
 
     def _stamp_metric(self, file_info, event_info, metric):
         return self.metric_template.format(
-            file=file_info,
-            event=event_info,
-            metric=MetricInfo(metric))
+            file=file_info, event=event_info, metric=MetricInfo(metric)
+        )

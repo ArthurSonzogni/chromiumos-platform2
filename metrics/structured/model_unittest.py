@@ -84,36 +84,46 @@ class ModelTest(unittest.TestCase):
 
         self.assertEqual(len(data.projects), 2)
         project_one, project_two = data.projects
-        self.assert_project(project_one,
-             'ProjectOne', 'none', 'Test project.',
-             ('test1@chromium.org', 'test2@chromium.org'))
-        self.assert_project(project_two,
-             'ProjectTwo', 'uma', 'Test project.',
-             ('test@chromium.org',))
+        self.assert_project(
+            project_one,
+            "ProjectOne",
+            "none",
+            "Test project.",
+            ("test1@chromium.org", "test2@chromium.org"),
+        )
+        self.assert_project(
+            project_two,
+            "ProjectTwo",
+            "uma",
+            "Test project.",
+            ("test@chromium.org",),
+        )
 
         self.assertEqual(len(project_one.events), 2)
         self.assertEqual(len(project_two.events), 1)
         event_one, event_two = project_one.events
-        event_three, = project_two.events
-        self.assert_event(event_one, 'EventOne', 'Test event.')
-        self.assert_event(event_two, 'EventTwo', 'Test event.')
-        self.assert_event(event_three, 'EventThree', 'Test event.')
+        (event_three,) = project_two.events
+        self.assert_event(event_one, "EventOne", "Test event.")
+        self.assert_event(event_two, "EventTwo", "Test event.")
+        self.assert_event(event_three, "EventThree", "Test event.")
 
         self.assertEqual(len(event_one.metrics), 2)
         self.assertEqual(len(event_two.metrics), 1)
         self.assertEqual(len(event_three.metrics), 1)
         metric_one, metric_two = event_one.metrics
-        metric_three, = event_two.metrics
-        metric_four, = event_three.metrics
-        self.assert_metric(metric_one, 'MetricOne', 'int', 'Test metric.')
-        self.assert_metric(metric_two, 'MetricTwo', 'hmac-string',
-                           'Test metric.')
-        self.assert_metric(metric_three, 'MetricThree', 'int', 'Test metric.')
-        self.assert_metric(metric_four, 'MetricFour', 'int', 'Test metric.')
+        (metric_three,) = event_two.metrics
+        (metric_four,) = event_three.metrics
+        self.assert_metric(metric_one, "MetricOne", "int", "Test metric.")
+        self.assert_metric(
+            metric_two, "MetricTwo", "hmac-string", "Test metric."
+        )
+        self.assert_metric(metric_three, "MetricThree", "int", "Test metric.")
+        self.assert_metric(metric_four, "MetricFour", "int", "Test metric.")
 
     def test_owners_validation(self):
         # No owner for project.
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="project">
             <id>uma</id>
@@ -125,10 +135,12 @@ class ModelTest(unittest.TestCase):
               </metric>
             </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
         # Owner is username not email.
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="project">
               <owner>test@</owner>
@@ -141,11 +153,13 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
     def test_id_validation(self):
         # Missing ID
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@chromium.org</owner>
@@ -157,10 +171,12 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
         # Invalid ID
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@chromium.org</owner>
@@ -173,11 +189,13 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
     def test_type_validation(self):
         # Missing type
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@chromium.org</owner>
@@ -190,10 +208,12 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
         # Invalid type
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@chromium.org</owner>
@@ -206,10 +226,12 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
     def test_duplicate_summaries(self):
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@chromium.org</owner>
@@ -223,11 +245,13 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
     def test_duplicate_project_names(self):
         # Two projects with name "Duplicate"
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="Duplicate">
               <owner>test@</owner>
@@ -251,11 +275,13 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
     def test_duplicate_event_names(self):
         # Two events with name "Duplicate"
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@</owner>
@@ -274,11 +300,13 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
     def test_duplicate_metric_names(self):
         # Two metrics with name "Duplicate"
-        self.assert_model_raises("""\
+        self.assert_model_raises(
+            """\
             <structured-metrics>
             <project name="MyProject">
               <owner>test@</owner>
@@ -294,8 +322,9 @@ class ModelTest(unittest.TestCase):
                 </metric>
               </event>
             </project>
-            </structured-metrics>""")
+            </structured-metrics>"""
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
