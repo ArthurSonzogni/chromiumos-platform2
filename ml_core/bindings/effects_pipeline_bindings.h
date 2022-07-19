@@ -19,7 +19,7 @@ namespace cros {
 // Used by EffectsConfig to indicate which effect the g3 shared library
 // should be applying. Needs to be kept in sync with g3 version found in
 // chromeos/ml/effects_pipeline/effects_pipeline.h
-enum class EffectsType { kBgBlur, kRelight };
+enum class EffectsType { kNone, kBgBlur, kRelight, kCount };
 
 // EffectsConfig is intended to be extended and used by the
 // EffectsLibrary to build effects that would like more configurable
@@ -73,8 +73,9 @@ bool cros_ml_effects_SetRenderedImageObserver(
 typedef decltype(&cros_ml_effects_SetRenderedImageObserver)
     cros_ml_effects_SetRenderedImageObserverFn;
 
-bool cros_ml_effects_SetEffect(void* pipeline,
-                               cros::EffectsConfig* effects_config);
+void cros_ml_effects_SetEffect(void* pipeline,
+                               cros::EffectsConfig* effects_config,
+                               void (*callback)(bool));
 typedef decltype(&cros_ml_effects_SetEffect) cros_ml_effects_SetEffectFn;
 }
 

@@ -52,7 +52,8 @@ class BRILLO_EXPORT EffectsPipeline {
       std::unique_ptr<ProcessedFrameObserver> observer) = 0;
 
   // Select effect to apply
-  virtual bool SetEffect(EffectsConfig* effects_config) = 0;
+  virtual void SetEffect(EffectsConfig* effects_config,
+                         void (*callback)(bool)) = 0;
 };
 
 }  // namespace cros
