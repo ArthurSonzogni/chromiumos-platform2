@@ -115,6 +115,11 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   virtual void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                                      const brillo::SecureBlob& fnek) = 0;
 
+  // Removes the credential_verifier if key_label matches the current verifier
+  // label (stored in RealUserSession::key_data_).
+  virtual void RemoveCredentialVerifierForKeyLabel(
+      const std::string& key_label) = 0;
+
  protected:
   friend class base::RefCountedThreadSafe<UserSession>;
   virtual ~UserSession() = default;

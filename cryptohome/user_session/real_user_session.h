@@ -109,6 +109,11 @@ class RealUserSession : public UserSession {
     return credential_verifier_ != nullptr;
   }
 
+  // Removes the credential_verifier if key_label matches the current verifier
+  // label (stored in RealUserSession::key_data_).
+  void RemoveCredentialVerifierForKeyLabel(
+      const std::string& key_label) override;
+
   // Checks that the session belongs to the obfuscated_user.
   bool VerifyUser(const std::string& obfuscated_username) const override;
 

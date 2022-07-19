@@ -3001,6 +3001,11 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
       keyset_management_->RemoveKeyset(credentials, request.key().data());
 
   if (result.ok()) {
+    scoped_refptr<UserSession> session = GetUserSession(account_id);
+    if (session.get()) {
+      session->RemoveCredentialVerifierForKeyLabel(
+          request.key().data().label());
+    }
     return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
   }
   return result->local_legacy_error().value();

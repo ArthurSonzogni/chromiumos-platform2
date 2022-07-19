@@ -503,4 +503,38 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   }
 }
 
+TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
+  Credentials credentials_1("username", SecureBlob("password"));
+  KeyData key_data1;
+  key_data1.set_label("password1");
+  credentials_1.set_key_data(key_data1);
+
+  Credentials credentials_2("username", SecureBlob("password2"));
+  KeyData key_data2;
+  key_data1.set_label("password2");
+  credentials_2.set_key_data(key_data2);
+
+  {
+    scoped_refptr<RealUserSession> session =
+        base::MakeRefCounted<RealUserSession>(credentials_1.username(), nullptr,
+                                              nullptr, nullptr, nullptr,
+                                              nullptr);
+    session->SetCredentials(credentials_1);
+    EXPECT_TRUE(session->VerifyCredentials(credentials_1));
+    EXPECT_FALSE(session->VerifyCredentials(credentials_2));
+
+    // Removing another label that is not the same as this session was set with.
+    session->RemoveCredentialVerifierForKeyLabel(
+        credentials_2.key_data().label());
+    // Verification should still work.
+    EXPECT_TRUE(session->VerifyCredentials(credentials_1));
+
+    // Removing the credential label set in this user session.
+    session->RemoveCredentialVerifierForKeyLabel(
+        credentials_1.key_data().label());
+    // Verification should not work.
+    EXPECT_FALSE(session->VerifyCredentials(credentials_1));
+  }
+}
+
 }  // namespace cryptohome

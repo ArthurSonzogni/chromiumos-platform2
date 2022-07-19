@@ -314,4 +314,18 @@ bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   return status;
 }
 
+void RealUserSession::RemoveCredentialVerifierForKeyLabel(
+    const std::string& key_label) {
+  if (!credential_verifier_) {
+    return;
+  }
+
+  // If the credential to remove has the same label as the current credential
+  // verifier, then we reset the credential verifier and remove KeyData.
+  if (key_label == key_data_.label()) {
+    credential_verifier_.reset();
+    key_data_ = KeyData();
+  }
+}
+
 }  // namespace cryptohome

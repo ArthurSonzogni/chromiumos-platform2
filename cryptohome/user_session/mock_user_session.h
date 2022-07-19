@@ -66,6 +66,10 @@ class MockUserSession : public UserSession {
   MOCK_METHOD(bool, HasCredentialVerifier, (), (const, override));
   MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));
   MOCK_METHOD(bool, VerifyCredentials, (const Credentials&), (const, override));
+  MOCK_METHOD(void,
+              RemoveCredentialVerifierForKeyLabel,
+              (const std::string&),
+              (override));
   MOCK_METHOD(const KeyData&, key_data, (), (const, override));
   MOCK_METHOD(Pkcs11Token*, GetPkcs11Token, (), (override));
   MOCK_METHOD(std::string, GetUsername, (), (const, override));
