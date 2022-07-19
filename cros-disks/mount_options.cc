@@ -12,8 +12,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/strcat.h>
 
-#include "cros-disks/quote.h"
-
 namespace cros_disks {
 
 namespace {

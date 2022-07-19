@@ -14,7 +14,6 @@
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
-#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_process.h"

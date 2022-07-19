@@ -24,7 +24,6 @@
 
 #include "cros-disks/error_logger.h"
 #include "cros-disks/mount_options.h"
-#include "cros-disks/mounter.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/uri.h"

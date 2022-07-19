@@ -10,8 +10,7 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 
-#include "cros-disks/error_logger.h"
-#include "cros-disks/mounter.h"
+#include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 
 namespace cros_disks {

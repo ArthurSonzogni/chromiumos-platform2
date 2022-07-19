@@ -24,7 +24,6 @@
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/udev/udev_monitor.h>
 
-#include "cros-disks/device_ejector.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/udev_device.h"
 

@@ -25,7 +25,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_process.h"
-#include "cros-disks/system_mounter.h"
 #include "cros-disks/uri.h"
 
 namespace cros_disks {

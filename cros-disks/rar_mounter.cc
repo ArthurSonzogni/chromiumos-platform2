@@ -16,11 +16,9 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "cros-disks/error_logger.h"
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
-#include "cros-disks/quote.h"
 
 namespace cros_disks {
 namespace {

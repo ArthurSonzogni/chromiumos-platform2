@@ -22,7 +22,6 @@
 #include <base/posix/safe_strerror.h>
 #include <chromeos/libminijail.h>
 
-#include "cros-disks/mount_options.h"
 #include "cros-disks/quote.h"
 
 namespace cros_disks {
