@@ -80,6 +80,7 @@ static_library("libdlcservice_utils") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":ref_count-proto" ]
 }
 
 # DLC verify related files.
