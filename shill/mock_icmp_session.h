@@ -23,9 +23,7 @@ class MockIcmpSession : public IcmpSession {
 
   MOCK_METHOD(bool,
               Start,
-              (const IPAddress&,
-               int,
-               const IcmpSession::IcmpSessionResultCallback&),
+              (const IPAddress&, int, IcmpSession::IcmpSessionResultCallback),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
 };

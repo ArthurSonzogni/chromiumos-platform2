@@ -403,11 +403,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       std::optional<base::TimeDelta> time_to_next_lease_renewal,
       base::OnceClosure remove_supplicant_networks_callback);
 
-  // Needed for |dhcp_lease_renewal_timer_| and |wake_to_scan_timer_| since
-  // passing a empty base::Closure() causes a run-time DCHECK error when
-  // SimpleAlarmTimer::Start or SimpleAlarmTimer::Reset are called.
-  void OnTimerWakeDoNothing() {}
-
   // Parses an attribute list containing the SSID matches that caused the
   // system wake, along with the corresponding channels that these SSIDs were
   // detected in. Returns a set of unique frequencies that the reported
@@ -434,7 +429,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Executes after the NIC's wake on WiFi settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
   // Calls RequestWakeOnWiFiSettings.
-  base::CancelableClosure verify_wake_on_wifi_settings_callback_;
+  base::CancelableOnceClosure verify_wake_on_wifi_settings_callback_;
   // Callback to be invoked after all suspend actions finish executing both
   // before regular suspend and before suspend in dark resume.
   ResultCallback suspend_actions_done_callback_;
@@ -464,7 +459,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   std::unique_ptr<brillo::timers::SimpleAlarmTimer> wake_to_scan_timer_;
   // Executes when the dark resume actions timer expires. Calls
   // ScanTimerHandler.
-  base::CancelableClosure dark_resume_actions_timeout_callback_;
+  base::CancelableOnceClosure dark_resume_actions_timeout_callback_;
   // Whether shill is currently in dark resume.
   bool in_dark_resume_;
   // Period (in seconds) between instances where the system wakes from suspend

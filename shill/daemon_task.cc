@@ -4,6 +4,8 @@
 
 #include "shill/daemon_task.h"
 
+#include <utility>
+
 #include <linux/rtnetlink.h>
 
 #include <base/bind.h>
@@ -66,12 +68,12 @@ void DaemonTask::ApplySettings() {
   }
 }
 
-bool DaemonTask::Quit(const base::Closure& completion_callback) {
+bool DaemonTask::Quit(base::OnceClosure completion_callback) {
   SLOG(this, 1) << "Starting termination actions.";
   if (manager_->RunTerminationActionsAndNotifyMetrics(base::Bind(
           &DaemonTask::TerminationActionsCompleted, base::Unretained(this)))) {
     SLOG(this, 1) << "Will wait for termination actions to complete";
-    termination_completed_callback_ = completion_callback;
+    termination_completed_callback_ = std::move(completion_callback);
     return false;  // Note to caller: don't exit yet!
   } else {
     SLOG(this, 1) << "No termination actions were run";
@@ -132,7 +134,7 @@ void DaemonTask::TerminationActionsCompleted(const Error& error) {
 void DaemonTask::StopAndReturnToMain() {
   Stop();
   if (!termination_completed_callback_.is_null()) {
-    termination_completed_callback_.Run();
+    std::move(termination_completed_callback_).Run();
   }
 }
 

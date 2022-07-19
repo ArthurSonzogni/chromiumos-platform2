@@ -903,10 +903,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   const WiFiServiceRefPtr& GetPendingService() {
     return wifi_->pending_service_;
   }
-  const base::CancelableClosure& GetPendingTimeout() {
+  const base::CancelableOnceClosure& GetPendingTimeout() {
     return wifi_->pending_timeout_callback_;
   }
-  const base::CancelableClosure& GetReconnectTimeoutCallback() {
+  const base::CancelableOnceClosure& GetReconnectTimeoutCallback() {
     return wifi_->reconnect_timeout_callback_;
   }
   const ServiceRefPtr& GetSelectedService() {
@@ -917,7 +917,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->supplicant_bss_ = bss;
   }
   base::TimeDelta GetReconnectTimeout() { return WiFi::kReconnectTimeout; }
-  const base::CancelableClosure& GetScanTimer() {
+  const base::CancelableOnceClosure& GetScanTimer() {
     return wifi_->scan_timer_callback_;
   }
   // note: the tests need the proxies referenced by WiFi (not the
@@ -2479,7 +2479,7 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnectedInError) {
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   StartScan(WiFi::kScanMethodFull);
-  const base::CancelableClosure& pending_timeout = GetPendingTimeout();
+  const base::CancelableOnceClosure& pending_timeout = GetPendingTimeout();
   EXPECT_TRUE(pending_timeout.IsCancelled());
   MockWiFiServiceRefPtr service =
       AttemptConnection(WiFi::kScanMethodFull, nullptr, nullptr);
@@ -2518,7 +2518,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   StartWiFi();
-  const base::CancelableClosure& pending_timeout = GetPendingTimeout();
+  const base::CancelableOnceClosure& pending_timeout = GetPendingTimeout();
   EXPECT_TRUE(pending_timeout.IsCancelled());
   MockWiFiServiceRefPtr service(
       SetupConnectingService(RpcIdentifier(""), nullptr, nullptr));

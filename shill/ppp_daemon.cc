@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -48,7 +49,7 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
     const base::WeakPtr<RpcTaskDelegate>& task_delegate,
     const PPPDaemon::Options& options,
     const std::string& device,
-    const PPPDaemon::DeathCallback& death_callback,
+    PPPDaemon::DeathCallback death_callback,
     Error* error) {
   std::vector<std::string> arguments;
 
@@ -92,8 +93,9 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
 
   arguments.push_back(device);
 
-  auto task = std::make_unique<ExternalTask>(control_interface, process_manager,
-                                             task_delegate, death_callback);
+  auto task =
+      std::make_unique<ExternalTask>(control_interface, process_manager,
+                                     task_delegate, std::move(death_callback));
 
   std::map<std::string, std::string> environment;
   if (task->Start(base::FilePath(kDaemonPath), arguments, environment, true,

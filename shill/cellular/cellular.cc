@@ -1670,7 +1670,7 @@ void Cellular::StartPPP(const std::string& serial_device) {
   }
 
   PPPDaemon::DeathCallback death_callback(
-      base::Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
 
   PPPDaemon::Options options;
   options.no_detach = true;
@@ -1683,7 +1683,7 @@ void Cellular::StartPPP(const std::string& serial_device) {
   Error error;
   std::unique_ptr<ExternalTask> new_ppp_task(PPPDaemon::Start(
       control_interface(), process_manager_, weak_ptr_factory_.GetWeakPtr(),
-      options, serial_device, death_callback, &error));
+      options, serial_device, std::move(death_callback), &error));
   if (new_ppp_task) {
     SLOG(this, 1) << "Forked pppd process.";
     ppp_task_ = std::move(new_ppp_task);

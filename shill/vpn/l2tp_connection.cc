@@ -310,8 +310,8 @@ void L2TPConnection::StartXl2tpd() {
 
   auto external_task_local = std::make_unique<ExternalTask>(
       control_interface_, process_manager_, weak_factory_.GetWeakPtr(),
-      base::BindRepeating(&L2TPConnection::OnXl2tpdExitedUnexpectedly,
-                          weak_factory_.GetWeakPtr()));
+      base::BindOnce(&L2TPConnection::OnXl2tpdExitedUnexpectedly,
+                     weak_factory_.GetWeakPtr()));
 
   Error error;
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);

@@ -65,7 +65,7 @@ class DaemonTask {
   // otherwise. Arranges for |completion_callback| to be invoked after
   // all asynchronous work completes, but ignores
   // |completion_callback| if no asynchronous work is required.
-  virtual bool Quit(const base::Closure& completion_callback);
+  virtual bool Quit(base::OnceClosure completion_callback);
 
   // Break the termination loop started in DaemonTask::OnShutdown. Invoked
   // after shill completes its termination tasks during shutdown.
@@ -102,7 +102,7 @@ class DaemonTask {
 #endif  // !defined(DISABLE_WIFI)
   ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
-  base::Closure termination_completed_callback_;
+  base::OnceClosure termination_completed_callback_;
 };
 
 }  // namespace shill

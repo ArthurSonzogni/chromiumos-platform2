@@ -291,8 +291,8 @@ bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local = std::make_unique<ExternalTask>(
       control_interface(), process_manager(), weak_factory_.GetWeakPtr(),
-      base::Bind(&L2TPIPsecDriver::OnL2TPIPsecVPNDied,
-                 weak_factory_.GetWeakPtr()));
+      base::BindOnce(&L2TPIPsecDriver::OnL2TPIPsecVPNDied,
+                     weak_factory_.GetWeakPtr()));
 
   std::vector<std::string> options;
   const std::map<std::string, std::string> environment;  // No env vars passed.

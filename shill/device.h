@@ -722,7 +722,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
-  base::CancelableClosure ipv6_dns_server_expired_callback_;
+  base::CancelableOnceClosure ipv6_dns_server_expired_callback_;
   // DNS servers obtained from ipconfig (either from DHCP or static config)
   // that are not working.
   std::vector<std::string> config_dns_servers_;

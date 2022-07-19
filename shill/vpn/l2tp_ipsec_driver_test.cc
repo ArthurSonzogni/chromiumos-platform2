@@ -322,7 +322,7 @@ TEST_F(L2TPIPsecDriverTest, Cleanup) {
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->external_task_.reset(new MockExternalTask(
       &control_, &process_manager_, weak_factory_.GetWeakPtr(),
-      base::Callback<void(pid_t, int)>()));
+      base::OnceCallback<void(pid_t, int)>()));
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_,
               OnDriverFailure(Service::kFailureBadPassphrase, _));
@@ -750,9 +750,10 @@ TEST_F(L2TPIPsecDriverTest, NotifyWithoutDeviceInfoReady) {
 TEST_F(L2TPIPsecDriverTest, NotifyDisconnected) {
   std::map<std::string, std::string> dict;
   SetEventHandler(&event_handler_);
-  base::Callback<void(pid_t, int)> death_callback;
+  base::OnceCallback<void(pid_t, int)> death_callback;
   MockExternalTask* local_external_task = new MockExternalTask(
-      &control_, &process_manager_, weak_factory_.GetWeakPtr(), death_callback);
+      &control_, &process_manager_, weak_factory_.GetWeakPtr(),
+      std::move(death_callback));
   driver_->external_task_.reset(local_external_task);  // passes ownership
   EXPECT_CALL(event_handler_, OnDriverFailure(_, _));
   ExpectEndReasonMetricsReported(Service::kFailureUnknown);

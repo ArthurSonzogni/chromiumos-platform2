@@ -20,7 +20,7 @@ class SupplicantProcessProxyInterface;
 
 class SupplicantManager {
  public:
-  using SupplicantListenerCallback = base::Callback<void(bool)>;
+  using SupplicantListenerCallback = base::RepeatingCallback<void(bool)>;
 
   class ScopedSupplicantListener {
    public:
@@ -35,7 +35,6 @@ class SupplicantManager {
    private:
     SupplicantListenerCallback callback_;
     SupplicantManager* const supplicant_manager_;
-
   };
 
   explicit SupplicantManager(Manager* manager);

@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -51,8 +52,8 @@ class DaemonTaskForTest : public DaemonTask {
 
   void RunMessageLoop() { dispatcher_->DispatchForever(); }
 
-  bool Quit(const base::Closure& completion_callback) override {
-    quit_result_ = DaemonTask::Quit(completion_callback);
+  bool Quit(base::OnceClosure completion_callback) override {
+    quit_result_ = DaemonTask::Quit(std::move(completion_callback));
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&EventDispatcher::QuitDispatchForever,
@@ -170,9 +171,10 @@ TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(
       FROM_HERE,
-      base::Bind(IgnoreResult(&DaemonTask::Quit), base::Unretained(&daemon_),
-                 base::Bind(&DaemonTaskTest::BreakTerminationLoop,
-                            base::Unretained(this))));
+      base::BindOnce(IgnoreResult(&DaemonTask::Quit),
+                     base::Unretained(&daemon_),
+                     base::BindOnce(&DaemonTaskTest::BreakTerminationLoop,
+                                    base::Unretained(this))));
 
   RunDaemon();
   EXPECT_FALSE(daemon_.quit_result());
@@ -180,8 +182,8 @@ TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
 
 TEST_F(DaemonTaskTest, QuitWithoutTerminationActions) {
   EXPECT_CALL(*this, BreakTerminationLoop()).Times(0);
-  EXPECT_TRUE(daemon_.Quit(base::Bind(&DaemonTaskTest::BreakTerminationLoop,
-                                      base::Unretained(this))));
+  EXPECT_TRUE(daemon_.Quit(base::BindOnce(&DaemonTaskTest::BreakTerminationLoop,
+                                          base::Unretained(this))));
 }
 
 TEST_F(DaemonTaskTest, ApplySettings) {

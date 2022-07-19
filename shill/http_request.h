@@ -67,9 +67,9 @@ class HttpRequest {
       const std::string& logging_tag,
       const std::string& url_string,
       const brillo::http::HeaderList& headers,
-      const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
+      base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
           request_success_callback,
-      const base::Callback<void(Result)>& request_error_callback);
+      base::OnceCallback<void(Result)> request_error_callback);
 
   // Stop the current HttpRequest.  No callback is called as a side
   // effect of this function.
@@ -98,8 +98,8 @@ class HttpRequest {
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
   base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;
-  base::Callback<void(Result)> request_error_callback_;
-  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
+  base::OnceCallback<void(Result)> request_error_callback_;
+  base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback_;
   brillo::http::SuccessCallback success_callback_;
   brillo::http::ErrorCallback error_callback_;

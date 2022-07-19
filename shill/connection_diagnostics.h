@@ -338,9 +338,9 @@ class ConnectionDiagnostics {
   ResultCallback result_callback_;
   base::CancelableCallback<void(int, const RoutingTableEntry&)>
       route_query_callback_;
-  base::CancelableClosure route_query_timeout_callback_;
-  base::CancelableClosure arp_reply_timeout_callback_;
-  base::CancelableClosure neighbor_request_timeout_callback_;
+  base::CancelableOnceClosure route_query_timeout_callback_;
+  base::CancelableOnceClosure arp_reply_timeout_callback_;
+  base::CancelableOnceClosure neighbor_request_timeout_callback_;
 
   IOHandlerFactory* io_handler_factory_;
 

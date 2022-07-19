@@ -45,7 +45,7 @@ class IcmpSession {
   // represent echo requests that we did not receive a corresponding reply for.
   using IcmpSessionResult = std::vector<base::TimeDelta>;
   using IcmpSessionResultCallback =
-      base::Callback<void(const IcmpSessionResult&)>;
+      base::OnceCallback<void(const IcmpSessionResult&)>;
 
   explicit IcmpSession(EventDispatcher* dispatcher);
   IcmpSession(const IcmpSession&) = delete;
@@ -65,7 +65,7 @@ class IcmpSession {
   // link-local address. It is unused on IPv4.
   virtual bool Start(const IPAddress& destination,
                      int interface_index,
-                     const IcmpSessionResultCallback& result_callback);
+                     IcmpSessionResultCallback result_callback);
 
   // Stops the current ICMP session by closing the ICMP socket and resetting
   // callbacks. Does nothing if a ICMP session is not started.
@@ -139,7 +139,7 @@ class IcmpSession {
   // Allow for an injectable tick clock for testing.
   base::TickClock* tick_clock_;
   base::DefaultTickClock default_tick_clock_;
-  base::CancelableClosure timeout_callback_;
+  base::CancelableOnceClosure timeout_callback_;
   IcmpSessionResultCallback result_callback_;
   std::unique_ptr<IOHandler> echo_reply_handler_;
 };

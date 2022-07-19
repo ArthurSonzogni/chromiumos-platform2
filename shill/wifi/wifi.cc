@@ -630,7 +630,7 @@ void WiFi::ScanDone(const bool& success) {
         base::BindOnce(&WiFi::ScanDoneTask,
                        weak_ptr_factory_while_started_.GetWeakPtr()));
   } else {
-    scan_failed_callback_.Reset(base::Bind(
+    scan_failed_callback_.Reset(base::BindOnce(
         &WiFi::ScanFailedTask, weak_ptr_factory_while_started_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE, scan_failed_callback_.callback(),
                                   kPostScanFailedDelay);
@@ -2979,7 +2979,7 @@ void WiFi::OnConnected() {
     // Post a delayed task to reset link back to reliable if no link failure is
     // detected in the next 5 minutes.
     reliable_link_callback_.Reset(
-        base::Bind(&WiFi::OnReliableLink, base::Unretained(this)));
+        base::BindOnce(&WiFi::OnReliableLink, base::Unretained(this)));
     dispatcher()->PostDelayedTask(FROM_HERE, reliable_link_callback_.callback(),
                                   kLinkUnreliableResetTimeout);
   }
@@ -3031,7 +3031,7 @@ void WiFi::StartScanTimer() {
     StopScanTimer();
     return;
   }
-  scan_timer_callback_.Reset(base::Bind(
+  scan_timer_callback_.Reset(base::BindOnce(
       &WiFi::ScanTimerHandler, weak_ptr_factory_while_started_.GetWeakPtr()));
   // Repeat the first few scans after disconnect relatively quickly so we
   // have reasonable trust that no APs we are looking for are present.
@@ -3078,8 +3078,8 @@ void WiFi::ScanTimerHandler() {
 
 void WiFi::StartPendingTimer() {
   pending_timeout_callback_.Reset(
-      base::Bind(&WiFi::PendingTimeoutHandler,
-                 weak_ptr_factory_while_started_.GetWeakPtr()));
+      base::BindOnce(&WiFi::PendingTimeoutHandler,
+                     weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, pending_timeout_callback_.callback(),
                                 kPendingTimeout);
 }
@@ -3165,8 +3165,8 @@ void WiFi::StartReconnectTimer() {
   }
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   reconnect_timeout_callback_.Reset(
-      base::Bind(&WiFi::ReconnectTimeoutHandler,
-                 weak_ptr_factory_while_started_.GetWeakPtr()));
+      base::BindOnce(&WiFi::ReconnectTimeoutHandler,
+                     weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(
       FROM_HERE, reconnect_timeout_callback_.callback(), kReconnectTimeout);
 }
@@ -3761,7 +3761,7 @@ void WiFi::RequestStationInfo() {
       base::Bind(&NetlinkManager::OnAckDoNothing),
       base::Bind(&NetlinkManager::OnNetlinkMessageError));
 
-  request_station_info_callback_.Reset(base::Bind(
+  request_station_info_callback_.Reset(base::BindOnce(
       &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 request_station_info_callback_.callback(),

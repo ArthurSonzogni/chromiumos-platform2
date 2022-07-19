@@ -336,7 +336,7 @@ class DeviceInfo {
   base::FilePath device_info_root_;
 
   // Keep track of devices that require a delayed call to CreateDevice().
-  base::CancelableClosure delayed_devices_callback_;
+  base::CancelableOnceClosure delayed_devices_callback_;
   std::set<int> delayed_devices_;
 
   // Maintain a callback for the periodic link statistics poll task.

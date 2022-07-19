@@ -4,14 +4,17 @@
 
 #include "shill/mock_external_task.h"
 
+#include <utility>
+
 namespace shill {
 
 MockExternalTask::MockExternalTask(
     ControlInterface* control,
     ProcessManager* process_manager,
     const base::WeakPtr<RpcTaskDelegate>& task_delegate,
-    const base::Callback<void(pid_t, int)>& death_callback)
-    : ExternalTask(control, process_manager, task_delegate, death_callback) {}
+    base::OnceCallback<void(pid_t, int)> death_callback)
+    : ExternalTask(
+          control, process_manager, task_delegate, std::move(death_callback)) {}
 
 MockExternalTask::~MockExternalTask() {
   OnDelete();

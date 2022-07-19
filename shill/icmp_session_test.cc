@@ -99,9 +99,9 @@ class IcmpSessionTest : public Test {
   }
 
   bool Start(const IPAddress& destination, int interface_index) {
-    return icmp_session_.Start(
-        destination, interface_index,
-        base::Bind(&IcmpSessionTest::ResultCallback, base::Unretained(this)));
+    return icmp_session_.Start(destination, interface_index,
+                               base::BindOnce(&IcmpSessionTest::ResultCallback,
+                                              base::Unretained(this)));
   }
 
   void Stop() { icmp_session_.Stop(); }

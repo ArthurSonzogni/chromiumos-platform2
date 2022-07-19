@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/cancelable_callback.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -641,7 +642,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     return;
   }
 
-  verify_wake_on_wifi_settings_callback_.Reset(base::Bind(
+  verify_wake_on_wifi_settings_callback_.Reset(base::BindOnce(
       &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, verify_wake_on_wifi_settings_callback_.callback(),
@@ -672,7 +673,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
     return;
   }
 
-  verify_wake_on_wifi_settings_callback_.Reset(base::Bind(
+  verify_wake_on_wifi_settings_callback_.Reset(base::BindOnce(
       &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, verify_wake_on_wifi_settings_callback_.callback(),
@@ -904,9 +905,9 @@ void WakeOnWiFi::OnDarkResume(
     // starting the wake to scan timer so that normal wake on WiFi behavior
     // resumes only |wake_to_scan_period_seconds_| later.
     dhcp_lease_renewal_timer_->Stop();
-    wake_to_scan_timer_->Start(
-        FROM_HERE, base::Seconds(wake_to_scan_period_seconds_),
-        base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
+    wake_to_scan_timer_->Start(FROM_HERE,
+                               base::Seconds(wake_to_scan_period_seconds_),
+                               base::DoNothing());
     DisableWakeOnWiFi();
     dark_resume_history_.Clear();
     last_ssid_match_freqs_.clear();
@@ -941,7 +942,7 @@ void WakeOnWiFi::OnDarkResume(
   in_dark_resume_ = true;
   // Assume that we are disconnected if we time out. Consequently, we do not
   // need to start a DHCP lease renewal timer.
-  dark_resume_actions_timeout_callback_.Reset(base::Bind(
+  dark_resume_actions_timeout_callback_.Reset(base::BindOnce(
       &WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(), false,
       std::nullopt, remove_supplicant_networks_callback));
   dispatcher_->PostDelayedTask(FROM_HERE,
@@ -972,10 +973,8 @@ void WakeOnWiFi::BeforeSuspendActions(
       if (time_to_next_lease_renewal) {
         // Timer callback is NO-OP since dark resume logic (the
         // kWakeTriggerUnsupported case) will initiate DHCP lease renewal.
-        dhcp_lease_renewal_timer_->Start(
-            FROM_HERE, *time_to_next_lease_renewal,
-            base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing,
-                       base::Unretained(this)));
+        dhcp_lease_renewal_timer_->Start(FROM_HERE, *time_to_next_lease_renewal,
+                                         base::DoNothing());
       }
     } else {
       // Force a disconnect in case supplicant is currently in the process of
@@ -1006,8 +1005,7 @@ void WakeOnWiFi::BeforeSuspendActions(
         // kWakeTriggerUnsupported case) will initiate a passive scan.
         wake_to_scan_timer_->Start(FROM_HERE,
                                    base::Seconds(wake_to_scan_period_seconds_),
-                                   base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing,
-                                              base::Unretained(this)));
+                                   base::DoNothing());
         // Trim SSID list to the max size that the NIC supports.
         wake_on_allowed_ssids_.resize(wake_on_wifi_max_ssids_);
       }

@@ -93,8 +93,8 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
   std::unique_ptr<fi::w1::wpa_supplicant1Proxy> supplicant_proxy_;
   std::unique_ptr<PropertySet> properties_;
   EventDispatcher* dispatcher_;
-  base::Closure service_appeared_callback_;
-  base::Closure service_vanished_callback_;
+  base::RepeatingClosure service_appeared_callback_;
+  base::RepeatingClosure service_vanished_callback_;
   bool service_available_;
 
   base::WeakPtrFactory<SupplicantProcessProxy> weak_factory_{this};

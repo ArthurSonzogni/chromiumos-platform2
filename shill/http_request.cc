@@ -81,9 +81,9 @@ HttpRequest::Result HttpRequest::Start(
     const std::string& logging_tag,
     const std::string& url_string,
     const brillo::http::HeaderList& headers,
-    const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
+    base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
         request_success_callback,
-    const base::Callback<void(Result)>& request_error_callback) {
+    base::OnceCallback<void(Result)> request_error_callback) {
   SLOG(this, 3) << "In " << __func__;
 
   DCHECK(!is_running_);
@@ -105,8 +105,8 @@ HttpRequest::Result HttpRequest::Start(
 
   IPAddress addr(ip_family_);
 
-  request_success_callback_ = request_success_callback;
-  request_error_callback_ = request_error_callback;
+  request_success_callback_ = std::move(request_success_callback);
+  request_error_callback_ = std::move(request_error_callback);
 
   if (addr.SetAddressFromString(server_hostname_)) {
     StartRequest();
@@ -141,12 +141,12 @@ void HttpRequest::SuccessCallback(
     return;
   }
 
-  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
-      request_success_callback = request_success_callback_;
+  base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
+      request_success_callback = std::move(request_success_callback_);
   Stop();
 
   if (!request_success_callback.is_null()) {
-    request_success_callback.Run(std::move(response));
+    std::move(request_success_callback).Run(std::move(response));
   }
 }
 
@@ -240,13 +240,14 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
 
 void HttpRequest::SendStatus(Result result) {
   // Save copies on the stack, since Stop() will remove them.
-  base::Callback<void(Result)> request_error_callback = request_error_callback_;
+  base::OnceCallback<void(Result)> request_error_callback =
+      std::move(request_error_callback_);
   Stop();
 
   // Call the callback last, since it may delete us and |this| may no longer
   // be valid.
   if (!request_error_callback.is_null()) {
-    request_error_callback.Run(result);
+    std::move(request_error_callback).Run(result);
   }
 }
 

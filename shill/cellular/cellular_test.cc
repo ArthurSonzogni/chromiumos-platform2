@@ -1210,10 +1210,10 @@ class TestRpcTaskDelegate : public RpcTaskDelegate,
 TEST_P(CellularTest, LinkEventUpWithPPP) {
   // If PPP is running, don't run DHCP as well.
   TestRpcTaskDelegate task_delegate;
-  base::Callback<void(pid_t, int)> death_callback;
+  base::OnceCallback<void(pid_t, int)> death_callback;
   auto mock_task = std::make_unique<NiceMock<MockExternalTask>>(
       modem_info_.control_interface(), &process_manager_,
-      task_delegate.AsWeakPtr(), death_callback);
+      task_delegate.AsWeakPtr(), std::move(death_callback));
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
   device_->ppp_task_ = std::move(mock_task);
   device_->set_state_for_testing(Cellular::State::kConnected);

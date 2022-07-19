@@ -98,7 +98,7 @@ class ResultAggregator : public base::RefCounted<ResultAggregator> {
 
   base::WeakPtrFactory<ResultAggregator> weak_ptr_factory_;
   const ResultCallback callback_;
-  base::CancelableClosure timeout_callback_;
+  base::CancelableOnceClosure timeout_callback_;
   bool got_result_;
   bool timed_out_;
   Error error_;

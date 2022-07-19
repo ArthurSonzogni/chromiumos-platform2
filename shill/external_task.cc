@@ -22,15 +22,14 @@
 
 namespace shill {
 
-ExternalTask::ExternalTask(
-    ControlInterface* control,
-    ProcessManager* process_manager,
-    const base::WeakPtr<RpcTaskDelegate>& task_delegate,
-    const base::Callback<void(pid_t, int)>& death_callback)
+ExternalTask::ExternalTask(ControlInterface* control,
+                           ProcessManager* process_manager,
+                           const base::WeakPtr<RpcTaskDelegate>& task_delegate,
+                           base::OnceCallback<void(pid_t, int)> death_callback)
     : control_(control),
       process_manager_(process_manager),
       task_delegate_(task_delegate),
-      death_callback_(death_callback),
+      death_callback_(std::move(death_callback)),
       pid_(0) {
   CHECK(task_delegate_);
 }
@@ -124,7 +123,7 @@ void ExternalTask::OnTaskDied(int exit_status) {
   rpc_task_.reset();
   // Since this method has no more non-static member accesses below this call,
   // the death callback is free to destruct this instance.
-  death_callback_.Run(old_pid, exit_status);
+  std::move(death_callback_).Run(old_pid, exit_status);
 }
 
 }  // namespace shill

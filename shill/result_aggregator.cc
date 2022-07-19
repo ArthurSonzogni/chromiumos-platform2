@@ -21,8 +21,8 @@ ResultAggregator::ResultAggregator(const ResultCallback& callback,
                                    base::TimeDelta timeout)
     : weak_ptr_factory_(this),
       callback_(callback),
-      timeout_callback_(base::Bind(&ResultAggregator::Timeout,
-                                   weak_ptr_factory_.GetWeakPtr())),
+      timeout_callback_(base::BindOnce(&ResultAggregator::Timeout,
+                                       weak_ptr_factory_.GetWeakPtr())),
       got_result_(false),
       timed_out_(false) {
   CHECK(!callback.is_null());

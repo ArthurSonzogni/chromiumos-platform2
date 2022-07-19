@@ -30,8 +30,9 @@ class SupplicantManagerTest : public Test {
   SupplicantManagerTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         supplicant_manager_(manager_.supplicant_manager()),
-        callback_(base::Bind(&SupplicantManagerTest::SupplicantPresence,
-                             base::Unretained(this))) {
+        callback_(
+            base::BindRepeating(&SupplicantManagerTest::SupplicantPresence,
+                                base::Unretained(this))) {
     supplicant_manager_->Start();
   }
 

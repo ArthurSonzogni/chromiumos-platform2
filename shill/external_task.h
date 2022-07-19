@@ -34,7 +34,7 @@ class ExternalTask : public RpcTaskDelegate {
   ExternalTask(ControlInterface* control,
                ProcessManager* process_manager,
                const base::WeakPtr<RpcTaskDelegate>& task_delegate,
-               const base::Callback<void(pid_t, int)>& death_callback);
+               base::OnceCallback<void(pid_t, int)> death_callback);
   ExternalTask(const ExternalTask&) = delete;
   ExternalTask& operator=(const ExternalTask&) = delete;
 
@@ -102,7 +102,7 @@ class ExternalTask : public RpcTaskDelegate {
 
   std::unique_ptr<RpcTask> rpc_task_;
   base::WeakPtr<RpcTaskDelegate> task_delegate_;
-  base::Callback<void(pid_t, int)> death_callback_;
+  base::OnceCallback<void(pid_t, int)> death_callback_;
 
   // The PID of the spawned process. May be 0 if no process has been
   // spawned yet or the process has died.

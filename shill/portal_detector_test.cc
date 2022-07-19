@@ -62,8 +62,8 @@ class MockHttpRequest : public HttpRequest {
       (const std::string&,
        const std::string&,
        const brillo::http::HeaderList&,
-       const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&,
-       const base::Callback<void(Result)>&),
+       base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>,
+       base::OnceCallback<void(Result)>),
       (override));
   MOCK_METHOD(void, Stop, (), (override));
 };

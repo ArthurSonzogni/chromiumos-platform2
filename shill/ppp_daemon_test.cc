@@ -6,6 +6,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -40,10 +41,10 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
                                       const std::string& device,
                                       Error* error) {
     PPPDaemon::DeathCallback callback(
-        base::Bind(&PPPDaemonTest::DeathCallback, base::Unretained(this)));
+        base::BindOnce(&PPPDaemonTest::DeathCallback, base::Unretained(this)));
     return PPPDaemon::Start(&control_, &process_manager_,
                             weak_ptr_factory_.GetWeakPtr(), options, device,
-                            callback, error);
+                            std::move(callback), error);
   }
 
   bool CaptureArgv(const std::vector<std::string>& argv) {

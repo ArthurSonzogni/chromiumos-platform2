@@ -4,6 +4,8 @@
 
 #include "shill/icmp_session.h"
 
+#include <utility>
+
 #include <arpa/inet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
@@ -55,7 +57,7 @@ IcmpSession::~IcmpSession() {
 
 bool IcmpSession::Start(const IPAddress& destination,
                         int interface_index,
-                        const IcmpSessionResultCallback& result_callback) {
+                        IcmpSessionResultCallback result_callback) {
   if (!dispatcher_) {
     LOG(ERROR) << "Invalid dispatcher";
     return false;
@@ -71,9 +73,9 @@ bool IcmpSession::Start(const IPAddress& destination,
       icmp_->socket(),
       Bind(&IcmpSession::OnEchoReplyReceived, weak_ptr_factory_.GetWeakPtr()),
       Bind(&IcmpSession::OnEchoReplyError, weak_ptr_factory_.GetWeakPtr())));
-  result_callback_ = result_callback;
-  timeout_callback_.Reset(Bind(&IcmpSession::ReportResultAndStopSession,
-                               weak_ptr_factory_.GetWeakPtr()));
+  result_callback_ = std::move(result_callback);
+  timeout_callback_.Reset(BindOnce(&IcmpSession::ReportResultAndStopSession,
+                                   weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
                                kTimeout);
   seq_num_to_sent_recv_time_.clear();
@@ -300,7 +302,7 @@ void IcmpSession::ReportResultAndStopSession() {
   // might delete this object. (Any subsequent call to IcmpSession::Stop leads
   // to a segfault since this function belongs to the deleted object.)
   if (!result_callback_.is_null()) {
-    result_callback_.Run(GenerateIcmpResult());
+    std::move(result_callback_).Run(GenerateIcmpResult());
   }
 }
 

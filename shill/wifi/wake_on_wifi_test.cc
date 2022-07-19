@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/check_op.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
@@ -694,16 +695,12 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void StartDHCPLeaseRenewalTimer() {
     wake_on_wifi_->dhcp_lease_renewal_timer_->Start(
-        FROM_HERE, kTimeToNextLeaseRenewalLong,
-        base::Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing,
-                   base::Unretained(this)));
+        FROM_HERE, kTimeToNextLeaseRenewalLong, base::DoNothing());
   }
 
   void StartWakeToScanTimer() {
     wake_on_wifi_->wake_to_scan_timer_->Start(
-        FROM_HERE, kTimeToNextLeaseRenewalLong,
-        base::Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing,
-                   base::Unretained(this)));
+        FROM_HERE, kTimeToNextLeaseRenewalLong, base::DoNothing());
   }
 
   void StopDHCPLeaseRenewalTimer() {
@@ -860,7 +857,6 @@ class WakeOnWiFiTest : public ::testing::Test {
   MOCK_METHOD(void, InitiateScanCallback, (const WiFi::FreqSet&));
   MOCK_METHOD(void, RemoveSupplicantNetworksCallback, ());
   MOCK_METHOD(void, DarkResumeActionsTimeoutCallback, ());
-  MOCK_METHOD(void, OnTimerWakeDoNothing, ());
   MOCK_METHOD(void, RecordDarkResumeWakeReasonCallback, (const std::string&));
 
  protected:

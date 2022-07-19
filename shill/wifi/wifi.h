@@ -860,19 +860,19 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool need_bss_flush_;
   struct timeval resumed_at_;
   // Executes when the (foreground) scan timer expires. Calls ScanTimerHandler.
-  base::CancelableClosure scan_timer_callback_;
+  base::CancelableOnceClosure scan_timer_callback_;
   // Executes when a pending service connect timer expires. Calls
   // PendingTimeoutHandler.
-  base::CancelableClosure pending_timeout_callback_;
+  base::CancelableOnceClosure pending_timeout_callback_;
   // Executes when a reconnecting service timer expires. Calls
   // ReconnectTimeoutHandler.
-  base::CancelableClosure reconnect_timeout_callback_;
+  base::CancelableOnceClosure reconnect_timeout_callback_;
   // Executes periodically while a service is connected, to update the
   // signal strength from the currently connected AP.
-  base::CancelableClosure request_station_info_callback_;
+  base::CancelableOnceClosure request_station_info_callback_;
   // Executes when WPA supplicant reports that a scan has failed via a ScanDone
   // signal.
-  base::CancelableClosure scan_failed_callback_;
+  base::CancelableOnceClosure scan_failed_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
   // Indicates that the current BSS has reached the completed state according
@@ -899,7 +899,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   time_t last_link_monitor_failed_time_;
   // Callback to invoke when link becomes reliable again after it was previously
   // unreliable.
-  base::CancelableClosure reliable_link_callback_;
+  base::CancelableOnceClosure reliable_link_callback_;
 
   // Properties
   std::string bgscan_method_;

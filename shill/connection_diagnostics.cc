@@ -340,8 +340,8 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
   // RoutingTable implementation does not have a built-in timeout mechanism
   // for un-replied route requests, so use our own.
   route_query_timeout_callback_.Reset(
-      base::Bind(&ConnectionDiagnostics::OnRouteQueryTimeout,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&ConnectionDiagnostics::OnRouteQueryTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, route_query_timeout_callback_.callback(), kRouteQueryTimeout);
   AddEventWithMessage(kTypeFindRoute, kPhaseStart, kResultSuccess,
@@ -401,8 +401,8 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestNeighbor);
 
   neighbor_request_timeout_callback_.Reset(
-      base::Bind(&ConnectionDiagnostics::OnNeighborTableRequestTimeout,
-                 weak_ptr_factory_.GetWeakPtr(), address));
+      base::BindOnce(&ConnectionDiagnostics::OnNeighborTableRequestTimeout,
+                     weak_ptr_factory_.GetWeakPtr(), address));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                neighbor_request_timeout_callback_.callback(),
                                kNeighborTableRequestTimeout);
@@ -449,8 +449,8 @@ void ConnectionDiagnostics::CheckIpCollision() {
   }
 
   arp_reply_timeout_callback_.Reset(
-      base::Bind(&ConnectionDiagnostics::OnArpRequestTimeout,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&ConnectionDiagnostics::OnArpRequestTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, arp_reply_timeout_callback_.callback(), kArpReplyTimeout);
   AddEvent(kTypeIPCollisionCheck, kPhaseStart, kResultSuccess);

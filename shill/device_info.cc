@@ -1452,7 +1452,7 @@ void DeviceInfo::RdnssMsgHandler(const RTNLMessage& msg) {
 
 void DeviceInfo::DelayDeviceCreation(int interface_index) {
   delayed_devices_.insert(interface_index);
-  delayed_devices_callback_.Reset(base::Bind(
+  delayed_devices_callback_.Reset(base::BindOnce(
       &DeviceInfo::DelayedDeviceCreationTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, delayed_devices_callback_.callback(),
                                kDelayedDeviceCreation);
