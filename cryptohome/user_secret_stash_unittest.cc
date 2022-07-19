@@ -402,6 +402,23 @@ TEST_F(UserSecretStashTest, DoubleInsertResetSecret) {
   EXPECT_EQ(reset_secret1, stash_->GetResetSecretForLabel("label1").value());
 }
 
+// Test that RemoveResetSecretForLabel successfully removes the reset secret,
+// and afterwards it can be inserted again.
+TEST_F(UserSecretStashTest, RemoveResetSecretForLabel) {
+  brillo::SecureBlob reset_secret1 = {0xAA, 0xBB, 0xCC};
+  brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
+
+  EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
+
+  EXPECT_TRUE(stash_->RemoveResetSecretForLabel("label1"));
+  // No reset secret for label1.
+  ASSERT_FALSE(stash_->GetResetSecretForLabel("label1").has_value());
+  EXPECT_EQ(reset_secret2, stash_->GetResetSecretForLabel("label2").value());
+  // Reset secret for label1 can be inserted again.
+  EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
+}
+
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
 // the flatbuffer C++ bindings.
 class UserSecretStashInternalsTest : public UserSecretStashTest {

@@ -106,6 +106,12 @@ class UserSecretStash {
   [[nodiscard]] bool SetResetSecretForLabel(const std::string& label,
                                             const brillo::SecureBlob& secret);
 
+  // This removes the reset secret for an auth factor with the associated
+  // |label|. Returns false if reset secret wasn't present for provided |label|,
+  // true otherwise.
+  // TODO(b/238897234): Move this to RemoveWrappedMainKey.
+  bool RemoveResetSecretForLabel(const std::string& label);
+
   // The OS version on which this particular user secret stash was originally
   // created. The format is the one of the CHROMEOS_RELEASE_VERSION field in
   // /etc/lsb-release, e.g.: "11012.0.2018_08_28_1422". Empty if the version

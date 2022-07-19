@@ -625,6 +625,15 @@ bool UserSecretStash::SetResetSecretForLabel(const std::string& label,
   return result.second;
 }
 
+bool UserSecretStash::RemoveResetSecretForLabel(const std::string& label) {
+  const auto iter = reset_secrets_.find(label);
+  if (iter == reset_secrets_.end()) {
+    return false;
+  }
+  reset_secrets_.erase(iter);
+  return true;
+}
+
 const std::string& UserSecretStash::GetCreatedOnOsVersion() const {
   return created_on_os_version_;
 }

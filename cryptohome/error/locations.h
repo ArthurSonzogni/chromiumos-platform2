@@ -1043,6 +1043,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerPrepareForRemovalFailedInRemove = 608,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerDeleteFailedInRemove = 609,
+  /* ./auth_session.cc */
+  kLocAuthSessionVaultKeysetNotImplementedInRemoveAuthFactor = 610,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveMainKeyFailedInRemoveAuthFactor = 611,
+  /* ./auth_session.cc */
+  kLocAuthSessionEncryptFailedInRemoveAuthFactor = 612,
+  /* ./auth_session.cc */
+  kLocAuthSessionPersistUSSFailedInRemoveAuthFactor = 613,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

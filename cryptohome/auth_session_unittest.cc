@@ -2227,14 +2227,14 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakePinLabel);
   bool called = false;
-  EXPECT_TRUE(auth_session.RemoveAuthFactor(
+  auth_session.RemoveAuthFactor(
       request, base::BindOnce(
                    [](bool& called, user_data_auth::CryptohomeErrorCode& error,
                       const user_data_auth::RemoveAuthFactorReply& reply) {
                      called = true;
                      error = reply.error();
                    },
-                   std::ref(called), std::ref(error))));
+                   std::ref(called), std::ref(error)));
 
   ASSERT_TRUE(called);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -2273,6 +2273,53 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
 }
 
+// The test adds, removes and adds the same auth factor again.
+TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  error = AddPasswordAuthFactor(kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  error = AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+
+  // Calling RemoveAuthFactor for pin.
+  user_data_auth::RemoveAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakePinLabel);
+  bool called = false;
+  auth_session.RemoveAuthFactor(
+      request, base::BindOnce(
+                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::RemoveAuthFactorReply& reply) {
+                     called = true;
+                     error = reply.error();
+                   },
+                   std::ref(called), std::ref(error)));
+  ASSERT_TRUE(called);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Add the same pin auth factor again.
+  error = AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
 TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   // Setup.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
@@ -2301,14 +2348,14 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakeLabel);
   bool called = false;
-  EXPECT_FALSE(auth_session.RemoveAuthFactor(
+  auth_session.RemoveAuthFactor(
       request, base::BindOnce(
                    [](bool& called, user_data_auth::CryptohomeErrorCode& error,
                       const user_data_auth::RemoveAuthFactorReply& reply) {
                      called = true;
                      error = reply.error();
                    },
-                   std::ref(called), std::ref(error))));
+                   std::ref(called), std::ref(error)));
 
   ASSERT_TRUE(called);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
