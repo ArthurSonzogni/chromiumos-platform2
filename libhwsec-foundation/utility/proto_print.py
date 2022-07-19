@@ -35,7 +35,7 @@ import sys
 #   repeated: Whether the field is a repeated field.
 #   type_: The type of the field. E.g. int32.
 #   name: The name of the field.
-Field = collections.namedtuple('Field', 'repeated type_ name proto3')
+Field = collections.namedtuple("Field", "repeated type_ name proto3")
 
 
 class Message(object):
@@ -66,10 +66,12 @@ class Message(object):
         """
         self.fields.append(
             Field(
-                repeated=attribute == 'repeated',
+                repeated=attribute == "repeated",
                 type_=field_type,
                 name=field_name,
-                proto3=proto3))
+                proto3=proto3,
+            )
+        )
 
 
 class Enum(object):
@@ -127,24 +129,24 @@ def ParseProto(input_file):
         messages: A list of Message objects; one for each message in the proto.
         enums: A list of Enum objects; one for each enum in the proto.
     """
-    package = ''
+    package = ""
     imports = []
     messages = []
     enums = []
     current_message_stack = []
     current_enum = None
     current_oneof = None
-    package_re = re.compile(r'package\s+([.\w]+);')
+    package_re = re.compile(r"package\s+([.\w]+);")
     import_re = re.compile(r'import\s+"([\w]*/)*(\w+).proto";')
-    message_re = re.compile(r'message\s+(\w+)\s*{')
-    field_re = re.compile(r'(optional|required|repeated)\s+(\w+)\s+(\w+)\s*=')
-    field_re3 = re.compile(r'(|repeated\s+)([.\w]+)\s+(\w+)\s*=')
-    enum_re = re.compile(r'enum\s+(\w+)\s*{')
-    enum_value_re = re.compile(r'(\w+)\s*=')
-    oneof_re = re.compile(r'oneof\s+(\w+)\s*{')
+    message_re = re.compile(r"message\s+(\w+)\s*{")
+    field_re = re.compile(r"(optional|required|repeated)\s+(\w+)\s+(\w+)\s*=")
+    field_re3 = re.compile(r"(|repeated\s+)([.\w]+)\s+(\w+)\s*=")
+    enum_re = re.compile(r"enum\s+(\w+)\s*{")
+    enum_value_re = re.compile(r"(\w+)\s*=")
+    oneof_re = re.compile(r"oneof\s+(\w+)\s*{")
     for line in input_file:
         line = line.strip()
-        if not line or line.startswith('//'):
+        if not line or line.startswith("//"):
             continue
         msg_match = message_re.search(line)
         enum_match = enum_re.search(line)
@@ -155,39 +157,49 @@ def ParseProto(input_file):
         import_match = import_re.search(line)
         # Look for a message definition.
         if msg_match:
-            prefix = ''
+            prefix = ""
             if current_message_stack:
-                prefix = '::'.join([m.name for m in current_message_stack
-                                   ]) + '::'
+                prefix = (
+                    "::".join([m.name for m in current_message_stack]) + "::"
+                )
             current_message_stack.append(Message(prefix + msg_match.group(1)))
         elif current_message_stack and oneof_match:
             if current_oneof:
-                raise Exception('Unsupported nested oneof')
+                raise Exception("Unsupported nested oneof")
             # TODO(b/220231404): Support the printing of oneof field.
             current_oneof = Oneof(prefix + oneof_match.group(1))
         # Look for a message field definition.
         elif current_message_stack and field_match:
             current_message_stack[-1].AddField(
-                field_match.group(1), field_match.group(2),
-                field_match.group(3), False)
-        elif current_message_stack and field_match3 and field_match3.group(
-                2) != 'option':
+                field_match.group(1),
+                field_match.group(2),
+                field_match.group(3),
+                False,
+            )
+        elif (
+            current_message_stack
+            and field_match3
+            and field_match3.group(2) != "option"
+        ):
             current_message_stack[-1].AddField(
-                field_match3.group(1).strip(), field_match3.group(2),
-                field_match3.group(3), True)
+                field_match3.group(1).strip(),
+                field_match3.group(2),
+                field_match3.group(3),
+                True,
+            )
         elif enum_match:
-            prefix = ''
+            prefix = ""
             if current_message_stack:
-                prefix = '_'.join([m.name for m in current_message_stack]) + '_'
+                prefix = "_".join([m.name for m in current_message_stack]) + "_"
             current_enum = Enum(prefix + enum_match.group(1))
             continue
         # Look for an enum value.
         elif current_enum:
             match = enum_value_re.search(line)
             if match:
-                prefix = ''
+                prefix = ""
                 if current_message_stack:
-                    prefix = current_enum.name + '_'
+                    prefix = current_enum.name + "_"
                 current_enum.AddValue(prefix + match.group(1))
         # Look for a package statement.
         elif package_match:
@@ -197,7 +209,7 @@ def ParseProto(input_file):
             imports.append(import_match.group(2))
 
         # Close off the current scope. Enums first because they can't be nested.
-        if line[-1] == '}':
+        if line[-1] == "}":
             if current_enum:
                 enums.append(current_enum)
                 current_enum = None
@@ -207,7 +219,7 @@ def ParseProto(input_file):
             elif current_message_stack:
                 messages.append(current_message_stack.pop())
             else:
-                raise Exception('Closing unknown scope')
+                raise Exception("Closing unknown scope")
 
     # Make sure we parse the proto file correctly.
     if current_enum:
@@ -215,18 +227,27 @@ def ParseProto(input_file):
 
     if current_oneof:
         raise Exception(
-            f'The current_oneof "{current_oneof.name}" is not empty')
+            f'The current_oneof "{current_oneof.name}" is not empty'
+        )
 
     if current_message_stack:
         name_stack = [msg.name for msg in current_message_stack]
-        raise Exception(f'The current_message_stack {name_stack} is not empty')
+        raise Exception(f"The current_message_stack {name_stack} is not empty")
 
     return package, imports, messages, enums
 
 
-def GenerateFileHeaders(proto_name, package, imports, subdir,
-                        proto_include_override, header_file_name, header_file,
-                        impl_file, package_dir):
+def GenerateFileHeaders(
+    proto_name,
+    package,
+    imports,
+    subdir,
+    proto_include_override,
+    header_file_name,
+    header_file,
+    impl_file,
+    package_dir,
+):
     """Generates and prints file headers.
 
     Args:
@@ -242,23 +263,32 @@ def GenerateFileHeaders(proto_name, package, imports, subdir,
         package_dir: The package directory.
     """
     if subdir:
-        guard_name = '%s_%s_PRINT_%s_PROTO_H_' % (
-            package_dir.upper(), subdir.upper(), proto_name.upper())
-        package_with_subdir = '%s/%s' % (package_dir, subdir)
+        guard_name = "%s_%s_PRINT_%s_PROTO_H_" % (
+            package_dir.upper(),
+            subdir.upper(),
+            proto_name.upper(),
+        )
+        package_with_subdir = "%s/%s" % (package_dir, subdir)
     else:
-        guard_name = '%s_PRINT_%s_PROTO_H_' % (package_dir.upper(),
-                                               proto_name.upper())
+        guard_name = "%s_PRINT_%s_PROTO_H_" % (
+            package_dir.upper(),
+            proto_name.upper(),
+        )
         package_with_subdir = package_dir
     proto_include_dir = package_with_subdir
     if proto_include_override is not None:
         proto_include_dir = proto_include_override
-    namespace = package.replace('.', '::')
-    includes = '\n'.join([
-        '#include "%(package_with_subdir)s/print_%(import)s_proto.h"' % {
-            'package_with_subdir': package_with_subdir,
-            'import': current_import
-        } for current_import in imports
-    ])
+    namespace = package.replace(".", "::")
+    includes = "\n".join(
+        [
+            '#include "%(package_with_subdir)s/print_%(import)s_proto.h"'
+            % {
+                "package_with_subdir": package_with_subdir,
+                "import": current_import,
+            }
+            for current_import in imports
+        ]
+    )
     header = """\
 // Copyright %(year)s The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -279,12 +309,12 @@ def GenerateFileHeaders(proto_name, package, imports, subdir,
 
 namespace %(namespace)s {
 """ % {
-        'year': date.today().year,
-        'guard_name': guard_name,
-        'namespace': namespace,
-        'proto': proto_name,
-        'proto_include_dir': proto_include_dir,
-        'cmd': ' '.join(sys.argv)
+        "year": date.today().year,
+        "guard_name": guard_name,
+        "namespace": namespace,
+        "proto": proto_name,
+        "proto_include_dir": proto_include_dir,
+        "cmd": " ".join(sys.argv),
     }
     impl = """\
 // Copyright %(year)s The Chromium OS Authors. All rights reserved.
@@ -308,20 +338,21 @@ namespace %(namespace)s {
 
 namespace %(namespace)s {
 """ % {
-        'year': date.today().year,
-        'namespace': namespace,
-        'package_with_subdir': package_with_subdir,
-        'header_file_name': header_file_name,
-        'includes': includes,
-        'cmd': ' '.join(sys.argv)
+        "year": date.today().year,
+        "namespace": namespace,
+        "package_with_subdir": package_with_subdir,
+        "header_file_name": header_file_name,
+        "includes": includes,
+        "cmd": " ".join(sys.argv),
     }
 
     header_file.write(header)
     impl_file.write(impl)
 
 
-def GenerateFileFooters(proto_name, package, subdir, header_file, impl_file,
-                        package_dir):
+def GenerateFileFooters(
+    proto_name, package, subdir, header_file, impl_file, package_dir
+):
     """Generates and prints file footers.
 
     Args:
@@ -332,25 +363,32 @@ def GenerateFileFooters(proto_name, package, subdir, header_file, impl_file,
         impl_file: The implementation file handle, open for writing.
         package_dir: The package directory.
     """
-    namespace = package.replace('.', '::')
+    namespace = package.replace(".", "::")
     if subdir:
-        guard_name = '%s_%s_PRINT_%s_PROTO_H_' % (
-            package_dir.upper(), subdir.upper(), proto_name.upper())
+        guard_name = "%s_%s_PRINT_%s_PROTO_H_" % (
+            package_dir.upper(),
+            subdir.upper(),
+            proto_name.upper(),
+        )
     else:
-        guard_name = '%s_PRINT_%s_PROTO_H_' % (package_dir.upper(),
-                                               proto_name.upper())
+        guard_name = "%s_PRINT_%s_PROTO_H_" % (
+            package_dir.upper(),
+            proto_name.upper(),
+        )
     header = """
 
 }  // namespace %(namespace)s
 
 #endif  // %(guard_name)s
 """ % {
-        'guard_name': guard_name,
-        'namespace': namespace
+        "guard_name": guard_name,
+        "namespace": namespace,
     }
     impl = """
 }  // namespace %(namespace)s
-""" % {'namespace': namespace}
+""" % {
+        "namespace": namespace
+    }
 
     header_file.write(header)
     impl_file.write(impl)
@@ -367,7 +405,7 @@ def GenerateEnumPrinter(enum, header_file, impl_file):
     declare = """
 std::string GetProtoDebugStringWithIndent(%(name)s value, int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(%(name)s value);""" % {
-        'name': enum.name
+        "name": enum.name
     }
     define_begin = """
 std::string GetProtoDebugString(%(name)s value) {
@@ -376,7 +414,7 @@ std::string GetProtoDebugString(%(name)s value) {
 
 std::string GetProtoDebugStringWithIndent(%(name)s value, int indent_size) {
 """ % {
-        'name': enum.name
+        "name": enum.name
     }
     define_end = """
   return "<unknown>";
@@ -390,7 +428,7 @@ std::string GetProtoDebugStringWithIndent(%(name)s value, int indent_size) {
     header_file.write(declare)
     impl_file.write(define_begin)
     for value_name in enum.values:
-        impl_file.write(condition % {'value_name': value_name})
+        impl_file.write(condition % {"value_name": value_name})
     impl_file.write(define_end)
 
 
@@ -406,7 +444,7 @@ def GenerateMessagePrinter(message, header_file, impl_file):
 std::string GetProtoDebugStringWithIndent(const %(name)s& value,
                                           int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(const %(name)s& value);""" % {
-        'name': message.name
+        "name": message.name
     }
     define_begin = """
 std::string GetProtoDebugString(const %(name)s& value) {
@@ -419,7 +457,7 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
   std::string output = base::StringPrintf("[%%s] {\\n",
                                           value.GetTypeName().c_str());
 """ % {
-        'name': message.name
+        "name": message.name
     }
     define_end = """
   output += indent + "}\\n";
@@ -446,74 +484,75 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
     base::StringAppendF(&output, %(format)s);
   }
   output += "}\\n";"""
-    singular_field_get = 'value.%(name)s()'
-    repeated_field_get = 'value.%(name)s(i)'
+    singular_field_get = "value.%(name)s()"
+    repeated_field_get = "value.%(name)s(i)"
     formats = {
-        'bool':
-            '"%%s", %(value)s ? "true" : "false"',
-        'int32':
-            '"%%" PRId32, %(value)s',
-        'int64':
-            '"%%" PRId64, %(value)s',
-        'uint32':
-            '"%%" PRIu32 " (0x%%08" PRIX32 ")", %(value)s, %(value)s',
-        'uint64':
-            '"%%" PRIu64 " (0x%%016" PRIX64 ")", %(value)s, %(value)s',
-        'string':
-            '"%%s", %(value)s.c_str()',
-        'bytes':
-            """"%%s", base::HexEncode(%(value)s.data(),
-                                         %(value)s.size()).c_str()"""
+        "bool": '"%%s", %(value)s ? "true" : "false"',
+        "int32": '"%%" PRId32, %(value)s',
+        "int64": '"%%" PRId64, %(value)s',
+        "uint32": '"%%" PRIu32 " (0x%%08" PRIX32 ")", %(value)s, %(value)s',
+        "uint64": '"%%" PRIu64 " (0x%%016" PRIX64 ")", %(value)s, %(value)s',
+        "string": '"%%s", %(value)s.c_str()',
+        "bytes": """"%%s", base::HexEncode(%(value)s.data(),
+                                         %(value)s.size()).c_str()""",
     }
-    subtype_format = ('"%%s", GetProtoDebugStringWithIndent(%(value)s, '
-                      'indent_size + 2).c_str()')
+    subtype_format = (
+        '"%%s", GetProtoDebugStringWithIndent(%(value)s, '
+        "indent_size + 2).c_str()"
+    )
 
     header_file.write(declare)
     impl_file.write(define_begin)
     for field in message.fields:
         if field.repeated:
-            value_get = repeated_field_get % {'name': field.name}
+            value_get = repeated_field_get % {"name": field.name}
             field_code = repeated_field
         elif field.proto3:
-            value_get = singular_field_get % {'name': field.name}
+            value_get = singular_field_get % {"name": field.name}
             field_code = proto3_singular_field
         else:
-            value_get = singular_field_get % {'name': field.name}
+            value_get = singular_field_get % {"name": field.name}
             field_code = singular_field
         if field.type_ in formats:
-            value_format = formats[field.type_] % {'value': value_get}
+            value_format = formats[field.type_] % {"value": value_get}
         else:
-            value_format = subtype_format % {'value': value_get}
-        impl_file.write(field_code % {
-            'name': field.name,
-            'format': value_format
-        })
+            value_format = subtype_format % {"value": value_get}
+        impl_file.write(
+            field_code % {"name": field.name, "format": value_format}
+        )
     impl_file.write(define_end)
 
 
 def FormatFile(filename):
-    subprocess.call(['clang-format', '-i', '-style=Chromium', filename])
+    subprocess.call(["clang-format", "-i", "-style=Chromium", filename])
 
 
 def main():
-    parser = argparse.ArgumentParser(description='print proto code generator')
+    parser = argparse.ArgumentParser(description="print proto code generator")
     parser.add_argument(
-        '--package-dir',
-        default='',
-        help=('Override for the package directory name'))
+        "--package-dir",
+        default="",
+        help=("Override for the package directory name"),
+    )
     parser.add_argument(
-        '--subdir',
-        default='',
-        help=('The subdirectory under which the generated ' +
-              'file will reside in'))
+        "--subdir",
+        default="",
+        help=(
+            "The subdirectory under which the generated "
+            + "file will reside in"
+        ),
+    )
     parser.add_argument(
-        '--proto-include-override',
+        "--proto-include-override",
         default=None,
-        help=('Override for the include path of *.pb.h in' +
-              'generated header'))
+        help=(
+            "Override for the include path of *.pb.h in" + "generated header"
+        ),
+    )
     parser.add_argument(
-        '--output-dir', default='.', help=('The output directory'))
-    parser.add_argument('input_files', nargs='*')
+        "--output-dir", default=".", help=("The output directory")
+    )
+    parser.add_argument("input_files", nargs="*")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -522,28 +561,41 @@ def main():
         with open(input_path) as input_file:
             package, imports, messages, enums = ParseProto(input_file)
         package_dir = package
-        if args.package_dir != '':
+        if args.package_dir != "":
             package_dir = args.package_dir
-        proto_name = os.path.basename(input_path).rsplit('.', 1)[0]
-        header_file_name = 'print_%s_proto.h' % proto_name
-        impl_file_name = 'print_%s_proto.cc' % proto_name
+        proto_name = os.path.basename(input_path).rsplit(".", 1)[0]
+        header_file_name = "print_%s_proto.h" % proto_name
+        impl_file_name = "print_%s_proto.cc" % proto_name
         header_file_path = os.path.join(args.output_dir, header_file_name)
         impl_file_path = os.path.join(args.output_dir, impl_file_name)
-        with open(header_file_path, 'w') as header_file:
-            with open(impl_file_path, 'w') as impl_file:
-                GenerateFileHeaders(proto_name, package, imports, args.subdir,
-                                    args.proto_include_override,
-                                    header_file_name, header_file, impl_file,
-                                    package_dir)
+        with open(header_file_path, "w") as header_file:
+            with open(impl_file_path, "w") as impl_file:
+                GenerateFileHeaders(
+                    proto_name,
+                    package,
+                    imports,
+                    args.subdir,
+                    args.proto_include_override,
+                    header_file_name,
+                    header_file,
+                    impl_file,
+                    package_dir,
+                )
                 for enum in enums:
                     GenerateEnumPrinter(enum, header_file, impl_file)
                 for message in messages:
                     GenerateMessagePrinter(message, header_file, impl_file)
-                GenerateFileFooters(proto_name, package, args.subdir,
-                                    header_file, impl_file, package_dir)
+                GenerateFileFooters(
+                    proto_name,
+                    package,
+                    args.subdir,
+                    header_file,
+                    impl_file,
+                    package_dir,
+                )
         FormatFile(header_file_path)
         FormatFile(impl_file_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

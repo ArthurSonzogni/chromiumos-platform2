@@ -89,25 +89,28 @@ from reflection.BaseType import BaseType
 from reflection.Schema import Schema
 
 
-_SERIALIZED_NAMESPACE = '_serialized_'
+_SERIALIZED_NAMESPACE = "_serialized_"
 
-_SERIALIZABLE_ATTRIBUTE = 'serializable'
-_SECURE_ATTRIBUTE = 'secure'
-_OPTIONAL_ATTRIBUTE = 'optional'
+_SERIALIZABLE_ATTRIBUTE = "serializable"
+_SECURE_ATTRIBUTE = "secure"
+_OPTIONAL_ATTRIBUTE = "optional"
 
-_CPP_OPTIONAL_TYPE = 'std::optional'
-_CPP_VARIANT_TYPE = 'std::variant'
-_CPP_VISIT = 'std::visit'
-_CPP_MONOSTATE_TYPE = 'std::monostate'
-_CPP_NULLOPT = 'std::nullopt'
+_CPP_OPTIONAL_TYPE = "std::optional"
+_CPP_VARIANT_TYPE = "std::variant"
+_CPP_VISIT = "std::visit"
+_CPP_MONOSTATE_TYPE = "std::monostate"
+_CPP_NULLOPT = "std::nullopt"
 
-_CONVERTER_NAMESPACE = tuple(['hwsec_foundation'])
+_CONVERTER_NAMESPACE = tuple(["hwsec_foundation"])
 
-_VECTOR_TEMPLATE = Template('std::vector<{{inner_type}}>')
-_ARRAY_TEMPLATE = Template('{{inner_type}}[{{size}}]')
-_OPTIONAL_TEMPLATE = Template('%(optional_type)s<{{inner_type}}>' % {
-    'optional_type': _CPP_OPTIONAL_TYPE,
-})
+_VECTOR_TEMPLATE = Template("std::vector<{{inner_type}}>")
+_ARRAY_TEMPLATE = Template("{{inner_type}}[{{size}}]")
+_OPTIONAL_TEMPLATE = Template(
+    "%(optional_type)s<{{inner_type}}>"
+    % {
+        "optional_type": _CPP_OPTIONAL_TYPE,
+    }
+)
 
 # The prefix to export the serializer symbol, so we can export the serializer
 # in the shared library.
@@ -116,36 +119,39 @@ _EXPORT_ATTRIBUTE = '__attribute__((visibility("default")))'
 _ENUM_TOPOSORT_TYPE = 0
 _OBJECT_TOPOSORT_TYPE = 1
 
-_SCALAR_SET = set((
-    BaseType.Bool,
-    BaseType.Byte,
-    BaseType.UByte,
-    BaseType.Short,
-    BaseType.UShort,
-    BaseType.Int,
-    BaseType.UInt,
-    BaseType.Long,
-    BaseType.ULong,
-    BaseType.Float,
-    BaseType.Double,
-))
+_SCALAR_SET = set(
+    (
+        BaseType.Bool,
+        BaseType.Byte,
+        BaseType.UByte,
+        BaseType.Short,
+        BaseType.UShort,
+        BaseType.Int,
+        BaseType.UInt,
+        BaseType.Long,
+        BaseType.ULong,
+        BaseType.Float,
+        BaseType.Double,
+    )
+)
 
 _BASE_TYPE_STRING = {
-    BaseType.Bool: 'bool',
-    BaseType.Byte: 'int8_t',
-    BaseType.UByte: 'uint8_t',
-    BaseType.Short: 'int16_t',
-    BaseType.UShort: 'uint16_t',
-    BaseType.Int: 'int32_t',
-    BaseType.UInt: 'uint32_t',
-    BaseType.Long: 'int64_t',
-    BaseType.ULong: 'uint64_t',
-    BaseType.Float: 'float',
-    BaseType.Double: 'double',
-    BaseType.String: 'std::string'
+    BaseType.Bool: "bool",
+    BaseType.Byte: "int8_t",
+    BaseType.UByte: "uint8_t",
+    BaseType.Short: "int16_t",
+    BaseType.UShort: "uint16_t",
+    BaseType.Int: "int32_t",
+    BaseType.UInt: "uint32_t",
+    BaseType.Long: "int64_t",
+    BaseType.ULong: "uint64_t",
+    BaseType.Float: "float",
+    BaseType.Double: "double",
+    BaseType.String: "std::string",
 }
 
-_COPYRIGHT_HEADER = Template("""\
+_COPYRIGHT_HEADER = Template(
+    """\
 // Copyright {{ year }} The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -153,14 +159,15 @@ _COPYRIGHT_HEADER = Template("""\
 // THIS CODE IS GENERATED.
 // Generated with command:
 // {{ cmd }}
-""").render(year=date.today().year, cmd=' '.join(sys.argv))
+"""
+).render(year=date.today().year, cmd=" ".join(sys.argv))
 
 
 @lru_cache(maxsize=None)
 def HasAttribute(obj, attr_str):
     for aid in range(obj.AttributesLength()):
         attr = obj.Attributes(aid)
-        key = attr.Key().decode('utf-8')
+        key = attr.Key().decode("utf-8")
         if key == attr_str:
             return True
     return False
@@ -177,8 +184,10 @@ def IsOptional(field):
     if IsScalar(field_type.BaseType()):
         if field.Optional():
             return True
-        raise Exception('Scalar field %(name)s should must be optional' %
-                        {'name': field.Name().decode('utf-8')})
+        raise Exception(
+            "Scalar field %(name)s should must be optional"
+            % {"name": field.Name().decode("utf-8")}
+        )
 
     return HasAttribute(field, _OPTIONAL_ATTRIBUTE)
 
@@ -268,12 +277,12 @@ def GetValueUnionType(value):
 
 @lru_cache(maxsize=None)
 def GetSimpleName(obj):
-    return obj.Name().decode('utf-8').split('.')[-1]
+    return obj.Name().decode("utf-8").split(".")[-1]
 
 
 @lru_cache(maxsize=None)
 def GetNamespaces(obj, serialized_namespace=False):
-    namespaces = obj.Name().decode('utf-8').split('.')[:-1]
+    namespaces = obj.Name().decode("utf-8").split(".")[:-1]
     if not serialized_namespace:
         namespaces = namespaces[:-1]
     return tuple(namespaces)
@@ -284,23 +293,27 @@ def IsNamespaceAllowed(obj, namespace_filter):
     # Allow everything if the namespace_filter is empty.
     if not namespace_filter:
         return True
-    namespace = '::'.join(GetNamespaces(obj))
+    namespace = "::".join(GetNamespaces(obj))
     return namespace in namespace_filter
 
 
 @lru_cache(maxsize=None)
 def OutputNamespaceHead(target_namespace):
-    template = Template("""
+    template = Template(
+        """
       namespace {{ target_namespace|join("::") }} {
-    """)
+    """
+    )
     return template.render(target_namespace=target_namespace)
 
 
 @lru_cache(maxsize=None)
 def OutputNamespaceFoot(target_namespace):
-    template = Template("""
+    template = Template(
+        """
       }  // namespace {{ target_namespace|join("::") }}
-    """)
+    """
+    )
     return template.render(target_namespace=target_namespace)
 
 
@@ -318,9 +331,12 @@ def OutputObjectType(obj, serialized=False):
 def OutputBaseType(base_type):
     if base_type in _BASE_TYPE_STRING:
         return _BASE_TYPE_STRING[base_type]
-    raise Exception('Unknown output for base type %(base_type)s' % {
-        'base_type': base_type,
-    })
+    raise Exception(
+        "Unknown output for base type %(base_type)s"
+        % {
+            "base_type": base_type,
+        }
+    )
 
 
 @lru_cache(maxsize=None)
@@ -328,7 +344,7 @@ def OutputType(schema, data_type, is_secure):
     base_type = data_type.BaseType()
     element_type = data_type.Element()
     if base_type == BaseType.None_:
-        return 'NONE'
+        return "NONE"
     elif base_type == BaseType.Vector:
         if element_type == BaseType.Obj:
             inner_type = OutputObjectType(GetObject(schema, data_type.Index()))
@@ -336,9 +352,9 @@ def OutputType(schema, data_type, is_secure):
             inner_type = OutputObjectType(GetEnum(schema, data_type.Index()))
         elif element_type == BaseType.UByte:
             if is_secure:
-                return 'brillo::SecureBlob'
+                return "brillo::SecureBlob"
             else:
-                return 'brillo::Blob'
+                return "brillo::Blob"
         else:
             inner_type = OutputBaseType(element_type)
         return _VECTOR_TEMPLATE.render(inner_type=inner_type)
@@ -349,8 +365,9 @@ def OutputType(schema, data_type, is_secure):
             inner_type = OutputObjectType(GetEnum(schema, data_type.Index()))
         else:
             inner_type = OutputBaseType(element_type)
-        return _ARRAY_TEMPLATE.render(inner_type=inner_type,
-                                      size=data_type.FixedLength())
+        return _ARRAY_TEMPLATE.render(
+            inner_type=inner_type, size=data_type.FixedLength()
+        )
     elif base_type == BaseType.Obj:
         return OutputObjectType(GetObject(schema, data_type.Index()))
     elif base_type == BaseType.Union:
@@ -380,7 +397,8 @@ def OutputFieldType(schema, field, is_secure):
 
 @lru_cache(maxsize=None)
 def OutputStructure(schema, obj):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         struct {{ simple_name }} {
           {% if blob_type is not none %}
@@ -393,7 +411,8 @@ def OutputStructure(schema, obj):
           {% endfor %}
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = GetNamespaces(obj)
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -407,35 +426,39 @@ def OutputStructure(schema, obj):
     blob_type = None
     if is_serializable:
         if is_secure:
-            blob_type = 'brillo::SecureBlob'
+            blob_type = "brillo::SecureBlob"
         else:
-            blob_type = 'brillo::Blob'
+            blob_type = "brillo::Blob"
 
     fields = []
     for field in GetSortedFields(obj):
         if IsUType(GetFieldType(field)):
             continue
-        field_name = field.Name().decode('utf-8')
+        field_name = field.Name().decode("utf-8")
         field_type = OutputFieldType(schema, field, is_secure)
         fields.append((field_type, field_name))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           optional_type=_CPP_OPTIONAL_TYPE,
-                           blob_type=blob_type,
-                           simple_name=simple_name,
-                           fields=fields)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        optional_type=_CPP_OPTIONAL_TYPE,
+        blob_type=blob_type,
+        simple_name=simple_name,
+        fields=fields,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputVariant(schema, union):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         using {{ simple_name }} = {{ variant_type }}<
           {{ types | join(",") }}
           >;
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = GetNamespaces(union)
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -450,16 +473,19 @@ def OutputVariant(schema, union):
         if union_type.BaseType() != BaseType.None_:
             types.append(OutputType(schema, union_type, False))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           simple_name=simple_name,
-                           variant_type=_CPP_VARIANT_TYPE,
-                           types=types)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        simple_name=simple_name,
+        variant_type=_CPP_VARIANT_TYPE,
+        types=types,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputEnum(enum):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         enum class {{ simple_name }} : {{ underlying_type }} {
           {% for (field, value) in fields %} \
@@ -467,7 +493,8 @@ def OutputEnum(enum):
           {% endfor %}
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = GetNamespaces(enum)
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -479,18 +506,21 @@ def OutputEnum(enum):
     fields = []
 
     for value in GetValues(enum):
-        fields.append((value.Name().decode('utf-8'), str(value.Value())))
+        fields.append((value.Name().decode("utf-8"), str(value.Value())))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           simple_name=simple_name,
-                           underlying_type=underlying_type,
-                           fields=fields)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        simple_name=simple_name,
+        underlying_type=underlying_type,
+        fields=fields,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputEnumToFlatBuffer(enum):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         template <>
         struct ToFlatBuffer<{{ enum_type }}> {
@@ -502,7 +532,8 @@ def OutputEnumToFlatBuffer(enum):
           }
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = _CONVERTER_NAMESPACE
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -515,19 +546,22 @@ def OutputEnumToFlatBuffer(enum):
     fields = []
 
     for value in GetValues(enum):
-        fields.append(value.Name().decode('utf-8'))
+        fields.append(value.Name().decode("utf-8"))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           enum_type=enum_type,
-                           serialized_type=serialized_type,
-                           simple_name=simple_name,
-                           fields=fields)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        enum_type=enum_type,
+        serialized_type=serialized_type,
+        simple_name=simple_name,
+        fields=fields,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputUnionTypeToFlatBuffer(schema, union):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         template <>
         struct ToFlatBuffer<{{ union_type }}, IsUnionEnum> {
@@ -548,7 +582,8 @@ def OutputUnionTypeToFlatBuffer(schema, union):
           }
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = _CONVERTER_NAMESPACE
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -564,22 +599,25 @@ def OutputUnionTypeToFlatBuffer(schema, union):
         if value_union_type.BaseType() == BaseType.None_:
             continue
         value_type = OutputType(schema, value_union_type, False)
-        value_name = value.Name().decode('utf-8')
+        value_name = value.Name().decode("utf-8")
         values.append((value_type, value_name))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           serialized_type=serialized_type,
-                           union_type=union_type,
-                           simple_name=simple_name,
-                           values=values,
-                           visit=_CPP_VISIT,
-                           monostate_type=_CPP_MONOSTATE_TYPE)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        serialized_type=serialized_type,
+        union_type=union_type,
+        simple_name=simple_name,
+        values=values,
+        visit=_CPP_VISIT,
+        monostate_type=_CPP_MONOSTATE_TYPE,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputStructureToFlatBuffer(schema, obj):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         template <>
         struct ToFlatBuffer<{{ obj_type }}>{
@@ -598,7 +636,8 @@ def OutputStructureToFlatBuffer(schema, obj):
           }
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = _CONVERTER_NAMESPACE
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -608,39 +647,42 @@ def OutputStructureToFlatBuffer(schema, obj):
     obj_type = OutputObjectType(obj, False)
     simple_name = GetSimpleName(obj)
 
-    split_serial = serialized_type.split('::')
-    split_serial[-1] = 'Create' + split_serial[-1]
-    create_func_name = '::'.join(split_serial)
+    split_serial = serialized_type.split("::")
+    split_serial[-1] = "Create" + split_serial[-1]
+    create_func_name = "::".join(split_serial)
 
     is_secure = IsSecure(obj)
 
     field_data = []
     for field in GetSortedFields(obj):
-        name = field.Name().decode('utf-8')
+        name = field.Name().decode("utf-8")
         field_type = GetFieldType(field)
         inner_type = OutputFieldType(schema, field, is_secure)
 
         if IsUType(field_type):
-            inner_type += ', IsUnionEnum'
+            inner_type += ", IsUnionEnum"
             # TODO(yich): switch to removesuffix() once we update to Python 3.9.
-            real_name = re.sub('_type$', '', name)
+            real_name = re.sub("_type$", "", name)
         else:
             real_name = name
 
         field_data.append((name, real_name, inner_type))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           simple_name=simple_name,
-                           obj_type=obj_type,
-                           serialized_type=serialized_type,
-                           field_data=field_data,
-                           create_func_name=create_func_name)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        simple_name=simple_name,
+        obj_type=obj_type,
+        serialized_type=serialized_type,
+        field_data=field_data,
+        create_func_name=create_func_name,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputStructureSerializer(obj):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         {{ export_attribute }}
         {{ result_type }} {{ simple_name }}::Serialize() const {
@@ -668,7 +710,8 @@ def OutputStructureSerializer(obj):
           {% endif%}
         }
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = GetNamespaces(obj)
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -677,28 +720,31 @@ def OutputStructureSerializer(obj):
     is_secure = IsSecure(obj)
 
     if is_secure:
-        blob_type = 'brillo::SecureBlob'
+        blob_type = "brillo::SecureBlob"
     else:
-        blob_type = 'brillo::Blob'
+        blob_type = "brillo::Blob"
 
     result_type = _OPTIONAL_TEMPLATE.render(inner_type=blob_type)
     obj_type = OutputObjectType(obj)
     simple_name = GetSimpleName(obj)
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           export_attribute=_EXPORT_ATTRIBUTE,
-                           converter=_CONVERTER_NAMESPACE,
-                           result_type=result_type,
-                           is_secure=is_secure,
-                           obj_type=obj_type,
-                           simple_name=simple_name,
-                           nullopt=_CPP_NULLOPT)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        export_attribute=_EXPORT_ATTRIBUTE,
+        converter=_CONVERTER_NAMESPACE,
+        result_type=result_type,
+        is_secure=is_secure,
+        obj_type=obj_type,
+        simple_name=simple_name,
+        nullopt=_CPP_NULLOPT,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputEnumFromFlatBuffer(enum):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         template <>
         struct FromFlatBuffer<{{ enum_type }}> {
@@ -712,7 +758,8 @@ def OutputEnumFromFlatBuffer(enum):
           }
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = _CONVERTER_NAMESPACE
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -726,20 +773,23 @@ def OutputEnumFromFlatBuffer(enum):
 
     fields = []
     for value in GetValues(enum):
-        fields.append(value.Name().decode('utf-8'))
+        fields.append(value.Name().decode("utf-8"))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           result_type=result_type,
-                           enum_type=enum_type,
-                           serialized_type=serialized_type,
-                           simple_name=simple_name,
-                           fields=fields)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        result_type=result_type,
+        enum_type=enum_type,
+        serialized_type=serialized_type,
+        simple_name=simple_name,
+        fields=fields,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputUnionFromFlatBuffer(schema, union):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         template <>
         struct FromFlatBuffer<{{ union_type }}> {
@@ -760,7 +810,8 @@ def OutputUnionFromFlatBuffer(schema, union):
           }
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = _CONVERTER_NAMESPACE
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -777,25 +828,28 @@ def OutputUnionFromFlatBuffer(schema, union):
         if value_union_type.BaseType() == BaseType.None_:
             continue
 
-        field_name = value.Name().decode('utf-8')
+        field_name = value.Name().decode("utf-8")
         obj = GetObject(schema, value_union_type.Index())
         obj_type = OutputObjectType(obj, False)
         serial_obj_type = OutputObjectType(obj, True)
         field_data.append((field_name, obj_type, serial_obj_type))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           union_type=union_type,
-                           result_type=result_type,
-                           serialized_type=serialized_type,
-                           simple_name=simple_name,
-                           field_data=field_data,
-                           monostate_type=_CPP_MONOSTATE_TYPE)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        union_type=union_type,
+        result_type=result_type,
+        serialized_type=serialized_type,
+        simple_name=simple_name,
+        field_data=field_data,
+        monostate_type=_CPP_MONOSTATE_TYPE,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputStructureFromFlatBuffer(schema, obj):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         template <>
         struct FromFlatBuffer<{{ obj_type }}> {
@@ -811,7 +865,8 @@ def OutputStructureFromFlatBuffer(schema, obj):
           }
         };
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = _CONVERTER_NAMESPACE
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -827,7 +882,7 @@ def OutputStructureFromFlatBuffer(schema, obj):
     field_data = []
 
     for field in GetSortedFields(obj):
-        field_name = field.Name().decode('utf-8')
+        field_name = field.Name().decode("utf-8")
         field_type = GetFieldType(field)
 
         if IsUType(field_type):
@@ -835,27 +890,30 @@ def OutputStructureFromFlatBuffer(schema, obj):
 
         inner_type = OutputFieldType(schema, field, is_secure)
 
-        field_input = 'object->%(field_name)s()' % {'field_name': field_name}
+        field_input = "object->%(field_name)s()" % {"field_name": field_name}
 
         if IsUnion(field_type):
-            field_input += ', object->%(field_name)s_type()' % {
-                'field_name': field_name
+            field_input += ", object->%(field_name)s_type()" % {
+                "field_name": field_name
             }
 
         field_data.append((field_name, inner_type, field_input))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           obj_type=obj_type,
-                           serialized_type=serialized_type,
-                           result_type=result_type,
-                           simple_name=simple_name,
-                           field_data=field_data)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        obj_type=obj_type,
+        serialized_type=serialized_type,
+        result_type=result_type,
+        simple_name=simple_name,
+        field_data=field_data,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputStructureDeserializer(obj):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         // static
         {{ export_attribute }}
@@ -871,7 +929,8 @@ def OutputStructureDeserializer(obj):
           return {{ converter|join("::") }}::FromFlatBuffer<{{ obj_type }}>()(object);
         }
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = GetNamespaces(obj)
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -885,32 +944,35 @@ def OutputStructureDeserializer(obj):
     obj_type = OutputObjectType(obj, False)
 
     if is_secure:
-        blob_type = 'brillo::SecureBlob'
+        blob_type = "brillo::SecureBlob"
     else:
-        blob_type = 'brillo::Blob'
+        blob_type = "brillo::Blob"
 
     result_type = _OPTIONAL_TEMPLATE.render(inner_type=obj_type)
 
-    split_serial = serialized_type.split('::')
-    split_serial[-1] = 'Verify' + split_serial[-1] + 'Buffer'
-    serial_verify = '::'.join(split_serial)
+    split_serial = serialized_type.split("::")
+    split_serial[-1] = "Verify" + split_serial[-1] + "Buffer"
+    serial_verify = "::".join(split_serial)
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           export_attribute=_EXPORT_ATTRIBUTE,
-                           converter=_CONVERTER_NAMESPACE,
-                           result_type=result_type,
-                           obj_type=obj_type,
-                           serialized_type=serialized_type,
-                           blob_type=blob_type,
-                           serial_verify=serial_verify,
-                           simple_name=simple_name,
-                           nullopt=_CPP_NULLOPT)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        export_attribute=_EXPORT_ATTRIBUTE,
+        converter=_CONVERTER_NAMESPACE,
+        result_type=result_type,
+        obj_type=obj_type,
+        serialized_type=serialized_type,
+        blob_type=blob_type,
+        serial_verify=serial_verify,
+        simple_name=simple_name,
+        nullopt=_CPP_NULLOPT,
+    )
 
 
 @lru_cache(maxsize=None)
 def OutputTestStructure(obj):
-    template = Template("""
+    template = Template(
+        """
         {{ namespace_head }}
         inline bool operator==(const {{ name }}& lhs, const {{ name }}& rhs) {
           return true \
@@ -923,7 +985,8 @@ def OutputTestStructure(obj):
           return !(lhs == rhs);
         }
         {{ namespace_foot }}
-    """)
+    """
+    )
 
     target_namespace = GetNamespaces(obj)
     namespace_head = OutputNamespaceHead(target_namespace)
@@ -934,12 +997,14 @@ def OutputTestStructure(obj):
     fields = []
     for field in GetSortedFields(obj):
         if not IsUType(GetFieldType(field)):
-            fields.append(field.Name().decode('utf-8'))
+            fields.append(field.Name().decode("utf-8"))
 
-    return template.render(namespace_head=namespace_head,
-                           namespace_foot=namespace_foot,
-                           name=name,
-                           fields=fields)
+    return template.render(
+        namespace_head=namespace_head,
+        namespace_foot=namespace_foot,
+        name=name,
+        fields=fields,
+    )
 
 
 @lru_cache(maxsize=None)
@@ -976,7 +1041,7 @@ def CheckSecure(schema, node_id):
     if node_type == _ENUM_TOPOSORT_TYPE:
         enum = GetEnum(schema, entity_id)
         is_secure = IsSecure(enum)
-        name = enum.Name().decode('utf-8')
+        name = enum.Name().decode("utf-8")
         for value in GetValues(enum):
             inner_id = TypeToID(GetValueUnionType(value))
             if inner_id is not None:
@@ -985,7 +1050,7 @@ def CheckSecure(schema, node_id):
     elif node_type == _OBJECT_TOPOSORT_TYPE:
         obj = GetObject(schema, entity_id)
         is_secure = IsSecure(obj)
-        name = obj.Name().decode('utf-8')
+        name = obj.Name().decode("utf-8")
         for field in GetFields(obj):
             inner_id = TypeToID(GetFieldType(field))
             if inner_id is not None:
@@ -994,13 +1059,16 @@ def CheckSecure(schema, node_id):
     for inner_id in inner_ids:
         inner_secure = CheckSecure(schema, inner_id)
         if not is_secure and inner_secure:
-            raise Exception('%(name)s must have secure attribute' % {
-                'name': name,
-            })
+            raise Exception(
+                "%(name)s must have secure attribute"
+                % {
+                    "name": name,
+                }
+            )
 
         # TODO(yich): Ensure we don't put insecure table inside secure table.
         if is_secure and not inner_secure:
-            logging.warning('Not all internal data of %s is secure', name)
+            logging.warning("Not all internal data of %s is secure", name)
 
     return is_secure
 
@@ -1010,14 +1078,15 @@ def CheckSecure(schema, node_id):
 # if they forget to add the serialized namespace.
 @lru_cache(maxsize=None)
 def CheckSerializedNamespaces(obj):
-    namespaces = obj.Name().decode('utf-8').split('.')[:-1]
+    namespaces = obj.Name().decode("utf-8").split(".")[:-1]
     if namespaces[-1] != _SERIALIZED_NAMESPACE:
         raise Exception(
-            'The last namespace of %(obj)s must be %(serialized_namespace)s' %
-            {
-                'obj': obj.Name().decode('utf-8'),
-                'serialized_namespace': _SERIALIZED_NAMESPACE
-            })
+            "The last namespace of %(obj)s must be %(serialized_namespace)s"
+            % {
+                "obj": obj.Name().decode("utf-8"),
+                "serialized_namespace": _SERIALIZED_NAMESPACE,
+            }
+        )
 
 
 @lru_cache(maxsize=None)
@@ -1063,21 +1132,25 @@ def TopologicalSort(schema):
 
 @lru_cache(maxsize=None)
 def ClangFormatCode(code):
-    format_out = run([
-        'clang-format', '-style={'
-        'BasedOnStyle: "Chromium", '
-        'AllowAllParametersOfDeclarationOnNextLine: true}'
-    ],
-                     stdout=PIPE,
-                     input=code,
-                     encoding='ascii',
-                     check=True)
+    format_out = run(
+        [
+            "clang-format",
+            "-style={"
+            'BasedOnStyle: "Chromium", '
+            "AllowAllParametersOfDeclarationOnNextLine: true}",
+        ],
+        stdout=PIPE,
+        input=code,
+        encoding="ascii",
+        check=True,
+    )
     return format_out.stdout
 
 
 @lru_cache(maxsize=None)
 def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
-    template = Template("""\
+    template = Template(
+        """\
         {{ copyright }}
 
         #ifndef {{ guard_name }}
@@ -1100,7 +1173,8 @@ def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
         {% endfor %}
 
         #endif  // {{ guard_name }}
-    """)
+    """
+    )
 
     order = TopologicalSort(schema)
 
@@ -1121,18 +1195,22 @@ def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
             else:
                 definitions.append(OutputEnum(enum))
 
-    header = template.render(copyright=_COPYRIGHT_HEADER,
-                             guard_name=guard_name,
-                             include_paths=include_paths,
-                             definitions=definitions)
+    header = template.render(
+        copyright=_COPYRIGHT_HEADER,
+        guard_name=guard_name,
+        include_paths=include_paths,
+        definitions=definitions,
+    )
 
     return ClangFormatCode(header)
 
 
 @lru_cache(maxsize=None)
-def OutputBindingFlatbufferHeader(schema, guard_name, include_paths,
-                                  namespace_filter):
-    template = Template("""\
+def OutputBindingFlatbufferHeader(
+    schema, guard_name, include_paths, namespace_filter
+):
+    template = Template(
+        """\
         {{ copyright }}
 
         #ifndef {{ guard_name }}
@@ -1157,7 +1235,8 @@ def OutputBindingFlatbufferHeader(schema, guard_name, include_paths,
         {% endfor %}
 
         #endif  // {{ guard_name }}
-    """)
+    """
+    )
 
     order = TopologicalSort(schema)
 
@@ -1176,23 +1255,27 @@ def OutputBindingFlatbufferHeader(schema, guard_name, include_paths,
                 continue
             if enum.IsUnion():
                 implementations.append(
-                    OutputUnionTypeToFlatBuffer(schema, enum))
+                    OutputUnionTypeToFlatBuffer(schema, enum)
+                )
                 implementations.append(OutputUnionFromFlatBuffer(schema, enum))
             else:
                 implementations.append(OutputEnumToFlatBuffer(enum))
                 implementations.append(OutputEnumFromFlatBuffer(enum))
 
-    header = template.render(copyright=_COPYRIGHT_HEADER,
-                             guard_name=guard_name,
-                             include_paths=include_paths,
-                             implementations=implementations)
+    header = template.render(
+        copyright=_COPYRIGHT_HEADER,
+        guard_name=guard_name,
+        include_paths=include_paths,
+        implementations=implementations,
+    )
 
     return ClangFormatCode(header)
 
 
 @lru_cache(maxsize=None)
 def OutputBindingImpl(schema, include_paths, namespace_filter):
-    template = Template("""\
+    template = Template(
+        """\
         {{ copyright }}
 
         #include <optional>
@@ -1216,7 +1299,8 @@ def OutputBindingImpl(schema, include_paths, namespace_filter):
         {% for implementation in implementations %}
             {{ implementation }}
         {% endfor %}
-    """)
+    """
+    )
 
     order = TopologicalSort(schema)
 
@@ -1232,17 +1316,21 @@ def OutputBindingImpl(schema, include_paths, namespace_filter):
                 implementations.append(OutputStructureSerializer(obj))
                 implementations.append(OutputStructureDeserializer(obj))
 
-    impl = template.render(copyright=_COPYRIGHT_HEADER,
-                           include_paths=include_paths,
-                           implementations=implementations)
+    impl = template.render(
+        copyright=_COPYRIGHT_HEADER,
+        include_paths=include_paths,
+        implementations=implementations,
+    )
 
     return ClangFormatCode(impl)
 
 
 @lru_cache(maxsize=None)
-def OutputBindingTestUtilsHeader(schema, guard_name, include_paths,
-                                 namespace_filter):
-    template = Template("""\
+def OutputBindingTestUtilsHeader(
+    schema, guard_name, include_paths, namespace_filter
+):
+    template = Template(
+        """\
         {{ copyright }}
 
         #ifndef {{ guard_name }}
@@ -1257,7 +1345,8 @@ def OutputBindingTestUtilsHeader(schema, guard_name, include_paths,
         {% endfor %}
 
         #endif  // {{ guard_name }}
-    """)
+    """
+    )
 
     order = TopologicalSort(schema)
 
@@ -1270,98 +1359,127 @@ def OutputBindingTestUtilsHeader(schema, guard_name, include_paths,
                 continue
             implementations.append(OutputTestStructure(obj))
 
-    header = template.render(copyright=_COPYRIGHT_HEADER,
-                             guard_name=guard_name,
-                             include_paths=include_paths,
-                             implementations=implementations)
+    header = template.render(
+        copyright=_COPYRIGHT_HEADER,
+        guard_name=guard_name,
+        include_paths=include_paths,
+        implementations=implementations,
+    )
 
     return ClangFormatCode(header)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='flatbuffers c++ binding code generator')
-    parser.add_argument('--output_dir',
-                        default='.',
-                        help='The output directory')
-    parser.add_argument('--guard_prefix',
-                        default='FLATBUFFER_BINDING',
-                        help='The guard prefix')
-    parser.add_argument('--header_include_paths',
-                        default=[],
-                        help='The include path for header',
-                        action='append')
-    parser.add_argument('--flatbuffer_header_include_paths',
-                        default=[],
-                        help='The include path for flatbuffer utils header',
-                        action='append')
-    parser.add_argument('--impl_include_paths',
-                        default=[],
-                        help='The include path for implementation',
-                        action='append')
-    parser.add_argument('--test_utils_header_include_paths',
-                        default=[],
-                        help='The include path for testing utils header',
-                        action='append')
-    parser.add_argument('--filter_by_namespace',
-                        default=[],
-                        help='Output the objects that match filter namespace',
-                        action='append')
-    parser.add_argument('input_files', nargs='*')
+        description="flatbuffers c++ binding code generator"
+    )
+    parser.add_argument(
+        "--output_dir", default=".", help="The output directory"
+    )
+    parser.add_argument(
+        "--guard_prefix", default="FLATBUFFER_BINDING", help="The guard prefix"
+    )
+    parser.add_argument(
+        "--header_include_paths",
+        default=[],
+        help="The include path for header",
+        action="append",
+    )
+    parser.add_argument(
+        "--flatbuffer_header_include_paths",
+        default=[],
+        help="The include path for flatbuffer utils header",
+        action="append",
+    )
+    parser.add_argument(
+        "--impl_include_paths",
+        default=[],
+        help="The include path for implementation",
+        action="append",
+    )
+    parser.add_argument(
+        "--test_utils_header_include_paths",
+        default=[],
+        help="The include path for testing utils header",
+        action="append",
+    )
+    parser.add_argument(
+        "--filter_by_namespace",
+        default=[],
+        help="Output the objects that match filter namespace",
+        action="append",
+    )
+    parser.add_argument("input_files", nargs="*")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
     for input_path in args.input_files:
-        with open(input_path, mode='rb') as input_file:
+        with open(input_path, mode="rb") as input_file:
             buf = input_file.read()
             schema = Schema.GetRootAs(buf, 0)
 
         base_name = os.path.splitext(os.path.basename(input_path))[0]
 
-        header_file_path = os.path.join(args.output_dir, base_name + '.h')
-        header_flatbuffer_file_path = os.path.join(args.output_dir,
-                                                   base_name + '_flatbuffer.h')
-        impl_file_path = os.path.join(args.output_dir, base_name + '.cc')
-        test_utils_header_file_path = os.path.join(args.output_dir,
-                                                   base_name + '_test_utils.h')
+        header_file_path = os.path.join(args.output_dir, base_name + ".h")
+        header_flatbuffer_file_path = os.path.join(
+            args.output_dir, base_name + "_flatbuffer.h"
+        )
+        impl_file_path = os.path.join(args.output_dir, base_name + ".cc")
+        test_utils_header_file_path = os.path.join(
+            args.output_dir, base_name + "_test_utils.h"
+        )
 
-        base_guard = '%(prefix)s_%(base)s_' % {
-            'prefix': args.guard_prefix.upper(),
-            'base': base_name.upper(),
+        base_guard = "%(prefix)s_%(base)s_" % {
+            "prefix": args.guard_prefix.upper(),
+            "base": base_name.upper(),
         }
 
-        guard_name = base_guard + 'H_'
-        header_flatbuffer_guard_name = base_guard + 'FLATBUFFER_H_'
-        test_utils_guard_name = base_guard + 'TEST_UTILS_H_'
+        guard_name = base_guard + "H_"
+        header_flatbuffer_guard_name = base_guard + "FLATBUFFER_H_"
+        test_utils_guard_name = base_guard + "TEST_UTILS_H_"
 
         SchemaCheck(schema)
 
-        with open(header_file_path, 'w') as output_file:
+        with open(header_file_path, "w") as output_file:
             output_file.write(
-                OutputBindingHeader(schema, guard_name,
-                                    tuple(args.header_include_paths),
-                                    tuple(args.filter_by_namespace)))
+                OutputBindingHeader(
+                    schema,
+                    guard_name,
+                    tuple(args.header_include_paths),
+                    tuple(args.filter_by_namespace),
+                )
+            )
 
-        with open(header_flatbuffer_file_path, 'w') as output_file:
+        with open(header_flatbuffer_file_path, "w") as output_file:
             output_file.write(
                 OutputBindingFlatbufferHeader(
-                    schema, header_flatbuffer_guard_name,
+                    schema,
+                    header_flatbuffer_guard_name,
                     tuple(args.flatbuffer_header_include_paths),
-                    tuple(args.filter_by_namespace)))
+                    tuple(args.filter_by_namespace),
+                )
+            )
 
-        with open(impl_file_path, 'w') as output_file:
+        with open(impl_file_path, "w") as output_file:
             output_file.write(
-                OutputBindingImpl(schema, tuple(args.impl_include_paths),
-                                  tuple(args.filter_by_namespace)))
+                OutputBindingImpl(
+                    schema,
+                    tuple(args.impl_include_paths),
+                    tuple(args.filter_by_namespace),
+                )
+            )
 
-        with open(test_utils_header_file_path, 'w') as output_file:
+        with open(test_utils_header_file_path, "w") as output_file:
             output_file.write(
                 OutputBindingTestUtilsHeader(
-                    schema, test_utils_guard_name,
+                    schema,
+                    test_utils_guard_name,
                     tuple(args.test_utils_header_include_paths),
-                    tuple(args.filter_by_namespace)))
+                    tuple(args.filter_by_namespace),
+                )
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
