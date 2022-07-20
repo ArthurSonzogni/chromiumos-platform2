@@ -447,18 +447,9 @@ void Proxy::Stop() {
   doh_config_.clear();
   resolver_.reset();
   device_.reset();
+  lifeline_fds_.clear();
   if (opts_.type == Type::kSystem) {
     ClearShillDNSProxyAddresses();
-  }
-  if (opts_.type == Type::kDefault || opts_.type == Type::kSystem) {
-    StopDnsRedirection("" /* ifname */, AF_INET);
-    StopDnsRedirection("" /* ifname */, AF_INET6);
-  }
-  if (opts_.type == Type::kDefault || opts_.type == Type::kARC) {
-    for (const auto& d : patchpanel_->GetDevices()) {
-      StopGuestDnsRedirection(d, AF_INET);
-      StopGuestDnsRedirection(d, AF_INET6);
-    }
   }
 }
 
