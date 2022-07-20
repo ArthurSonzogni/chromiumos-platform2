@@ -55,8 +55,8 @@ int DBusServiceDaemon::OnInit() {
         sequencer->GetHandler("ObjectManager.RegisterAsync() failed.", true));
   }
   RegisterDBusObjectsAsync(sequencer.get());
-  sequencer->OnAllTasksCompletedCall({base::Bind(
-      &DBusServiceDaemon::TakeServiceOwnership, base::Unretained(this))});
+  sequencer->OnAllTasksCompletedCall(base::BindOnce(
+      &DBusServiceDaemon::TakeServiceOwnership, base::Unretained(this)));
   return EX_OK;
 }
 

@@ -23,7 +23,7 @@ namespace dbus_utils {
 //
 // Usage:
 //
-// void Init(const base::Callback<void(bool success)> cb) {
+// void Init(const base::OnceCallback<void(bool success)> cb) {
 //   scoped_refptr<AsyncEventSequencer> sequencer(
 //       new AsyncEventSequencer());
 //   one_delegate_needing_init_.Init(sequencer->GetHandler(
@@ -31,15 +31,16 @@ namespace dbus_utils {
 //   dbus_init_delegate_.Init(sequencer->GetExportHandler(
 //       "org.test.Interface", "ExposedMethodName",
 //       "another delegate is flaky", false));
-//   sequencer->OnAllTasksCompletedCall({cb});
+//   sequencer->OnAllTasksCompletedCall(std::move(cb));
 // }
 class BRILLO_EXPORT AsyncEventSequencer
     : public base::RefCounted<AsyncEventSequencer> {
  public:
   using Handler = base::Callback<void(bool success)>;
-  using ExportHandler = base::Callback<void(const std::string& interface_name,
-                                            const std::string& method_name,
-                                            bool success)>;
+  using ExportHandler =
+      base::RepeatingCallback<void(const std::string& interface_name,
+                                   const std::string& method_name,
+                                   bool success)>;
   using CompletionAction = base::Callback<void(bool all_succeeded)>;
   using CompletionTask = base::Callback<void(void)>;
 

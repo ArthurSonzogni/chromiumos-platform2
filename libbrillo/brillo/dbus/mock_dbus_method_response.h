@@ -28,10 +28,11 @@ namespace internal {
 // This is the terminal, boundary condition template when there's only one
 // template parameter left.
 template <typename T>
-base::Callback<void(const T&)> CreateSaveArgsOnceFn(std::optional<T>* dest) {
+base::OnceCallback<void(const T&)> CreateSaveArgsOnceFn(
+    std::optional<T>* dest) {
   // This create a Callback by binding in the |dest| pointer so that once the
   // callback is called, it'll save the argument into |dest|.
-  return base::Bind(
+  return base::BindOnce(
       [](std::optional<T>* dest_ptr, const T& orig) {
         // Ensure that this is called no more than once.
         CHECK(!dest_ptr->has_value());
@@ -43,7 +44,7 @@ base::Callback<void(const T&)> CreateSaveArgsOnceFn(std::optional<T>* dest) {
 // This is the variadic template that recurse by removing one parameter at a
 // time.
 template <typename First, typename... Rest>
-base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
+base::OnceCallback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
     std::optional<First>* first_dest, std::optional<Rest>*... rest_dest) {
   // This create a callback by binding in |first_dest|, which is where we are
   // going to save the first parameter when called. After that, this also binds
@@ -52,8 +53,8 @@ base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
   // pointers. The callback created in this function will only save the first
   // parameter into |first_dest| and call |rest_callback|, which will deal with
   // saving the rest of the parameters into |rest_dest|.
-  return base::Bind(
-      [](base::Callback<void(const Rest&...)> rest_callback,
+  return base::BindOnce(
+      [](base::OnceCallback<void(const Rest&...)> rest_callback,
          std::optional<First>* local_first_dest, const First& first_orig,
          const Rest&... rest_orig) {
         // Ensure that this is called no more than once.
@@ -61,7 +62,7 @@ base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
         *local_first_dest = first_orig;
 
         // Let |rest_callback| deal with saving |rest_orig| into |rest_dest|.
-        rest_callback.Run(rest_orig...);
+        std::move(rest_callback).Run(rest_orig...);
       },
       CreateSaveArgsOnceFn<Rest...>(rest_dest...), first_dest);
 }
@@ -76,7 +77,7 @@ base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
 //      std::unique_ptr<MockDBusMethodResponse<bool>> response(
 //          new MockDBusMethodResponse<bool>());
 //      // If you want to check success case.
-//      response->set_return_callback(base::Bind(
+//      response->set_return_callback(base::BindOnce(
 //          [](bool result) {
 //            // Validate result
 //          }
@@ -91,7 +92,7 @@ base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
 //    For example:
 //    std::unique_ptr<MockDBusMethodResponse<bool>> response(
 //        MockDBusMethodResponse<bool>::CreateWithMethodCall());
-//    response->set_response_sender(base::Bind(
+//    response->set_response_sender(base::BindOnce(
 //        [](std::unique_ptr<dbus::Response> dbus_response) {
 //          // Verify |dbus_response|'s content.
 //        }));
@@ -115,18 +116,19 @@ class MockDBusMethodResponse
             base::BindOnce(
                 [](MockDBusMethodResponse* mock,
                    std::unique_ptr<dbus::Response> response) {
-                  mock->response_sender_callback_.Run(std::move(response));
+                  std::move(mock->response_sender_callback_)
+                      .Run(std::move(response));
                 },
                 base::Unretained(this))),
         response_sender_callback_(
-            base::Bind(
+            base::BindOnce(
                 [](std::unique_ptr<dbus::Response> response) {
                   // By default, sending unsolicited response during testing
                   // will trigger warning.
                   LOG(WARNING)
                       << "Unexpected Response sent in MockDBusMethodResponse.";
                 })),
-        return_callback_(base::BindRepeating([](const Types&...) {
+        return_callback_(base::BindOnce([](const Types&...) {
           // By default, unsolicited Return() call during testing will trigger
           // warning.
           LOG(WARNING) << "Unexpected Return in MockDBusMethodResponse";
@@ -142,7 +144,7 @@ class MockDBusMethodResponse
   // Override the actual return function so that we can intercept the result of
   // async function call.
   void Return(const Types&... return_values) override {
-    return_callback_.Run(return_values...);
+    std::move(return_callback_).Run(return_values...);
   }
 
   // Create a MockDBusMethodResponse for use during testing that have a valid
@@ -168,14 +170,15 @@ class MockDBusMethodResponse
   // Set the response sender callback, a callback that is called whenever
   // SendRawResponse() is called.
   void set_response_sender(
-      base::Callback<void(std::unique_ptr<dbus::Response>)> response_sender) {
-    response_sender_callback_ = response_sender;
+      base::OnceCallback<void(std::unique_ptr<dbus::Response>)>
+          response_sender) {
+    response_sender_callback_ = std::move(response_sender);
   }
 
   // Set the return callback, a callback that is called whenever Return() is
   // called.
   void set_return_callback(
-      base::RepeatingCallback<void(const Types&...)> return_callback) {
+      base::OnceCallback<void(const Types&...)> return_callback) {
     return_callback_ = std::move(return_callback);
   }
 
@@ -195,13 +198,13 @@ class MockDBusMethodResponse
   }
 
   // The callback that is called whenever SendRawResponse() is called.
-  base::Callback<void(std::unique_ptr<dbus::Response>)>
+  base::OnceCallback<void(std::unique_ptr<dbus::Response>)>
       response_sender_callback_;
 
   // The callback to call when Return() is called. Note that it's not mocked
   // because Return() is a variadic template member, and cannot be mocked with
   // gmock.
-  base::RepeatingCallback<void(const Types&...)> return_callback_;
+  base::OnceCallback<void(const Types&...)> return_callback_;
 
   // Usually |method_call_| is owned by DBus and will have its life cycle
   // managed outside of DBusMethodResponse. However, during testing, we'll need

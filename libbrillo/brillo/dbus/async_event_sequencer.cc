@@ -34,8 +34,8 @@ AsyncEventSequencer::ExportHandler AsyncEventSequencer::GetExportHandler(
     const std::string& descriptive_message,
     bool failure_is_fatal) {
   auto finish_handler = GetHandler(descriptive_message, failure_is_fatal);
-  return base::Bind(&AsyncEventSequencer::HandleDBusMethodExported, this,
-                    finish_handler, interface_name, method_name);
+  return base::BindRepeating(&AsyncEventSequencer::HandleDBusMethodExported,
+                             this, finish_handler, interface_name, method_name);
 }
 
 void AsyncEventSequencer::OnAllTasksCompletedCall(CompletionOnceAction action) {
