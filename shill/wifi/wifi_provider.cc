@@ -32,6 +32,7 @@
 #include "shill/net/ieee80211.h"
 #include "shill/profile.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_cert_store.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
 #include "shill/wifi/passpoint_credentials.h"
@@ -755,6 +756,46 @@ void WiFiProvider::AddCredentials(
   }
 }
 
+void WiFiProvider::DeleteUnusedCertificateAndKey(
+    const PasspointCredentialsRefPtr& credentials) {
+  if (credentials->eap().cert_id().empty()) {
+    return;
+  }
+
+  // Check if there are other Passpoint credentials using the same certificate
+  // or key. If so, avoid deleting the certificate and key.
+  for (const auto& cred : credentials_by_id_) {
+    if (credentials->id() != cred.first &&
+        credentials->eap().cert_id() == cred.second->eap().cert_id()) {
+      return;
+    }
+  }
+
+  const auto& cert_id = credentials->eap().cert_id();
+  const std::vector<std::string> data =
+      base::SplitString(cert_id, ":", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+  if (data.size() != 2) {
+    LOG(ERROR) << "Invalid certificate ID " << cert_id;
+    return;
+  }
+  uint32_t tmp_slot_id;
+  if (!base::StringToUint(data[0], &tmp_slot_id)) {
+    LOG(ERROR) << "Invalid slot ID " << data[0];
+    return;
+  }
+  CK_SLOT_ID slot_id = tmp_slot_id;
+  std::string cka_id;
+  if (!base::HexStringToString(data[1], &cka_id)) {
+    LOG(ERROR) << "Failed to decode hex ID string: " << data[1];
+    return;
+  }
+  Pkcs11CertStore pkcs11_store;
+  if (!pkcs11_store.Delete(slot_id, cka_id)) {
+    LOG(ERROR) << "Failed to delete certificate and key with ID: " << cert_id;
+  }
+}
+
 bool WiFiProvider::ForgetCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   if (!credentials ||
@@ -763,9 +804,8 @@ bool WiFiProvider::ForgetCredentials(
     return true;
   }
 
-  // TODO(b/162106001) handle CA and client cert removal if necessary.
-
   // Remove the credentials from our credentials set and from the WiFi device.
+  DeleteUnusedCertificateAndKey(credentials);
   bool success = RemoveCredentials(credentials);
   // Find all the services linked to the set.
   std::vector<WiFiServiceRefPtr> to_delete;

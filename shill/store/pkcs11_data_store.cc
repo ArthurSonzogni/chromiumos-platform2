@@ -10,46 +10,13 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 
+#include "shill/store/pkcs11_util.h"
+
 namespace shill {
 
 // An arbitrary application ID to identify PKCS #11 objects.
 const char kApplicationID[] =
     "CrOS_shill_bee161e513a44bda9d4e64a09cd64f529b44008e";
-
-// A helper class to scope a PKCS #11 session.
-class ScopedSession {
- public:
-  explicit ScopedSession(CK_SLOT_ID slot) {
-    CK_RV rv = C_Initialize(nullptr);
-    if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
-      // This may be normal in a test environment.
-      LOG(INFO) << "PKCS #11 is not available. C_Initialize rv: " << rv;
-      return;
-    }
-    CK_FLAGS flags = CKF_RW_SESSION | CKF_SERIAL_SESSION;
-    rv = C_OpenSession(slot, flags, nullptr, nullptr, &handle_);
-    if (rv != CKR_OK) {
-      LOG(ERROR) << "Failed to open PKCS #11 session. C_OpenSession rv: " << rv;
-      return;
-    }
-  }
-  ScopedSession(const ScopedSession&) = delete;
-  ScopedSession& operator=(const ScopedSession&) = delete;
-
-  ~ScopedSession() {
-    if (IsValid() && (C_CloseSession(handle_) != CKR_OK)) {
-      LOG(WARNING) << "Failed to close PKCS #11 session.";
-    }
-    handle_ = CK_INVALID_HANDLE;
-  }
-
-  CK_SESSION_HANDLE handle() const { return handle_; }
-
-  bool IsValid() const { return (handle_ != CK_INVALID_HANDLE); }
-
- private:
-  CK_SESSION_HANDLE handle_ = CK_INVALID_HANDLE;
-};
 
 Pkcs11DataStore::Pkcs11DataStore() {}
 
@@ -59,7 +26,7 @@ bool Pkcs11DataStore::Read(CK_SLOT_ID slot,
                            const std::string& key_name,
                            std::string* key_data) {
   CHECK(key_data);
-  ScopedSession session(slot);
+  pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to open token session with slot "
                << slot;
@@ -94,7 +61,7 @@ bool Pkcs11DataStore::Write(CK_SLOT_ID slot,
   if (!Delete(slot, key_name)) {
     return false;
   }
-  ScopedSession session(slot);
+  pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to open token session with slot "
                << slot;
@@ -126,7 +93,7 @@ bool Pkcs11DataStore::Write(CK_SLOT_ID slot,
 }
 
 bool Pkcs11DataStore::Delete(CK_SLOT_ID slot, const std::string& key_name) {
-  ScopedSession session(slot);
+  pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to open token session with slot "
                << slot;
@@ -144,7 +111,7 @@ bool Pkcs11DataStore::Delete(CK_SLOT_ID slot, const std::string& key_name) {
 
 bool Pkcs11DataStore::DeleteByPrefix(CK_SLOT_ID slot,
                                      const std::string& key_prefix) {
-  ScopedSession session(slot);
+  pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to open token session with slot "
                << slot;
@@ -270,47 +237,6 @@ bool Pkcs11DataStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
     }
   }
   return true;
-}
-
-bool Pkcs11DataStore::GetUserSlot(const std::string& user_hash,
-                                  CK_SLOT_ID_PTR slot) {
-  const char kChapsSystemToken[] = "/var/lib/chaps";
-  const char kChapsDaemonStore[] = "/run/daemon-store/chaps";
-  base::FilePath token_path =
-      user_hash.empty() ? base::FilePath(kChapsSystemToken)
-                        : base::FilePath(kChapsDaemonStore).Append(user_hash);
-  CK_RV rv;
-  rv = C_Initialize(nullptr);
-  if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
-    LOG(WARNING) << __func__ << ": C_Initialize failed. rv: " << rv;
-    return false;
-  }
-  CK_ULONG num_slots = 0;
-  rv = C_GetSlotList(CK_TRUE, nullptr, &num_slots);
-  if (rv != CKR_OK) {
-    LOG(WARNING) << __func__ << ": C_GetSlotList(nullptr) failed. rv: " << rv;
-    return false;
-  }
-  std::unique_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
-  rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
-  if (rv != CKR_OK) {
-    LOG(WARNING) << __func__ << ": C_GetSlotList failed. rv: " << rv;
-    return false;
-  }
-  chaps::TokenManagerClient token_manager;
-  // Look through all slots for |token_path|.
-  for (CK_ULONG i = 0; i < num_slots; ++i) {
-    base::FilePath slot_path;
-    if (token_manager.GetTokenPath(
-            chaps::IsolateCredentialManager::GetDefaultIsolateCredential(),
-            slot_list[i], &slot_path) &&
-        (token_path == slot_path)) {
-      *slot = slot_list[i];
-      return true;
-    }
-  }
-  LOG(WARNING) << __func__ << ": Path not found.";
-  return false;
 }
 
 }  // namespace shill

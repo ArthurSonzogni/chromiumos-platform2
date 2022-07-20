@@ -222,6 +222,12 @@ class WiFiProvider : public ProviderInterface {
   // provider and the WiFi device.
   bool RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
 
+  // Deletes certificate(s) and key(s) tied to |credentials|. If there are
+  // other active credentials using the same certificates or keys, this method
+  // will do nothing.
+  void DeleteUnusedCertificateAndKey(
+      const PasspointCredentialsRefPtr& credentials);
+
   void ReportRememberedNetworkCount();
   void ReportServiceSourceMetrics();
 

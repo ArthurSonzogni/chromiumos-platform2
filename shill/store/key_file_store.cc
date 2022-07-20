@@ -32,6 +32,7 @@
 
 #include "shill/logging.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_util.h"
 
 namespace shill {
 
@@ -818,8 +819,7 @@ bool KeyFileStore::TryGetPKCS11SlotID() const {
   if (slot_id_ != kInvalidSlot) {
     return true;
   }
-  Pkcs11DataStore pkcs11_store;
-  if (!pkcs11_store.GetUserSlot(user_hash_, &slot_id_)) {
+  if (!pkcs11::GetUserSlot(user_hash_, &slot_id_)) {
     return false;
   }
   return true;
