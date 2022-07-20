@@ -49,7 +49,7 @@ getuid32: 1
 lstat64: 1
 mkdir: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 nanosleep: 1
 open: 1
