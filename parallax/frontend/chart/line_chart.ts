@@ -86,6 +86,22 @@ export class LineChart extends Chart {
     options.legend.position = 'top';
 
     let chart = new google.visualization.LineChart(plotRow.plotArea);
+
+    // Define the columns as assign names
+    let columns = [];
+    for (const [index, axis] of this.axisMeta.entries()) {
+      let name = axis.getMeta().get('name');
+      if (typeof name !== 'string') {
+        name = index.toString();
+      }
+      let value = {
+        label: name,
+        sourceColumn: index,
+      };
+      columns.push(value);
+    }
+
+    dataView.setColumns(columns);
     chart.draw(dataView, options);
   }
 
