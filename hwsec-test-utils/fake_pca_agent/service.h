@@ -6,6 +6,7 @@
 #define HWSEC_TEST_UTILS_FAKE_PCA_AGENT_SERVICE_H_
 
 #include <memory>
+#include <utility>
 
 #include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/memory/ref_counted.h>
@@ -58,9 +59,9 @@ class FakePcaAgentServiceAdaptor : public org::chromium::PcaAgentAdaptor {
   FakePcaAgentServiceAdaptor& operator=(FakePcaAgentServiceAdaptor&&) = delete;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
     RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(cb);
+    dbus_object_.RegisterAsync(std::move(cb));
   }
 
  private:
