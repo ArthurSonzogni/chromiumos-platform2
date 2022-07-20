@@ -128,5 +128,7 @@ registerParser((data: any) => {
   if (data.type === 'streaming_chart') {
     const chart = new LineChart(data.meta, data.matrix);
     updateChart(chart);
+    const stream = new CustomEvent('stream', {'detail': {'chart': chart}});
+    document.dispatchEvent(stream);
   }
 });

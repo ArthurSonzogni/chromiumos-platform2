@@ -4,6 +4,7 @@
 
 """Simple test server for evaluating the frontend."""
 
+import bisect
 from http import server
 import json
 import math
@@ -28,11 +29,19 @@ class SamplingTest():
         for i, samp in enumerate(samples):
             self.samples[i].append(samp)
 
-    def toJSON(self, out_type):
+    def toJSON(self, out_type, start_time=0):
+        start = 0
+        if start_time:
+            start = bisect.bisect(self.samples[0], start_time)
+        end = len(self.samples[-1])
+        print('JSON', start_time, start, end, end-start)
+        transmit = []
+        for samples in self.samples:
+            transmit.append(samples[start: end])
         data = {
             'type': out_type,
             'meta': self.meta,
-            'matrix': self.samples
+            'matrix': transmit,
         }
         return json.dumps(data)
 
@@ -49,9 +58,10 @@ class StreamingTest(server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         data = self.postInput()
-        print('Input Data', data)
+        start_time = data.get('startTime')
 
-        payload = sample_container.toJSON('streaming_chart').encode('utf_8')
+        payload = sample_container.toJSON('streaming_chart', start_time)
+        payload = payload.encode('utf_8')
 
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')

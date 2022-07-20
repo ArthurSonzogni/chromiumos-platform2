@@ -28,6 +28,9 @@ export class PlotRow {
     });
     this.resizerObs.observe(this.plotArea);
     container.appendChild(this.dom);
+    // TODO bnemec Cleanup so the redraws only happen when we get new data
+    // for streaming charts and ignores others.
+    document.addEventListener('stream', this.draw.bind(this));
   }
 
   /**

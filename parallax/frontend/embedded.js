@@ -6,8 +6,7 @@
 parallax.parseMessages([
   {
     'type': 'linechart',
-    'meta':
-        {'rowMeta': [{'chart': 'ts_rel'}, {'name': 'one'}, {'name': 'two'}]},
+    'meta': {'rowMeta': [{'chart': 'time'}, {'name': 'one'}, {'name': 'two'}]},
     'matrix': [
       [1, 2, 3, 4, 5],
       [10, 10, 20, 30, 40],
@@ -17,7 +16,7 @@ parallax.parseMessages([
   {
     'type': 'linechart',
     'meta':
-        {'rowMeta': [{'chart': 'ts_rel'}, {'name': 'three'}, {'name': 'four'}]},
+        {'rowMeta': [{'chart': 'time'}, {'name': 'three'}, {'name': 'four'}]},
     'matrix': [
       [3, 5, 7, 8, 9],
       [20, 20, 30, 40, 50],
@@ -26,8 +25,7 @@ parallax.parseMessages([
   },
   {
     'type': 'linechart',
-    'meta':
-        {'rowMeta': [{'chart': 'ts_rel'}, {'name': 'five'}, {'name': 'six'}]},
+    'meta': {'rowMeta': [{'chart': 'time'}, {'name': 'five'}, {'name': 'six'}]},
     'matrix': [
       [3, 5, 7, 8, 9],
       [20, 20, 30, 40, 50],
