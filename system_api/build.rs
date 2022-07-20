@@ -36,6 +36,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         BindingsType::Client(OPTS),
     ),
     (
+        "org_chromium_dlcservice",
+        "dlcservice/dbus_adaptors/org.chromium.DlcServiceInterface.xml",
+        BindingsType::Client(OPTS),
+    ),
+    (
         "org_chromium_flimflam_manager",
         "shill/dbus_bindings/org.chromium.flimflam.Manager.dbus-xml",
         BindingsType::Client(OPTS),
@@ -75,6 +80,7 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "auth_factor",
         "system_api/dbus/cryptohome/auth_factor.proto",
     ),
+    ("dlcservice", "system_api/dbus/dlcservice/dlcservice.proto"),
     ("fido", "system_api/dbus/cryptohome/fido.proto"),
     ("key", "system_api/dbus/cryptohome/key.proto"),
     ("rpc", "system_api/dbus/cryptohome/rpc.proto"),
