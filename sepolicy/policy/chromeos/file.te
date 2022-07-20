@@ -131,6 +131,7 @@ type cros_modem_manager_exec, exec_type, file_type, cros_file_type, cros_system_
 type cros_modemfwd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_modprobe_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mojo_service_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mojo_service_manager_launcher_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mount_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mount_passthrough_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mount_passthrough_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

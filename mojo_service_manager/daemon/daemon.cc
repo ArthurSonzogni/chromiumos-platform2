@@ -143,8 +143,12 @@ int Daemon::OnInit() {
     return EX_OSERR;
   }
 
+  // The following `base::Unretained` are safe because they are held by the
+  // member of `this` and are guaranteed to be called before `this` has
+  // destructed.
   service_manager_ = std::make_unique<ServiceManager>(
-      std::move(configuration_), delegate_->LoadPolicyFiles(policy_dir_paths_));
+      std::move(configuration_), delegate_->LoadPolicyFiles(policy_dir_paths_),
+      base::BindOnce(&Daemon::Quit, base::Unretained(this)));
 
   socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       socket_fd_.get(),

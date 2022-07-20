@@ -16,6 +16,10 @@ namespace chromeos {
 namespace mojo_service_manager {
 namespace {
 
+// The security context to identify the browser process. This is a workaround
+// for b/235922792.
+constexpr char kBrowserSecurityContext[] = "u:r:cros_browser:s0";
+
 template <typename T>
 void ResetRemoteWithReason(mojo::PendingRemote<T> pending_remote,
                            mojom::ErrorCode error,
@@ -29,12 +33,17 @@ void ResetRemoteWithReason(mojo::PendingRemote<T> pending_remote,
 }  // namespace
 
 ServiceManager::ServiceManager(Configuration configuration,
-                               ServicePolicyMap policy_map)
-    : configuration_(std::move(configuration)) {
+                               ServicePolicyMap policy_map,
+                               base::OnceClosure quit_closure)
+    : configuration_(std::move(configuration)),
+      quit_closure_(std::move(quit_closure)) {
   for (auto& item : policy_map) {
     auto& [service_name, policy] = item;
     service_map_[service_name].policy = std::move(policy);
   }
+
+  receiver_set_.set_disconnect_handler(base::BindRepeating(
+      &ServiceManager::HandleDisconnect, base::Unretained(this)));
 }
 
 ServiceManager::~ServiceManager() = default;
@@ -211,6 +220,20 @@ void ServiceManager::SendServiceEvent(const std::set<std::string>& requesters,
       remote->OnServiceEvent(event.Clone());
     }
   }
+}
+
+void ServiceManager::HandleDisconnect() {
+  if (receiver_set_.current_context()->security_context ==
+      kBrowserSecurityContext) {
+    // TODO(b/235922792): Remove this restart logic after we have migrated
+    // services which don't restart themselvies. Refer to the
+    // //daemon/launcher.cc for details.
+    LOG(INFO) << "Disconnected from browser, quit and wait for respawn.";
+    std::move(quit_closure_).Run();
+    return;
+  }
+  LOG(INFO) << "Disconnected from "
+            << receiver_set_.current_context()->security_context;
 }
 
 }  // namespace mojo_service_manager

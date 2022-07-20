@@ -6,7 +6,10 @@ import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("daemon") {
-  deps = [ ":mojo_service_manager" ]
+  deps = [
+    ":mojo_service_manager",
+    ":mojo_service_manager_launcher",
+  ]
   if (use.test) {
     deps += [ ":mojo_service_manager_test" ]
   }
@@ -42,6 +45,12 @@ executable("mojo_service_manager") {
     ":libmojo_service_manager_daemon",
     "//mojo_service_manager/lib/mojom",
   ]
+}
+
+executable("mojo_service_manager_launcher") {
+  sources = [ "launcher.cc" ]
+  configs += [ ":target_default" ]
+  install_path = "bin"
 }
 
 if (use.test) {

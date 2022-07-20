@@ -13,15 +13,13 @@
 #include <vboot/crossystem.h>
 
 #include "mojo_service_manager/daemon/configuration.h"
+#include "mojo_service_manager/daemon/constants.h"
 #include "mojo_service_manager/daemon/daemon.h"
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 
 namespace {
 
 namespace service_manager = chromeos::mojo_service_manager;
-
-// The path of the service manager's socket server.
-constexpr char kSocketPath[] = "/run/mojo/service_manager.sock";
 
 // The policy directory path.
 constexpr char kPolicyDirectoryPath[] = "/etc/mojo/service_manager/policy";
@@ -79,7 +77,8 @@ int main(int argc, char* argv[]) {
   }
 
   service_manager::Daemon::Delegate delegate;
-  service_manager::Daemon daemon(&delegate, base::FilePath{kSocketPath},
+  service_manager::Daemon daemon(&delegate,
+                                 base::FilePath{service_manager::kSocketPath},
                                  policy_dir_paths, std::move(configuration));
 
   if (FLAGS_check_policy) {
