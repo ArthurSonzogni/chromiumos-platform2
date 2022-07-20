@@ -49,9 +49,9 @@ class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
   ~DBusAdaptor() override = default;
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
     RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(cb);
+    dbus_object_.RegisterAsync(std::move(cb));
   }
 
   // org::chromium::ArcAppfuseProviderInterface overrides:
