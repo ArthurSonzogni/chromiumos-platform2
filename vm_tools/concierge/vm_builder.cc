@@ -367,7 +367,7 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
         args.emplace_back("--ac97", dev.params);
         break;
       case AudioDeviceType::kVirtio:
-        args.emplace_back("--cras-snd", dev.params);
+        args.emplace_back("--virtio-snd", dev.params);
         break;
     }
   }

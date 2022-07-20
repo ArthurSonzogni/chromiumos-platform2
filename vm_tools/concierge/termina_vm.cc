@@ -279,18 +279,20 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
           VmBuilder::AudioDeviceType::kVirtio,
-          "capture=true,client_type=borealis,socket_type=unified");
+          "capture=true,backend=cras,client_type=borealis,socket_type=unified");
     } else {
-      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
-                                   "client_type=borealis,socket_type=unified");
+      vm_builder.AppendAudioDevice(
+          VmBuilder::AudioDeviceType::kVirtio,
+          "backend=cras,client_type=borealis,socket_type=unified");
     }
   } else {
     if (features_.audio_capture) {
-      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
-                                   "capture=true,socket_type=unified");
+      vm_builder.AppendAudioDevice(
+          VmBuilder::AudioDeviceType::kVirtio,
+          "capture=true,backend=cras,socket_type=unified");
     } else {
       vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
-                                   "socket_type=unified");
+                                   "backend=cras,socket_type=unified");
     }
   }
 
