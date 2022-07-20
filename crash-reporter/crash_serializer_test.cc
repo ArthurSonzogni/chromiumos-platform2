@@ -347,7 +347,8 @@ TEST_F(CrashSerializerTest, SerializeCrashes) {
   std::vector<base::TimeDelta> sleep_times;
   Serializer::Options options;
   options.fetch_coredumps = true;
-  options.sleep_function = base::Bind(&test_util::FakeSleep, &sleep_times);
+  options.sleep_function =
+      base::BindRepeating(&test_util::FakeSleep, &sleep_times);
   Serializer serializer(std::make_unique<test_util::AdvancingClock>(), options);
 
   base::FilePath out = test_dir_.Append("SerializeCrashes");

@@ -112,7 +112,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   options.hold_off_time = base::TimeDelta();
   options.allow_dev_sending = allow_dev_sending;
   options.always_write_uploads_log = always_write_uploads_log;
-  options.sleep_function = base::Bind(&IgnoreSleep);
+  options.sleep_function = base::BindRepeating(&IgnoreSleep);
 
   // The remaining lines are basically a condensed version of crash_sender.cc's
   // RunChildMain.
