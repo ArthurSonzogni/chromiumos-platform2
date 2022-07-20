@@ -29,6 +29,7 @@ pub trait OtherRpc<E> {
 #[sirenia_rpc]
 pub trait NestedRpc<E>: TestRpc<E> + OtherRpc<E> {
     fn terminate(&mut self) -> Result<(), E>;
+    fn echo_bytes(&mut self, bytes: Vec<u8>) -> Result<Vec<u8>, E>;
 }
 
 #[derive(Clone)]
@@ -57,6 +58,10 @@ impl OtherRpc<anyhow::Error> for NestedRpcServerImpl {
 impl NestedRpc<anyhow::Error> for NestedRpcServerImpl {
     fn terminate(&mut self) -> Result<(), anyhow::Error> {
         Err(anyhow!("Done"))
+    }
+
+    fn echo_bytes(&mut self, bytes: Vec<u8>) -> Result<Vec<u8>, anyhow::Error> {
+        Ok(bytes)
     }
 }
 

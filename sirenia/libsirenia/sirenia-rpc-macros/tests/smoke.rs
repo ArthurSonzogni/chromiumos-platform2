@@ -9,6 +9,7 @@ extern crate sirenia_rpc_macros;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::iter;
 use std::thread::spawn;
 
 use anyhow::anyhow;
@@ -43,6 +44,7 @@ pub trait TestRpc<E> {
     fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, E>;
     #[error()]
     fn terminate(&mut self) -> Result<(), E>;
+    fn echo_bytes(&mut self, bytes: Vec<u8>) -> Result<Vec<u8>, E>;
 }
 
 #[derive(Clone)]
@@ -67,6 +69,10 @@ impl TestRpc<anyhow::Error> for TestRpcServerImpl {
 
     fn terminate(&mut self) -> Result<(), anyhow::Error> {
         Err(anyhow!("Done"))
+    }
+
+    fn echo_bytes(&mut self, bytes: Vec<u8>) -> Result<Vec<u8>, anyhow::Error> {
+        Ok(bytes)
     }
 }
 
@@ -107,4 +113,12 @@ fn smoke_test() {
     drop(dispatcher);
 
     client_thread.join().unwrap();
+}
+
+#[test]
+fn byte_field_size_test() {
+    let bytes: Vec<u8> = iter::repeat(77u8).take(1024).collect();
+    let bytes_len = bytes.len();
+    let request = TestRpcRequest::EchoBytes { bytes };
+    assert!(flexbuffers::to_vec(request).unwrap().len() < bytes_len * 12 / 10);
 }

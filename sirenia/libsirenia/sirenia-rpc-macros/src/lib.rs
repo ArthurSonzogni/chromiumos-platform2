@@ -287,7 +287,14 @@ impl RpcMethodHelper {
 
     fn get_request_enum_item(&self) -> TokenStream {
         let enum_name = &self.enum_name;
-        let args = &self.request_args;
+        let args: Vec<FnArg> = self.request_args.iter().map(|f|
+            // Vec<u8> does not always send efficiently so label it as a byte field.
+            if matches!(f, syn::FnArg::Typed(t) if t.ty == parse_quote!(Vec<u8>)) {
+                parse_quote!(#[serde(with = "serde_bytes")] #f)
+            } else {
+                f.clone()
+            }
+        ).collect();
         quote! {
             #enum_name{#(#args),*}
         }
@@ -741,6 +748,7 @@ mod test {
                 #[error()]
                 fn ping(&mut self, value: usize) -> Result<usize, E>;
                 fn terminate(&mut self) -> Result<(), E>;
+                fn echo(&mut self, value: Vec<u8>) -> Result<Vec<u8>, E>;
             }
         );
 
@@ -750,6 +758,7 @@ mod test {
             pub trait Nested<E>: other::Test<E> {
                 fn ping(&mut self, value: usize) -> Result<usize, E>;
                 fn terminate(&mut self) -> Result<(), E>;
+                fn echo(&mut self, value: Vec<u8>) -> Result<Vec<u8>, E>;
             }
 
             #[derive(::std::fmt::Debug, ::serde::Deserialize, ::serde::Serialize)]
@@ -757,6 +766,10 @@ mod test {
                 Test(other::TestRequest),
                 Ping { value: usize },
                 Terminate {},
+                Echo {
+                    #[serde(with = "serde_bytes")]
+                    value: Vec<u8>
+                },
             }
 
             #[derive(::std::fmt::Debug, ::serde::Deserialize, ::serde::Serialize)]
@@ -764,6 +777,7 @@ mod test {
                 Test(other::TestResponse),
                 Ping(usize),
                 Terminate(::std::result::Result<(), ()>),
+                Echo(::std::result::Result<Vec<u8>, ()>),
             }
 
             pub struct NestedClient {
@@ -809,6 +823,17 @@ mod test {
                 fn terminate(&mut self) -> ::std::result::Result<(), ::anyhow::Error> {
                     if let NestedResponse::Terminate(response) =
                         NestedRpc::rpc(self, NestedRequest::Terminate {},)?
+                    {
+                        response.map_err(|x| x.into())
+                    } else {
+                        Err(::libsirenia::rpc::Error::ResponseMismatch.into())
+                    }
+                }
+
+                fn echo(&mut self, value: Vec<u8>) ->
+                        ::std::result::Result<Vec<u8>, ::anyhow::Error> {
+                    if let NestedResponse::Echo(response) =
+                        NestedRpc::rpc(self, NestedRequest::Echo { value },)?
                     {
                         response.map_err(|x| x.into())
                     } else {
@@ -863,6 +888,17 @@ mod test {
                                 Err(err) => {
                                     match err.downcast::<()>() {
                                         Ok(err) => Ok(NestedResponse::Terminate(Err(err))),
+                                        Err(err) => Err(err),
+                                    }
+                                }
+                            }
+                        }
+                        NestedRequest::Echo { value } => {
+                            match self.echo(value) {
+                                Ok(x) => Ok(NestedResponse::Echo(Ok(x))),
+                                Err(err) => {
+                                    match err.downcast::<()>() {
+                                        Ok(err) => Ok(NestedResponse::Echo(Err(err))),
                                         Err(err) => Err(err),
                                     }
                                 }
