@@ -268,9 +268,11 @@ bool IsDeviceAllowedHID(udev_device* device) {
                                  vendor_id, product_id);
 }
 
-bool IsInternallyConnectedUsbDevice(udev_device* device) {
+bool IsDeviceAllowedFixed(udev_device* device) {
   const DevicePolicy::UsbDeviceId kAllowedIds[] = {
       {0x0c27, 0x3bfa},  // USB card reader
+      {0x0554, 0x1001},  // Nuance PowerMic III
+      {0xdf04, 0x0004},  // Nuance PowerMic III
   };
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
@@ -338,11 +340,11 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   }
 
   if (found_claimed_interface) {
-    // Don't allow detaching the driver from fixed (internal) USB devices
-    // unless it is in the allow list.
+    // Fixed devices are likely internal, but in some cases external USB devices
+    // are marked as fixed. Don't allow detaching the driver for a fixed USB
+    // device unless it has a removable parent or is in the allow list.
     if (GetRemovableSysattr(device) == RemovableAttr::kFixed &&
-        !IsInternallyConnectedUsbDevice(device) &&
-        !HasRemovableParent(device)) {
+        !IsDeviceAllowedFixed(device) && !HasRemovableParent(device)) {
       LOG(INFO) << "Denying fixed USB device with driver.";
       return DENY;
     }
