@@ -244,7 +244,7 @@ fn register_dbus_interface_for_app(
 ) {
     // D-Bus identifiers only allow alphanumeric and underscore characters. Since we allow hyphens
     // in TEE app IDs, replace them with underscores when creating the D-Bus identifier.
-    let app_dbus_identifier = app_id.replace("-", "_");
+    let app_dbus_identifier = app_id.replace('-', "_");
     let interface_token = crossroads.register(
         format!("org.chromium.manatee.{}", &app_dbus_identifier),
         |b| {

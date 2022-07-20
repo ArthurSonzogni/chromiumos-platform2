@@ -41,8 +41,7 @@ pub fn get_name_and_version_string() -> String {
     let program_name = match current_exe() {
         Ok(exe_path) => exe_path
             .file_name()
-            .map(|f| f.to_str().map(|f| f.to_string()))
-            .flatten(),
+            .and_then(|f| f.to_str().map(|f| f.to_string())),
         _ => None,
     };
 
