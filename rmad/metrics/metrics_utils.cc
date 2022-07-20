@@ -5,11 +5,9 @@
 #include "rmad/metrics/metrics_utils.h"
 
 #include <map>
-#include <string>
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_number_conversions.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
@@ -104,14 +102,14 @@ bool MetricsUtils::UpdateStateMetricsOnAbort(
     scoped_refptr<JsonStore> json_store,
     RmadState::StateCase state_case,
     double timestamp) {
-  std::string key = base::NumberToString(static_cast<int>(state_case));
+  int key = static_cast<int>(state_case);
   if (!UpdateStateMetricsOnStateTransition(
           json_store, state_case, RmadState::STATE_NOT_SET, timestamp)) {
     LOG(ERROR) << "Failed to calculate metrics for state " << key;
     return false;
   }
 
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
   state_metrics[key].is_aborted = true;
   return SetMetricsValue(json_store, kStateMetrics, state_metrics);
@@ -122,12 +120,12 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
     RmadState::StateCase from,
     RmadState::StateCase to,
     double timestamp) {
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
   if (from != RmadState::STATE_NOT_SET) {
-    std::string key = base::NumberToString(static_cast<int>(from));
+    int key = static_cast<int>(from);
     state_metrics[key].transition_count++;
   }
 
@@ -141,8 +139,8 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
 
 bool MetricsUtils::UpdateStateMetricsOnGetLog(
     scoped_refptr<JsonStore> json_store, RmadState::StateCase state_case) {
-  std::string key = base::NumberToString(static_cast<int>(state_case));
-  std::map<std::string, StateMetricsData> state_metrics;
+  int key = static_cast<int>(state_case);
+  std::map<int, StateMetricsData> state_metrics;
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
@@ -152,8 +150,8 @@ bool MetricsUtils::UpdateStateMetricsOnGetLog(
 
 bool MetricsUtils::UpdateStateMetricsOnSaveLog(
     scoped_refptr<JsonStore> json_store, RmadState::StateCase state_case) {
-  std::string key = base::NumberToString(static_cast<int>(state_case));
-  std::map<std::string, StateMetricsData> state_metrics;
+  int key = static_cast<int>(state_case);
+  std::map<int, StateMetricsData> state_metrics;
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
@@ -162,28 +160,28 @@ bool MetricsUtils::UpdateStateMetricsOnSaveLog(
 }
 
 bool MetricsUtils::SetStateSetupTimestamp(
-    std::map<std::string, StateMetricsData>* state_metrics,
+    std::map<int, StateMetricsData>* state_metrics,
     RmadState::StateCase state_case,
     double setup_timestamp) {
   if (state_case == RmadState::STATE_NOT_SET) {
     return true;
   }
 
-  std::string key = base::NumberToString(static_cast<int>(state_case));
+  int key = static_cast<int>(state_case);
   (*state_metrics)[key].setup_timestamp = setup_timestamp;
   (*state_metrics)[key].state_case = state_case;
   return true;
 }
 
 bool MetricsUtils::CalculateStateOverallTime(
-    std::map<std::string, StateMetricsData>* state_metrics,
+    std::map<int, StateMetricsData>* state_metrics,
     RmadState::StateCase state_case,
     double leave_timestamp) {
   if (state_case == RmadState::STATE_NOT_SET) {
     return true;
   }
 
-  std::string key = base::NumberToString(static_cast<int>(state_case));
+  int key = static_cast<int>(state_case);
   if (state_metrics->find(key) == state_metrics->end()) {
     LOG(ERROR) << "Failed to get state metrics to calculate.";
     return false;

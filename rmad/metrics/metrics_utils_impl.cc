@@ -10,7 +10,6 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <metrics/structured/structured_events.h>
 
@@ -208,52 +207,48 @@ bool MetricsUtilsImpl::RecordAdditionalActivities(
 
 bool MetricsUtilsImpl::RecordShimlessRmaStateReport(
     scoped_refptr<JsonStore> json_store) {
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
 
   if (GetMetricsValue(json_store, kStateMetrics, &state_metrics)) {
-    for (auto [key, data] : state_metrics) {
+    for (auto [state_case, data] : state_metrics) {
       auto structured_state_report = StructuredShimlessRmaStateReport();
 
-      int state_case;
-      if (!base::StringToInt(key, &state_case)) {
-        LOG(ERROR) << key << ": Failed to get state case from metrics.";
-        return false;
-      }
       structured_state_report.SetStateCase(state_case);
 
       structured_state_report.SetIsAborted(data.is_aborted);
 
       if (data.overall_time < 0) {
-        LOG(ERROR) << key << ": Invalid overall time: "
-                   << base::NumberToString(data.overall_time);
+        LOG(ERROR) << state_case
+                   << ": Invalid overall time: " << data.overall_time;
         return false;
       }
       structured_state_report.SetOverallTime(
-          static_cast<int>(data.overall_time));
+          static_cast<int64_t>(data.overall_time));
 
       if (data.transition_count <= 0) {
-        LOG(ERROR) << key << ": Invalid transition count: "
-                   << base::NumberToString(data.transition_count);
+        LOG(ERROR) << state_case
+                   << ": Invalid transition count: " << data.transition_count;
         return false;
       }
       structured_state_report.SetTransitionCount(data.transition_count);
 
       if (data.get_log_count < 0) {
-        LOG(ERROR) << key << ": Invalid GetLog count: "
-                   << base::NumberToString(data.get_log_count);
+        LOG(ERROR) << state_case
+                   << ": Invalid GetLog count: " << data.get_log_count;
         return false;
       }
       structured_state_report.SetGetLogCount(data.get_log_count);
 
       if (data.save_log_count < 0) {
-        LOG(ERROR) << key << ": Invalid SaveLog count: "
-                   << base::NumberToString(data.save_log_count);
+        LOG(ERROR) << state_case
+                   << ": Invalid SaveLog count: " << data.save_log_count;
         return false;
       }
       structured_state_report.SetSaveLogCount(data.save_log_count);
 
       if (record_to_system_ && !structured_state_report.Record()) {
-        LOG(ERROR) << key << ": Failed to record state report to metrics.";
+        LOG(ERROR) << state_case
+                   << ": Failed to record state report to metrics.";
         return false;
       }
     }

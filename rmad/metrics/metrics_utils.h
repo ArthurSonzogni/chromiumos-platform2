@@ -98,12 +98,12 @@ class MetricsUtils {
 
  private:
   static bool SetStateSetupTimestamp(
-      std::map<std::string, StateMetricsData>* state_metrics,
+      std::map<int, StateMetricsData>* state_metrics,
       RmadState::StateCase state_case,
       double setup_timestamp);
 
   static bool CalculateStateOverallTime(
-      std::map<std::string, StateMetricsData>* state_metrics,
+      std::map<int, StateMetricsData>* state_metrics,
       RmadState::StateCase state_case,
       double leave_timestamp);
 };

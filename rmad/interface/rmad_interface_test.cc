@@ -13,7 +13,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -535,12 +534,11 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
   EXPECT_EQ(true, rmad_interface.CanAbort());
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(
-      state_metrics[base::NumberToString(static_cast<int>(RmadState::kWelcome))]
-          .overall_time,
+      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
       kTestTransitionInterval.InSecondsF());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
@@ -556,8 +554,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   EXPECT_EQ(false, rmad_interface.CanAbort());
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(state_metrics[base::NumberToString(static_cast<int>(
-                                     RmadState::kComponentsRepair))]
+  EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
 }
@@ -620,12 +617,11 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
       json_store, RmadState::kWelcome, RmadState::kComponentsRepair,
       base::Time::Now().ToDoubleT()));
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(
-      state_metrics[base::NumberToString(static_cast<int>(RmadState::kWelcome))]
-          .overall_time,
+      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
       kTestTransitionInterval.InSecondsF());
 
   RmadInterfaceImpl rmad_interface(
@@ -647,8 +643,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(state_metrics[base::NumberToString(static_cast<int>(
-                                     RmadState::kComponentsRepair))]
+  EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
 }
@@ -812,11 +807,10 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   };
   rmad_interface.GetLog(base::BindOnce(callback));
 
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  auto state_it = state_metrics.find(
-      base::NumberToString(static_cast<int>(RmadState::kWelcome)));
+  auto state_it = state_metrics.find(static_cast<int>(RmadState::kWelcome));
   EXPECT_NE(state_it, state_metrics.end());
   EXPECT_EQ(state_it->second.get_log_count, 1);
 }
@@ -839,11 +833,10 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
   };
   rmad_interface.SaveLog("", base::BindOnce(callback));
 
-  std::map<std::string, StateMetricsData> state_metrics;
+  std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  auto state_it = state_metrics.find(
-      base::NumberToString(static_cast<int>(RmadState::kWelcome)));
+  auto state_it = state_metrics.find(static_cast<int>(RmadState::kWelcome));
   EXPECT_NE(state_it, state_metrics.end());
   EXPECT_EQ(state_it->second.save_log_count, 1);
 }

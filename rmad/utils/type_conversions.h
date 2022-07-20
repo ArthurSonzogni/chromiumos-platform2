@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <base/values.h>
+#include <base/strings/string_number_conversions.h>
 
 namespace rmad {
 
@@ -49,6 +50,18 @@ base::Value ConvertToValue(const std::map<std::string, T>& values) {
   base::Value dict(base::Value::Type::DICTIONARY);
   for (const auto& [key, value] : values) {
     dict.SetKey(key, ConvertToValue(value));
+  }
+  return dict;
+}
+
+// Convert a map to base::Value. The value type should be supported by
+// base::Value (bool, int, double, string) or vector/map of these types.
+// TODO(chenghan): Support more types, e.g. unordered_map.
+template <typename T>
+base::Value ConvertToValue(const std::map<int, T>& values) {
+  base::Value dict(base::Value::Type::DICTIONARY);
+  for (const auto& [key, value] : values) {
+    dict.SetKey(base::NumberToString(key), ConvertToValue(value));
   }
   return dict;
 }
@@ -92,6 +105,30 @@ bool ConvertFromValue(const base::Value* data,
   std::map<std::string, T> r;
   for (const auto& [key, child_data] : data->DictItems()) {
     if (T child_result; ConvertFromValue(&child_data, &child_result)) {
+      r.insert({key, child_result});
+    } else {
+      return false;
+    }
+  }
+  if (result) {
+    *result = std::move(r);
+  }
+  return true;
+}
+
+// Covert a base::Value to map. The map type should be supported
+// by base::Value (bool, int, double, string) or vector/map of these types.
+template <typename T>
+bool ConvertFromValue(const base::Value* data, std::map<int, T>* result) {
+  if (!data || !data->is_dict()) {
+    return false;
+  }
+  std::map<int, T> r;
+  for (const auto& [key_str, child_data] : data->DictItems()) {
+    int key;
+    T child_result;
+    if (base::StringToInt(key_str, &key) &&
+        ConvertFromValue(&child_data, &child_result)) {
       r.insert({key, child_result});
     } else {
       return false;

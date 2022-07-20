@@ -52,10 +52,10 @@ const RmadState& BaseStateHandler::GetState(bool do_task) const {
 }
 
 bool BaseStateHandler::StoreState() {
-  std::map<std::string, std::string> state_map;
+  std::map<int, std::string> state_map;
   json_store_->GetValue(kStateMap, &state_map);
 
-  std::string key = base::NumberToString(GetStateCase());
+  int key = GetStateCase();
   std::string serialized_string, serialized_string_base64;
   state_.SerializeToString(&serialized_string);
   base::Base64Encode(serialized_string, &serialized_string_base64);
@@ -65,9 +65,9 @@ bool BaseStateHandler::StoreState() {
 }
 
 bool BaseStateHandler::RetrieveState() {
-  if (std::map<std::string, std::string> state_map;
+  if (std::map<int, std::string> state_map;
       json_store_->GetValue(kStateMap, &state_map)) {
-    std::string key = base::NumberToString(GetStateCase());
+    int key = GetStateCase();
     auto it = state_map.find(key);
     if (it != state_map.end()) {
       std::string serialized_string;
