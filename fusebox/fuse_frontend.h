@@ -134,21 +134,17 @@ class FuseFrontend {
     if (read_size == -EINTR)
       return;
 
-    const auto kernel_fuse_closed = [&](int error) {
-      this->StopFuseSession(error);
-    };
-
     if (read_size == 0) {
       LOG(INFO) << "Kernel FUSE : umount(8) " << *fuse_->mountpoint;
       *fuse_->mountpoint = nullptr;
-      kernel_fuse_closed(ENODEV);
+      StopFuseSession(ENODEV);
       return;
     }
 
     if (read_size < 0) {
       std::string kernel_error = base::safe_strerror(-read_size);
       LOG(ERROR) << "Kernel FUSE : " << kernel_error;
-      kernel_fuse_closed(-read_size);
+      StopFuseSession(-read_size);
       return;
     }
 
