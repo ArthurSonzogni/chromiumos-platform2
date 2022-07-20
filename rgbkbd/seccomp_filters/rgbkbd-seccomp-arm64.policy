@@ -7,6 +7,9 @@ rseq: 1
 
 bind: 1
 brk: 1
+clock_getres: 1
+clock_gettime: 1
+clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
@@ -31,6 +34,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 # CROS_EC_DEV_IOCXCMD: 0xc0283a00
 # CROS_EC_DEV_IOCXCMD_V2  = 0xc014ec00
