@@ -857,8 +857,8 @@ void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
   base::TimeDelta wait_delta = base::Seconds(wait);
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
-                 wait_delta),
+      base::BindOnce(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
+                     wait_delta),
       wait_delta);
 }
 
@@ -876,8 +876,8 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
   if (success) {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
-                   wait),
+        base::BindOnce(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
+                       wait),
         wait);
   }
 }
@@ -887,8 +887,8 @@ void MetricsDaemon::ScheduleReportProcessMemory(base::TimeDelta interval) {
     return;
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::ReportProcessMemoryCallback,
-                 GET_THIS_FOR_POSTTASK(), interval),
+      base::BindOnce(&MetricsDaemon::ReportProcessMemoryCallback,
+                     GET_THIS_FOR_POSTTASK(), interval),
       interval);
 }
 
@@ -896,8 +896,8 @@ void MetricsDaemon::ReportProcessMemoryCallback(base::TimeDelta wait) {
   ReportProcessMemory();
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::ReportProcessMemoryCallback,
-                 GET_THIS_FOR_POSTTASK(), wait),
+      base::BindOnce(&MetricsDaemon::ReportProcessMemoryCallback,
+                     GET_THIS_FOR_POSTTASK(), wait),
       wait);
 }
 
@@ -940,9 +940,9 @@ void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
   base::TimeDelta wait_delta = base::Seconds(wait);
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::DetachableBaseCallback,
-                 GET_THIS_FOR_POSTTASK(), base::FilePath{kHammerSysfsPathPath},
-                 wait_delta),
+      base::BindOnce(&MetricsDaemon::DetachableBaseCallback,
+                     GET_THIS_FOR_POSTTASK(),
+                     base::FilePath{kHammerSysfsPathPath}, wait_delta),
       wait_delta);
 }
 
@@ -990,8 +990,8 @@ void MetricsDaemon::DetachableBaseCallback(const base::FilePath sysfs_path_path,
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::DetachableBaseCallback,
-                 GET_THIS_FOR_POSTTASK(), sysfs_path_path, wait),
+      base::BindOnce(&MetricsDaemon::DetachableBaseCallback,
+                     GET_THIS_FOR_POSTTASK(), sysfs_path_path, wait),
       wait);
 }
 
@@ -1288,7 +1288,7 @@ void MetricsDaemon::ScheduleMemuseCallback(double interval) {
   }
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::MemuseCallback, GET_THIS_FOR_POSTTASK()),
+      base::BindOnce(&MetricsDaemon::MemuseCallback, GET_THIS_FOR_POSTTASK()),
       base::Seconds(interval));
 }
 
@@ -1470,7 +1470,8 @@ void MetricsDaemon::SendCroutonStats() {
   } else {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&MetricsDaemon::SendCroutonStats, GET_THIS_FOR_POSTTASK()),
+        base::BindOnce(&MetricsDaemon::SendCroutonStats,
+                       GET_THIS_FOR_POSTTASK()),
         base::Milliseconds(kUpdateStatsIntervalMs));
   }
 }
@@ -1540,8 +1541,8 @@ void MetricsDaemon::HandleUpdateStatsTimeout() {
   UpdateStats(TimeTicks::Now(), Time::Now());
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
-                 GET_THIS_FOR_POSTTASK()),
+      base::BindOnce(&MetricsDaemon::HandleUpdateStatsTimeout,
+                     GET_THIS_FOR_POSTTASK()),
       base::Milliseconds(kUpdateStatsIntervalMs));
 }
 
