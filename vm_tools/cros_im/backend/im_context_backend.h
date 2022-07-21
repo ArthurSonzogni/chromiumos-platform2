@@ -16,6 +16,8 @@ struct wl_seat;
 struct wl_surface;
 struct zwp_text_input_v1;
 struct zwp_text_input_v1_listener;
+struct zcr_extended_text_input_v1;
+struct zcr_extended_text_input_v1_listener;
 
 namespace cros_im {
 
@@ -80,6 +82,10 @@ class IMContextBackend {
 
   static const zwp_text_input_v1_listener text_input_listener_;
   zwp_text_input_v1* text_input_ = nullptr;
+  static const zcr_extended_text_input_v1_listener
+      extended_text_input_listener_;
+  zcr_extended_text_input_v1* extended_text_input_ = nullptr;
+
   wl_seat* seat_ = nullptr;
 
   Observer* observer_ = nullptr;

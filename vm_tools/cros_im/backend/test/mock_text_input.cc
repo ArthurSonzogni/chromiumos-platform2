@@ -5,6 +5,7 @@
 #include "backend/test/mock_text_input.h"
 
 #include "backend/test/backend_test.h"
+#include "backend/test/backend_test_utils.h"
 #include "backend/test/request.h"
 
 #include <memory>
@@ -13,12 +14,20 @@
 using cros_im::test::Request;
 
 const wl_interface zwp_text_input_manager_v1_interface = {};
+const wl_interface zcr_text_input_extension_v1_interface = {};
 
 namespace {
 
 std::vector<std::unique_ptr<zwp_text_input_v1>>& GetTextInputs() {
   static std::vector<std::unique_ptr<zwp_text_input_v1>> text_inputs;
   return text_inputs;
+}
+
+std::vector<std::unique_ptr<zcr_extended_text_input_v1>>&
+GetExtendedTextInputs() {
+  static std::vector<std::unique_ptr<zcr_extended_text_input_v1>>
+      extended_text_inputs;
+  return extended_text_inputs;
 }
 
 void HandleRequest(const Request& request) {
@@ -100,11 +109,40 @@ void zwp_text_input_v1_set_cursor_rectangle(zwp_text_input_v1* text_input,
   HandleRequest(text_input, Request::kSetCursorRectangle);
 }
 
+zcr_extended_text_input_v1* zcr_text_input_extension_v1_get_extended_text_input(
+    zcr_text_input_extension_v1* text_input_extension,
+    zwp_text_input_v1* text_input) {
+  auto& extended_text_inputs = GetExtendedTextInputs();
+  int id = extended_text_inputs.size();
+  // text_input creation is always paired with extended_text_input creation.
+  EXPECT_TRUE(text_input && text_input->id == id);
+  extended_text_inputs.emplace_back(
+      new zcr_extended_text_input_v1({nullptr, nullptr, id}));
+  return extended_text_inputs.back().get();
+}
+
+void zcr_extended_text_input_v1_set_user_data(zcr_extended_text_input_v1*,
+                                              void*) {
+  // Not needed currently.
+}
+
+void zcr_extended_text_input_v1_add_listener(
+    zcr_extended_text_input_v1* extended_text_input,
+    const zcr_extended_text_input_v1_listener* listener,
+    void* listener_data) {
+  extended_text_input->listener = listener;
+  extended_text_input->listener_data = listener_data;
+}
+
 namespace cros_im {
 namespace test {
 
 zwp_text_input_v1* GetTextInput(int text_input_id) {
   return GetTextInputs().at(text_input_id).get();
+}
+
+zcr_extended_text_input_v1* GetExtendedTextInput(int extended_text_input_id) {
+  return GetExtendedTextInputs().at(extended_text_input_id).get();
 }
 
 }  // namespace test

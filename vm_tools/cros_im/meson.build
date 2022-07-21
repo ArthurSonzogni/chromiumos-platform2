@@ -25,6 +25,7 @@ wl_generators = [
 ]
 
 wl_protocols = [
+  'text-input-extension-unstable-v1.xml',
   'text-input-unstable-v1.xml',
 ]
 

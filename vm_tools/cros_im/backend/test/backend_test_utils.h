@@ -38,9 +38,9 @@ class ExpectImpl {
   bool log_;
 };
 
-#define EXPECT_TRUE(condition) ExpectImpl(!!(condition))
-#define EXPECT_FALSE(condition) ExpectImpl(!(condition))
-#define FAILED() ExpectImpl(false)
+#define EXPECT_TRUE(condition) cros_im::test::ExpectImpl(!!(condition))
+#define EXPECT_FALSE(condition) cros_im::test::ExpectImpl(!(condition))
+#define FAILED() cros_im::test::ExpectImpl(false)
 
 }  // namespace test
 }  // namespace cros_im

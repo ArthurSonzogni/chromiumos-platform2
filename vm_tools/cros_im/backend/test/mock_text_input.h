@@ -14,6 +14,8 @@
 // This file provides mock implementations of the APIs normally defined and
 // implemented in text-input-unstable-v1-client-protocol.h.
 
+// Mocks for zwp_text_input_v1
+
 struct wl_array;
 struct wl_seat;
 struct wl_surface;
@@ -98,10 +100,56 @@ void zwp_text_input_v1_set_content_type(zwp_text_input_v1*,
 void zwp_text_input_v1_set_cursor_rectangle(
     zwp_text_input_v1*, int32_t x, int32_t y, int32_t width, int32_t height);
 
+// Mocks for zcr_extended_text_input_v1
+
+struct zcr_extended_text_input_v1_listener;
+struct zcr_text_input_extension_v1;
+
+extern const wl_interface zcr_text_input_extension_v1_interface;
+
+struct zcr_extended_text_input_v1 {
+  const zcr_extended_text_input_v1_listener* listener;
+  void* listener_data;
+  // The n'th (0-indexed) mock object created has an id of n.
+  int id;
+};
+
+zcr_extended_text_input_v1* zcr_text_input_extension_v1_get_extended_text_input(
+    zcr_text_input_extension_v1* text_input_extension,
+    zwp_text_input_v1* text_input);
+
+struct zcr_extended_text_input_v1_listener {
+  void (*set_preedit_region)(void* data,
+                             struct zcr_extended_text_input_v1*,
+                             int32_t index,
+                             uint32_t length);
+  void (*clear_grammar_fragments)(void* data,
+                                  struct zcr_extended_text_input_v1*,
+                                  uint32_t start,
+                                  uint32_t end);
+  void (*add_grammar_fragment)(void* data,
+                               struct zcr_extended_text_input_v1*,
+                               uint32_t start,
+                               uint32_t end,
+                               const char* suggestion);
+  void (*set_autocorrect_range)(void* data,
+                                struct zcr_extended_text_input_v1*,
+                                uint32_t start,
+                                uint32_t end);
+};
+
+void zcr_extended_text_input_v1_set_user_data(zcr_extended_text_input_v1*,
+                                              void*);
+void zcr_extended_text_input_v1_add_listener(
+    zcr_extended_text_input_v1*,
+    const zcr_extended_text_input_v1_listener*,
+    void* listener_data);
+
 namespace cros_im {
 namespace test {
 
 zwp_text_input_v1* GetTextInput(int text_input_id);
+zcr_extended_text_input_v1* GetExtendedTextInput(int extended_text_input_id);
 
 }  // namespace test
 }  // namespace cros_im

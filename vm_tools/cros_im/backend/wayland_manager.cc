@@ -64,24 +64,48 @@ zwp_text_input_v1* WaylandManager::CreateTextInput(
   return text_input;
 }
 
+zcr_extended_text_input_v1* WaylandManager::CreateExtendedTextInput(
+    zwp_text_input_v1* text_input,
+    const zcr_extended_text_input_v1_listener* listener,
+    void* listener_data) {
+  if (!text_input_extension_)
+    return nullptr;
+  auto* extended_text_input =
+      zcr_text_input_extension_v1_get_extended_text_input(text_input_extension_,
+                                                          text_input);
+  zcr_extended_text_input_v1_set_user_data(extended_text_input, nullptr);
+  zcr_extended_text_input_v1_add_listener(extended_text_input, listener,
+                                          listener_data);
+  return extended_text_input;
+}
+
 void WaylandManager::OnGlobal(wl_registry* registry,
                               uint32_t name,
                               const char* interface,
                               uint32_t version) {
-  if (strcmp(interface, "zwp_text_input_manager_v1") != 0)
-    return;
-  text_input_manager_ =
-      reinterpret_cast<zwp_text_input_manager_v1*>(wl_registry_bind(
-          registry, name, &zwp_text_input_manager_v1_interface, version));
-  text_input_manager_id_ = name;
+  if (strcmp(interface, "zwp_text_input_manager_v1") == 0) {
+    text_input_manager_ =
+        reinterpret_cast<zwp_text_input_manager_v1*>(wl_registry_bind(
+            registry, name, &zwp_text_input_manager_v1_interface, version));
+    text_input_manager_id_ = name;
+  } else if (strcmp(interface, "zcr_text_input_extension_v1") == 0) {
+    text_input_extension_ =
+        reinterpret_cast<zcr_text_input_extension_v1*>(wl_registry_bind(
+            registry, name, &zcr_text_input_extension_v1_interface, version));
+    text_input_extension_id_ = name;
+  }
 }
 
 void WaylandManager::OnGlobalRemove(wl_registry* registry, uint32_t name) {
-  if (name != text_input_manager_id_)
-    return;
-  printf("The global zwp_text_input_manager_v1 was removed.\n");
-  text_input_manager_ = nullptr;
-  text_input_manager_id_ = 0;
+  if (name == text_input_manager_id_) {
+    printf("The global zwp_text_input_manager_v1 was removed.\n");
+    text_input_manager_ = nullptr;
+    text_input_manager_id_ = 0;
+  } else if (name == text_input_extension_id_) {
+    printf("The global zcr_text_input_extension_v1 was removed.\n");
+    text_input_extension_ = nullptr;
+    text_input_extension_id_ = 0;
+  }
 }
 
 WaylandManager::WaylandManager(wl_display* display) {

@@ -12,6 +12,9 @@ struct wl_registry;
 struct zwp_text_input_v1;
 struct zwp_text_input_v1_listener;
 struct zwp_text_input_manager_v1;
+struct zcr_extended_text_input_v1;
+struct zcr_extended_text_input_v1_listener;
+struct zcr_text_input_extension_v1;
 
 namespace cros_im {
 
@@ -26,6 +29,10 @@ class WaylandManager {
   // May return nullptr if still initializing.
   zwp_text_input_v1* CreateTextInput(const zwp_text_input_v1_listener* listener,
                                      void* listener_data);
+  zcr_extended_text_input_v1* CreateExtendedTextInput(
+      zwp_text_input_v1* text_input,
+      const zcr_extended_text_input_v1_listener* listener,
+      void* listener_data);
 
   // Callbacks for wayland global events.
   void OnGlobal(wl_registry* registry,
@@ -38,8 +45,12 @@ class WaylandManager {
   explicit WaylandManager(wl_display* display);
   ~WaylandManager();
 
+  // Creates text_input objects
   zwp_text_input_manager_v1* text_input_manager_ = nullptr;
   uint32_t text_input_manager_id_ = 0;
+  // Creates extended_text_input objects
+  zcr_text_input_extension_v1* text_input_extension_ = nullptr;
+  uint32_t text_input_extension_id_ = 0;
 };
 
 }  // namespace cros_im

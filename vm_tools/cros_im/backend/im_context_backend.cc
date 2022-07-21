@@ -26,6 +26,11 @@ auto Fwd(void* data, zwp_text_input_v1* text_input, Args... args) {
 template <typename... Args>
 auto DoNothing(void* data, zwp_text_input_v1* text_input, Args... args) {}
 
+template <typename... Args>
+auto DoNothingExtended(void* data,
+                       zcr_extended_text_input_v1* text_input,
+                       Args... args) {}
+
 }  // namespace
 
 const zwp_text_input_v1_listener IMContextBackend::text_input_listener_ = {
@@ -42,6 +47,14 @@ const zwp_text_input_v1_listener IMContextBackend::text_input_listener_ = {
     .keysym = Fwd<&IMContextBackend::KeySym>,
     .language = DoNothing,
     .text_direction = DoNothing,
+};
+
+const zcr_extended_text_input_v1_listener
+    IMContextBackend::extended_text_input_listener_ = {
+        .set_preedit_region = DoNothingExtended,
+        .clear_grammar_fragments = DoNothingExtended,
+        .add_grammar_fragment = DoNothingExtended,
+        .set_autocorrect_range = DoNothingExtended,
 };
 
 IMContextBackend::IMContextBackend(Observer* observer) : observer_(observer) {
@@ -111,11 +124,14 @@ void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {
 }
 
 void IMContextBackend::MaybeInitialize() {
-  if (text_input_)
-    return;
-  // May return nullptr.
-  text_input_ =
-      WaylandManager::Get()->CreateTextInput(&text_input_listener_, this);
+  if (!text_input_) {
+    text_input_ =
+        WaylandManager::Get()->CreateTextInput(&text_input_listener_, this);
+  }
+  if (!extended_text_input_) {
+    extended_text_input_ = WaylandManager::Get()->CreateExtendedTextInput(
+        text_input_, &extended_text_input_listener_, this);
+  }
 }
 
 void IMContextBackend::SetPreeditStyling(uint32_t index,

@@ -27,13 +27,14 @@ setup_deps() {
 
   cp .pbuilderrc /root/
 
-  # Copy the .xml dependency to protocols/ for the pbuilder chroot
+  # Copy the .xml dependencies to protocols/ for the pbuilder chroot
   mkdir -p protocols
+  cp ../sommelier/protocol/text-input-extension-unstable-v1.xml protocols
   cp ../sommelier/protocol/text-input-unstable-v1.xml protocols
 }
 
 cleanup() {
-  # Remove the temporary .xml file
+  # Remove the temporary .xml files
   rm -rf protocols
 }
 
