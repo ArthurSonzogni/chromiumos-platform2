@@ -346,10 +346,9 @@ impl SuspendConductor {
         image_size: loff_t,
     ) -> Result<()> {
         let page_size = get_page_size();
-        let meta_size;
         // If the header size is not known, move a single page so the splitter
         // can parse the header and figure it out.
-        if splitter.meta_size == 0 {
+        let meta_size = if splitter.meta_size == 0 {
             ImageMover::new(
                 &mut snap_dev.file,
                 splitter,
@@ -360,10 +359,10 @@ impl SuspendConductor {
             .move_all()
             .context("Failed to move first page")?;
 
-            meta_size = splitter.meta_size - (page_size as i64);
+            splitter.meta_size - (page_size as i64)
         } else {
-            meta_size = splitter.meta_size;
-        }
+            splitter.meta_size
+        };
 
         assert!(splitter.meta_size != 0);
 

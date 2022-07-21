@@ -122,8 +122,7 @@ impl<'a> ImageSplitter<'a> {
 
             // If this is a final partial page, pad it out to a page, since the
             // underlying DiskFile needs page aligned writes.
-            let bytes_written;
-            if (meta_size & (self.page_size - 1)) != 0 {
+            let bytes_written = if (meta_size & (self.page_size - 1)) != 0 {
                 assert!(
                     (length >= meta_size)
                         && ((self.bytes_done + (meta_size as i64)) == self.meta_size)
@@ -142,10 +141,10 @@ impl<'a> ImageSplitter<'a> {
                 };
                 let copybuf = copy.u8_slice_mut();
                 copybuf[..meta_size].copy_from_slice(&buf[..meta_size]);
-                bytes_written = std::cmp::min(meta_size, self.header_file.write(copybuf)?);
+                std::cmp::min(meta_size, self.header_file.write(copybuf)?)
             } else {
-                bytes_written = self.header_file.write(&buf[..meta_size])?;
-            }
+                self.header_file.write(&buf[..meta_size])?
+            };
 
             // Assert that the write did not cross into data territory, only sidled
             // up to it.

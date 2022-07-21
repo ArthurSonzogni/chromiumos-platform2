@@ -77,7 +77,7 @@ impl HibernateCookie {
     /// Read the contents of the disk to determine if the cookie is set or not.
     /// On success, returns a boolean that is true if the hibernate cookie is
     /// set (indicating the on-disk file systems should not be altered).
-    pub fn is_set(&mut self) -> Result<bool> {
+    pub fn read(&mut self) -> Result<bool> {
         self.blockdev
             .seek(SeekFrom::Start(0))
             .context("Failed to seek in hibernate cookie")?;
@@ -116,7 +116,7 @@ impl HibernateCookie {
     /// altered), or poison value (false, indicating no impending hibernate
     /// resume, file systems can be mounted RW).
     pub fn write(&mut self, valid: bool) -> Result<()> {
-        let existing = self.is_set()?;
+        let existing = self.read()?;
         self.blockdev
             .seek(SeekFrom::Start(0))
             .context("Failed to seek hibernate cookie")?;
@@ -155,7 +155,7 @@ impl HibernateCookie {
 /// If not supplied, the boot disk will be examined.
 pub fn get_hibernate_cookie<P: AsRef<Path>>(path_str: Option<P>) -> Result<bool> {
     let mut cookie = open_hibernate_cookie(path_str)?;
-    cookie.is_set()
+    cookie.read()
 }
 
 /// Public function to set the hibernate cookie value. The valid parameter, if
