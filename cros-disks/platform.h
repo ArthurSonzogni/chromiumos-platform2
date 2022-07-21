@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// TODO(b/235960683): Drop this after CrOS upgrades to glibc >= 2.34
+// because MS_NOSYMFOLLOW will be defined in sys/mount.h
 #ifndef MS_NOSYMFOLLOW
 // Added locally in kernel 5.4, upstream TBD.
 #define MS_NOSYMFOLLOW 256
