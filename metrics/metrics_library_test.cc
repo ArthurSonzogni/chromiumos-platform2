@@ -45,6 +45,12 @@ class MetricsLibraryTest : public testing::Test {
     lib_.SetDaemonStoreForTest(test_dir_);
     EXPECT_TRUE(base::CreateDirectory(test_dir_.Append("hash")));
 
+    ASSERT_TRUE(appsync_temp_dir_.CreateUniqueTempDir());
+    appsync_test_dir_ = appsync_temp_dir_.GetPath();
+
+    lib_.SetAppSyncDaemonStoreForTest(appsync_test_dir_);
+    EXPECT_TRUE(base::CreateDirectory(appsync_test_dir_.Append("hash")));
+
     lib_.SetConsentFileForTest(kTestConsentIdFile);
     EXPECT_FALSE(lib_.uma_events_file_.empty());
     lib_.Init();
@@ -62,6 +68,7 @@ class MetricsLibraryTest : public testing::Test {
         std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
     // Defeat metrics enabled caching between tests.
     ClearCachedEnabledTime();
+    ClearCachedAppSyncEnabledTime();
   }
 
   void TearDown() override {
@@ -78,6 +85,11 @@ class MetricsLibraryTest : public testing::Test {
     lib_.cached_enabled_time_ = 0;
   }
 
+  void ClearCachedAppSyncEnabledTime() {
+    // Delete cached AppSync opt-in.
+    lib_.cached_appsync_enabled_time_ = 0;
+  }
+
   void SetPerUserConsent(bool value) {
     if (value) {
       EXPECT_EQ(1, WriteFile(test_dir_.Append("hash/consent-enabled"), "1", 1));
@@ -86,10 +98,22 @@ class MetricsLibraryTest : public testing::Test {
     }
   }
 
+  void SetPerUserAppSyncOptin(bool value) {
+    if (value) {
+      EXPECT_EQ(1,
+                WriteFile(appsync_test_dir_.Append("hash/opted-in"), "1", 1));
+    } else {
+      EXPECT_EQ(1,
+                WriteFile(appsync_test_dir_.Append("hash/opted-in"), "0", 1));
+    }
+  }
+
   MetricsLibrary lib_;
   policy::MockDevicePolicy* device_policy_;  // Not owned.
   base::ScopedTempDir temp_dir_;
+  base::ScopedTempDir appsync_temp_dir_;
   base::FilePath test_dir_;
+  base::FilePath appsync_test_dir_;
 };
 
 // Reject symlinks even if they're to normal files.
@@ -253,6 +277,34 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledTrue) {
 TEST_F(MetricsLibraryTest, AreMetricsEnabledPerUserFalse) {
   SetPerUserConsent(false);
   EXPECT_FALSE(lib_.AreMetricsEnabled());
+}
+
+TEST_F(MetricsLibraryTest, IsAppSyncEnabledDefaultFalse) {
+  EXPECT_FALSE(lib_.IsAppSyncEnabled());
+}
+
+TEST_F(MetricsLibraryTest, IsAppsSyncEnabledForceFalse) {
+  SetPerUserAppSyncOptin(false);
+  EXPECT_FALSE(lib_.IsAppSyncEnabled());
+}
+
+TEST_F(MetricsLibraryTest, IsAppSyncEnabledTrue) {
+  SetPerUserAppSyncOptin(true);
+  EXPECT_TRUE(lib_.IsAppSyncEnabled());
+}
+
+TEST_F(MetricsLibraryTest, IsAppSyncEnabledTrueThenFalse) {
+  SetPerUserAppSyncOptin(true);
+  EXPECT_TRUE(lib_.IsAppSyncEnabled());
+
+  SetPerUserAppSyncOptin(false);
+  // No test time has passed, so we shouldn't see a difference yet due to
+  // caching.
+  EXPECT_TRUE(lib_.IsAppSyncEnabled());
+
+  ClearCachedAppSyncEnabledTime();
+
+  EXPECT_FALSE(lib_.IsAppSyncEnabled());
 }
 
 // Template SendEnumToUMA(name, T) correctly sets exclusive_max to kMaxValue+1.

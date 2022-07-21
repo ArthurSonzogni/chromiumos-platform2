@@ -10,6 +10,10 @@ bool FakeMetricsLibrary::AreMetricsEnabled() {
   return true;
 }
 
+bool FakeMetricsLibrary::IsAppSyncEnabled() {
+  return true;
+}
+
 bool FakeMetricsLibrary::IsGuestMode() {
   return false;
 }

@@ -26,6 +26,7 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
   // MetricsLibraryInterface
   void Init() override;
   bool AreMetricsEnabled() override;
+  bool IsAppSyncEnabled() override;
   bool IsGuestMode() override;
   bool SendToUMA(const std::string& name,
                  int sample,

@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
+#include "base/files/file_path.h"
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/guid.h>
@@ -18,6 +19,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <optional>
@@ -33,13 +35,16 @@ using org::chromium::SessionManagerInterfaceProxy;
 
 namespace {
 
-const char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
+constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 // If you change this path make sure to also change the corresponding rollback
 // constant: src/platform2/oobe_config/rollback_constants.cc
-const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
-const char kDaemonStoreConsentDir[] = "/run/daemon-store/uma-consent";
-const char kDaemonStoreConsentFile[] = "consent-enabled";
-const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
+constexpr char kConsentFile[] = "/home/chronos/Consent To Send Stats";
+constexpr char kDaemonStoreUmaConsentDir[] = "/run/daemon-store/uma-consent";
+constexpr char kDaemonStoreAppSyncOptinDir[] =
+    "/run/daemon-store/appsync-optin";
+constexpr char kDaemonStoreConsentFile[] = "consent-enabled";
+constexpr char kDaemonStoreOptinFile[] = "opted-in";
+constexpr char kCrosEventHistogramName[] = "Platform.CrOSEvent";
 const int kCrosEventHistogramMax = 100;
 
 // Add new cros events here.
@@ -99,13 +104,15 @@ static_assert(std::size(kCrosEventNames) == 35,
 
 }  // namespace
 
-time_t MetricsLibrary::cached_enabled_time_ = 0;
-bool MetricsLibrary::cached_enabled_ = false;
-
 MetricsLibrary::MetricsLibrary()
-    : uma_events_file_(base::FilePath(kUMAEventsPath)),
+    : cached_enabled_time_(0),
+      cached_appsync_enabled_time_(0),
+      cached_enabled_(false),
+      cached_appsync_enabled_(false),
+      uma_events_file_(base::FilePath(kUMAEventsPath)),
       consent_file_(base::FilePath(kConsentFile)),
-      daemon_store_dir_(kDaemonStoreConsentDir) {}
+      daemon_store_dir_(kDaemonStoreUmaConsentDir),
+      appsync_daemon_store_dir_(kDaemonStoreAppSyncOptinDir) {}
 
 MetricsLibrary::~MetricsLibrary() {}
 
@@ -174,9 +181,22 @@ bool MetricsLibrary::ConsentId(std::string* id) {
 }
 
 std::optional<bool> MetricsLibrary::ArePerUserMetricsEnabled() {
+  return CheckUserConsent(daemon_store_dir_, kDaemonStoreConsentFile);
+}
+
+std::optional<bool> MetricsLibrary::IsPerUserAppSyncEnabled() {
+  return CheckUserConsent(appsync_daemon_store_dir_, kDaemonStoreOptinFile);
+}
+
+// AppSync opt-in/UMA consent are determined as follows:
+//  * if all users logged in have opted in, return true
+//  * if at least one user has not opted in, return false
+//  * if no users exist, there can be no apps to sync, return false
+std::optional<bool> MetricsLibrary::CheckUserConsent(
+    const base::FilePath& root_path, std::string consent_file) {
   base::FileEnumerator consent_files(
-      daemon_store_dir_,
-      /*recursive=*/true, base::FileEnumerator::FILES, kDaemonStoreConsentFile,
+      root_path,
+      /*recursive=*/true, base::FileEnumerator::FILES, consent_file,
       base::FileEnumerator::FolderSearchPolicy::ALL);
   SafeFD::SafeFDResult root_err = SafeFD::Root();
   if (SafeFD::IsError(root_err.second)) {
@@ -259,6 +279,19 @@ bool MetricsLibrary::AreMetricsEnabled() {
     cached_enabled_ = (metrics_enabled && !IsGuestMode());
   }
   return cached_enabled_;
+}
+
+bool MetricsLibrary::IsAppSyncEnabled() {
+  time_t this_check_time = time(nullptr);
+  if (this_check_time != cached_appsync_enabled_time_) {
+    cached_appsync_enabled_time_ = this_check_time;
+
+    std::optional<bool> appsync_optin = IsPerUserAppSyncEnabled();
+
+    cached_appsync_enabled_ = appsync_optin.value_or(false);
+  }
+
+  return cached_appsync_enabled_;
 }
 
 bool MetricsLibrary::EnableMetrics() {

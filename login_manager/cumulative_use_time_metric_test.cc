@@ -184,6 +184,8 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
 
   bool AreMetricsEnabled() override { return true; }
 
+  bool IsAppSyncEnabled() override { return true; }
+
   bool SendEnumToUMA(const std::string& name, int sample, int max) override {
     ADD_FAILURE() << "Should not be reached";
     return false;

@@ -22,6 +22,7 @@ class MetricsLibraryInterface {
  public:
   virtual void Init() = 0;  // TODO(chromium:940343): Remove this function.
   virtual bool AreMetricsEnabled() = 0;
+  virtual bool IsAppSyncEnabled() = 0;
   virtual bool IsGuestMode() = 0;
   virtual bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets) = 0;
@@ -81,6 +82,9 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
+
+  // Returns where or not users have opted in to AppSync.
+  bool IsAppSyncEnabled() override;
 
   // Chrome normally manages Enable/Disable state. These functions are
   // intended ONLY for use by devices which don't run Chrome (e.g. Onhub)
@@ -247,6 +251,11 @@ class MetricsLibrary : public MetricsLibraryInterface {
     daemon_store_dir_ = daemon_store;
   }
 
+  void SetAppSyncDaemonStoreForTest(
+      const base::FilePath& appsync_daemon_store) {
+    appsync_daemon_store_dir_ = appsync_daemon_store;
+  }
+
  private:
   friend class CMetricsLibraryTest;
   friend class MetricsLibraryTest;
@@ -266,15 +275,31 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // multiple users are signed in simultaneously.
   std::optional<bool> ArePerUserMetricsEnabled();
 
+  // Checks for user opt-in to AppSync. All the same caveats as
+  // ArePerUserMetricsEnabled apply.
+  std::optional<bool> IsPerUserAppSyncEnabled();
+
+  // Helper function which contains all the logic for ArePerUserMetricsEnabled
+  // and IsPerUserAppSyncEnabled.
+  std::optional<bool> CheckUserConsent(const base::FilePath& root_path,
+                                       const std::string consent_file);
+
   // Time at which we last checked if metrics were enabled.
-  static time_t cached_enabled_time_;
+  time_t cached_enabled_time_;
+
+  // Time at which we last checked if AppSync opt-in is enabled.
+  time_t cached_appsync_enabled_time_;
 
   // Cached state of whether or not metrics were enabled.
-  static bool cached_enabled_;
+  bool cached_enabled_;
+
+  // Cached state of whether or not AppSync opt-in is enabled.
+  bool cached_appsync_enabled_;
 
   base::FilePath uma_events_file_;
   base::FilePath consent_file_;
   base::FilePath daemon_store_dir_;
+  base::FilePath appsync_daemon_store_dir_;
 
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 };
