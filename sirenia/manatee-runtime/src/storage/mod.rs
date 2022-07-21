@@ -56,7 +56,7 @@ impl Storage for TrichechusStorage {
     fn read_raw(&mut self, id: &str) -> Result<Vec<u8>> {
         // TODO: Log the rpc error.
         match self.rpc.lock().read_data(id.to_string()) {
-            Ok((Status::Success, res)) => Ok(res),
+            Ok((Status::Success, res)) => Ok(res.into()),
             Ok((Status::IdNotFound, _)) => Err(Error::IdNotFound(id.to_string())),
             Ok((Status::Failure, _)) | Ok((Status::CryptoFailure, _)) => Err(Error::ReadData(None)),
             Err(err) => Err(to_read_data_error(err)),
@@ -98,6 +98,7 @@ pub mod tests {
     use libsirenia::rpc::RpcDispatcher;
     use libsirenia::storage::Error as StorageError;
     use libsirenia::transport::create_transport_from_pipes;
+    use serde_bytes::ByteBuf;
 
     use super::*;
 
@@ -109,9 +110,9 @@ pub mod tests {
     }
 
     impl TeeApi<Error> for TeeApiServerImpl {
-        fn read_data(&mut self, id: String) -> Result<(Status, Vec<u8>)> {
+        fn read_data(&mut self, id: String) -> Result<(Status, ByteBuf)> {
             match self.map.borrow().get(&id) {
-                Some(val) => Ok((Status::Success, val.to_vec())),
+                Some(val) => Ok((Status::Success, val.clone().into())),
                 None => Err(anyhow!("id missing")),
             }
         }

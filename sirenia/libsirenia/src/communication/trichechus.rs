@@ -13,6 +13,7 @@ use anyhow::Context;
 use log::info;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_bytes::ByteBuf;
 use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
 
@@ -83,7 +84,7 @@ pub trait Trichechus<E> {
     #[error()]
     fn get_apps(&mut self) -> StdResult<AppManifest, E>;
     #[error()]
-    fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, E>;
+    fn get_logs(&mut self) -> StdResult<Vec<ByteBuf>, E>;
 
     fn prepare_manatee_memory_service_socket(&mut self, port_number: u32) -> StdResult<(), E>;
 

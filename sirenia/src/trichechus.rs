@@ -131,6 +131,7 @@ use libsirenia::transport::DEFAULT_SERVER_PORT;
 use log::error;
 use log::info;
 use log::warn;
+use serde_bytes::ByteBuf;
 use sirenia::install_crash_handler;
 use sirenia::log_error;
 use sirenia::pstore;
@@ -241,9 +242,11 @@ impl TeeAppHandler {
 }
 
 impl TeeApi<Error> for TeeAppHandler {
-    fn read_data(&mut self, id: String) -> Result<(Status, Vec<u8>)> {
+    fn read_data(&mut self, id: String) -> Result<(Status, ByteBuf)> {
         self.conditionally_use_storage_encryption(|params, cronista| {
-            cronista.retrieve(params.scope.clone(), params.domain.to_string(), id.clone())
+            cronista
+                .retrieve(params.scope.clone(), params.domain.to_string(), id.clone())
+                .map(|r| (r.0, r.1.into()))
         })
     }
 
@@ -487,10 +490,10 @@ impl Trichechus<Error> for TrichechusServerImpl {
         Ok(self.state.borrow().app_manifest.clone())
     }
 
-    fn get_logs(&mut self) -> Result<Vec<Vec<u8>>> {
+    fn get_logs(&mut self) -> Result<Vec<ByteBuf>> {
         let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
-        Ok(replacement.into())
+        Ok(replacement.into_iter().map(Into::<ByteBuf>::into).collect())
     }
 
     fn prepare_manatee_memory_service_socket(&mut self, port_number: u32) -> Result<()> {
@@ -532,7 +535,7 @@ fn get_stdio_indices(entries: &[(Transport, c_int)]) -> Option<(usize, usize)> {
     None
 }
 
-fn setup_pty(connections: &mut Vec<(Transport, i32)>) -> Result<[Box<dyn Mutator>; 4]> {
+fn setup_pty(connections: &mut [(Transport, i32)]) -> Result<[Box<dyn Mutator>; 4]> {
     let (stdin, stdout) =
         get_stdio_indices(connections).ok_or_else(|| anyhow!("failed to identify stdio"))?;
     let (main, client) = get_a_pty().context("failed get a pty")?;

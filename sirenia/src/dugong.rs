@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::Read;
 use std::mem::drop;
 use std::mem::replace;
+use std::ops::Deref;
 use std::ops::DerefMut;
 use std::os::unix::net::UnixDatagram;
 use std::result::Result as StdResult;
@@ -47,6 +48,7 @@ use libsirenia::transport::DEFAULT_CLIENT_PORT;
 use libsirenia::transport::DEFAULT_SERVER_PORT;
 use log::error;
 use log::info;
+use serde_bytes::ByteBuf;
 use sirenia::server::register_org_chromium_mana_teeinterface;
 use sirenia::server::OrgChromiumManaTEEInterface;
 
@@ -203,7 +205,7 @@ fn request_start_tee_app(
 fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     const LOG_PATH: &str = "/dev/log";
     let mut trichechus_client = dugong_state.trichechus_client().lock().unwrap();
-    let logs: Vec<Vec<u8>> = trichechus_client
+    let logs: Vec<ByteBuf> = trichechus_client
         .get_logs()
         .context("failed to call get_logs rpc")?;
     if logs.is_empty() {
@@ -214,7 +216,7 @@ fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     let raw_syslog = UnixDatagram::unbound().context("failed connect to /dev/log")?;
     for entry in logs.as_slice() {
         raw_syslog
-            .send_to(entry, LOG_PATH)
+            .send_to(entry.deref(), LOG_PATH)
             .context("failed write to /dev/log")?;
     }
 

@@ -26,6 +26,7 @@ use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_bytes::ByteBuf;
 use thiserror::Error as ThisError;
 
 use crate::sys::eagain_is_ok;
@@ -188,7 +189,8 @@ pub fn write_message<W: Write, S: Serialize>(w: &mut W, m: S) -> Result<()> {
 pub const SHA256_SIZE: usize = 32;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct Digest([u8; SHA256_SIZE]);
+#[serde(try_from = "ByteBuf")]
+pub struct Digest(#[serde(serialize_with = "serde_bytes::serialize")] [u8; SHA256_SIZE]);
 
 impl Deref for Digest {
     type Target = [u8; SHA256_SIZE];
@@ -209,6 +211,14 @@ impl TryFrom<&[u8]> for Digest {
 
     fn try_from(value: &[u8]) -> StdResult<Self, Self::Error> {
         Ok(Digest(value.try_into()?))
+    }
+}
+
+impl TryFrom<ByteBuf> for Digest {
+    type Error = TryFromSliceError;
+
+    fn try_from(value: ByteBuf) -> StdResult<Self, Self::Error> {
+        Ok(Digest(value.deref().try_into()?))
     }
 }
 

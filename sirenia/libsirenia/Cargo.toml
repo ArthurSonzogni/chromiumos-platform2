@@ -25,5 +25,6 @@ minijail = { path = "../../../aosp/external/minijail/rust/minijail" } # provided
 openssl = "0.10.40"
 sirenia-rpc-macros = { path = "sirenia-rpc-macros" } # provided by ebuild
 serde = { version = "1.0.114", features = ["derive"] }
+serde_bytes = "0.10.0"
 serde_json = "1.0.64"
 thiserror = "1.0.20"
