@@ -471,4 +471,57 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
   return OkStatus<CryptohomeError>();
 }
 
+CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
+    const std::string& obfuscated_username,
+    const std::string& old_auth_factor_label,
+    AuthFactor& auth_factor,
+    AuthBlockUtility* auth_block_utility) {
+  // 1. Load the old auth factor state from disk.
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> existing_auth_factor =
+      LoadAuthFactor(obfuscated_username, auth_factor.type(),
+                     old_auth_factor_label);
+  if (!existing_auth_factor.ok()) {
+    LOG(ERROR) << "Failed to load persisted auth factor "
+               << old_auth_factor_label << " of type "
+               << GetAuthFactorTypeString(auth_factor.type()) << " for "
+               << obfuscated_username << " in Update.";
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerLoadFailedInUpdate),
+               user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+        .Wrap(std::move(existing_auth_factor).status());
+  }
+
+  // 2. Save auth factor to disk - the old auth factor state will be overridden
+  // and accessible only from `existing_auth_factor` object.
+  CryptohomeStatus save_result =
+      SaveAuthFactor(obfuscated_username, auth_factor);
+  if (!save_result.ok()) {
+    LOG(ERROR) << "Failed to save auth factor " << auth_factor.label()
+               << " of type " << GetAuthFactorTypeString(auth_factor.type())
+               << " for " << obfuscated_username << " in Update.";
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSaveFailedInUpdate),
+               user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+        .Wrap(std::move(save_result));
+  }
+
+  // 3. The old auth factor state was removed from disk. Call
+  // `PrepareForRemoval()` to complete the removal.
+  CryptoStatus crypto_status =
+      existing_auth_factor.value()->PrepareForRemoval(auth_block_utility);
+  if (!crypto_status.ok()) {
+    LOG(WARNING) << "PrepareForRemoval failed for auth factor "
+                 << auth_factor.label() << " of type "
+                 << GetAuthFactorTypeString(auth_factor.type()) << " for "
+                 << obfuscated_username << " in Update.";
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthFactorManagerPrepareForRemovalFailedInUpdate),
+               user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT)
+        .Wrap(std::move(crypto_status));
+  }
+
+  return OkStatus<CryptohomeError>();
+}
+
 }  // namespace cryptohome
