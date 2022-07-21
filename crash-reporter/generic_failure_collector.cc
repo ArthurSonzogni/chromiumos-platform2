@@ -6,12 +6,15 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "base/check.h"
+#include "base/files/file_path.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
@@ -29,6 +32,7 @@ const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
     "arc-service-failure";
 const char* const GenericFailureCollector::kModemFailure = "cellular-failure";
+const char* const GenericFailureCollector::kGuestOomEvent = "guest-oom-event";
 
 GenericFailureCollector::GenericFailureCollector()
     : CrashCollector("generic_failure"), failure_report_path_("/dev/stdin") {}
@@ -54,7 +58,8 @@ bool GenericFailureCollector::LoadGenericFailure(std::string* content,
 
 bool GenericFailureCollector::CollectFull(const std::string& exec_name,
                                           const std::string& log_key_name,
-                                          std::optional<int> weight) {
+                                          std::optional<int> weight,
+                                          bool use_log_conf_file) {
   LOG(INFO) << "Processing generic failure";
 
   std::string generic_failure;
@@ -78,7 +83,10 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
 
   AddCrashMetaData(kSignatureKey, failure_signature);
 
-  bool result = GetLogContents(log_config_path_, log_key_name, log_path);
+  bool result = use_log_conf_file
+                    ? GetLogContents(log_config_path_, log_key_name, log_path)
+                    : WriteLogContents(generic_failure, log_path);
+
   if (result) {
     FinishCrash(meta_path, exec_name, log_path.BaseName().value());
   }
@@ -93,7 +101,8 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
     bool modem_failure,
     bool recovery_failure,
     const std::string& arc_service_failure,
-    const std::string& service_failure) {
+    const std::string& service_failure,
+    bool guest_oom_event) {
   auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
   return {.collector = generic_failure_collector,
           .handlers = {
@@ -124,7 +133,8 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
                       generic_failure_collector,
                       StringPrintf("%s-%s", kArcServiceFailure,
                                    arc_service_failure.c_str()),
-                      kArcServiceFailure, util::GetServiceFailureWeight()),
+                      kArcServiceFailure, util::GetServiceFailureWeight(),
+                      /*use_log_conf_file=*/true),
               },
               {
                   .should_handle = !service_failure.empty(),
@@ -133,8 +143,15 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
                       generic_failure_collector,
                       StringPrintf("%s-%s", kServiceFailure,
                                    service_failure.c_str()),
-                      kServiceFailure, util::GetServiceFailureWeight()),
+                      kServiceFailure, util::GetServiceFailureWeight(),
+                      /*use_log_conf_file=*/true),
               },
+              {.should_handle = guest_oom_event,
+               .should_check_appsync = true,
+               .cb = base::BindRepeating(
+                   &GenericFailureCollector::CollectFull,
+                   generic_failure_collector, kGuestOomEvent, "",
+                   util::GetOomEventWeight(), /*use_log_conf_file=*/false)},
               {
                   .should_handle = recovery_failure,
                   .cb = base::BindRepeating(

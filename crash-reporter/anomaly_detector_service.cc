@@ -19,6 +19,7 @@
 #include <brillo/process/process.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>
 
+#include "crash-reporter/anomaly_detector.h"
 #include "crash-reporter/crash_reporter_parser.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -71,7 +72,8 @@ constexpr base::TimeDelta kTimeBetweenLogReads = base::Milliseconds(500);
 
 Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
     : shutdown_callback_(std::move(shutdown_callback)),
-      weak_ptr_factory_(this) {
+      weak_ptr_factory_(this),
+      testonly_send_all_(testonly_send_all) {
   parsers_["audit"] =
       std::make_unique<anomaly::SELinuxParser>(testonly_send_all);
   parsers_["init"] =
@@ -111,7 +113,7 @@ bool Service::Init() {
     return false;
   }
   termina_parser_ = std::make_unique<anomaly::TerminaParser>(
-      dbus_, std::make_unique<MetricsLibrary>());
+      dbus_, std::make_unique<MetricsLibrary>(), testonly_send_all_);
 
   // Export a bus object so that other processes can register signal handlers
   // and make method calls.
@@ -217,7 +219,12 @@ void Service::ProcessVmKernelLog(dbus::MethodCall* method_call,
 
   for (const auto& message : request.records()) {
     termina_parser_->ParseLogEntryForBtrfs(request.cid(), message.content());
-    termina_parser_->ParseLogEntryForOom(request.cid(), message.content());
+    auto crash_report =
+        termina_parser_->ParseLogEntryForOom(request.cid(), message.content());
+
+    if (crash_report) {
+      RunCrashReporter(crash_report->flags, crash_report->text);
+    }
   }
 
   std::move(sender).Run(std::move(response));

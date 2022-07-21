@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
@@ -13,6 +14,7 @@
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -559,7 +561,7 @@ TEST(AnomalyDetectorTest, BTRFSExtentCorruption) {
   auto metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
   EXPECT_CALL(*metrics, SendCrosEventToUMA(_)).Times(0);
 
-  TerminaParser parser(bus, std::move(metrics));
+  TerminaParser parser(bus, std::move(metrics), /*testonly_send_all=*/true);
 
   parser.ParseLogEntryForBtrfs(
       3,
@@ -588,7 +590,7 @@ TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
   auto metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
   EXPECT_CALL(*metrics, SendCrosEventToUMA(_)).Times(0);
 
-  TerminaParser parser(bus, std::move(metrics));
+  TerminaParser parser(bus, std::move(metrics), /*testonly_send_all=*/true);
 
   // prior to 5.14
   parser.ParseLogEntryForBtrfs(
@@ -624,14 +626,22 @@ TEST(AnomalyDetectorTest, OomEvent) {
   EXPECT_CALL(*metrics, SendCrosEventToUMA("Crostini.OomEvent"))
       .WillOnce(Return(true));
 
-  TerminaParser parser(bus, std::move(metrics));
+  TerminaParser parser(bus, std::move(metrics), /*testonly_send_all=*/true);
 
-  parser.ParseLogEntryForOom(
-      3,
+  std::string oom_log =
       "Out of memory: Killed process 293 (python 3.6) total-vm:15633956kB, "
       "anon-rss:14596640kB, file-rss:4kB, shmem-rss:0kB, UID:0 "
       "pgtables:28628kB "
-      "oom_score_adj:0");
+      "oom_score_adj:0";
+
+  auto crash_report = parser.ParseLogEntryForOom(3, oom_log);
+
+  EXPECT_THAT(crash_report->text,
+              testing::HasSubstr("guest-oom-event-python_3_6"));
+  EXPECT_THAT(crash_report->text, testing::HasSubstr(oom_log));
+
+  std::vector<std::string> expected_flags = {"--guest_oom_event"};
+  EXPECT_EQ(crash_report->flags, expected_flags);
 }
 
 TEST(AnomalyDetectorTest, CryptohomeMountFailure) {

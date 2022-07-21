@@ -165,6 +165,10 @@ int GetSuspendFailureWeight();
 // 1.0/GetShillFailureWeight() of the failures.
 int GetShillFailureWeight();
 
+// Return the weight for oom events. We'll only collect
+// 1.0/GetOomEventWeight() of the failures.
+int GetOomEventWeight();
+
 // Return the weight for kernel warnings with the specified command-line flag.
 // We'll only collect 1.0/GetKernelWarningWeight(flag) of the failures.
 int GetKernelWarningWeight(const std::string& flag);

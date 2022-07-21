@@ -51,6 +51,8 @@ class Service {
   base::RepeatingTimer long_timer_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
+
+  const bool testonly_send_all_;
 };
 
 }  // namespace anomaly

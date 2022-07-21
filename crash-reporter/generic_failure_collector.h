@@ -30,29 +30,34 @@ class GenericFailureCollector : public CrashCollector {
 
   // Collects generic failure.
   bool Collect(const std::string& exec_name) {
-    return CollectFull(exec_name, exec_name, std::nullopt);
+    return CollectFull(exec_name, exec_name, std::nullopt,
+                       /*use_log_conf_file=*/true);
   }
 
   // Collects generic failure with a weight specified.
   bool CollectWithWeight(const std::string& exec_name,
                          std::optional<int> weight) {
-    return CollectFull(exec_name, exec_name, weight);
+    return CollectFull(exec_name, exec_name, weight,
+                       /*use_log_conf_file=*/true);
   }
 
   // All the bells and whistles.
   // exec_name is the string used for filenames on disk.
   // log_key_name is a key used for the exec_name as passed to GetLogContents
   // if weight is not nullopt, the "weight" key is set to that value.
+  // if use_collectors is false, log contents will be extracted from stdin.
   bool CollectFull(const std::string& exec_name,
                    const std::string& log_key_name,
-                   std::optional<int> weight);
+                   std::optional<int> weight,
+                   bool use_log_conf_file);
 
   static CollectorInfo GetHandlerInfo(bool suspend_failure,
                                       bool auth_failure,
                                       bool modem_failure,
                                       bool recovery_failure,
                                       const std::string& arc_service_failure,
-                                      const std::string& service_failure);
+                                      const std::string& service_failure,
+                                      bool guest_oom_event);
 
  protected:
   std::string failure_report_path_;
@@ -74,6 +79,7 @@ class GenericFailureCollector : public CrashCollector {
   static const char* const kServiceFailure;
   static const char* const kArcServiceFailure;
   static const char* const kModemFailure;
+  static const char* const kGuestOomEvent;
 
   // Generic failure dump consists only of the signature.
   bool LoadGenericFailure(std::string* content, std::string* signature);

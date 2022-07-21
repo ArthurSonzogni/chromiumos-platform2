@@ -48,6 +48,7 @@
 #include <re2/re2.h>
 #include <zlib.h>
 
+#include "base/files/file_path.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -1431,20 +1432,24 @@ bool CrashCollector::GetMultipleLogContents(
   if (collated_log_contents.empty())
     return false;
 
-  // Always do this after collated_log_contents is "finished" so we don't
-  // accidentally leak data.
-  StripSensitiveData(&collated_log_contents);
+  return WriteLogContents(collated_log_contents, output_file);
+}
+
+bool CrashCollector::WriteLogContents(std::string& log_contents,
+                                      const base::FilePath& output_file) {
+  // Don't accidentally leak sensitive data.
+  StripSensitiveData(&log_contents);
 
   if (output_file.FinalExtension() == ".gz") {
-    if (!WriteNewCompressedFile(output_file, collated_log_contents.data(),
-                                collated_log_contents.size())) {
+    if (!WriteNewCompressedFile(output_file, log_contents.data(),
+                                log_contents.size())) {
       LOG(WARNING) << "Error writing compressed sanitized log to "
                    << output_file.value();
       return false;
     }
   } else {
-    if (WriteNewFile(output_file, collated_log_contents) !=
-        static_cast<int>(collated_log_contents.length())) {
+    if (WriteNewFile(output_file, log_contents) !=
+        static_cast<int>(log_contents.length())) {
       PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
       return false;
     }

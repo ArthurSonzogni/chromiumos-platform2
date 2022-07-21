@@ -435,6 +435,12 @@ class CrashCollector {
   bool GetLogContents(const base::FilePath& config_path,
                       const std::string& exec_name,
                       const base::FilePath& output_file);
+  // Write a log to |output_file| based on the passed string |log_contents|. If
+  // |output_file| ends in .gz, it will be compressed in gzip format, otherwise
+  // it will be plaintext. The contents will also be redacted to avoid leaking
+  // any sensitive contents.
+  bool WriteLogContents(std::string& log_contents,
+                        const base::FilePath& output_file);
 
   // Write logs applicable to |exec_names| to |output_file| based on the
   // log configuration file at |config_path|. If |output_file| ends in .gz, it
@@ -625,6 +631,9 @@ struct InvocationInfo {
   // Once this is true and we invoke the associated callback, main() returns,
   // so only one handler can run for each execution of crash_reporter.
   bool should_handle;
+  // If set to true, AppSync consent should be checked (via metrics_lib)
+  // before any collectors are run. Defaults to false.
+  bool should_check_appsync = false;
   // Callback to invoke if |should_handle| is true. (can be null).
   base::RepeatingCallback<bool()> cb;
 };

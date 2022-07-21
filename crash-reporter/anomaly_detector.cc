@@ -495,10 +495,11 @@ MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
 
 TerminaParser::TerminaParser(
     scoped_refptr<dbus::Bus> dbus,
-    std::unique_ptr<MetricsLibraryInterface> metrics_lib)
-    : dbus_(dbus), metrics_lib_(std::move(metrics_lib)) {
-  metrics_lib_->Init();
-}
+    std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+    bool testonly_send_all)
+    : dbus_(dbus),
+      metrics_lib_(std::move(metrics_lib)),
+      testonly_send_all_(testonly_send_all) {}
 
 constexpr LazyRE2 btrfs_extent_corruption = {
     R"(BTRFS warning \(device .*\): csum failed root [[:digit:]]+ )"
@@ -508,7 +509,6 @@ constexpr LazyRE2 btrfs_tree_node_corruption = {
     R"(BTRFS warning \(device .*\): .*checksum verify failed on )"
     R"([[:digit:]]+ wanted (0x)?[[:xdigit:]]+ found (0x)?[[:xdigit:]]+ level )"
     R"([[:digit:]]+)"};
-constexpr char kUMAOomEvent[] = "Crostini.OomEvent";
 
 MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
                                                       const std::string& line) {
@@ -534,15 +534,22 @@ MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
   return std::nullopt;
 }
 
-constexpr LazyRE2 oom_event = {
-    R"(Out of memory: Killed process ([[:digit:]]+) \(.*\) total-vm:)"
+constexpr LazyRE2 crostini_oom_event = {
+    R"(Out of memory: Killed process [[:digit:]]+ \((.*)\) total-vm:)"
     R"([[:digit:]]+kB, anon-rss:[[:digit:]]+kB, file-rss:[[:digit:]]+kB, )"
     R"(shmem-rss:[[:digit:]]+kB, UID:[[:digit:]]+ pgtables:[[:digit:]]+kB )"
     R"(oom_score_adj:[[:digit:]]+)"};
+constexpr char kUMAOomEvent[] = "Crostini.OomEvent";
 
 MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
                                                     const std::string& line) {
-  if (!RE2::PartialMatch(line, *oom_event)) {
+  if (!testonly_send_all_ &&
+      base::RandGenerator(util::GetOomEventWeight()) != 0) {
+    // We only want to report a limited number of oom events due to noise.
+    return std::nullopt;
+  }
+  std::string app_name;
+  if (!RE2::PartialMatch(line, *crostini_oom_event, &app_name)) {
     return std::nullopt;
   }
 
@@ -562,9 +569,11 @@ MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
     LOG(WARNING) << "Could not send OomEvent metric to UMA";
   }
 
-  // TODO(crbug/1193485): we would like to submit a crash report here, impl
-  // is pending resolution of privacy concerns.
-  return std::nullopt;
+  // replace any non-alphanumeric characters with underscores for signature
+  RE2::GlobalReplace(&app_name, "[^a-zA-Z0-9_-]", "_");
+  std::string text = "guest-oom-event-" + app_name + "\n" + line + '\n';
+
+  return CrashReport(std::move(text), {std::move("--guest_oom_event")});
 }
 
 constexpr LazyRE2 cryptohome_mount_failure = {

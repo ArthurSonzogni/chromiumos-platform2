@@ -106,9 +106,9 @@ TEST_F(GenericFailureCollectorTest, CollectOKMainServiceFailure) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash main process (2563) terminated with status 2\n"));
-  EXPECT_TRUE(collector_.CollectFull("service-failure-crash-crash",
-                                     GenericFailureCollector::kServiceFailure,
-                                     /*weight=*/50));
+  EXPECT_TRUE(collector_.CollectFull(
+      "service-failure-crash-crash", GenericFailureCollector::kServiceFailure,
+      /*weight=*/50, /*use_log_conf_file=*/true));
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
 
   base::FilePath meta_path;
@@ -130,9 +130,9 @@ TEST_F(GenericFailureCollectorTest, CollectOKPreStart) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash pre-start process (2563) terminated with status 2\n"));
-  EXPECT_TRUE(collector_.CollectFull("service-failure-crash-crash",
-                                     GenericFailureCollector::kServiceFailure,
-                                     /*weight=*/50));
+  EXPECT_TRUE(collector_.CollectFull(
+      "service-failure-crash-crash", GenericFailureCollector::kServiceFailure,
+      /*weight=*/50, /*use_log_conf_file=*/true));
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
 
   base::FilePath meta_path;
@@ -146,4 +146,28 @@ TEST_F(GenericFailureCollectorTest, CollectOKPreStart) {
   ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));
   EXPECT_TRUE(contents.find("upload_var_weight=50") != std::string::npos)
       << contents;
+}
+
+TEST_F(GenericFailureCollectorTest, CollectFullGuestOOM) {
+  std::string sig = "guest-oom-event-0xdeadbeef";
+  std::string log = "killed process 1234 (0xdeadbeef)";
+  // log from stdin
+  ASSERT_TRUE(test_util::CreateFile(test_path_, sig + '\n' + log + '\n'));
+  EXPECT_TRUE(collector_.CollectFull("guest-oom-event", "", 0,
+                                     /*use_log_conf_file=*/false));
+  EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
+
+  base::FilePath meta_path;
+  std::string contents;
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_failure_directory_, "guest_oom_event.*.meta", &meta_path));
+  ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));
+  EXPECT_TRUE(contents.find("sig=guest-oom-event-0xdeadbeef") !=
+              std::string::npos)
+      << contents;
+
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_failure_directory_, "guest_oom_event.*.log", &meta_path));
+  ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));
+  EXPECT_TRUE(contents.find(log) != std::string::npos) << contents;
 }

@@ -144,13 +144,15 @@ class SuspendParser : public Parser {
 class TerminaParser {
  public:
   explicit TerminaParser(scoped_refptr<dbus::Bus> dbus,
-                         std::unique_ptr<MetricsLibraryInterface> metrics_lib);
+                         std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+                         bool testonly_send_all);
   MaybeCrashReport ParseLogEntryForBtrfs(int cid, const std::string& line);
   MaybeCrashReport ParseLogEntryForOom(int cid, const std::string& line);
 
  private:
   scoped_refptr<dbus::Bus> dbus_;
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
+  const bool testonly_send_all_;
 };
 
 class CryptohomeParser : public Parser {

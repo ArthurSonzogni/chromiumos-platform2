@@ -334,6 +334,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(arc_kernel, false, "ARC Kernel Crash");
 #endif
   DEFINE_bool(modem_failure, false, "Report modem failure");
+  DEFINE_bool(guest_oom_event, false,
+              "OOM event in Crostini (captured via stdin)");
 
   OpenStandardFileDescriptors();
 
@@ -580,7 +582,7 @@ int main(int argc, char* argv[]) {
   collectors.push_back(GenericFailureCollector::GetHandlerInfo(
       FLAGS_suspend_failure, FLAGS_auth_failure, FLAGS_modem_failure,
       FLAGS_cryptohome_recovery_failure, FLAGS_arc_service_failure,
-      FLAGS_service_failure));
+      FLAGS_service_failure, FLAGS_guest_oom_event));
 
   collectors.push_back(SELinuxViolationCollector::GetHandlerInfo(
       FLAGS_selinux_violation, FLAGS_weight));
@@ -598,6 +600,15 @@ int main(int argc, char* argv[]) {
     bool ran_init = false;
     for (const InvocationInfo& info : collector.handlers) {
       if (info.should_handle) {
+        if (info.should_check_appsync) {
+          // We need to check for AppSync permissions - if we can't get it bail
+          // out for this collector.
+          if (!s_metrics_lib.IsAppSyncEnabled()) {
+            LOG(ERROR) << "Collector has should_check_appsync set to true but "
+                          "Apps Sync has not been opted-in to.";
+            return 0;
+          }
+        }
         if (!ran_init) {
           if (!collector.collector) {
             LOG(ERROR) << "Unexpected null collector.";
